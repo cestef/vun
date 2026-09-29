@@ -1,11 +1,12 @@
 //! Linker scripts as data (GNU ld's command language): the memory regions of a link plan, the
-//! output sections placed in them, and the entry symbol, printed once by `print`.
+//! output sections placed in them, the symbols at their bounds (`vun_link::Bound`), and the entry
+//! symbol, printed once by `print`.
 
 mod print;
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_intern::Symbol;
-use vun_link::{LinkPlan, LinkerInfo};
+use vun_link::{Bound, LinkPlan, LinkerInfo};
 
 /// A linker script.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -15,12 +16,13 @@ pub struct Script {
     pub sections: Vec<OutputSection>,
 }
 
-/// `name : ORIGIN = origin, LENGTH = length` in `MEMORY`.
+/// `name : ORIGIN = origin, LENGTH = length` in `MEMORY`, and the symbol at its end.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Region {
     pub name: Symbol,
     pub origin: u64,
     pub length: u64,
+    pub end: Symbol,
 }
 
 /// An output section: the input sections it gathers, the region holding it at run time, and the
@@ -30,7 +32,17 @@ pub struct OutputSection {
     pub name: Symbol,
     pub inputs: Inputs,
     pub region: Symbol,
-    pub load: Option<Symbol>,
+    pub load: Option<Loaded>,
+    /// The symbols at its start and end.
+    pub start: Symbol,
+    pub end: Symbol,
+}
+
+/// The region a section's contents load from, and the symbol at that address.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Loaded {
+    pub region: Symbol,
+    pub at: Symbol,
 }
 
 /// Input sections of every input file, by pattern; kept even when unreferenced where `keep`.
@@ -87,7 +99,14 @@ impl Script {
         let memory = plan
             .regions
             .iter()
-            .map(|r| Ok(Region { name: Self::name(r.name)?, origin: r.origin, length: r.len }))
+            .map(|r| {
+                Ok(Region {
+                    name: Self::name(r.name)?,
+                    origin: r.origin,
+                    length: r.len,
+                    end: Self::name(r.end())?,
+                })
+            })
             .collect::<Result<_, _>>()?;
         let declared = |section: Symbol, region: Symbol| {
             let known = plan.regions.iter().any(|r| r.name == region);
@@ -105,7 +124,17 @@ impl Script {
                         patterns: vec![Pattern::Exact(name), Pattern::Under(name)],
                     },
                     region: declared(name, s.region)?,
-                    load: s.load_region.map(|load| declared(name, load)).transpose()?,
+                    load: s
+                        .load_region
+                        .map(|load| {
+                            Ok(Loaded {
+                                region: declared(name, load)?,
+                                at: Self::name(s.bound(Bound::Load))?,
+                            })
+                        })
+                        .transpose()?,
+                    start: Self::name(s.bound(Bound::Start))?,
+                    end: Self::name(s.bound(Bound::End))?,
                 })
             })
             .collect::<Result<_, _>>()?;

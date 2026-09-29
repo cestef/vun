@@ -19,7 +19,7 @@ use vun_sema_ty::item::DeclRef;
 use crate::attributes::Attributed;
 use crate::env::Env;
 
-/// A function's linkage: the symbol it is exported as and its calling convention.
+/// A function's or declaration's linkage: the symbol it is exported as and its calling convention.
 pub trait Exported {
     /// The symbol this function is exported under (`#[link.export(s)]`), if any.
     #[must_use]
@@ -37,6 +37,29 @@ impl Exported for Func {
 
     fn abi(&self, cx: &Cx<'_>) -> Option<Abi> {
         self.attributes(cx)?.abi()
+    }
+}
+
+impl Exported for DeclRef {
+    fn export(&self, cx: &Cx<'_>) -> Option<Symbol> {
+        self.attributes(cx)?.text(Primitive::Link(Link::export))
+    }
+
+    fn abi(&self, cx: &Cx<'_>) -> Option<Abi> {
+        self.attributes(cx)?.abi()
+    }
+}
+
+/// Where a declaration's object is placed.
+pub trait Placed {
+    /// The link section its object goes to (`#[link.section(s)]`), if not the default one.
+    #[must_use]
+    fn section(&self, cx: &Cx<'_>) -> Option<Symbol>;
+}
+
+impl Placed for DeclRef {
+    fn section(&self, cx: &Cx<'_>) -> Option<Symbol> {
+        self.attributes(cx)?.text(Primitive::Link(Link::section))
     }
 }
 

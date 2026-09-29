@@ -9,7 +9,7 @@ use vun_lir::{Address, DataId, Function, InstKind, Site};
 use vun_origin::OriginId;
 use vun_sema_ty::item::DeclRef;
 
-use crate::piece::{Datum, FuncRef, Lir};
+use crate::piece::{Bytes, Datum, FuncRef, Lir, Refs};
 use crate::unlowered::{Form, Unlowered};
 
 /// Tables a function's ids are placed in.
@@ -27,17 +27,22 @@ pub(crate) trait Places {
     /// `at` past what an id holds.
     fn sites(&mut self, sites: &[Site], at: OriginId) -> Result<Vec<u32>, Unlowered>;
 
-    /// The function of `lir`, its ids placed in these tables.
-    fn place(&mut self, lir: &Lir, at: OriginId) -> Result<Function, Unlowered> {
-        let sites = self.sites(&lir.refs.sites, at)?;
-        let functions = lir.refs.functions.iter().map(|f| self.function(f, at)).collect::<Result<_, _>>()?;
-        let imports = lir.refs.imports.iter().map(|decl| self.linked(decl, at)).collect::<Result<_, _>>()?;
-        let mut placing =
-            Placing { functions, imports, data: Vec::with_capacity(lir.refs.data.len()), sites };
-        for datum in &lir.refs.data {
+    /// Where the ids `refs` name go in these tables, the data they name placed.
+    fn placing(&mut self, refs: &Refs, at: OriginId) -> Result<Placing, Unlowered> {
+        let sites = self.sites(&refs.sites, at)?;
+        let functions = refs.functions.iter().map(|f| self.function(f, at)).collect::<Result<_, _>>()?;
+        let imports = refs.imports.iter().map(|decl| self.linked(decl, at)).collect::<Result<_, _>>()?;
+        let mut placing = Placing { functions, imports, data: Vec::with_capacity(refs.data.len()), sites };
+        for datum in &refs.data {
             let id = self.datum(placing.datum(datum));
             placing.data.push(id);
         }
+        Ok(placing)
+    }
+
+    /// The function of `lir`, its ids placed in these tables.
+    fn place(&mut self, lir: &Lir, at: OriginId) -> Result<Function, Unlowered> {
+        let placing = self.placing(&lir.refs, at)?;
         let mut function = lir.function.clone();
         function.map_addresses(|a| placing.address(a));
         for (_, inst) in function.insts.iter_mut() {
@@ -72,8 +77,8 @@ impl SiteIds {
     }
 }
 
-/// Where the ids of one function go.
-struct Placing {
+/// Where the ids of one function, or one exported datum, go.
+pub(crate) struct Placing {
     functions: Vec<Address>,
     imports: Vec<Address>,
     data: Vec<DataId>,
@@ -93,13 +98,18 @@ impl Placing {
 
     /// `datum` with the addresses its bytes hold and the ids of its trap sites placed.
     fn datum(&self, datum: &Datum) -> Datum {
-        let mut datum = datum.clone();
-        for reloc in &mut datum.bytes.relocs {
+        Datum { bytes: self.bytes(&datum.bytes), ..datum.clone() }
+    }
+
+    /// `bytes` with the addresses they hold and the ids of their trap sites placed.
+    pub(crate) fn bytes(&self, bytes: &Bytes) -> Bytes {
+        let mut bytes = bytes.clone();
+        for reloc in &mut bytes.relocs {
             reloc.target = self.address(reloc.target);
         }
-        for site in &mut datum.bytes.sites {
+        for site in &mut bytes.sites {
             site.site = self.sites[site.site as usize];
         }
-        datum
+        bytes
     }
 }

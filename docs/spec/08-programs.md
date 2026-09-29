@@ -164,11 +164,23 @@ main := (p: stm32f4.Peripherals) -> never {
 ```
 
 `stm32f4.start` builds, at compile time:
-- `#[link.section(".vectors"), link.export("__vectors")] vectors := ...`, a plain array of function
-  pointers, with every unlisted interrupt filled by a default handler (no weak linker symbols);
-- `#[link.export("Reset")] reset`, which copies `.data`, zeroes `.bss`, constructs `Peripherals`
-  once through an `unsafe` constructor, and calls `main`;
+- `#[link.section(".vectors"), link.export("__vectors")] vectors := ...`, a plain `#[layout.c]`
+  struct: the stack pointer the core starts with, pointing to `__ram_end` (a link symbol's
+  address is a constant, whether pointed to or borrowed), then a handler per vector, every
+  vector not given run by a default handler (no weak linker symbols);
+- `#[link.export("Reset")] reset`, which copies `.data` from where it loads and zeroes `.bss`, word
+  by word from the symbols the linker defines at their bounds, constructs `Peripherals` once
+  through an `unsafe` constructor, and calls `main`;
 - interrupt-ABI wrappers for each handler, and the `lang.panic.trap` export.
+
+An exported value that is not a function, as the vector table, is data of the program: the
+functions and link symbols it holds are reached from it, and it is placed in its link section.
+Where it lies comes from the build: `stm32f4.layout` gives the chip's `memory` and the `sections`
+placed in it, which the program's build passes (spec 12, section 2); the linker defines
+`__<section>_start`, `__<section>_end` and, for a section loaded from another region,
+`__<section>_load`, and `__<region>_end` for each region. `stm32f4.semihost.exit` ends a program
+under a debugger or an emulator with a status (Arm's semihosting): the driver's firmware test runs on qemu's
+STM32F405 board.
 
 ### WebAssembly, libraries, modules
 

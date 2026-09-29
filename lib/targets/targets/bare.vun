@@ -1,5 +1,6 @@
 //! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
-//! runtime, and starts at its reset handler.
+//! runtime through its C compiler's linker, which places its sections in the memory its build
+//! declares, and starts at its reset handler.
 
 /// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`, of
 /// which it has `features`, following `abi` and calling C by `convention`, its processor computing `floats`, built with
@@ -31,7 +32,7 @@ _on := (
         .object_format = .elf,
         .entry_symbol = .some("Reset"),
         .backends = targets.through_c,
-        .linker = .lld,
+        .linker = .gnu,
         .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"], &[])),
     }
 };

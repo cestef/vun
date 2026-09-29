@@ -76,6 +76,8 @@ pub struct Session {
     /// The memory map of the program built, from its package's plan; empty for a program an
     /// operating system loads.
     pub memory: Vec<vun_link::MemoryRegion>,
+    /// Where its sections lie in `memory`, from its package's plan.
+    pub sections: Vec<vun_link::SectionPlacement>,
     /// What `vun util lsp` runs: the language server the program installs, as `vun` does.
     pub language_server: Option<fn(&mut Session) -> std::io::Result<vun_command::Outcome>>,
     /// How the program running the session writes its `check` command, for messages that
@@ -121,6 +123,7 @@ impl Session {
             toolchain: vun_build::toolchain::Toolchain::path(),
             runner: Vec::new(),
             memory: Vec::new(),
+            sections: Vec::new(),
             language_server: None,
             check: None,
             shown_errors: 0,

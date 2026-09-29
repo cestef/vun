@@ -1,0 +1,18 @@
+//! Where an STM32F4 program lies: its memory map, and its sections placed in it, which a build
+//! passes as a program's `memory` and `sections` (spec 12, section 2).
+
+/// Flash, which the core reads its vector table from at reset, and the SRAM after it.
+memory: &[std.build.Region] = &[
+    .{ .name = .flash, .origin = 0x0800_0000, .len = 1024 * 1024 },
+    .{ .name = .ram, .origin = 0x2000_0000, .len = 128 * 1024 },
+];
+
+/// The vector table first in flash, then code and constants; variables in SRAM, `.data` loaded
+/// from flash, which the reset handler copies.
+sections: &[std.build.Placement] = &[
+    .{ .name = .vectors, .region = .flash },
+    .{ .name = .text, .region = .flash },
+    .{ .name = .rodata, .region = .flash },
+    .{ .name = .data, .region = .ram, .load = .some(.flash) },
+    .{ .name = .bss, .region = .ram },
+];

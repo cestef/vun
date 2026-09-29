@@ -115,6 +115,9 @@ impl<'r> Corpus<'r> {
     }
 }
 
+/// What a planned program waits for: names not declared yet, in scope or among a type's members.
+const WAITING: [DiagId; 2] = [errors::NAMES_UNRESOLVED, errors::TYPES_NO_MEMBER];
+
 impl Verdict {
     /// The verdict of the file at `path` checked in `session`, expected to report nothing or
     /// exactly its annotations.
@@ -133,7 +136,7 @@ impl Verdict {
         if expect == Expect::Planned {
             return Ok(if reported.is_empty() {
                 Self::Ready
-            } else if reported.iter().all(|r| DiagId::compiler(&r.at.id) == errors::NAMES_UNRESOLVED) {
+            } else if reported.iter().all(|r| WAITING.contains(&DiagId::compiler(&r.at.id))) {
                 Self::Planned(reported)
             } else {
                 let unexpected = reported.iter().map(|r| r.at.clone()).collect();

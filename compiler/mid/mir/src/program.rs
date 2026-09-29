@@ -1,7 +1,7 @@
 //! A program (spec 08, section 1): the functions its root file's exports reach. The exports are
-//! the `#[link.export]` functions among the root file's bindings and the members of the struct
-//! types they evaluate to; from each, every function a body calls or takes as a value is reached,
-//! with the `$` arguments of its call.
+//! the `#[link.export]` functions and data among the root file's bindings and the members of the
+//! struct types they evaluate to; from each, every function a body calls or takes as a value, or
+//! an exported datum holds, is reached, with the `$` arguments of its call.
 
 use std::sync::Arc;
 
@@ -11,13 +11,14 @@ use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema::decl::DeclValue;
+use vun_sema::decl::{DeclType, DeclValue};
 use vun_sema::eval::Instantiate;
-use vun_sema::link::Exported;
-use vun_sema::member::{MemberValue, Members};
+use vun_sema::link::{Exported, Placed};
+use vun_sema::member::{MemberType, MemberValue, Members};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::{Ty, TyKind, Value};
+use vun_trace::tracing;
 
 use crate::{Aggregate, Concrete, Lowered, Operand, Rvalue, Unready};
 
@@ -27,6 +28,8 @@ pub struct Program {
     pub functions: Vec<Instantiation>,
     /// The exported functions, by their position in `functions`, and the symbol of each.
     pub exports: Vec<(usize, Symbol)>,
+    /// The exported data, which no function makes: a vector table.
+    pub data: Vec<ExportedDatum>,
     /// The declarations the linker provides that a body reaches.
     pub imports: Vec<DeclRef>,
     /// The functions reached whose bodies are not ready, and why.
@@ -34,6 +37,17 @@ pub struct Program {
     /// The variants whose constructors are taken as values, each a function (`Body::constructor`),
     /// by its enum type and name.
     pub constructors: Vec<(Ty, Symbol)>,
+}
+
+/// A declaration whose value is exported as data.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct ExportedDatum {
+    pub decl: DeclRef,
+    pub value: Value,
+    pub ty: Ty,
+    pub symbol: Symbol,
+    /// Its link section, when not the default one.
+    pub section: Option<Symbol>,
 }
 
 /// Where the reach of a program starts.
@@ -62,8 +76,10 @@ impl Query for Programs {
         {
             let hir = &parsed.hir;
             for decl in hir.member_decls(ns) {
-                if let Ok(value) = cx.get::<DeclValue>(&DeclRef::new(root.clone(), hir, decl)) {
-                    reach.export(&value);
+                let decl = DeclRef::new(root.clone(), hir, decl);
+                if let Ok(value) = cx.get::<DeclValue>(&decl) {
+                    let ty = cx.get::<DeclType>(&decl).map(|known| known.ty);
+                    reach.export(&decl, &value, ty.ok());
                 }
             }
             if *roots == Roots::Functions {
@@ -110,8 +126,9 @@ struct Reach<'a, 'db> {
 }
 
 impl Reach<'_, '_> {
-    /// Finds the exports among `value` and, for a struct type, among its members.
-    fn export(&mut self, value: &Value) {
+    /// Finds the exports among `value`, the value of `decl` of type `ty`: a function, the value
+    /// itself as data, or, for a struct type, among its members.
+    fn export(&mut self, decl: &DeclRef, value: &Value, ty: Option<Ty>) {
         match value {
             Value::Fn(f) => {
                 if let Some(symbol) = f.export(self.cx) {
@@ -121,13 +138,26 @@ impl Reach<'_, '_> {
             }
             Value::Type(ty) if matches!(&**ty, TyKind::Nominal(_)) && self.types.insert(*ty) => {
                 let Some(members) = self.cx.get::<Members>(ty) else { return };
-                for decl in &members.decls {
-                    if let Ok(value) = self.cx.get::<MemberValue>(&(*ty, decl.name)) {
-                        self.export(&value);
+                for member in &members.decls {
+                    let value = self.cx.get::<MemberValue>(&(*ty, member.name));
+                    let own = self.cx.get::<MemberType>(&(*ty, member.name)).map(|known| known.ty);
+                    match (value, own) {
+                        (Ok(value), own) => self.export(&member.decl, &value, own.ok()),
+                        (Err(why), _) => tracing::debug!(member = %member.name, ?why, "member not evaluated"),
                     }
                 }
             }
-            _ => {}
+            _ => {
+                let Some(symbol) = decl.export(self.cx) else { return };
+                let Some(ty) = ty else {
+                    tracing::debug!(%symbol, "exported datum of no known type");
+                    return;
+                };
+                self.value(value);
+                let section = decl.section(self.cx);
+                let datum = ExportedDatum { decl: decl.clone(), value: value.clone(), ty, symbol, section };
+                self.program.data.push(datum);
+            }
         }
     }
 

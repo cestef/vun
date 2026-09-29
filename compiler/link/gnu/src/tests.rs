@@ -5,7 +5,7 @@ use vun_link::{LinkPlan, MemoryRegion, Output, SectionPlacement};
 use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
-use crate::script::{Inputs, OutputSection, Pattern, Region};
+use crate::script::{Inputs, Loaded, OutputSection, Pattern, Region};
 use crate::{Script, Unscripted};
 
 #[test]
@@ -34,14 +34,23 @@ fn regions_and_sections_become_a_script() {
             patterns: vec![Pattern::Exact(name(".data")), Pattern::Under(name(".data"))],
         },
         region: name("flash"),
-        load: Some(name("flash")),
+        load: Some(Loaded { region: name("flash"), at: name("__data_load") }),
+        start: name("__data_start"),
+        end: name("__data_end"),
     };
-    let expected = Script {
-        entry: Some(name("Reset")),
-        memory: vec![Region { name: name("flash"), origin: 0x0800_0000, length: 0x10_0000 }],
-        sections: vec![data],
-    };
-    assert_eq!(Script::of(&plan), Ok(expected));
+    let flash =
+        Region { name: name("flash"), origin: 0x0800_0000, length: 0x10_0000, end: name("__flash_end") };
+    let expected = Script { entry: Some(name("Reset")), memory: vec![flash], sections: vec![data] };
+    assert_eq!(Script::of(&plan), Ok(expected.clone()));
+    let printed = expected.to_string();
+    let lines: Vec<&str> = printed.lines().collect();
+    assert!(
+        lines.contains(
+            &"    .data : { __data_start = .; *(.data .data.*) __data_end = .; } > flash AT > flash"
+        )
+    );
+    assert!(lines.contains(&"    __data_load = LOADADDR(.data);"));
+    assert!(lines.contains(&"__flash_end = ORIGIN(flash) + LENGTH(flash);"));
 }
 
 #[test]

@@ -117,6 +117,9 @@ impl Apply for Primitive {
                 let last = items.hi().finite() == Some(x);
                 Ok(Value::Int(if last { x.clone() } else { x + &Integer::from(1) }))
             }
+            // A link symbol's address is known once the program is linked: pointing to it is that
+            // address, as borrowing it is.
+            (Self::Mem(Mem::pointer_to), [_, linked @ Value::Linked(_)]) => Ok(linked.clone()),
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
             (Self::Int(int), args) => int.apply(env, args),

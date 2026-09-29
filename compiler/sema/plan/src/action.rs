@@ -5,8 +5,8 @@ use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::std::{
     build_Action as action, build_Dep as dep, build_Flashed as flashed, build_Needed as needed,
-    build_Options as options, build_Program as program, build_Region as region, build_Step as step,
-    build_Tested as tested, build_Use as used,
+    build_Options as options, build_Placement as placement, build_Program as program, build_Region as region,
+    build_Step as step, build_Tested as tested, build_Use as used,
 };
 use vun_sema::target::{Declared, Members, Read, Unread};
 use vun_sema_ty::Value;
@@ -41,6 +41,7 @@ pub struct Options {
     pub target: Declared,
     pub deps: Vec<Use>,
     pub memory: Vec<Region>,
+    pub sections: Vec<Placement>,
     pub output: Output,
     /// What its unsafe code is checked for at run time.
     pub checks: Vec<Check>,
@@ -61,6 +62,14 @@ pub struct Region {
     pub name: Symbol,
     pub origin: u64,
     pub len: u64,
+}
+
+/// A section placed in a region, loaded from another where `load` names one.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Placement {
+    pub name: Symbol,
+    pub region: Symbol,
+    pub load: Option<Symbol>,
 }
 
 impl Read for Action {
@@ -93,6 +102,7 @@ impl Read for Options {
             target: m.read(options::target)?,
             deps: m.list(options::deps)?,
             memory: m.list(options::memory)?,
+            sections: m.list(options::sections)?,
             output: m.read(options::output)?,
             checks: m.list(options::checks)?,
             trace: m.read(options::trace)?,
@@ -112,6 +122,18 @@ impl Read for Region {
     fn read(value: &Value) -> Result<Self, Unread> {
         let m = Members::of(value)?;
         Ok(Self { name: m.name(region::name)?, origin: m.int(region::origin)?, len: m.int(region::len)? })
+    }
+}
+
+impl Read for Placement {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let m = Members::of(value)?;
+        let load = match m.option(placement::load)? {
+            Some(Value::Name(name)) => Some(*name),
+            Some(_) => return Err(Unread::Member(placement::load)),
+            None => None,
+        };
+        Ok(Self { name: m.name(placement::name)?, region: m.name(placement::region)?, load })
     }
 }
 

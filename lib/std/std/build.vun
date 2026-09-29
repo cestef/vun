@@ -38,6 +38,8 @@ Options := struct {
     deps: &[Use] = &[],
     /// Its memory map, empty for a program an operating system loads.
     memory: &[Region] = &[],
+    /// Where its sections lie in the regions of `memory`, in the order they are placed.
+    sections: &[Placement] = &[],
     output: Output = .executable,
     /// What its unsafe code is checked for at run time (spec 07, section 7).
     checks: &[lang.check.Kind] = &[],
@@ -48,6 +50,12 @@ Options := struct {
 Use := struct { name: lang.meta.Name, dep: Dep };
 /// A region of a program's memory, such as `.flash`, and where it lies.
 Region := struct { name: lang.meta.Name, origin: u64, len: u64 };
+/// A section of a program placed in the region `region`, its contents loaded from the region
+/// `load` when that differs (`.data`, in RAM, loaded from flash). The linker defines symbols at its
+/// edges, `__<section>_start` and `__<section>_end`, the address it loads from,
+/// `__<section>_load`, and the end of each region, `__<region>_end`, each named without the
+/// section's leading `.`.
+Placement := struct { name: lang.meta.Name, region: lang.meta.Name, load: ?lang.meta.Name = .none };
 
 /// What a step of the plan does. Records whose types each call infers are kept with their type,
 /// as `lang.meta.Any`.

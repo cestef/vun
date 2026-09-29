@@ -52,7 +52,7 @@ build := (b: &mut std.build.Build) {
                   .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
                   .threads = .one, .endian = .little, \
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .backends = .{ .debug = .{ .cranelift, .c }, \
-                  .release = .{ .llvm, .c } }, .linker = .lld, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
+                  .release = .{ .llvm, .c } }, .linker = .gnu, .c = .{ .short = .{ .bits = 16, .align = 2 }, \
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", .archiver = \"arm-none-eabi-ar\", \
@@ -67,7 +67,7 @@ build := (b: &mut std.build.Build) {
             ".dep(.{ .name = .stm32f4, .params = .{ .variant = .f407 } })".to_owned(),
             format!(
                 ".program(.{{ .root = \"app.vun\", .target = {target}, \
-                 .deps = .{{ .{{ .name = .stm32f4, .dep = .{{ .step = .{{ .index = 0 }} }} }} }}, .memory = .{{}}, .output = .executable, \
+                 .deps = .{{ .{{ .name = .stm32f4, .dep = .{{ .step = .{{ .index = 0 }} }} }} }}, .memory = .{{}}, .sections = .{{}}, .output = .executable, \
                  .checks = .{{}}, .trace = .none }})"
             ),
             ".flash(.{ .program = .{ .step = .{ .index = 1 } }, .method = .probe(.{ .chip = \"STM32F407VGTx\" }) })".to_owned(),

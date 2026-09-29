@@ -5,7 +5,7 @@
 
 mod action;
 
-pub use action::{Action, Options, Region, Use};
+pub use action::{Action, Options, Placement, Region, Use};
 use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
 use vun_intern::Symbol;

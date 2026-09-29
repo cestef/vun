@@ -47,7 +47,8 @@ shown as it comes; each `jj` workspace has its own mirror and `target/`. A host 
 toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and
 its own `~/.config/vun/toolchain.vun`. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
 x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
-cross compiler and the `fc44` sysroot). Known host differences: Fedora 44's libclang fails
+cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its toolchain file
+has rows for `linux.arm64`, `linux.arm` and `bare.cortex_m4f`). Known host differences: Fedora 44's libclang fails
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
 own target there is `linux.arm64`.
@@ -97,6 +98,7 @@ On the owner's machine:
 |--------|----------|--------|
 | `linux.arm64` | `aarch64-linux-gnu-gcc`, sysroot `/usr/aarch64-redhat-linux/sys-root/fc43` | `qemu-aarch64 -L <sysroot>/usr` |
 | `linux.arm` | `clang --target=arm-linux-gnueabi -fuse-ld=lld` (finds the `libgcc` of `gcc-arm-linux-gnu`) | `qemu-arm` |
+| `bare.cortex_m4f` | the target's `arm-none-eabi-gcc` (`arm-none-eabi-gcc-cs`) | `qemu-system-arm -M netduinoplus2 -nographic -semihosting-config enable=on,target=native -kernel` |
 
 GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence clang for
 `linux.arm`. Kernel targets link `-static -nostdlib -l gcc`.

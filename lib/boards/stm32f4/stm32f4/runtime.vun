@@ -1,0 +1,144 @@
+//! Builds the program's exports at compile time (spec 08, section 2): the vector table the core
+//! reads at reset, the reset handler, which lays memory out and calls `main`, the trap handler and
+//! the critical sections of one core.
+
+Config := struct {
+    main: (p: Peripherals) -> never,
+    trap: (t: &lang.panic.Trap) -> never,
+    interrupts: Interrupts,
+};
+
+/// The device's peripherals, claimed once at reset.
+Peripherals := struct {
+    claim := unsafe () -> Peripherals { .{} };
+};
+
+/// What the core calls on an exception or interrupt, as it calls a C function.
+Handler := #[abi.c] () -> ();
+
+/// Handlers of the exceptions and interrupts, plain functions the table calls through a wrapper;
+/// one a program does not give runs `unhandled`.
+Interrupts := struct {
+    systick: () -> () = unhandled,
+    tim2: () -> () = unhandled,
+};
+
+/// An exception or interrupt the program does not handle: it stops there.
+unhandled := () {
+    for {}
+};
+
+/// `h`, called by the core as it calls a C function.
+wrapped := ($h: () -> ()) -> Handler { #[abi.c] () { h() } };
+
+/// The vectors after the initial stack pointer: the core's 15 exceptions, then the chip's 82
+/// interrupts.
+vectors: usize = 97;
+/// Where each vector is among them: the reset handler's, and those `Interrupts` names.
+reset_vector: usize = 0;
+systick_vector: usize = 14;
+tim2_vector: usize = 43;
+
+/// The vector table: the stack pointer the core starts with, then a handler per vector.
+#[layout.c]
+Table := struct {
+    stack: *u32,
+    handlers: [vectors]Handler,
+};
+
+/// The symbols the linker defines where the program's sections and regions lie (spec 08,
+/// section 2).
+#[link.symbol("__ram_end")]
+ram_end: u32 = _;
+#[link.symbol("__data_start")]
+data_start: u32 = _;
+#[link.symbol("__data_end")]
+data_end: u32 = _;
+#[link.symbol("__data_load")]
+data_load: u32 = _;
+#[link.symbol("__bss_start")]
+bss_start: u32 = _;
+#[link.symbol("__bss_end")]
+bss_end: u32 = _;
+
+/// The table starting the stack at the end of SRAM, reset at `reset`, each interrupt at its
+/// handler, and every other vector at `unhandled`.
+table := ($config: Config, $reset: Handler) -> Table {
+    mut handlers: [vectors]Handler = [wrapped(unhandled); vectors];
+    handlers[reset_vector] = reset;
+    handlers[systick_vector] = wrapped(config.interrupts.systick);
+    handlers[tim2_vector] = wrapped(config.interrupts.tim2);
+    .{ .stack = lang.mem.pointer_to(u32, &ram_end), .handlers = handlers }
+};
+
+/// Copies `.data` from flash to SRAM and zeroes `.bss`, word by word, before anything reads them.
+init_memory := unsafe () {
+    unsafe {
+        mut to := lang.mem.pointer_to(u32, &data_start);
+        mut from := lang.mem.pointer_to(u32, &data_load);
+        end := lang.mem.address(u32, lang.mem.pointer_to(u32, &data_end));
+        for lang.mem.address(u32, to) < end {
+            to.write(from.read());
+            to = to.offset(1);
+            from = from.offset(1);
+        }
+        mut zeroed := lang.mem.pointer_to(u32, &bss_start);
+        last := lang.mem.address(u32, lang.mem.pointer_to(u32, &bss_end));
+        for lang.mem.address(u32, zeroed) < last {
+            zeroed.write(0);
+            zeroed = zeroed.offset(1);
+        }
+    }
+};
+
+/// Stops the core, for a trap: waits for interrupts, forever.
+halt := (t: &lang.panic.Trap) -> never {
+    for {
+        unsafe lang.arch.thumb.asm {
+            wfi
+        };
+    }
+};
+
+start := ($config: Config) -> type { struct {
+    #[link.section(".vectors"), link.export("__vectors")]
+    vectors := table(config, reset);
+
+    #[link.export("Reset"), abi.c]
+    reset := () {
+        unsafe { init_memory(); }
+        config.main(unsafe { Peripherals.claim() })
+    };
+
+    #[link.export(lang.panic.symbols.trap)]
+    trap := config.trap;
+
+    /// Masks interrupts, keeping `PRIMASK` as it was: one core, so the section is never
+    /// contended and nests by restoring the mask.
+    #[link.export(std.sync.symbols.enter), panic.never]
+    enter := () -> std.sync.Mask {
+        mut mask: usize = 0;
+        unsafe lang.arch.thumb.asm {
+            mrs {out mask}, primask
+            cpsid i
+        };
+        unsafe std.sync.Mask.of(mask, true)
+    };
+
+    #[link.export(std.sync.symbols.leave), panic.never]
+    leave := (mask: std.sync.Mask) {
+        if mask.bits() & 1 == 0 {
+            unsafe lang.arch.thumb.asm {
+                cpsie i
+            };
+        }
+    };
+
+    /// Waits for an interrupt.
+    #[link.export(std.task.symbols.sleep)]
+    sleep := () {
+        unsafe lang.arch.thumb.asm {
+            wfi
+        };
+    };
+} };

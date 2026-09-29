@@ -4,6 +4,9 @@ use std::fmt::{self, Write};
 
 use super::{Inputs, OutputSection, Pattern, Region, Script};
 
+/// Where the location counter stands, as a symbol's value.
+const HERE: &str = ".";
+
 impl fmt::Display for Script {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(entry) = self.entry {
@@ -16,8 +19,15 @@ impl fmt::Display for Script {
         f.write_str("}\nSECTIONS\n{\n")?;
         for section in &self.sections {
             writeln!(f, "    {section}")?;
+            if let Some(load) = &section.load {
+                writeln!(f, "    {} = LOADADDR({});", load.at, section.name)?;
+            }
         }
-        f.write_str("}\n")
+        f.write_str("}\n")?;
+        for region in &self.memory {
+            writeln!(f, "{} = ORIGIN({1}) + LENGTH({1});", region.end, region.name)?;
+        }
+        Ok(())
     }
 }
 
@@ -29,9 +39,14 @@ impl fmt::Display for Region {
 
 impl fmt::Display for OutputSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} : {{ {} }} > {}", self.name, self.inputs, self.region)?;
-        match self.load {
-            Some(load) => write!(f, " AT > {load}"),
+        let (start, end) = (self.start, self.end);
+        write!(
+            f,
+            "{} : {{ {start} = {HERE}; {} {end} = {HERE}; }} > {}",
+            self.name, self.inputs, self.region
+        )?;
+        match &self.load {
+            Some(load) => write!(f, " AT > {}", load.region),
             None => Ok(()),
         }
     }

@@ -31,6 +31,12 @@ pub const Options: Item = Item::new(&["std", "build", "Options"]);
 pub const Use: Item = Item::new(&["std", "build", "Use"]);
 /// A region of a program's memory, such as `.flash`, and where it lies.
 pub const Region: Item = Item::new(&["std", "build", "Region"]);
+/// A section of a program placed in the region `region`, its contents loaded from the region
+/// `load` when that differs (`.data`, in RAM, loaded from flash). The linker defines symbols at its
+/// edges, `__<section>_start` and `__<section>_end`, the address it loads from,
+/// `__<section>_load`, and the end of each region, `__<region>_end`, each named without the
+/// section's leading `.`.
+pub const Placement: Item = Item::new(&["std", "build", "Placement"]);
 /// What a step of the plan does. Records whose types each call infers are kept with their type,
 /// as `lang.meta.Any`.
 pub const Action: Item = Item::new(&["std", "build", "Action"]);

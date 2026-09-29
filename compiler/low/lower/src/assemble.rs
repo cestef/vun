@@ -22,7 +22,7 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::lowering::Lowering;
-use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece};
+use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece, Refs};
 use crate::placing::{Places, SiteIds};
 use crate::unchecked::Unchecked;
 use crate::unlowered::{Form, Unlowered, Why};
@@ -154,9 +154,7 @@ impl Places for Assembly<'_, '_, '_> {
             return id;
         }
         let Datum { mut bytes, align, kind, origin } = datum;
-        for site in std::mem::take(&mut bytes.sites) {
-            self.l.int(&Integer::from(site.site as usize), site.width, &mut bytes.bytes, site.offset);
-        }
+        self.write_sites(&mut bytes);
         let key = (bytes, align);
         if let (DatumKind::Constant, Some(&id)) = (&kind, self.constants.get(&key)) {
             return id;
@@ -195,6 +193,38 @@ impl Places for Assembly<'_, '_, '_> {
 }
 
 impl Assembly<'_, '_, '_> {
+    /// Adds the datum the program exports under `symbol`, in its link section `section` if any:
+    /// `bytes`, of the ids `refs` names, aligned to `align`.
+    pub(crate) fn export(
+        &mut self,
+        refs: &Refs,
+        bytes: &Bytes,
+        align: u64,
+        (symbol, section): (Symbol, Option<Symbol>),
+        origin: OriginId,
+    ) -> Result<(), Unlowered> {
+        let mut bytes = self.placing(refs, origin)?.bytes(bytes);
+        self.write_sites(&mut bytes);
+        self.unit.data.push(Data {
+            linkage: Linkage::Export(symbol),
+            bytes: bytes.bytes,
+            relocs: bytes.relocs,
+            align,
+            writable: false,
+            section,
+            storage: Storage::Program,
+            origin,
+        });
+        Ok(())
+    }
+
+    /// Writes the ids of the trap sites `bytes` hold into them.
+    fn write_sites(&self, bytes: &mut Bytes) {
+        for site in std::mem::take(&mut bytes.sites) {
+            self.l.int(&Integer::from(site.site as usize), site.width, &mut bytes.bytes, site.offset);
+        }
+    }
+
     /// The datum of the program's table (`lang.trace`), exported under `symbol`: made once, its
     /// bytes written when code is generated, with how `lang.trace` lays out its structs.
     fn table(&mut self, symbol: Symbol, at: OriginId) -> Result<DataId, Unlowered> {

@@ -56,6 +56,14 @@ impl Lowered {
         for lir in lirs {
             assembly.add(lir.as_ref().as_ref().map_err(Clone::clone)?, at)?;
         }
+        // Each exported datum encoded on its own, the ids it names placed as a function's are.
+        for datum in &program.data {
+            let mut own = Lowering::new(cx, root, true)?;
+            let origin = datum.decl.decl.origin;
+            let bytes = own.encode(&datum.value, datum.ty, origin)?;
+            let align = own.types.shape(datum.ty, origin)?.layout.align;
+            assembly.export(&own.refs, &bytes, align, (datum.symbol, datum.section), origin)?;
+        }
         Ok(assembly.finish())
     }
 }

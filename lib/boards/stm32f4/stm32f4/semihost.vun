@@ -1,0 +1,18 @@
+//! Semihosting: requests the program makes of the debugger it runs under, or of an emulator
+//! (qemu), through a breakpoint the debugger answers (Arm's semihosting, version 2).
+
+/// `SYS_EXIT_EXTENDED`: the program ends, stopped as an application exits.
+exit_extended: u32 = 0x20;
+application_exit: u32 = 0x2_0026;
+
+/// Ends the program with `status`, which the debugger or emulator exits with.
+exit := (status: u32) -> never {
+    block: [2]u32 = [application_exit, status];
+    at := lang.mem.address(u32, lang.mem.items_pointer(u32, &block));
+    unsafe lang.arch.thumb.asm {
+        mov r0, {in(r0) exit_extended}
+        mov r1, {in(r1) at}
+        bkpt 0xab
+    };
+    for {}
+};

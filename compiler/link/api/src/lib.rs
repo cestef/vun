@@ -4,9 +4,12 @@
 //! linker syntax: script-capable ones turn a plan into a linker script, others into flags. Each
 //! adapter declares its facts once, in a [`LinkerInfo`] (spec 13, section 7).
 
+mod bound;
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
+pub use bound::Bound;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;

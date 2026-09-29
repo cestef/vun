@@ -201,7 +201,7 @@ impl Session {
             // A library's exports are its interface: nothing starts it.
             entry: target.entry_symbol.filter(|_| !kind.library()),
             regions: self.memory.clone(),
-            sections: Vec::new(),
+            sections: self.sections.clone(),
         };
         let named = self.codegen.linker.unwrap_or_else(|| self.registry.linker_for(kind, target));
         let Some(linker) = self.registry.linker(named) else {

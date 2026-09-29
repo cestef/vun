@@ -68,6 +68,12 @@ Traps that cost a session before. Add one when it costs you time.
 - A table in `desugar.vun` naming `lang` items is a tuple `.{ }`: its items have types of their
   own, and an array would not type. Borrow modes are lists of `BorrowWord` (`grammar.vun`).
 
+## Compile time
+
+- An exported member whose value does not evaluate is left out of the program with no report:
+  `VUN_LOG=vun_mir=debug` names it (`member not evaluated`). One such value: a test of a pattern
+  (`if x = .some(h)`) in a compile-time function's body.
+
 ## Native backend
 
 - An instruction's implicit registers belong in its form (`.implicit`), or a snippet's scratch

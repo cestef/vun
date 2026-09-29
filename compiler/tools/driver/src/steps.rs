@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, Severity, errors};
-use vun_link::MemoryRegion;
+use vun_link::{MemoryRegion, SectionPlacement};
 use vun_origin::OriginId;
 use vun_sema::target::Choice;
 use vun_sema_plan::{Action, Options};
@@ -94,6 +94,16 @@ impl Session {
             .memory
             .iter()
             .map(|r| MemoryRegion { name: r.name, origin: r.origin, len: r.len, declared: at })
+            .collect();
+        session.sections = options
+            .sections
+            .iter()
+            .map(|p| SectionPlacement {
+                name: SectionPlacement::section(p.name),
+                region: p.region,
+                load_region: p.load,
+                keep: false,
+            })
             .collect();
         let root = dir.join(options.root.as_str());
         tracing::info!(root = %root.display(), arch = %options.target.spec.arch, "building a program of the plan");

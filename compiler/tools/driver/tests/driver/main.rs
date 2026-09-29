@@ -6,6 +6,7 @@ mod common;
 mod add;
 mod asm;
 mod backend;
+mod bare;
 mod bind;
 mod borrows;
 mod checks;

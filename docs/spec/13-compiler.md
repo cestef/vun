@@ -567,7 +567,10 @@ pub trait DiagSink {
   decision 248 added about 280 KiB (decision 252);
   raising it, like a new external crate, is a decision stating the cost.
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
-  lld and GNU ld adapters turn them into linker scripts, others into flags.
+  GNU ld adapter turns them into a linker script defining the symbols at their bounds
+  (`vun_link::Bound`: `__data_start`, `__data_end`, `__data_load`, `__ram_end`), and a linker that
+  places nothing refuses a plan that does (`link.unsupported`). Bare-metal targets link through
+  their C compiler's linker for that.
 - **Capabilities are checked, never faked.** A program needing guaranteed tail calls, frame sizes or
   vectors on a backend that lacks them is rejected with a diagnostic naming the backends that can.
 

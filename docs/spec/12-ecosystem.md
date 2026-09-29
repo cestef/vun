@@ -115,8 +115,10 @@ build := (b: &mut std.build.Build) {
   `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
   `.stm32f4`) with the parameters its own `build.vun` declares; `b.program(options) -> Program`
   takes a `std.build.Options`: its `root` file, its `target` (a `lang.target.Spec`), the `deps`
-  it uses (`std.build.Use`: a name and the `Dep` a step built) and its `memory` map
-  (`std.build.Region`: a name, an origin and a length), the last two empty unless given;
+  it uses (`std.build.Use`: a name and the `Dep` a step built), its `memory` map
+  (`std.build.Region`: a name, an origin and a length) and the `sections` placed in it
+  (`std.build.Placement`: a section, the region holding it and the region it loads from, if
+  another), the last three empty unless given;
   `b.flash(program, method)` with a
   `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2`, `.dfu`); `b.test_on(program, runner)`
   with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the

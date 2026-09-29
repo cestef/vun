@@ -1,1 +1,4 @@
-//! STM32F4 runtime: vector table, reset handler, peripherals.
+//! STM32F4 runtime: the vector table the core starts from, the reset handler laying memory out and
+//! calling the program's `main`, the peripherals, and the chip's memory map.
+
+..stm32f4.runtime;
