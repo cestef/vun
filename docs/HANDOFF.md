@@ -26,8 +26,11 @@ stills and CSS animations in `assets/mascot`, and cards with the mascot under ea
 `<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
 declared, as `cargo gen` does.
 
-Last landed: the parser reads `unterminated`, `transparent` (rows naming their tokens),
-`labeled_bodies`, `operand_contexts` and `member_names` (323), and the fuzzer's finds are fixed.
+Last landed: the parser reads `precedence`, `preferred`, `parts`, `admits` and `holds` (323):
+operands at a `Level`, continuations from the productions, a group's kind as the first preferred
+kind its children spell; every other source parses to the same tree as before. Before that it
+came to read `unterminated`, `transparent` (rows naming their tokens), `labeled_bodies`,
+`operand_contexts` and `member_names` (323), and the fuzzer's finds were fixed.
 Before that, editor integration, third batch (323): the generator reads what it interprets of the
 grammar by type (`#[derive(FromLiteral)]`, `vun-literal-derive`) into one resolved model
 (`vun-generate`'s `grammar/model/`), which the Rust productions, the Sublime syntax, the
@@ -61,12 +64,15 @@ Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
 (JSON derives), 317 (`vun-uri`, typed manifest URLs), 318 (typed LSP, its new features), 319
 (productions), 320 (`vun-data`), 321 (editor grammars and packages), 322 (declaration origins
-counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts),
-324 (language server features). 279 (static Linux targets) and 282 (`&mut T` where `&T` is) were
-the owner's choice.
+counted by name), 323 (the grammar read by type into one model, `editors.vun`, operand contexts,
+the parser reading the tables), 324 (language server features), 325 (DWARF subprograms), 327
+(exported data). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
+placements) were the owner's choice.
 
 ## Known gaps in landed work
 
+- A test of a pattern (`if x = .some(h)`) is unsupported in compile-time bodies, and an exported
+  member that does not evaluate is dropped with only a debug log (see `dev/pitfalls.md`).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and
@@ -90,14 +96,16 @@ the owner's choice.
 0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim). The
    owner chose: the parser reads the grammar's tables rather than stating the same facts in code,
    and every source must agree with tree-sitter (all 199 do). In order:
-   (a) the parser reads the tables it restates in code. Done: `unterminated`, `transparent`
-   (whose rows now name their tokens), `labeled_bodies`, `operand_contexts`, `member_names`
-   (through the generated `NodeKind::starts`). Left, which need the engine rather than a lookup:
-   `precedence` (the nesting in `expr.rs`), `admits`/`holds` (its list contexts), `preferred`
-   (its choice of kind after the children), `parts`; `line_ends` names the one kind the scanner
-   and `line_ends_before` serve. Then the engine over the productions, diffed against the hand
-   parser on every file and by fuzzing (the fuzzer runs on `am3.wg` with nightly and
-   `cargo-fuzz`; 5 minutes of `parse` pass);
+   (a) the parser reads `unterminated`, `transparent`, `labeled_bodies`, `operand_contexts`,
+   `member_names`, `precedence` (operands at a `Level`, the forms continuing one found from the
+   productions) and `preferred`/`parts`/`admits`/`holds` for the kind of a `(` or `[` group (323).
+   Left: `line_ends` (an operand ends at its line by `Brace::Hole`), and the choices made by
+   context rather than by children: `field` or `typed_binding` by what follows, `assign` or
+   `field_init` by the list, which parts an entry may be (`admits` is looser than the parser:
+   `assign` among members, `spread` among statements). The verifier could check `admits` too,
+   once it knows the operand context a node stands in. An engine over the productions, diffed
+   against the hand parser on every file and by fuzzing, only if the owner wants it (the fuzzer
+   runs on `am3.wg` with nightly and `cargo-fuzz`);
    (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
    tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
    (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension
@@ -108,9 +116,8 @@ the owner's choice.
    and the toolchain file.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` linking (lld, an SDK the owner provides); riscv64 (`qemu-riscv64` is here, no
-   sysroot); DWARF `DW_TAG_subprogram`s (a peer session is on it); memory regions
-   into `LinkPlan` and a bare-metal runtime (`stm32f4` has an empty vector table and no
-   `init_memory`).
+   sysroot); the stm32f4 board's gpio and time and `std.task.run` for the planned blinky
+   (`corpus` `bare_metal.vun`; a peer session is on it).
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`): `lang.simd.chunks`; lowering stops in

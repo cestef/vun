@@ -420,7 +420,20 @@ leaving a node to a later slot restricted to its kind). The parser reads the tab
 editors rather than restating them: the entries needing no `;` start as the kinds of `unterminated`
 holding children do (`NodeKind::starts`, from the productions), under the tokens of `transparent`; a
 label names what `labeled_bodies` lists; an instruction's operands read the kinds of
-`operand_contexts`; a member named by `$` is of a kind `member_names` lists. Each distinct shape is its own kind, so a
+`operand_contexts`; a member named by `$` is of a kind `member_names` lists. An operand is read
+at a level of `precedence` (`Level`: its row, and in the row of the form spelling `infix`, the
+operator's level there): a form starting with a token holds its last operand at its own level, and
+after an operand the parser takes each form continuing it (`Continuation`: a kind that is no part,
+whose production begins with a child the operand may fill) at that level or tighter, the one whose
+leading tokens are all written, the longest such (`.asm {` over `.`); an instruction's operand ends
+with its line, and a `{` continues an operand only where one continues an expression. A group
+opened by `(` or `[` becomes the first kind starting with its token, the preferred first
+(`preferred`), whose production its children spell with each child in a field admitting it: a
+kind the field is named after, one `holds` lists for it, else any kind but a part, the parts
+`admits` lists for it and, in an operand context, its kinds (`NodeKind::admits`); what recovery
+built fits as it stands, an absent token for its term and an `error` for a child or for nothing.
+What the parser decides by what follows, whether a body or a result type is read and whether an
+entry is a field, stays in the parser. Each distinct shape is its own kind, so a
 kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
 `typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
 node, which holds what recovery skipped and fits any slot. The CST verifier requires every node to

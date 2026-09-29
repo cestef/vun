@@ -194,6 +194,7 @@ preferred := [
     &[.array, .closure],
     &[.memory, .array],
     &[.memory, .array, .closure],
+    &[.closure, .array_type],
     &[.assign, .field_init],
     &[.suffix, .dot_name],
     &[.spread, .prefix],

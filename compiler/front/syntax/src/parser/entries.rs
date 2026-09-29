@@ -97,7 +97,7 @@ impl Parser<'_, '_, '_> {
     fn spread(&mut self) {
         let mark = self.out.mark();
         let op = self.bump();
-        self.expr(Brace::Continues);
+        self.operand(NodeKind::Spread.operand_level(), Brace::Continues);
         if self.at(TokenKind::DotLBrace) {
             let select = self.out.mark();
             let (open, _) = self.group_of(List::Items(Item::Name));

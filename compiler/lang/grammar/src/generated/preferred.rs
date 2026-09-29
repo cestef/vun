@@ -16,6 +16,7 @@ pub const PREFERRED: &[&[NodeKind]] = &[
     &[NodeKind::Array, NodeKind::Closure],
     &[NodeKind::Memory, NodeKind::Array],
     &[NodeKind::Memory, NodeKind::Array, NodeKind::Closure],
+    &[NodeKind::Closure, NodeKind::ArrayType],
     &[NodeKind::Assign, NodeKind::FieldInit],
     &[NodeKind::Suffix, NodeKind::DotName],
     &[NodeKind::Spread, NodeKind::Prefix],

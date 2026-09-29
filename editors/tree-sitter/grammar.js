@@ -43,7 +43,7 @@ module.exports = grammar({
     tuple: $ => prec.dynamic(-1, seq("(", optional(seq(field("items", choice($.field_init, $._operand)), repeat(seq(",", field("items", choice($.field_init, $._operand)))), optional(","))), ")")),
     array: $ => prec.dynamic(-1, seq("[", optional(seq(field("items", choice($.field_init, $._operand)), repeat(seq(",", field("items", choice($.field_init, $._operand)))), optional(","))), "]")),
     array_repeat: $ => seq("[", field("value", $._operand), ";", field("count", $._operand), "]"),
-    array_type: $ => prec.left(15, seq("[", field("length", $._operand), "]", field("element", $._starting_element_types))),
+    array_type: $ => prec.left(15, prec.dynamic(-3, seq("[", field("length", $._operand), "]", field("element", $._starting_element_types)))),
     struct_lit: $ => seq(".{", optional(seq(field("fields", choice($.field_init, $._operand)), repeat(seq(",", field("fields", choice($.field_init, $._operand)))), optional(","))), "}"),
     typed_lit: $ => prec.dynamic(-1, seq(field("type", prec(17, choice($.name, $.member, $.call))), "{", optional(seq(field("fields", choice($.field_init, $._operand)), repeat(seq(",", field("fields", choice($.field_init, $._operand)))), optional(","))), "}")),
     field_init: $ => prec.right(1, prec.dynamic(-1, seq(field("target", choice($.binding, $.typed_binding, $.field, $.assign, $.spread, $.module_doc, $._operand)), "=", field("value", $._operand)))),

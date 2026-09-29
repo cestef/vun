@@ -8,9 +8,14 @@ use std::sync::LazyLock;
 
 #[rustfmt::skip]
 mod generated;
+mod choice;
+mod continuing;
+mod level;
 mod production;
 
+pub use continuing::Continuation;
 pub use generated::*;
+pub use level::{Infix, Level};
 pub use production::Element;
 
 /// Separates the members of a path, as written: `std.prelude`.
@@ -33,29 +38,6 @@ static PUNCTUATION_BY_FIRST: LazyLock<Vec<Vec<TokenKind>>> = LazyLock::new(|| {
 /// Keywords by their spelling.
 static KEYWORDS_BY_TEXT: LazyLock<foldhash::HashMap<&'static str, TokenKind>> =
     LazyLock::new(|| TokenKind::KEYWORDS.iter().filter_map(|&k| Some((k.text()?, k))).collect());
-
-/// Binding strength of an infix operator; higher binds tighter.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Prec(u8);
-
-impl Prec {
-    pub const LOWEST: Self = Self(0);
-
-    /// The next tighter level, for the right operand of a left-associative operator.
-    #[must_use]
-    pub const fn tighter(self) -> Self {
-        Self(self.0 + 1)
-    }
-}
-
-/// How an infix operator binds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Infix {
-    pub prec: Prec,
-    pub assoc: Assoc,
-    /// How the formatter spaces the operator.
-    pub around: Spacing,
-}
 
 impl Context {
     /// Whether `word` is a keyword in this context.
@@ -105,14 +87,6 @@ impl TokenKind {
     #[must_use]
     pub fn is_trivia(self) -> bool {
         Self::TRIVIA.contains(&self)
-    }
-
-    #[must_use]
-    pub fn infix(self) -> Option<Infix> {
-        INFIX.iter().zip(0..).find_map(|(row, level)| {
-            let infix = Infix { prec: Prec(level), assoc: row.assoc, around: row.around };
-            row.tokens.contains(&self).then_some(infix)
-        })
     }
 
     /// The token closing a group this token opens.

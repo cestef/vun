@@ -2,9 +2,10 @@
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_grammar::{
-    Assoc, BorrowWord, LITERAL_TYPES, MEMBER_NAMES, NodeKind, OPEN_ENDED, OPERAND_CONTEXTS, POSTFIX, PREFIX,
-    Prec, TokenKind,
+    Assoc, BorrowWord, Continuation, Level, MEMBER_NAMES, NodeKind, NodeTerm, OPEN_ENDED, OPERAND_CONTEXTS,
+    PREFIX, TokenKind,
 };
+use vun_trace::tracing;
 
 use super::nesting::Chain;
 use super::{Brace, Item, List, Parser};
@@ -12,40 +13,99 @@ use crate::cst::Anchor;
 
 impl Parser<'_, '_, '_> {
     pub(super) fn expr(&mut self, brace: Brace) {
-        self.binary(Prec::LOWEST, brace);
+        self.operand(Level::LOWEST, brace);
     }
 
-    pub(super) fn binary(&mut self, min: Prec, brace: Brace) {
+    /// An operand held at `min`: a form starting here, then each form at `min` or tighter
+    /// continuing what was read (`precedence`).
+    pub(super) fn operand(&mut self, min: Level, brace: Brace) {
         let mark = self.out.mark();
         self.prefix(brace);
         let mut chained = None;
         let mut chain = Chain::new(mark);
-        // An instruction's operand ends with its line: `and` after one starts the next.
-        while let Some(op) = self.peek().infix().filter(|op| op.prec >= min && self.line_goes_on(brace)) {
+        while let Some(kind) = self.continuing(min, brace) {
+            tracing::trace!(?kind, ?min, token = ?self.peek(), at = ?self.current(), "continues the operand");
             if !self.link(&mut chain) {
                 return;
             }
-            let wrong = op.assoc == Assoc::None && chained == Some(op.prec);
-            if wrong {
-                self.report_chained();
-            }
-            let token = self.bump();
-            // `a..` has no upper bound.
-            if !OPEN_ENDED.contains(&self.kind(token)) || self.starts_expr() {
-                self.binary(op.prec.tighter(), brace);
-            }
-            // A chain reported is an error node, whose meaning no later stage guesses.
-            let kind = if wrong { NodeKind::Error } else { NodeKind::Infix };
+            let (kind, token) = match kind {
+                NodeKind::Asm => {
+                    self.asm(mark);
+                    continue;
+                }
+                NodeKind::Member => {
+                    let token = self.bump();
+                    self.member_name();
+                    (kind, token)
+                }
+                NodeKind::Postfix => (kind, self.bump()),
+                NodeKind::Call | NodeKind::TypedLit => (kind, self.group_of(List::Items(Item::Value)).0),
+                NodeKind::Index => {
+                    let token = self.bump();
+                    self.expr(Brace::Continues);
+                    self.close(TokenKind::RBracket, token);
+                    (kind, token)
+                }
+                _ if kind == NodeKind::INFIX_FORM => {
+                    let Some(op) = self.peek().infix() else { break };
+                    let wrong = op.assoc == Assoc::None && chained == Some(op.level);
+                    if wrong {
+                        self.report_chained();
+                    }
+                    let token = self.bump();
+                    // `a..` has no upper bound.
+                    if !OPEN_ENDED.contains(&self.kind(token)) || self.starts_expr() {
+                        self.operand(op.level.tighter(), brace);
+                    }
+                    chained = (op.assoc == Assoc::None).then_some(op.level);
+                    // A chain reported is an error node, whose meaning no later stage guesses.
+                    (if wrong { NodeKind::Error } else { kind }, token)
+                }
+                _ => unreachable!("{kind:?} continues an operand, and the parser reads no such form"),
+            };
             self.out.node(kind, Anchor::Token(token), mark);
-            chained = (op.assoc == Assoc::None).then_some(op.prec);
         }
+    }
+
+    /// The form continuing the operand just read at the current token: among the forms
+    /// continuing an operand (`Continuation`) at `min` or tighter that may hold it, the one whose
+    /// leading tokens are all here, the longest such. An instruction's operand ends with its line,
+    /// and a `{` continues it only where one continues an expression.
+    fn continuing(&self, min: Level, brace: Brace) -> Option<NodeKind> {
+        let last = self.out.last()?;
+        if !self.line_goes_on(brace) {
+            return None;
+        }
+        let level = |c: &Continuation| {
+            if c.kind == NodeKind::INFIX_FORM { self.peek().infix().map(|op| op.level) } else { c.level }
+        };
+        let here = Continuation::at(self.peek())
+            .iter()
+            .filter(|c| c.holds(last) && level(c).is_none_or(|l| l >= min));
+        let leads = here.filter_map(|c| {
+            Some((c.leads.iter().filter_map(|run| self.leads_here(run, brace)).max()?, c.kind))
+        });
+        leads.max_by_key(|&(length, _)| length).map(|(_, kind)| kind)
+    }
+
+    /// The length of `run`, tokens and words, where it is spelled from the current token.
+    fn leads_here(&self, run: &[NodeTerm], brace: Brace) -> Option<usize> {
+        let spelled = |(ahead, term): (usize, &NodeTerm)| match *term {
+            NodeTerm::Token(kinds) => {
+                let at = self.nth(ahead);
+                kinds.contains(&at) && (at != TokenKind::LBrace || brace == Brace::Continues)
+            }
+            NodeTerm::Word(words) => self.spelled_at(ahead, words.iter().copied()),
+            _ => false,
+        };
+        (!run.is_empty() && run.iter().enumerate().all(spelled)).then_some(run.len())
     }
 
     pub(super) fn prefix(&mut self, brace: Brace) {
         self.nested(|p| {
             let k = p.peek();
             if k == TokenKind::HashLBracket {
-                p.annotated(|p| p.prefix(brace));
+                p.annotated(|p| p.operand(NodeKind::Attr.operand_level(), brace));
             } else if k == TokenKind::DotDot && !p.starts_expr_at(1) {
                 // `..` alone: the rest of a tuple, array or struct in a pattern.
                 p.leaf(NodeKind::Rest);
@@ -62,53 +122,12 @@ impl Parser<'_, '_, '_> {
                         }
                     }
                 }
-                p.prefix(brace);
+                p.operand(NodeKind::Prefix.operand_level(), brace);
                 p.out.node(NodeKind::Prefix, Anchor::Token(token), mark);
             } else {
-                p.postfix(brace);
+                p.primary(brace);
             }
         });
-    }
-
-    pub(super) fn postfix(&mut self, brace: Brace) {
-        let mark = self.out.mark();
-        self.primary(brace);
-        let mut chain = Chain::new(mark);
-        loop {
-            let (kind, token) = match self.peek() {
-                TokenKind::Dot if brace == Brace::Continues && self.asm_at() => {
-                    self.asm(mark);
-                    if !self.link(&mut chain) {
-                        return;
-                    }
-                    continue;
-                }
-                TokenKind::Dot => {
-                    let token = self.bump();
-                    self.member_name();
-                    (NodeKind::Member, token)
-                }
-                k if POSTFIX.contains(&k) => (NodeKind::Postfix, self.bump()),
-                TokenKind::LParen => (NodeKind::Call, self.group_of(List::Items(Item::Value)).0),
-                TokenKind::LBracket => {
-                    let token = self.bump();
-                    self.expr(Brace::Continues);
-                    self.close(TokenKind::RBracket, token);
-                    (NodeKind::Index, token)
-                }
-                TokenKind::LBrace
-                    if brace == Brace::Continues
-                        && self.out.last().is_some_and(|k| LITERAL_TYPES.contains(&k)) =>
-                {
-                    (NodeKind::TypedLit, self.group_of(List::Items(Item::Value)).0)
-                }
-                _ => break,
-            };
-            self.out.node(kind, Anchor::Token(token), mark);
-            if !self.link(&mut chain) {
-                return;
-            }
-        }
     }
 
     /// The kind of `operand_contexts` an operand starting with `token` is, among an instruction's

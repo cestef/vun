@@ -10,6 +10,7 @@
 //! leaves.
 
 use vun_diag::DiagCx;
+use vun_grammar::{NodeKind, OPERAND_CONTEXTS};
 use vun_trace::tracing;
 
 use crate::cst::{Builder, Cst};
@@ -51,6 +52,14 @@ enum Brace {
     Continues,
     Ends,
     Hole,
+}
+
+impl Brace {
+    /// The kinds `operand_contexts` makes operands here.
+    fn context(self) -> Vec<NodeKind> {
+        let kinds = OPERAND_CONTEXTS.iter().flat_map(|row| row.kinds).copied();
+        if self == Self::Hole { kinds.collect() } else { Vec::new() }
+    }
 }
 
 /// What a list holds.

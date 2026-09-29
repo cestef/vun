@@ -172,7 +172,7 @@ impl Parser<'_, '_, '_> {
                 if self.at(TokenKind::If) {
                     let guard = self.out.mark();
                     let token = self.bump();
-                    self.expr(Brace::Continues);
+                    self.operand(NodeKind::Guard.operand_level(), Brace::Continues);
                     self.out.node(NodeKind::Guard, Anchor::Token(token), guard);
                 }
                 let anchor = if self.at(TokenKind::FatArrow) {

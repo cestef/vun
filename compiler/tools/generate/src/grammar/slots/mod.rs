@@ -119,8 +119,18 @@ impl Grammar<'_> {
             model.nodes.variants.iter().filter(|v| v.production.is_none()).map(|v| pascal(&v.name)).collect();
         let unproduced = (!unproduced.is_empty()).then(|| quote! { #(Self::#unproduced)|* => None, });
         let (kind_ty, slot_ty, term_ty, tokens_ty) = (&types.kind, &types.slot, &types.term, &types.tokens);
+        let infix_form = model.infix_kind.map(|kind| {
+            let variant = pascal(model.kind_name(kind));
+            quote! {
+                /// The form spelling the operators of the table `infix`, whose levels stand for its
+                /// row of `precedence`.
+                pub const INFIX_FORM: Self = Self::#variant;
+            }
+        });
         let lookups = quote! {
             impl #kind_ty {
+                #infix_form
+
                 /// The children of this kind in source order; empty for kinds without children.
                 #[must_use]
                 #[allow(clippy::too_many_lines, reason = "one arm per kind, as declared")]

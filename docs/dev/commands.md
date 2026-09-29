@@ -77,6 +77,7 @@ toolchain, target and checks).
 | Filter | Shows |
 |--------|-------|
 | `vun_mir=debug,vun_lower=trace` | building and lowering statement by statement, naming what fails |
+| `vun_syntax=trace` | each form continuing an operand and its level, each kind a `(` or `[` group was tried as and why it missed |
 | `vun_sema::asm=trace` | each form an assembly line was tried against and why it missed |
 | `vun_codegen=trace` | each instruction selected |
 | `vun_backend_wasm=debug,trace` | each wasm function lowered, each instruction's code |

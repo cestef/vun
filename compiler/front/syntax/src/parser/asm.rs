@@ -6,21 +6,13 @@
 
 use vun_diag::Msg;
 use vun_diag::errors;
-use vun_grammar::{Context, Flow, NodeKind, Prec, TokenKind};
+use vun_grammar::{Flow, NodeKind, TokenKind};
 
 use super::{Brace, Parser};
 use crate::cst::Anchor;
 use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
-    /// Whether the tokens from the current one are `.asm {`.
-    pub(super) fn asm_at(&self) -> bool {
-        self.at(TokenKind::Dot)
-            && self.nth(1) == TokenKind::Ident
-            && Context::AsmBlock.keyword(self.text(self.current_plus(1)))
-            && self.nth(2) == TokenKind::LBrace
-    }
-
     /// `.asm { lines }` after the architecture's path, which `mark` starts: the `.` anchors the
     /// block, as it anchors a member.
     pub(super) fn asm(&mut self, mark: crate::cst::Mark) {
@@ -67,7 +59,7 @@ impl Parser<'_, '_, '_> {
             }
             first = false;
             let before = self.pos;
-            self.binary(Prec::LOWEST, Brace::Hole);
+            self.operand(NodeKind::Line.operand_level(), Brace::Hole);
             // What starts no operand is skipped, so every line ends.
             if self.pos == before {
                 self.leaf(NodeKind::Error);
@@ -101,7 +93,7 @@ impl Parser<'_, '_, '_> {
         let open = self.bump();
         while !self.at(TokenKind::RBracket) && !self.at(TokenKind::Eof) {
             let before = self.pos;
-            self.binary(Prec::LOWEST, Brace::Hole);
+            self.operand(NodeKind::Memory.operand_level(), Brace::Hole);
             if self.pos == before || !self.eat(TokenKind::Comma) {
                 break;
             }

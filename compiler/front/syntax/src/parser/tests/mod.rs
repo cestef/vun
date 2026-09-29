@@ -108,6 +108,9 @@ fn brackets() {
         "(Binding':= c (Closure'[ (Prefix'& mut n) ] (Fn'( (Param': x u8) ) (Block'{ (Assign'+= n x) ; }))))"
     );
     assert_eq!(first("c := [] () {};"), "(Binding':= c (Closure'[ ] (Fn'( ) (Block'{ }))))");
+    // A closure is preferred to an array type whose element is a function.
+    assert_eq!(first("c := [n] () {};"), "(Binding':= c (Closure'[ n ] (Fn'( ) (Block'{ }))))");
+    assert_eq!(first("t: [n](u8) = _;"), "(TypedBinding': t (ArrayType'[ n ] (Paren'( u8 ))) = _)");
 }
 
 #[test]

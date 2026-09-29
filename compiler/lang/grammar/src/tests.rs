@@ -33,7 +33,7 @@ fn operator_tables_are_disjoint_where_they_must_be() {
     }
     let mul = TokenKind::Star.infix().unwrap();
     let add = TokenKind::Plus.infix().unwrap();
-    assert!(mul.prec > add.prec);
+    assert!(mul.level > add.level);
     assert_eq!(TokenKind::Lt.infix().unwrap().assoc, Assoc::None);
     assert_eq!(TokenKind::Dot.infix(), None);
 }
@@ -128,4 +128,49 @@ fn entries_end_with_a_semicolon_unless_block_like() {
     assert!(NodeKind::Block.spelled_by(&[open, value, semi, branch, branch, value, close]));
     assert!(NodeKind::Block.spelled_by(&[open, close]));
     assert!(!NodeKind::Block.spelled_by(&[open, value, value, close]));
+}
+
+#[test]
+fn recovery_shapes_fit_as_left() {
+    let (l, r) = (token(TokenKind::LParen), token(TokenKind::RParen));
+    let child = |kind| Element::Child { field: NodeField::Inner, kind, ends: kind, first: TokenKind::Ident };
+    // `(a`: the absent `)` stands for its term; `(a b)`: the skipped `b` for nothing.
+    assert!(NodeKind::Paren.spelled_by(&[l, child(NodeKind::Name), Element::Absent]));
+    assert!(NodeKind::Paren.spelled_by(&[l, child(NodeKind::Name), child(NodeKind::Error), r]));
+    assert!(!NodeKind::Paren.spelled_by(&[l, child(NodeKind::Name), child(NodeKind::Name), r]));
+}
+
+#[test]
+fn fields_admit_parts_where_tables_say() {
+    assert!(NodeKind::FnType.admits(NodeField::Params, NodeKind::Param, &[]));
+    assert!(!NodeKind::Tuple.admits(NodeField::Items, NodeKind::Param, &[]));
+    assert!(NodeKind::Tuple.admits(NodeField::Items, NodeKind::Error, &[]));
+    assert!(NodeKind::Fn.admits(NodeField::Returns, NodeKind::Returns, &[]));
+    assert!(!NodeKind::If.admits(NodeField::Otherwise, NodeKind::Name, &[]));
+    assert!(!NodeKind::Paren.admits(NodeField::Inner, NodeKind::Bound, &[]));
+    assert!(NodeKind::Paren.admits(NodeField::Inner, NodeKind::Bound, &[NodeKind::Bound]));
+}
+
+#[test]
+fn groups_try_the_preferred_kinds_first() {
+    let kinds = NodeKind::starting_with(TokenKind::LParen);
+    let at = |kind| kinds.iter().position(|&k| k == kind);
+    assert!(at(NodeKind::Paren) < at(NodeKind::Tuple) && at(NodeKind::Tuple) < at(NodeKind::FnType));
+    assert!(at(NodeKind::Fn) < at(NodeKind::Tuple));
+}
+
+#[test]
+fn continuations_are_told_apart_by_their_leading_tokens() {
+    for c in Continuation::all() {
+        assert!(c.leads.iter().all(|run| !run.is_empty()), "{:?}", c.kind);
+    }
+    let longest = |kind| {
+        Continuation::all()
+            .iter()
+            .find(|c| c.kind == kind)
+            .and_then(|c| c.leads.iter().map(|r| r.len()).max())
+    };
+    // `.asm {` spells `.` and more: where both are written, the block wins.
+    assert!(longest(NodeKind::Asm) > longest(NodeKind::Member));
+    assert!(Continuation::all().iter().all(|c| !PARTS.contains(&c.kind)));
 }

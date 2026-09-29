@@ -1,11 +1,14 @@
 //! Functions, brackets, block-like expressions and jumps: the forms chosen after their children.
 
 use vun_grammar::{
-    ASSIGN, Context, ELEMENT_TYPES, LABELED_BODIES, NodeKind, TRANSPARENT, TokenKind, UNTERMINATED,
+    ASSIGN, Context, ELEMENT_TYPES, LABELED_BODIES, NodeKind, PARTS, TRANSPARENT, TokenKind, UNTERMINATED,
 };
+
+use vun_trace::tracing;
 
 use super::{Brace, Form, Item, List, Operand, Parser};
 use crate::cst::{Anchor, Mark};
+use crate::tokens::TokenId;
 
 impl Parser<'_, '_, '_> {
     /// `(...)`: a tuple or a parenthesized expression; a function type when a parameter is typed or
@@ -17,53 +20,44 @@ impl Parser<'_, '_, '_> {
         if arrow {
             let returns = self.out.mark();
             let token = self.bump();
-            self.expr(Brace::Ends);
+            self.operand(NodeKind::Returns.operand_level(), Brace::Ends);
             self.out.node(NodeKind::Returns, Anchor::Token(token), returns);
         }
-        let body = brace == Brace::Continues
+        if brace == Brace::Continues
             && self.at(TokenKind::LBrace)
-            && (arrow || shape.items == 0 || shape.typed > 0);
-        if body {
+            && (arrow || shape.items == 0 || shape.typed > 0)
+        {
             self.block(List::Statements);
         }
-        let kind = if body {
-            NodeKind::Fn
-        } else if arrow || shape.typed > 0 {
-            NodeKind::FnType
-        } else if shape.single() {
-            NodeKind::Paren
-        } else {
-            NodeKind::Tuple
-        };
-        self.out.node(kind, Anchor::Token(open), mark);
+        self.group_node(open, mark, brace);
     }
 
     /// `[...]`: an array, a repeat, an array type `[N]T`, or the captures of a closure.
     pub(super) fn bracket(&mut self, brace: Brace) {
         let mark = self.out.mark();
         let (open, shape) = self.group_of(List::Items(Item::Element));
-        let kind = if shape.form == Form::Repeated {
-            NodeKind::ArrayRepeat
-        } else if self.at(TokenKind::LParen) {
-            let callee = self.out.mark();
+        let group = shape.form == Form::Listed && self.at(TokenKind::LParen);
+        if group {
             self.function_or_tuple(brace);
-            let closure = self.out.single_since(callee) && self.out.last() == Some(NodeKind::Fn);
-            if closure {
-                NodeKind::Closure
-            } else if shape.single() {
-                NodeKind::ArrayType
-            } else {
-                // Any other number of items before a group only makes sense as closure captures.
-                self.report_expected(&[TokenKind::LBrace]);
-                NodeKind::Error
-            }
         } else if shape.single() && ELEMENT_TYPES.contains(&self.peek()) {
-            self.prefix(brace);
-            NodeKind::ArrayType
-        } else {
-            NodeKind::Array
-        };
-        self.out.node(kind, Anchor::Token(open), mark);
+            self.operand(NodeKind::ArrayType.operand_level(), brace);
+        }
+        // Any other number of items before a group only makes sense as closure captures.
+        if self.group_node(open, mark, brace).is_none() && group {
+            self.report_expected(&[TokenKind::LBrace]);
+        }
+    }
+
+    /// Pushes the node of the group `open` opened, its children since `mark`: of the kinds
+    /// starting with its token that stand as operands here, the first they spell (`preferred`).
+    fn group_node(&mut self, open: TokenId, mark: Mark, brace: Brace) -> Option<NodeKind> {
+        let context = brace.context();
+        let stands = |k: &NodeKind| !PARTS.contains(k) || context.contains(k);
+        let kinds: Vec<NodeKind> =
+            NodeKind::starting_with(self.kind(open)).iter().copied().filter(stands).collect();
+        let chosen = self.out.node_of(&kinds, Anchor::Token(open), mark, &context, self.tokens, self.source);
+        tracing::trace!(?open, token = ?self.kind(open), ?kinds, ?chosen, "group");
+        chosen
     }
 
     /// Block-like expressions: blocks, `if`, `for`, `match` and labeled loops, with bodies of `list`.
@@ -183,8 +177,8 @@ impl Parser<'_, '_, '_> {
         }
         match operand {
             Operand::Required if kind == NodeKind::Defer => self.deferred(brace),
-            Operand::Required => self.expr(brace),
-            Operand::Optional if self.starts_expr() => self.expr(brace),
+            Operand::Required => self.operand(kind.operand_level(), brace),
+            Operand::Optional if self.starts_expr() => self.operand(kind.operand_level(), brace),
             Operand::Optional | Operand::Never => {}
         }
         self.out.node(kind, Anchor::Token(token), mark);
@@ -194,7 +188,7 @@ impl Parser<'_, '_, '_> {
     /// operator, so `defer x.* = 0` defers the whole assignment (spec 05, section 3).
     fn deferred(&mut self, brace: Brace) {
         let mark = self.out.mark();
-        self.expr(brace);
+        self.operand(NodeKind::Defer.operand_level(), brace);
         if ASSIGN.contains(&self.peek()) {
             let op = self.bump();
             self.expr(brace);

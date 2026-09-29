@@ -6,6 +6,9 @@
 )]
 use super::*;
 impl NodeKind {
+    /// The form spelling the operators of the table `infix`, whose levels stand for its
+    /// row of `precedence`.
+    pub const INFIX_FORM: Self = Self::Infix;
     /// The children of this kind in source order; empty for kinds without children.
     #[must_use]
     #[allow(clippy::too_many_lines, reason = "one arm per kind, as declared")]

@@ -1,6 +1,8 @@
 //! Building a tree in postorder.
 
 use vun_grammar::NodeKind;
+
+use crate::tokens::Tokens;
 use vun_index::{Idx, IndexVec};
 
 use super::{Anchor, Cst, NodeId};
@@ -36,14 +38,32 @@ impl Builder {
         self.cst.sizes.push(size);
     }
 
+    /// Pushes a node of the first of `kinds` whose production its children spell, each in a field
+    /// admitting it with `context` admitted everywhere (`Cst::fits`); an `Error` where none does.
+    pub(crate) fn node_of(
+        &mut self,
+        kinds: &[NodeKind],
+        anchor: Anchor,
+        mark: Mark,
+        context: &[NodeKind],
+        tokens: &Tokens,
+        source: &str,
+    ) -> Option<NodeKind> {
+        self.node(NodeKind::Error, anchor, mark);
+        let n = NodeId::new(self.cst.len() - 1);
+        for &kind in kinds {
+            self.cst.kinds[n] = kind;
+            if self.cst.fits(n, context, tokens, source) {
+                return Some(kind);
+            }
+        }
+        self.cst.kinds[n] = NodeKind::Error;
+        None
+    }
+
     /// The kind of the node pushed last, whose subtree ends the array.
     pub(crate) fn last(&self) -> Option<NodeKind> {
         self.cst.kinds.last().copied()
-    }
-
-    /// Whether the nodes pushed since `mark` form a single subtree.
-    pub(crate) fn single_since(&self, mark: Mark) -> bool {
-        self.cst.sizes.last().is_some_and(|&size| size as usize == self.cst.len() - mark.0)
     }
 
     /// The number of subtrees pushed since `mark`, at the top level, whose root satisfies `keep`.

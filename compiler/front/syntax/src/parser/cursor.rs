@@ -39,9 +39,15 @@ impl Parser<'_, '_, '_> {
     }
 
     /// Whether the current token is a name or keyword spelled as one of `texts`.
-    pub(super) fn at_spelled(&self, mut texts: impl Iterator<Item = &'static str>) -> bool {
-        let k = self.peek();
-        (k == TokenKind::Ident || k.text().is_some()) && texts.any(|t| t == self.text(self.current()))
+    pub(super) fn at_spelled(&self, texts: impl Iterator<Item = &'static str>) -> bool {
+        self.spelled_at(0, texts)
+    }
+
+    /// Whether the token `ahead` of the current one is a name or keyword spelled as one of `texts`.
+    pub(super) fn spelled_at(&self, ahead: usize, mut texts: impl Iterator<Item = &'static str>) -> bool {
+        let k = self.nth(ahead);
+        (k == TokenKind::Ident || k.text().is_some())
+            && texts.any(|t| t == self.text(self.current_plus(ahead)))
     }
 
     pub(super) fn at_word(&self, context: Context) -> bool {
