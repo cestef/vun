@@ -11,7 +11,7 @@ use vun_lir_passes::legalize::{Half, Legalize};
 use vun_origin::OriginTable;
 use vun_regalloc::sample::Random;
 use vun_span::{SourceFiles, Span};
-use vun_target::Endian;
+use vun_target::{Convention, Endian, Floats};
 
 fuzz_target!(|data: &[u8]| {
     let [calls, seed @ ..] = data else { return };
@@ -27,7 +27,13 @@ fuzz_target!(|data: &[u8]| {
     if let Err(malformed) = unit.verify(&origins) {
         panic!("simplified: {malformed:?}");
     }
-    let narrow = Legalize { widest: Scalar::I32, endian: Endian::Little, half: Half::Promoted };
+    let narrow = Legalize {
+        widest: Scalar::I32,
+        endian: Endian::Little,
+        half: Half::Promoted,
+        floats: Floats::ALL,
+        convention: Convention::Aapcs,
+    };
     if narrow.apply(&mut unit).is_ok()
         && let Err(malformed) = unit.verify(&origins)
     {
