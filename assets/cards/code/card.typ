@@ -1,10 +1,15 @@
-// A code card for the README: a corpus program, highlighted, on a rounded panel.
+// A code card for the README: a corpus program, highlighted, on a rounded panel; under `mascot/`,
+// the mascot sitting on the panel.
 //
 // Compiled by `cargo xtask typeset`, once per variant declared at the end.
+
+#import "../mascot.typ": mascot
 
 #let source = "/corpus/accept/programs/tour.vun"
 #let scheme = sys.inputs.at("scheme", default: "light")
 #let colors = toml("colors.toml").at(scheme)
+// The mascot's mood, or none.
+#let mood = sys.inputs.at("mascot", default: none)
 
 // Highlighting scopes of `vun.sublime-syntax`, each drawn in a role of `colors.toml`.
 #let roles = (
@@ -40,7 +45,7 @@
 #let bar = stack(dir: ltr, spacing: 5pt, dot, dot, dot, h(10pt),
   text(size: 8.5pt, fill: rgb(colors.comment), baseline: -0.5pt, source.split("/").last()))
 
-#block(
+#let panel = block(
   fill: rgb(colors.background),
   stroke: 0.75pt + rgb(colors.border),
   radius: 10pt,
@@ -54,4 +59,13 @@
   ),
 )
 
-#metadata(toml("colors.toml").keys().map(s => (path: (s,), inputs: (scheme: s)))) <variants>
+// The mascot sits on the panel's top right, its base hidden behind the panel's edge.
+#let sitting = 4pt
+#if mood == none { panel } else {
+  stack(spacing: -sitting, align(right, pad(right: 36pt, mascot(scheme, mood, 52pt))), panel)
+}
+
+#let schemes = toml("colors.toml").keys()
+#let plain = schemes.map(s => (path: (s,), inputs: (scheme: s)))
+#let mascots = schemes.map(s => (path: ("mascot", s), inputs: (scheme: s, mascot: "glee")))
+#metadata(plain + mascots) <variants>

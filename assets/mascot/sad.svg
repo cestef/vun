@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 50 160 140" width="160" height="140">
+  <style>
+    .body { fill: #D46287; stroke: #D46287; }
+    .face { fill: #F0ECE6; stroke: #F0ECE6; }
+    @media (prefers-color-scheme: dark) {
+      .body { fill: #DF7999; stroke: #DF7999; }
+    .face { fill: #24211D; stroke: #24211D; }
+    }
+  </style>
+  <g class="mascot" stroke-linecap="round" stroke-linejoin="round">
+    <path class="body" d="M50,80 H150 V160 H50 V80 Z" stroke-width="60" />
+    <g class="face" stroke-width="10"><g transform="translate(60,96)"><path class="eye" d="M0,-7 Q0,0 0,7" fill="none" /></g><g transform="translate(140,96)"><path class="eye" d="M0,-7 Q0,0 0,7" fill="none" /></g><path d="M-11,0 Q0,-10 11,0 Q0,-10 -11,0 Z" transform="translate(100,116)" /></g>
+  </g>
+</svg>

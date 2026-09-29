@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mascot Body</title>
+<style>
+  :root { --bg: #24211D; --panel: #2c2824; --text: #F0ECE6; --muted: #8A8074; --line: #3a342e; }
+  :root[data-theme="light"] { --bg: #F0ECE6; --panel: #e7e1d9; --text: #24211D; --muted: #8A8074; --line: #d6cfc5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 13px/1.4 ui-monospace, monospace; }
+  main { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  aside { background: var(--panel); padding: 14px; overflow-y: auto; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 0 6px; }
+  h2:first-child { margin-top: 0; }
+  label { display: grid; grid-template-columns: 78px 1fr 34px; align-items: center; gap: 8px; margin: 3px 0; }
+  label.check { grid-template-columns: auto 1fr; }
+  input[type=range] { width: 100%; accent-color: #DF7999; }
+  output { text-align: right; font-variant-numeric: tabular-nums; }
+  select, button { font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  section { padding: 20px; display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  #stage { width: min(520px, 100%); aspect-ratio: 1; }
+  #moods, #sizes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: end; }
+  #moods figure { margin: 0; text-align: center; color: var(--muted); cursor: pointer; }
+  #hint { max-width: 520px; line-height: 1.6; }
+  pre { margin: 0; background: var(--panel); padding: 12px; border-radius: 8px; white-space: pre-wrap; width: min(640px, 100%); }
+  .bounce { animation: bounce 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+  @keyframes bounce {
+    0%, 100% { transform: scale(1, 1); } 12% { transform: scale(1.12, .88); } 30% { transform: translateY(-18%) scale(.94, 1.07); }
+    48% { transform: scale(1.1, .9); } 60% { transform: scale(.97, 1.03); } 72% { transform: scale(1); }
+  }
+  @media (max-width: 700px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <aside id="controls"></aside>
+  <section>
+    <p id="hint">This page imports the mascot's modules, which only the dev server compiles: run
+      <code>pnpm body</code> in <code>assets/motion</code>, or open <code>/tools/body.html</code>
+      on the server of <code>pnpm start</code>.</p>
+    <svg id="stage" viewBox="0 0 200 200"></svg>
+    <div id="moods"></div>
+    <div id="sizes"></div>
+    <pre id="code"></pre>
+    <button id="copy">Copy DESIGN for shape.ts</button>
+  </section>
+</main>
+<script type="module">
+  // Served by the dev server (`pnpm start`, then /tools/body.html): the faces and colors are the
+  // mascot's own, read from its modules.
+  import {MOODS} from '../src/mascot/moods.ts';
+  import {MASCOT, eyePath, mouthPath, outline, radii} from '../src/mascot/shape.ts';
+  import {SCHEMES} from '../src/brand/palette.ts';
+
+  // [key, label, min, max, default] for each slider, grouped; the defaults are the mascot's.
+  const {weight, body: box, face} = MASCOT;
+  const GROUPS = {
+    body: [['left', 'left', 0, 100, box.left], ['right', 'right', 100, 200, box.right], ['top', 'top', 0, 100, box.top], ['base', 'base', 100, 200, box.base]],
+    corners: [['tl', 'top left', 0, 100], ['tr', 'top right', 0, 100], ['br', 'base right', 0, 100], ['bl', 'base left', 0, 100]].map((s, i) => [...s, box.corners[i]]),
+    stroke: [['weight', 'weight', 0, 80, weight]],
+    face: [['eyeY', 'eyes y', 40, 160, face.eyes.y], ['spread', 'spread', 10, 60, face.eyes.spread], ['mouthY', 'mouth y', 60, 170, face.mouth.y], ['feature', 'weight', 4, 20, face.weight]],
+  };
+  const TOGGLES = [['mirror', 'mirror left and right', true], ['grid', 'grid', true], ['guides', 'construction', true], ['bounce', 'bounce', false], ['light', 'light scheme', false]];
+  const KEY = 'vun-mascot-body';
+  const DEFAULTS = Object.fromEntries([...Object.values(GROUPS).flat().map((s) => [s[0], s[4]]), ...TOGGLES.map((t) => [t[0], t[2]])]);
+  let state = {...DEFAULTS, step: 10, mood: 'calm'};
+  try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) ?? '{}')); } catch {}
+
+  const $ = (id) => document.getElementById(id);
+  const controls = $('controls');
+  const inputs = {};
+  for (const [group, sliders] of Object.entries(GROUPS)) {
+    controls.insertAdjacentHTML('beforeend', `<h2>${group}</h2>`);
+    for (const [key, label, min, max] of sliders) {
+      const row = document.createElement('label');
+      row.innerHTML = `<span>${label}</span><input type="range" min="${min}" max="${max}"><output></output>`;
+      const input = row.querySelector('input');
+      input.addEventListener('input', () => set(key, Number(input.value)));
+      inputs[key] = input;
+      controls.append(row);
+    }
+  }
+  controls.insertAdjacentHTML('beforeend', '<h2>view</h2>');
+  for (const [key, label] of TOGGLES) {
+    const row = document.createElement('label');
+    row.className = 'check';
+    row.innerHTML = `<input type="checkbox"><span>${label}</span>`;
+    const input = row.querySelector('input');
+    input.addEventListener('change', () => set(key, input.checked));
+    inputs[key] = input;
+    controls.append(row);
+  }
+  controls.insertAdjacentHTML('beforeend', `<h2>snap</h2><label class="check"><select id="step">${[1, 5, 10].map((s) => `<option>${s}</option>`).join('')}</select><span>units</span></label>
+    <h2>reset</h2><button id="reset">Back to the defaults</button>`);
+  $('step').addEventListener('change', (e) => set('step', Number(e.target.value)));
+  $('reset').addEventListener('click', () => { state = {...DEFAULTS, step: 10, mood: state.mood}; render(); });
+
+  // The partner of a slider across the vertical axis, kept in step when mirroring.
+  const MIRROR = {left: 'right', right: 'left', tl: 'tr', tr: 'tl', bl: 'br', br: 'bl'};
+  function set(key, value) {
+    state[key] = typeof value === 'number' ? Math.round(value / state.step) * state.step : value;
+    if (state.mirror && key in MIRROR) {
+      state[MIRROR[key]] = key === 'left' || key === 'right' ? 200 - state[key] : state[key];
+    }
+    render();
+  }
+
+  const boxOf = (s) => ({left: s.left, right: s.right, top: s.top, base: s.base, corners: [s.tl, s.tr, s.br, s.bl]});
+  const body = (s) => outline(boxOf(s));
+
+  function mascot(s, face, colors) {
+    const at = (x, y) => `translate(${x + face.look.x},${y + face.look.y})`;
+    return `<g class="${s.bounce ? 'bounce' : ''}" stroke-linecap="round" stroke-linejoin="round">
+      <path d="${body(s)}" fill="${colors.accent}" stroke="${colors.accent}" stroke-width="${s.weight}" />
+      <g fill="${colors.background}" stroke="${colors.background}" stroke-width="${s.feature}">
+        <path d="${eyePath(face.eyes[0])}" fill="none" transform="${at(100 - s.spread, s.eyeY)}" />
+        <path d="${eyePath(face.eyes[1])}" fill="none" transform="${at(100 + s.spread, s.eyeY)}" />
+        <path d="${mouthPath(face.mouth)}" transform="${at(100, s.mouthY)}" />
+      </g></g>`;
+  }
+
+  function grid(s, colors) {
+    const lines = [];
+    if (s.grid) {
+      for (let i = 0; i <= 200; i += 10) {
+        lines.push(`<path d="M${i},0 V200 M0,${i} H200" stroke="${colors.echo}" stroke-width="${i % 50 ? 0.4 : 0.8}" />`);
+      }
+    }
+    return lines.join('');
+  }
+
+  function guides(s, colors) {
+    const lines = [];
+    if (s.guides) {
+      const [tl, tr, br, bl] = radii(boxOf(s));
+      const corners = [[s.left + tl, s.top + tl, tl], [s.right - tr, s.top + tr, tr], [s.right - br, s.base - br, br], [s.left + bl, s.base - bl, bl]];
+      lines.push(`<path d="${body(s)}" fill="none" stroke="${colors.background}" stroke-width="0.6" stroke-dasharray="2 2" />`);
+      lines.push(`<path d="M0,${s.base + s.weight / 2} H200" stroke="${colors.muted}" stroke-width="0.6" />`);
+      for (const [x, y, r] of corners.filter((c) => c[2])) {
+        lines.push(`<circle cx="${x}" cy="${y}" r="1.6" fill="${colors.background}" /><circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${colors.background}" stroke-opacity="0.6" stroke-width="0.5" stroke-dasharray="1.5 1.5" />`);
+      }
+    }
+    return lines.join('');
+  }
+
+  function render() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    const colors = SCHEMES[state.light ? 'light' : 'dark'];
+    document.documentElement.dataset.theme = state.light ? 'light' : 'dark';
+    for (const [key, input] of Object.entries(inputs)) {
+      if (input.type === 'checkbox') input.checked = state[key];
+      else { input.value = state[key]; input.nextElementSibling.value = state[key]; }
+    }
+    $('step').value = state.step;
+    const face = MOODS[state.mood].face;
+    $('stage').innerHTML = `${grid(state, colors)}${mascot(state, face, colors)}${guides(state, colors)}`;
+    $('moods').innerHTML = Object.entries(MOODS).map(([name, mood]) =>
+      `<figure data-mood="${name}"><svg viewBox="0 0 200 200" width="96" height="96">${mascot(state, mood.face, colors)}</svg><figcaption>${name === state.mood ? `[${name}]` : name}</figcaption></figure>`).join('');
+    $('sizes').innerHTML = [128, 64, 32, 16].map((size) => `<svg viewBox="0 0 200 200" width="${size}" height="${size}">${mascot(state, face, colors)}</svg>`).join('');
+    const b = boxOf(state);
+    $('code').textContent = `const DESIGN = {\n  weight: ${state.weight},\n` +
+      `  body: {left: ${b.left}, right: ${b.right}, top: ${b.top}, base: ${b.base}, corners: [${b.corners.join(', ')}]} as Box,\n` +
+      `  face: {\n    weight: ${state.feature},\n    // The eyes' centers sit \`spread\` either side of the middle.\n` +
+      `    eyes: {x: 100, y: ${state.eyeY}, spread: ${state.spread}},\n    mouth: {x: 100, y: ${state.mouthY}},\n  },\n};`;
+  }
+  $('moods').addEventListener('click', (e) => {
+    const figure = e.target.closest('figure');
+    if (figure) { state.mood = figure.dataset.mood; render(); }
+  });
+  $('copy').addEventListener('click', () => navigator.clipboard.writeText($('code').textContent));
+  $('hint').remove();
+  render();
+</script>
+</body>
+</html>

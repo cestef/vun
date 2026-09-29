@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 50 192 140" width="192" height="140">
+  <style>
+    .body { fill: #D46287; stroke: #D46287; }
+    .face { fill: #F0ECE6; stroke: #F0ECE6; }
+    @media (prefers-color-scheme: dark) {
+      .body { fill: #DF7999; stroke: #DF7999; }
+    .face { fill: #24211D; stroke: #24211D; }
+    }
+    .mascot { transform-box: fill-box; transform-origin: 50% 100%; animation: breathe 3.6s ease-in-out infinite; }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1, 1); }
+      50% { transform: scale(1.04, 0.96); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .mood:first-child { opacity: 1; }
+    }
+  </style>
+  <g class="mascot" stroke-linecap="round" stroke-linejoin="round">
+    <path class="body" d="M50,80 H150 V160 H50 V80 Z" stroke-width="60" />
+    <g class="face" stroke-width="10"><g transform="translate(60,94)"><path class="eye" d="M-10,0 Q0,8 10,0" fill="none" /></g><g transform="translate(140,94)"><path class="eye" d="M10,0 Q0,8 -10,0" fill="none" /></g><path d="M-4,0 Q0,0 4,0 Q0,6 -4,0 Z" transform="translate(100,114)" /></g>
+  </g>
+</svg>

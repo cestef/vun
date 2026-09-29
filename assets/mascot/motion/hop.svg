@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 -6 192 196" width="192" height="196">
+  <style>
+    .body { fill: #D46287; stroke: #D46287; }
+    .face { fill: #F0ECE6; stroke: #F0ECE6; }
+    @media (prefers-color-scheme: dark) {
+      .body { fill: #DF7999; stroke: #DF7999; }
+    .face { fill: #24211D; stroke: #24211D; }
+    }
+    .mascot { transform-box: fill-box; transform-origin: 50% 100%; animation: hop 1.3s infinite; }
+    @keyframes hop {
+      0%, 88%, 100% { transform: translateY(0) scale(1, 1); }
+      10% { transform: translateY(0) scale(1.12, 0.88); animation-timing-function: ease-out; }
+      32% { transform: translateY(-48%) scale(0.94, 1.07); }
+      42% { transform: translateY(-54%) scale(1, 1); animation-timing-function: ease-in; }
+      60% { transform: translateY(0) scale(0.96, 1.05); }
+      68% { transform: translateY(0) scale(1.1, 0.9); }
+      78% { transform: translateY(0) scale(0.98, 1.02); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; }
+      .mood:first-child { opacity: 1; }
+    }
+  </style>
+  <g class="mascot" stroke-linecap="round" stroke-linejoin="round">
+    <path class="body" d="M50,80 H150 V160 H50 V80 Z" stroke-width="60" />
+    <g class="face" stroke-width="10"><g transform="translate(60,90)"><path class="eye" d="M-10,4 Q0,-12 10,4" fill="none" /></g><g transform="translate(140,90)"><path class="eye" d="M10,4 Q0,-12 -10,4" fill="none" /></g><path d="M-14,0 Q0,0 14,0 Q0,36 -14,0 Z" transform="translate(100,110)" /></g>
+  </g>
+</svg>

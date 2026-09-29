@@ -1,0 +1,6 @@
+# Written by `pnpm mascot` in assets/motion; the cards read it.
+
+# The moods, in order.
+moods = ["calm", "glee", "wink", "awe", "sad", "cross", "sleep"]
+# The stills' width over their height.
+aspect = 1.1428571428571428

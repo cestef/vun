@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center">A systems programming language with nothing behind the scenes.</p>
+<p align="center">A smol systems programming language.</p>
 
 <p align="center">
   <picture>
