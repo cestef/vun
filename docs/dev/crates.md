@@ -70,8 +70,8 @@ Where the code for each part lives. The workspace layout and its layering rules 
   the session, codegen, builds, stacks, compare, `toolchain.rs`: the chosen target equipped with
   the machine's tools, `Session::command` running through the runner), `vun-cli` (the `vun`
   command tree, a shell over the driver), `vun-command` (declarative CLI, completions, JSON
-  output), `vun-doc`, `vun-lsp`, `vun-generate` (`cargo gen`), `xtask` (`corpus`, `lines`,
-  `layers`, `size`).
+  output), `vun-doc`, `vun-lsp`, `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
+  `corpus`, `lines`, `layers`, `size`, `typeset`).
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines,
   `lang.mem.soft`) and `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`,
   `fmt`, `diag`, `task`, `time`, `trace`, `build`, `lints`, `panic`, `testing`).

@@ -1,7 +1,6 @@
 // A code card for the README: a corpus program, highlighted, on a rounded panel.
 //
-//   typst compile --root . --ppi 200 --input scheme=light assets/code/card.typ assets/code-light.png
-//   typst compile --root . --ppi 200 --input scheme=dark assets/code/card.typ assets/code-dark.png
+// Compiled by `cargo xtask typeset`, once per `scheme` input.
 
 #let source = "/corpus/accept/programs/tour.vun"
 #let scheme = sys.inputs.at("scheme", default: "light")

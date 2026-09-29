@@ -4,12 +4,15 @@
 
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines && cargo xtask layers
+cargo xtask check             # the quick ones: formatting, generated sources, lines, layers
+cargo xtask push -- <words>   # check, then `jj git push <words>`
+cargo xtask hooks             # once per clone: the jj aliases `jj check` and `jj push <words>`
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask size              # the distributed binary against its budget (20 MiB)
 VUN_QUERY_CHECK=1 cargo nextest run -p vun-driver   # after query, sema or MIR changes
 VUN_BLESS=1 cargo nextest run -p vun-syntax         # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120   # after lexer or parser changes
-typst compile --root . whitepaper/main.typ   # the whitepaper reads the generated editor grammar
+cargo xtask typeset           # whitepaper PDF and README card, with typst; reads the generated editor grammar
 ```
 
 `VUN_QUERY_CHECK=1` (or `Db::reusing(Reuse::Check)`) computes every reused memo again and panics

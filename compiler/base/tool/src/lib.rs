@@ -53,6 +53,18 @@ pub struct Invocation {
     pub inputs: Vec<PathBuf>,
     /// Files the run writes.
     pub outputs: Vec<PathBuf>,
+    pub streams: Streams,
+}
+
+/// Where a run's standard output and error go.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Streams {
+    /// Into the [`Output`].
+    #[default]
+    Captured,
+    /// To ours, as they are written, with our standard input: a run a person watches and may
+    /// answer. The [`Output`] holds none of them.
+    Inherited,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,6 +78,13 @@ impl Output {
     #[must_use]
     pub fn success(&self) -> bool {
         self.code == Some(0)
+    }
+
+    /// Why the run did not succeed, if it did not.
+    #[must_use]
+    pub fn failure(&self) -> Option<Failure> {
+        let stderr = || String::from_utf8_lossy(&self.stderr).into_owned();
+        (!self.success()).then(|| Failure::Exit { code: self.code, stderr: stderr() })
     }
 }
 
@@ -81,9 +100,13 @@ pub enum Failure {
 impl std::fmt::Display for Failure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Start(_) => f.write_str("it could not be started"),
-            Self::Exit { code: Some(code), stderr } => write!(f, "it exited with status {code}:\n{stderr}"),
-            Self::Exit { code: None, stderr } => write!(f, "a signal ended it:\n{stderr}"),
+            Self::Start(_) => return f.write_str("it could not be started"),
+            Self::Exit { code: Some(code), .. } => write!(f, "it exited with status {code}")?,
+            Self::Exit { code: None, .. } => f.write_str("a signal ended it")?,
+        }
+        match self {
+            Self::Exit { stderr, .. } if !stderr.trim().is_empty() => write!(f, ":\n{stderr}"),
+            _ => Ok(()),
         }
     }
 }
@@ -111,10 +134,7 @@ pub trait Tool {
     /// Returns why the run did not succeed.
     fn check(&self, inv: &Invocation) -> Result<Output, Failure> {
         let out = self.run(inv).map_err(Failure::Start)?;
-        if out.success() {
-            return Ok(out);
-        }
-        Err(Failure::Exit { code: out.code, stderr: String::from_utf8_lossy(&out.stderr).into_owned() })
+        out.failure().map_or(Ok(out), Err)
     }
 }
 
@@ -163,8 +183,16 @@ impl Tool for Executable {
         if let Some(cwd) = &inv.cwd {
             cmd.current_dir(cwd);
         }
-        let out = cmd.output()?;
-        Ok(Output { code: out.status.code(), stdout: out.stdout, stderr: out.stderr })
+        match inv.streams {
+            Streams::Captured => {
+                let out = cmd.output()?;
+                Ok(Output { code: out.status.code(), stdout: out.stdout, stderr: out.stderr })
+            }
+            Streams::Inherited => {
+                let status = cmd.status()?;
+                Ok(Output { code: status.code(), stdout: Vec::new(), stderr: Vec::new() })
+            }
+        }
     }
 }
 

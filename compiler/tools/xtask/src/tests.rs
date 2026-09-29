@@ -67,3 +67,10 @@ fn a_dependency_on_a_peer_or_later_group_and_an_unranked_group_are_breaches() {
         ]
     );
 }
+
+#[test]
+fn only_the_tasks_declaring_words_pass_them_on() {
+    use crate::task;
+    assert!(task::PUSH.passes_words());
+    assert!(task::CHECK.needs.iter().all(|t| !t.passes_words()));
+}

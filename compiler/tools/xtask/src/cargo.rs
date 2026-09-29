@@ -4,6 +4,8 @@ use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
 use std::{fmt, io};
 
+use crate::task::Program;
+
 /// Why cargo reported nothing.
 #[derive(Debug)]
 pub(crate) enum CargoFailed {
@@ -35,7 +37,8 @@ impl std::error::Error for CargoFailed {
 /// # Errors
 /// Returns why cargo cannot run or fails.
 pub(crate) fn output(root: &Path, args: &[&'static str]) -> Result<String, CargoFailed> {
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let cargo =
+        Program::Cargo.path().ok_or_else(|| CargoFailed::Unstarted(io::ErrorKind::NotFound.into()))?;
     let output = Command::new(cargo)
         .current_dir(root)
         .args(args)

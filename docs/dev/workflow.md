@@ -26,6 +26,10 @@ it); the design rules are in [`spec/00-principles.md`](../spec/00-principles.md)
   rewriting them, and commit only your paths (`jj commit <paths>`). Large changes go in a `jj`
   workspace of their own and land by rebase; a workspace needs its own `target/`.
 - Never rebase or forget another session's workspace commit; port the change instead.
+- jj runs no git hooks: `cargo xtask hooks` sets the repository's jj aliases instead, `jj check`
+  and `jj push`, which run the xtask tasks of their names (`jj push -c @-` checks, then runs
+  `jj git push -c @-`). Tasks are declared in `xtask/src/task/table.rs`, with what each needs
+  first; the external programs they call are typed `Call`s.
 
 ## Writing
 

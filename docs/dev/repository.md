@@ -35,8 +35,5 @@ Rust names `lang` and `std` items only through `vun_items`.
 
 `assets/code-{light,dark}.png` render `corpus/accept/programs/tour.vun` (so the corpus keeps it
 compiling) with `editors/sublime/vun.sublime-syntax` (generated from the grammar), in the colors of `assets/code/colors.toml`
-and JetBrains Mono. Regenerate after changing any of them:
-
-```sh
-for s in light dark; do typst compile --root . --ppi 200 --input scheme=$s assets/code/card.typ assets/code-$s.png; done
-```
+and JetBrains Mono. Regenerate after changing any of them with `cargo xtask typeset`, which also
+compiles the whitepaper; the documents it compiles are the table `typeset::ALL` of `xtask`.

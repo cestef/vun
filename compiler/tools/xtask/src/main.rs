@@ -3,12 +3,15 @@
 mod cargo;
 mod corpus;
 mod explanations;
+mod hooks;
 mod layers;
 mod lines;
 mod report;
 mod size;
+mod task;
 #[cfg(test)]
 mod tests;
+mod typeset;
 
 use std::io;
 use std::process::ExitCode;
@@ -34,20 +37,7 @@ const UNMEASURED: DiagId = DiagId::new("xtask.size.unmeasured");
 const PROGRAM: Program<DiagCtxt> = Program {
     configure: vun_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
-    root: Command::group(
-        "cargo xtask",
-        "Repository automation.",
-        &[
-            Command::run(
-                "corpus",
-                "run corpus/accept and corpus/reject through the stages that exist",
-                run_corpus,
-            ),
-            Command::run("layers", "fail on a crate depending on a later group of crates", check_layers),
-            Command::run("lines", "fail on source files too long to stay one concern", check_lines),
-            Command::run("size", "fail when the distributed vun outgrows its budget", check_size),
-        ],
-    ),
+    root: Command::group("cargo xtask", "Repository automation.", task::COMMANDS),
 };
 
 fn run_corpus(_: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {

@@ -25,3 +25,5 @@ vun-harness.workspace = true
 vun-hash.workspace = true
 vun-driver.workspace = true
 vun-json.workspace = true
+vun-intern.workspace = true
+vun-tool.workspace = true

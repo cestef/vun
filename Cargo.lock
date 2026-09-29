@@ -1991,10 +1991,12 @@ dependencies = [
  "vun-fs",
  "vun-harness",
  "vun-hash",
+ "vun-intern",
  "vun-json",
  "vun-par",
  "vun-span",
  "vun-term",
+ "vun-tool",
 ]
 
 [[package]]
