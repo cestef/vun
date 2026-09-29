@@ -160,7 +160,7 @@ atomics := _a.Family{
         .{ .name = .swpal, .bits = 0x38e08000 },
     ],
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _r_d_w, _mem_base_n_rw] },
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _r_d_w, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
     ],
 };
 
@@ -168,7 +168,7 @@ atomics := _a.Family{
 discarding := _a.Family{
     .members = &[.{ .name = .stadd, .bits = 0x3820001f }, .{ .name = .staddl, .bits = 0x3860001f }],
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _mem_base_n_rw] },
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
     ],
 };
 
@@ -182,6 +182,6 @@ compare_swaps := _a.Family{
         .{ .name = .casal, .bits = 0x8e0fc00 },
     ],
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m_rw, _r_d, _mem_base_n_rw] },
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m_rw, _r_d, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
     ],
 };

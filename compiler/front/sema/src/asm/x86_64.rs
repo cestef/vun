@@ -31,7 +31,7 @@ pub(super) const SHAPE: Shape = Shape {
     member_name: member::name,
     form_name: form::name,
     form_flow: form::flow,
-    form_requires: None,
+    needs: None,
     flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: x86::Size,
     cond: x86::Cond,

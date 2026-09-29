@@ -102,9 +102,19 @@ Access := enum {
     address,
 };
 
-/// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`): Arm's
-/// application profile has instructions Armv7-M lacks (`ldrexd`).
-Feature := enum { application };
+/// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`).
+Feature := enum {
+    /// Arm's application profile: the exclusive accesses of two words (`ldrexd`).
+    application,
+    /// Arm's microcontroller profile: its special registers (`mrs r0, primask`).
+    microcontroller,
+    /// Division in hardware, which Armv7-M has and Armv7-A leaves to the processor (`sdiv`).
+    divide,
+};
+
+/// What a form, or a width of it, needs of a processor beyond Thumb: a feature, or a
+/// floating-point unit computing floats of a width (`lang.target.Spec.floats`).
+Need := enum { feature(Feature), float(Size) };
 
 /// Where control goes after a form.
 Flow := enum {
@@ -126,9 +136,10 @@ Arg := struct {
     access: Access,
 };
 
-/// A width a form is defined at, the bits it sets in the word, and the qualifiers written after
-/// the mnemonic, each after a `.` (`vcvt.s32.f32`).
-Sized := struct { size: Size, bits: u32 = 0, qualifiers: &[&[u8]] = &[] };
+/// A width a form is defined at, the bits it sets in the word, the qualifiers written after the
+/// mnemonic, each after a `.` (`vcvt.s32.f32`), and what the form needs at this width beyond what
+/// it needs at every one.
+Sized := struct { size: Size, bits: u32 = 0, qualifiers: &[&[u8]] = &[], requires: ?Need = .none };
 
 /// The qualifier naming the width of a form's encoding, after the mnemonic's `.`: `n` a 16-bit
 /// form, `w` a 32-bit one. A mnemonic written without it takes the first form its operands fit.
@@ -152,8 +163,8 @@ Form := ($W: type) -> type { struct {
     /// Pairs of operand positions whose registers must differ, a memory operand's by its base:
     /// the manual calls the instruction unpredictable where they do not.
     apart: &[[2]u8] = &[],
-    /// The feature a processor has where it has the form, if not every one has it.
-    requires: ?Feature = .none,
+    /// What a processor needs to have the form, if not every one has it.
+    requires: ?Need = .none,
 } };
 
 /// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is

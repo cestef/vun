@@ -3,35 +3,45 @@ use crate::{reg, table};
 /// Conversions between the precisions: to double from single, and to single from double.
 pub(super) const VCVT_PRECISION: [table::Form; 2usize] = [
     table::Form::new(
-        0xeeb7_0ac0,
-        &[table::Sized::new(reg::Size::B64, 0x0000_0000).qualifiers(&["f64", "f32"])],
-        &[
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::D),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Is(reg::Size::B32), table::Fields::M),
-                0,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0xeeb7_0ac0,
+            &[
+                table::Sized::new(reg::Size::B64, 0x0000_0000)
+                    .qualifiers(&["f64", "f32"])
+                    .requires(table::Need::Float(reg::Size::B64)),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::D),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Is(reg::Size::B32), table::Fields::M),
+                    0,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .requires(table::Need::Float(reg::Size::B32)),
     table::Form::new(
-        0xeeb7_0bc0,
-        &[table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32", "f64"])],
-        &[
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::D),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Is(reg::Size::B64), table::Fields::M),
-                0,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0xeeb7_0bc0,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000)
+                    .qualifiers(&["f32", "f64"])
+                    .requires(table::Need::Float(reg::Size::B64)),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::D),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Is(reg::Size::B64), table::Fields::M),
+                    0,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .requires(table::Need::Float(reg::Size::B32)),
 ];

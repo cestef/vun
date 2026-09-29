@@ -83,5 +83,7 @@ vun-link-external = { workspace = true, optional = true }
 vun-isa-arm64.workspace = true
 vun-isa-thumb.workspace = true
 vun-isa-x86_64.workspace = true
+# What a block's instructions need of a processor.
+vun-inline.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true

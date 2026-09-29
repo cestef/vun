@@ -51,16 +51,25 @@ pub struct Block<V, P, S> {
     pub arch: Item,
     pub insts: Vec<Inst<V, P, S>>,
     pub returns: bool,
-    /// The features of the instruction set its forms need beyond what every processor has, each
-    /// once (`lang.target.Spec.features`).
+    /// What its instructions need of a processor beyond what every one of the instruction set
+    /// has, each once.
     pub needs: Vec<Need>,
 }
 
-/// A feature of the instruction set a block's form needs, and the first instruction needing it.
+/// What an instruction of a block needs of a processor, and the first instruction needing it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Need {
-    pub feature: Symbol,
+    pub needed: Needed,
     pub at: OriginId,
+}
+
+/// What a processor needs to have an instruction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Needed {
+    /// A feature of the instruction set (`lang.target.Spec.features`).
+    Feature(Symbol),
+    /// A floating-point unit computing floats of this many bits (`lang.target.Spec.floats`).
+    Float(u32),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

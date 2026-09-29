@@ -96,14 +96,12 @@ impl<'v> Members<'v> {
         self.option(member)?.map(|text| Self::text(text).ok_or(Unread::Member(member))).transpose()
     }
 
-    /// The variant a `?E` holds, if any.
-    pub(crate) fn variant(&self, member: Item) -> Result<Option<Symbol>, Unread> {
-        self.option(member)?
-            .map(|value| match value {
-                Value::Variant { name, .. } => Ok(*name),
-                _ => Err(Unread::Member(member)),
-            })
-            .transpose()
+    /// The variant an `E` holds.
+    pub(crate) fn case(&self, member: Item) -> Result<Symbol, Unread> {
+        match self.get(member)? {
+            Value::Variant { name, .. } => Ok(*name),
+            _ => Err(Unread::Member(member)),
+        }
     }
 
     /// The items of a `&[T]`, each read.

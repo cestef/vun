@@ -7,7 +7,7 @@ use vun_isa::word::Field;
 use super::imm::Imm;
 use crate::generated::{Branch, Fields, List as Lists, Mode, Regs, Then};
 use crate::operand::{List, Operand, ShiftKind};
-use crate::reg::{Reg, Size, Status, V};
+use crate::reg::{Reg, Size, Special, Status, V};
 
 /// The width of an operand: the instruction's, or its own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -23,6 +23,24 @@ impl Width {
         match self {
             Self::Inst => size,
             Self::Is(s) => s,
+        }
+    }
+}
+
+/// The special registers a position takes: any, or one alone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Specials {
+    Any,
+    Is(Special),
+}
+
+impl Specials {
+    /// Whether a position of these registers names `special`.
+    #[must_use]
+    pub fn takes(self, special: Special) -> bool {
+        match self {
+            Self::Any => true,
+            Self::Is(only) => only == special,
         }
     }
 }
@@ -51,7 +69,7 @@ pub enum Kind {
     Low,
     High,
     List(Lists),
-    Special,
+    Special(Specials),
     Status(Status),
     Mask,
     Barrier,
@@ -181,7 +199,7 @@ impl<S> Field<Operand<S>, Size> for Kind {
             | (Self::Low, Operand::Low(_))
             | (Self::High, Operand::High(_)) => Some(0),
             (Self::List(lists), Operand::List(list)) => lists.encode(*list),
-            (Self::Special, Operand::Special(s)) => Some(s.field()),
+            (Self::Special(specials), Operand::Special(s)) => specials.takes(*s).then(|| s.field()),
             (Self::Status(want), Operand::Status(s)) => (want == *s).then_some(0),
             (Self::Mask, Operand::Mask(m)) => Some(m.field()),
             (Self::Barrier, Operand::Barrier(b)) => Some(b.field()),

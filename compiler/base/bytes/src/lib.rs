@@ -1,5 +1,6 @@
-//! Binary encodings the object writers share (DWARF sections, wasm modules): little-endian fixed
-//! widths, LEB128, and LEB128 padded to a fixed width, which a linker rewrites in place.
+//! Binary encodings the object writers share (DWARF sections, wasm modules, symbol tables):
+//! little-endian fixed widths, LEB128, LEB128 padded to a fixed width, which a linker rewrites in
+//! place, and tables of strings each ended by a zero byte.
 
 #[cfg(test)]
 mod tests;
@@ -103,5 +104,32 @@ impl Out {
         let at = usize::try_from(at).expect("sections fit memory");
         let length = u32::try_from(self.0.len() - at - 4).expect("sections fit 4 GiB");
         self.0[at..at + 4].copy_from_slice(&length.to_le_bytes());
+    }
+}
+
+/// A table of strings, each ended by a zero byte and named by where it starts, the first the empty
+/// string: ELF's and Mach-O's.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Strings(Vec<u8>);
+
+impl Strings {
+    /// Adds `s`, giving where it starts.
+    ///
+    /// # Panics
+    /// Panics past 4 GiB.
+    pub fn add(&mut self, s: &[u8]) -> u32 {
+        if self.0.is_empty() {
+            self.0.push(0);
+        }
+        let at = u32::try_from(self.0.len()).expect("string tables fit 4 GiB");
+        self.0.extend_from_slice(s);
+        self.0.push(0);
+        at
+    }
+
+    /// The table's bytes, the empty string's at least.
+    #[must_use]
+    pub fn into_bytes(self) -> Vec<u8> {
+        if self.0.is_empty() { vec![0] } else { self.0 }
     }
 }

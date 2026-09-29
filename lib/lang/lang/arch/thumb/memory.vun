@@ -156,7 +156,7 @@ ldrexd := _t.Instruction{ .forms = &[
         .base = 0xe8d0007f,
         .args = &[_t_w, _t2_w, _exclusive_pair],
         .apart = &[[0, 1]],
-        .requires = .some(.application),
+        .requires = .some(.feature(.application)),
     },
 ] };
 strexd := _t.Instruction{ .forms = &[
@@ -164,7 +164,7 @@ strexd := _t.Instruction{ .forms = &[
         .base = 0xe8c00070,
         .args = &[_status_0_w, _t_r, _t2_r, _exclusive_pair_w],
         .apart = &[[0, 1], [0, 2], [0, 3]],
-        .requires = .some(.application),
+        .requires = .some(.feature(.application)),
     },
 ] };
 

@@ -4,6 +4,7 @@
 
 use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
+use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_lower::Why;
 use vun_sema::asm::{Arch, ArchTable};
@@ -106,28 +107,42 @@ fn a_value_read_in_a_register_a_block_writes_is_kept_apart_through_each_backend(
     }
 }
 
-/// A block loading two words exclusively, which Thumb has on Arm's application profile alone.
-const PAIRED: &str = "\
-#[link.export(\"paired\")]
-paired := (at: usize) -> u32 {
-    mut (low, high): (u32, u32) = (0, 0);
-    unsafe lang.arch.thumb.asm {
-        ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]
-    };
-    low ^ high
-};
-";
+/// A function of one Thumb block, `line`, exported so that a program reaches it.
+fn thumb(line: &str) -> String {
+    format!(
+        "#[link.export(\"f\")]\nf := (at: usize) -> u32 {{\n    mut (low, high): (u32, u32) = (0, 0);\n    \
+         unsafe lang.arch.thumb.asm {{\n        {line}\n    }};\n    low ^ high\n}};\n"
+    )
+}
+
+/// Why `source` does not lower for the target at `target`, if it does not.
+fn unlowered(name: &str, source: &str, target: [&str; 2]) -> Option<Why> {
+    let fixture = crate::common::Fixture::new(&format!("asm-{name}-{}", target[1]));
+    let path = fixture.root.write("main.vun", source);
+    let mut session = fixture.session();
+    session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+    let file = session.load(&path).unwrap();
+    session.lir(file).as_ref().as_ref().err().map(|unlowered| unlowered.why.clone())
+}
 
 #[test]
-fn a_block_is_refused_for_a_processor_lacking_a_feature_one_of_its_forms_needs() {
-    let lowered = |target: [&str; 2]| {
-        let fixture = crate::common::Fixture::new(&format!("asm-paired-{}", target[1]));
-        let path = fixture.root.write("main.vun", PAIRED);
-        let mut session = fixture.session();
-        session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
-        let file = session.load(&path).unwrap();
-        session.lir(file).as_ref().as_ref().err().map(|unlowered| unlowered.why.clone())
-    };
-    assert_eq!(lowered(["bare", "cortex_m4f"]), Some(Why::Unavailable(Symbol::intern("application"))));
-    assert_eq!(lowered(["linux", "arm"]), None);
+fn a_block_is_refused_for_a_processor_lacking_what_one_of_its_forms_needs() {
+    let (m4f, a) = (["bare", "cortex_m4f"], ["linux", "arm"]);
+    let feature = |name| Some(Why::Unavailable(Needed::Feature(Symbol::intern(name))));
+    let cases = [
+        // Two words loaded exclusively: Arm's application profile.
+        ("paired", "ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]", m4f, feature("application")),
+        ("paired", "ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]", a, None),
+        // A special register: the microcontroller profile's, but for the flags.
+        ("masked", "mrs {out(r2) low}, primask", a, feature("microcontroller")),
+        ("masked", "mrs {out(r2) low}, primask", m4f, None),
+        ("flags", "mrs {out(r2) low}, apsr", a, None),
+        // Double precision: Cortex-M4F computes single precision alone.
+        ("double", "vadd.f64 d0, d0, d1", m4f, Some(Why::Unavailable(Needed::Float(64)))),
+        ("double", "vadd.f64 d0, d0, d1", a, None),
+        ("single", "vadd.f32 s0, s0, s1", m4f, None),
+    ];
+    for (name, line, target, why) in cases {
+        assert_eq!(unlowered(name, &thumb(line), target), why, "{line} on {target:?}");
+    }
 }

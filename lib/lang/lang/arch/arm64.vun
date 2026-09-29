@@ -259,6 +259,13 @@ Arg := struct {
     access: Access,
 };
 
+/// What a processor has of A64 beyond Armv8.0 (`lang.target.Spec.features`): `lse`, Armv8.1's
+/// atomic read-modify-writes in one instruction (`ldadd`, `swp`, `cas`).
+Feature := enum { lse };
+
+/// What a form needs of a processor beyond Armv8.0.
+Need := enum { feature(Feature) };
+
 /// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
 /// mnemonic.
 Sized := struct { size: Size, bits: u32 = 0, suffix: &[u8] = "" };
@@ -278,6 +285,8 @@ Form := ($W: type) -> type { struct {
     writes: &[Reg] = &[],
     flags: ?Access = .none,
     flow: Flow = .next,
+    /// What a processor needs to have the form, if not every one has it.
+    requires: ?Need = .none,
 } };
 
 /// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is

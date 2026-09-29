@@ -12,11 +12,12 @@ use vun_items::lang::{
     arch_arm64 as a, arch_arm64_Arg as arg, arch_arm64_Choice as choice, arch_arm64_Class as class,
     arch_arm64_Condition as condition, arch_arm64_Family as family, arch_arm64_Flow as flow,
     arch_arm64_Form as form, arch_arm64_Instruction as instruction, arch_arm64_Kind as kind,
-    arch_arm64_Member as member, arch_arm64_Names as names, arch_arm64_Size as size,
+    arch_arm64_Member as member, arch_arm64_Names as names, arch_arm64_Need as need, arch_arm64_Size as size,
     arch_arm64_Sized as sized,
 };
 
 use super::given::Word;
+use super::need::Needs;
 use super::spell::{At, Mnemonic, Sizes, Spelled, Width};
 use super::table::{Flow, Shape, Table, variants};
 use crate::env::{Env, Unevaluated};
@@ -33,7 +34,7 @@ pub(super) const SHAPE: Shape = Shape {
     member_name: member::name,
     form_name: form::name,
     form_flow: form::flow,
-    form_requires: None,
+    needs: Some(Needs { form: form::requires, sized: None, feature: need::feature, float: None }),
     flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: a::Size,
     cond: a::Cond,

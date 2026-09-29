@@ -4,12 +4,16 @@
 
 _t := lang.arch.thumb;
 
-_float: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64"] }];
+/// What every form here needs, and what those of double precision need besides.
+_single: ?_t.Need = .some(.float(.b32));
+_double: ?_t.Need = .some(.float(.b64));
+
+_float: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64"], .requires = _double }];
 _plain: &[_t.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x100 }];
-_to_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["s32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["s32", "f64"] }];
-_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["u32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["u32", "f64"] }];
-_from_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "s32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "s32"] }];
-_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "u32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "u32"] }];
+_to_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["s32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["s32", "f64"], .requires = _double }];
+_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["u32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["u32", "f64"], .requires = _double }];
+_from_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "s32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "s32"], .requires = _double }];
+_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "u32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "u32"], .requires = _double }];
 
 _d_w: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .write };
 _d: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .read };
@@ -36,7 +40,7 @@ binary := _t.Family{
         _t.Member{ .name = .vmul, .bits = 0x200000 },
         _t.Member{ .name = .vdiv, .bits = 0x800000 },
     ],
-    .forms = &[.{ .base = .\or(0xee000a00), .sizes = _float, .args = &[_d_w, _n, _m] }],
+    .forms = &[.{ .base = .\or(0xee000a00), .sizes = _float, .args = &[_d_w, _n, _m], .requires = _single }],
 };
 
 /// Arithmetic of one operand, and a move between floating-point registers.
@@ -46,24 +50,24 @@ unary := _t.Family{
         _t.Member{ .name = .vabs, .bits = 0xc0 },
         _t.Member{ .name = .vsqrt, .bits = 0x100c0 },
     ],
-    .forms = &[.{ .base = .\or(0xeeb00a00), .sizes = _float, .args = &[_d_w, _m] }],
+    .forms = &[.{ .base = .\or(0xeeb00a00), .sizes = _float, .args = &[_d_w, _m], .requires = _single }],
 };
 
 /// Moves between floating-point registers, and between them and general ones: a single-precision
 /// register's bits, or a double-precision one's as two general registers, the low half first.
 vmov := _t.Instruction{ .forms = &[
-    .{ .base = 0xeeb00a40, .sizes = _float, .args = &[_d_w, _m] },
-    .{ .base = 0xee000a10, .sizes = &[.{ .size = .b32 }], .args = &[_s_n_w, _r_t] },
-    .{ .base = 0xee100a10, .sizes = &[.{ .size = .b32 }], .args = &[_r_t_w, _s_n] },
-    .{ .base = 0xec400b10, .sizes = &[.{ .size = .b64 }], .args = &[_d_m_w, _r_t, _r_t2] },
-    .{ .base = 0xec500b10, .sizes = &[.{ .size = .b64 }], .args = &[_r_t_w, _r_t2_w, _d_m] },
+    .{ .base = 0xeeb00a40, .sizes = _float, .args = &[_d_w, _m], .requires = _single },
+    .{ .base = 0xee000a10, .sizes = &[.{ .size = .b32 }], .args = &[_s_n_w, _r_t], .requires = _single },
+    .{ .base = 0xee100a10, .sizes = &[.{ .size = .b32 }], .args = &[_r_t_w, _s_n], .requires = _single },
+    .{ .base = 0xec400b10, .sizes = &[.{ .size = .b64 }], .args = &[_d_m_w, _r_t, _r_t2], .requires = _single },
+    .{ .base = 0xec500b10, .sizes = &[.{ .size = .b64 }], .args = &[_r_t_w, _r_t2_w, _d_m], .requires = _single },
 ] };
 
 /// Compares two registers, or one with zero, into the extension's own flags, which `vmrs` then
 /// moves into the processor's.
 vcmp := _t.Instruction{ .forms = &[
-    .{ .base = 0xeeb40a40, .sizes = _float, .args = &[_d, _m] },
-    .{ .base = 0xeeb50a40, .sizes = _float, .args = &[_d, .{ .kind = .imm(.zero), .access = .read }] },
+    .{ .base = 0xeeb40a40, .sizes = _float, .args = &[_d, _m], .requires = _single },
+    .{ .base = 0xeeb50a40, .sizes = _float, .args = &[_d, .{ .kind = .imm(.zero), .access = .read }], .requires = _single },
 ] };
 
 vmrs := _t.Instruction{ .forms = &[
@@ -71,39 +75,40 @@ vmrs := _t.Instruction{ .forms = &[
         .base = 0xeef1fa10,
         .args = &[.{ .kind = .status(.apsr_nzcv), .access = .write }, .{ .kind = .status(.fpscr), .access = .read }],
         .flags = .some(.write),
+        .requires = _single,
     },
 ] };
 
-vldr := _t.Instruction{ .forms = &[.{ .base = 0xed100a00, .sizes = _plain, .args = &[_d_w, _mem] }] };
-vstr := _t.Instruction{ .forms = &[.{ .base = 0xed000a00, .sizes = _plain, .args = &[_d, _mem_w] }] };
+vldr := _t.Instruction{ .forms = &[.{ .base = 0xed100a00, .sizes = _plain, .args = &[_d_w, _mem], .requires = _single }] };
+vstr := _t.Instruction{ .forms = &[.{ .base = 0xed000a00, .sizes = _plain, .args = &[_d, _mem_w], .requires = _single }] };
 
 /// Conversions to an integer, rounding toward zero, and from one, whose integer is the bits of a
 /// single-precision register.
 vcvt_signed := _t.Instruction{
-    .forms = &[.{ .base = 0xeebd0ac0, .sizes = _to_signed, .args = &[_s_d_w, _m] }],
+    .forms = &[.{ .base = 0xeebd0ac0, .sizes = _to_signed, .args = &[_s_d_w, _m], .requires = _single }],
     .mnemonic = .some("vcvt"),
 };
 
 vcvt_unsigned := _t.Instruction{
-    .forms = &[.{ .base = 0xeebc0ac0, .sizes = _to_unsigned, .args = &[_s_d_w, _m] }],
+    .forms = &[.{ .base = 0xeebc0ac0, .sizes = _to_unsigned, .args = &[_s_d_w, _m], .requires = _single }],
     .mnemonic = .some("vcvt"),
 };
 
 vcvt_from_signed := _t.Instruction{
-    .forms = &[.{ .base = 0xeeb80ac0, .sizes = _from_signed, .args = &[_d_w, _s_m] }],
+    .forms = &[.{ .base = 0xeeb80ac0, .sizes = _from_signed, .args = &[_d_w, _s_m], .requires = _single }],
     .mnemonic = .some("vcvt"),
 };
 
 vcvt_from_unsigned := _t.Instruction{
-    .forms = &[.{ .base = 0xeeb80a40, .sizes = _from_unsigned, .args = &[_d_w, _s_m] }],
+    .forms = &[.{ .base = 0xeeb80a40, .sizes = _from_unsigned, .args = &[_d_w, _s_m], .requires = _single }],
     .mnemonic = .some("vcvt"),
 };
 
 /// Conversions between the precisions: to double from single, and to single from double.
 vcvt_precision := _t.Instruction{
     .forms = &[
-        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .qualifiers = &["f64", "f32"] }], .args = &[_d_w, _s_m] },
-        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .qualifiers = &["f32", "f64"] }], .args = &[_d_w, _d_m] },
+        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .qualifiers = &["f64", "f32"], .requires = _double }], .args = &[_d_w, _s_m], .requires = _single },
+        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .qualifiers = &["f32", "f64"], .requires = _double }], .args = &[_d_w, _d_m], .requires = _single },
     ],
     .mnemonic = .some("vcvt"),
 };
@@ -111,9 +116,9 @@ vcvt_precision := _t.Instruction{
 /// Stores double-precision registers below the stack pointer and moves it down; `vpop` loads them
 /// back and moves it up.
 vpush := _t.Instruction{ .forms = &[
-    .{ .base = 0xed2d0b00, .args = &[.{ .kind = .list(.doubles), .access = .read }], .reads = &[.sp], .writes = &[.sp] },
+    .{ .base = 0xed2d0b00, .args = &[.{ .kind = .list(.doubles), .access = .read }], .reads = &[.sp], .writes = &[.sp], .requires = _single },
 ] };
 
 vpop := _t.Instruction{ .forms = &[
-    .{ .base = 0xecbd0b00, .args = &[.{ .kind = .list(.doubles), .access = .write }], .reads = &[.sp], .writes = &[.sp] },
+    .{ .base = 0xecbd0b00, .args = &[.{ .kind = .list(.doubles), .access = .write }], .reads = &[.sp], .writes = &[.sp], .requires = _single },
 ] };

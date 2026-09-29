@@ -69,10 +69,9 @@ impl FnLower<'_, '_, '_> {
     /// processor lacks. A block of another is the backend's to refuse.
     fn available(&self, asm: &Asm) -> Result<(), Unlowered> {
         let Some(target) = self.l.env.cx.get::<TargetOf>(&()) else { return Ok(()) };
-        let lacked = asm.needs.iter().find(|n| !target.features.contains(&n.feature));
-        match lacked {
+        match asm.needs.iter().find(|n| !target.has(n.needed)) {
             Some(need) if target.isa == asm.arch.symbol() => {
-                Err(Unlowered { at: need.at, why: Why::Unavailable(need.feature) })
+                Err(Unlowered { at: need.at, why: Why::Unavailable(need.needed) })
             }
             _ => Ok(()),
         }

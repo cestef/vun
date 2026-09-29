@@ -2,22 +2,23 @@
 use crate::{reg, table};
 pub(super) const VSTR: [table::Form; 1usize] = [
     table::Form::new(
-        0xed00_0a00,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x0000_0100),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::D),
-                0,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::Fp, table::Width::Inst),
-                0,
-                table::Access::Write,
-            ),
-        ],
-    ),
+            0xed00_0a00,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x0000_0100),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::D),
+                    0,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::Fp, table::Width::Inst),
+                    0,
+                    table::Access::Write,
+                ),
+            ],
+        )
+        .requires(table::Need::Float(reg::Size::B32)),
 ];

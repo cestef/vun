@@ -22,9 +22,11 @@ const CRATE: Crate = Crate {
         ("Shifts", "table", "Shifts"),
         ("Condition", "table", "Cond"),
         ("Branch", "table", "Branch"),
+        ("Feature", "table", "Feature"),
+        ("Need", "table", "Need"),
     ],
     widths: &["w", "x"],
-    enums: &[],
+    enums: &["Feature"],
     payloads: &[
         ("Kind", "gpr", &["R31", "Width"]),
         ("Kind", "fpr", &["Width"]),
@@ -34,6 +36,7 @@ const CRATE: Crate = Crate {
         ("Kind", "cond", &["Condition"]),
         ("Kind", "target", &["Branch"]),
         ("Width", "is", &["Size"]),
+        ("Need", "feature", &["Feature"]),
     ],
 };
 

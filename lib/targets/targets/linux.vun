@@ -38,7 +38,7 @@ _arm64: _Machine = .{
 _arm: _Machine = .{
     .arch = .arm,
     .isa = .thumb,
-    .features = &[.application],
+    .features = &[.application, .divide],
     .pointer_bits = 32,
     .register_bits = 32,
     .floats = &[f32, f64],
@@ -93,6 +93,6 @@ x86_64 := _kernel(_x86_64, &[]);
 /// 64-bit ARM (AArch64). Atomics are inline instructions: the C compiler's out-of-line ones
 /// choose between forms by asking the C library what the CPU has.
 arm64 := _kernel(_arm64, &["-mno-outline-atomics"]);
-/// 32-bit ARM (Armv7-A), its code Thumb-2, floats in the floating-point extension's registers
-/// (the hard-float EABI).
-arm := _kernel(_arm, &["-march=armv7-a", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);
+/// 32-bit ARM (Armv7-A with division in hardware, as Cortex-A7 and A15 on have it), its code
+/// Thumb-2, floats in the floating-point extension's registers (the hard-float EABI).
+arm := _kernel(_arm, &["-march=armv7ve", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);

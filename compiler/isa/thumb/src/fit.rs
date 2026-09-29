@@ -74,7 +74,7 @@ impl Kind {
         match self {
             Self::Gpr(_) | Self::Split | Self::Shifted => Some((Class::General, Some(Size::B32))),
             Self::Fpr(width, _) => Some((Class::Fp, Some(width.at(size)))),
-            Self::Special => Some((Class::Special, None)),
+            Self::Special(_) => Some((Class::Special, None)),
             Self::Status(_) => Some((Class::Status, None)),
             _ => None,
         }

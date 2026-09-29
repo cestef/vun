@@ -27,5 +27,7 @@ pub const Branch: Item = Item::new(&["lang", "arch", "thumb", "operand", "Branch
 /// The instructions an `it` makes conditional after the first: none, or one more holding on the
 /// same condition (`t`) or on its opposite (`e`).
 pub const Then: Item = Item::new(&["lang", "arch", "thumb", "operand", "Then"]);
+/// The special registers a position takes: any, or one alone.
+pub const Specials: Item = Item::new(&["lang", "arch", "thumb", "operand", "Specials"]);
 /// What an operand position takes.
 pub const Kind: Item = Item::new(&["lang", "arch", "thumb", "operand", "Kind"]);

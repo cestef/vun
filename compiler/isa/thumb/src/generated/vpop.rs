@@ -13,5 +13,6 @@ pub(super) const VPOP: [table::Form; 1usize] = [
             ],
         )
         .reads(&[reg::Reg::Sp])
-        .writes(&[reg::Reg::Sp]),
+        .writes(&[reg::Reg::Sp])
+        .requires(table::Need::Float(reg::Size::B32)),
 ];

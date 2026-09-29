@@ -1,12 +1,13 @@
 //! Bare metal: no system; a program brings its own runtime (spec 08), links without the C
 //! runtime, and starts at its reset handler.
 
-/// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`,
-/// following `abi` and calling C by `convention`, its processor computing `floats`, built with
+/// A 32-bit bare-metal target of `arch` and `cpu`, its code in the instruction set `isa`, of
+/// which it has `features`, following `abi` and calling C by `convention`, its processor computing `floats`, built with
 /// `command` and `archiver` for the machine its `machine` flags select.
 _on := (
     $arch: lang.meta.Name,
     $isa: lang.meta.Name,
+    $features: &[lang.meta.Name],
     $cpu: lang.meta.Name,
     $abi: lang.meta.Name,
     $convention: lang.target.Convention,
@@ -18,6 +19,7 @@ _on := (
     .{
         .arch = arch,
         .isa = isa,
+        .features = features,
         .cpu = cpu,
         .os = .bare,
         .abi = abi,
@@ -38,6 +40,7 @@ _on := (
 cortex_m4f := _on(
     .arm,
     .thumb,
+    &[.microcontroller, .divide],
     .cortex_m4f,
     .eabihf,
     .aapcs_vfp,
@@ -50,6 +53,7 @@ cortex_m4f := _on(
 cortex_m3 := _on(
     .arm,
     .thumb,
+    &[.microcontroller, .divide],
     .cortex_m3,
     .eabi,
     .aapcs,
@@ -62,6 +66,7 @@ cortex_m3 := _on(
 rv32imc := _on(
     .riscv32,
     .riscv32,
+    &[],
     .rv32imc,
     .ilp32,
     .ilp32,

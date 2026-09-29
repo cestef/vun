@@ -20,3 +20,6 @@ vun-target.workspace = true
 # An independent decoder checks every form of the table; never shipped.
 yaxpeax-arm = { workspace = true }
 yaxpeax-arch = { workspace = true }
+# LLVM's assembler checks what each form needs.
+vun-harness.workspace = true
+vun-par.workspace = true

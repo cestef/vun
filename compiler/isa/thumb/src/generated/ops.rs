@@ -156,9 +156,10 @@ pub enum Op {
     Udiv,
     /// A 16-bit product into its second operand, setting the flags.
     Muls,
-    /// A special register read into a general one.
+    /// A special register read into a general one: the flags on every profile, the others on the
+    /// microcontroller one's.
     Mrs,
-    /// A general register written into a special one.
+    /// A general register written into a special one, as `mrs` reads them.
     Msr,
     /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
     Cpsid,

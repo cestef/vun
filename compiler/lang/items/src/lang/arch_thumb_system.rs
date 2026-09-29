@@ -6,9 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// A special register read into a general one.
+/// A special register read into a general one: the flags on every profile, the others on the
+/// microcontroller one's.
 pub const mrs: Item = Item::new(&["lang", "arch", "thumb", "system", "mrs"]);
-/// A general register written into a special one.
+/// A general register written into a special one, as `mrs` reads them.
 pub const msr: Item = Item::new(&["lang", "arch", "thumb", "system", "msr"]);
 /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
 pub const cpsid: Item = Item::new(&["lang", "arch", "thumb", "system", "cpsid"]);

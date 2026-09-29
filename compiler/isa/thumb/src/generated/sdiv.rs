@@ -3,24 +3,25 @@ use crate::{reg, table};
 /// Division rounding toward zero; a division by zero gives zero.
 pub(super) const SDIV: [table::Form; 1usize] = [
     table::Form::new(
-        0xfb90_f0f0,
-        &[table::Sized::new(reg::Size::B32, 0x0000_0000)],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::Regs::General),
-                8,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::Regs::General),
-                16,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::Regs::General),
-                0,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0xfb90_f0f0,
+            &[table::Sized::new(reg::Size::B32, 0x0000_0000)],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::Regs::General),
+                    8,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::Regs::General),
+                    16,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::Regs::General),
+                    0,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .requires(table::Need::Feature(table::Feature::Divide)),
 ];

@@ -15,3 +15,5 @@ pub const reads: Item = Item::new(&["lang", "arch", "arm64", "Form", "reads"]);
 pub const writes: Item = Item::new(&["lang", "arch", "arm64", "Form", "writes"]);
 pub const flags: Item = Item::new(&["lang", "arch", "arm64", "Form", "flags"]);
 pub const flow: Item = Item::new(&["lang", "arch", "arm64", "Form", "flow"]);
+/// What a processor needs to have the form, if not every one has it.
+pub const requires: Item = Item::new(&["lang", "arch", "arm64", "Form", "requires"]);

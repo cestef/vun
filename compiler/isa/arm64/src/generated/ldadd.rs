@@ -4,29 +4,30 @@ use crate::{reg, table};
 /// releases.
 pub(super) const LDADD: [table::Form; 1usize] = [
     table::Form::new(
-        0x3820_0000,
-        &[
-            table::Sized::new(reg::Size::B8, 0x0000_0000).suffix("b"),
-            table::Sized::new(reg::Size::B16, 0x4000_0000).suffix("h"),
-            table::Sized::new(reg::Size::B32, 0x8000_0000),
-            table::Sized::new(reg::Size::B64, 0xc000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                16,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::Base, table::Width::Inst),
-                5,
-                table::Access::ReadWrite,
-            ),
-        ],
-    ),
+            0x3820_0000,
+            &[
+                table::Sized::new(reg::Size::B8, 0x0000_0000).suffix("b"),
+                table::Sized::new(reg::Size::B16, 0x4000_0000).suffix("h"),
+                table::Sized::new(reg::Size::B32, 0x8000_0000),
+                table::Sized::new(reg::Size::B64, 0xc000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    16,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::Base, table::Width::Inst),
+                    5,
+                    table::Access::ReadWrite,
+                ),
+            ],
+        )
+        .requires(table::Need::Feature(table::Feature::Lse)),
 ];

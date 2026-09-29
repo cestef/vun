@@ -5,7 +5,7 @@ use vun_sema::Primitive;
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_intern::Symbol;
+use vun_inline::Needed;
 use vun_mir::Unready;
 use vun_origin::OriginId;
 use vun_sema::ty::Ty;
@@ -32,9 +32,8 @@ pub enum Why {
     Address(u32),
     /// A coroutine's frame would hold itself (spec 06, section 1).
     Recursive,
-    /// An instruction of a block needs this feature of the instruction set, which the target's
-    /// processor lacks.
-    Unavailable(Symbol),
+    /// An instruction of a block needs this of the target's processor, which lacks it.
+    Unavailable(Needed),
 }
 
 /// What lowering does not handle yet.
@@ -71,9 +70,14 @@ impl fmt::Display for Unlowered {
             Why::Untargeted => f.write_str("no target is chosen"),
             Why::Address(bits) => write!(f, "addresses of {bits} bits are as wide as no integer of LIR"),
             Why::Recursive => f.write_str("the coroutine's frame would hold itself"),
-            Why::Unavailable(feature) => {
+            Why::Unavailable(Needed::Feature(feature)) => {
                 write!(f, "the instruction needs `{feature}`, which the target's processor lacks")
             }
+            Why::Unavailable(Needed::Float(bits)) => write!(
+                f,
+                "the instruction needs a floating-point unit computing {bits}-bit floats, which the \
+                 target's processor lacks"
+            ),
         }
     }
 }
@@ -138,12 +142,15 @@ impl Unlowered {
     /// Its report where a program is built.
     #[must_use]
     pub fn diagnostic(&self) -> Diagnostic {
-        let d = if let Why::Unavailable(feature) = self.why {
-            let msg = Msg::new()
-                .text("the instruction needs ")
-                .code(feature.as_str())
-                .text(", which the target's processor lacks");
-            Diagnostic::error(errors::ASM_UNAVAILABLE, msg)
+        let d = if let Why::Unavailable(needed) = self.why {
+            let msg = match needed {
+                Needed::Feature(feature) => Msg::new().text("the instruction needs ").code(feature.as_str()),
+                Needed::Float(bits) => Msg::new()
+                    .text("the instruction needs a floating-point unit computing floats of ")
+                    .num(bits)
+                    .text(" bits"),
+            };
+            Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
         } else {
             let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());
             Diagnostic::error(errors::BACKEND_UNLOWERED, msg)

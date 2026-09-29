@@ -760,8 +760,10 @@ version = "0.0.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
+ "vun-harness",
  "vun-isa-arm64",
  "vun-object",
+ "vun-par",
  "vun-target",
  "yaxpeax-arch",
  "yaxpeax-arm",
@@ -773,7 +775,10 @@ version = "0.0.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
+ "vun-elf",
+ "vun-harness",
  "vun-isa-thumb",
+ "vun-par",
  "vun-target",
 ]
 
@@ -1087,6 +1092,7 @@ dependencies = [
  "vun-harness",
  "vun-hash",
  "vun-hir",
+ "vun-inline",
  "vun-intern",
  "vun-interp",
  "vun-isa-arm64",
@@ -1130,6 +1136,13 @@ version = "0.0.0"
 dependencies = [
  "vun-bytes",
  "vun-object",
+]
+
+[[package]]
+name = "vun-elf"
+version = "0.0.0"
+dependencies = [
+ "vun-bytes",
 ]
 
 [[package]]
@@ -1639,6 +1652,7 @@ name = "vun-object"
 version = "0.0.0"
 dependencies = [
  "vun-bytes",
+ "vun-elf",
  "vun-fs",
  "vun-index",
 ]

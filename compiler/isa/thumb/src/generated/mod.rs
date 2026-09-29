@@ -35,6 +35,8 @@ mod encoding;
 pub use encoding::*;
 mod then;
 pub use then::*;
+mod feature;
+pub use feature::*;
 mod b;
 mod bcond;
 mod bl;

@@ -14,3 +14,9 @@ vun-abi.workspace = true
 vun-target.workspace = true
 vun-asm.workspace = true
 vun-isa-thumb.workspace = true
+
+[dev-dependencies]
+# LLVM's assembler checks every form, its objects read as ELF.
+vun-harness.workspace = true
+vun-elf.workspace = true
+vun-par.workspace = true

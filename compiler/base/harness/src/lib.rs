@@ -1,4 +1,4 @@
-//! Test harnesses: corpus expectations, snapshots, blessing.
+//! Test harnesses: corpus expectations, snapshots, blessing, and LLVM's assembler as an oracle.
 //!
 //! Rejection tests annotate the diagnostics they expect next to the code that causes them:
 //!
@@ -18,6 +18,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+pub mod llvm;
 mod page;
 mod snapshot;
 

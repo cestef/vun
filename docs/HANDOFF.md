@@ -101,8 +101,9 @@ Logging: `VUN_LOG=<filter>` (`info` steps, `debug` units of work, `trace` elemen
   `vun-inline` (assembly blocks as data), `vun-isa-{x86_64,arm64,thumb}` (every instruction once
   as a table of forms generated from `lang.arch`, read by the encoder, the printer, form
   selection and sema's check of assembly blocks; calling conventions' registers,
-  `conventions`). **Objects** (`compiler/object`): `vun-object` (ELF objects as data),
-  `vun-dwarf`.
+  `conventions`). **Objects** (`compiler/object`): `vun-object` (objects as data, written as ELF
+  through `vun-elf` or as Mach-O), `vun-elf` (ELF files as data, written and read, each record
+  declared once per class), `vun-dwarf`.
 - **Front end** (`compiler/front`): `vun-syntax`, `vun-hir` (the front end as queries), `vun-sema`:
   `ty/` (types, values, relations, borrows table), `env/` (evaluation, calls read once by
   `Env::passing`), `typeck/` (the `Typer`, operators through interface impls, narrowing, staged
@@ -256,10 +257,15 @@ In flight, not in main:
   `-static -nostdlib -l gcc`, no unwinder, and the runtime answers the EABI's division-by-zero
   hooks (decision 307). Calls, parameters, returns, terminators and carriers are written once in
   `vun_native::select` (`Carries`, `Frames`, `Terminates`), arm64 and Thumb giving the hooks. A
-  target lists its processor's features (`Spec.features`, decision 308): lowering refuses a block
-  whose form needs one the target lacks (`asm.unavailable`), and `lang.mem.soft` pairs words only
-  where the target has `application`. Open: Armv7-M-only forms (`msr primask`) are not marked,
-  so a block using one is accepted on linux.arm.
+  target lists its processor's features (`Spec.features`, decision 308), and every form needing
+  more than its instruction set's baseline says so (`requires: ?Need`: a feature, or a float
+  width read against `Spec.floats`): lowering refuses a block needing what the target lacks
+  (`asm.unavailable`), and `lang.mem.soft` pairs words only where the target has `application`.
+  The asm tests check every mark against LLVM's assembler for several processors
+  (`vun_harness::llvm`, objects read with `vun-elf`, the new crate of ELF as data, which
+  `vun-object` now writes through and its tests read linked programs with). Open: the native
+  isels emit what the target's features allow without asking them (Thumb's `sdiv`, which every
+  Thumb target has today).
 - Milestone 3a landed (decision 280): `Rules::{AAPCS, AAPCS_VFP}` (word, stack alignment,
   `returned`, `Floats`, `Split`), backfill in `vun-abi`'s banks, `Loc::Split { parts, rest }` for
   straddling records (handled by the x86-64 and arm64 isel), wide results as `AbiType::Wide`

@@ -12,6 +12,7 @@ pub use read::{Read, Unread, Variants};
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
 use vun_target::{Endian, Floats, TargetSpec};
@@ -85,6 +86,15 @@ impl Target {
             _ => None,
         };
         range.and_then(|r| r.storage()).is_none_or(|s| s.bits() <= u64::from(self.register_bits))
+    }
+
+    /// Whether its processor has what an instruction needs.
+    #[must_use]
+    pub fn has(&self, needed: Needed) -> bool {
+        match needed {
+            Needed::Feature(feature) => self.features.contains(&feature),
+            Needed::Float(bits) => self.floats.computes(bits),
+        }
     }
 
     /// The largest address: `usize` is `Int(0..=usize_max)`.

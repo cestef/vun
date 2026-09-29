@@ -5,12 +5,20 @@ _t := lang.arch.thumb;
 _r_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
 _r: _t.Arg = .{ .kind = .gpr(.general), .at = 16, .access = .read };
 _mask: _t.Arg = .{ .kind = .mask, .access = .read };
+_microcontroller: ?_t.Need = .some(.feature(.microcontroller));
 
-/// A special register read into a general one.
-mrs := _t.Instruction{ .forms = &[.{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special, .access = .read }] }] };
+/// A special register read into a general one: the flags on every profile, the others on the
+/// microcontroller one's.
+mrs := _t.Instruction{ .forms = &[
+    .{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special(.is(.apsr)), .access = .read }] },
+    .{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special(.any), .access = .read }], .requires = _microcontroller },
+] };
 
-/// A general register written into a special one.
-msr := _t.Instruction{ .forms = &[.{ .base = 0xf3808800, .args = &[.{ .kind = .special, .access = .write }, _r] }] };
+/// A general register written into a special one, as `mrs` reads them.
+msr := _t.Instruction{ .forms = &[
+    .{ .base = 0xf3808800, .args = &[.{ .kind = .special(.is(.apsr)), .access = .write }, _r] },
+    .{ .base = 0xf3808800, .args = &[.{ .kind = .special(.any), .access = .write }, _r], .requires = _microcontroller },
+] };
 
 /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.
 cpsid := _t.Instruction{ .forms = &[.{ .base = 0xb670, .args = &[_mask] }] };

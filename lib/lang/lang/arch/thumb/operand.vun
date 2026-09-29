@@ -117,6 +117,9 @@ Branch := enum {
 /// same condition (`t`) or on its opposite (`e`).
 Then := enum { none, t, e };
 
+/// The special registers a position takes: any, or one alone.
+Specials := enum { any, is(lang.arch.thumb.Special) };
+
 /// What an operand position takes.
 Kind := enum {
     gpr(Regs),
@@ -140,7 +143,7 @@ Kind := enum {
     low,
     high,
     list(List),
-    special,
+    special(Specials),
     status(lang.arch.thumb.Status),
     mask,
     barrier,

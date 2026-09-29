@@ -7,6 +7,8 @@ mod class;
 pub use class::*;
 mod choice;
 pub use choice::*;
+mod feature;
+pub use feature::*;
 mod b;
 mod bcond;
 mod bl;

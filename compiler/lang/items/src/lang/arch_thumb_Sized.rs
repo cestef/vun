@@ -11,3 +11,4 @@ pub const bits: Item = Item::new(&["lang", "arch", "thumb", "Sized", "bits"]);
 pub const qualifiers: Item = Item::new(
     &["lang", "arch", "thumb", "Sized", "qualifiers"],
 );
+pub const requires: Item = Item::new(&["lang", "arch", "thumb", "Sized", "requires"]);

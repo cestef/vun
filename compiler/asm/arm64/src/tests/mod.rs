@@ -5,6 +5,7 @@
 
 mod fields;
 mod links;
+mod needs;
 mod quirks;
 
 use std::collections::HashMap;
@@ -173,14 +174,11 @@ struct Emitted {
     text: String,
 }
 
-impl Emitted {
-    /// Whether a field of it is written later: by the linker, or when a label is bound.
-    fn linked(&self) -> bool {
-        self.form
-            .args
-            .iter()
-            .any(|a| matches!(a.kind, Kind::Target(_) | Kind::Page | Kind::Lo12 | Kind::Mem(Mode::Lo12, _)))
-    }
+/// Whether a field of `form` is written later: by the linker, or when a label is bound.
+fn linked(form: &Form) -> bool {
+    form.args
+        .iter()
+        .any(|a| matches!(a.kind, Kind::Target(_) | Kind::Page | Kind::Lo12 | Kind::Mem(Mode::Lo12, _)))
 }
 
 #[test]
@@ -209,8 +207,11 @@ fn every_form_decodes_as_one_instruction_printed_alike() {
         let decoded = decode(e.word).unwrap_or_else(|| panic!("{}: {:08x} does not decode", e.text, e.word));
         let theirs = decoded.to_string();
         // A field written later is still 0: the mnemonic is compared, the field by `links`.
-        let alike =
-            if e.linked() { e.text.split(' ').next() == theirs.split(' ').next() } else { theirs == e.text };
+        let alike = if linked(e.form) {
+            e.text.split(' ').next() == theirs.split(' ').next()
+        } else {
+            theirs == e.text
+        };
         // The decoder prefers an alias the table declares too, whose encoding is checked alike.
         let alias = |op: Op| op == e.op || ALIASES.iter().any(|a| a.contains(&op) && a.contains(&e.op));
         let ours: Vec<String> =

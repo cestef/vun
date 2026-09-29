@@ -13,10 +13,12 @@ use vun_items::lang::{
     arch_thumb as t, arch_thumb_Arg as arg, arch_thumb_Choice as choice, arch_thumb_Class as class,
     arch_thumb_Encoding as encoding, arch_thumb_Family as family, arch_thumb_Flow as flow,
     arch_thumb_Form as form, arch_thumb_Instruction as instruction, arch_thumb_Member as member,
-    arch_thumb_Size as size, arch_thumb_Sized as sized, arch_thumb_operand_Kind as kind,
+    arch_thumb_Need as need_of, arch_thumb_Size as size, arch_thumb_Sized as sized,
+    arch_thumb_operand_Kind as kind,
 };
 
 use super::given::Word;
+use super::need::{self, Needs};
 use super::spell::{At, Mnemonic, Sizes, Spelled, Width};
 use super::table::{Flow, Shape, Table, variants};
 use crate::env::{Env, Unevaluated};
@@ -33,7 +35,12 @@ pub(super) const SHAPE: Shape = Shape {
     member_name: member::name,
     form_name: form::name,
     form_flow: form::flow,
-    form_requires: Some(form::requires),
+    needs: Some(Needs {
+        form: form::requires,
+        sized: Some(need::Sized { sizes: form::sizes, size: sized::size, requires: sized::requires }),
+        feature: need_of::feature,
+        float: Some(need_of::float),
+    }),
     flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: t::Size,
     cond: t::Cond,

@@ -27,7 +27,9 @@ pub use generated::Choice;
 pub use inst::Inst;
 pub use operand::{Barrier, Extend, Mem, Operand, Scale, Shift, ShiftKind, SysReg};
 pub use reg::{Cc, Class, Reg, Size, V};
-pub use table::{Access, Arg, Branch, Cond, Form, Imm, Kind, Mode, Op, R31, Shifts, Sized, Width};
+pub use table::{
+    Access, Arg, Branch, Cond, Feature, Form, Imm, Kind, Mode, Need, Op, R31, Shifts, Sized, Width,
+};
 
 /// The instruction set.
 #[derive(Clone, Copy, Debug)]

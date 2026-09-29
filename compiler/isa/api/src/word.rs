@@ -14,13 +14,6 @@ pub enum Access {
     Address,
 }
 
-/// What a processor has of the instruction set beyond what every one has, which a form may need.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Feature {
-    /// Arm's application profile: Thumb on Armv7-A has instructions Armv7-M lacks.
-    Application,
-}
-
 /// What an operand position of kind `Self` takes: the field an operand `O` encodes to in an
 /// instruction of width `Z`, relative to the bit its position starts at, if it fits there.
 pub trait Field<O, Z>: Copy {
@@ -57,19 +50,26 @@ impl<K: Copy> Arg<K> {
 }
 
 /// A width a form is defined at, the bits it sets, the suffix it gives the mnemonic (`ldrb`), and
-/// the qualifiers written after it, each after a `.` (`vcvt.s32.f32`).
+/// the qualifiers written after it, each after a `.` (`vcvt.s32.f32`), and what a processor
+/// needs `N` to have the form at this width, beyond what it needs at every one.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Sized<Z> {
+pub struct Sized<Z, N> {
     pub size: Z,
     pub bits: u32,
     pub suffix: &'static str,
     pub qualifiers: &'static [&'static str],
+    pub requires: Option<N>,
 }
 
-impl<Z: Copy> Sized<Z> {
+impl<Z: Copy, N: Copy> Sized<Z, N> {
     #[must_use]
     pub const fn new(size: Z, bits: u32) -> Self {
-        Self { size, bits, suffix: "", qualifiers: &[] }
+        Self { size, bits, suffix: "", qualifiers: &[], requires: None }
+    }
+
+    #[must_use]
+    pub const fn requires(self, need: N) -> Self {
+        Self { requires: Some(need), ..self }
     }
 
     #[must_use]
@@ -83,11 +83,12 @@ impl<Z: Copy> Sized<Z> {
     }
 }
 
-/// One form of an instruction whose operand kinds are `K`, widths `Z` and general registers `R`.
+/// One form of an instruction whose operand kinds are `K`, widths `Z`, general registers `R` and
+/// what a processor may need to have it `N`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Form<K: 'static, Z: 'static, R: 'static> {
+pub struct Form<K: 'static, Z: 'static, R: 'static, N: 'static> {
     pub base: u32,
-    pub sizes: &'static [Sized<Z>],
+    pub sizes: &'static [Sized<Z, N>],
     pub args: &'static [Arg<K>],
     /// The mnemonic, where it is not the instruction's (`ldur`).
     pub name: Option<&'static str>,
@@ -99,13 +100,13 @@ pub struct Form<K: 'static, Z: 'static, R: 'static> {
     /// Pairs of positions whose registers must differ: the manual calls the instruction
     /// unpredictable where they do not.
     pub apart: &'static [[u8; 2]],
-    /// The feature a processor has where it has the form, if not every one has it.
-    pub requires: Option<Feature>,
+    /// What a processor needs to have the form, if not every one has it.
+    pub requires: Option<N>,
 }
 
-impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
+impl<K: Copy, Z: Copy + PartialEq, R, N: Copy> Form<K, Z, R, N> {
     #[must_use]
-    pub const fn new(base: u32, sizes: &'static [Sized<Z>], args: &'static [Arg<K>]) -> Self {
+    pub const fn new(base: u32, sizes: &'static [Sized<Z, N>], args: &'static [Arg<K>]) -> Self {
         Self {
             base,
             sizes,
@@ -145,13 +146,13 @@ impl<K: Copy, Z: Copy + PartialEq, R> Form<K, Z, R> {
     }
 
     #[must_use]
-    pub const fn requires(self, feature: Feature) -> Self {
-        Self { requires: Some(feature), ..self }
+    pub const fn requires(self, need: N) -> Self {
+        Self { requires: Some(need), ..self }
     }
 
     /// Its definition at `size`.
     #[must_use]
-    pub fn at(&self, size: Z) -> Option<&'static Sized<Z>> {
+    pub fn at(&self, size: Z) -> Option<&'static Sized<Z, N>> {
         self.sizes.iter().find(|s| s.size == size)
     }
 

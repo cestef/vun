@@ -68,6 +68,11 @@ pub const Flow: Item = Item::new(&["lang", "arch", "arm64", "Flow"]);
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 pub const Arg: Item = Item::new(&["lang", "arch", "arm64", "Arg"]);
+/// What a processor has of A64 beyond Armv8.0 (`lang.target.Spec.features`): `lse`, Armv8.1's
+/// atomic read-modify-writes in one instruction (`ldadd`, `swp`, `cas`).
+pub const Feature: Item = Item::new(&["lang", "arch", "arm64", "Feature"]);
+/// What a form needs of a processor beyond Armv8.0.
+pub const Need: Item = Item::new(&["lang", "arch", "arm64", "Need"]);
 /// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
 /// mnemonic.
 pub const Sized: Item = Item::new(&["lang", "arch", "arm64", "Sized"]);

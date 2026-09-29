@@ -1,4 +1,4 @@
-use super::Out;
+use super::{Out, Strings};
 
 #[test]
 fn leb128_encodes_as_readers_read_it() {
@@ -17,4 +17,12 @@ fn padded_leb128_takes_five_bytes_and_reads_the_same() {
     out.uleb_padded(3);
     out.sleb_padded(-2);
     assert_eq!(out.0, [0x83, 0x80, 0x80, 0x80, 0x00, 0xfe, 0xff, 0xff, 0xff, 0x7f]);
+}
+
+#[test]
+fn a_string_table_starts_with_the_empty_string_and_names_each_by_its_start() {
+    let mut strings = Strings::default();
+    assert_eq!((strings.add(b"ab"), strings.add(b"")), (1, 4));
+    assert_eq!(strings.into_bytes(), b"\0ab\0\0");
+    assert_eq!(Strings::default().into_bytes(), [0]);
 }

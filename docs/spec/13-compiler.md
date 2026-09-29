@@ -665,7 +665,12 @@ assembler and its instruction compilers and nothing else:
   underscore, whose relocations keep a word's addend in place and an instruction's in an
   `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones; relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the
-  native backend does not write for its machine is refused (`backend.lacks`). Each
+  native backend does not write for its machine is refused (`backend.lacks`). ELF itself is
+  `vun-elf`'s: a file as data (its class, kind and machine, sections with their contents,
+  segments by what each covers, symbol and relocation tables, each machine's relocation numbers),
+  each record ELF lays out declared once with its fields' order per class, from which the file
+  is written, read and measured; `vun-object` maps an object onto it, and tests read the objects
+  and programs of other tools through it. Each
   architecture's instruction compilers take the target's variant of the C calling convention:
   on arm64, AAPCS64 or Apple's, whose C calls pack scalars on the stack at their own size.
 - **`vun-dwarf`**: debugging information (DWARF 4) as sections of an object: one compilation

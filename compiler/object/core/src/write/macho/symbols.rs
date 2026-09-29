@@ -4,8 +4,8 @@
 use vun_index::IndexVec;
 
 use super::{DEFINED, EXTERNAL, Placed, Put};
-use crate::write::Strings;
 use crate::{Binding, Object, SectionId, SymbolId, SymbolKind};
+use vun_bytes::Strings;
 
 /// The symbols as the table orders them, locals, then those defined here, then the others, and
 /// each one's number.
@@ -66,10 +66,7 @@ impl Object {
             table.extend_from_slice(&[kind, sect, 0, 0]);
             table.put64(value);
         }
-        let mut strings = strings.0;
-        if strings.is_empty() {
-            strings.push(0);
-        }
+        let mut strings = strings.into_bytes();
         strings.resize(strings.len().next_multiple_of(8), 0);
         (table, strings)
     }

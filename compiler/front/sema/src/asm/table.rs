@@ -8,13 +8,14 @@ use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_hir::db::{Exports, FileRef, Namespace, Package, PackageId};
-use vun_inline::{ClassId, FormId, Inst, Need, OpId, SizeId};
+use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Query};
 
 use super::Arch;
 use super::given::Word;
+use super::need::Needs;
 use super::spell::Mnemonic;
 use crate::env::{Env, ItemSite, Unevaluated};
 use crate::item::Site;
@@ -61,8 +62,8 @@ pub(super) struct Shape {
     /// The field of a form naming its mnemonic, where it is not its instruction's.
     pub(super) form_name: Item,
     pub(super) form_flow: Item,
-    /// The field of a form naming the feature of the target it needs, where the table has one.
-    pub(super) form_requires: Option<Item>,
+    /// How its forms say what a processor needs to have them, where they do.
+    pub(super) needs: Option<Needs>,
     pub(super) flows: [(Item, Flow); 3],
     /// The enums of widths, conditions and register classes.
     pub(super) size: Item,
@@ -130,25 +131,6 @@ impl Table {
         let variant = Members::of(form).ok().and_then(|m| m.get(shape.form_flow).ok().cloned());
         let Some(Value::Variant { name, .. }) = variant else { return Flow::Next };
         shape.flows.iter().find(|(item, _)| item.symbol() == name).map_or(Flow::Next, |&(_, f)| f)
-    }
-
-    /// The features the forms of `insts`, of `arch`, need, each with the first instruction
-    /// needing it.
-    #[must_use]
-    pub fn needs<V, P, S>(&self, arch: Arch, insts: &[Inst<V, P, S>]) -> Vec<Need> {
-        let Some(field) = arch.shape().form_requires else { return Vec::new() };
-        let mut needs: Vec<Need> = Vec::new();
-        for inst in insts {
-            let form =
-                self.ops.get(usize::from(inst.op.0)).and_then(|op| op.forms.get(usize::from(inst.form.0)));
-            let feature = form.and_then(|f| Members::of(f).ok()?.variant(field).ok().flatten());
-            if let Some(feature) = feature
-                && needs.iter().all(|n| n.feature != feature)
-            {
-                needs.push(Need { feature, at: inst.origin });
-            }
-        }
-        needs
     }
 }
 

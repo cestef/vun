@@ -6,6 +6,13 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// Arm's application profile: the exclusive accesses of two words (`ldrexd`).
 pub const application: Item = Item::new(
     &["lang", "arch", "thumb", "Feature", "application"],
 );
+/// Arm's microcontroller profile: its special registers (`mrs r0, primask`).
+pub const microcontroller: Item = Item::new(
+    &["lang", "arch", "thumb", "Feature", "microcontroller"],
+);
+/// Division in hardware, which Armv7-M has and Armv7-A leaves to the processor (`sdiv`).
+pub const divide: Item = Item::new(&["lang", "arch", "thumb", "Feature", "divide"]);

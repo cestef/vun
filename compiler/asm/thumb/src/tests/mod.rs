@@ -1,28 +1,29 @@
 //! Every form of the table, over operands covering its encodings' cases (low and high registers,
 //! `sp` and `pc`, offsets and immediates at their bounds and past them), printed and assembled by
-//! LLVM's assembler: the encoding is the one LLVM gives the printed text. Branches and symbols,
+//! LLVM's assembler for processors of each profile: each processor encodes the lines it has what
+//! they need for as the table does, read from the object it writes, and refuses each other line. Branches and symbols,
 //! whose fields are written later, are checked by `links`.
 
+mod cores;
 mod links;
 mod operands;
 
-use std::io::Write;
-use std::process::{Command, Stdio};
+use vun_isa_thumb::{Cc, Form, Halves, Kind, Need, Op, Operand, Size, Then};
 
-use vun_isa_thumb::{Cc, Feature, Form, Halves, Kind, Op, Operand, Size, Then};
+use vun_par::Parallel;
 
 use crate::{Asm, Emit};
+use cores::{CORES, Code};
 use operands::candidates;
 
 type Sym = &'static str;
 
-/// LLVM's assembler, for a core having each feature a form may need: Armv7E-M with the
-/// double-precision floating-point extension for the forms needing none, Armv7-A for its own.
-const LLVM_MC: &str = "llvm-mc";
-const CORES: [(Option<Feature>, [&str; 2]); 2] = [
-    (None, ["--triple=thumbv7em-none-eabihf", "-mcpu=cortex-m7"]),
-    (Some(Feature::Application), ["--triple=thumbv7a-none-eabihf", "-mcpu=cortex-a9"]),
-];
+/// A line of text, its encoding, and what a processor needs to have its form.
+struct Line {
+    text: String,
+    bytes: Vec<u8>,
+    needs: Vec<Need>,
+}
 
 /// Each combination of operands whose first fitting form is `form`, once each.
 fn fitting(op: Op, form: &'static Form, size: Size) -> Vec<Vec<Operand<Sym>>> {
@@ -42,42 +43,9 @@ fn linked(form: &Form) -> bool {
     form.kinds().any(|k| matches!(k, Kind::Target(_) | Kind::Low | Kind::High))
 }
 
-/// The encoding LLVM's assembler for a core having `feature` gives each line of `text`, or its
-/// errors.
-fn assemble(feature: Option<Feature>, text: &str) -> Option<Result<Vec<Vec<u8>>, String>> {
-    let (_, core) = CORES.iter().find(|(f, _)| *f == feature)?;
-    let mut child = Command::new(LLVM_MC)
-        .args(core)
-        .args(["--show-encoding", "-"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .ok()?;
-    child.stdin.take()?.write_all(text.as_bytes()).ok()?;
-    let out = child.wait_with_output().ok()?;
-    let errors = String::from_utf8_lossy(&out.stderr).into_owned();
-    if !errors.is_empty() {
-        return Some(Err(errors));
-    }
-    let encodings = String::from_utf8_lossy(&out.stdout)
-        .lines()
-        .filter_map(|line| {
-            line.split_once("encoding: [").map(|(_, bytes)| bytes.trim_end_matches(']').to_owned())
-        })
-        .map(|bytes| {
-            bytes
-                .split(',')
-                .map(|b| u8::from_str_radix(b.trim().trim_start_matches("0x"), 16).expect("a byte"))
-                .collect()
-        })
-        .collect();
-    Some(Ok(encodings))
-}
-
 /// The instructions an `it` form makes conditional, as `nop`s holding on each condition: the
 /// assembler refuses a block left short.
-fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<(String, Vec<u8>)> {
+fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<Line> {
     let (Some(Kind::Then(then)), Some(&Operand::Cond(cc))) = (form.kinds().next(), operands.first()) else {
         return Vec::new();
     };
@@ -89,25 +57,32 @@ fn conditional(form: &Form, operands: &[Operand<Sym>]) -> Vec<(String, Vec<u8>)>
     let mut nop = Asm::<Sym>::listed();
     nop.emit(Op::Nop, Size::B32, &[]);
     let bytes = nop.finish().expect("no label").bytes;
-    [cc].iter().chain(later).map(|c| (format!("nop{c}"), bytes.clone())).collect()
+    [cc].iter()
+        .chain(later)
+        .map(|c| Line { text: format!("nop{c}"), bytes: bytes.clone(), needs: Vec::new() })
+        .collect()
 }
 
-#[test]
-fn every_form_assembles_as_llvm_does() {
-    let mut lines: [Vec<(String, Vec<u8>)>; 2] = [Vec::new(), Vec::new()];
+/// A line for each combination of operands of every form taking them first, with the
+/// instructions an `it` form makes conditional.
+fn lines() -> Vec<Line> {
+    let mut lines = Vec::new();
     for &op in Op::ALL {
         for form in op.forms().iter().filter(|f| !linked(f)) {
             for sized in form.sizes {
+                let needs: Vec<Need> = [form.requires, sized.requires].into_iter().flatten().collect();
                 for operands in fitting(op, form, sized.size) {
                     let mut asm = Asm::<Sym>::listed();
                     asm.emit_by(op, form, sized.size, &operands).expect("the form takes them");
                     let code = asm.finish().expect("no label");
                     let inst = vun_isa_thumb::Inst::new(op, sized.size, &operands);
                     assert_eq!(code.bytes.len() as u64, form.bytes(), "{}", inst.by(form));
-                    let group =
-                        &mut lines[CORES.iter().position(|(f, _)| *f == form.requires).expect("a core")];
-                    group.push((inst.by(form).to_string(), code.bytes));
-                    group.extend(conditional(form, &operands));
+                    lines.push(Line {
+                        text: inst.by(form).to_string(),
+                        bytes: code.bytes,
+                        needs: needs.clone(),
+                    });
+                    lines.extend(conditional(form, &operands));
                 }
             }
         }
@@ -117,23 +92,59 @@ fn every_form_assembles_as_llvm_does() {
             "{op:?} has a form no operand fits"
         );
     }
-    for ((feature, _), lines) in CORES.iter().zip(&lines) {
-        let text: String = lines.iter().flat_map(|(line, _)| [line.as_str(), "\n"]).collect();
-        let Some(assembled) = assemble(*feature, &text) else { return };
-        let encodings = assembled.unwrap_or_else(|errors| panic!("LLVM refuses the text:\n{errors}"));
-        assert_eq!(encodings.len(), lines.len());
-        let differ: Vec<String> = lines
-            .iter()
-            .zip(&encodings)
-            .filter(|((_, ours), theirs)| ours != *theirs)
-            .map(|((line, ours), theirs)| format!("{line}  |  ours {ours:02x?}, LLVM's {theirs:02x?}"))
-            .collect();
+    lines
+}
+
+/// The lines of `taken` whose encodings differ from those `code` holds in order, with both.
+fn differing(taken: &[&Line], code: &[u8]) -> Vec<String> {
+    let mut at = 0;
+    let mut differ = Vec::new();
+    for line in taken {
+        let theirs = code.get(at..at + line.bytes.len()).unwrap_or_default();
+        if theirs != line.bytes {
+            differ.push(format!("{}  |  ours {:02x?}, LLVM's {theirs:02x?}", line.text, line.bytes));
+        }
+        at += line.bytes.len();
+    }
+    differ
+}
+
+#[test]
+fn every_form_assembles_as_llvm_does_where_a_processor_has_what_it_needs() {
+    let lines = lines();
+    for line in &lines {
+        assert!(CORES.iter().any(|core| core.takes(line)), "no processor has what {} needs", line.text);
+    }
+    for core in &CORES {
+        let (taken, lacking): (Vec<&Line>, Vec<&Line>) = lines.iter().partition(|line| core.takes(line));
+        let code = match core.code(&taken) {
+            None => return,
+            Some(Code::Encoded(code)) => code,
+            // Refused together, each line refused alone is named.
+            Some(Code::Refused) => {
+                let refused = taken
+                    .par_map(|line| (core.code(&[line]) == Some(Code::Refused)).then(|| line.text.clone()));
+                let refused: Vec<String> = refused.into_iter().flatten().collect();
+                panic!("{:?} refuses what it has what it needs for:\n{}", core.llvm.args, refused.join("\n"))
+            }
+        };
+        let differ = differing(&taken, &code);
         assert!(
-            differ.is_empty(),
-            "{} of {} differ:\n{}",
+            differ.is_empty() && code.len() == taken.iter().map(|l| l.bytes.len()).sum::<usize>(),
+            "{:?}: {} of {} differ:\n{}",
+            core.llvm.args,
             differ.len(),
-            lines.len(),
+            taken.len(),
             differ.iter().take(60).cloned().collect::<Vec<_>>().join("\n")
+        );
+        let taken_alone = lacking
+            .par_map(|line| matches!(core.code(&[line]), Some(Code::Encoded(_))).then(|| line.text.clone()));
+        let taken_alone: Vec<String> = taken_alone.into_iter().flatten().collect();
+        assert!(
+            taken_alone.is_empty(),
+            "{:?} takes what it lacks something for:\n{}",
+            core.llvm.args,
+            taken_alone.iter().take(60).cloned().collect::<Vec<_>>().join("\n")
         );
     }
 }

@@ -53,7 +53,7 @@ pub(super) fn candidates(kind: Kind) -> Vec<Operand<Sym>> {
         Kind::Mem(..) => mems(),
         Kind::Cond | Kind::Then(_) => CCS.map(Operand::Cond).to_vec(),
         Kind::List(_) => lists(),
-        Kind::Special => Special::ALL.map(Operand::Special).to_vec(),
+        Kind::Special(_) => Special::ALL.map(Operand::Special).to_vec(),
         Kind::Status(_) => Status::ALL.map(Operand::Status).to_vec(),
         Kind::Mask => Mask::ALL.map(Operand::Mask).to_vec(),
         Kind::Barrier => Barrier::ALL.map(Operand::Barrier).to_vec(),

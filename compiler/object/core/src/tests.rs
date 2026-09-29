@@ -106,9 +106,14 @@ fn macho_relocations_keep_addends_in_place_or_before_their_instruction() {
 
 #[test]
 fn an_elf_object_keeps_its_addends_in_its_relocations() {
-    let bytes = object(Format::Elf).write();
-    assert_eq!(&bytes[..4], b"\x7fELF");
-    assert!(!bytes.windows(2).any(|w| w == b"_f"), "ELF names symbols as they are");
+    let file = vun_elf::File::read(&object(Format::Elf).write()).unwrap();
+    let symbols = file.symbols().unwrap();
+    assert!(symbols.iter().any(|s| s.name == b"f"), "ELF names symbols as they are");
+    let relocations = vun_elf::Rela::read(file.class, file.section(b".rela.data").unwrap()).unwrap();
+    let [address] = relocations.as_slice() else { panic!("one relocation of the datum") };
+    assert_eq!((address.offset, address.addend), (8, 4));
+    let named = &symbols[usize::try_from(address.symbol - 1).unwrap()];
+    assert_eq!(named.name, b"f");
 }
 
 /// Thumb code at `start`: `movw r0` and `movt r0` of `d`'s address, `bl f`, `beq.w f`, `b.w f`,
@@ -153,55 +158,30 @@ fn thumb() -> Object {
 
 #[test]
 fn a_thumb_object_is_elf32_for_eabi5_with_hard_floats() {
-    let bytes = thumb().write();
-    assert_eq!(bytes[4], 1, "ELFCLASS32");
-    assert_eq!(u16::from_le_bytes([bytes[18], bytes[19]]), 40, "EM_ARM");
-    assert_eq!(u32_at(&bytes, 36), 0x0500_0400, "EABI 5, hard floats");
-    assert_eq!(u16::from_le_bytes([bytes[40], bytes[41]]), 52, "its header");
-    assert_eq!(u16::from_le_bytes([bytes[46], bytes[47]]), 40, "a section header");
+    let file = vun_elf::File::read(&thumb().write()).unwrap();
+    assert_eq!((file.class, file.machine), (vun_elf::Class::Elf32, vun_elf::Machine::Arm));
+    assert_eq!(file.flags, vun_elf::arm::EABI5 | vun_elf::arm::FloatAbi::Hard.number());
+    assert!(file.section(b".ARM.attributes").is_some());
 }
 
-/// The words of `program` at `symbol`'s address, as `llvm-readelf` and the file's program headers
-/// place them: none where the tools are missing.
-fn linked(name: &str, object: &Object) -> Option<Vec<u8>> {
+/// The program `ld.lld` links of `object`: none where it is missing.
+fn linked(name: &str, object: &Object) -> Option<vun_elf::File> {
     let dir = vun_fs::Scratch::new(name);
     let (input, output) = (dir.path().join("a.o"), dir.path().join("a"));
     std::fs::write(&input, object.write()).unwrap();
     let linked = std::process::Command::new("ld.lld").arg(&input).arg("-o").arg(&output).status().ok()?;
     assert!(linked.success(), "ld.lld links the object");
-    Some(std::fs::read(output).unwrap())
+    Some(vun_elf::File::read(&std::fs::read(output).unwrap()).unwrap())
 }
 
-/// The file offset of the loaded address `at` in the 32-bit ELF executable `file`.
-fn offset_of(file: &[u8], at: u32) -> usize {
-    let (phoff, phnum) = (u32_at(file, 28) as usize, u16::from_le_bytes([file[44], file[45]]));
-    (0..usize::from(phnum))
-        .map(|k| phoff + k * 32)
-        .find_map(|p| {
-            let (offset, vaddr, size) = (u32_at(file, p + 4), u32_at(file, p + 8), u32_at(file, p + 16));
-            (u32_at(file, p) == 1 && (vaddr..vaddr + size).contains(&at))
-                .then_some((offset + at - vaddr) as usize)
-        })
-        .expect("the address is loaded")
+/// The value of the symbol `name` in `file`, a 32-bit program.
+fn value_of(file: &vun_elf::File, name: &[u8]) -> u32 {
+    u32::try_from(file.symbol(name).unwrap().expect("the symbol").value).unwrap()
 }
 
-/// The value of the symbol `name` in the 32-bit ELF `file`.
-fn value_of(file: &[u8], name: &[u8]) -> u32 {
-    let (shoff, shnum) = (u32_at(file, 32) as usize, u16::from_le_bytes([file[48], file[49]]));
-    let section = |k: usize| shoff + k * 40;
-    let symtab =
-        (0..usize::from(shnum)).map(section).find(|&s| u32_at(file, s + 4) == 2).expect("a symbol table");
-    let strtab = section(u32_at(file, symtab + 24) as usize);
-    let (symbols, strings) = (u32_at(file, symtab + 16) as usize, u32_at(file, strtab + 16) as usize);
-    let count = u32_at(file, symtab + 20) as usize / 16;
-    (0..count)
-        .map(|k| symbols + k * 16)
-        .find(|&s| {
-            let at = strings + u32_at(file, s) as usize;
-            file[at..].split(|&b| b == 0).next() == Some(name)
-        })
-        .map(|s| u32_at(file, s + 4))
-        .expect("the symbol")
+/// The 32-bit word loaded at `at` in `file`.
+fn word_at(file: &vun_elf::File, at: u32) -> u32 {
+    u32_at(file.loaded(u64::from(at)).expect("the address is loaded"), 0)
 }
 
 #[test]
@@ -210,8 +190,8 @@ fn ld_lld_resolves_thumb_relocations_with_their_addends_beside_them() {
     let (start, f, d) = (value_of(&file, b"_start"), value_of(&file, b"f"), value_of(&file, b"d"));
     assert_eq!((start & 1, f & 1), (1, 1), "Thumb functions have bit 0 set once linked");
     let halves = |at: u32, n: usize| -> Vec<u16> {
-        let from = offset_of(&file, at);
-        (0..n).map(|k| u16::from_le_bytes([file[from + 2 * k], file[from + 2 * k + 1]])).collect()
+        let bytes = file.loaded(u64::from(at)).expect("the code is loaded");
+        (0..n).map(|k| u16::from_le_bytes([bytes[2 * k], bytes[2 * k + 1]])).collect()
     };
     let code = halves(start & !1, 10);
     // `movw`/`movt`: imm16 = imm4:i:imm3:imm8 across the two halfwords.
@@ -239,7 +219,6 @@ fn ld_lld_resolves_thumb_relocations_with_their_addends_beside_them() {
     assert_eq!(target(base + 8, wide(code[4], code[5])), f & !1, "bl");
     assert_eq!(target(base + 12, conditional(code[6], code[7])), f & !1, "beq.w");
     assert_eq!(target(base + 16, wide(code[8], code[9])), f & !1, "b.w");
-    let words = offset_of(&file, d);
-    assert_eq!(u32_at(&file, words), f, "the address of a Thumb function, bit 0 set");
-    assert_eq!(u32_at(&file, words + 4), f.wrapping_sub(d + 4), "its distance from the field");
+    assert_eq!(word_at(&file, d), f, "the address of a Thumb function, bit 0 set");
+    assert_eq!(word_at(&file, d + 4), f.wrapping_sub(d + 4), "its distance from the field");
 }

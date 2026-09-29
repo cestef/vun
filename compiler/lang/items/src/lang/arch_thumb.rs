@@ -50,16 +50,19 @@ pub const Barrier: Item = Item::new(&["lang", "arch", "thumb", "Barrier"]);
 pub const Choice: Item = Item::new(&["lang", "arch", "thumb", "Choice"]);
 /// What a form does with an operand, or with the flags.
 pub const Access: Item = Item::new(&["lang", "arch", "thumb", "Access"]);
-/// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`): Arm's
-/// application profile has instructions Armv7-M lacks (`ldrexd`).
+/// What a processor has of Thumb beyond what every one has (`lang.target.Spec.features`).
 pub const Feature: Item = Item::new(&["lang", "arch", "thumb", "Feature"]);
+/// What a form, or a width of it, needs of a processor beyond Thumb: a feature, or a
+/// floating-point unit computing floats of a width (`lang.target.Spec.floats`).
+pub const Need: Item = Item::new(&["lang", "arch", "thumb", "Need"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "thumb", "Flow"]);
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 pub const Arg: Item = Item::new(&["lang", "arch", "thumb", "Arg"]);
-/// A width a form is defined at, the bits it sets in the word, and the qualifiers written after
-/// the mnemonic, each after a `.` (`vcvt.s32.f32`).
+/// A width a form is defined at, the bits it sets in the word, the qualifiers written after the
+/// mnemonic, each after a `.` (`vcvt.s32.f32`), and what the form needs at this width beyond what
+/// it needs at every one.
 pub const Sized: Item = Item::new(&["lang", "arch", "thumb", "Sized"]);
 /// The qualifier naming the width of a form's encoding, after the mnemonic's `.`: `n` a 16-bit
 /// form, `w` a 32-bit one. A mnemonic written without it takes the first form its operands fit.

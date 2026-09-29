@@ -1,9 +1,10 @@
 //! macOS.
 
-/// Apple silicon (64-bit ARM).
+/// Apple silicon (64-bit ARM), Armv8.5 and later.
 arm64 := lang.target.Spec{
     .arch = .arm64,
     .isa = .arm64,
+    .features = &[.lse],
     .cpu = .generic,
     .os = .macos,
     .abi = .darwin,

@@ -3,6 +3,7 @@
 
 _t := lang.arch.thumb;
 
+_divide: ?_t.Need = .some(.feature(.divide));
 _d_w: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .write };
 _d_rw: _t.Arg = .{ .kind = .gpr(.general), .at = 8, .access = .read_write };
 _n: _t.Arg = .{ .kind = .gpr(.general), .at = 16, .access = .read };
@@ -35,8 +36,8 @@ long_add := _t.Family{
 };
 
 /// Division rounding toward zero; a division by zero gives zero.
-sdiv := _t.Instruction{ .forms = &[.{ .base = 0xfb90f0f0, .args = &[_d_w, _n, _m] }] };
-udiv := _t.Instruction{ .forms = &[.{ .base = 0xfbb0f0f0, .args = &[_d_w, _n, _m] }] };
+sdiv := _t.Instruction{ .forms = &[.{ .base = 0xfb90f0f0, .args = &[_d_w, _n, _m], .requires = _divide }] };
+udiv := _t.Instruction{ .forms = &[.{ .base = 0xfbb0f0f0, .args = &[_d_w, _n, _m], .requires = _divide }] };
 
 /// A 16-bit product into its second operand, setting the flags.
 muls := _t.Instruction{ .forms = &[

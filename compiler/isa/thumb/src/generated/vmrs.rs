@@ -17,5 +17,6 @@ pub(super) const VMRS: [table::Form; 1usize] = [
                 ),
             ],
         )
+        .requires(table::Need::Float(reg::Size::B32))
         .flags(table::Access::Write),
 ];

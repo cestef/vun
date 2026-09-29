@@ -8,19 +8,27 @@ mod kind;
 mod mem;
 mod syntax;
 
-pub use crate::generated::{Branch, Encoding, Fields, List, Mode, Op, Place, Regs, Then};
+pub use crate::generated::{Branch, Encoding, Feature, Fields, List, Mode, Op, Place, Regs, Then};
 pub use imm::Imm;
-pub use kind::{Kind, Width};
-pub use vun_isa::word::{Access, Feature};
+pub use kind::{Kind, Specials, Width};
+pub use vun_isa::word::Access;
 
 use crate::operand::Operand;
 use crate::reg::{Reg, Size};
 
 /// A form of an instruction: its base encoding, the widths it is defined at with the bits each
 /// sets, its operands with the bit each field starts at, and what it reads and writes beyond them.
-pub type Form = vun_isa::word::Form<Kind, Size, Reg>;
+pub type Form = vun_isa::word::Form<Kind, Size, Reg, Need>;
 pub type Arg = vun_isa::word::Arg<Kind>;
-pub type Sized = vun_isa::word::Sized<Size>;
+pub type Sized = vun_isa::word::Sized<Size, Need>;
+
+/// What a form, or a width of it, needs of a processor beyond Thumb: a feature, or a
+/// floating-point unit computing floats of a width.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Need {
+    Feature(Feature),
+    Float(Size),
+}
 
 /// The widest halfword a 16-bit encoding is: every 32-bit one's first halfword is above it.
 const NARROW: u32 = 0xffff;

@@ -4,37 +4,47 @@ use crate::{reg, table};
 /// moves into the processor's.
 pub(super) const VCMP: [table::Form; 2usize] = [
     table::Form::new(
-        0xeeb4_0a40,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32"]),
-            table::Sized::new(reg::Size::B64, 0x0000_0100).qualifiers(&["f64"]),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::D),
-                0,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::M),
-                0,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0xeeb4_0a40,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32"]),
+                table::Sized::new(reg::Size::B64, 0x0000_0100)
+                    .qualifiers(&["f64"])
+                    .requires(table::Need::Float(reg::Size::B64)),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::D),
+                    0,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::M),
+                    0,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .requires(table::Need::Float(reg::Size::B32)),
     table::Form::new(
-        0xeeb5_0a40,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32"]),
-            table::Sized::new(reg::Size::B64, 0x0000_0100).qualifiers(&["f64"]),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Fpr(table::Width::Inst, table::Fields::D),
-                0,
-                table::Access::Read,
-            ),
-            table::Arg::new(table::Kind::Imm(table::Imm::Zero), 0, table::Access::Read),
-        ],
-    ),
+            0xeeb5_0a40,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000).qualifiers(&["f32"]),
+                table::Sized::new(reg::Size::B64, 0x0000_0100)
+                    .qualifiers(&["f64"])
+                    .requires(table::Need::Float(reg::Size::B64)),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Fpr(table::Width::Inst, table::Fields::D),
+                    0,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Imm(table::Imm::Zero),
+                    0,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .requires(table::Need::Float(reg::Size::B32)),
 ];

@@ -31,5 +31,5 @@ pub(super) const STREXD: [table::Form; 1usize] = [
             ],
         )
         .apart(&[[0, 1], [0, 2], [0, 3]])
-        .requires(table::Feature::Application),
+        .requires(table::Need::Feature(table::Feature::Application)),
 ];

@@ -6,7 +6,7 @@
 
 mod kind;
 
-pub use crate::generated::Op;
+pub use crate::generated::{Feature, Op};
 pub(crate) use kind::{ARITH_BITS, HALF_BITS};
 pub use kind::{Branch, Cond, Imm, Kind, Mode, R31, Shifts, Width};
 pub use vun_isa::word::Access;
@@ -16,9 +16,15 @@ use crate::reg::{Reg, Size};
 
 /// A form of an instruction: its base word, the widths it is defined at with the bits each sets,
 /// its operands with the bit each field starts at, and what it reads and writes beyond them.
-pub type Form = vun_isa::word::Form<Kind, Size, Reg>;
+pub type Form = vun_isa::word::Form<Kind, Size, Reg, Need>;
 pub type Arg = vun_isa::word::Arg<Kind>;
-pub type Sized = vun_isa::word::Sized<Size>;
+pub type Sized = vun_isa::word::Sized<Size, Need>;
+
+/// What a form needs of a processor beyond Armv8.0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Need {
+    Feature(Feature),
+}
 
 impl Op {
     /// The first form taking `operands` at `size`, and the word it encodes them to.
