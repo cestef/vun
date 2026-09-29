@@ -2,9 +2,9 @@
 //! of atomic operations, the frame and the terminators are written here.
 
 mod atomic;
-mod call;
 mod carry;
 mod entry;
+mod frames;
 mod memory;
 mod select;
 mod term;
@@ -13,7 +13,7 @@ use vun_asm_arm64::{Reg, Size};
 use vun_backend::{Lack, Missing};
 use vun_codegen::snippet::Args;
 use vun_codegen::{Cx, Isel, Needs};
-use vun_lir::{Block, Cond, Function, Inst, Scalar, Value};
+use vun_lir::{Block, Cond, Function, Inst, Value};
 
 use vun_abi::Convention;
 
@@ -22,7 +22,7 @@ use super::{Arm, condition};
 use select::{Look, Selection};
 use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
-use vun_native::select::Selects;
+use vun_native::select::{Frames, Selects, Terminates};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -129,7 +129,7 @@ impl Isel for Arm {
     }
 
     fn entry(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {
-        Sel(cx).entry();
+        Self::receive_params(cx);
         Ok(())
     }
 
@@ -138,7 +138,7 @@ impl Isel for Arm {
     }
 
     fn terminate(cx: &mut Cx<'_, Self>, block: Block) -> Result<(), Lack> {
-        Sel(cx).terminate(block)
+        Self::close(cx, block)
     }
 
     fn finish(cx: &mut Cx<'_, Self>, frame: u64) {
@@ -163,7 +163,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            Selection::Call { callee, args } => self.call(callee, args, out)?,
+            Selection::Call { callee, args } => Arm::call(self.0, callee, args, out)?,
             Selection::Rmw { op, addr, value, size } => self.rmw(op, addr, value, out, size),
             Selection::CompareExchange { addr, expected, new, size } => {
                 self.compare_exchange(addr, expected, new, out, size);
@@ -174,14 +174,5 @@ impl<'a> Sel<'_, 'a> {
             Selection::Homed { .. } => return Err(self.lack(Missing::Wider(16))),
         }
         Ok(())
-    }
-
-    /// The size of an integer, address or float value, or what the backend lacks for it.
-    fn size(&self, v: Value) -> Result<Size, Lack> {
-        self.look().size(v)
-    }
-
-    fn size_of(&self, scalar: Scalar) -> Result<Size, Lack> {
-        self.look().size_of(scalar)
     }
 }

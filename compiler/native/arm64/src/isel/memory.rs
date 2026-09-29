@@ -9,6 +9,7 @@ use vun_lir::Value;
 use super::Sel;
 use crate::Arm;
 use crate::asm::AsmExt;
+use vun_native::select::Carries;
 
 /// Copies up to this many bytes move through a register, larger ones in a loop.
 pub(super) const UNROLLED: u64 = 128;
@@ -20,7 +21,7 @@ impl Sel<'_, '_> {
     pub(super) fn copy(&mut self, to: Value, from: Value, bytes: u64) {
         if bytes <= UNROLLED {
             let (to, from) = (self.reg(to), self.reg(from));
-            self.copy_bytes(to, from, bytes, Arm::CARRIER);
+            Arm::copy_bytes(self.0, to, from, bytes, Arm::CARRIER);
             return;
         }
         let (dst, src, left) = (self.scratch(), self.scratch(), self.scratch());
@@ -36,6 +37,6 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Str, Size::B64, &[Arm::CARRIER.into(), written.into()]);
         self.asm.emit(Op::Subs, Size::B64, &[left.into(), left.into(), Operand::Imm(1)]);
         self.asm.emit(Op::Bcond, Size::B64, &[Cc::Ne.into(), again.into()]);
-        self.copy_bytes(dst, src, bytes % STEP, Arm::CARRIER);
+        Arm::copy_bytes(self.0, dst, src, bytes % STEP, Arm::CARRIER);
     }
 }

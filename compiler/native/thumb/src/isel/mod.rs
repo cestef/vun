@@ -2,10 +2,10 @@
 //! of atomic operations, the frame and the terminators are written here.
 
 mod atomic;
-mod call;
 mod carry;
 mod double;
 mod entry;
+mod frames;
 mod memory;
 mod select;
 mod term;
@@ -23,7 +23,7 @@ use super::{Flags, Thumb2};
 use select::{Look, Selection};
 use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
-use vun_native::select::Selects;
+use vun_native::select::{Frames, Selects, Terminates};
 
 /// What the instruction compilers keep for one function.
 pub struct State {
@@ -134,7 +134,7 @@ impl Isel for Thumb2 {
     }
 
     fn entry(cx: &mut Cx<'_, Self>) -> Result<(), Lack> {
-        Sel(cx).entry();
+        Self::receive_params(cx);
         Ok(())
     }
 
@@ -143,7 +143,7 @@ impl Isel for Thumb2 {
     }
 
     fn terminate(cx: &mut Cx<'_, Self>, block: Block) -> Result<(), Lack> {
-        Sel(cx).terminate(block)
+        Self::close(cx, block)
     }
 
     fn finish(cx: &mut Cx<'_, Self>, frame: u64) {
@@ -163,7 +163,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            Selection::Call { callee, args } => self.call(callee, args, out)?,
+            Selection::Call { callee, args } => Thumb2::call(self.0, callee, args, out)?,
             Selection::Rmw { op, addr, value, .. } => self.rmw(op, addr, value, out),
             Selection::CompareExchange { addr, expected, new, .. } => {
                 self.compare_exchange(addr, expected, new, out);

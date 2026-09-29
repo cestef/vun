@@ -1,15 +1,67 @@
 //! Values between where they are held, general registers and memory, and the carriers a
-//! convention passes them in: a general register as it is, a floating-point register by its bits.
+//! convention passes them in: a general register as it is, a floating-point register by its
+//! bits; and the accesses the shared carriers are written with (`Carries`).
 
-use vun_asm_arm64::{Emit, Op, Operand, Reg, Shift, ShiftKind, Size};
-use vun_codegen::{Arch, pieces};
-use vun_lir::Value;
+use vun_asm_arm64::{Emit, Op, Operand, Reg, Shift, ShiftKind, Size, V};
+use vun_codegen::{Arch, Cx};
+use vun_lir::{Ext, Value};
+use vun_native::select::{Carries, Way};
+use vun_native::width::{part, size_of};
 
 use super::Sel;
 use crate::abi::Carrier;
 use crate::asm::{AsmExt, OpExt};
 use crate::{Arm, FAR, Opnd};
-use vun_native::width::{part, size_of};
+
+impl Carries for Arm {
+    const PIECES: &'static [Size] = &Size::WIDEST;
+    const FAR: Reg = FAR;
+
+    fn piece_bytes(size: Size) -> u64 {
+        u64::from(size.bytes())
+    }
+
+    fn access(cx: &mut Cx<'_, Self>, way: Way, size: Size, reg: Reg, base: Reg, disp: i64) {
+        cx.asm.access(Self::op(way), size, reg.into(), base, disp, FAR);
+    }
+
+    fn reaches(way: Way, size: Size, reg: Reg, base: Reg, disp: i64) -> bool {
+        Self::op(way).reaches(size, reg.into(), base, disp)
+    }
+
+    fn float_access(cx: &mut Cx<'_, Self>, way: Way, x: V, bytes: u64, base: Reg, disp: i64) {
+        cx.asm.access(Self::op(way), part(bytes), x.into(), base, disp, FAR);
+    }
+
+    fn clear(cx: &mut Cx<'_, Self>, r: Reg) {
+        cx.asm.emit(Op::Mov, Size::B64, &[r.into(), Reg::Zr.into()]);
+    }
+
+    fn or_piece(cx: &mut Cx<'_, Self>, dst: Reg, piece: Reg, at: i64) {
+        let amount = u8::try_from(at * 8).expect("under 8 bytes");
+        let shifted =
+            if at == 0 { piece.into() } else { Opnd::Shifted(piece, Shift { kind: ShiftKind::Lsl, amount }) };
+        cx.asm.emit(Op::Orr, Size::B64, &[dst.into(), dst.into(), shifted]);
+    }
+
+    fn piece_of(cx: &mut Cx<'_, Self>, dst: Reg, src: Reg, at: i64) {
+        cx.asm.emit(Op::Lsr, Size::B64, &[dst.into(), src.into(), Operand::Imm(at * 8)]);
+    }
+
+    fn offset(cx: &mut Cx<'_, Self>, dst: Reg, base: Reg, disp: i64) {
+        cx.asm.offset(dst, base, disp);
+    }
+}
+
+impl Arm {
+    /// The access moving a register `way`.
+    const fn op(way: Way) -> Op {
+        match way {
+            Way::Load => Op::Ldr,
+            Way::Store => Op::Str,
+        }
+    }
+}
 
 impl Sel<'_, '_> {
     /// The bytes of `v` in a register.
@@ -36,80 +88,15 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Fmov, size, &[d.into(), x.into()]);
     }
 
-    /// Loads the `bytes` bytes `disp` past `base` into `carrier`.
-    pub(super) fn load_part(&mut self, carrier: Carrier, base: Reg, disp: i64, bytes: u64) {
-        match carrier {
-            Carrier::Int(r) => self.load_bytes(r, base, disp, bytes),
-            Carrier::Float(x) => self.asm.access(Op::Ldr, part(bytes), x.into(), base, disp, FAR),
-        }
-    }
-
-    /// Stores the low `bytes` bytes `carrier` holds `disp` past `base`.
-    pub(super) fn store_part(&mut self, base: Reg, disp: i64, carrier: Carrier, bytes: u64) {
-        match carrier {
-            Carrier::Int(r) => self.store_bytes(base, disp, r, bytes),
-            Carrier::Float(x) => self.asm.access(Op::Str, part(bytes), x.into(), base, disp, FAR),
-        }
-    }
-
-    /// Loads `bytes` (1 to 8) bytes `disp` past `base` into `dst`, in pieces a load can take.
-    fn load_bytes(&mut self, dst: Reg, base: Reg, disp: i64, bytes: u64) {
-        if let Some(size) = Size::of_bytes(bytes) {
-            self.asm.access(Op::Ldr, size, dst.into(), base, disp, FAR);
-            return;
-        }
-        self.asm.emit(Op::Mov, Size::B64, &[dst.into(), Reg::Zr.into()]);
-        for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
-            self.asm.access(Op::Ldr, size, Arm::TEMP.into(), base, disp + at, FAR);
-            let shifted = Opnd::Shifted(Arm::TEMP, Shift { kind: ShiftKind::Lsl, amount: byte_shift(at) });
-            let piece = if at == 0 { Arm::TEMP.into() } else { shifted };
-            self.asm.emit(Op::Orr, Size::B64, &[dst.into(), dst.into(), piece]);
-        }
-    }
-
-    /// Stores the low `bytes` (1 to 8) bytes of `src` `disp` past `base`.
-    fn store_bytes(&mut self, base: Reg, disp: i64, src: Reg, bytes: u64) {
-        if let Some(size) = Size::of_bytes(bytes) {
-            self.asm.access(Op::Str, size, src.into(), base, disp, FAR);
-            return;
-        }
-        for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
-            let piece = if at == 0 {
-                src
-            } else {
-                let amount = Operand::Imm(i64::from(byte_shift(at)));
-                self.asm.emit(Op::Lsr, Size::B64, &[Arm::TEMP.into(), src.into(), amount]);
-                Arm::TEMP
+    /// Extends an integer of `size` in `r` to 32 bits, as the C convention expects of callers
+    /// and callees on some systems.
+    pub(super) fn extend(&mut self, r: Reg, size: Size, ext: Ext) {
+        if size < Size::B32 {
+            let op = match ext {
+                Ext::Zero => Op::Uxt,
+                Ext::Sign => Op::Sxt,
             };
-            self.asm.access(Op::Str, size, piece.into(), base, disp + at, FAR);
+            self.asm.emit(op, size, &[r.into(), r.into()]);
         }
     }
-
-    /// Copies `bytes` bytes from `from` to `to`, both registers holding addresses, through `via`,
-    /// largest pieces first. A piece past what an access reaches moves both addresses up to it
-    /// rather than building its offset, so no register but these is written, and `via` may be
-    /// [`FAR`]; both addresses are as they were after.
-    pub(super) fn copy_bytes(&mut self, to: Reg, from: Reg, bytes: u64, via: Reg) {
-        let mut moved = 0;
-        for (size, at) in pieces(bytes, &Size::WIDEST, |s| u64::from(s.bytes())) {
-            let disp = at - moved;
-            if !Op::Ldr.reaches(size, via.into(), from, disp) || !Op::Str.reaches(size, via.into(), to, disp)
-            {
-                self.asm.offset(from, from, at - moved);
-                self.asm.offset(to, to, at - moved);
-                moved = at;
-            }
-            self.asm.access(Op::Ldr, size, via.into(), from, at - moved, FAR);
-            self.asm.access(Op::Str, size, via.into(), to, at - moved, FAR);
-        }
-        if moved != 0 {
-            self.asm.offset(from, from, -moved);
-            self.asm.offset(to, to, -moved);
-        }
-    }
-}
-
-/// The shift bringing a piece at byte `at` into place.
-fn byte_shift(at: i64) -> u8 {
-    u8::try_from(at * 8).expect("under 8 bytes")
 }

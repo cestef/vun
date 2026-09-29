@@ -9,6 +9,7 @@ use vun_lir::Value;
 use super::Sel;
 use crate::Thumb2;
 use crate::asm::AsmExt;
+use vun_native::select::Carries;
 use vun_native::width::offset_of;
 
 /// Copies up to this many bytes move through a register, larger ones in a loop.
@@ -21,7 +22,7 @@ impl Sel<'_, '_> {
     pub(super) fn copy(&mut self, to: Value, from: Value, bytes: u64) {
         if bytes <= UNROLLED {
             let (to, from) = (self.reg(to), self.reg(from));
-            self.copy_bytes(to, from, bytes, Thumb2::CARRIER);
+            Thumb2::copy_bytes(self.0, to, from, bytes, Thumb2::CARRIER);
             return;
         }
         let (dst, src, left) = (self.scratch(), self.scratch(), self.scratch());
@@ -36,6 +37,6 @@ impl Sel<'_, '_> {
         self.asm.emit(Op::Str, Size::B32, &[Thumb2::CARRIER.into(), written.into()]);
         self.asm.emit(Op::Subs, Size::B32, &[left.into(), left.into(), Operand::Imm(1)]);
         self.asm.emit(Op::Bcond, Size::B32, &[Cc::Ne.into(), again.into()]);
-        self.copy_bytes(dst, src, bytes % STEP, Thumb2::CARRIER);
+        Thumb2::copy_bytes(self.0, dst, src, bytes % STEP, Thumb2::CARRIER);
     }
 }

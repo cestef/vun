@@ -1,9 +1,17 @@
 //! What the instruction compilers of load and store architectures share: how an instruction is
 //! compiled, decided once as a [`Selection`], and what each instruction, terminator and the entry
 //! needs of the plan, read from that decision (`needs`), so that what the plan provides and what
-//! is emitted agree.
+//! is emitted agree; and calls, parameters and returns over the instructions each architecture
+//! writes ([`Frames`]).
 
+mod carry;
+mod frames;
 mod needs;
+mod term;
+
+pub use carry::{Carries, Way};
+pub use frames::Frames;
+pub use term::Terminates;
 
 use vun_abi::{Carrier, Convention, Passing};
 use vun_backend::Lack;
