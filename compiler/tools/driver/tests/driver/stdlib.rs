@@ -162,8 +162,8 @@ fn print_runs_at_compile_time_through_any_writer() {
         "\
 Count := struct { n: usize };
 #[impl(std.fmt.Writer(Count))]
-CountWriter := struct {
-    Error := ();
+count_writer := struct {
+    Error: type = ();
     closed: () = ();
     write := (self: &mut Count, bytes: &[u8]) -> Result(usize, ()) {
         self.n = (self.n + bytes.len()).sat(usize);

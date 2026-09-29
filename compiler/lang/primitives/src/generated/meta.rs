@@ -15,6 +15,8 @@ pub enum Meta {
     /// The bytes of the file at `path`, from the directory of the file calling, in its package
     /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
     embed,
+    /// Whether the namespace `inner` is `outer` or nested in it.
+    inside,
     /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
     /// the same arguments, one name.
     same,
@@ -69,6 +71,7 @@ impl Meta {
         Self::origin,
         Self::witness,
         Self::embed,
+        Self::inside,
         Self::same,
         Self::Any,
         Self::any,
@@ -99,6 +102,7 @@ impl Meta {
             Self::origin => "origin",
             Self::witness => "witness",
             Self::embed => "embed",
+            Self::inside => "inside",
             Self::same => "same",
             Self::Any => "Any",
             Self::any => "any",
@@ -130,6 +134,7 @@ impl Meta {
             Self::origin => vun_items::lang::meta::origin,
             Self::witness => vun_items::lang::meta::witness,
             Self::embed => vun_items::lang::meta::embed,
+            Self::inside => vun_items::lang::meta::inside,
             Self::same => vun_items::lang::meta::same,
             Self::Any => vun_items::lang::meta::Any,
             Self::any => vun_items::lang::meta::any,

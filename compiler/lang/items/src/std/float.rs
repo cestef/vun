@@ -6,4 +6,4 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const FloatMethods: Item = Item::new(&["std", "float", "FloatMethods"]);
+pub const float_methods: Item = Item::new(&["std", "float", "float_methods"]);

@@ -71,10 +71,10 @@ pub const System: Item = Item::new(&["std", "os", "System"]);
 /// one: each the bytes the system passed, without the zero that ends it there.
 pub const Args: Item = Item::new(&["std", "os", "Args"]);
 /// Each argument in order: `for arg in sys.args()`.
-pub const ArgsIterate: Item = Item::new(&["std", "os", "ArgsIterate"]);
+pub const args_iterate: Item = Item::new(&["std", "os", "args_iterate"]);
 /// A byte stream the system holds open: standard output, a file, a socket.
 pub const Stream: Item = Item::new(&["std", "os", "Stream"]);
-pub const StreamWriter: Item = Item::new(&["std", "os", "StreamWriter"]);
+pub const stream_writer: Item = Item::new(&["std", "os", "stream_writer"]);
 /// A program's `main`, which a runtime calls with the one `System`.
 pub const Main: Item = Item::new(&["std", "os", "Main"]);
 /// A hosted runtime: the system and ABI of the targets it serves, and the function making a

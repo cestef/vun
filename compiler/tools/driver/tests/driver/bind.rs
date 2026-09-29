@@ -42,18 +42,20 @@ fn bindings_check_and_lay_structs_out_as_c_does() {
         [
             ("value", &Reason::Bytes(Bytes::Union)),
             ("log_line", &Reason::Variadic),
-            ("frame_size", &Reason::Unsupported(Unsupported::Opaque("frame".to_owned()))),
+            ("frame_size", &Reason::Unsupported(Unsupported::Opaque("Frame".to_owned()))),
         ]
     );
     // Sizes as C computes them for x86_64 Linux, which the layout of each binding must equal.
     let sizes = "
-point_size: Int(std.meta.size(point)..=std.meta.size(point)) = 16;
-color_size: Int(std.meta.size(color_t)..=std.meta.size(color_t)) = 3;
-frame_size_is: Int(std.meta.size(frame)..=std.meta.size(frame)) = 40;
+point_size: Int(std.meta.size(Point)..=std.meta.size(Point)) = 16;
+color_size: Int(std.meta.size(ColorT)..=std.meta.size(ColorT)) = 3;
+frame_size_is: Int(std.meta.size(Frame)..=std.meta.size(Frame)) = 40;
 ";
     let file = fixture.root.write("c/demo.vun", [bindings.source.as_str(), sizes].concat());
     let found = fixture.reported(&file);
     assert!(found.is_empty(), "{found:?}\n{}", bindings.source);
+    // Names take the case of what they bind; the linker's keep C's through `link.symbol`.
+    assert!(bindings.source.contains("mode_read: Mode = 1"), "{}", bindings.source);
     // A keyword is escaped, a name every file sees is kept apart.
     assert!(bindings.source.contains("\\match: unsafe (type_: "), "{}", bindings.source);
     assert!(bindings.source.contains("test_: "), "{}", bindings.source);

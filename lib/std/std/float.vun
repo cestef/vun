@@ -2,7 +2,7 @@
 //! primitives of `lang.float`.
 
 #[impl(lang.Float)]
-FloatMethods := ($bits: Int(1..)) -> type { struct {
+float_methods := ($bits: Int(1..)) -> type { struct {
     /// The float of type `T` nearest the value, ties to even; a NaN gives the canonical NaN.
     #[panic.never]
     nearest := (x: lang.Float(bits), $T: type) -> T { lang.float.convert(lang.Float(bits), x, T) };

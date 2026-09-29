@@ -91,7 +91,7 @@ pub const never: Item = Item::new(&["lang", "never"]);
 /// How two values compare (`lang.ops.Ord.cmp`).
 pub const Ordering: Item = Item::new(&["lang", "Ordering"]);
 /// Conditions are equal when both hold or neither does.
-pub const BoolEq: Item = Item::new(&["lang", "BoolEq"]);
+pub const bool_eq: Item = Item::new(&["lang", "bool_eq"]);
 pub const Option: Item = Item::new(&["lang", "Option"]);
 pub const Result: Item = Item::new(&["lang", "Result"]);
 pub const Step: Item = Item::new(&["lang", "Step"]);

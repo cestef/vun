@@ -204,7 +204,7 @@ Args := struct {
 
 /// Each argument in order: `for arg in sys.args()`.
 #[impl(lang.ops.Iterate(Args))]
-ArgsIterate := struct {
+args_iterate := struct {
     Iter := std.iter.Iter(&[u8]);
     iter := (self: Args) -> Iter {
         for i in 0..self.len() {
@@ -229,7 +229,7 @@ Stream := struct {
 };
 
 #[impl(std.fmt.Writer(Stream))]
-StreamWriter := struct {
+stream_writer := struct {
     Error := std.os.Error;
     closed: std.os.Error = .closed;
     /// Writes some of `bytes`, returning how many.

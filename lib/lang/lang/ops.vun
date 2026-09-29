@@ -112,7 +112,7 @@ Ord := interface(($Self: type) -> type { struct {
 } });
 
 /// The `PartialOrd` witness of a type ordered by `Ord`, its operators following `cmp`:
-/// `#[impl(lang.ops.PartialOrd(Point))] PointPartialOrd := lang.ops.by_cmp(Point);`
+/// `#[impl(lang.ops.PartialOrd(Point))] point_partial_ord := lang.ops.by_cmp(Point);`
 by_cmp := ($T: Ord) -> type { struct {
     lt := (a: &T, b: &T) -> bool { match a.cmp(b) { .less => true, _ => false } };
     le := (a: &T, b: &T) -> bool { match a.cmp(b) { .greater => false, _ => true } };
@@ -134,7 +134,7 @@ Try := interface(($Self: type) -> type { struct {
 /// `o?` gives the value of `.some`, or returns `.none`, an `Option(never)`, which every option
 /// type accepts.
 #[impl(Try(Option))]
-OptionTry := ($T: type) -> type { struct {
+option_try := ($T: type) -> type { struct {
     Value := T;
     Stop := Option(never);
     branch := (self: Option(T)) -> Branch(T, Option(never)) {
@@ -145,7 +145,7 @@ OptionTry := ($T: type) -> type { struct {
 /// `r?` gives the value of `.ok`, or returns the error as a `Result(never, E)`, which every
 /// result type with errors `E` accepts.
 #[impl(Try(Result))]
-ResultTry := ($T: type, $E: type) -> type { struct {
+result_try := ($T: type, $E: type) -> type { struct {
     Value := T;
     Stop := Result(never, E);
     branch := (self: Result(T, E)) -> Branch(T, Result(never, E)) {
@@ -170,14 +170,14 @@ Iterate := interface(($Self: type) -> type { struct {
 /// A coroutine is its own iterator (spec 06, section 2). The impl's target is an interface
 /// constructor: it covers every type implementing a `Coroutine(Y, R)`, which it takes first.
 #[impl(Iterate(Coroutine))]
-CoroutineIterate := ($Self: type, $Y: type, $R: type) -> type { struct {
+coroutine_iterate := ($Self: type, $Y: type, $R: type) -> type { struct {
     Iter := Coroutine(Y, R);
     iter := (self: Self) -> Self { self };
 } };
 
 /// Bounds give their items from the start up (spec 04).
 #[impl(Iterate(Bounds))]
-BoundsIterate := ($T: type) -> type { struct {
+bounds_iterate := ($T: type) -> type { struct {
     Iter := Coroutine(T, ());
     iter := (self: Bounds(T)) -> Iter {
         if bounds.empty(T, self) { return; }
@@ -192,7 +192,7 @@ BoundsIterate := ($T: type) -> type { struct {
 
 /// A slice, through a borrow, gives a borrow of each of its items in order.
 #[impl(Iterate(mem.Slice))]
-SliceIterate := ($T: type) -> type { struct {
+slice_iterate := ($T: type) -> type { struct {
     Iter := Coroutine(&T, ());
     iter := (self: &[T]) -> Iter {
         n: usize = mem.len(T, self);
@@ -209,7 +209,7 @@ SliceIterate := ($T: type) -> type { struct {
 
 /// An array value gives each of its items in order.
 #[impl(Iterate(mem.Array))]
-ArrayIterate := ($n: Int(0..), $T: type) -> type { struct {
+array_iterate := ($n: Int(0..), $T: type) -> type { struct {
     Iter := Coroutine(T, ());
     iter := (self: [n]T) -> Iter {
         mut next: Int(0..=n) = 0;

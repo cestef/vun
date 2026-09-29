@@ -8,7 +8,7 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u16 };
 
 #[impl(Shape(Square))]
-SquareShape := struct {
+square_shape := struct {
     area := (self: &Square) -> u64 { self.side * self.side };
 };
 

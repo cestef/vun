@@ -1,6 +1,7 @@
 //! Rust spellings of names from Vun sources.
 
 use proc_macro2::{Ident, Span};
+use vun_syntax::case::Case;
 
 /// What a Vun name says of itself as Rust generates it.
 pub(crate) trait Name {
@@ -16,18 +17,7 @@ impl Name for str {
     }
 
     fn snake(&self) -> String {
-        let mut out = String::new();
-        for (i, c) in self.chars().enumerate() {
-            if c.is_ascii_uppercase() {
-                if i > 0 {
-                    out.push('_');
-                }
-                out.push(c.to_ascii_lowercase());
-            } else {
-                out.push(c);
-            }
-        }
-        out
+        Case::Snake.write(self)
     }
 }
 
@@ -50,14 +40,7 @@ pub(crate) fn raw(name: &str) -> Ident {
 
 /// The Rust spelling of a `snake_case` grammar name: `colon_eq` is `ColonEq`.
 pub(crate) fn pascal(name: &str) -> Ident {
-    let word: String = name
-        .split('_')
-        .flat_map(|part| {
-            let mut chars = part.chars();
-            chars.next().map(|c| c.to_ascii_uppercase()).into_iter().chain(chars)
-        })
-        .collect();
-    ident(&word)
+    ident(&Case::Pascal.write(name))
 }
 
 /// The Rust constant for a table: `element_types` is `ELEMENT_TYPES`.

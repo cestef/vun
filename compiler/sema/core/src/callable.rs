@@ -148,15 +148,13 @@ impl Written<'_, '_> {
         };
         params
             .iter()
-            .map(|p| match p {
-                Entry::One(Param { pat, ty, .. }) => {
-                    let binder = pat.and_then(|p| match hir.pats[p].kind {
-                        PatKind::Bind(b) | PatKind::Rest(Some(b)) => Some(b),
-                        _ => None,
-                    });
-                    Some((binder, *ty))
-                }
-                Entry::Staged(_) => None,
+            .map(|p| {
+                let Param { pat, ty, .. } = p.written()?;
+                let binder = pat.and_then(|p| match hir.pats[p].kind {
+                    PatKind::Bind(b) | PatKind::Rest(Some(b)) => Some(b),
+                    _ => None,
+                });
+                Some((binder, *ty))
             })
             .collect()
     }

@@ -29,7 +29,7 @@ Event := struct {
 Wait := enum { on(&Event), either(&Wait, &Wait) };
 
 #[impl(Wait)]
-WaitReady := struct {
+wait_ready := struct {
     /// Whether an event the wait names fired. The marks stay for the tasks to take.
     ready := (self: &Wait) -> bool {
         match self {

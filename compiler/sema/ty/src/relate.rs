@@ -107,8 +107,9 @@ impl TyKind {
             return Some(Self::int(&a.hull(&b)));
         }
         // Borrows of one transition meet in the access both serve, and in the shorter extent, a
-        // `&static` one as the other; borrows of arrays meet as a borrow of a slice of their
-        // items' join, or, for an exclusive borrow, which writes through, of their one item type.
+        // `&static` one as the other; borrows of arrays or slices meet as a borrow of a slice of
+        // their items' join, or, for an exclusive borrow, which writes through, of their one item
+        // type, so that any number of them join in any order.
         if let (Some((mode, p, a)), Some((other_mode, q, b))) = (self.borrowing(), other.borrowing())
             && (mode.serves(other_mode) || other_mode.serves(mode))
             && (a != b || mode != other_mode)
@@ -120,10 +121,10 @@ impl TyKind {
                 _ if self.extent() == Some(Extent::Static) => (other_mode, q),
                 _ => (mode, p),
             };
-            let pointee = match (a.as_array(), b.as_array()) {
+            let pointee = match (a.items(), b.items()) {
                 _ if a == b => a,
-                (Some((_, a)), Some((_, b))) if mode.access() == Access::Shared => Self::slice(a.join(&b)?),
-                (Some((_, a)), Some((_, b))) if a == b => Self::slice(a),
+                (Some(a), Some(b)) if mode.access() == Access::Shared => Self::slice(a.join(&b)?),
+                (Some(a), Some(b)) if a == b => Self::slice(a),
                 _ => return None,
             };
             return Some(Self::Primitive(p, vec![Value::Type(pointee)]).intern());

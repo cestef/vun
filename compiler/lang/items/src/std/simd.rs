@@ -10,8 +10,8 @@ pub const Vector: Item = Item::new(&["std", "simd", "Vector"]);
 /// The order a reduction combines lanes in: each run of `width` lanes as a balanced tree of
 /// pairs, then the runs' results in lane order. A width of 1 combines every lane in order.
 pub const Reduction: Item = Item::new(&["std", "simd", "Reduction"]);
-pub const VectorMethods: Item = Item::new(&["std", "simd", "VectorMethods"]);
-pub const VectorAdd: Item = Item::new(&["std", "simd", "VectorAdd"]);
-pub const VectorSub: Item = Item::new(&["std", "simd", "VectorSub"]);
-pub const VectorMul: Item = Item::new(&["std", "simd", "VectorMul"]);
-pub const VectorDiv: Item = Item::new(&["std", "simd", "VectorDiv"]);
+pub const vector_methods: Item = Item::new(&["std", "simd", "vector_methods"]);
+pub const vector_add: Item = Item::new(&["std", "simd", "vector_add"]);
+pub const vector_sub: Item = Item::new(&["std", "simd", "vector_sub"]);
+pub const vector_mul: Item = Item::new(&["std", "simd", "vector_mul"]);
+pub const vector_div: Item = Item::new(&["std", "simd", "vector_div"]);

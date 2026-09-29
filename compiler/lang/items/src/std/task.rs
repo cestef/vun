@@ -13,7 +13,7 @@ pub const Event: Item = Item::new(&["std", "task", "Event"]);
 /// A request yielded to the executor: resume the task once an event fires. Waiting on either of
 /// two tasks joins their waits, in the frames of the tasks waiting, and allocates nothing.
 pub const Wait: Item = Item::new(&["std", "task", "Wait"]);
-pub const WaitReady: Item = Item::new(&["std", "task", "WaitReady"]);
+pub const wait_ready: Item = Item::new(&["std", "task", "wait_ready"]);
 pub const Async: Item = Item::new(&["std", "task", "Async"]);
 /// Waits for the next event: sleeps the core until an interrupt, or parks a hosted thread. A
 /// typed link symbol the runtime exports (spec 08, section 1).

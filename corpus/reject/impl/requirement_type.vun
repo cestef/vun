@@ -8,7 +8,7 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u32 };
 
 #[impl(Shape(Square))] //~ impl.requirement_type "`scale` is"
-SquareShape := struct {
+square_shape := struct {
     area := (self: &Square) -> u64 { self.side * self.side };
     scale := (self: &mut Square, by: u32) {};
 };
@@ -22,7 +22,7 @@ Sink := struct {};
 
 /// A requirement whose type names another requirement is compared where it evaluates.
 #[impl(Writer(Sink))]
-SinkWriter := struct {
-    Error := ();
+sink_writer := struct {
+    Error: type = ();
     write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, ()) { .ok(bytes.len()) };
 };

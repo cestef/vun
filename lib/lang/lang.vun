@@ -36,7 +36,7 @@ Ordering := enum { less, equal, greater };
 
 /// Conditions are equal when both hold or neither does.
 #[impl(lang.ops.Eq(bool))]
-BoolEq := struct {
+bool_eq := struct {
     eq := (a: &bool, b: &bool) -> bool {
         match a.* {
             .true => b.*,

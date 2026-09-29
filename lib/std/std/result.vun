@@ -2,7 +2,7 @@
 //! interface.
 
 #[impl(Result)]
-ResultMethods := ($T: type, $E: type) -> type { struct {
+result_methods := ($T: type, $E: type) -> type { struct {
     #[panic.never]
     is_ok := (r: &Result(T, E)) -> bool { match r { .ok(_) => true, .err(_) => false } };
     #[panic.never]
@@ -29,7 +29,7 @@ ResultMethods := ($T: type, $E: type) -> type { struct {
 
 /// Results are equal when both hold equal values, or both equal errors.
 #[impl(lang.ops.Eq(Result))]
-ResultEq := ($T: type, $E: type) -> type { struct {
+result_eq := ($T: type, $E: type) -> type { struct {
     eq := (a: &Result(T, E), b: &Result(T, E)) -> bool {
         match a {
             .ok(x) => match b { .ok(y) => x == y, .err(_) => false },

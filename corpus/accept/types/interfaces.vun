@@ -11,7 +11,7 @@ Writer := interface(($Self: type) -> type { struct {
 } });
 
 #[impl(Writer(Uart))]
-UartWriter := struct {
+uart_writer := struct {
     Error := uart.Error;
     write := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { self.send(bytes) };
 };
@@ -21,7 +21,7 @@ log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
 };
 
 #[impl(Serialize(Point))]
-PointSerialize := serde.derive(Point);
+point_serialize := serde.derive(Point);
 
 /// A log line through the UART, by the default `write_all` its witness gets.
 hello := (u: &mut Uart) -> Result((), support.uart.Error) { log(Uart, u, "hello") };

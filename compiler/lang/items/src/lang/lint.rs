@@ -6,20 +6,36 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// How a lint's reports are shown (spec 10, section 4).
 pub const Level: Item = Item::new(&["lang", "lint", "Level"]);
-pub const Lint: Item = Item::new(&["lang", "lint", "Lint"]);
+/// `#[lint.define]`: the declaration is a lint, which the files that see it are checked with.
 pub const define: Item = Item::new(&["lang", "lint", "define"]);
-/// What a lint's check sees of the code it checks.
-pub const Cx: Item = Item::new(&["lang", "lint", "Cx"]);
-/// The function a checked call calls, compared with `==` against a declaration.
+/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration; every override
+/// says why.
+pub const allow: Item = Item::new(&["lang", "lint", "allow"]);
+/// What a declaration binds, as compile-time evaluation knows it (spec 10, section 5).
+pub const Binds: Item = Item::new(&["lang", "lint", "Binds"]);
+/// A declaration in the code checked: its name, what it binds, and where it is written.
+pub const Decl: Item = Item::new(&["lang", "lint", "Decl"]);
+/// The function a checked call calls.
 pub const Callee: Item = Item::new(&["lang", "lint", "Callee"]);
+/// Whether `callee` is `f`.
+pub const calls: Item = Item::new(&["lang", "lint", "calls"]);
 /// A call in the code checked: what it calls, and where it is written.
 pub const Call: Item = Item::new(&["lang", "lint", "Call"]);
-/// Whether the code `cx` checks is inside the namespace `ns`.
-pub const inside: Item = Item::new(&["lang", "lint", "inside"]);
-/// Reports `message` at `at` with the fixes `fixes`, a tuple of them.
-pub const report: Item = Item::new(&["lang", "lint", "report"]);
-/// Whether `a` and `b` call the same function.
-pub const same_callee: Item = Item::new(&["lang", "lint", "same_callee"]);
-pub const CxMethods: Item = Item::new(&["lang", "lint", "CxMethods"]);
-pub const CalleeEq: Item = Item::new(&["lang", "lint", "CalleeEq"]);
+/// An edit fixing what a lint reports: the text replacing what the report points at.
+pub const Fix: Item = Item::new(&["lang", "lint", "Fix"]);
+/// What a check reports.
+pub const Report: Item = Item::new(&["lang", "lint", "Report"]);
+/// What a check sees of the code it checks, and what it has reported.
+pub const Cx: Item = Item::new(&["lang", "lint", "Cx"]);
+/// A check of one kind of node.
+pub const Check: Item = Item::new(&["lang", "lint", "Check"]);
+/// The check a lint states for no node of kind `Node`: left as it is, the compiler runs none.
+pub const unchecked: Item = Item::new(&["lang", "lint", "unchecked"]);
+/// A lint: the group configuring it, its level unless configured, what it is about, and its
+/// checks, one for each kind of node it looks at.
+pub const Lint: Item = Item::new(&["lang", "lint", "Lint"]);
+/// What `check` reports of `node`, in the namespace `ns`: the call the compiler runs for each
+/// node a lint looks at.
+pub const reports: Item = Item::new(&["lang", "lint", "reports"]);

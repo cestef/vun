@@ -4,14 +4,14 @@
 Version := struct { major: u8, minor: u8 };
 
 #[impl(lang.ops.Ord(Version))]
-VersionOrd := struct {
+version_ord := struct {
     cmp := (a: &Version, b: &Version) -> lang.Ordering {
         if a.major != b.major { a.major.cmp(&b.major) } else { a.minor.cmp(&b.minor) }
     };
 };
 
 #[impl(lang.ops.PartialOrd(Version))]
-VersionPartialOrd := lang.ops.by_cmp(Version);
+version_partial_ord := lang.ops.by_cmp(Version);
 
 old := Version{ .major = 1, .minor = 9 };
 new := Version{ .major = 2, .minor = 0 };

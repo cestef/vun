@@ -139,7 +139,7 @@ closing := "]";
 separator := ", ";
 
 #[impl(Format(Int))]
-IntFormat := ($r: lang.Range) -> type { struct {
+int_format := ($r: lang.Range) -> type { struct {
     /// In decimal, with `-` before a negative value.
     format := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
         if value.* < 0 { w.write_all(minus)?; }
@@ -159,7 +159,7 @@ IntFormat := ($r: lang.Range) -> type { struct {
 
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
 #[impl(Format(lang.mem.Slice))]
-SliceFormat := ($T: type) -> type { struct {
+slice_format := ($T: type) -> type { struct {
     format := ($W: Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
         $if lang.meta.same(type, T, u8) {
             w.write_all(value)
@@ -176,7 +176,7 @@ SliceFormat := ($T: type) -> type { struct {
 
 /// The items of an array, as those of a slice; a string literal is a borrow of an array of bytes.
 #[impl(Format(lang.mem.Array))]
-ArrayFormat := ($n: Int(0..), $T: type) -> type { struct {
+array_format := ($n: Int(0..), $T: type) -> type { struct {
     format := ($W: Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
         items: &[T] = value;
         items.format(w)

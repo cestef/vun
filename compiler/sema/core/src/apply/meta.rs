@@ -74,6 +74,9 @@ impl ApplyMeta for Meta {
                 }
             }
             (Self::same, [_, a, b]) => env.decide(a == b),
+            (Self::inside, [Value::Namespace(inner), Value::Namespace(outer)]) => {
+                env.decide(inner.within(outer))
+            }
             (Self::any, [ty, value]) => {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Any { ty, value: Box::new(value.clone()) })

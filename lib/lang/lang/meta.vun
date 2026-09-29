@@ -12,10 +12,14 @@ TypeOf := ($T: type, $e: Code(T)) -> type { T };
 origin: ($T: type) -> Origin = _;
 /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
 /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
+#[lint.allow(std.lints.naming.case, "it gives an impl, a namespace, which a primitive's annotation cannot say")]
 witness: ($I: lang.Interface, $T: type) -> type = _;
 /// The bytes of the file at `path`, from the directory of the file calling, in its package
 /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
 embed: ($path: &[u8]) -> &static [u8] = _;
+
+/// Whether the namespace `inner` is `outer` or nested in it.
+inside: (inner: Namespace, outer: Namespace) -> bool = _;
 
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
 /// the same arguments, one name.
@@ -23,13 +27,13 @@ same: ($T: type, $a: T, $b: T) -> bool = _;
 
 /// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
 #[impl(lang.ops.Eq(type))]
-TypeEq := struct {
+type_eq := struct {
     eq := (a: &type, b: &type) -> bool { same(type, a.*, b.*) };
 };
 
 /// Names are equal when they are one name: `lang.target.current.os == .linux`.
 #[impl(lang.ops.Eq(Name))]
-NameEq := struct {
+name_eq := struct {
     eq := (a: &Name, b: &Name) -> bool { same(Name, a.*, b.*) };
 };
 
@@ -45,14 +49,14 @@ concat: ($T: type, a: &[T], b: &[T]) -> &static [T] = _;
 
 /// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4).
 #[impl(lang.ops.Concat(lang.mem.Slice))]
-SliceConcat := ($T: type) -> type { struct {
+slice_concat := ($T: type) -> type { struct {
     Output := ($R: type) -> type { &static [T] };
     concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
 } };
 
 /// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
 #[impl(lang.ops.Concat(lang.mem.Array))]
-ArrayConcat := ($n: Int(0..), $T: type) -> type { struct {
+array_concat := ($n: Int(0..), $T: type) -> type { struct {
     Output := ($R: type) -> type { &static [T] };
     concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
 } };

@@ -3,6 +3,7 @@
 // The derives name this crate by its path, here too.
 extern crate self as vun_syntax;
 
+pub mod case;
 pub mod cst;
 pub mod lexer;
 pub mod literal;

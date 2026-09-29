@@ -15,7 +15,7 @@ Shape := interface(($Self: type) -> type { struct {
 }});
 Square := struct { side: u16 };
 #[impl(Shape(Square))]
-SquareShape := struct { area := (self: &Square) -> u64 { self.side }; };
+square_shape := struct { area := (self: &Square) -> u64 { self.side }; };
 area := (s: Square) -> bool { s.area() };
 sides := (s: Square) -> bool { s.sides() };
 ",
@@ -40,7 +40,7 @@ First := interface(($Self: type) -> type { struct {
     count := (p: Self) -> u8 { 2 };
 }});
 #[impl(First(Pair))]
-PairFirst := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
+pair_first := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
 first := (p: Pair(u16)) -> bool { p.first() };
 count := (p: Pair(bool)) -> bool { p.count() };
 #[impl(First(Pair(u8)))]
@@ -93,7 +93,7 @@ fn an_impl_without_an_interface_adds_methods() {
         "\
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 #[impl(Pair)]
-PairMethods := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
+pair_methods := ($T: type) -> type { struct { first := (p: Pair(T)) -> T { p.a }; } };
 first := (p: Pair(u8)) -> bool { p.first() };
 mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { true }) };
 ",

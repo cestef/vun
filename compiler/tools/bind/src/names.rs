@@ -2,11 +2,13 @@
 //! struct. C keeps tags (`struct stat`) apart from ordinary names (`stat()`), Vun does not: a tag
 //! that an ordinary name also spells is bound as `struct_stat`. A name the file sees already,
 //! which Vun does not let a declaration shadow, takes a trailing `_`; a keyword is escaped by the
-//! printer.
+//! printer. Names are written in the case of what they bind, types in `PascalCase` and values in
+//! `snake_case`; what the linker knows keeps its C name through `link.symbol`.
 
 use std::collections::HashSet;
 
 use vun_clang::{Cursor, Kind, TypeKind};
+use vun_syntax::case::Case;
 
 use crate::types::Position;
 use crate::{Binder, Bytes, Key, Opacity, Reason};
@@ -24,9 +26,11 @@ fn tag_prefix(kind: Kind) -> &'static str {
 }
 
 impl<'u> Binder<'u> {
-    /// `name`, or `name_` when the file sees it already.
-    pub(crate) fn vun_name(&self, name: &str) -> String {
-        if self.reserved.contains(name) { self.renamed(name) } else { name.to_owned() }
+    /// `name` written in `case`, the case of what it binds (spec 10, section 5), with `_` after
+    /// it when the file sees it already.
+    pub(crate) fn vun_name(&self, name: &str, case: Case) -> String {
+        let name = case.write(name);
+        if self.reserved.contains(&name) { self.renamed(&name) } else { name }
     }
 
     /// `name` with the mark that keeps it apart from a name it would shadow.
@@ -74,11 +78,9 @@ impl<'u> Binder<'u> {
     fn tagged(&mut self, decl: &Cursor<'u>, ordinary: &HashSet<String>, seen: &mut HashSet<Key>) {
         let Some(key) = Self::key(decl) else { return };
         if let Key::Tag(tag) = &key {
-            let name = if ordinary.contains(tag) {
-                [tag_prefix(decl.kind()), tag].concat()
-            } else {
-                self.vun_name(tag)
-            };
+            let tag =
+                if ordinary.contains(tag) { [tag_prefix(decl.kind()), tag].concat() } else { tag.clone() };
+            let name = self.vun_name(&tag, Case::Pascal);
             self.names.entry(key.clone()).or_insert(name);
         }
         if seen.insert(key.clone()) {
@@ -100,19 +102,20 @@ impl<'u> Binder<'u> {
         {
             match &key {
                 Key::At(..) if !self.names.contains_key(&key) => {
-                    self.names.insert(key, self.vun_name(&name));
-                    self.names.insert(Key::Ordinary(name.clone()), self.vun_name(&name));
+                    self.names.insert(key, self.vun_name(&name, Case::Pascal));
+                    self.names.insert(Key::Ordinary(name.clone()), self.vun_name(&name, Case::Pascal));
                     return;
                 }
                 Key::Tag(tag) if *tag == name => {
-                    let bound = self.names.get(&key).cloned().unwrap_or_else(|| self.vun_name(&name));
+                    let bound =
+                        self.names.get(&key).cloned().unwrap_or_else(|| self.vun_name(&name, Case::Pascal));
                     self.names.insert(Key::Ordinary(name), bound);
                     return;
                 }
                 _ => {}
             }
         }
-        self.names.insert(Key::Ordinary(name), self.vun_name(&decl.name()));
+        self.names.insert(Key::Ordinary(name), self.vun_name(&decl.name(), Case::Pascal));
         self.decls.push(*decl);
     }
 

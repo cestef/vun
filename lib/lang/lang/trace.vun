@@ -15,7 +15,7 @@ Detail := enum {
 
 /// Details are equal when they are one detail.
 #[impl(lang.ops.Eq(Detail))]
-DetailEq := struct {
+detail_eq := struct {
     eq := (a: &Detail, b: &Detail) -> bool { lang.meta.same(Detail, a.*, b.*) };
 };
 

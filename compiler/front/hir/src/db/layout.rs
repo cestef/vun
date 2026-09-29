@@ -17,6 +17,14 @@ pub struct Namespace {
 
 const SEPARATOR: char = Snapshot::PATH_SEPARATOR;
 
+impl Namespace {
+    /// Whether this namespace is `outer` or nested in it.
+    #[must_use]
+    pub fn within(&self, outer: &Self) -> bool {
+        self.package == outer.package && self.path.starts_with(&outer.path)
+    }
+}
+
 impl PackageData {
     /// The path shared by the file and the directory of the namespace at `path`: `p/a/b`. `None`
     /// outside any package.

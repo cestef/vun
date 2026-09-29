@@ -1,10 +1,10 @@
 //! Range-typed indices need no bounds checks (spec 04, section 1).
 
-N := 64;
-Index := Int(0..N);
+size := 64;
+Index := Int(0..size);
 
-advance := (buf: &mut [N]u8, head: &mut Index, byte: u8) {
-    head.* = (head.* + 1) % N;
+advance := (buf: &mut [size]u8, head: &mut Index, byte: u8) {
+    head.* = (head.* + 1) % size;
     buf[head.*] = byte;
 };
 

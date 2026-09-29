@@ -182,7 +182,9 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   an `f16` (`abi.variadic`).
 - `vun tool bind foo.h --cflags "..."` generates Vun declarations from C headers through
   libclang, loaded when the command runs (decision 131), with the build's real compile flags
-  (decision 134). `vun tool header` emits a C header for a Vun library. Both are tools, not
+  (decision 134). Each binding is named in the case of what it binds (spec 10, section 5): C's
+  `color_t` is `ColorT`, `MODE_READ` is `mode_read`, and a function or variable keeps its C name
+  for the linker through `link.symbol`. `vun tool header` emits a C header for a Vun library. Both are tools, not
   language features (spec 12).
 - Inline assembly is an `unsafe` block of an architecture's instructions, `lang.arch.<arch>.asm
   { ... }` (section 6).

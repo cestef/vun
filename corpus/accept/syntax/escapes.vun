@@ -2,7 +2,7 @@
 
 Safety := enum { safe, \unsafe, placeholder };
 #[impl(lang.ops.Eq(Safety))]
-SafetyEq := std.cmp.derive_eq(Safety);
+safety_eq := std.cmp.derive_eq(Safety);
 
 path := \"C:\dir\new";
 escaped := "tab\there\n";

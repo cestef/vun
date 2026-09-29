@@ -17,8 +17,8 @@ Writer := interface(($Self: type) -> type { struct {
 Sink := struct {};
 
 #[impl(Writer(Sink))] //~ impl.missing_requirement
-SinkWriter := struct {
-    Error := ();
+sink_writer := struct {
+    Error: type = ();
 };
 ```
 
@@ -35,8 +35,8 @@ Writer := interface(($Self: type) -> type { struct {
 Sink := struct {};
 
 #[impl(Writer(Sink))]
-SinkWriter := struct {
-    Error := ();
+sink_writer := struct {
+    Error: type = ();
     write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, Error) { .ok(bytes.len()) };
 };
 ```

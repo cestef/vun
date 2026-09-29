@@ -39,7 +39,7 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 ## 2. Consuming coroutines
 
 `for p in e { body }` drives any coroutine (appendix B), through `lang.ops.Iterate`: a frame is
-its own iterator (`CoroutineIterate`, an impl over the interface constructor `Coroutine`), and
+its own iterator (`coroutine_iterate`, an impl over the interface constructor `Coroutine`), and
 bounds, slices and arrays have iterators written in `lang.ops` as coroutine functions, over the
 primitives `lang.bounds.{empty, first, ends}` and `lang.mem.len`:
 

@@ -25,7 +25,7 @@ Give the type an impl of the interface, whose function the operator calls:
 Point := struct { x: u8, y: u8 };
 
 #[impl(lang.ops.Add(Point))]
-PointAdd := struct {
+point_add := struct {
     Output := ($R: type) -> type { Point };
     add := (a: Point, b: Point) -> Point { Point{ .x = (a.x + b.x).wrap(u8), .y = (a.y + b.y).wrap(u8) } };
 };

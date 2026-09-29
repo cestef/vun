@@ -1,36 +1,110 @@
-//! Lints as values (spec 10, section 4). A lint's check sees the code checked through `Cx`, a
-//! read-only view versioned with `lang`, and the calls it makes as `Call`s. The view is declared
-//! here and typed; it runs once lints run.
+//! Lints as values (spec 10, section 4). A lint states its group, its default level and a check
+//! for each kind of node it looks at; the compiler walks the typed code once per file and runs
+//! each check a lint states on each node of its kind, at compile time. A check sees the code
+//! through `Cx` and the nodes as plain data, a view versioned with `lang`, and reports by
+//! appending to `Cx`: running it is a pure compile-time call.
 
-Level := enum { allow, warn, deny, forbid, expect };
-Lint: type = _;
+/// How a lint's reports are shown (spec 10, section 4).
+Level := enum {
+    /// Not at all.
+    allow,
+    /// As warnings.
+    warn,
+    /// As errors.
+    deny,
+    /// As errors, and no configuration lowers it.
+    forbid,
+    /// As a warning when the lint does not report.
+    expect,
+};
+
+/// `#[lint.define]`: the declaration is a lint, which the files that see it are checked with.
 define: Attribute(&[Place.decls]) = _;
+/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration; every override
+/// says why.
+allow: ($lint: Lint, $reason: &[u8]) -> Attribute(&[Place.decls, Place.fields]) = _;
 
-/// What a lint's check sees of the code it checks.
-Cx: type = _;
-/// The function a checked call calls, compared with `==` against a declaration.
+/// What a declaration binds, as compile-time evaluation knows it (spec 10, section 5).
+Binds := enum {
+    /// A type, an interface, or a function giving a type.
+    type,
+    /// Any other value: a function, a constant, a local, a parameter.
+    value,
+    /// A field of a struct.
+    field,
+    /// A variant of an enum.
+    variant,
+};
+
+/// A declaration in the code checked: its name, what it binds, and where it is written.
+Decl := struct {
+    name: &[u8],
+    binds: Binds,
+    origin: lang.meta.Origin,
+};
+
+/// The function a checked call calls.
 Callee: type = _;
+/// Whether `callee` is `f`.
+calls: ($F: type, callee: &Callee, $f: F) -> bool = _;
 /// A call in the code checked: what it calls, and where it is written.
-Call := struct { callee: Callee, origin: lang.meta.Origin };
+Call := struct {
+    callee: Callee,
+    origin: lang.meta.Origin,
 
-/// Whether the code `cx` checks is inside the namespace `ns`.
-inside: (cx: &Cx, ns: lang.meta.Namespace) -> bool = _;
-/// Reports `message` at `at` with the fixes `fixes`, a tuple of them.
-report: ($A: type, cx: &mut Cx, at: lang.meta.Origin, message: &[u8], fixes: A) = _;
-/// Whether `a` and `b` call the same function.
-same_callee: (a: &Callee, b: &Callee) -> bool = _;
+    /// Whether the call calls `f`.
+    calls := (self: &Call, $F: type, $f: F) -> bool { lang.lint.calls(F, &self.callee, f) };
+};
 
-#[impl(Cx)]
-CxMethods := struct {
+/// An edit fixing what a lint reports: the text replacing what the report points at.
+Fix := struct {
+    msg: &[u8],
+    safety: lang.diag.Safety,
+    text: &[u8],
+};
+
+/// What a check reports.
+Report := struct {
+    at: lang.meta.Origin,
+    msg: &[u8],
+    fixes: &[Fix] = &[],
+};
+
+/// What a check sees of the code it checks, and what it has reported.
+Cx := struct {
+    /// The namespace of the code checked.
+    namespace: lang.meta.Namespace,
+    reports: &static [Report] = &[],
+
     /// Whether the code checked is inside the namespace `ns`.
-    inside := (self: &Cx, ns: lang.meta.Namespace) -> bool { lang.lint.inside(self, ns) };
-    /// Reports `message` at `at` with the fixes `fixes`.
-    report := (self: &mut Cx, at: lang.meta.Origin, message: &[u8], $A: type, fixes: A) {
-        lang.lint.report(A, self, at, message, fixes);
+    inside := (self: &Cx, ns: lang.meta.Namespace) -> bool { lang.meta.inside(self.namespace, ns) };
+    /// Reports `msg` at `at`, with the edits `fixes` that would fix it.
+    report := (self: &mut Cx, at: lang.meta.Origin, msg: &[u8], fixes: &[Fix]) {
+        self.reports = lang.meta.append(Report, self.reports, .{ .at = at, .msg = msg, .fixes = fixes });
     };
 };
 
-#[impl(lang.ops.Eq(Callee))]
-CalleeEq := struct {
-    eq := (a: &Callee, b: &Callee) -> bool { lang.lint.same_callee(a, b) };
+/// A check of one kind of node.
+Check := ($Node: type) -> type { (cx: &mut Cx, node: Node) -> () };
+/// The check a lint states for no node of kind `Node`: left as it is, the compiler runs none.
+unchecked := ($Node: type) -> Check(Node) { (cx: &mut Cx, node: Node) {} };
+
+/// A lint: the group configuring it, its level unless configured, what it is about, and its
+/// checks, one for each kind of node it looks at.
+Lint := struct {
+    /// The group's name, a namespace of `std.lints`.
+    group: lang.meta.Name,
+    /// Its level unless configured; the group's when none.
+    default: ?Level = .none,
+    doc: &[u8] = "",
+    call: Check(Call) = unchecked(Call),
+    decl: Check(Decl) = unchecked(Decl),
+};
+
+/// What `check` reports of `node`, in the namespace `ns`: the call the compiler runs for each
+/// node a lint looks at.
+reports := ($Node: type, $check: Check(Node), $ns: lang.meta.Namespace, $node: Node) -> &static [Report] {
+    mut cx := Cx{ .namespace = ns };
+    check(&mut cx, node);
+    cx.reports
 };

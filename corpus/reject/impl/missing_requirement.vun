@@ -8,6 +8,6 @@ Writer := interface(($Self: type) -> type { struct {
 Sink := struct {};
 
 #[impl(Writer(Sink))] //~ impl.missing_requirement
-SinkWriter := struct {
-    Error := ();
+sink_writer := struct {
+    Error: type = ();
 };

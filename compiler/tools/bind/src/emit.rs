@@ -2,6 +2,7 @@
 //! them.
 
 use vun_clang::{Cursor, Kind, TypeKind};
+use vun_syntax::case::Case;
 use vun_syntax::make::{Expr, Field, File, Item};
 
 use crate::types::Position;
@@ -41,7 +42,7 @@ impl Binder<'_> {
     /// The bindings' own top-level names, which parameters may not shadow.
     fn top_names(&self) -> std::collections::HashSet<String> {
         let ordinary = self.decls.iter().filter_map(|d| match d.kind() {
-            Kind::Function | Kind::Var | Kind::Macro => Some(self.vun_name(&d.name())),
+            Kind::Function | Kind::Var | Kind::Macro => Some(self.vun_name(&d.name(), Case::Snake)),
             _ => None,
         });
         let constants = self.decls.iter().filter(|d| d.kind() == Kind::Enum).flat_map(Cursor::children);
@@ -49,7 +50,7 @@ impl Binder<'_> {
             .values()
             .cloned()
             .chain(ordinary)
-            .chain(constants.map(|c| self.vun_name(&c.name())))
+            .chain(constants.map(|c| self.vun_name(&c.name(), Case::Snake)))
             .collect()
     }
 
@@ -79,7 +80,7 @@ impl Binder<'_> {
                 let fields = fields
                     .map(|f| {
                         Some(Field {
-                            name: self.vun_name(&f.name()),
+                            name: self.vun_name(&f.name(), Case::Snake),
                             ty: self.ty(f.ty(), Position::Field).ok()??,
                         })
                     })
@@ -103,7 +104,10 @@ impl Binder<'_> {
         };
         for constant in decl.children().iter().filter(|c| c.kind() == Kind::EnumConstant) {
             let value = Expr::Int(i128::from(constant.enum_value()));
-            made.push(Item { ty: Some(ty.clone()), ..item(self.vun_name(&constant.name()), value) });
+            made.push(Item {
+                ty: Some(ty.clone()),
+                ..item(self.vun_name(&constant.name(), Case::Snake), value)
+            });
         }
         made
     }
@@ -133,7 +137,7 @@ impl Binder<'_> {
         let declared = decl.params();
         let params = declared.iter().enumerate().map(|(i, param)| {
             let name = param.name();
-            let name = if name.is_empty() { Self::positional(i) } else { self.vun_name(&name) };
+            let name = if name.is_empty() { Self::positional(i) } else { self.vun_name(&name, Case::Snake) };
             let name = if self.params_reserved.contains(&name) { self.renamed(&name) } else { name };
             Ok(Field { name, ty: self.ty(param.ty(), Position::Param)?.unwrap_or(Expr::Unit) })
         });
@@ -167,13 +171,13 @@ impl Binder<'_> {
             attrs: vec![items::symbol(&symbol), items::abi_c()],
             mutable,
             ty: Some(ty),
-            ..item(self.vun_name(&symbol), Expr::Hole)
+            ..item(self.vun_name(&symbol, Case::Snake), Expr::Hole)
         }
     }
 
     fn constant(&self, decl: &Cursor<'_>) -> Option<Item> {
         let tokens = decl.tokens();
         let value = macros::integer(tokens.get(1..)?)?;
-        Some(item(self.vun_name(&decl.name()), Expr::Int(value)))
+        Some(item(self.vun_name(&decl.name(), Case::Snake), Expr::Int(value)))
     }
 }

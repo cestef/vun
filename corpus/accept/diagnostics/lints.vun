@@ -1,0 +1,17 @@
+//! Lints are compile-time values (spec 10, section 4): a package defines its own, which check
+//! each node of the kind they look at, and a declaration allows one with a reason.
+
+#[lint.define]
+raw_mmio := lang.lint.Lint{
+    .group = .suspicious,
+    .default = .some(.warn),
+    .doc = std.meta.embed("raw_mmio.md"),
+    .call = (cx: &mut lang.lint.Cx, call: lang.lint.Call) {
+        if call.calls(lang.mem.volatile_store) and !cx.inside(std.hw) {
+            cx.report(call.origin, "raw volatile store outside a register abstraction", &[]);
+        }
+    },
+};
+
+#[lint.allow(std.lints.naming.case, "mirrors the vendor register names")]
+HAL_UART_Init := 0;

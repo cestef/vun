@@ -14,11 +14,11 @@ kept := (keep: bool, log: &mut u8) -> ?Handle {
 
 Fault := enum { io(u8), other };
 #[impl(lang.ops.Eq(Fault))]
-FaultEq := std.cmp.derive_eq(Fault);
+fault_eq := std.cmp.derive_eq(Fault);
 
 Point := struct { x: u16, y: i8 };
 #[impl(lang.ops.Eq(Point))]
-PointEq := std.cmp.derive_eq(Point);
+point_eq := std.cmp.derive_eq(Point);
 
 failing := (n: u8) -> Result(u8, u8) { if n > 0 { .err(n) } else { .ok(0) } };
 

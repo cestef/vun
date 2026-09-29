@@ -161,6 +161,12 @@ impl TyKind {
         Self::primitive(Primitive::Lang(Lang::r#type))
     }
 
+    /// Whether its values are types: it is `lang.type` or `lang.Interface`.
+    #[must_use]
+    pub fn holds_types(&self) -> bool {
+        matches!(self, Self::Primitive(Primitive::Lang(Lang::r#type | Lang::Interface), args) if args.is_empty())
+    }
+
     /// Whether this is a parameter of a generic body or a coroutine's frame, whose impls are
     /// what its requirements say rather than any declared for it.
     #[must_use]

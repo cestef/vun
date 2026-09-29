@@ -16,6 +16,7 @@
 //! editors make of the grammar is in `editors.vun`.
 
 /// Kinds of tokens.
+#[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 TokenKind := .{
     .trivia = [.whitespace, .comment],
     .atoms = [
@@ -123,6 +124,7 @@ Context := enum {
 /// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
 /// of how long a call holds the borrow, then a word of what it does to the place. `mut` is a
 /// keyword; the others are words only there.
+#[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 BorrowWord := .{
     .qualifiers = ["temp"],
     .modes = ["mut", "out", "take", "static"],
@@ -130,6 +132,7 @@ BorrowWord := .{
 
 /// The words opening a value bound to an instruction's operand (spec 07, section 6): whether the
 /// instruction reads it, writes it, or both. They are words only there.
+#[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 Flow := .{
     .flows = ["in", "out", "inout"],
 };

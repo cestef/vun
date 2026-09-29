@@ -16,7 +16,7 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u32 };
 
 #[impl(Shape(Square))] //~ impl.requirement_type
-SquareShape := struct {
+square_shape := struct {
     area := (self: &Square) -> u32 { self.side };
 };
 ```
@@ -33,7 +33,7 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u32 };
 
 #[impl(Shape(Square))]
-SquareShape := struct {
+square_shape := struct {
     area := (self: &Square) -> u64 { self.side * self.side };
 };
 ```

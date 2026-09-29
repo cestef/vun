@@ -15,7 +15,7 @@ Quoted := interface(($Self: type) -> type { struct {
 } });
 
 #[impl(Quoted(lang.meta.Code))]
-CodeQuoted := ($T: type) -> type { struct {
+code_quoted := ($T: type) -> type { struct {
     source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
     span := (c: &Code(T)) -> lang.meta.Origin { lang.meta.span(T, c) };
     within := (c: &Code(T), $bytes: lang.Range) -> lang.meta.Origin { lang.meta.within(T, c, bytes) };

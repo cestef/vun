@@ -13,4 +13,4 @@ pub const alloc: Item = Item::new(&["std", "mem", "alloc"]);
 pub const Own: Item = Item::new(&["std", "mem", "Own"]);
 /// Reading and writing a `lang.mem.Cell`, `unsafe` both: nothing keeps a reader holding a shared
 /// borrow of the cell from seeing its value change (spec 07, section 2).
-pub const CellMethods: Item = Item::new(&["std", "mem", "CellMethods"]);
+pub const cell_methods: Item = Item::new(&["std", "mem", "cell_methods"]);

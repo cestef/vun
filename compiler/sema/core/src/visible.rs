@@ -63,6 +63,17 @@ impl Env<'_, '_> {
         }
     }
 
+    /// The namespace this file is, as a value: its package's root for a file of none.
+    #[must_use]
+    pub fn namespace(&self) -> Value {
+        match self.home() {
+            Home::Namespace(ns) => Value::Namespace(ns),
+            Home::File(_) | Home::Struct(_) => {
+                Value::Namespace(Namespace { package: self.file.package, path: Vec::new() })
+            }
+        }
+    }
+
     /// The visibility of the member `name` with attributes `attrs`, declared at `home` in this
     /// file, and the `#[visible(...)]` among `attrs` that cannot apply, if any.
     #[must_use]

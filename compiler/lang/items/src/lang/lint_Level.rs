@@ -6,8 +6,13 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// Not at all.
 pub const allow: Item = Item::new(&["lang", "lint", "Level", "allow"]);
+/// As warnings.
 pub const warn: Item = Item::new(&["lang", "lint", "Level", "warn"]);
+/// As errors.
 pub const deny: Item = Item::new(&["lang", "lint", "Level", "deny"]);
+/// As errors, and no configuration lowers it.
 pub const forbid: Item = Item::new(&["lang", "lint", "Level", "forbid"]);
+/// As a warning when the lint does not report.
 pub const expect: Item = Item::new(&["lang", "lint", "Level", "expect"]);

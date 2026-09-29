@@ -110,7 +110,7 @@ writer that takes no more.
 
 ```vun
 #[impl(Writer(Uart))]
-UartWriter := struct {
+uart_writer := struct {
     Error := uart.Error;
     closed: uart.Error = .stopped;
     write := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { ... };
@@ -122,18 +122,18 @@ UartWriter := struct {
 - An impl lives in the package of `T` or of `I` (orphan rule). At most one impl per pair.
 - Members of the witness join `T`'s method lookup (spec 01, section 4). A name declared by two
   impls a file sees, or by an impl and `T` itself, is an error where it is looked up
-  (`impl.collision`), naming each declaration; `UartWriter.write(&mut u, b)` is always available
+  (`impl.collision`), naming each declaration; `uart_writer.write(&mut u, b)` is always available
   as the explicit spelling.
 - The witness is an ordinary named struct. `std.meta.witness(Writer, Uart)` returns it.
 - `T` may be a type constructor: a primitive such as `lang.Int`, or a function returning a type.
   The impl then covers every type the constructor makes, and its value is a function of the
   constructor's arguments that gives the witness of each. `#[impl(Narrow(Int))]` on
-  `IntNarrow := ($r: Range) -> type { struct { ... } }` makes `IntNarrow(r)` the witness for
+  `int_narrow := ($r: Range) -> type { struct { ... } }` makes `int_narrow(r)` the witness for
   `Int(r)`; an impl for `Pair` covers `Pair(u8)`, and a second impl for `Pair(u8)` is a duplicate.
 - `T` may also be an interface constructor, a function returning an interface such as
   `lang.Coroutine`: the impl covers every type implementing an interface it makes, and its value
   takes that type first, then the interface's arguments. `#[impl(Iterate(Coroutine))]` on
-  `CoroutineIterate := ($Self: type, $Y: type, $R: type) -> type { ... }` makes every coroutine
+  `coroutine_iterate := ($Self: type, $Y: type, $R: type) -> type { ... }` makes every coroutine
   frame its own iterator.
 - `#[impl(T)]`, with no interface, adds the declarations of its struct to `T`'s method lookup and
   checks nothing else: methods without an abstraction. `T` may be a type or a type constructor,
@@ -171,7 +171,7 @@ Because an impl is any expression producing a struct, deriving is calling a func
 
 ```vun
 #[impl(Serialize(Point))]
-PointSerialize := serde.derive(Point);
+point_serialize := serde.derive(Point);
 ```
 
 `serde.derive` is written in spec 03. Nothing about it is special.

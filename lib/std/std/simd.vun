@@ -13,7 +13,7 @@ Reduction := struct {
 };
 
 #[impl(lang.simd.Vector)]
-VectorMethods := ($n: usize, $T: type) -> type { struct {
+vector_methods := ($n: usize, $T: type) -> type { struct {
     /// The vector whose every lane is `x`.
     #[panic.never]
     splat := (x: T) -> Vector(n, T) { lang.simd.of(n, T, [x; n]) };
@@ -51,7 +51,7 @@ _tree := ($n: usize, $T: type, xs: &[n]T, $start: usize, $len: Int(1..)) -> T {
 };
 
 #[impl(lang.ops.Add(lang.simd.Vector))]
-VectorAdd := ($n: usize, $T: type) -> type { struct {
+vector_add := ($n: usize, $T: type) -> type { struct {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Add, T).Output(lang.simd.Lane(R))) };
     add := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
@@ -60,7 +60,7 @@ VectorAdd := ($n: usize, $T: type) -> type { struct {
 } };
 
 #[impl(lang.ops.Sub(lang.simd.Vector))]
-VectorSub := ($n: usize, $T: type) -> type { struct {
+vector_sub := ($n: usize, $T: type) -> type { struct {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Sub, T).Output(lang.simd.Lane(R))) };
     sub := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
@@ -69,7 +69,7 @@ VectorSub := ($n: usize, $T: type) -> type { struct {
 } };
 
 #[impl(lang.ops.Mul(lang.simd.Vector))]
-VectorMul := ($n: usize, $T: type) -> type { struct {
+vector_mul := ($n: usize, $T: type) -> type { struct {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Mul, T).Output(lang.simd.Lane(R))) };
     mul := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
@@ -78,7 +78,7 @@ VectorMul := ($n: usize, $T: type) -> type { struct {
 } };
 
 #[impl(lang.ops.Div(lang.simd.Vector))]
-VectorDiv := ($n: usize, $T: type) -> type { struct {
+vector_div := ($n: usize, $T: type) -> type { struct {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Div, T).Output(lang.simd.Lane(R))) };
     div := ($R: type, a: Vector(n, T), b: R) -> Output(R) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));

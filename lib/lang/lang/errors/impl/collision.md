@@ -14,10 +14,10 @@ where the name is used, with every declaration it could mean.
 Point := struct { x: u8 };
 
 #[impl(Point)]
-Moves := struct { shift := (p: Point) -> Point { p }; };
+moves := struct { shift := (p: Point) -> Point { p }; };
 
 #[impl(Point)]
-Nudges := struct { shift := (p: Point) -> Point { p }; };
+nudges := struct { shift := (p: Point) -> Point { p }; };
 
 use := (p: Point) -> Point {
     p.shift() //~ impl.collision
@@ -32,10 +32,10 @@ Rename one method, or spell the call explicitly through the impl you mean:
 Point := struct { x: u8 };
 
 #[impl(Point)]
-Moves := struct { shift := (p: Point) -> Point { p }; };
+moves := struct { shift := (p: Point) -> Point { p }; };
 
 #[impl(Point)]
-Nudges := struct { nudge := (p: Point) -> Point { p }; };
+nudges := struct { nudge := (p: Point) -> Point { p }; };
 
 use := (p: Point) -> Point {
     p.shift()

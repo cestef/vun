@@ -19,3 +19,15 @@ fn equal_types_are_one_and_ranges_are_sets() {
     let hash = |t| vun_hash::Hash::of_value(&t);
     assert_eq!(hash(array), hash(TyKind::array(Integer::from(4), half_open)));
 }
+
+#[test]
+fn borrows_of_arrays_and_slices_join_in_any_order() {
+    let (two, three, four) =
+        (TyKind::string(2).unwrap(), TyKind::string(3).unwrap(), TyKind::string(4).unwrap());
+    let (mode, _, _) = two.borrowing().unwrap();
+    let slice = TyKind::borrowed_as(mode, TyKind::slice(two.pointee().unwrap().items().unwrap()));
+    assert_eq!(two.join(&three), slice);
+    // The slice two arrays meet in meets a third array, whichever comes first.
+    assert_eq!(two.join(&three).and_then(|s| s.join(&four)), slice);
+    assert_eq!(four.join(&two.join(&three).unwrap()), slice);
+}

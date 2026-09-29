@@ -1,6 +1,7 @@
 //! Tests, properties, benchmarks and simulation (spec 11).
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
+#[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
 test := struct {};
 
 /// Traps unless `cond` holds, the failure quoting it with where it is written.

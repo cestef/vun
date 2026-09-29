@@ -208,23 +208,29 @@ compile error.
 #[lint.define]
 raw_mmio := lang.lint.Lint{
     .group = .suspicious,
-    .default = .warn,
+    .default = .some(.warn),
     .doc = std.meta.embed("raw_mmio.md"),
-    .check = (cx: &mut lint.Cx, call: lint.Call) {
-        if call.callee == lang.mem.volatile_store and !cx.inside(std.hw) {
-            cx.report(call.origin, "raw volatile store outside a register abstraction", .{});
+    .call = (cx: &mut lang.lint.Cx, call: lang.lint.Call) {
+        if call.calls(lang.mem.volatile_store) and !cx.inside(std.hw) {
+            cx.report(call.origin, "raw volatile store outside a register abstraction", &[]);
         }
     },
 };
 ```
 
+- A lint states a check for each kind of node it looks at, `.decl` (`lang.lint.Decl`: a
+  declaration's name, what it binds, where it is written) and `.call` (`lang.lint.Call`: the value
+  of what it calls, where it is written); a check left at its default (`lang.lint.unchecked`) is
+  not run. The compiler walks each file once and runs every check on every node of its kind.
 - Lints run in the compile-time evaluator: deterministic, sandboxed, cached by the query engine.
-- They see a read-only typed view of HIR (`lang.lint.Cx`), versioned as a `lang` module. MIR is
-  never exposed, so compiler internals can change.
+  A check reports by appending to its `Cx`, a plain `lang` struct, so running it is a pure call
+  (`lang.lint.reports`) whose value is what it reported; a report's id is the lint's path
+  (`std.lints.naming.case`), and a fix it proposes replaces what the report points at.
+- They see a read-only typed view of the code (`lang.lint.Cx` and the node structs), versioned as
+  a `lang` module. MIR is never exposed, so compiler internals can change.
 - A declarative form covers pattern lints, written as a quote with `_` holes, never as a string:
   `lint.pattern(#{ lang.mem.volatile_store(_, _) }, ...)`.
-- A package's lints apply to code that uses its API, or to any package that enables them in its
-  build.
+- A file is checked with the lints its package, the packages it depends on and `std` define.
 
 ### Levels and groups
 
@@ -257,7 +263,7 @@ b.lints(.{
 });
 
 // in source: on a declaration, a file (//! position) or a directory's own file
-#[lint.allow(std.lints.naming.case, .reason = "mirrors the vendor register names")]
+#[lint.allow(std.lints.naming.case, "mirrors the vendor register names")]
 ```
 
 - The command line overrides the build; the build overrides package defaults; `forbid` is final.
@@ -274,12 +280,20 @@ Case is decided by what a binding is, which compile-time evaluation knows exactl
 
 | Binding | Case | Examples |
 |---------|------|----------|
-| a type, an interface, or a function returning `type` | `PascalCase` | `RingBuffer`, `Writer`, `Pair` |
+| a type, an interface, or a function giving one | `PascalCase` | `RingBuffer`, `Writer`, `Pair` |
+| a namespace: a struct of declarations alone, none a method receiving the struct, or a function giving one (a witness, a derive) | `snake_case` | `symbols`, `int_narrow`, `derive_eq` |
 | everything else: values, functions, fields, variants, modules, files, directories, packages | `snake_case` | `ring`, `write_all`, `.some`, `drivers/uart.vun` |
 
-- Primitive and prelude type names keep their conventional lowercase (`u8`, `i32`, `usize`,
-  `f64`, `bool`, `never`, `type`): they are the one exemption list of `naming.case`, declared next
-  to the lint in `std.lints.naming`, and extending it is a lint configuration like any other.
+- Primitive and prelude type names keep their conventional lowercase (`usize`, `f64`, `bool`,
+  `never`, `type`, `interface`), and so does an integer type named by its width, a letter of
+  `std.lints.naming.width_prefixes` then digits (`u8`, `i32`, `u24`): these are the exemptions of
+  `naming.case`, `std.lints.naming.lowercase_types` among them, and extending them is a lint
+  configuration like any other.
+- A struct of declarations alone with a method whose first parameter is the struct itself (by
+  value, borrow or pointer) is a type with no data, not a namespace: `Dma := struct { start :=
+  (self: &mut Dma) {..} }`.
+- A field holding a type binds a type. A leading `_`, which marks a private name, is not part of
+  the case.
 - Acronyms are words: `Uart`, `HttpClient`, `usb_hid`.
 - No type-name suffixes that restate the namespace: `mem.alloc.Arena`, not `mem.alloc.ArenaAllocator`
   (`naming.stutter`).

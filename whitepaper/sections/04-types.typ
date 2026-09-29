@@ -88,7 +88,7 @@ structure-valued expression, deriving an implementation is calling a function:
 
 ```vun
 #[impl(Serialize(Point))]
-PointSerialize := serde.derive(Point);
+point_serialize := serde.derive(Point);
 ```
 
 Three generalizations use the same attribute without adding a mechanism.

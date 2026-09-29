@@ -16,10 +16,10 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u16 };
 
 #[impl(Shape(Square))]
-SquareArea := struct { area := (self: &Square) -> u64 { self.side * self.side }; };
+square_area := struct { area := (self: &Square) -> u64 { self.side * self.side }; };
 
 #[impl(Shape(Square))] //~ impl.duplicate
-SquareZero := struct { area := (self: &Square) -> u64 { 0 }; };
+square_zero := struct { area := (self: &Square) -> u64 { 0 }; };
 ```
 
 ## Fix
@@ -34,5 +34,5 @@ Shape := interface(($Self: type) -> type { struct {
 Square := struct { side: u16 };
 
 #[impl(Shape(Square))]
-SquareArea := struct { area := (self: &Square) -> u64 { self.side * self.side }; };
+square_area := struct { area := (self: &Square) -> u64 { self.side * self.side }; };
 ```

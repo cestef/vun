@@ -16,6 +16,7 @@ pub mod fuel;
 pub mod kinds;
 pub mod layout;
 pub mod link;
+pub mod lint;
 pub mod member;
 mod persisted;
 mod reflect;

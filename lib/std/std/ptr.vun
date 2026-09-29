@@ -3,7 +3,7 @@
 //! body vouches for the primitive it calls.
 
 #[impl(lang.mem.Ptr)]
-PtrMethods := ($T: type) -> type { struct {
+ptr_methods := ($T: type) -> type { struct {
     #[panic.never]
     address := (p: *T) -> usize { lang.mem.address(T, p) };
     #[panic.never]

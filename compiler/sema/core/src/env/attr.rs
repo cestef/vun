@@ -36,22 +36,32 @@ impl Env<'_, '_> {
     /// argument has no value here.
     #[must_use]
     pub fn attribute(&self, attrs: &[ExprId], primitive: Primitive) -> Option<Vec<Value>> {
+        attrs.iter().find_map(|&attr| self.arguments(attr, primitive))
+    }
+
+    /// The arguments of each attribute `primitive` among `attrs` whose arguments have a value
+    /// here, as [`Self::attribute`] gives the first: `#[lint.allow(..)]` written once per lint.
+    #[must_use]
+    pub fn attributes(&self, attrs: &[ExprId], primitive: Primitive) -> Vec<Vec<Value>> {
+        attrs.iter().filter_map(|&attr| self.arguments(attr, primitive)).collect()
+    }
+
+    /// The arguments of the attribute `attr`, evaluated, when it is `primitive`.
+    fn arguments(&self, attr: ExprId, primitive: Primitive) -> Option<Vec<Value>> {
         let hir = &self.parsed.hir;
-        attrs.iter().find_map(|&attr| {
-            let (callee, args) = match &hir.exprs[attr].kind {
-                ExprKind::Call { callee, args } => (*callee, args.as_slice()),
-                _ => (attr, [].as_slice()),
-            };
-            if self.eval(callee).ok()? != Value::Primitive(primitive) {
-                return None;
-            }
-            args.iter()
-                .map(|arg| match arg {
-                    Entry::One(Arg { name: None, value }) => self.eval(*value).ok(),
-                    _ => None,
-                })
-                .collect()
-        })
+        let (callee, args) = match &hir.exprs[attr].kind {
+            ExprKind::Call { callee, args } => (*callee, args.as_slice()),
+            _ => (attr, [].as_slice()),
+        };
+        if self.eval(callee).ok()? != Value::Primitive(primitive) {
+            return None;
+        }
+        args.iter()
+            .map(|arg| match arg {
+                Entry::One(Arg { name: None, value }) => self.eval(*value).ok(),
+                _ => None,
+            })
+            .collect()
     }
 
     /// The count the attribute `primitive` gives among `attrs`, as `n` of `#[stack.max(n)]`.

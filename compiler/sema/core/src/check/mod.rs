@@ -47,6 +47,9 @@ impl Query for Checked {
         checker.placement(&env.parsed.hir);
         checker.impls();
         checker.exports();
+        if let Some(linted) = cx.get::<crate::lint::Linted>(key) {
+            checker.diag.absorb(&linted);
+        }
         checker.diag.reached_once();
         Some(Arc::new(checker.diag))
     }

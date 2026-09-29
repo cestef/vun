@@ -1,7 +1,7 @@
 //! Options: methods of every `?T`, by an impl without an interface.
 
 #[impl(Option)]
-OptionMethods := ($T: type) -> type { struct {
+option_methods := ($T: type) -> type { struct {
     #[panic.never]
     is_some := (o: &?T) -> bool { match o { .some(_) => true, .none => false } };
     #[panic.never]
@@ -24,7 +24,7 @@ OptionMethods := ($T: type) -> type { struct {
 
 /// Options are equal when both are `.none`, or both hold equal values.
 #[impl(lang.ops.Eq(Option))]
-OptionEq := ($T: type) -> type { struct {
+option_eq := ($T: type) -> type { struct {
     eq := (a: &?T, b: &?T) -> bool {
         match a {
             .some(x) => match b { .some(y) => x == y, .none => false },

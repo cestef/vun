@@ -11,7 +11,7 @@ section 1, rule 3). Otherwise the program would call the export with arguments i
 ## Example
 
 ```vun
-Runtime := struct {
+runtime := struct {
     #[link.export(std.task.symbols.sleep)] //~ link.export_mismatch
     sleep := (ticks: u32) { };
 };
@@ -22,7 +22,7 @@ Runtime := struct {
 Give the export the declared type, here `() -> ()`:
 
 ```vun
-Runtime := struct {
+runtime := struct {
     #[link.export(std.task.symbols.sleep)]
     sleep := () { };
 };

@@ -8,3 +8,5 @@
 use crate::Item;
 pub const callee: Item = Item::new(&["lang", "lint", "Call", "callee"]);
 pub const origin: Item = Item::new(&["lang", "lint", "Call", "origin"]);
+/// Whether the call calls `f`.
+pub const calls: Item = Item::new(&["lang", "lint", "Call", "calls"]);

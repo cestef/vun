@@ -21,6 +21,7 @@ mod impls;
 mod layout;
 mod library;
 mod link;
+mod lints;
 mod lir;
 mod loops;
 mod markers;

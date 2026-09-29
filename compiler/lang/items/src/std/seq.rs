@@ -8,9 +8,9 @@
 use crate::Item;
 /// A run of items.
 pub const Sequence: Item = Item::new(&["std", "seq", "Sequence"]);
-pub const SliceSequence: Item = Item::new(&["std", "seq", "SliceSequence"]);
-pub const ArraySequence: Item = Item::new(&["std", "seq", "ArraySequence"]);
+pub const slice_sequence: Item = Item::new(&["std", "seq", "slice_sequence"]);
+pub const array_sequence: Item = Item::new(&["std", "seq", "array_sequence"]);
 /// Slices are equal when they hold as many items, equal in order.
-pub const SliceEq: Item = Item::new(&["std", "seq", "SliceEq"]);
+pub const slice_eq: Item = Item::new(&["std", "seq", "slice_eq"]);
 /// Arrays are equal when their items are, in order.
-pub const ArrayEq: Item = Item::new(&["std", "seq", "ArrayEq"]);
+pub const array_eq: Item = Item::new(&["std", "seq", "array_eq"]);

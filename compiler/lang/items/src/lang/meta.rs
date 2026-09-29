@@ -21,13 +21,15 @@ pub const witness: Item = Item::new(&["lang", "meta", "witness"]);
 /// The bytes of the file at `path`, from the directory of the file calling, in its package
 /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
+/// Whether the namespace `inner` is `outer` or nested in it.
+pub const inside: Item = Item::new(&["lang", "meta", "inside"]);
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
 /// the same arguments, one name.
 pub const same: Item = Item::new(&["lang", "meta", "same"]);
 /// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
-pub const TypeEq: Item = Item::new(&["lang", "meta", "TypeEq"]);
+pub const type_eq: Item = Item::new(&["lang", "meta", "type_eq"]);
 /// Names are equal when they are one name: `lang.target.current.os == .linux`.
-pub const NameEq: Item = Item::new(&["lang", "meta", "NameEq"]);
+pub const name_eq: Item = Item::new(&["lang", "meta", "name_eq"]);
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 pub const Any: Item = Item::new(&["lang", "meta", "Any"]);
@@ -38,9 +40,9 @@ pub const append: Item = Item::new(&["lang", "meta", "append"]);
 /// The items of `a` followed by those of `b`, in compile-time memory.
 pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
 /// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4).
-pub const SliceConcat: Item = Item::new(&["lang", "meta", "SliceConcat"]);
+pub const slice_concat: Item = Item::new(&["lang", "meta", "slice_concat"]);
 /// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
-pub const ArrayConcat: Item = Item::new(&["lang", "meta", "ArrayConcat"]);
+pub const array_concat: Item = Item::new(&["lang", "meta", "array_concat"]);
 /// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, or an
 /// item of a variant's payload, named by its position (`0`, `1`, ...).
 pub const Field: Item = Item::new(&["lang", "meta", "Field"]);

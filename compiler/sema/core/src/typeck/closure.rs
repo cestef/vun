@@ -43,10 +43,7 @@ impl Typer<'_, '_, '_> {
                 }
                 _ => None,
             };
-            let pat = match param {
-                Entry::One(Param { pat, .. }) => *pat,
-                Entry::Staged(_) => None,
-            };
+            let pat = param.written().and_then(|p| p.pat);
             // A pack gathers the arguments after the others: it comes last.
             if let Some(p) = pat.filter(|p| matches!(hir.pats[*p].kind, PatKind::Rest(_)))
                 && index + 1 != params.len()
@@ -97,13 +94,10 @@ impl Typer<'_, '_, '_> {
         let hir = self.hir();
         let mut typed = Some(Vec::new());
         for capture in captures {
-            let known = match capture {
-                Entry::One(c) => {
-                    let name = self.env().parsed.captured(*c).map(|(b, _)| hir.binders[b].name);
-                    self.typed(*c).zip(name)
-                }
-                Entry::Staged(_) => None,
-            };
+            let known = capture.written().and_then(|c| {
+                let name = self.env().parsed.captured(*c).map(|(b, _)| hir.binders[b].name);
+                self.typed(*c).zip(name)
+            });
             match (&mut typed, known) {
                 (Some(typed), Some((known, name))) => typed.push((name, known.ty)),
                 _ => typed = None,

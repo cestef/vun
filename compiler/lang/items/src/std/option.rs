@@ -6,6 +6,6 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const OptionMethods: Item = Item::new(&["std", "option", "OptionMethods"]);
+pub const option_methods: Item = Item::new(&["std", "option", "option_methods"]);
 /// Options are equal when both are `.none`, or both hold equal values.
-pub const OptionEq: Item = Item::new(&["std", "option", "OptionEq"]);
+pub const option_eq: Item = Item::new(&["std", "option", "option_eq"]);

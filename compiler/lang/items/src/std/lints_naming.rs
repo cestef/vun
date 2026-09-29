@@ -9,3 +9,24 @@ use crate::Item;
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 pub const level: Item = Item::new(&["std", "lints", "naming", "level"]);
+/// The type names that keep their conventional lowercase, with the integer widths
+/// (`width_prefixes`): the exemptions of `case`.
+pub const lowercase_types: Item = Item::new(
+    &["std", "lints", "naming", "lowercase_types"],
+);
+/// The letters an integer type's width follows in its lowercase name: `u24`, `i7`.
+pub const width_prefixes: Item = Item::new(
+    &["std", "lints", "naming", "width_prefixes"],
+);
+/// A name's case follows what it binds: a type, an interface or a function giving a type in
+/// `PascalCase`, everything else in `snake_case`.
+pub const case: Item = Item::new(&["std", "lints", "naming", "case"]);
+/// A name as written.
+pub const Spelling: Item = Item::new(&["std", "lints", "naming", "Spelling"]);
+/// How the words of a name are written.
+pub const Case: Item = Item::new(&["std", "lints", "naming", "Case"]);
+pub const case_eq: Item = Item::new(&["std", "lints", "naming", "case_eq"]);
+/// The letters and digits of a name, as byte ranges.
+pub const Upper: Item = Item::new(&["std", "lints", "naming", "Upper"]);
+pub const Lower: Item = Item::new(&["std", "lints", "naming", "Lower"]);
+pub const Digit: Item = Item::new(&["std", "lints", "naming", "Digit"]);

@@ -4,91 +4,91 @@
 //! from both operands' (rule 1), and bit operations keep a `uN` type (rule 8).
 
 #[impl(lang.ops.Add(Int))]
-IntAdd := ($r: Range) -> type { struct {
+int_add := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.sum(r, lang.int.range(R))) };
     add := lang.int.add;
 } };
 
 #[impl(lang.ops.Sub(Int))]
-IntSub := ($r: Range) -> type { struct {
+int_sub := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.difference(r, lang.int.range(R))) };
     sub := lang.int.sub;
 } };
 
 #[impl(lang.ops.Mul(Int))]
-IntMul := ($r: Range) -> type { struct {
+int_mul := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.product(r, lang.int.range(R))) };
     mul := lang.int.mul;
 } };
 
 #[impl(lang.ops.Div(Int))]
-IntDiv := ($r: Range) -> type { struct {
+int_div := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.quotient(r, lang.int.range(R))) };
     div := lang.int.div;
 } };
 
 #[impl(lang.ops.Rem(Int))]
-IntRem := ($r: Range) -> type { struct {
+int_rem := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.remainder(r, lang.int.range(R))) };
     rem := lang.int.rem;
 } };
 
 #[impl(lang.ops.BitAnd(Int))]
-IntBitAnd := ($r: Range) -> type { struct {
+int_bit_and := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.bitwise(r, lang.int.range(R))) };
     bit_and := lang.int.bit_and;
 } };
 
 #[impl(lang.ops.BitOr(Int))]
-IntBitOr := ($r: Range) -> type { struct {
+int_bit_or := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.bitwise(r, lang.int.range(R))) };
     bit_or := lang.int.bit_or;
 } };
 
 #[impl(lang.ops.BitXor(Int))]
-IntBitXor := ($r: Range) -> type { struct {
+int_bit_xor := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.bitwise(r, lang.int.range(R))) };
     bit_xor := lang.int.bit_xor;
 } };
 
 #[impl(lang.ops.Shl(Int))]
-IntShl := ($r: Range) -> type { struct {
+int_shl := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.shifted_left(r, lang.int.range(R))) };
     shl := lang.int.shl;
 } };
 
 #[impl(lang.ops.Shr(Int))]
-IntShr := ($r: Range) -> type { struct {
+int_shr := ($r: Range) -> type { struct {
     Output := ($R: type) -> type { Int(lang.int.shifted_right(r, lang.int.range(R))) };
     shr := lang.int.shr;
 } };
 
 #[impl(lang.ops.Neg(Int))]
-IntNeg := ($r: Range) -> type { struct {
+int_neg := ($r: Range) -> type { struct {
     Output := Int(lang.int.negation(r));
     neg := lang.int.neg;
 } };
 
 #[impl(lang.ops.Not(Int))]
-IntNot := ($r: Range) -> type { struct {
+int_not := ($r: Range) -> type { struct {
     Output := Int(lang.int.bitwise(r, r));
     not := lang.int.bit_not;
 } };
 
 /// Integers of any two ranges compare.
 #[impl(lang.ops.Eq(Int))]
-IntEq := ($r: Range) -> type { struct {
+int_eq := ($r: Range) -> type { struct {
     eq := lang.int.equal;
     ne := lang.int.unequal;
 } };
 
 /// Integers in their order, of any two ranges.
 #[impl(lang.ops.Ord(Int))]
-IntOrd := ($r: Range) -> type { struct { cmp := lang.int.compare; } };
+int_ord := ($r: Range) -> type { struct { cmp := lang.int.compare; } };
 
 /// The operators of that order.
 #[impl(lang.ops.PartialOrd(Int))]
-IntPartialOrd := ($r: Range) -> type { struct {
+int_partial_ord := ($r: Range) -> type { struct {
     lt := lang.int.less;
     le := lang.int.less_equal;
     gt := lang.int.greater;

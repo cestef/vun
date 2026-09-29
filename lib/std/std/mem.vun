@@ -18,7 +18,7 @@ Own := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
 /// Reading and writing a `lang.mem.Cell`, `unsafe` both: nothing keeps a reader holding a shared
 /// borrow of the cell from seeing its value change (spec 07, section 2).
 #[impl(lang.mem.Cell)]
-CellMethods := ($T: type) -> type { struct {
+cell_methods := ($T: type) -> type { struct {
     /// What the cell holds.
     get := unsafe (c: &lang.mem.Cell(T)) -> T { unsafe lang.mem.cell_pointer(T, c).read() };
     /// Makes the cell hold `value`.

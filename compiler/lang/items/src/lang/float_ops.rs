@@ -6,16 +6,16 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const FloatAdd: Item = Item::new(&["lang", "float", "ops", "FloatAdd"]);
-pub const FloatSub: Item = Item::new(&["lang", "float", "ops", "FloatSub"]);
-pub const FloatMul: Item = Item::new(&["lang", "float", "ops", "FloatMul"]);
-pub const FloatDiv: Item = Item::new(&["lang", "float", "ops", "FloatDiv"]);
-pub const FloatRem: Item = Item::new(&["lang", "float", "ops", "FloatRem"]);
-pub const FloatNeg: Item = Item::new(&["lang", "float", "ops", "FloatNeg"]);
+pub const float_add: Item = Item::new(&["lang", "float", "ops", "float_add"]);
+pub const float_sub: Item = Item::new(&["lang", "float", "ops", "float_sub"]);
+pub const float_mul: Item = Item::new(&["lang", "float", "ops", "float_mul"]);
+pub const float_div: Item = Item::new(&["lang", "float", "ops", "float_div"]);
+pub const float_rem: Item = Item::new(&["lang", "float", "ops", "float_rem"]);
+pub const float_neg: Item = Item::new(&["lang", "float", "ops", "float_neg"]);
 /// IEEE equality: a NaN equals nothing.
-pub const FloatEq: Item = Item::new(&["lang", "float", "ops", "FloatEq"]);
+pub const float_eq: Item = Item::new(&["lang", "float", "ops", "float_eq"]);
 /// IEEE comparisons, false with a NaN: floats are ordered partially. IEEE `totalOrder` is
 /// `lang.float.total_order`, not an `Ord`, so that `<` and `cmp` never disagree.
-pub const FloatPartialOrd: Item = Item::new(
-    &["lang", "float", "ops", "FloatPartialOrd"],
+pub const float_partial_ord: Item = Item::new(
+    &["lang", "float", "ops", "float_partial_ord"],
 );

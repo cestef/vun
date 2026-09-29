@@ -8,7 +8,7 @@ Sequence := interface(($Self: type) -> type { struct {
 } });
 
 #[impl(Sequence(lang.mem.Slice))]
-SliceSequence := ($T: type) -> type { struct {
+slice_sequence := ($T: type) -> type { struct {
     #[panic.never]
     len := (xs: &[T]) -> usize { lang.mem.len(T, xs) };
     /// A pointer to the first item, for passing the items to code outside the language.
@@ -19,7 +19,7 @@ SliceSequence := ($T: type) -> type { struct {
 } };
 
 #[impl(Sequence(lang.mem.Array))]
-ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
+array_sequence := ($n: Int(0..), $T: type) -> type { struct {
     #[panic.never]
     len := (xs: &[n]T) -> usize { n };
     /// A pointer to the first item, for passing the items to code outside the language.
@@ -34,7 +34,7 @@ ArraySequence := ($n: Int(0..), $T: type) -> type { struct {
 
 /// Slices are equal when they hold as many items, equal in order.
 #[impl(lang.ops.Eq(lang.mem.Slice))]
-SliceEq := ($T: type) -> type { struct {
+slice_eq := ($T: type) -> type { struct {
     eq := (a: &[T], b: &[T]) -> bool {
         if a.len() != b.len() { return false; }
         for i in 0..a.len() {
@@ -46,7 +46,7 @@ SliceEq := ($T: type) -> type { struct {
 
 /// Arrays are equal when their items are, in order.
 #[impl(lang.ops.Eq(lang.mem.Array))]
-ArrayEq := ($n: Int(0..), $T: type) -> type { struct {
+array_eq := ($n: Int(0..), $T: type) -> type { struct {
     eq := (a: &[n]T, b: &[n]T) -> bool {
         for i in 0..n {
             if a[i] != b[i] { return false; }

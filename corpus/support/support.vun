@@ -22,7 +22,7 @@ Config := struct {
 };
 Error := enum { fs, oom, parse };
 #[impl(lang.ops.Eq(Error))]
-ErrorEq := std.cmp.derive_eq(Error);
+error_eq := std.cmp.derive_eq(Error);
 parse := (f: &File, cfg: &out Config) -> Result((), Error) {
     cfg.* = .{};
     .ok(())
@@ -85,7 +85,7 @@ Packet := struct {
     decode := (bytes: &[u8]) -> Result(Packet, Error) { .err(.parse) };
 };
 #[impl(lang.ops.Eq(Packet))]
-PacketEq := std.cmp.derive_eq(Packet);
+packet_eq := std.cmp.derive_eq(Packet);
 use := ($T: type, v: T) {};
 handle_read := (r: u8) {};
 handle_write := (w: u8) {};

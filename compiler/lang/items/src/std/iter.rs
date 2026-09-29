@@ -9,4 +9,4 @@ use crate::Item;
 pub const Iter: Item = Item::new(&["std", "iter", "Iter"]);
 /// What every iterator can be turned into or summed up as: methods of each coroutine frame that
 /// yields `T`, by an impl without an interface over `lang.Coroutine`. Each consumes the frame.
-pub const IterMethods: Item = Item::new(&["std", "iter", "IterMethods"]);
+pub const iter_methods: Item = Item::new(&["std", "iter", "iter_methods"]);

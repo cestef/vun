@@ -7,7 +7,7 @@ System := struct {
 /// The standard output stream.
 Stdout := struct {};
 #[impl(std.fmt.Writer(Stdout))]
-StdoutWriter := struct {
+stdout_writer := struct {
     Error := Errno;
     closed: Errno = .{ .code = Errno.pipe };
     write := (self: &mut Stdout, bytes: &[u8]) -> Result(usize, Errno) { .ok(bytes.len()) };
@@ -20,4 +20,4 @@ Errno := struct {
     pipe := 64;
 };
 Exit := enum { ok, code(Int(1..=125)) };
-command := ($main: (&mut System) -> Exit) -> type { struct {} };
+command := ($main: (&mut System) -> Exit) -> type { struct { entry := () {}; } };

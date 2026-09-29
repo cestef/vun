@@ -36,6 +36,7 @@ Count := enum {
 /// takes, which it holds, and fits any field; an `error`, a `skipped` token, and a node holding
 /// one or anchored at an absent token, are recovery's shapes: they fit their kind's fields, not
 /// its production.
+#[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 NodeKind := .{
     .leaves = [
         .punct,

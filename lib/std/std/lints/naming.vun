@@ -3,3 +3,152 @@
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 level: lang.lint.Level = .deny;
+
+/// The type names that keep their conventional lowercase, with the integer widths
+/// (`width_prefixes`): the exemptions of `case`.
+lowercase_types := &["unsigned", "signed", "usize", "isize", "f16", "f32", "f64", "bool", "never", "type", "interface"];
+/// The letters an integer type's width follows in its lowercase name: `u24`, `i7`.
+width_prefixes := &['u', 'i'];
+
+/// A name's case follows what it binds: a type, an interface or a function giving a type in
+/// `PascalCase`, everything else in `snake_case`.
+#[lint.define]
+case := lang.lint.Lint{
+    .group = .naming,
+    .doc = std.meta.embed("naming/case.md"),
+    .decl = (cx: &mut lang.lint.Cx, d: lang.lint.Decl) {
+        name := Spelling{ .text = d.name };
+        if .some(want) = Case.of(d.binds, name) {
+            if !want.holds(name) {
+                // Renaming a declaration leaves its uses to rename: shown, never applied.
+                fix: lang.lint.Fix = .{ .msg = "rename it", .safety = .display_only, .text = want.written(name) };
+                cx.report(d.origin, want.expected(), &[fix]);
+            }
+        }
+    },
+};
+
+/// A name as written.
+Spelling := struct {
+    text: &[u8],
+
+    /// Its words: the name without the leading `_` that marks a private name.
+    words := (self: Spelling) -> &[u8] {
+        mut i: usize = 0;
+        for i < self.text.len() and self.text[i] == _separator { i += 1; }
+        self.text[i..]
+    };
+
+    /// Whether it is a type's conventional lowercase: listed in `lowercase_types`, or a letter of
+    /// `width_prefixes` followed by digits alone.
+    conventional := (self: Spelling) -> bool {
+        for name in lowercase_types {
+            if self.text == name.* { return true; }
+        }
+        if self.text.len() < 2 { return false; }
+        mut prefixed := false;
+        for p in width_prefixes {
+            if self.text[0] == p.* { prefixed = true; }
+        }
+        if !prefixed { return false; }
+        for b in self.text[1..] {
+            if b.try_to(Digit) == .none { return false; }
+        }
+        true
+    };
+};
+
+/// How the words of a name are written.
+Case := enum {
+    /// `RingBuffer`: each word capitalized, joined.
+    pascal,
+    /// `write_all`: lowercase words joined by `_`.
+    snake;
+
+    /// The case a binding of what `binds` named `name` is written in; `.none` for a type
+    /// keeping its conventional lowercase.
+    of := (binds: lang.lint.Binds, name: Spelling) -> ?Case {
+        match binds {
+            .type => if name.conventional() { .none } else { .some(.pascal) },
+            _ => .some(.snake),
+        }
+    };
+
+    /// Whether `name` is written in this case; leading `_`, which marks a private name, aside.
+    holds := (self: Case, name: Spelling) -> bool {
+        words := name.words();
+        if words.len() == 0 { return true; }
+        match self {
+            .pascal => {
+                if words[0].try_to(Upper) == .none { return false; }
+                for b in words {
+                    if b.try_to(Upper) == .none and b.try_to(Lower) == .none and b.try_to(Digit) == .none {
+                        return false;
+                    }
+                }
+                true
+            },
+            .snake => {
+                for b in words { if b.try_to(Upper) != .none { return false; } }
+                true
+            },
+        }
+    };
+
+    /// `name` written in this case, its leading `_` kept.
+    written := (self: Case, name: Spelling) -> &static [u8] {
+        mut out: &static [u8] = &[];
+        mut start := true;
+        for b in name.text {
+            byte := b.*;
+            if byte == _separator and (start or self == .snake) {
+                out = lang.meta.append(u8, out, byte);
+                continue;
+            }
+            match self {
+                .pascal => {
+                    if byte == _separator {
+                        start = true;
+                        continue;
+                    }
+                    mut next: u8 = byte;
+                    if start {
+                        if .some(lower) = byte.try_to(Lower) { next = lower - _shift; }
+                    }
+                    out = lang.meta.append(u8, out, next);
+                },
+                .snake => {
+                    if .some(upper) = byte.try_to(Upper) {
+                        if !start and out[out.len() - 1] != _separator {
+                            out = lang.meta.append(u8, out, _separator);
+                        }
+                        out = lang.meta.append(u8, out, upper + _shift);
+                    } else {
+                        out = lang.meta.append(u8, out, byte);
+                    }
+                },
+            }
+            start = false;
+        }
+        out
+    };
+
+    /// What a report of a name not in this case says.
+    expected := (self: Case) -> &[u8] {
+        match self {
+            .pascal => "a type is named in `PascalCase`",
+            .snake => "a value is named in `snake_case`",
+        }
+    };
+};
+
+#[impl(lang.ops.Eq(Case))]
+case_eq := std.cmp.derive_eq(Case);
+
+/// The letters and digits of a name, as byte ranges.
+Upper := Int('A'..='Z');
+Lower := Int('a'..='z');
+Digit := Int('0'..='9');
+_separator := '_';
+/// From an uppercase letter to its lowercase.
+_shift := 'a' - 'A';

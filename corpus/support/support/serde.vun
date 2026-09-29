@@ -5,4 +5,6 @@ rename := ($to: &[u8]) -> Rename { .{ .to = to } };
 Rename := struct { to: &[u8] };
 
 /// The witness of `support.Serialize(T)` derived from `T`'s fields.
-derive := ($T: type) -> type { struct {} };
+derive := ($T: type) -> type { struct {
+    serialize := ($E: type, v: &T, w: &mut E) -> Result((), E.Error) { .ok(()) };
+} };

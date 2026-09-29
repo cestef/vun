@@ -36,8 +36,8 @@ pub const radix: Item = Item::new(&["std", "fmt", "radix"]);
 pub const opening: Item = Item::new(&["std", "fmt", "opening"]);
 pub const closing: Item = Item::new(&["std", "fmt", "closing"]);
 pub const separator: Item = Item::new(&["std", "fmt", "separator"]);
-pub const IntFormat: Item = Item::new(&["std", "fmt", "IntFormat"]);
+pub const int_format: Item = Item::new(&["std", "fmt", "int_format"]);
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
-pub const SliceFormat: Item = Item::new(&["std", "fmt", "SliceFormat"]);
+pub const slice_format: Item = Item::new(&["std", "fmt", "slice_format"]);
 /// The items of an array, as those of a slice; a string literal is a borrow of an array of bytes.
-pub const ArrayFormat: Item = Item::new(&["std", "fmt", "ArrayFormat"]);
+pub const array_format: Item = Item::new(&["std", "fmt", "array_format"]);

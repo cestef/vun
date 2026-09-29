@@ -1,14 +1,14 @@
 # Handoff
 
-State of Vun as of 2026-09-29, for the next agent: what is open and what comes next. Nothing here
+State of Vun as of 2026-09-30, for the next agent: what is open and what comes next. Nothing here
 is durable; conventions and how-tos live in [`dev/`](dev/workflow.md), rules in
 [`spec/`](spec/00-principles.md), history in `jj log` and [`decisions.md`](spec/decisions.md).
 Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 667 tests pass; clippy,
-`cargo gen --check`, `lines` and `layers` are clean; the corpus has 304 passing programs and 4
+Everything is committed in the main chain; no `jj` workspace holds work. 673 tests pass; clippy,
+`cargo gen --check`, `lines` and `layers` are clean; the corpus has 305 passing programs and 3
 planned, and LIR lowers every function the corpus reaches.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
@@ -27,7 +27,15 @@ every card, and `cargo xtask layers` writes `layers.toml` from `RANKS`. Open: re
 variants no longer declared, as `cargo gen` does; code in the tall and square clips is small at 80
 columns; the overlays are not yet tried in OBS itself.
 
-Last landed (340, 341): the parser reads the productions of `nodes.vun` (an automaton per
+Last landed (338, 339): lints run. A `lang.lint.Lint` states a check per kind of node (`.decl`,
+`.call`); the `Linted` query, part of `Checked`, runs each lint a file's package and its
+dependencies define on each node through `lang.lint.reports`, a pure compile-time call, unless a
+`#[lint.allow(lint, "reason")]` around it silences it. `std.lints.naming.case` (deny) holds every
+file to spec 10 section 5, the owner's rule: witnesses and other structs of declarations alone are
+namespaces in `snake_case` (`int_narrow`), unless a method receives the struct; integer width
+names (`u24`) are exempt. `lib/`, the corpus and the tests were renamed; `vun tool bind` names
+bindings by the same rule through `vun_syntax::case::Case`, which the generators share. Before
+that (340, 341): the parser reads the productions of `nodes.vun` (an automaton per
 production, readings keeping every kind a node may be, one rule for who reads a token, kinds
 chosen when the tree is written, recovery supposing, completing or skipping and quiet after a
 report; spec 13, section 5), and the hand parser is gone. With it the grammar lost its edge cases:
@@ -138,8 +146,11 @@ placements) were the owner's choice.
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
-4. Corpus gaps (`cargo xtask corpus`, 4 planned): lints (`lint.define`, `lint.allow`,
-   `std.lints.naming.case`), `std.meta.attr`, `std.Dyn`, `testing.Bench`/`Sim` and `mem.copy`.
+4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.meta.attr`, `std.Dyn`,
+   `testing.Bench`/`Sim` and `mem.copy`. Lints: level `expect` shows as `warn` and never reports
+   that a lint stayed silent; locals and parameters are not linted; the build's lint levels
+   (item 5) do not reach `Lint::read` yet; the grammar generator still reads a PascalCase table
+   name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
    over `#[target.require]`. A trap in a `$` form inside a declaration's value is reported twice,
    by the form and by the value.

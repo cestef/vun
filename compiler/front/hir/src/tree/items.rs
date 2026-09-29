@@ -14,6 +14,16 @@ pub enum Entry<T> {
     Staged(Staged<T>),
 }
 
+impl<T> Entry<T> {
+    /// The item, for an entry written as one; `None` for one generated at compile time.
+    pub fn written(&self) -> Option<&T> {
+        match self {
+            Self::One(item) => Some(item),
+            Self::Staged(_) => None,
+        }
+    }
+}
+
 pub enum Staged<T> {
     For {
         pat: PatId,

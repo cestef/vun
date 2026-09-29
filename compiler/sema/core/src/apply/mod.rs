@@ -10,6 +10,7 @@ use vun_desugar::Borrow;
 use vun_primitives::Primitive;
 use vun_primitives::bounds::Bounds;
 use vun_primitives::lang::Lang;
+use vun_primitives::lint::Lint;
 use vun_primitives::mem::Mem;
 use vun_primitives::meta::Meta;
 use vun_primitives::simd::Simd;
@@ -140,6 +141,8 @@ impl Apply for Primitive {
             (Self::Mem(Mem::pointer_to), [_, linked @ Value::Linked(_)]) => Ok(linked.clone()),
             // `lang.mem.len(T, xs)`: the number of items `xs` borrows.
             (Self::Mem(Mem::len), [_, Value::Array(items)]) => Ok(Value::Int(Integer::from(items.len()))),
+            // A lint's call node holds the value of what the call calls.
+            (Self::Lint(Lint::calls), [_, callee, f]) => env.decide(callee == f),
             (Self::Int(int), args) => int.apply(env, args),
             (Self::Meta(meta), args) => meta.apply(env, args),
             (Self::Float(float), args) => float.apply(env, args),

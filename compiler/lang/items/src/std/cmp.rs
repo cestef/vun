@@ -14,5 +14,5 @@ pub const max: Item = Item::new(&["std", "cmp", "max"]);
 pub const clamp: Item = Item::new(&["std", "cmp", "clamp"]);
 /// An `Eq` witness for `T` by reflection (spec 03, section 6): two values are equal when they are
 /// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
-/// fields its parts. `#[impl(lang.ops.Eq(Point))] PointEq := std.cmp.derive_eq(Point);`
+/// fields its parts. `#[impl(lang.ops.Eq(Point))] point_eq := std.cmp.derive_eq(Point);`
 pub const derive_eq: Item = Item::new(&["std", "cmp", "derive_eq"]);

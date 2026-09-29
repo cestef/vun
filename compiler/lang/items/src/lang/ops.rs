@@ -41,17 +41,17 @@ pub const PartialOrd: Item = Item::new(&["lang", "ops", "PartialOrd"]);
 /// its `PartialOrd`, which `by_cmp` derives from `cmp`.
 pub const Ord: Item = Item::new(&["lang", "ops", "Ord"]);
 /// The `PartialOrd` witness of a type ordered by `Ord`, its operators following `cmp`:
-/// `#[impl(lang.ops.PartialOrd(Point))] PointPartialOrd := lang.ops.by_cmp(Point);`
+/// `#[impl(lang.ops.PartialOrd(Point))] point_partial_ord := lang.ops.by_cmp(Point);`
 pub const by_cmp: Item = Item::new(&["lang", "ops", "by_cmp"]);
 pub const Index: Item = Item::new(&["lang", "ops", "Index"]);
 /// What `e?` desugars to: continue with a value, or stop the function with a result.
 pub const Try: Item = Item::new(&["lang", "ops", "Try"]);
 /// `o?` gives the value of `.some`, or returns `.none`, an `Option(never)`, which every option
 /// type accepts.
-pub const OptionTry: Item = Item::new(&["lang", "ops", "OptionTry"]);
+pub const option_try: Item = Item::new(&["lang", "ops", "option_try"]);
 /// `r?` gives the value of `.ok`, or returns the error as a `Result(never, E)`, which every
 /// result type with errors `E` accepts.
-pub const ResultTry: Item = Item::new(&["lang", "ops", "ResultTry"]);
+pub const result_try: Item = Item::new(&["lang", "ops", "result_try"]);
 /// What calling a value that is no function means (spec 01, section 4): a closure is an anonymous
 /// struct of its captures with this impl, and `f(a, b)` is `call(&mut f, (a, b))`.
 pub const Call: Item = Item::new(&["lang", "ops", "Call"]);
@@ -59,10 +59,10 @@ pub const Call: Item = Item::new(&["lang", "ops", "Call"]);
 pub const Iterate: Item = Item::new(&["lang", "ops", "Iterate"]);
 /// A coroutine is its own iterator (spec 06, section 2). The impl's target is an interface
 /// constructor: it covers every type implementing a `Coroutine(Y, R)`, which it takes first.
-pub const CoroutineIterate: Item = Item::new(&["lang", "ops", "CoroutineIterate"]);
+pub const coroutine_iterate: Item = Item::new(&["lang", "ops", "coroutine_iterate"]);
 /// Bounds give their items from the start up (spec 04).
-pub const BoundsIterate: Item = Item::new(&["lang", "ops", "BoundsIterate"]);
+pub const bounds_iterate: Item = Item::new(&["lang", "ops", "bounds_iterate"]);
 /// A slice, through a borrow, gives a borrow of each of its items in order.
-pub const SliceIterate: Item = Item::new(&["lang", "ops", "SliceIterate"]);
+pub const slice_iterate: Item = Item::new(&["lang", "ops", "slice_iterate"]);
 /// An array value gives each of its items in order.
-pub const ArrayIterate: Item = Item::new(&["lang", "ops", "ArrayIterate"]);
+pub const array_iterate: Item = Item::new(&["lang", "ops", "array_iterate"]);

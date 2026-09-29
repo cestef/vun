@@ -6,6 +6,6 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const ResultMethods: Item = Item::new(&["std", "result", "ResultMethods"]);
+pub const result_methods: Item = Item::new(&["std", "result", "result_methods"]);
 /// Results are equal when both hold equal values, or both equal errors.
-pub const ResultEq: Item = Item::new(&["std", "result", "ResultEq"]);
+pub const result_eq: Item = Item::new(&["std", "result", "result_eq"]);

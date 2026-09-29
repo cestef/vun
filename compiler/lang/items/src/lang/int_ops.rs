@@ -6,21 +6,21 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const IntAdd: Item = Item::new(&["lang", "int", "ops", "IntAdd"]);
-pub const IntSub: Item = Item::new(&["lang", "int", "ops", "IntSub"]);
-pub const IntMul: Item = Item::new(&["lang", "int", "ops", "IntMul"]);
-pub const IntDiv: Item = Item::new(&["lang", "int", "ops", "IntDiv"]);
-pub const IntRem: Item = Item::new(&["lang", "int", "ops", "IntRem"]);
-pub const IntBitAnd: Item = Item::new(&["lang", "int", "ops", "IntBitAnd"]);
-pub const IntBitOr: Item = Item::new(&["lang", "int", "ops", "IntBitOr"]);
-pub const IntBitXor: Item = Item::new(&["lang", "int", "ops", "IntBitXor"]);
-pub const IntShl: Item = Item::new(&["lang", "int", "ops", "IntShl"]);
-pub const IntShr: Item = Item::new(&["lang", "int", "ops", "IntShr"]);
-pub const IntNeg: Item = Item::new(&["lang", "int", "ops", "IntNeg"]);
-pub const IntNot: Item = Item::new(&["lang", "int", "ops", "IntNot"]);
+pub const int_add: Item = Item::new(&["lang", "int", "ops", "int_add"]);
+pub const int_sub: Item = Item::new(&["lang", "int", "ops", "int_sub"]);
+pub const int_mul: Item = Item::new(&["lang", "int", "ops", "int_mul"]);
+pub const int_div: Item = Item::new(&["lang", "int", "ops", "int_div"]);
+pub const int_rem: Item = Item::new(&["lang", "int", "ops", "int_rem"]);
+pub const int_bit_and: Item = Item::new(&["lang", "int", "ops", "int_bit_and"]);
+pub const int_bit_or: Item = Item::new(&["lang", "int", "ops", "int_bit_or"]);
+pub const int_bit_xor: Item = Item::new(&["lang", "int", "ops", "int_bit_xor"]);
+pub const int_shl: Item = Item::new(&["lang", "int", "ops", "int_shl"]);
+pub const int_shr: Item = Item::new(&["lang", "int", "ops", "int_shr"]);
+pub const int_neg: Item = Item::new(&["lang", "int", "ops", "int_neg"]);
+pub const int_not: Item = Item::new(&["lang", "int", "ops", "int_not"]);
 /// Integers of any two ranges compare.
-pub const IntEq: Item = Item::new(&["lang", "int", "ops", "IntEq"]);
+pub const int_eq: Item = Item::new(&["lang", "int", "ops", "int_eq"]);
 /// Integers in their order, of any two ranges.
-pub const IntOrd: Item = Item::new(&["lang", "int", "ops", "IntOrd"]);
+pub const int_ord: Item = Item::new(&["lang", "int", "ops", "int_ord"]);
 /// The operators of that order.
-pub const IntPartialOrd: Item = Item::new(&["lang", "int", "ops", "IntPartialOrd"]);
+pub const int_partial_ord: Item = Item::new(&["lang", "int", "ops", "int_partial_ord"]);

@@ -2,20 +2,20 @@ start := std.os.start(main);
 
 /// Cases of `f16` operations: rounding ties, the largest finite value and overflow, subnormals,
 /// signed zeros, infinities and NaNs.
-Add16: [10](f16, f16) = [
+add16: [10](f16, f16) = [
     .{ 2048.0, 1.0 }, .{ 2048.0, 3.0 }, .{ 65504.0, 16.0 }, .{ 65504.0, 32.0 }, .{ 0.1, 0.2 },
     .{ 6.0e-8, 6.0e-8 }, .{ 1.0e-5, -1.0e-5 }, .{ -0.0, 0.0 }, .{ 1.0 / 0.0, -1.0 / 0.0 },
     .{ 1.0, 1.0e-4 },
 ];
-Mul16: [7](f16, f16) = [
+mul16: [7](f16, f16) = [
     .{ 0.1, 0.1 }, .{ 300.0, 300.0 }, .{ 6.0e-8, 0.5 }, .{ 6.0e-8, 1.5 }, .{ 1.0e-3, 1.0e-3 },
     .{ -2.0, 1.0 / 0.0 }, .{ 0.0, 1.0 / 0.0 },
 ];
-Div16: [6](f16, f16) = [
+div16: [6](f16, f16) = [
     .{ 1.0, 3.0 }, .{ 1.0, 0.0 }, .{ 0.0, 0.0 }, .{ 1.0, 65504.0 }, .{ 6.0e-8, 2.0 }, .{ 2.0, 3.0 },
 ];
-Rem16: [3](f16, f16) = [ .{ 5.5, 2.0 }, .{ 1000.0, 0.3 }, .{ 1.0, 0.0 } ];
-Fma16: [3](f16, f16, f16) = [ .{ 0.1, 10.0, -1.0 }, .{ 2049.0, 1.0, 1.0 }, .{ 300.0, 300.0, -65504.0 } ];
+rem16: [3](f16, f16) = [ .{ 5.5, 2.0 }, .{ 1000.0, 0.3 }, .{ 1.0, 0.0 } ];
+fma16: [3](f16, f16, f16) = [ .{ 0.1, 10.0, -1.0 }, .{ 2049.0, 1.0, 1.0 }, .{ 300.0, 300.0, -65504.0 } ];
 
 /// The same float, bit for bit: NaNs included, which are canonical.
 same := ($T: type, a: T, b: T) -> bool { lang.float.bits(T, a) == lang.float.bits(T, b) };
@@ -23,23 +23,23 @@ same := ($T: type, a: T, b: T) -> bool { lang.float.bits(T, a) == lang.float.bit
 main := (sys: &mut std.os.System) -> std.os.Exit {
     one: f16 = if sys.args().len() == 1 { 1.0 } else { 2.0 };
     mut failed: Int(0..=125) = 0;
-    $for c in Add16 {
+    $for c in add16 {
         if !same(f16, c.0 * one + c.1, $(c.0 + c.1)) { failed +|= 1; }
         if !same(f16, c.0 * one - c.1, $(c.0 - c.1)) { failed +|= 1; }
         if (c.0 * one < c.1) != $(c.0 < c.1) { failed +|= 1; }
         if (c.0 * one == c.1) != $(c.0 == c.1) { failed +|= 1; }
         if !same(f16, -(c.0 * one), $(-c.0)) { failed +|= 1; }
     }
-    $for c in Mul16 {
+    $for c in mul16 {
         if !same(f16, c.0 * one * c.1, $(c.0 * c.1)) { failed +|= 1; }
     }
-    $for c in Div16 {
+    $for c in div16 {
         if !same(f16, c.0 * one / c.1, $(c.0 / c.1)) { failed +|= 1; }
     }
-    $for c in Rem16 {
+    $for c in rem16 {
         if !same(f16, c.0 * one % c.1, $(c.0 % c.1)) { failed +|= 1; }
     }
-    $for c in Fma16 {
+    $for c in fma16 {
         if !same(f16, lang.float.mul_add(f16, c.0 * one, c.1, c.2), $(lang.float.mul_add(f16, c.0, c.1, c.2))) {
             failed +|= 1;
         }
