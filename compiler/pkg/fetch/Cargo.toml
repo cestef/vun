@@ -3,6 +3,7 @@ name = "vun-fetch"
 description = "Fetching package archives: mirrors, downloads and unpacking."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

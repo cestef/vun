@@ -1,0 +1,26 @@
+# The code colors of Vun, per color scheme: surfaces of a code card and a color per role.
+# `card.typ` maps highlighting scopes to these roles.
+
+[light]
+background = "#F0ECE6"
+border = "#DFD9D0"
+bar = "#E7E1D8"
+text = "#24211D"
+comment = "#8A8074"
+keyword = "#B75777"
+name = "#24211D"
+string = "#2D6C5E"
+literal = "#4570B0"
+punct = "#6D645A"
+
+[dark]
+background = "#24211D"
+border = "#3A352F"
+bar = "#2C2824"
+text = "#F0ECE6"
+comment = "#8A8074"
+keyword = "#E89BB1"
+name = "#F0ECE6"
+string = "#9ADAC8"
+literal = "#A2C3EC"
+punct = "#A89E91"

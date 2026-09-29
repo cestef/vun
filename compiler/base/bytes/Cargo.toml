@@ -3,6 +3,7 @@ name = "vun-bytes"
 description = "Binary encodings the object writers share: little-endian fixed widths and LEB128."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -3,6 +3,7 @@ name = "vun-sema-float"
 description = "IEEE 754 binary floats at compile time, rounded once per operation."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

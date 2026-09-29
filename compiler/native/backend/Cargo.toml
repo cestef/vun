@@ -3,6 +3,7 @@ name = "vun-backend-native"
 description = "The native backend: machine code for debug builds in one pass per function, in the design of TPDE."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -3,6 +3,7 @@ name = "vun-sema-int"
 description = "Exact integers and integer ranges, the integers of compile time."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -3,6 +3,7 @@ name = "vun-codegen"
 description = "The single-pass code generation framework, after TPDE: value assignments, registers, frames, jumps and snippets over LIR, for any architecture."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

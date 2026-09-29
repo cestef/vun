@@ -3,6 +3,7 @@ name = "vun-codec"
 description = "A compact binary encoding for persisted data."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

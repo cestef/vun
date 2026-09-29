@@ -1,0 +1,17 @@
+//! The tour shown in the README.
+
+os := std.os;
+start := os.start(main);
+
+// integers are ranges: `a + b` can't overflow
+mid := (a: u32, b: u32) -> u32 { (a + b) / 2 };
+
+// types are values, known at compile time
+max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
+
+main := (sys: &mut os.System) -> os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "mid: {}\n", mid(4_000_000_000, 4_000_000_002));
+    std.fmt.print(&mut out, "max: {}\n", max(u8, 7, 42));
+    .ok
+};

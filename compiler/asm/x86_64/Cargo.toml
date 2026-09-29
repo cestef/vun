@@ -3,6 +3,7 @@ name = "vun-asm-x86_64"
 description = "The x86-64 assembler: the instruction set's forms encoded into code buffers, and its calling conventions' registers."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

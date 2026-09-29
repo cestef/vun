@@ -3,6 +3,7 @@ name = "vun-backend-c"
 description = "C99 backend: reach every target with a C compiler."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

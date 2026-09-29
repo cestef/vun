@@ -3,6 +3,7 @@ name = "vun-backend-llvm"
 description = "LLVM backend: optimized builds, widest native reach."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

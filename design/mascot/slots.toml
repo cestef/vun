@@ -1,3 +1,0 @@
-# Stacking order of the mascot's slots, bottom to top. A slot swapped into a pose that lacks it
-# is inserted at its place in this order.
-order = ["shell", "legs", "body", "stalks", "eyes", "cheeks", "mouth", "claws"]

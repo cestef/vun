@@ -3,6 +3,7 @@ name = "vun-sanitize"
 description = "Checks of unsafe code at run time: which a program is built with, and what each checked operation runs as."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

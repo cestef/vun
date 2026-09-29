@@ -3,6 +3,7 @@ name = "vun-term"
 description = "Terminal output: semantic styles, styled text, tables, status lines, color choice."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

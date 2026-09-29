@@ -3,6 +3,7 @@ name = "vun-asm-thumb"
 description = "The Thumb assembler: instruction forms as one table, read by the encoder, the printer and form selection."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

@@ -1,6 +1,0 @@
-# Mark left of the wordmark; the wordmark's x-height sits on the mark's lower half.
-view = [0, 0, 660, 240]
-layers = [
-  { figure = "identity/logo/mark", transform = "translate(10,10) scale(0.524) translate(-54,-40)" },
-  { figure = "identity/logo/wordmark", transform = "translate(250,40)" },
-]

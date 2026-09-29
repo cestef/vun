@@ -3,6 +3,7 @@ name = "vun-native"
 description = "The native backend shared by every architecture: compiling units, object files and listings."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

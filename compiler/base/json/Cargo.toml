@@ -3,6 +3,7 @@ name = "vun-json"
 description = "JSON (RFC 8259): a strict, zero-copy reader and a writer."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

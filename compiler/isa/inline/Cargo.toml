@@ -3,6 +3,7 @@ name = "vun-inline"
 description = "Inline assembly blocks: typed instructions of one architecture over operands binding values, as sema, MIR and LIR carry them."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

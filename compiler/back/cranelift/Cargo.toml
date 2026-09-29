@@ -3,6 +3,7 @@ name = "vun-backend-cranelift"
 description = "Cranelift backend: fast debug builds."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

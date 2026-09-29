@@ -3,6 +3,7 @@ name = "vun-lir"
 description = "Low-level IR: type-erased SSA shared by every backend."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

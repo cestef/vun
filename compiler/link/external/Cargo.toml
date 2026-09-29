@@ -3,6 +3,7 @@ name = "vun-link-external"
 description = "External linkers speaking the link plan as JSON."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

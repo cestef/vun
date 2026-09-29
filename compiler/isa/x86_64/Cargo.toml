@@ -3,6 +3,7 @@ name = "vun-isa-x86_64"
 description = "The x86-64 instruction set: its forms as one table, generated from lang.arch.x86_64, and its operands, listings and inline assembly over it."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

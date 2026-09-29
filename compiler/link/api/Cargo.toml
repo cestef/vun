@@ -3,6 +3,7 @@ name = "vun-link"
 description = "The `Linker` interface and the target-independent link plan."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

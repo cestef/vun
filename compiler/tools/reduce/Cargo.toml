@@ -3,6 +3,7 @@ name = "vun-reduce"
 description = "Test case reduction: a file cut down, node by node, to the least that keeps what makes it interesting."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

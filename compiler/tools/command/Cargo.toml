@@ -3,6 +3,7 @@ name = "vun-command"
 description = "Declarative command trees: argument parsing, generated help, usage diagnostics."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

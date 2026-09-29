@@ -3,6 +3,7 @@ name = "vun-render-json"
 description = "Diagnostics as schema-versioned JSON lines."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

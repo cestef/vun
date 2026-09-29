@@ -3,6 +3,7 @@ name = "vun-render-sarif"
 description = "Diagnostics as SARIF 2.1.0."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

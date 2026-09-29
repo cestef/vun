@@ -1,6 +1,0 @@
-title = "Peek beside the wordmark"
-view = [0, 0, 960, 300]
-layers = [
-  { figure = "explore/identity/marks/2-peek", transform = "translate(10,10) scale(0.74) translate(-76,-30)" },
-  { part = "identity/logo/parts/wordmark", transform = "translate(330,40) scale(1.1)" },
-]

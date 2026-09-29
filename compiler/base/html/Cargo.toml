@@ -3,6 +3,7 @@ name = "vun-html"
 description = "Typed HTML: elements composed at run time, and templates baked by the Rust compiler with holes filled at run time."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

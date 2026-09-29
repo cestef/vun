@@ -3,6 +3,7 @@ name = "vun-fmt"
 description = "The formatter: whitespace from the CST and the grammar's tables. It has no options."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

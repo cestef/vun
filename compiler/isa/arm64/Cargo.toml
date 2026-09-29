@@ -3,6 +3,7 @@ name = "vun-isa-arm64"
 description = "The 64-bit Arm (A64) instruction set: its forms as one table, generated from lang.arch.arm64, and its operands, listings and inline assembly over it."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

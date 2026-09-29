@@ -3,6 +3,7 @@ name = "vun-sema-plan"
 description = "A package's build plan, read from the values `std.build` gives."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

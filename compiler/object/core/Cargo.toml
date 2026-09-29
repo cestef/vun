@@ -3,6 +3,7 @@ name = "vun-object"
 description = "Relocatable object files as data: sections, symbols and relocations, written once in ELF of either class (through vun-elf) or Mach-O."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

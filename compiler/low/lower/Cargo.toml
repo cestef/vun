@@ -3,6 +3,7 @@ name = "vun-lower"
 description = "Lowering the MIR of a program to LIR."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

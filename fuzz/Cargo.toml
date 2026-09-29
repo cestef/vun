@@ -3,6 +3,7 @@ name = "vun-fuzz"
 description = "Fuzz targets, run with cargo-fuzz: `cargo fuzz run <target>`."
 version.workspace = true
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
