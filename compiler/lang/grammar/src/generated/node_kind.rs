@@ -9,15 +9,16 @@ use super::*;
 /// children it spells, in source order.
 ///
 /// A term of a production is a token spelled `"text"` (a punctuation or keyword token, or a name
-/// spelled so where the grammar makes it a word), `.token(.a, ...)` for a token of one of these
-/// kinds, lists of the token kind or tables of tokens, `.word(.Kind)` for a name or keyword spelled
-/// as a variant of `Kind` or of a list of one, a child `.field`, `.optional(...)` and `.many(...)`
-/// for terms written once or not and any number of times, `.separated(term, "sep")` for any number
-/// of `term` with `sep` between them and after the last if written, `.choice(a, ...)` for one of
-/// the terms, `.of(.field, .table)` for a child in `field` of a kind `table` lists,
-/// `.ending(.field, .table)` for one of such a kind or of a `transparent` kind ending with one,
-/// `.starting(.field, .tokens)` for one starting with a token a table of tokens lists, and `.seq(...)`
-/// for terms in sequence.
+/// spelled so where the grammar makes it a word), `.token(...)` for a token of one of the kinds
+/// listed, each `.kind` or a path to a list of the token kind or a table of tokens,
+/// `.word(path)` for a name or keyword spelled as a variant of the kind, or the list of one, the
+/// path names, a child `.field`, `.optional(...)` and `.many(...)` for terms written once or not
+/// and any number of times, `.separated(term, "sep")` for any number of `term` with `sep` between
+/// them and after the last if written, `.choice(a, ...)` for one of the terms,
+/// `.of(.field, table)` for a child in `field` of a kind the table lists,
+/// `.ending(.field, table)` for one of such a kind or of a `transparent` kind ending with one,
+/// `.starting(.field, tokens)` for one starting with a token a table of tokens lists, and
+/// `.seq(...)` for terms in sequence. Tables are named by paths, as `grammar.infix`.
 ///
 /// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
 /// its children fill its fields. A field's count follows from where it stands: `many` in `many` or

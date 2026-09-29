@@ -9,10 +9,10 @@ mod structure;
 use vun_tree_sitter::{Pattern, Query};
 
 use super::rules::Rules;
-use crate::generate::Read;
+use crate::grammar::model::Captures;
 
-/// What a pattern captures a node as.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// What a pattern captures a node as, as `editors.vun` names it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_syntax::literal::FromLiteral)]
 pub(crate) enum Capture {
     Keyword,
     Operator,
@@ -91,18 +91,41 @@ pub(crate) type Typed = Pattern<Capture>;
 impl Dialect {
     /// The query `file` of the grammar in this dialect, leaving out the patterns capturing
     /// something the dialect has no name for.
-    pub(super) fn query(&self, rules: &Rules<'_, '_>, file: File) -> Read<Query<&'static str>> {
+    pub(super) fn query(&self, rules: &Rules<'_>, file: File) -> Query<&'static str> {
         let mut typed = match file {
-            File::Highlights => highlights::patterns(rules)?,
+            File::Highlights => highlights::patterns(rules),
             File::Folds => structure::folds(rules),
             File::Indents => structure::indents(rules),
             File::Brackets => structure::brackets(rules),
-            File::Outline => structure::outline(),
-            File::TextObjects => structure::text_objects(),
+            File::Outline => structure::outline(rules),
+            File::TextObjects => structure::text_objects(rules),
         };
         if self.first_wins {
             typed.reverse();
         }
-        Ok(Query { patterns: typed.into_iter().filter_map(|p| p.map(&self.capture)).collect() })
+        Query { patterns: typed.into_iter().filter_map(|p| p.map(&self.capture)).collect() }
     }
+}
+
+/// Patterns of nodes captured whole, then of nodes captured where they stand.
+fn captured(rules: &Rules<'_>, captures: &Captures) -> Vec<Typed> {
+    let model = rules.model;
+    let mut patterns: Vec<Typed> = captures
+        .nodes
+        .iter()
+        .map(|(nodes, capture)| {
+            Pattern::alternatives(nodes.iter().map(|&n| Pattern::node(model.node_name(n)))).capture(*capture)
+        })
+        .collect();
+    for place in &captures.places {
+        let node = Pattern::node(model.kind_name(place.node)).capture(place.capture);
+        let held = match place.inner {
+            Some(inner) => Pattern::any().child(Some(model.field_name(inner)), node),
+            None => node,
+        };
+        patterns.push(
+            Pattern::node(model.kind_name(place.kind)).child(Some(model.field_name(place.field)), held),
+        );
+    }
+    patterns
 }

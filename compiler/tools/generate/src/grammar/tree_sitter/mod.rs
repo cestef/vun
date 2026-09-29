@@ -5,7 +5,8 @@
 use vun_data::ToData;
 use vun_tree_sitter::{Config, Grammar as Syntax, Rule};
 
-use super::{Grammar, SYNTAX, grammar};
+use super::SYNTAX;
+use super::model::{Editors, Model};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 
 pub(crate) mod dialects;
@@ -32,31 +33,36 @@ const HIGHLIGHTS: &str = "queries/highlights.scm";
 
 /// The query files of `dialect`, in the directory `dir` of an editor's package.
 pub(crate) fn queries(sources: &[Source<'_>], dialect: &dialects::Dialect, dir: &str) -> Read<Vec<Data>> {
-    let source = grammar(sources);
-    let grammar = Grammar::read(&source)?;
-    let rules = Rules::of(&grammar, &source.decls)?;
+    let model = Model::read(sources)?;
+    let editors = Editors::read(&model, sources)?;
+    let rules = Rules::of(&model, &editors);
     dialect
         .files
         .iter()
         .map(|&file| {
-            let text = dialect.query(&rules, file)?.to_string();
+            let text = dialect.query(&rules, file).to_string();
             Ok(Data { name: [dir, "/", file.name()].concat(), format: Format::Query, text })
         })
         .collect()
 }
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
-    let source = grammar(sources);
-    let grammar = Grammar::read(&source)?;
-    let rules = Rules::of(&grammar, &source.decls)?;
-    let mut all = rules.all()?;
+    let model = Model::read(sources)?;
+    let editors = Editors::read(&model, sources)?;
+    let rules = Rules::of(&model, &editors);
+    let mut all = rules.all();
     all.extend(rules.wrapped());
     all.extend(rules.lexical()?);
-    all.push((lexical::COMMENT_KIND.to_owned(), lexical::comment()));
+    let mut extras = vec![Rule::Pattern(r"\s".to_owned())];
+    for &extra in &editors.tree_sitter.extras {
+        let name = model.token_name(extra);
+        all.push((name.to_owned(), lexical::rule(name).ok_or_else(|| rules::missing(name))?));
+        extras.push(Rule::symbol(name));
+    }
     let syntax = Syntax {
         name: LANGUAGE.to_owned(),
-        word: Some(rules::hidden(lexical::IDENT_KIND)),
-        extras: vec![Rule::Pattern(r"\s".to_owned()), Rule::symbol(lexical::COMMENT_KIND)],
+        word: Some(rules::hidden(model.token_name(editors.tree_sitter.word))),
+        extras,
         externals: vec![Rule::symbol(scanner::LINE_END)],
         conflicts: Vec::new(),
         conflicts_file: Some(CONFLICTS.to_owned()),
@@ -74,7 +80,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         Data {
             name: HIGHLIGHTS.to_owned(),
             format: Format::Query,
-            text: dialects::STANDARD.query(&rules, queries::File::Highlights)?.to_string(),
+            text: dialects::STANDARD.query(&rules, queries::File::Highlights).to_string(),
         },
     ])
 }

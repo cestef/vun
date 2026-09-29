@@ -1,10 +1,7 @@
 //! What the `data` attributes and the item's shape decide: the form of its JSON, and the wire name
 //! of each variant and field.
 
-use proc_macro::TokenTree;
-use vun_derive_core::{Arg, Attrs, Body, Case, Field, Fields, Item, Unsupported};
-
-use crate::casing::Casing;
+use vun_derive_core::{Attrs, Body, Case, Casing, Field, Fields, Given, Item, On, Unsupported};
 
 /// The item with what its JSON is.
 pub(crate) struct Data<'i> {
@@ -39,7 +36,7 @@ pub(crate) struct Member<'i> {
     pub(crate) flatten: bool,
 }
 
-/// The arguments of `#[data(...)]`, and where each is allowed.
+/// The arguments of `#[data(...)]`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Key {
     Case,
@@ -49,15 +46,7 @@ enum Key {
     Name,
 }
 
-/// Where an attribute is written.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum On {
-    Item,
-    Variant,
-    Field,
-}
-
-const KEYS: [(Key, &str, &[On]); 5] = [
+const KEYS: [vun_derive_core::Key<Key>; 5] = [
     (Key::Case, "case", &[On::Item]),
     (Key::Untagged, "untagged", &[On::Item]),
     (Key::Number, "number", &[On::Item]),
@@ -67,46 +56,13 @@ const KEYS: [(Key, &str, &[On]); 5] = [
 
 const HELPER: &str = "data";
 
-/// The arguments given on one attribute list, read by key.
-struct Given(Vec<(Key, Option<TokenTree>)>);
-
-impl Given {
-    fn of(attrs: &Attrs, on: On) -> Result<Self, Unsupported> {
-        let args = attrs.args(HELPER)?;
-        let keyed = args.into_iter().map(|Arg { key, value }| {
-            let key = key.to_string();
-            let row = KEYS.iter().find(|(_, name, _)| *name == key);
-            let &(key, _, allowed) = row.ok_or(Unsupported("unknown `data` argument"))?;
-            if !allowed.contains(&on) {
-                return Err(Unsupported("this `data` argument is not allowed here"));
-            }
-            Ok((key, value))
-        });
-        keyed.collect::<Result<_, _>>().map(Self)
-    }
-
-    fn has(&self, key: Key) -> bool {
-        self.0.iter().any(|(k, _)| *k == key)
-    }
-
-    fn value(&self, key: Key) -> Option<&TokenTree> {
-        self.0.iter().find(|(k, _)| *k == key)?.1.as_ref()
-    }
-
-    /// The wire name given by `name = "..."`, else `own` cased by `casing`.
-    fn name(&self, own: &str, casing: Casing) -> Result<String, Unsupported> {
-        let Some(given) = self.value(Key::Name) else { return Ok(casing.apply(own)) };
-        let text = given.to_string();
-        let name = text.strip_prefix('"').and_then(|t| t.strip_suffix('"'));
-        name.filter(|n| !n.contains('\\'))
-            .map(str::to_owned)
-            .ok_or(Unsupported("`name` is a plain string literal"))
-    }
+fn given(attrs: &Attrs, on: On) -> Result<Given<Key>, Unsupported> {
+    Given::of(attrs, HELPER, &KEYS, on)
 }
 
 impl<'i> Data<'i> {
     pub(crate) fn of(item: &'i Item) -> Result<Self, Unsupported> {
-        let given = Given::of(&item.attrs, On::Item)?;
+        let given = given(&item.attrs, On::Item)?;
         let casing = match given.value(Key::Case) {
             Some(value) => {
                 Casing::named(&value.to_string()).ok_or(Unsupported("`case` is `snake` or `camel`"))?
@@ -135,17 +91,17 @@ impl<'i> Shape<'i> {
     fn of(case: Case<'i>, item: &Item, casing: Casing) -> Result<Self, Unsupported> {
         let name = match case.variant {
             Some(variant) => {
-                Given::of(&variant.attrs, On::Variant)?.name(&variant.name.to_string(), casing)?
+                given(&variant.attrs, On::Variant)?.name(Key::Name, &variant.name.to_string(), casing)?
             }
             None => item.name.to_string(),
         };
         let members = case.fields.all().iter().map(|field| {
-            let given = Given::of(&field.attrs, On::Field)?;
+            let given = given(&field.attrs, On::Field)?;
             let flatten = given.has(Key::Flatten);
             if flatten && !matches!(case.fields, Fields::Named(_)) {
                 return Err(Unsupported("`flatten` is for named fields"));
             }
-            Ok(Member { field, name: given.name(&field.binding.to_string(), casing)?, flatten })
+            Ok(Member { field, name: given.name(Key::Name, &field.binding.to_string(), casing)?, flatten })
         });
         Ok(Self { members: members.collect::<Result<_, _>>()?, name, case })
     }

@@ -18,6 +18,7 @@ vun-codec = { path = "compiler/base/codec" }
 vun-codec-derive = { path = "compiler/base/codec-derive" }
 vun-derive-core = { path = "compiler/base/derive-core" }
 vun-data-derive = { path = "compiler/base/data-derive" }
+vun-literal-derive = { path = "compiler/front/literal-derive" }
 vun-lsp-protocol = { path = "compiler/tools/lsp-protocol" }
 vun-data = { path = "compiler/base/data" }
 vun-uri = { path = "compiler/base/uri" }

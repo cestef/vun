@@ -3,16 +3,16 @@
 
 use vun_tree_sitter::Assoc;
 
-use super::{PARTS, Rules};
-use crate::grammar::production::{Resolved, Term};
+use super::Rules;
+use crate::grammar::model::{Field, Kind, Term};
 
-impl<'s> Rules<'_, 's> {
+impl Rules<'_> {
     /// How many kinds are preferred to `kind`, one before another: the longest chain of kinds
     /// listed before it in sets of `preferred`.
-    pub(super) fn rank(&self, kind: &str) -> i32 {
-        let before =
-            self.preferred.iter().filter_map(|set| Some(&set[..set.iter().position(|k| *k == kind)?]));
-        before.flatten().map(|k| self.rank(k) + 1).max().unwrap_or(0)
+    pub(super) fn rank(&self, kind: Kind) -> i32 {
+        let preferred = &self.model.preferred;
+        let before = preferred.iter().filter_map(|set| Some(&set[..set.iter().position(|&k| k == kind)?]));
+        before.flatten().map(|&k| self.rank(k) + 1).max().unwrap_or(0)
     }
 
     /// A level above every operator's.
@@ -21,9 +21,9 @@ impl<'s> Rules<'_, 's> {
     }
 
     /// Right for a form ending with an operand, which may go on, left for another.
-    pub(super) fn assoc(&self, terms: &[Term<'s, Resolved<'s>>]) -> Assoc {
+    pub(super) fn assoc(&self, terms: &[Term]) -> Assoc {
         let open = match terms.last() {
-            Some(Term::Field(field, None)) => self.holds_operands(field),
+            Some(Term::Field(field, None)) => self.holds_operands(*field),
             Some(Term::Optional(_)) => true,
             _ => false,
         };
@@ -32,14 +32,13 @@ impl<'s> Rules<'_, 's> {
 
     /// Whether the field `field` holds any operand: it is named after no kind and no table says
     /// it holds only some.
-    pub(super) fn holds_operands(&self, field: &str) -> bool {
-        let named = self.nodes.variants.iter().any(|v| v.name == field);
-        !named && self.contents.get(field).is_none_or(|(_, operands)| *operands)
+    pub(super) fn holds_operands(&self, field: Field) -> bool {
+        self.model.named_kind(field).is_none() && self.model.contents.get(&field).is_none_or(|c| c.operands)
     }
 
     /// Whether `kind` stands as an operand: it is no part, and no root.
-    pub(super) fn is_operand(&self, kind: &str) -> bool {
-        let root = self.produced.iter().any(|(k, terms)| *k == kind && self.is_root(terms));
-        !root && self.kinds(PARTS).is_ok_and(|parts| !parts.contains(&kind))
+    pub(super) fn is_operand(&self, kind: Kind) -> bool {
+        let root = self.model.production(kind).is_some_and(|terms| self.is_root(terms));
+        !root && !self.model.parts.contains(&kind) && kind != self.editors.tree_sitter.error
     }
 }

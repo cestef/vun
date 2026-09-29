@@ -10,7 +10,6 @@
 //! Names are the item's own, cased by `#[data(case = camel)]` on the item (`snake` otherwise);
 //! `#[data(name = "...")]` names one field or variant on the wire.
 
-mod casing;
 mod options;
 mod read;
 mod tokens;

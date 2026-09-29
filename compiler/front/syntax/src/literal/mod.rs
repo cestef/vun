@@ -7,7 +7,10 @@
 //! with literal arguments `a.f(x)`, and type literals `enum { ... }` and
 //! `struct { name := value; }` reads as the corresponding [`Literal`]. Any other expression reads
 //! as [`Literal::Opaque`], so a caller can walk a file whose other values it does not need.
+//!
+//! A literal reads as a typed value through [`FromLiteral`], derived by `#[derive(FromLiteral)]`.
 
+mod from;
 mod insert;
 mod print;
 mod read;
@@ -20,11 +23,13 @@ use vun_span::Span;
 
 use crate::cst::Cst;
 use crate::tokens::Tokens;
+pub use from::{Arguments, Expected, Fields, FromLiteral, Mismatch, Name, Path, Step};
 pub use print::INDENT;
 pub(crate) use print::Writer;
 pub use print::{Unwritable, WIDTH};
 use read::Reader;
 pub use read::integer;
+pub use vun_literal_derive::FromLiteral;
 
 /// Starts a doc comment line, with the space after it.
 pub(crate) const DOC: &str = "/// ";

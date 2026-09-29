@@ -51,10 +51,14 @@ impl<C> Pattern<C> {
         Self::of(Shape::Token(text.to_owned()))
     }
 
-    /// Any of `patterns`.
+    /// Any of `patterns`; of one, that one.
     #[must_use]
     pub fn alternatives(patterns: impl IntoIterator<Item = Self>) -> Self {
-        Self::of(Shape::Alternatives(patterns.into_iter().collect()))
+        let mut patterns: Vec<Self> = patterns.into_iter().collect();
+        if patterns.len() == 1 {
+            return patterns.remove(0);
+        }
+        Self::of(Shape::Alternatives(patterns))
     }
 
     fn of(shape: Shape<C>) -> Self {

@@ -27,8 +27,9 @@ Where the code for each part lives. The workspace layout and its layering rules 
 - **Objects** (`compiler/object`): `vun-object` (objects as data, written as ELF through
   `vun-elf` or as Mach-O), `vun-elf` (ELF files as data, written and read, each record declared
   once per class), `vun-dwarf`.
-- **Front end** (`compiler/front`): `vun-syntax`, `vun-desugar`, `vun-hir` (the front end as
-  queries).
+- **Front end** (`compiler/front`): `vun-syntax` (with `literal`: `.vun` data read without
+  evaluation, and `FromLiteral`, derived by `vun-literal-derive`, reading it as typed values),
+  `vun-desugar`, `vun-hir` (the front end as queries).
 - **Sema** (`compiler/sema`): `vun-sema-int` (exact integers, intervals), `vun-sema-float`
   (compile-time IEEE floats), `vun-sema-ty` (types, values, relations, borrows table, item keys,
   `call` values: `Func`, `Instance`, `Instantiation`; `trap`: traps and `Unevaluated`),

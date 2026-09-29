@@ -2,13 +2,18 @@
 //! productions: its tokens and tables. Generates the Rust `vun-grammar` crate, `lang.syntax`, the
 //! formatter's tables and the editor grammars (spec 13, section 5).
 //!
-//! `cargo gen` reads both files as literal data, by shape and never by name:
+//! `cargo gen` reads both files as literal data. Into Rust it translates each declaration by shape,
+//! never by name:
 //! - a `PascalCase` record of lists defines a kind: its entries are the kind's variants, and each
 //!   list is also a table of its own. An entry is `.name`, a spelling `"text"` (named after
 //!   itself), `.{ .name = .x, .text = "..." }`, or `.name(terms...)` for a kind with a production
 //!   (see `NodeKind`), whose fields and their counts, variants of `Count`, it derives;
 //! - an `enum` declaration defines an enum;
 //! - any other list is a table; `.name` items resolve to the one kind or enum that has them all.
+//!
+//! What it interprets, the productions and the tables editors and the parser share (`parts`,
+//! `admits`, `precedence`, ...), it reads by type, and resolves every name and path in them; what
+//! editors make of the grammar is in `editors.vun`.
 
 /// Kinds of tokens.
 TokenKind := .{

@@ -7,14 +7,13 @@
 //! tokens terms name are variants of the one kind that has them all. A field named after a
 //! variant of the kind holds a node of that kind; any other field holds any node.
 
-use std::borrow::Cow;
-
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use vun_syntax::literal::Decl;
 
-use super::production::{Resolved, Restriction, Term, Tokens, Written};
-use super::{Enum, Grammar, Slot, Variant};
+use std::borrow::Cow;
+
+use super::model::{Count, Model, Restriction, Slot, Term};
+use super::{Enum, Grammar, Variant};
 use crate::generate::{Access, Module, Read};
 use crate::names::{Name, constant, ident, pascal};
 
@@ -28,89 +27,81 @@ const FIELD: &str = "Field";
 const SLOTS: &str = "_SLOTS";
 
 /// The Rust names of a kind's generated types.
-struct Types {
+struct Types<'m> {
+    model: &'m Model,
     kind: proc_macro2::Ident,
     field: proc_macro2::Ident,
     slot: proc_macro2::Ident,
     term: proc_macro2::Ident,
     count: proc_macro2::Ident,
+    tokens: proc_macro2::Ident,
 }
 
-impl<'s> Enum<'s> {
+impl Enum<'_> {
     /// The name of the kind with types named after it: `NodeKind` names `Node...`.
     fn base(&self) -> &str {
         self.name.strip_suffix(KIND_SUFFIX).unwrap_or(&self.name)
     }
 
-    /// For a kind with productions, the enum of its fields, in the order they first stand, which
-    /// tables may name.
-    pub(super) fn fields(&self) -> Read<Option<Self>> {
-        let mut fields: Vec<&'s str> = Vec::new();
-        for v in &self.variants {
-            let Some(terms) = &v.production else { continue };
-            for slot in Term::slots(v.name, terms)? {
-                if !fields.contains(&slot.field) {
-                    fields.push(slot.field);
-                }
-            }
-        }
-        Ok((!fields.is_empty()).then(|| Self {
+    /// For the kind of the model's nodes, the enum of its fields, which tables may name.
+    pub(super) fn fields(&self, model: &Model) -> Enum<'static> {
+        let variants =
+            model.fields.iter().map(|f| Variant { name: Cow::Owned(f.clone()), doc: Vec::new(), text: None });
+        Enum {
             name: Cow::Owned(format!("{}{FIELD}", self.base())),
             doc: Vec::new(),
-            variants: fields
-                .into_iter()
-                .map(|name| Variant { name, doc: Vec::new(), text: None, production: None })
-                .collect(),
+            variants: variants.collect(),
             lists: Vec::new(),
-        }))
+        }
+    }
+
+    /// Whether this is the kind of the model's nodes: it has their variants.
+    pub(super) fn is_nodes(&self, model: &Model) -> bool {
+        self.variants.iter().map(|v| v.name.as_ref()).eq(model.nodes.variants.iter().map(|v| v.name.as_str()))
     }
 }
 
-impl<'s> Grammar<'s> {
-    pub(super) fn slots(&self, kind: &Enum<'s>, decls: &[Decl<'s>]) -> Read<Vec<Module>> {
-        let produced: Vec<(&Variant<'s>, &[Term<'s, Written<'s>>])> =
-            kind.variants.iter().filter_map(|v| Some((v, v.production.as_deref()?))).collect();
-        if produced.is_empty() {
+impl Grammar<'_> {
+    /// For the kind of the model's nodes, its fields, slots, terms and productions.
+    pub(super) fn slots(&self, kind: &Enum<'_>, model: &Model) -> Read<Vec<Module>> {
+        if !kind.is_nodes(model) {
             return Ok(Vec::new());
         }
-        let slots: Vec<Vec<Slot<'s>>> =
-            produced.iter().map(|(v, terms)| Term::slots(v.name, terms)).collect::<Read<_>>()?;
-        let counts: Vec<&str> = slots.iter().flat_map(|s| s.iter().map(|s| s.count)).collect();
+        let counts: Vec<&str> = Count::ALL.iter().map(|c| c.name()).collect();
+        let tokens: Vec<&str> = model.all_tokens().map(|t| model.token_name(t)).collect();
         let base = kind.base();
         let types = Types {
+            model,
             kind: ident(&kind.name),
             field: format_ident!("{base}{FIELD}"),
             slot: format_ident!("{base}Slot"),
             term: format_ident!("{base}Term"),
             count: ident(&self.enums[self.resolve(&kind.name, &counts)?].name),
+            tokens: ident(&self.enums[self.resolve(&kind.name, &tokens)?].name),
         };
-        let tokens = Tokens::of(self, decls, kind)?;
-        let field_enum =
-            self.enums.iter().find(|e| *e.name == *types.field.to_string()).expect("read derives it");
-        let fields: Vec<&str> = field_enum.variants.iter().map(|v| v.name).collect();
         let mut modules = vec![
-            Module::sibling(types.field.to_string().snake(), &types.field(kind, &fields)),
+            Module::sibling(types.field.to_string().snake(), &types.field(kind)),
             Module::sibling(types.slot.to_string().snake(), &types.slot(kind)),
-            Module::sibling(types.term.to_string().snake(), &types.term(kind, &ident(&tokens.kind.name))),
+            Module::sibling(types.term.to_string().snake(), &types.term(kind)),
         ];
-        let mut slot_arms = Vec::new();
-        let mut term_arms = Vec::new();
-        for (list, members) in &kind.lists {
+        let (mut slot_arms, mut term_arms) = (Vec::new(), Vec::new());
+        for (list, members) in &model.nodes.lists {
             let module = format_ident!("{}_{list}", kind.name.snake());
             let mut items = Vec::new();
-            for (i, (v, terms)) in produced.iter().enumerate().filter(|(_, (v, _))| members.contains(&v.name))
-            {
-                let (variant, name) = (pascal(v.name), constant(v.name));
-                let slots_name = format_ident!("{name}{SLOTS}");
-                let terms = types.slice(tokens.kind, &tokens.resolve(v.name, terms)?);
-                let (slot_ty, term_ty) = (&types.slot, &types.term);
-                items.push(quote! { pub(super) const #name: &[#term_ty] = #terms; });
-                if !slots[i].is_empty() {
-                    let own = slots[i].iter().map(|s| types.slot_value(kind, s));
+            for &member in members {
+                let Some(terms) = model.production(member) else { continue };
+                let name = model.kind_name(member);
+                let (variant, constant) = (pascal(name), constant(name));
+                let slots_name = format_ident!("{constant}{SLOTS}");
+                let (slot_ty, term_ty, terms) = (&types.slot, &types.term, types.slice(terms));
+                items.push(quote! { pub(super) const #constant: &[#term_ty] = #terms; });
+                let slots = model.slots(member);
+                if !slots.is_empty() {
+                    let own = slots.iter().map(|s| types.slot_value(*s));
                     items.push(quote! { pub(super) const #slots_name: &[#slot_ty] = &[#(#own),*]; });
                     slot_arms.push(quote! { Self::#variant => #module::#slots_name, });
                 }
-                term_arms.push(quote! { Self::#variant => Some(#module::#name), });
+                term_arms.push(quote! { Self::#variant => Some(#module::#constant), });
             }
             if !items.is_empty() {
                 let items = quote! { #(#items)* };
@@ -119,7 +110,7 @@ impl<'s> Grammar<'s> {
             }
         }
         let unproduced: Vec<_> =
-            kind.variants.iter().filter(|v| v.production.is_none()).map(|v| pascal(v.name)).collect();
+            model.nodes.variants.iter().filter(|v| v.production.is_none()).map(|v| pascal(&v.name)).collect();
         let unproduced = (!unproduced.is_empty()).then(|| quote! { #(Self::#unproduced)|* => None, });
         let (kind_ty, slot_ty, term_ty) = (&types.kind, &types.slot, &types.term);
         let lookups = quote! {
@@ -154,9 +145,9 @@ impl<'s> Grammar<'s> {
     }
 }
 
-impl Types {
-    fn field(&self, kind: &Enum<'_>, fields: &[&str]) -> TokenStream {
-        let field_ty = &self.field;
+impl Types<'_> {
+    fn field(&self, kind: &Enum<'_>) -> TokenStream {
+        let (field_ty, fields) = (&self.field, &self.model.fields);
         let variants: Vec<_> = fields.iter().map(|f| pascal(f)).collect();
         let doc = format!(" The named children of [`{}`] kinds.", kind.name);
         quote! {
@@ -200,8 +191,8 @@ impl Types {
         }
     }
 
-    fn term(&self, kind: &Enum<'_>, tokens: &proc_macro2::Ident) -> TokenStream {
-        let (term_ty, field_ty, kind_ty) = (&self.term, &self.field, &self.kind);
+    fn term(&self, kind: &Enum<'_>) -> TokenStream {
+        let (term_ty, field_ty, kind_ty, tokens) = (&self.term, &self.field, &self.kind, &self.tokens);
         let doc = format!(" A term of the production of a [`{}`] (see `nodes.vun`).", kind.name);
         quote! {
             #[doc = #doc]
@@ -235,60 +226,60 @@ impl Types {
         }
     }
 
-    /// `terms` as a Rust slice of terms, their tokens variants of `tokens`.
-    fn slice(&self, tokens: &Enum<'_>, terms: &[Term<'_, Resolved<'_>>]) -> TokenStream {
-        let terms = terms.iter().map(|t| self.value(tokens, t));
+    /// `terms` as a Rust slice of terms.
+    fn slice(&self, terms: &[Term]) -> TokenStream {
+        let terms = terms.iter().map(|t| self.value(t));
         quote! { &[#(#terms),*] }
     }
 
-    fn value(&self, tokens: &Enum<'_>, term: &Term<'_, Resolved<'_>>) -> TokenStream {
-        let ty = &self.term;
+    fn value(&self, term: &Term) -> TokenStream {
+        let (ty, field_ty) = (&self.term, &self.field);
+        let field = |f| pascal(self.model.field_name(f));
         match term {
-            Term::Leaf(Resolved::Tokens(names)) => {
-                let (kind, names) = (ident(&tokens.name), names.iter().map(|n| pascal(n)));
+            Term::Tokens(tokens) => {
+                let (kind, names) = (&self.tokens, tokens.iter().map(|&t| pascal(self.model.token_name(t))));
                 quote! { #ty::Token(&[#(#kind::#names),*]) }
             }
-            Term::Leaf(Resolved::Words(words)) => {
-                let words = words.iter().map(AsRef::<str>::as_ref);
-                quote! { #ty::Word(&[#(#words),*]) }
-            }
-            Term::Field(field, Some(restriction)) => {
-                let (field_ty, variant) = (&self.field, pascal(field));
+            Term::Words(words) => quote! { #ty::Word(&[#(#words),*]) },
+            Term::Field(f, Some(restriction)) => {
+                let variant = field(*f);
                 let (form, table) = match restriction {
-                    Restriction::Of(table) => (ident("Of"), constant(table)),
-                    Restriction::Ending(table) => (ident("Ending"), constant(table)),
-                    Restriction::Starting(table) => (ident("Starting"), constant(table)),
+                    Restriction::Of(table) => (ident("Of"), constant(&table.name)),
+                    Restriction::Ending(table) => (ident("Ending"), constant(&table.name)),
+                    Restriction::Starting(table) => (ident("Starting"), constant(&table.name)),
                 };
                 quote! { #ty::#form(#field_ty::#variant, #table) }
             }
-            Term::Field(field, None) => {
-                let (field_ty, variant) = (&self.field, pascal(field));
+            Term::Field(f, None) => {
+                let variant = field(*f);
                 quote! { #ty::Field(#field_ty::#variant) }
             }
-            Term::Optional(terms) => self.compound(tokens, "Optional", terms),
-            Term::Many(terms) => self.compound(tokens, "Many", terms),
-            Term::Choice(terms) => self.compound(tokens, "Choice", terms),
-            Term::Sequence(terms) => self.compound(tokens, "Sequence", terms),
+            Term::Optional(terms) => self.compound("Optional", terms),
+            Term::Many(terms) => self.compound("Many", terms),
+            Term::Choice(terms) => self.compound("Choice", terms),
+            Term::Sequence(terms) => self.compound("Sequence", terms),
             Term::Separated(item, separator) => {
-                let (item, separator) = (self.value(tokens, item), self.value(tokens, separator));
+                let (item, separator) = (self.value(item), self.value(separator));
                 quote! { #ty::Separated(&#item, &#separator) }
             }
         }
     }
 
-    fn compound(&self, tokens: &Enum<'_>, variant: &str, terms: &[Term<'_, Resolved<'_>>]) -> TokenStream {
-        let (ty, variant, terms) = (&self.term, ident(variant), self.slice(tokens, terms));
+    fn compound(&self, variant: &str, terms: &[Term]) -> TokenStream {
+        let (ty, variant, terms) = (&self.term, ident(variant), self.slice(terms));
         quote! { #ty::#variant(#terms) }
     }
 
-    fn slot_value(&self, kind: &Enum<'_>, s: &Slot<'_>) -> TokenStream {
+    fn slot_value(&self, s: Slot) -> TokenStream {
         let (slot_ty, field_ty, count_ty, kind_ty) = (&self.slot, &self.field, &self.count, &self.kind);
-        let (field, count) = (pascal(s.field), pascal(s.count));
-        let node = if kind.variants.iter().any(|k| k.name == s.field) {
-            quote! { Some(#kind_ty::#field) }
-        } else {
-            quote! { None }
-        };
+        let (field, count) = (pascal(self.model.field_name(s.field)), pascal(s.count.name()));
+        let node = self.model.named_kind(s.field).map_or_else(
+            || quote! { None },
+            |kind| {
+                let kind = pascal(self.model.kind_name(kind));
+                quote! { Some(#kind_ty::#kind) }
+            },
+        );
         quote! { #slot_ty::new(#field_ty::#field, #count_ty::#count, #node) }
     }
 }

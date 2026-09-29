@@ -80,7 +80,7 @@ pub(super) const GUARD_SLOTS: &[NodeSlot] = &[
 pub(super) const LABELED: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::Label]),
     NodeTerm::Token(&[TokenKind::Colon]),
-    NodeTerm::Field(NodeField::Body),
+    NodeTerm::Of(NodeField::Body, LABELED_BODIES),
 ];
 pub(super) const LABELED_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Body, Count::One, None),

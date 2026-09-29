@@ -1,5 +1,8 @@
 //! Lexer, postorder CST arrays, error-recovering parser, and a reader of literal declarations.
 
+// The derives name this crate by its path, here too.
+extern crate self as vun_syntax;
+
 pub mod cst;
 pub mod lexer;
 pub mod literal;

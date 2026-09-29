@@ -1,9 +1,9 @@
-//! How the names of fields and variants are cased on the wire: split into words at `_` and where a
+//! How derives case the names of fields and variants where they are written: split into words at `_` and where a
 //! lowercase letter or digit meets an uppercase one, then joined.
 
-/// A casing, as `#[data(case = ...)]` names it.
+/// A casing, as a helper attribute's `case = ...` names it.
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) enum Casing {
+pub enum Casing {
     /// `text_document`
     #[default]
     Snake,
@@ -12,14 +12,16 @@ pub(crate) enum Casing {
 }
 
 impl Casing {
-    pub(crate) const NAMES: [(Self, &'static str); 2] = [(Self::Snake, "snake"), (Self::Camel, "camel")];
+    pub const NAMES: [(Self, &'static str); 2] = [(Self::Snake, "snake"), (Self::Camel, "camel")];
 
-    pub(crate) fn named(name: &str) -> Option<Self> {
+    #[must_use]
+    pub fn named(name: &str) -> Option<Self> {
         Self::NAMES.iter().find(|(_, n)| *n == name).map(|&(c, _)| c)
     }
 
     /// `name`, a Rust identifier, in this casing.
-    pub(crate) fn apply(self, name: &str) -> String {
+    #[must_use]
+    pub fn apply(self, name: &str) -> String {
         let mut out = String::with_capacity(name.len());
         for (i, word) in Self::words(name).into_iter().enumerate() {
             match self {

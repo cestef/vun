@@ -362,35 +362,53 @@ handle, and what it depends on that is generated (token and node kinds, diagnost
 nothing else, so a generated change breaking any consumer never keeps it from running again
 (decision 132).
 
+What the generator interprets rather than copies, the productions and the tables the parser and
+editors share, it reads by type: each is a declaration of a Rust type deriving `FromLiteral`
+(`vun_syntax::literal`), and the whole is resolved once into a model naming tokens, kinds and
+fields by typed ids, which every emitter writes from; a name or path that resolves to nothing, or
+a value of another shape, fails the run naming it. Tables are named by paths to their declarations
+(`grammar.infix`, `grammar.TokenKind.keywords`), through a declaration aliasing a file's namespace
+(`grammar := lang.syntax.grammar`), so a reference is checked by name resolution, never matched as
+text. What editors make of the grammar is declared beside it, in `lang/syntax/editors.vun`: what
+highlights capture by kind, table and place, what the outline lists, text objects, the Sublime
+syntax's scopes and the few facts the tree-sitter grammar leaves to tree-sitter; captures and
+scopes are named as the generator's typed enums declare them.
+
 The same task writes `editors/sublime/vun.sublime-syntax`, the highlighting that editors, the
 whitepaper and the README's code card read (through syntect): keywords, contextual words, borrow
-and flow words and every punctuation token come from `grammar.vun`, each punctuation token scoped
-by the tables it is in (`assign`, `infix`, ...), and the tokens the lexer reads by hand
-(comments, strings, numbers, labels) from the lexer's constants.
+and flow words and every punctuation token come from the grammar, each punctuation token scoped as
+`editors.vun` says, and the tokens the lexer reads by hand (comments, strings, numbers, labels)
+from the lexer's constants.
 
 **Editor grammars.** The same task writes the tree-sitter grammar of `editors/tree-sitter` from
 the productions: a rule per kind; a field holds the kind it is named after, the kinds the tables
 `holds` (only these) or `admits` (these and any operand) give it, or any operand, the kinds
-`parts` lists being none; precedences come from the table `precedence`, whose row `infix` stands
-for the levels of the table `infix`; a restricted field (`.of`, `.ending`, `.starting`) holds
-variants of the kinds reaching an allowed one through their edge field, aliased to the kind; the
-kinds of `line_ends` end at a line break an external scanner finds; where several kinds fit, the
-first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of its
-tables and are found, not written: `cargo xtask tree-sitter` generates the parser until it builds
-(`conflicts.json`), then parses every source and compares each tree with the compiler's. Queries
-(highlights, folds, indents, brackets, the outline, text objects) are built once with typed
-captures from the tables and productions and written in each editor's dialect, with the Helix,
-Neovim, Zed and VS Code packages (`editors/`); what an editor runs as code is written by hand and
-reads the generated data. The grammar and its parser are published apart, as `tree-sitter-vun`.
+`parts` lists being none; precedences come from the table `precedence`, whose row naming the kind
+spread over the infix levels stands for those levels; a restricted field (`.of`, `.ending`,
+`.starting`) holds variants of the kinds reaching an allowed one through their edge field, aliased
+to the kind, and completes its entry where its kind has no level of its own; the fields of an
+operand context (`operand_contexts`: an instruction's operands and a memory operand's parts) read
+their operands at any depth in the context, where the kinds it lists replace those starting with
+the same token (`{` opens a bound, not a block), through variants of each kind holding operands;
+the kinds of `line_ends` end at a line break an external scanner finds; where several kinds fit,
+the first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of
+its tables and are found, not written: `cargo xtask tree-sitter` generates the parser until it
+builds (`conflicts.json`), then parses every source and compares each tree with the compiler's;
+every source of the repository must agree. Queries (highlights, folds, indents, brackets, the
+outline, text objects) are built once with typed captures and written in each editor's dialect,
+with the Helix, Neovim, Zed and VS Code packages (`editors/`); what an editor runs as code is
+written by hand and reads the generated data. The grammar and its parser are published apart, as
+`tree-sitter-vun`.
 
 **Productions.** Each node kind is declared by its production: the tokens and children it spells, in
 source order, `.binding(.optional(.\mut), .pattern, ":=", .value)`. A term is a token by its
 spelling (`":="`, `"if"`, or a name spelled so where it is a word: `"in"`), `.token(...)` for a
-token of the kinds, lists of the token kind or tables of tokens it names (`.token(.infix)`),
-`.word(.Kind)` for a name or keyword spelled as a variant of `Kind` or of a list of one, a child
+token of the kinds it names (`.token(.ident)`) and of the lists of the token kind or tables of
+tokens its paths name (`.token(grammar.infix)`), `.word(path)` for a name or keyword spelled as a
+variant of the kind, or the list of one, the path names (`.word(grammar.Flow)`), a child
 `.field`, `.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing
 separator), `.choice(...)`, a sequence `.seq(...)`, or a child restricted by a table: of a kind it
-lists (`.of(.field, .table)`), of such a kind or a `transparent` kind ending with one (`.ending`),
+lists (`.of(.field, table)`), of such a kind or a `transparent` kind ending with one (`.ending`),
 or starting with a token it lists (`.starting`). A leaf spells one token. A node is anchored at its
 production's first token; its other tokens are `punct` leaves. The generator derives from the
 productions a field enum and each kind's slots: a field under `many` or `separated` holds many

@@ -263,7 +263,7 @@ impl Changes {
 }
 
 impl Generator {
-    fn parse<'s>(path: &str, text: &'s str) -> Read<Source<'s>> {
+    pub(crate) fn parse<'s>(path: &str, text: &'s str) -> Read<Source<'s>> {
         let file = SourceFiles::new().add(path, text);
         let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
         let mut cx = DiagCx { diag: &mut diag, origins: &origins };

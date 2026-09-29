@@ -1,6 +1,170 @@
 [
   [
+    "_attr_in_operands",
+    "attr"
+  ],
+  [
+    "_break_in_operands",
+    "_operand_in_operands",
+    "break"
+  ],
+  [
+    "_break_in_operands",
+    "break"
+  ],
+  [
+    "_doc_in_operands",
+    "doc"
+  ],
+  [
+    "_dot_name_in_operands",
+    "dot_name"
+  ],
+  [
+    "_dot_name_in_operands",
+    "dot_name",
+    "suffix"
+  ],
+  [
+    "_dot_name_in_operands",
+    "suffix"
+  ],
+  [
+    "_enum_in_operands",
+    "enum"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "_paren_in_operands",
+    "_tuple_in_operands"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "_tuple_in_operands"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "_tuple_in_operands",
+    "fn"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "_tuple_in_operands",
+    "fn",
+    "fn_type",
+    "tuple"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "fn"
+  ],
+  [
+    "_fn_in_operands",
+    "_fn_type_in_operands",
+    "fn",
+    "fn_type"
+  ],
+  [
+    "_fn_in_operands",
+    "fn"
+  ],
+  [
+    "_fn_type_in_operands",
+    "_paren_in_operands",
+    "_tuple_in_operands"
+  ],
+  [
+    "_fn_type_in_operands",
+    "_tuple_in_operands"
+  ],
+  [
+    "_fn_type_in_operands",
+    "_tuple_in_operands",
+    "fn_type",
+    "tuple"
+  ],
+  [
+    "_fn_type_in_operands",
+    "fn_type"
+  ],
+  [
+    "_for_in_operands",
     "_operand",
+    "for"
+  ],
+  [
+    "_for_in_operands",
+    "for"
+  ],
+  [
+    "_if_in_operands",
+    "if"
+  ],
+  [
+    "_operand",
+    "_operand_in_operands"
+  ],
+  [
+    "_operand",
+    "_operand_in_operands",
+    "_typed_lit_in_operands",
+    "typed_lit"
+  ],
+  [
+    "_operand",
+    "_quote_in_operands",
+    "quote"
+  ],
+  [
+    "_operand",
+    "_struct_in_operands",
+    "struct"
+  ],
+  [
+    "_operand",
+    "_typed_lit_in_operands",
+    "typed_lit"
+  ],
+  [
+    "_operand",
+    "typed_lit"
+  ],
+  [
+    "_operand_in_operands",
+    "_typed_lit_in_operands",
+    "typed_lit"
+  ],
+  [
+    "_quote_in_operands",
+    "quote"
+  ],
+  [
+    "_return_in_operands",
+    "return"
+  ],
+  [
+    "_struct_in_operands",
+    "struct"
+  ],
+  [
+    "_struct_lit_in_operands",
+    "struct_lit"
+  ],
+  [
+    "_tuple_in_operands",
+    "tuple"
+  ],
+  [
+    "_typed_lit_in_operands",
     "typed_lit"
   ],
   [
@@ -9,15 +173,7 @@
   ],
   [
     "array",
-    "closure",
     "memory"
-  ],
-  [
-    "array",
-    "memory"
-  ],
-  [
-    "continue"
   ],
   [
     "field",
@@ -46,9 +202,6 @@
   [
     "fn_type",
     "tuple"
-  ],
-  [
-    "multiline_string"
   ],
   [
     "prefix",

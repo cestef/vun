@@ -256,6 +256,7 @@ pub mod syntax_desugar_Form;
 pub mod syntax_desugar_Narrowing;
 pub mod syntax_desugar_PlaceState;
 pub mod syntax_desugar_Relation;
+pub mod syntax_editors;
 pub mod syntax_grammar;
 pub mod syntax_grammar_Assoc;
 pub mod syntax_grammar_Context;

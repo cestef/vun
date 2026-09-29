@@ -118,7 +118,7 @@ impl<'s> Reader<'_, 's> {
             }
             NodeKind::StructLit => {
                 let inits: Vec<_> = items().collect();
-                if inits.iter().all(|&c| self.cst.kind(c) == NodeKind::FieldInit) {
+                if inits.iter().all(|&c| self.is_field_init(c)) {
                     Literal::Record(inits.into_iter().filter_map(|c| self.field_init(c)).collect())
                 } else {
                     Literal::List(inits.into_iter().map(|c| self.value(c)).collect())
@@ -150,11 +150,29 @@ impl<'s> Reader<'_, 's> {
         }
     }
 
+    /// A field `.name = value` of a record, looking through its doc comments.
     fn field_init(&self, n: NodeId) -> Option<Decl<'s>> {
+        self.documented_init(n, Vec::new())
+    }
+
+    fn documented_init(&self, n: NodeId, mut doc: Vec<&'s str>) -> Option<Decl<'s>> {
+        if self.cst.kind(n) == NodeKind::Doc {
+            doc.push(self.doc_line(n)?);
+            return self.documented_init(*self.children(n).last()?, doc);
+        }
         let fields = self.cst.fields(n)?;
         let (target, value) = (fields.one(NodeField::Target)?, fields.one(NodeField::Value)?);
         let name = self.name(self.cst.fields(target)?.one(NodeField::Property)?)?;
-        Some(Decl { name, doc: Vec::new(), value: self.value(value), span: self.span(value) })
+        Some(Decl { name, doc, value: self.value(value), span: self.span(value) })
+    }
+
+    /// Whether `n` is a field of a record, under its doc comments.
+    fn is_field_init(&self, n: NodeId) -> bool {
+        match self.cst.kind(n) {
+            NodeKind::FieldInit => true,
+            NodeKind::Doc => self.cst.children(n).last().is_some_and(|c| self.is_field_init(c)),
+            _ => false,
+        }
     }
 
     fn span(&self, n: NodeId) -> Span {

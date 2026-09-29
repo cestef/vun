@@ -1532,6 +1532,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-literal-derive"
+version = "0.0.0"
+dependencies = [
+ "vun-derive-core",
+]
+
+[[package]]
 name = "vun-lower"
 version = "0.0.0"
 dependencies = [
@@ -1979,6 +1986,7 @@ dependencies = [
  "vun-harness",
  "vun-index",
  "vun-items",
+ "vun-literal-derive",
  "vun-origin",
  "vun-outline",
  "vun-span",

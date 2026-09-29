@@ -7,6 +7,7 @@ use quote::{ToTokens, quote};
 use vun_diag::Msg;
 use vun_syntax::literal::{Decl, Literal};
 
+use super::model::Model;
 use super::{Enum, GENERATOR, Grammar, SHAPE, Ty, UNRESOLVED};
 use crate::generate::{Access, Module, Read, Source};
 use crate::items;
@@ -24,6 +25,7 @@ impl<'s> Grammar<'s> {
         source: &Source<'s>,
         own: &HashSet<&str>,
         uses: &TokenStream,
+        model: &Model,
     ) -> Read<Vec<Module>> {
         let mut modules = Vec::new();
         for e in self.enums.iter().filter(|e| own.contains(e.name.as_ref())) {
@@ -33,7 +35,7 @@ impl<'s> Grammar<'s> {
                 access: Access::Impl,
                 ..Module::sibling(format!("{}_names", e.name.snake()), &quote! { #uses #names })
             });
-            modules.extend(self.slots(e, &source.decls)?);
+            modules.extend(self.slots(e, model)?);
         }
         for d in source.decls.iter().filter(|d| own.contains(d.name)) {
             if let Some(items) = d.value.as_list() {

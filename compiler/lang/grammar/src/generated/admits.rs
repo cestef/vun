@@ -12,7 +12,7 @@ pub struct AdmitsRow {
     pub kinds: &'static [NodeKind],
 }
 /// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
-/// and patterns, and the operands of instructions.
+/// and patterns.
 pub const ADMITS: &[AdmitsRow] = &[
     AdmitsRow {
         fields: &[NodeField::Members, NodeField::Statements, NodeField::Target],
@@ -42,9 +42,5 @@ pub const ADMITS: &[AdmitsRow] = &[
     AdmitsRow {
         fields: &[NodeField::Head, NodeField::Condition],
         kinds: &[NodeKind::Test, NodeKind::In],
-    },
-    AdmitsRow {
-        fields: &[NodeField::Operands, NodeField::Parts],
-        kinds: &[NodeKind::Bound, NodeKind::Memory, NodeKind::Label],
     },
 ];

@@ -19,6 +19,7 @@ vun-span.workspace = true
 vun-origin.workspace = true
 vun-diag.workspace = true
 vun-grammar.workspace = true
+vun-literal-derive.workspace = true
 vun-trace.workspace = true
 
 [dev-dependencies]

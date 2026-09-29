@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `lang.syntax.desugar`.
 pub const desugar: Item = Item::new(&["lang", "syntax", "desugar"]);
+/// The namespace `lang.syntax.editors`.
+pub const editors: Item = Item::new(&["lang", "syntax", "editors"]);
 /// The namespace `lang.syntax.grammar`.
 pub const grammar: Item = Item::new(&["lang", "syntax", "grammar"]);
 /// The namespace `lang.syntax.nodes`.

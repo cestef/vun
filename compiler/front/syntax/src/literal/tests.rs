@@ -149,3 +149,62 @@ fn integers_are_exact_in_every_radix() {
     assert_eq!(integer("0"), Some(0.into()));
     assert_eq!(integer("0x"), None);
 }
+
+#[derive(Debug, PartialEq, Eq, FromLiteral)]
+enum Term {
+    Many(#[literal(rest)] Vec<Term>),
+    Of(Name, Path),
+    #[literal(name = "eof")]
+    End,
+    #[literal(untagged)]
+    Text(String),
+    #[literal(untagged)]
+    Field(Name),
+}
+
+#[derive(Debug, PartialEq, Eq, FromLiteral)]
+struct Rules {
+    terms: Vec<Term>,
+    #[literal(name = "Levels")]
+    levels: Fields<Vec<u32>>,
+    absent: Option<Name>,
+}
+
+#[test]
+fn typed_values_read_from_literals() {
+    let decls = read("terms := [.many(\"a\", .b), .of(.c, d.e), .eof];\nLevels := .{ .x = [1, 2] };");
+    let rules = Rules::from_decls(&decls).unwrap();
+    let name = |n: &str| Name(n.to_owned());
+    assert_eq!(
+        rules.terms,
+        [
+            Term::Many(vec![Term::Text("a".to_owned()), Term::Field(name("b"))]),
+            Term::Of(name("c"), Path(vec!["d".to_owned(), "e".to_owned()])),
+            Term::End,
+        ]
+    );
+    assert_eq!(rules.levels, Fields(vec![("x".to_owned(), vec![1, 2])]));
+    assert_eq!(rules.absent, None);
+}
+
+#[test]
+fn mismatches_name_where_and_what() {
+    let decls = read("terms := [.of(.c)];\nLevels := .{};");
+    let mismatch = Rules::from_decls(&decls).unwrap_err();
+    assert_eq!(mismatch.expected, Expected::Arguments(2));
+    assert_eq!(mismatch.path().collect::<Vec<_>>(), [Step::Field("terms"), Step::Item(0)]);
+    let decls = read("terms := [];");
+    let mismatch = Rules::from_decls(&decls).unwrap_err();
+    assert_eq!(
+        (mismatch.expected, mismatch.path().collect::<Vec<_>>()),
+        (Expected::Field, vec![Step::Field("Levels")])
+    );
+}
+
+#[test]
+fn fields_keep_their_docs() {
+    let decls = read("r := .{\n    /// what x is\n    .x = 1,\n    .y = 2,\n};");
+    let Literal::Record(fields) = &decls[0].value else { panic!("{:?}", decls[0].value) };
+    assert_eq!((fields[0].name, fields[0].doc.as_slice()), ("x", ["what x is"].as_slice()));
+    assert_eq!(fields[1].doc, Vec::<&str>::new());
+}

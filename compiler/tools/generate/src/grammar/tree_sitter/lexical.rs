@@ -1,6 +1,7 @@
 //! The tokens the lexer reads by hand, as tree-sitter rules composed from the shared pieces of
 //! `grammar::lexical`: each unspelled token kind of `grammar.vun` a production names is a hidden
-//! rule `_kind`; comments are extras, and doc comments outrank them where both match.
+//! rule `_kind`, and each extra, a comment, a rule of its own; doc comments outrank comments where
+//! both match.
 
 use vun_syntax::lexer::{COMMENT, DOC_COMMENT, ESCAPE, MODULE_DOC_COMMENT, RADIX_PREFIXES, RAW_STRING_LINE};
 
@@ -10,14 +11,12 @@ use crate::grammar::lexical::{
 use crate::grammar::pattern::Pattern;
 use vun_tree_sitter::{Assoc, Rule};
 
-/// The names of the token kinds in `grammar.vun` this module has rules for.
-pub(super) const IDENT_KIND: &str = "ident";
-pub(super) const COMMENT_KIND: &str = "comment";
-/// A token kind's name and how its rule is made.
+/// A token kind's name in `grammar.vun` and how its rule is made.
 type Maker = (&'static str, fn() -> Rule);
 
-const TOKENS: [Maker; 11] = [
-    (IDENT_KIND, ident),
+const TOKENS: [Maker; 12] = [
+    ("comment", comment),
+    ("ident", ident),
     ("raw_ident", raw_ident),
     ("int", int),
     ("float", float),
@@ -39,8 +38,8 @@ pub(super) fn rule(name: &str) -> Option<Rule> {
     TOKENS.iter().find(|(n, _)| *n == name).map(|(_, rule)| rule())
 }
 
-/// The comment extra: `//` and the rest of its line.
-pub(super) fn comment() -> Rule {
+/// `//` and the rest of its line.
+fn comment() -> Rule {
     Rule::seq(vec![text(COMMENT), rest_of_line()]).token()
 }
 

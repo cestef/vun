@@ -8,9 +8,10 @@ use crate::grammar::pattern::Pattern;
 /// Ends every scope name, naming the language.
 const LANGUAGE: &str = "vun";
 
-/// The scopes a Vun syntax gives, named as editor themes select them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(super) enum Scope {
+/// The scopes a Vun syntax gives, named as editor themes select them; `editors.vun` names them
+/// in `snake_case`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, vun_syntax::literal::FromLiteral)]
+pub(crate) enum Scope {
     Source,
     Comment,
     DocComment,

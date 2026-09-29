@@ -2,34 +2,28 @@
 (name) @variable
 ((name) @type (#match? @type "^[A-Z][A-Za-z0-9_]*$"))
 ["in" "asm"] @keyword
-[":" "," ";"] @punctuation.delimiter
-[".{" "(" ")" "[" "]" "{" "}" "#[" "#{"] @punctuation.bracket
+["," ";" ":"] @punctuation.delimiter
+["(" ")" "[" "]" "#[" "{" "}" "#{" ".{"] @punctuation.bracket
 [".*" "?"] @operator
-["unsafe" ".." "$" "?" "&" "~" "!" "-" "*"] @operator
-["and" "or" "==" "!=" "<" "<=" ">" ">=" ".." "..=" "&" "|" "^" "+" "-" "*" "/" "%" "++" "<<" ">>"] @operator
+["-" "!" "~" "&" "*" "?" ".." "$" "unsafe"] @operator
+["or" "and" "==" "!=" "<" "<=" ">" ">=" ".." "..=" "|" "^" "&" "<<" ">>" "++" "+" "-" "*" "/" "%"] @operator
 ["=" "+=" "-=" "*=" "/=" "%=" "&=" "|=" "^=" "<<=" ">>=" "+%=" "-%=" "*%=" "+|=" "-|=" "*|="] @operator
 ["mut" "if" "else" "match" "for" "break" "continue" "return" "yield" "defer" "and" "or" "struct" "enum" "unsafe"] @keyword
 (comment) @comment
-(doc_comment) @comment.doc
-(module_doc) @comment.doc
-(int) @number
-(float) @number
-(string) @string
-(raw_string_line) @string
+[(doc_comment) (module_doc)] @comment.doc
+[(int) (float)] @number
+[(string) (raw_string_line)] @string
 (char) @string
 (label) @label
 (hole) @variable.special
 (rest) @operator
-(mut) @keyword
-(qualifier) @keyword
-(mode) @keyword
-(flow) @keyword
+[(mut) (qualifier) (mode) (flow)] @keyword
 (param pattern: (name) @variable.parameter)
 (member property: (name) @property)
 (dot_name property: (name) @variant)
 (call callee: (name) @function)
 (call callee: (_ property: (name) @function.method))
 (binding pattern: (name) @function value: [(fn) (closure)])
-(binding pattern: (name) @type value: [(struct) (enum)])
 (typed_binding pattern: (name) @function value: [(fn) (closure)])
+(binding pattern: (name) @type value: [(struct) (enum)])
 (typed_binding pattern: (name) @type value: [(struct) (enum)])

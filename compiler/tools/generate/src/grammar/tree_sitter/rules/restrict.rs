@@ -2,16 +2,16 @@
 //! through transparent kinds (`.ending`), or to nodes starting with a token it lists
 //! (`.starting`). A kind reaching a listed one through a field of its own is written again with
 //! that field restricted, as a hidden rule named after the kind and the table and aliased to the
-//! kind, so the tree names it as ever.
+//! kind, so the tree names it as ever. Operand contexts (`context`) make hidden rules the same way.
 
 use vun_tree_sitter::{Assoc, Rule};
 
-use super::{Named, Rules, TRANSPARENT};
-use crate::grammar::production::{Resolved, Restriction, Term};
+use super::{At, Named, Rules};
+use crate::grammar::model::{Kind, Restriction, Table, Term, Token};
 
-impl<'s> Rules<'_, 's> {
+impl Rules<'_> {
     /// What a restricted field holds.
-    pub(super) fn restricted_to(&self, restriction: Restriction<'s>) -> Option<Rule> {
+    pub(super) fn restricted_to(&self, restriction: &Restriction) -> Rule {
         match restriction {
             Restriction::Of(table) => self.of_table(table, false),
             Restriction::Ending(table) => self.of_table(table, true),
@@ -22,77 +22,81 @@ impl<'s> Rules<'_, 's> {
     /// A node of a kind `table` lists, or of a transparent kind ending with one: that kind's
     /// production with its last field holding what this does, as a hidden rule named after both
     /// and aliased to the kind.
-    fn of_table(&self, table: &str, ending: bool) -> Option<Rule> {
-        let mut kinds: Vec<Rule> = self.kinds(table).ok()?.iter().map(|k| Rule::symbol(k)).collect();
-        let transparent = if ending { self.kinds(TRANSPARENT).ok()? } else { Vec::new() };
-        for kind in transparent {
-            let name = ["_", kind, "_", table].concat();
-            let (_, terms) = self.produced.iter().find(|(k, _)| *k == kind)?;
-            if !self.wrapped.borrow().iter().any(|(n, _)| *n == name) {
-                self.wrapped.borrow_mut().push((name.clone(), Rule::seq(Vec::new())));
-                let (last, rest) = terms.split_last()?;
-                let Term::Field(field, None) = last else { return None };
-                let mut body: Vec<Rule> = rest.iter().filter_map(|t| self.term(t, true)).collect();
-                body.push(self.of_table(table, true)?.field(field));
-                let rule =
-                    Rule::seq(body).prec(Assoc::Right, self.levels.get(kind).copied().unwrap_or_default());
-                let mut wrapped = self.wrapped.borrow_mut();
-                if let Some(slot) = wrapped.iter_mut().find(|(n, _)| *n == name) {
-                    slot.1 = rule;
+    fn of_table(&self, table: &Table<Kind>, ending: bool) -> Rule {
+        let name = |k: Kind| self.model.kind_name(k);
+        let mut kinds: Vec<Rule> = table.members.iter().map(|&k| Rule::symbol(name(k))).collect();
+        let transparent = if ending { self.model.transparent.as_slice() } else { &[] };
+        for &kind in transparent {
+            let hidden = ["_", name(kind), "_", &table.name].concat();
+            if !self.defined(&hidden) {
+                self.define(hidden.clone(), Rule::seq(Vec::new()));
+                let terms = self.model.production(kind).unwrap_or_default();
+                if let Some((Term::Field(field, None), rest)) = terms.split_last() {
+                    let mut body: Vec<Rule> = rest.iter().filter_map(|t| self.term(t, At::RANKED)).collect();
+                    body.push(self.of_table(table, true).field(self.model.field_name(*field)));
+                    let level = self.levels.get(&kind).copied().unwrap_or_default();
+                    self.define(hidden.clone(), Rule::seq(body).prec(Assoc::Right, level));
                 }
             }
-            kinds.push(Rule::symbol(&name).alias(kind));
+            kinds.push(Rule::symbol(&hidden).alias(name(kind)));
         }
-        Some(Rule::choice(kinds))
-    }
-
-    /// The hidden rules of transparent kinds made by [`Self::of_table`].
-    pub(crate) fn wrapped(&self) -> Vec<Named> {
-        self.wrapped.borrow().clone()
+        Rule::choice(kinds)
     }
 
     /// A node starting with a token `table` names: of a kind whose production starts with such
     /// a token (its first term narrowed to them where it names others too), or of a kind starting
     /// with an operand, that operand starting so. All of them are the hidden rule
     /// `_starting_table`, which the variants refer to.
-    fn starting(&self, table: &str) -> Option<Rule> {
-        let all = ["_starting_", table].concat();
-        if self.wrapped.borrow().iter().any(|(n, _)| *n == all) {
-            return Some(Rule::symbol(&all));
+    fn starting(&self, table: &Table<Token>) -> Rule {
+        let all = ["_starting_", &table.name].concat();
+        if self.defined(&all) {
+            return Rule::symbol(&all);
         }
         self.define(all.clone(), Rule::seq(Vec::new()));
-        let allowed = self.tokens.names(table)?;
         let mut kinds = Vec::new();
-        for (kind, terms) in self.produced.iter().filter(|(k, _)| self.is_operand(k)) {
+        for (kind, terms) in self.model.produced().filter(|&(k, _)| self.is_operand(k)) {
             let Some((first, rest)) = terms.split_first() else { continue };
+            let name = self.model.kind_name(kind);
             let narrowed = match first {
-                Term::Leaf(Resolved::Tokens(names)) => {
-                    let at: Vec<&str> = names.iter().copied().filter(|n| allowed.contains(n)).collect();
-                    if at.len() == names.len() {
-                        kinds.push(Rule::symbol(kind));
+                Term::Tokens(tokens) => {
+                    let at: Vec<Token> =
+                        tokens.iter().copied().filter(|t| table.members.contains(t)).collect();
+                    if at.len() == tokens.len() {
+                        kinds.push(Rule::symbol(name));
                         continue;
                     }
                     if at.is_empty() {
                         continue;
                     }
-                    Rule::choice(at.iter().map(|n| self.token(n, true)).collect())
+                    Rule::choice(at.into_iter().map(|t| self.token(t, true)).collect())
                 }
-                Term::Field(field, _) if self.holds_operands(field) => Rule::symbol(&all).field(field),
+                Term::Field(field, _) if self.holds_operands(*field) => {
+                    Rule::symbol(&all).field(self.model.field_name(*field))
+                }
                 _ => continue,
             };
             let mut body = vec![narrowed];
-            body.extend(rest.iter().filter_map(|t| self.term(t, true)));
-            let level = self.levels.get(kind).copied().unwrap_or_default();
-            let name = ["_", kind, "_", table].concat();
-            self.define(name.clone(), Rule::seq(body).prec(self.assoc(terms), level));
-            kinds.push(Rule::symbol(&name).alias(kind));
+            body.extend(rest.iter().filter_map(|t| self.term(t, At::RANKED)));
+            let level = self.levels.get(&kind).copied().unwrap_or_default();
+            let hidden = ["_", name, "_", &table.name].concat();
+            self.define(hidden.clone(), Rule::seq(body).prec(self.assoc(terms), level));
+            kinds.push(Rule::symbol(&hidden).alias(name));
         }
         self.define(all.clone(), Rule::choice(kinds));
-        Some(Rule::symbol(&all))
+        Rule::symbol(&all)
     }
 
-    /// Records the hidden rule `name`, once.
-    fn define(&self, name: String, rule: Rule) {
+    /// The hidden rules made for restricted fields and operand contexts.
+    pub(crate) fn wrapped(&self) -> Vec<Named> {
+        self.wrapped.borrow().clone()
+    }
+
+    pub(super) fn defined(&self, name: &str) -> bool {
+        self.wrapped.borrow().iter().any(|(n, _)| n == name)
+    }
+
+    /// Records the hidden rule `name`, or replaces it.
+    pub(super) fn define(&self, name: String, rule: Rule) {
         let mut wrapped = self.wrapped.borrow_mut();
         match wrapped.iter_mut().find(|(n, _)| *n == name) {
             Some(slot) => slot.1 = rule,
