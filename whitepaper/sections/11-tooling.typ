@@ -9,7 +9,7 @@ origin records a source span, the way the entity came to exist, and its parent o
 are: written in the source, produced by a desugaring rule, instantiated from a generic body,
 spliced from a quotation or template, named by a computed name, or introduced by a lowering pass.
 Chains are shared, so the cost is one 32-bit index per entity, and an entity without an origin is
-rejected by the verifiers that run between passes. The same chains produce debug line tables,
+rejected by the verifiers that run between passes. The same chains produce debug line tables and function entries,
 `#line` directives in generated C, the traces attached to diagnostics in generated code, and the
 source locations reported for run-time traps.
 

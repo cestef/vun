@@ -54,8 +54,8 @@ pub enum Via {
   says which is current (decision 255).
 - A generated construct points at the code that generated it, and that code at its caller, up to
   user code. Diagnostics show this as a trace; go-to-definition follows it.
-- The C backend emits `#line` directives from origins; native backends emit DWARF line tables from
-  them; runtime trap site ids index into a table of origins (spec 07).
+- The C backend emits `#line` directives from origins; native backends emit DWARF line tables and
+  an entry per function, naming it and the line declaring it, from them; runtime trap site ids index into a table of origins (spec 07).
 - Every IR dump (`vun debug mir`, `vun debug lir`) prints origins, so any line of IR can be traced
   to source.
 - Losing an origin is a compiler bug; IR verifiers check that every entity has one.

@@ -748,7 +748,9 @@ assembler and its instruction compilers and nothing else:
   architecture's instruction compilers take the target's variant of the C calling convention:
   on arm64, AAPCS64 or Apple's, whose C calls pack scalars on the stack at their own size.
 - **`vun-dwarf`**: debugging information (DWARF 4) as sections of an object: one compilation
-  unit and the line table of every function, a row per instruction whose line changes, from the
+  unit holding an entry per function (`DW_TAG_subprogram`: its symbol's name, the file and line
+  declaring it, where its origin has one, and the range of its code), and the line table of every
+  function, a row per instruction whose line changes, from the
   marks the framework records (`Compiled.marks`: each instruction's and terminator's code with
   its origin, the prologue with the function's), addresses as relocations against the
   functions' symbols. Debuggers break on and step through Vun lines; `addr2line` and profilers

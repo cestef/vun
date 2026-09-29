@@ -1,7 +1,8 @@
 //! DWARF debugging information (version 4), written as sections of a relocatable object: the
 //! line table of each function, which debuggers, profilers and `addr2line` read to map
-//! addresses to source lines, the one compilation unit naming it, and the call frame
-//! information unwinders read (`.eh_frame`). Addresses are relocations
+//! addresses to source lines, the one compilation unit naming it with an entry per function
+//! (its name, where it is declared and its code), and the call frame information unwinders read
+//! (`.eh_frame`). Addresses are relocations
 //! against the functions' symbols, so the linker places them.
 
 mod frame;
@@ -29,18 +30,36 @@ pub struct Row {
     pub line: u32,
 }
 
-/// The rows of one function, whose code is `size` bytes at its symbol.
-pub struct Sequence {
+/// A function, whose code is `size` bytes at its symbol: its name as debuggers show it, the line
+/// declaring it, and the rows of its code.
+pub struct Function {
     pub symbol: SymbolId,
     pub size: u64,
+    pub name: String,
+    pub declared: Option<Declared>,
     pub rows: Vec<Row>,
+}
+
+/// Where a function is declared.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Declared {
+    pub file: File,
+    /// Counted from 1.
+    pub line: u32,
 }
 
 /// The line information of an object's code, built function by function.
 #[derive(Default)]
 pub struct Lines {
     files: Vec<PathBuf>,
-    sequences: Vec<Sequence>,
+    functions: Vec<Function>,
+}
+
+impl File {
+    /// Its number in the line table, which counts from 1.
+    pub(crate) fn number(self) -> u64 {
+        u64::from(self.0) + 1
+    }
 }
 
 impl Lines {
@@ -56,17 +75,18 @@ impl Lines {
         File(u32::try_from(at).expect("fewer than 2^32 files"))
     }
 
-    pub fn sequence(&mut self, sequence: Sequence) {
-        self.sequences.push(sequence);
+    pub fn function(&mut self, function: Function) {
+        self.functions.push(function);
     }
 
     /// Adds the debugging sections to `object`: the unit named `name`, made by `producer`,
-    /// whose code is the section `text`, and its line table. Nothing is added without rows.
+    /// whose code is the section `text`, its functions and its line table. Nothing is added
+    /// without rows.
     pub fn write(&self, object: &mut Object, text: SectionId, name: &str, producer: &str) {
-        if self.sequences.iter().all(|s| s.rows.is_empty()) {
+        if self.functions.iter().all(|f| f.rows.is_empty()) {
             return;
         }
         let line = self.table(object);
-        info::Unit { name, producer, text, line }.write(object);
+        info::Unit { name, producer, text, line, functions: &self.functions }.write(object);
     }
 }

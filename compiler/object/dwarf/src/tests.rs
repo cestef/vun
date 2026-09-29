@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use vun_object::{Binding, Contents, Format, Machine, Object, RelocKind, Symbol, SymbolId, SymbolKind};
 
-use super::{Lines, Row, Sequence};
+use super::{Declared, Function, Lines, Row};
 
 /// An object with a `.text` of two functions, of 16 and 8 bytes.
 fn object() -> (Object, [SymbolId; 2]) {
@@ -78,12 +78,20 @@ fn a_line_table_holds_each_function_from_its_symbol_to_its_end() {
     assert_eq!(lines.file(PathBuf::from("a.vun")), a, "a file is named once");
     let row = |offset, file, line| Row { offset, file, line };
     // The repeated line 3 is written once.
-    lines.sequence(Sequence {
+    lines.function(Function {
         symbol: f,
         size: 16,
+        name: "f".to_owned(),
+        declared: Some(Declared { file: a, line: 1 }),
         rows: vec![row(0, a, 2), row(4, a, 3), row(6, a, 3), row(9, b, 1)],
     });
-    lines.sequence(Sequence { symbol: g, size: 8, rows: vec![row(0, a, 7)] });
+    lines.function(Function {
+        symbol: g,
+        size: 8,
+        name: "g".to_owned(),
+        declared: None,
+        rows: vec![row(0, a, 7)],
+    });
     let text = object.sections.iter().next().unwrap().0;
     lines.write(&mut object, text, "a.vun", "vun");
     let (_, line) = object.sections.iter().find(|(_, s)| s.name == b".debug_line").unwrap();
@@ -95,7 +103,13 @@ fn a_line_table_holds_each_function_from_its_symbol_to_its_end() {
     assert_eq!(addresses, [(f, RelocKind::Abs64), (g, RelocKind::Abs64)]);
     let (_, info) = object.sections.iter().find(|(_, s)| s.name == b".debug_info").unwrap();
     let kinds: Vec<_> = info.relocs.iter().map(|r| r.kind).collect();
-    assert_eq!(kinds, [RelocKind::Abs32, RelocKind::Abs32, RelocKind::Abs64]);
+    assert_eq!(
+        kinds,
+        [RelocKind::Abs32, RelocKind::Abs32, RelocKind::Abs64, RelocKind::Abs64, RelocKind::Abs64]
+    );
+    // Each function's entry starts at its symbol.
+    let functions: Vec<_> = info.relocs.iter().skip(3).map(|r| r.symbol).collect();
+    assert_eq!(functions, [f, g]);
     assert!(object.write().len() > 64, "the object with its debugging sections is written");
 }
 
@@ -103,7 +117,7 @@ fn a_line_table_holds_each_function_from_its_symbol_to_its_end() {
 fn nothing_is_written_without_rows() {
     let (mut object, [f, _]) = object();
     let mut lines = Lines::default();
-    lines.sequence(Sequence { symbol: f, size: 16, rows: Vec::new() });
+    lines.function(Function { symbol: f, size: 16, name: "f".to_owned(), declared: None, rows: Vec::new() });
     let text = object.sections.iter().next().unwrap().0;
     lines.write(&mut object, text, "a.vun", "vun");
     assert_eq!(object.sections.len(), 1);

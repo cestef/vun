@@ -74,7 +74,7 @@ impl Lines {
         }
         out.u8(0);
         out.patch_length(header);
-        for sequence in self.sequences.iter().filter(|s| !s.rows.is_empty()) {
+        for sequence in self.functions.iter().filter(|f| !f.rows.is_empty()) {
             out.u8(EXTENDED);
             let address = object.machine.address_bytes();
             out.uleb(u64::from(address) + 1);
@@ -112,7 +112,7 @@ impl Lines {
 impl State {
     /// Moves to `row` and appends it.
     fn advance(&mut self, out: &mut Out, row: Row) {
-        let file = u64::from(row.file.0) + 1;
+        let file = row.file.number();
         if file != self.file {
             out.u8(SET_FILE);
             out.uleb(file);

@@ -7,7 +7,7 @@ use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Storage, U
 
 use vun_backend::Lines;
 use vun_codegen::Compiled;
-use vun_dwarf::{CallFrame, Fde, Row, Sequence};
+use vun_dwarf::{CallFrame, Declared, Fde, Function, Row};
 use vun_object::{
     Binding, Contents, Format, Machine, Object, Reloc, SectionId, Symbol, SymbolId, SymbolKind,
 };
@@ -77,7 +77,7 @@ impl<T> Assembly<'_, T> {
                 object.sections[section].relocs.push(reloc);
             }
         }
-        self.line_table(&funcs, &mut object, text);
+        self.debug_info(&funcs, &mut object, text);
         // Mach-O describes frames otherwise (compact unwind information), which is left for later.
         if format == Format::Elf {
             let fdes = self.code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
@@ -170,9 +170,9 @@ impl<T> Assembly<'_, T> {
         imports.collect::<Vec<_>>().into()
     }
 
-    /// Adds the line table of the functions, at `funcs`, to `object`: the unit named by the first
-    /// file it reads.
-    fn line_table(&self, funcs: &IndexVec<FuncId, SymbolId>, object: &mut Object, text: SectionId) {
+    /// Adds the debugging information of the functions, at `funcs`, to `object`: an entry per
+    /// function and their line table, in the unit named by the first file it reads.
+    fn debug_info(&self, funcs: &IndexVec<FuncId, SymbolId>, object: &mut Object, text: SectionId) {
         let (code, lines) = (self.code, self.lines);
         let mut table = vun_dwarf::Lines::default();
         let mut name = None;
@@ -183,7 +183,17 @@ impl<T> Assembly<'_, T> {
                 Some(Row { offset, file: table.file(line.file), line: line.line })
             });
             let rows = rows.collect();
-            table.sequence(Sequence { symbol: funcs[id], size: compiled.code.bytes.len() as u64, rows });
+            let declared = lines.line(self.unit.functions[id].origin);
+            let declared = declared.map(|l| Declared { file: table.file(l.file), line: l.line });
+            let symbol = funcs[id];
+            table.function(Function {
+                symbol,
+                size: compiled.code.bytes.len() as u64,
+                // As its symbol names it, which is what debuggers and profilers show.
+                name: String::from_utf8_lossy(&object.symbols[symbol].name).into_owned(),
+                declared,
+                rows,
+            });
         }
         table.write(object, text, &name.unwrap_or_default(), PRODUCER);
     }
