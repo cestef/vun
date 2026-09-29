@@ -59,6 +59,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
                 name: group.to_owned(),
                 access: Access::Glob,
                 items: quote! { use crate::DiagId; #(#consts)* },
+                dir: None,
             }
         })
         .collect();

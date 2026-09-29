@@ -3,85 +3,93 @@
 
 enter := () -> usize {
     mut mask: usize = 0;
-    unsafe lang.arch.thumb.asm {
-        mrs {out mask}, primask
-        cpsid i
-        dsb sy
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        mrs(out(mask), primask);
+        cpsid(i);
+        dsb(sy);
+    });
     mask
 };
 
 leave := (mask: usize) {
-    unsafe lang.arch.thumb.asm {
-        msr primask, {in mask}
-        cpsie i
-        wfi
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        msr(primask, in(mask));
+        cpsie(i);
+        wfi();
+    });
 };
 
-/// Memory as `[base, offset]`, written back before the access with `!` or after it, an index,
-/// and a width as the mnemonic's suffix (`ldrb`); `.w` asks for a 32-bit encoding.
+/// Memory as `mem(base, offset)`, written back before the access (`pre`) or after it (`post`),
+/// an index, and a width as its own instruction (`ldrb`); `w` asks for a 32-bit encoding.
 copy := (to: *u32, from: *u32) {
-    unsafe lang.arch.thumb.asm {
-        ldr r2, [{in from}]
-        str r2, [{in to}, 4]
-        ldr.w r3, [{in from}, 8]
-        ldr r3, [{in from}], 4
-        str r3, [{in to}, 8]!
-        ldrb r3, [{in from}, r2]
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        ldr(r2, mem(in(from)));
+        str(r2, mem(in(to), 4));
+        ldr(w, r3, mem(in(from), 8));
+        ldr(r3, post(mem(in(from)), 4));
+        str(r3, pre(mem(in(to), 8)));
+        ldrb(r3, mem(in(from), r2));
+    });
 };
 
 /// Floats bound in floating-point registers, registers named at each width (`s1`, `d1`), the
-/// types after the mnemonic's `.`, and the status register read into the flags.
+/// types a form computes as leading operands, and the status register read into the flags.
 floats := (a: f32, b: f32) -> f32 {
     mut sum: f32 = 0.0;
-    unsafe lang.arch.thumb.asm {
-        vadd.f32 {out sum}, {in a}, {in b}
-        vmul.f64 d1, d2, d3
-        vcvt.s32.f32 s0, s1
-        vcvt.f64.f32 d0, s2
-        vmov s4, r0
-        vmrs apsr_nzcv, fpscr
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        vadd(f32, out(sum), in(a), in(b));
+        vmul(f64, d1, d2, d3);
+        vcvt(i32, f32, s0, s1);
+        vcvt(f64, f32, d0, s2);
+        vmov(s4, r0);
+        vmrs(apsr_nzcv, fpscr);
+    });
     sum
 };
 
-/// A condition glued to the mnemonic (`bne`), and each form's encoding width after a `.`.
-countdown := (n: u32) -> u32 {
-    mut left: u32 = n;
-    unsafe lang.arch.thumb.asm {
-        'top:
-        subs {inout left}, {inout left}, 1
-        bne 'top
-        beq.w 'end
-        add.w r0, r1, r2
-        adds.n r0, r1, r2
-        'end:
-    };
+/// A condition as a leading operand (`b(ne, top)`), and each form's encoding width.
+countdown := (count: u32) -> u32 {
+    mut left: u32 = count;
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        top := here();
+        end := label();
+        subs(inout(left), inout(left), 1);
+        b(ne, top);
+        b(w, eq, end);
+        add(w, r0, r1, r2);
+        adds(n, r0, r1, r2);
+        place(end);
+    });
     left
 };
 
-/// A list of registers as the rest of the line: general ones, or consecutive double-precision
-/// ones.
+/// A list of registers as the operands themselves: general ones, or consecutive
+/// double-precision ones.
 saved := () {
-    unsafe lang.arch.thumb.asm {
-        push r4, r5, lr
-        vpush d8, d9
-        vpop d8, d9
-        pop r4, r5, pc
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        push(r4, r5, lr);
+        vpush(d8, d9);
+        vpop(d8, d9);
+        pop(r4, r5, pc);
+    });
 };
 
 /// A value bound where some forms take an immediate: the forms taking a register take it.
 exclusive_add := (at: usize, low: u32, high: u32) -> u32 {
     mut status: u32 = 0;
-    unsafe lang.arch.thumb.asm {
-        ldrexd r4, r5, [{in(r0) at}]
-        adds r4, r4, {in(r2) low}
-        adc r5, r5, {in(r3) high}
-        cmp r4, {in(r2) low}
-        strexd {out(r1) status}, r4, r5, [r0]
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        ldrexd(r4, r5, mem(in(at).at(r0)));
+        adds(r4, r4, in(low).at(r2));
+        adc(r5, r5, in(high).at(r3));
+        cmp(r4, in(low).at(r2));
+        strexd(out(status).at(r1), r4, r5, mem(r0));
+    });
     status
 };

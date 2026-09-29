@@ -2,12 +2,15 @@
 //! instructions as declared there, families expanded, become its `Op` enum and the forms of each.
 //!
 //! An architecture `a` declares its types and registers in `arch/a.vun` and its instructions in
-//! `arch/a/*.vun`, where other types of it may be declared too. An instruction is a value of `Instruction`, or a member of a `Family`, whose
-//! forms hold holes the member fills. A form's absent fields take the defaults `Form` declares, and
-//! a name starting with `_` is a shorthand of its file, read as the value it names.
+//! `arch/a/*.vun`, where other types of it may be declared too. An instruction is a value of
+//! `Instruction`, or a `Member` of a `Family` declared before it in its file, whose forms hold
+//! holes the member fills; a `Mnemonic` names the instructions it spells. A form's absent fields
+//! take the defaults `Form` declares, and a name starting with `_` is a shorthand of its file, read
+//! as the value it names.
 
 mod arm64;
 mod emit;
+mod ops;
 mod spell;
 mod thumb;
 mod words;
@@ -28,28 +31,28 @@ pub(crate) use x86_64::X86_64;
 /// Where the architectures are declared, relative to the repository root.
 const ARCH: &str = "lib/lang/lang/arch";
 
-/// The declarations whose values are instructions and families, by the last segment of their
-/// type's path, and the type whose field defaults absent fields take.
+/// The declarations whose values are instructions, families, their members and mnemonics, by the
+/// last segment of their type's path, and the type whose field defaults absent fields take.
 const INSTRUCTION: &str = "Instruction";
 const FAMILY: &str = "Family";
 const FORM: &str = "Form";
 const MEMBER: &str = "Member";
-/// The fields of an instruction and a family.
+const MNEMONIC: &str = "Mnemonic";
+/// The fields of an instruction or a family, of a member, and of a mnemonic.
 const FORMS: &str = "forms";
-const MEMBERS: &str = "members";
-const NAME: &str = "name";
+const OF_FAMILY: &str = "family";
+const INSTRUCTIONS: &str = "instructions";
 /// The fields of a form holding lists of records, and the type of those records, whose defaults
 /// they take too.
 const NESTED: [(&str, &str); 3] = [("operands", "Operand"), ("sizes", "Sized"), ("args", "Arg")];
-const MNEMONIC: &str = "mnemonic";
 
 /// A name that is a shorthand of its file rather than a declaration of the architecture.
 const PRIVATE: char = '_';
 
 const UNREAD: DiagId = DiagId::new("generate.asm.unread");
 
-/// An instruction: its name, its mnemonic where it is not its name, its doc lines, and its forms,
-/// each field present.
+/// An instruction: its name, its mnemonic where a `Mnemonic` spells it (`b` for `bcond`), its doc
+/// lines, and its forms, each field present.
 pub(crate) struct Instruction<'s> {
     pub(crate) name: &'s str,
     pub(crate) mnemonic: Option<String>,
@@ -79,10 +82,11 @@ impl<'a, 's> Table<'a, 's> {
             sources.iter().find(|s| s.path == own_path).ok_or_else(|| unread("has no declaration file"))?;
         let dir = format!("{ARCH}/{arch}/");
         let children = sources.iter().filter(|s| s.path.starts_with(&dir));
-        // A declaration of a child file that is neither an instruction nor a shorthand is a type.
+        // A declaration of a child file that is none of the table's values nor a shorthand is a type.
         let types = children.clone().flat_map(|s| &s.decls).filter(|d| {
-            !d.name.starts_with(PRIVATE)
-                && !matches!(&d.value, Literal::Typed(ty, _) if matches!(ty.last().copied(), Some(INSTRUCTION | FAMILY)))
+            let table =
+                |ty: &[&str]| matches!(ty.last().copied(), Some(INSTRUCTION | FAMILY | MEMBER | MNEMONIC));
+            !d.name.starts_with(PRIVATE) && !matches!(&d.value, Literal::Typed(ty, _) if table(ty))
         });
         let own: Vec<&'a Decl<'s>> = declaring.decls.iter().chain(types).collect();
         let defaults = |ty: &str| {
@@ -92,7 +96,7 @@ impl<'a, 's> Table<'a, 's> {
         };
         let (form_defaults, member_defaults) = (defaults(FORM), defaults(MEMBER));
         let nested: Vec<_> = NESTED.iter().map(|&(field, ty)| (field, defaults(ty))).collect();
-        let mut instructions = Vec::new();
+        let (mut instructions, mut spelled) = (Vec::new(), BTreeMap::new());
         for source in children {
             let shorthands: Fields<'s> = source
                 .decls
@@ -101,6 +105,8 @@ impl<'a, 's> Table<'a, 's> {
                 .map(|d| (d.name, d.value.clone()))
                 .collect();
             let resolve = |value: &Literal<'s>| resolved(value, &shorthands);
+            // Each family's forms, and its doc lines, which its members share.
+            let mut families: BTreeMap<&str, (Vec<Literal<'s>>, Vec<String>)> = BTreeMap::new();
             for decl in source.decls.iter().filter(|d| !d.name.starts_with(PRIVATE)) {
                 let Literal::Typed(ty, record) = &decl.value else { continue };
                 let forms = |record: &Literal<'s>| -> Read<Vec<Literal<'s>>> {
@@ -111,32 +117,36 @@ impl<'a, 's> Table<'a, 's> {
                         .map(|f| with_nested(&with_defaults(f, &form_defaults), &nested))
                         .collect())
                 };
+                let (name, doc) = (decl.name, docs(&decl.doc));
                 match ty.last().copied() {
                     Some(INSTRUCTION) => {
-                        let mnemonic = record.get(MNEMONIC).and_then(Literal::as_tagged);
-                        let mnemonic = mnemonic.and_then(|(_, p)| p.first()?.as_str().map(str::to_owned));
-                        let (name, doc) = (decl.name, docs(&decl.doc));
-                        instructions.push(Instruction { name, mnemonic, doc, forms: forms(record)? });
+                        instructions.push(Instruction { name, mnemonic: None, doc, forms: forms(record)? });
                     }
                     Some(FAMILY) => {
-                        let shared = forms(record)?;
-                        let members = record.get(MEMBERS).map(resolve);
-                        for member in members.as_ref().and_then(Literal::as_list).unwrap_or_default() {
-                            let member = with_defaults(&resolve(member), &member_defaults);
-                            let name = member.get(NAME).and_then(Literal::as_name);
-                            let name = name.ok_or_else(|| unread("declares a member without a name"))?;
-                            let forms = shared.iter().map(|f| filled(f, &member, fill)).collect();
-                            instructions.push(Instruction {
-                                name,
-                                mnemonic: None,
-                                doc: docs(&decl.doc),
-                                forms,
-                            });
+                        families.insert(name, (forms(record)?, doc));
+                    }
+                    Some(MEMBER) => {
+                        let member = with_defaults(&resolve(record), &member_defaults);
+                        let family = member.get(OF_FAMILY).and_then(Literal::as_path);
+                        let shared = family.and_then(|f| families.get(f.first()?));
+                        let (shared, shared_doc) =
+                            shared.ok_or_else(|| unread("declares a member of no family before it"))?;
+                        let forms = shared.iter().map(|f| filled(f, &member, fill)).collect();
+                        let doc = if doc.is_empty() { shared_doc.clone() } else { doc };
+                        instructions.push(Instruction { name, mnemonic: None, doc, forms });
+                    }
+                    Some(MNEMONIC) => {
+                        let spells = record.get(INSTRUCTIONS).and_then(Literal::as_list).unwrap_or_default();
+                        for instruction in spells.iter().filter_map(Literal::as_name) {
+                            spelled.insert(instruction, name.to_owned());
                         }
                     }
                     _ => {}
                 }
             }
+        }
+        for instruction in &mut instructions {
+            instruction.mnemonic = spelled.get(instruction.name).cloned();
         }
         Ok(Self { own, instructions })
     }

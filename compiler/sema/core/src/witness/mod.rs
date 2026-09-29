@@ -37,10 +37,29 @@ pub struct ImplDecl {
     /// The attribute, where the impl is reported.
     pub attr: OriginId,
     /// The interface implemented; `None` for `#[impl(T)]`, whose declarations are methods of
-    /// `T` only.
+    /// `T` only, and for an impl of every interface a constructor makes (`holed`).
     pub contract: Option<Contract>,
+    /// The interfaces implemented where the contract writes `_` among its arguments.
+    pub holed: Option<Holed>,
     /// `T`: a type, or a type constructor for every type it makes.
     pub target: Value,
+}
+
+/// What an impl attribute implements, and for what.
+struct ImplAttr {
+    contract: Option<Contract>,
+    holed: Option<Holed>,
+    target: Value,
+}
+
+/// The interfaces an impl implements when its contract writes `_` among the arguments of the
+/// interface's constructor: every one the constructor makes with any value there (spec 02,
+/// section 3). The witness is made for the values a use gives the `_`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Holed {
+    pub constructor: Func,
+    /// The arguments as written, `None` for each `_`.
+    pub args: Vec<Option<Value>>,
 }
 
 /// The interface an impl implements.
@@ -103,10 +122,10 @@ impl Query for Impls {
             each_entry(&ns.members, &mut |member| {
                 let Member::Decl(decl) = member else { return };
                 for &attr in &hir.decls[*decl].attrs {
-                    if let Some((contract, target)) = env.impl_attr(attr) {
+                    if let Some(ImplAttr { contract, holed, target }) = env.impl_attr(attr) {
                         let decl = DeclRef::new(file.clone(), hir, *decl);
                         let attr = hir.exprs[attr].origin;
-                        impls.push(ImplDecl { decl, attr, contract, target });
+                        impls.push(ImplDecl { decl, attr, contract, holed, target });
                     }
                 }
             });
@@ -120,27 +139,55 @@ impl Query for Impls {
 }
 
 impl Env<'_, '_> {
-    /// The contract and the target of `#[impl(I(T))]` or `#[impl(T)]` at `attr`; `None` for
-    /// any other attribute. The attribute is the primitive `lang.impl`; an argument that is an
-    /// interface applied to a target gives the struct its function built, which records both.
-    fn impl_attr(&self, attr: ExprId) -> Option<(Option<Contract>, Value)> {
+    /// What `#[impl(I(T))]`, `#[impl(C(a, _)(T))]` or `#[impl(T)]` at `attr` implements, and for
+    /// what; `None` for any other attribute. The attribute is the primitive `lang.impl`; an
+    /// argument that is an interface applied to a target gives the struct its function built,
+    /// which records both.
+    fn impl_attr(&self, attr: ExprId) -> Option<ImplAttr> {
         let hir = &self.parsed.hir;
         let ExprKind::Call { callee, args } = &hir.exprs[attr].kind else { return None };
         let Ok(Value::Primitive(Primitive::Lang(Lang::r#impl))) = self.eval(*callee) else { return None };
         let [Entry::One(Arg { name: None, value })] = args.as_slice() else { return None };
-        let applied = match &hir.exprs[*value].kind {
-            ExprKind::Call { callee, .. } => matches!(self.eval(*callee), Ok(Value::Interface(_))),
-            _ => false,
+        let implemented = |contract, holed, target| Some(ImplAttr { contract, holed, target });
+        let ExprKind::Call { callee: interface, args: target } = &hir.exprs[*value].kind else {
+            return implemented(None, None, self.eval(*value).ok()?);
         };
-        if !applied {
-            return Some((None, self.eval(*value).ok()?));
+        if let Some(holed) = self.holed(*interface) {
+            let [Entry::One(Arg { name: None, value: target })] = target.as_slice() else { return None };
+            return implemented(None, Some(holed), self.eval(*target).ok()?);
+        }
+        if !matches!(self.eval(*interface), Ok(Value::Interface(_))) {
+            return implemented(None, None, self.eval(*value).ok()?);
         }
         let requirements = self.ty(*value).ok()?;
         let TyKind::Nominal(Nominal { instance: Some(Instance { f, args }), .. }) = &*requirements else {
             return None;
         };
         let [target] = args.as_slice() else { return None };
-        Some((Some(Contract { interface: f.clone(), requirements }), target.clone()))
+        implemented(Some(Contract { interface: f.clone(), requirements }), None, target.clone())
+    }
+
+    /// The interfaces `C(a, _, ...)` at `expr` stands for, where it writes `_` among the
+    /// arguments of an interface constructor.
+    fn holed(&self, expr: ExprId) -> Option<Holed> {
+        let hir = &self.parsed.hir;
+        let ExprKind::Call { callee, args } = &hir.exprs[expr].kind else { return None };
+        let hole = |a: &Entry<Arg>| matches!(a, Entry::One(Arg { value, .. }) if matches!(hir.exprs[*value].kind, ExprKind::Hole));
+        if !args.iter().any(hole) {
+            return None;
+        }
+        let Ok(Value::Fn(constructor)) = self.eval(*callee) else { return None };
+        let args = args
+            .iter()
+            .map(|a| match a {
+                Entry::One(Arg { name: None, value }) if matches!(hir.exprs[*value].kind, ExprKind::Hole) => {
+                    Some(None)
+                }
+                Entry::One(Arg { name: None, value }) => Some(Some(self.eval(*value).ok()?)),
+                _ => None,
+            })
+            .collect::<Option<_>>()?;
+        Some(Holed { constructor, args })
     }
 }
 

@@ -87,6 +87,7 @@ impl Env<'_, '_> {
                 Err(Unevaluated::Trapped(_)) => Err(Unevaluated::Failed),
                 value => value,
             },
+            Site::Variant { decl, name } => self.member(self.value_of(Site::Decl(decl))?, name),
             Site::Namespace(ns) => Ok(Value::Namespace(ns)),
         }
     }

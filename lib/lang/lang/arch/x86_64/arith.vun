@@ -18,13 +18,6 @@ _accumulator: &[_x.Reg] = &[.rax, .rdx];
 
 /// `add`, `or`, `and`, `sub` and `xor`, `x = x op y`, by their opcode and its extension.
 alu := _x.Family{
-    .members = &[
-        _x.Member{ .name = .add, .opcode = 0x00, .digit = 0 },
-        _x.Member{ .name = .\or, .opcode = 0x08, .digit = 1 },
-        _x.Member{ .name = .\and, .opcode = 0x20, .digit = 4 },
-        _x.Member{ .name = .sub, .opcode = 0x28, .digit = 5 },
-        _x.Member{ .name = .xor, .opcode = 0x30, .digit = 6 },
-    ],
     .forms = &[
         .{
             .operands = &[_rm_rw, _r],
@@ -59,6 +52,11 @@ alu := _x.Family{
         },
     ],
 };
+add := _x.Member{ .family = alu, .opcode = 0x00, .digit = 0 };
+\or := _x.Member{ .family = alu, .opcode = 0x08, .digit = 1 };
+\and := _x.Member{ .family = alu, .opcode = 0x20, .digit = 4 };
+sub := _x.Member{ .family = alu, .opcode = 0x28, .digit = 5 };
+xor := _x.Member{ .family = alu, .opcode = 0x30, .digit = 6 };
 
 /// `sub` setting only the flags.
 cmp := _x.Instruction{ .forms = &[
@@ -162,11 +160,6 @@ neg := _x.Instruction{ .forms = &[
 
 /// `mul`, `div` and `idiv`, over `rdx:rax`.
 wide := _x.Family{
-    .members = &[
-        _x.Member{ .name = .mul, .digit = 4 },
-        _x.Member{ .name = .div, .digit = 6 },
-        _x.Member{ .name = .idiv, .digit = 7 },
-    ],
     .forms = &[
         .{
             .operands = &[_rm],
@@ -180,14 +173,12 @@ wide := _x.Family{
         },
     ],
 };
+mul := _x.Member{ .family = wide, .digit = 4 };
+div := _x.Member{ .family = wide, .digit = 6 };
+idiv := _x.Member{ .family = wide, .digit = 7 };
 
 /// Shifts by `cl` or by an immediate.
 shifts := _x.Family{
-    .members = &[
-        _x.Member{ .name = .shl, .digit = 4 },
-        _x.Member{ .name = .shr, .digit = 5 },
-        _x.Member{ .name = .sar, .digit = 7 },
-    ],
     .forms = &[
         .{
             .operands = &[_rm_rw, _x.Operand{ .kind = .cl, .access = .read }],
@@ -207,6 +198,9 @@ shifts := _x.Family{
         },
     ],
 };
+shl := _x.Member{ .family = shifts, .digit = 4 };
+shr := _x.Member{ .family = shifts, .digit = 5 };
+sar := _x.Member{ .family = shifts, .digit = 7 };
 
 /// Sign-extends `rax` into `rdx`, `eax` into `edx` at 32 bits (`cdq`).
 cqo := _x.Instruction{ .forms = &[

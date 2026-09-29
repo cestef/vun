@@ -82,6 +82,10 @@ Traps that cost a session before. Add one when it costs you time.
   `V.splat(0.0)`.
 - A table in `desugar.vun` naming `lang` items is a tuple `.{ }`: its items have types of their
   own, and an array would not type. Borrow modes are lists of `BorrowWord` (`grammar.vun`).
+- A `Code(T)` parameter takes its argument as written, typed as a `T`: `lang.arch.asm({ ... })`,
+  `assert(x > 0)`. A quote `#{ }` there is a `Code(T)` where a `T` is expected (`types.mismatch`).
+- A block of instructions in a generic body whose calls depend on a `$` parameter is untyped
+  there, and read against its table where the function is instantiated.
 
 ## Compile time
 
@@ -125,3 +129,6 @@ Traps that cost a session before. Add one when it costs you time.
   expressions with parentheses lose their quoting. Filter by name (`cargo nextest run -p crate
   name`). A snapshot blessed on a host is overwritten by the next sync: bless from a command
   that writes locally, or print the result and copy it back.
+- The same holds for `cargo gen` on a host: the next `rsync --delete` of the working copy puts
+  back the old generated files, and a build there fails on what they lack. Copy every generated
+  directory back (`rsync host:<dir>/ <dir>/`) right after each `cargo gen`.

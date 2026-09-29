@@ -66,9 +66,8 @@ impl Parser<'_, '_, '_> {
         })
     }
 
-    /// The kinds a node read where `spec` says may be, starting at the token `ahead`: those of the
-    /// context starting there, in place of any other, else those reachable, and the transparent
-    /// kinds standing for one named where written so.
+    /// The kinds a node read where `spec` says may be, starting at the token `ahead`: those
+    /// reachable, and the transparent kinds standing for one named where written so.
     pub(super) fn alone(&self, spec: &Spec, ahead: usize) -> KindSet {
         let token = self.nth(ahead);
         if spec.starting.is_some_and(|s| !s.contains(token)) {
@@ -78,10 +77,6 @@ impl Parser<'_, '_, '_> {
             let set = set.intersection(STARTING[token as usize]);
             set.iter().filter(|&k| self.starts_here(k, ahead)).fold(KindSet::EMPTY, KindSet::with)
         };
-        let context = starting(spec.context);
-        if !context.is_empty() {
-            return context;
-        }
         starting(spec.reachable().union(spec.standing_for().intersection(TRANSPARENT_WITH[token as usize])))
     }
 
@@ -108,10 +103,10 @@ impl Parser<'_, '_, '_> {
             Some(outer) if edge && self.transparent(kind, reading.anchor) => {
                 let outer = outer.at(level);
                 // Where the node may stand only as what it ends with, the child takes that alone.
-                let own = Spec::child(child, level, reading.context);
+                let own = Spec::child(child, level);
                 Some(if outer.standing_for().contains(kind) { outer } else { own.union(outer) })
             }
-            _ => Some(Spec::child(child, level, reading.context)),
+            _ => Some(Spec::child(child, level)),
         }
     }
 
@@ -162,11 +157,8 @@ impl Parser<'_, '_, '_> {
                 continue;
             }
             let Some(automaton) = kind.automaton() else { continue };
-            let held = self.leading(kind, content, o.spec.context);
-            let Some(run) = (!held.is_empty()).then(|| self.run(automaton, held, o.spec.context)).flatten()
-            else {
-                continue;
-            };
+            let held = self.leading(kind, content);
+            let Some(run) = (!held.is_empty()).then(|| self.run(automaton, held)).flatten() else { continue };
             if run > best.0 {
                 best = (run, KindSet::EMPTY);
             }
@@ -177,12 +169,11 @@ impl Parser<'_, '_, '_> {
         (!best.1.is_empty()).then_some(best.1)
     }
 
-    /// The leading positions of the production of `kind`, read in the operand context `read_in`,
-    /// that may hold `content`.
-    pub(super) fn leading(&self, kind: NodeKind, content: Content, read_in: KindSet) -> Positions {
+    /// The leading positions of the production of `kind` that may hold `content`.
+    pub(super) fn leading(&self, kind: NodeKind, content: Content) -> Positions {
         let Some(automaton) = kind.automaton() else { return Positions::EMPTY };
         let holds = |p: usize| match &automaton.reads[p] {
-            Read::Child(child) => self.held(content, &Spec::child(child, Level::LOWEST, read_in)),
+            Read::Child(child) => self.held(content, &Spec::child(child, Level::LOWEST)),
             _ => false,
         };
         automaton.leading().filter(holds)

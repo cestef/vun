@@ -4,7 +4,7 @@
 use vun_grammar::{Assoc, KindSet, NodeKind, Positions, TokenKind};
 use vun_trace::tracing;
 
-use super::frame::{Candidate, Content, Frame, Line, Operand, Reading};
+use super::frame::{Candidate, Content, Frame, Operand, Reading};
 use super::spec::Spec;
 use super::tree::Piece;
 use crate::cst::Anchor;
@@ -49,9 +49,8 @@ impl Parser<'_, '_, '_> {
                 .iter()
                 .filter_map(|c| self.taking_at(&r, c.kind, c.at.unwrap_or_default(), outer.as_ref()));
             let spec = specs.reduce(Spec::union).expect("a child move has positions");
-            let line = r.line != Line::Free;
             self.stack.push(Frame::Reading(r));
-            self.open(spec, line);
+            self.open(spec);
         } else {
             self.stack.push(Frame::Reading(r));
         }
@@ -75,8 +74,8 @@ impl Parser<'_, '_, '_> {
 
     /// Opens an operand taking `spec`, and the reading of the kinds that may start it; a token
     /// the lexer reported stands for it as an `Error`.
-    fn open(&mut self, spec: Spec, line: bool) {
-        let mut operand = Operand { spec, line, piece: None, links: 0, chained: None };
+    fn open(&mut self, spec: Spec) {
+        let mut operand = Operand { spec, piece: None, links: 0, chained: None };
         self.depth += 1;
         if self.depth >= MAX_NESTING {
             operand.piece = Some(self.nesting_error(None));
@@ -88,7 +87,7 @@ impl Parser<'_, '_, '_> {
         tracing::trace!(token = ?self.peek(), ?kinds, "opens");
         self.stack.push(Frame::Operand(operand));
         if !kinds.is_empty() {
-            self.stack.push(Frame::Reading(Reading::new(kinds, spec.context, line)));
+            self.stack.push(Frame::Reading(Reading::new(kinds)));
         }
     }
 
@@ -98,9 +97,9 @@ impl Parser<'_, '_, '_> {
     pub(super) fn continue_operand(&mut self, kinds: KindSet) {
         let Some(Frame::Operand(mut o)) = self.stack.pop() else { unreachable!("an operand goes on") };
         let piece = o.piece.expect("the operand read");
-        let mut r = Reading::new(kinds, o.spec.context, o.line);
+        let mut r = Reading::new(kinds);
         let leading: Vec<Positions> =
-            r.candidates.iter().map(|c| self.leading(c.kind, Content::Node(piece), o.spec.context)).collect();
+            r.candidates.iter().map(|c| self.leading(c.kind, Content::Node(piece))).collect();
         r.move_to(leading);
         if r.candidates.is_empty() {
             self.stack.push(Frame::Operand(o));

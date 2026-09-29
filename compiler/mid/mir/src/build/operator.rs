@@ -2,7 +2,7 @@
 //! included. The operands are passed as the function's parameters ask, each reached through
 //! its borrows, then borrowed in the mode its parameter is written with, or read.
 
-use vun_hir::tree::ExprId;
+use vun_hir::tree::{Arg, Entry, ExprId};
 use vun_origin::OriginId;
 use vun_sema::callable::Callable;
 use vun_sema::member::MemberValue;
@@ -11,7 +11,7 @@ use vun_sema_ty::Ty;
 
 use super::{Builder, Unbuilt};
 use crate::place::{Place, Projection};
-use crate::{Operand, Rvalue};
+use crate::{Aggregate, Operand, Rvalue};
 
 /// An operand of an operator: an expression, or the place a pattern matches, of its type.
 pub(super) enum Side {
@@ -69,6 +69,27 @@ impl Builder<'_, '_, '_> {
         }
         let call = Rvalue::Call { callee: Operand::Const(f.value()), args: values };
         Ok(self.typed_temp(call, Some(operator.result), origin))
+    }
+
+    /// `f(a, b)` on a value that is no function, typed at `call`: its witness's `call(&mut f,
+    /// (a, b))`, the arguments gathered into a tuple (spec 02, section 4).
+    pub(super) fn call_through(
+        &mut self,
+        call: ExprId,
+        callee: ExprId,
+        args: &[Entry<Arg>],
+        origin: OriginId,
+    ) -> Result<Operand, Unbuilt> {
+        let parts = args
+            .iter()
+            .map(|arg| match arg {
+                Entry::One(Arg { name: None, value }) => self.operand(*value),
+                _ => Err(Unbuilt::at(origin)),
+            })
+            .collect::<Result<_, _>>()?;
+        let tuple = Place::of(self.temp_local(Rvalue::Aggregate { kind: Aggregate::Tuple, parts }, origin));
+        let ty = tuple.ty(self.env.cx, &self.locals);
+        self.operator(Operation::Expr(call), Side::Expr(callee), vec![Side::Matched(tuple, ty)], origin)
     }
 
     /// `place`, of type `ty`, followed through each borrow its type is.

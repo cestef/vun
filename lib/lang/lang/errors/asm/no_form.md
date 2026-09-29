@@ -10,9 +10,10 @@ the first that takes them encodes the instruction.
 
 ```vun
 store := () {
-    unsafe lang.arch.x86_64.asm {
-        mov 1, rax //~ asm.no_form
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(1, rax); //~ asm.no_form
+    });
 };
 ```
 
@@ -22,8 +23,9 @@ Write the operands in the order a form takes them, the destination first on x86-
 
 ```vun
 store := () {
-    unsafe lang.arch.x86_64.asm {
-        mov rax, 1
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(rax, 1);
+    });
 };
 ```

@@ -1,0 +1,92 @@
+//! What an operand position of an arm64 form takes, and how its operand is encoded: registers
+//! by width, immediates, addressing modes, conditions and branch targets.
+
+/// What register 31 is at a position.
+R31 := enum { zr, sp };
+
+/// The width of an operand: the instruction's, or its own.
+Width := enum { inst, is(lang.arch.arm64.Size) };
+
+/// An immediate encoding.
+Imm := enum {
+    /// 12 bits, or 12 bits shifted left by 12: `add`, `sub`.
+    arith,
+    /// A run of ones, rotated and repeated: the logical instructions.
+    bitmask,
+    /// A value whose set bits lie in one aligned 16 bits (`movz`), written whole.
+    wide,
+    /// A value whose complement is `wide` (`movn`), written whole.
+    wide_not,
+    /// `wide`, written as its 16 bits and their shift (`movk`).
+    half,
+    /// A left shift by 1 to the width less one, as `ubfm`'s rotation and top bit.
+    lsl,
+    /// A right shift by 1 to the width less one, as the rotation and top bit of `ubfm` or `sbfm`.
+    shr,
+    /// 16 bits, unsigned.
+    u16,
+    /// Floating-point zero, which `fcmp` compares with.
+    zero,
+};
+
+/// An addressing mode: which memory operands a position takes. `pre` and `post` write the base
+/// register back.
+Mode := enum {
+    /// `[base, #offset]`, the offset a multiple of the access width, below 4096 of them.
+    scaled,
+    /// `[base, #offset]`, the offset -256 to 255 (`ldur`, `stur`).
+    unscaled,
+    /// `[base, #offset]!`, -256 to 255.
+    pre,
+    /// `[base], #offset`, -256 to 255.
+    post,
+    /// `[base, index, extend]`, the index 64 bits or 32 extended, scaled by 1 or the access width.
+    index,
+    /// `[base, #offset]` of a pair, the offset a multiple of the access width, -64 to 63 of them.
+    pair,
+    pair_pre,
+    pair_post,
+    /// `[base]`: exclusive and atomic accesses.
+    base,
+    /// `[base, :lo12:target]`, through the global offset table for a 64-bit load only.
+    lo12,
+};
+
+/// Which shifts a shifted register operand takes: `lsl`, `lsr`, `asr`, and for `logic` `ror`.
+Shifts := enum { arith, logic };
+
+/// How a condition is written and encoded.
+Condition := enum {
+    /// As the mnemonic's suffix: `b.eq`.
+    suffix,
+    operand,
+    /// As an operand, encoded as the condition it is not: `cset` is `csinc` of the inverse.
+    inverted,
+};
+
+/// A branch's field, and the relocation that fills it with a symbol's address.
+Branch := enum { jump26, call26, cond19 };
+
+/// What an operand position takes.
+Kind := enum {
+    gpr(R31, Width),
+    fpr(Width),
+    imm(Imm),
+    /// A register, shifted or not, at the instruction's width; 31 is the zero register.
+    shifted(Shifts),
+    /// A register, extended or read as it is; 31 is the zero register.
+    extended,
+    /// Memory accessed at a width.
+    mem(Mode, Width),
+    cond(Condition),
+    /// A label, or a symbol the linker places.
+    target(Branch),
+    /// A symbol's page, or its entry's in the global offset table (`adrp`).
+    page,
+    /// A symbol's low 12 bits (`add`).
+    lo12,
+    /// What a barrier orders (`dmb`).
+    barrier,
+    /// A system register (`mrs`, `msr`).
+    sys,
+};

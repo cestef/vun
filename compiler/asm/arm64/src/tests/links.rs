@@ -15,7 +15,7 @@ fn branches_to_labels_count_instructions_both_ways() {
     let back = asm.label();
     let ahead = asm.label();
     asm.bind(back);
-    asm.emit(Op::B, Size::B64, &[ahead.into()]);
+    asm.emit(Op::BAlways, Size::B64, &[ahead.into()]);
     asm.emit(Op::Bcond, Size::B64, &[Cc::Ne.into(), back.into()]);
     asm.emit(Op::Cbz, Size::B32, &[Reg::X3.into(), ahead.into()]);
     asm.bind(ahead);
@@ -59,7 +59,7 @@ fn addresses_and_calls_are_relocated() {
     let word = Mem::Lo12 { base: Reg::X0, target: "data", via: Via::Direct };
     asm.emit(Op::Str, Size::B32, &[Reg::Zr.into(), word.into()]);
     asm.emit(Op::Bl, Size::B64, &[Operand::Sym("f")]);
-    asm.emit(Op::B, Size::B64, &[Operand::Sym("g")]);
+    asm.emit(Op::BAlways, Size::B64, &[Operand::Sym("g")]);
     asm.emit(Op::Bcond, Size::B64, &[Cc::Lo.into(), Operand::Sym("h")]);
     let code = asm.finish().unwrap();
     let relocs: Vec<(u64, Sym, RelocKind, i64)> =

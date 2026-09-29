@@ -83,7 +83,9 @@ impl Names {
             }
             (Some(Declaration::Local(_)), _) => Some((Class::Variable, Modifiers::default())),
             (None, ExprKind::Member { .. }) => Some((Class::Property, Modifiers::default())),
-            (None, ExprKind::DotName(_)) => Some((Class::Variant, Modifiers::default())),
+            (Some(Declaration::Site(Site::Variant { .. })), _) | (None, ExprKind::DotName(_)) => {
+                Some((Class::Variant, Modifiers::default()))
+            }
             (None, _) => None,
         }
     }

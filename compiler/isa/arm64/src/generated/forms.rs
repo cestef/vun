@@ -3,7 +3,7 @@ use super::Op;
 use crate::table::Form;
 /// The forms of each instruction, in the order of `Op`.
 const FORMS: [&[Form]; 104usize] = [
-    &super::b::B,
+    &super::b_always::B_ALWAYS,
     &super::bcond::BCOND,
     &super::bl::BL,
     &super::br::BR,

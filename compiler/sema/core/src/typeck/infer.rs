@@ -72,7 +72,6 @@ impl Typer<'_, '_, '_> {
             ExprKind::Borrow { mode: Some(mode), operand } => self.borrow(expr, *mode, *operand),
             ExprKind::Prefix { op: TokenKind::Unsafe, operand, .. } => self.vouching(expr, *operand),
             ExprKind::Attributed { attrs, inner } => self.attributed(expr, attrs, *inner),
-            ExprKind::Asm(asm) => self.asm(expr, asm),
             ExprKind::Infix { op: op @ (TokenKind::And | TokenKind::Or), left, right: Some(right) } => {
                 self.connective(*op, *left, *right)
             }
@@ -161,6 +160,10 @@ impl Typer<'_, '_, '_> {
     pub(super) fn site(&self, site: Site) -> Option<Known> {
         match site {
             Site::Decl(decl) => self.env().cx.get::<DeclType>(&decl).ok(),
+            // A variant a spread brings is the value its enum gives it, as `E.v` is.
+            site @ Site::Variant { .. } => {
+                Some(Known { ty: self.env().value_of(site).ok()?.ty()?, stage: Stage::Compile })
+            }
             // A file or directory is a value of `lang.meta.Namespace` (spec 01, section 8).
             Site::Namespace(_) => {
                 Some(Known { ty: TyKind::primitive(Primitive::Meta(Meta::Namespace)), stage: Stage::Compile })

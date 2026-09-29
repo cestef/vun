@@ -96,9 +96,9 @@ fn line_breaks_are_normalized_to_newlines() {
 }
 
 #[test]
-fn bound_operands_are_tight() {
+fn a_block_of_instructions_is_written_as_calls() {
     check(
-        "f := () {\n    a.asm {\n'top :\n        lea { out r } , [ { in(rsi) p } + 3 ] !\n    b . ne 'top\n    }\n};\n",
-        "f := () {\n    a.asm {\n        'top:\n        lea {out r}, [{in(rsi) p} + 3]!\n        b.ne 'top\n    }\n};\n",
+        "f := () {\n    unsafe lang.arch.asm( {\n top := here( ) ;\n lea( out(r) , mem( in(p) . at(rsi) , 3 ) );\n b( ne , top );\n } );\n};\n",
+        "f := () {\n    unsafe lang.arch.asm({\n        top := here();\n        lea(out(r), mem(in(p).at(rsi), 3));\n        b(ne, top);\n    });\n};\n",
     );
 }

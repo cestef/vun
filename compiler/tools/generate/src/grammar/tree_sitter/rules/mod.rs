@@ -9,7 +9,6 @@ use vun_diag::{DiagId, Msg};
 
 use super::{TREE_SITTER, lexical};
 
-mod context;
 mod infix;
 mod levels;
 mod restrict;
@@ -39,19 +38,17 @@ pub(super) struct Rules<'m> {
 /// A generated rule: its name and body.
 pub(super) type Named = (String, Rule);
 
-/// Where a term stands: whether a token read by hand is a node of its own there, whether its
-/// kind has a precedence level, which then decides where a restricted field ends, and the operand
-/// context it is read in, if any, by its position in `operand_contexts`.
+/// Where a term stands: whether a token read by hand is a node of its own there, and whether its
+/// kind has a precedence level, which then decides where a restricted field ends.
 #[derive(Clone, Copy)]
 pub(super) struct At {
     named: bool,
     ranked: bool,
-    context: Option<usize>,
 }
 
 impl At {
     /// In a branch of a kind with a level.
-    pub(super) const RANKED: Self = Self { named: true, ranked: true, context: None };
+    pub(super) const RANKED: Self = Self { named: true, ranked: true };
 }
 
 impl<'m> Rules<'m> {
@@ -77,7 +74,7 @@ impl<'m> Rules<'m> {
         let (roots, others): (Vec<_>, Vec<_>) = produced.partition(|(_, terms)| self.is_root(terms));
         let mut rules = Vec::new();
         for (kind, terms) in roots.iter().chain(&others) {
-            rules.push((self.model.kind_name(*kind).to_owned(), self.rule(*kind, terms, None)));
+            rules.push((self.model.kind_name(*kind).to_owned(), self.rule(*kind, terms)));
         }
         let operands = others.iter().filter(|(kind, _)| !self.model.parts.contains(kind));
         let operands = operands.map(|(kind, _)| Rule::symbol(self.model.kind_name(*kind)));
@@ -93,19 +90,15 @@ impl<'m> Rules<'m> {
             .any(|l| matches!(l, Term::Tokens(tokens) if tokens.iter().any(|t| end.contains(t))))
     }
 
-    /// The rule of `kind`, its operands read in `context` if one is given.
-    fn rule(&self, kind: Kind, terms: &[Term], context: Option<usize>) -> Rule {
+    /// The rule of `kind`.
+    fn rule(&self, kind: Kind, terms: &[Term]) -> Rule {
         if Some(kind) == self.model.infix_kind {
-            return self.infix(terms, context);
+            return self.infix(terms);
         }
         // In a branch, a token read by hand is a node of its own, named after its kind: `doc_comment`.
         let named = !self.model.slots(kind).is_empty();
-        let at = At { named, ranked: self.levels.contains_key(&kind), context };
-        let mut body: Vec<Rule> = terms.iter().filter_map(|t| self.term(t, at)).collect();
-        if self.model.line_ends.contains(&kind) {
-            body.push(Rule::symbol(super::scanner::LINE_END));
-        }
-        let mut body = Rule::seq(body);
+        let at = At { named, ranked: self.levels.contains_key(&kind) };
+        let mut body = Rule::seq(terms.iter().filter_map(|t| self.term(t, at)).collect());
         let rank = self.rank(kind);
         if rank > 0 {
             body = body.dynamic(-rank);
@@ -129,7 +122,7 @@ impl<'m> Rules<'m> {
                 Rule::choice(spelled.into_iter().map(|&t| self.token(t, at.named)).collect())
             }
             Term::Words(words) => Rule::choice(words.iter().map(|w| Rule::Text(w.clone())).collect()),
-            Term::Field(field, None) => self.content(*field, at.context).field(self.model.field_name(*field)),
+            Term::Field(field, None) => self.content(*field).field(self.model.field_name(*field)),
             // In a kind with no level of its own, kinds a production takes apart are complete there:
             // an entry `for {}` goes on with no operator, and where a list could also read it as a
             // plain entry, the trees are the same. In one with a level, that level decides.
@@ -155,15 +148,12 @@ impl<'m> Rules<'m> {
     }
 
     /// What the field `field` holds: the kind it is named after, the kinds a table says, or any
-    /// operand, read in the field's own context, else in `context`.
-    fn content(&self, field: Field, context: Option<usize>) -> Rule {
+    /// operand.
+    fn content(&self, field: Field) -> Rule {
         if let Some(kind) = self.model.named_kind(field) {
             return Rule::symbol(self.model.kind_name(kind));
         }
-        let operand = match self.context_holding(field).or(context) {
-            Some(context) => self.context_operand(context),
-            None => Rule::symbol(OPERAND),
-        };
+        let operand = Rule::symbol(OPERAND);
         match self.model.contents.get(&field) {
             Some(contents) => {
                 let mut rules: Vec<Rule> =
@@ -173,7 +163,7 @@ impl<'m> Rules<'m> {
                 }
                 // A transparent node's last child stands where it stands, holding what it holds.
                 let name = ["as_", self.model.field_name(field)].concat();
-                rules.extend(self.transparent_holding(&name, &|| self.content(field, context)));
+                rules.extend(self.transparent_holding(&name, &|| self.content(field)));
                 Rule::choice(rules)
             }
             None => operand,

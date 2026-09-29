@@ -2,6 +2,7 @@
 //! fixed fields as arm64's are, and the table's plain enums as they are.
 
 use super::emit::Crate;
+use super::words::Spelled;
 use super::{ARCH, Table, words};
 use crate::generate::{Emit, Generator, Module, Read, Source};
 
@@ -76,6 +77,9 @@ const CRATE: Crate = Crate {
     ],
 };
 
+/// How the assembler spells the types selecting a width.
+const SPELLED: Spelled = Spelled::Qualifiers;
+
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    CRATE.modules(&Table::read(&THUMB, CRATE.arch, sources, words::fill)?, words::form)
+    CRATE.modules(&Table::read(&THUMB, CRATE.arch, sources, words::fill)?, |c, f| words::form(c, f, &SPELLED))
 }

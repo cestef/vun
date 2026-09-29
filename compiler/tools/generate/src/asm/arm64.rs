@@ -1,6 +1,7 @@
 //! `vun-asm-arm64`'s tables, from `lang.arch.arm64`: its forms as `table::Form` values.
 
 use super::emit::Crate;
+use super::words::Spelled;
 use super::{ARCH, Table, words};
 use crate::generate::{Emit, Generator, Module, Read, Source};
 
@@ -29,7 +30,7 @@ const CRATE: Crate = Crate {
         ("Feature", "table", "Feature"),
         ("Need", "table", "Need"),
     ],
-    widths: &["w", "x"],
+    widths: &["b32", "b64"],
     enums: &["Feature"],
     payloads: &[
         ("Kind", "gpr", &["R31", "Width"]),
@@ -45,6 +46,9 @@ const CRATE: Crate = Crate {
     ],
 };
 
+/// How the assembler spells the types selecting a width.
+const SPELLED: Spelled = Spelled::Suffix(&[("b8", "b"), ("b16", "h"), ("b32", "w")]);
+
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    CRATE.modules(&Table::read(&ARM64, CRATE.arch, sources, words::fill)?, words::form)
+    CRATE.modules(&Table::read(&ARM64, CRATE.arch, sources, words::fill)?, |c, f| words::form(c, f, &SPELLED))
 }

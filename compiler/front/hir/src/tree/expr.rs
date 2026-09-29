@@ -6,7 +6,7 @@ use vun_grammar::TokenKind;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 
-use super::{Arm, Asm, BlockId, ExprId, List, Name, NsId, Param, PatId, Variant};
+use super::{Arm, BlockId, ExprId, List, Name, NsId, Param, PatId, Variant};
 
 pub struct Expr {
     pub kind: ExprKind,
@@ -147,8 +147,6 @@ pub enum ExprKind {
         attrs: Vec<ExprId>,
         inner: ExprId,
     },
-    /// `arch.asm { ... }`.
-    Asm(Box<Asm>),
 }
 
 impl ExprKind {
@@ -203,7 +201,6 @@ impl ExprKind {
             ExprKind::Struct(_) => "Struct",
             ExprKind::Enum { .. } => "Enum",
             ExprKind::Attributed { .. } => "Attributed",
-            ExprKind::Asm(_) => "Asm",
         }
     }
 }

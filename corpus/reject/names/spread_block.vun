@@ -1,0 +1,10 @@
+//! A spread written in a block brings its names into that block alone (spec 01, section 8).
+
+inside := () -> lang.arch.x86_64.Cond {
+    ..lang.arch.x86_64.Cond;
+    z
+};
+
+outside := () -> lang.arch.x86_64.Cond {
+    z //~ names.unresolved "cannot find `z` in scope"
+};

@@ -135,19 +135,11 @@
     "keywords": {
       "patterns": [
         {
-          "match": "(?<=\\{|\\{\\s)\\b(?:inout|out|in)\\b",
-          "name": "keyword.other.flow.vun"
-        },
-        {
           "match": "(?<=&|&temp\\s)\\b(?:static|temp|take|out)\\b",
           "name": "keyword.other.borrow.vun"
         },
         {
           "match": "\\b(?:in)\\b",
-          "name": "keyword.other.vun"
-        },
-        {
-          "match": "(?<=\\.)\\b(?:asm)\\b(?=\\s*\\{)",
           "name": "keyword.other.vun"
         },
         {

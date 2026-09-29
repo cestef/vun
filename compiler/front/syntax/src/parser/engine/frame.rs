@@ -1,7 +1,7 @@
 //! The frames of the stack the engine reads with: from the root's, readings of nodes alternate
 //! with the operands they read.
 
-use vun_grammar::{Automaton, KindSet, LINE_ENDS, Level, NodeKind, Positions};
+use vun_grammar::{Automaton, KindSet, Level, NodeKind, Positions};
 
 use super::spec::Spec;
 use super::start::BY_RANK;
@@ -46,22 +46,10 @@ pub(in crate::parser) struct Reading {
     /// took.
     trail: Vec<Candidate>,
     steps: Vec<Step>,
-    /// The kinds `operand_contexts` makes operands where it is read.
-    pub(super) context: KindSet,
-    pub(super) line: Line,
     /// Whether it chains an operator of a level without grouping, which makes it an `Error`.
     pub(super) wrong: bool,
     /// Where recovery last supposed something absent in it, so that it does once per token.
     pub(super) supposed: Option<usize>,
-}
-
-/// How its line bounds a reading (`line_ends`): after a line break, a reading inside a node that
-/// ends with its line reads nothing, and one of such a kind holds on to its line until then.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Line {
-    Free,
-    Inside,
-    Ends,
 }
 
 /// A move of a reading: where its candidates end in the trail, and whether it read a child.
@@ -71,21 +59,15 @@ struct Step {
 }
 
 impl Reading {
-    /// A reading of one of `kinds`, preferred first, before its first token, inside a node ending
-    /// with its line or not.
-    pub(super) fn new(kinds: KindSet, context: KindSet, inside: bool) -> Self {
+    /// A reading of one of `kinds`, preferred first, before its first token.
+    pub(super) fn new(kinds: KindSet) -> Self {
         let candidates: Vec<Candidate> = BY_RANK
             .iter()
             .filter(|&&k| kinds.contains(k))
             .map(|&kind| Candidate { kind, at: None })
             .collect();
-        let line = match () {
-            () if candidates.iter().any(|c| LINE_ENDS.contains(&c.kind)) => Line::Ends,
-            () if inside => Line::Inside,
-            () => Line::Free,
-        };
         let (trail, steps, pieces) = (Vec::new(), Vec::new(), Vec::new());
-        Self { candidates, anchor: None, pieces, trail, steps, context, line, wrong: false, supposed: None }
+        Self { candidates, anchor: None, pieces, trail, steps, wrong: false, supposed: None }
     }
 
     /// Records where the candidates stand after a move, which read a child or not.
@@ -98,11 +80,6 @@ impl Reading {
     pub(super) fn move_to(&mut self, at: impl IntoIterator<Item = Positions>) {
         let moved = self.candidates.iter().zip(at).map(|(&c, at)| Candidate { at: Some(at), ..c });
         self.candidates = moved.filter(|c| c.at.is_some_and(|at| !at.is_empty())).collect();
-    }
-
-    /// Whether it read anything.
-    pub(super) fn started(&self) -> bool {
-        self.anchor.is_some() || !self.pieces.is_empty()
     }
 
     /// The kinds of the candidates that may end, standing where `at` says.
@@ -126,8 +103,6 @@ impl Reading {
 pub(in crate::parser) struct Operand {
     /// What those positions take, merged.
     pub(super) spec: Spec,
-    /// Whether it is read inside a node that ends with its line.
-    pub(super) line: bool,
     /// The node read, once complete; while a reading above it goes on, `None`.
     pub(super) piece: Option<u32>,
     /// How many forms continued it, each a level of nesting.

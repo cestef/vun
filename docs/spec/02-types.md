@@ -135,6 +135,12 @@ uart_writer := struct {
   takes that type first, then the interface's arguments. `#[impl(Iterate(Coroutine))]` on
   `coroutine_iterate := ($Self: type, $Y: type, $R: type) -> type { ... }` makes every coroutine
   frame its own iterator.
+- An argument of the interface may be `_`: the impl covers every interface the constructor makes
+  with any value there, and its value takes those values, one per `_` in order, after what the
+  target gives. `#[impl(lang.ops.Call(_, ())(Instruction))]` on
+  `instruction_call := ($Params: type) -> type { ... }` makes an instruction callable with any
+  arguments: a call finds the witness for the tuple of its arguments' types (spec 07, section 6).
+  `_` means any here as it does in a pattern; anywhere else as a value it is an error.
 - `#[impl(T)]`, with no interface, adds the declarations of its struct to `T`'s method lookup and
   checks nothing else: methods without an abstraction. `T` may be a type or a type constructor,
   as above, so `#[impl(Result)]` on `($T: type, $E: type) -> type { struct { map_err := ... } }`

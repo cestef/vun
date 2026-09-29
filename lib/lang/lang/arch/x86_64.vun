@@ -1,36 +1,34 @@
 //! x86-64 (spec 07, section 6): its registers, and each instruction with its forms as the
 //! toolchain's assembler encodes them (Intel SDM volume 2), with what each form reads and writes.
-//! The instructions are declared in `control`, `int` and `sse`; `vun-isa-x86_64`'s tables are
-//! generated from these declarations, so the language, the assembler and its listings share one
-//! table.
+//! The instructions are declared in `arith`, `control`, `int` and `sse`; `vun-isa-x86_64`'s tables
+//! are generated from these declarations, so the language, the assembler and its listings share
+//! one table. `names` holds what a block of instructions is written with.
 
 /// The width of an operation or an operand.
 Size := enum { b8, b16, b32, b64 };
 
-/// A general register, by its encoding.
-Reg := enum { rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15 };
+/// A general register, by its encoding, named at 64 bits.
+#[Registers{ .class = .general, .size = .some(.b64) }]
+Reg := enum {
+    rax, rcx, rdx, rbx, rsp, rbp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15,
+};
 
-/// A general register's name at each width, as Intel syntax writes it.
-Names := struct { b8: &[u8], b16: &[u8], b32: &[u8], b64: &[u8] };
+/// A general register named at 32 bits.
+#[Registers{ .class = .general, .size = .some(.b32) }]
+R32 := enum {
+    eax, ecx, edx, ebx, esp, ebp, esi, edi, r8d, r9d, r10d, r11d, r12d, r13d, r14d, r15d,
+};
 
-/// The names of each general register.
-names := .{
-    .rax = Names{ .b8 = "al", .b16 = "ax", .b32 = "eax", .b64 = "rax" },
-    .rcx = Names{ .b8 = "cl", .b16 = "cx", .b32 = "ecx", .b64 = "rcx" },
-    .rdx = Names{ .b8 = "dl", .b16 = "dx", .b32 = "edx", .b64 = "rdx" },
-    .rbx = Names{ .b8 = "bl", .b16 = "bx", .b32 = "ebx", .b64 = "rbx" },
-    .rsp = Names{ .b8 = "spl", .b16 = "sp", .b32 = "esp", .b64 = "rsp" },
-    .rbp = Names{ .b8 = "bpl", .b16 = "bp", .b32 = "ebp", .b64 = "rbp" },
-    .rsi = Names{ .b8 = "sil", .b16 = "si", .b32 = "esi", .b64 = "rsi" },
-    .rdi = Names{ .b8 = "dil", .b16 = "di", .b32 = "edi", .b64 = "rdi" },
-    .r8 = Names{ .b8 = "r8b", .b16 = "r8w", .b32 = "r8d", .b64 = "r8" },
-    .r9 = Names{ .b8 = "r9b", .b16 = "r9w", .b32 = "r9d", .b64 = "r9" },
-    .r10 = Names{ .b8 = "r10b", .b16 = "r10w", .b32 = "r10d", .b64 = "r10" },
-    .r11 = Names{ .b8 = "r11b", .b16 = "r11w", .b32 = "r11d", .b64 = "r11" },
-    .r12 = Names{ .b8 = "r12b", .b16 = "r12w", .b32 = "r12d", .b64 = "r12" },
-    .r13 = Names{ .b8 = "r13b", .b16 = "r13w", .b32 = "r13d", .b64 = "r13" },
-    .r14 = Names{ .b8 = "r14b", .b16 = "r14w", .b32 = "r14d", .b64 = "r14" },
-    .r15 = Names{ .b8 = "r15b", .b16 = "r15w", .b32 = "r15d", .b64 = "r15" },
+/// A general register named at 16 bits.
+#[Registers{ .class = .general, .size = .some(.b16) }]
+R16 := enum {
+    ax, cx, dx, bx, sp, bp, si, di, r8w, r9w, r10w, r11w, r12w, r13w, r14w, r15w,
+};
+
+/// A general register named at 8 bits.
+#[Registers{ .class = .general, .size = .some(.b8) }]
+R8 := enum {
+    al, cl, dl, bl, spl, bpl, sil, dil, r8b, r9b, r10b, r11b, r12b, r13b, r14b, r15b,
 };
 
 /// A condition, by its encoding: what the flags say after a comparison (`z` for equal, `b`,
@@ -47,9 +45,13 @@ Cond := enum {
 Class := enum { general, sse };
 
 /// An SSE register, by its encoding.
+#[Registers{ .class = .sse }]
 Xmm := enum {
     xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
 };
+
+/// What an enum of registers names, written as its attribute.
+Registers := lang.arch.Registers(Class, Size);
 
 /// What an operand position takes. A register or memory operand without a width of its own has
 /// the instruction's.
@@ -167,8 +169,32 @@ Form := ($B: type) -> type { struct {
 /// An instruction, named as its declaration is (`\and` for `and`).
 Instruction := struct { forms: &[Form(u8)] };
 
-/// An instruction of a family, and the bytes it fills the family's forms with.
-Member := struct { name: lang.meta.Name, opcode: u8 = 0, digit: u8 = 0 };
+/// An instruction of a family, named as its declaration is, and the bytes it fills the family's
+/// forms with.
+Member := struct { family: Family, opcode: u8 = 0, digit: u8 = 0 };
 
-/// Instructions sharing their forms but for a few bytes.
-Family := struct { members: &[Member], forms: &[Form(Byte)] };
+/// Instructions sharing their forms but for a few bytes, each a `Member` declared after it.
+Family := struct { forms: &[Form(Byte)] };
+
+/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
+#[impl(lang.ops.Call(_, ())(Instruction))]
+instruction_call := lang.arch.called(Instruction);
+#[impl(lang.ops.Call(_, ())(Member))]
+member_call := lang.arch.called(Member);
+
+/// The names a block of instructions is written with, spread first in it
+/// (`lang.arch.asm({ ..lang.arch.x86_64.names; ... })`): the operand forms, the registers at each
+/// width, the conditions, the named choices and the instructions.
+names := struct {
+    ..lang.arch.{ in, out, inout, mem, scaled, pre, post, here, label, place };
+    ..lang.arch.x86_64.Reg;
+    ..lang.arch.x86_64.R32;
+    ..lang.arch.x86_64.R16;
+    ..lang.arch.x86_64.R8;
+    ..lang.arch.x86_64.Xmm;
+    ..lang.arch.x86_64.Cond;
+    ..lang.arch.x86_64.arith;
+    ..lang.arch.x86_64.control;
+    ..lang.arch.x86_64.int;
+    ..lang.arch.x86_64.sse;
+};

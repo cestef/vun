@@ -1,7 +1,7 @@
 //! Fields a production restricts by a table: to kinds it lists or transparent kinds ending with
-//! one (`.of`), or to nodes starting with a token it lists (`.starting`). A kind reaching a listed one through a field of its own is written again with
-//! that field restricted, as a hidden rule named after the kind and the table and aliased to the
-//! kind, so the tree names it as ever. Operand contexts (`context`) make hidden rules the same way.
+//! one (`.of`), or to nodes starting with a token it lists (`.starting`). A kind reaching a listed
+//! one through a field of its own is written again with that field restricted, as a hidden rule
+//! named after the kind and the table and aliased to the kind, so the tree names it as ever.
 
 use vun_tree_sitter::{Assoc, Rule};
 
@@ -124,7 +124,7 @@ impl Rules<'_> {
         Rule::symbol(&all)
     }
 
-    /// The hidden rules made for restricted fields and operand contexts.
+    /// The hidden rules made for restricted fields.
     pub(crate) fn wrapped(&self) -> Vec<Named> {
         self.wrapped.borrow().clone()
     }

@@ -54,8 +54,6 @@ NodeKind := .{
         .raw_string_line(.token(.raw_string_line)),
         .label(.token(.label)),
         .rest(".."),
-        .flow(.word(grammar.Flow)),
-        .writeback("!"),
     ],
     .structure = [
         .error(.many(.held)),
@@ -145,21 +143,13 @@ NodeKind := .{
         // An entry of a list its `for` or `if` makes at compile time: `$for f in fs { x: T, }`.
         .staged("$", .of(.control, staged_forms)),
     ],
-    .assembly = [
-        .asm(.arch, ".", "asm", "{", .many(.lines, .optional(":")), "}"),
-        .line(.token(.ident, grammar.TokenKind.keywords), .many(.suffix), .separated(.operands, ",")),
-        .suffix(".", .name),
-        .bound("{", .optional(.flow, .optional("(", .register, ")")), .value, "}"),
-        .memory("[", .separated(.parts, ","), "]", .optional(.writeback)),
-    ],
 };
 
 /// Kinds that are never operands: they stand only in the fields that name them, hold them or
 /// admit them.
 parts := [
-    .\mut, .qualifier, .mode, .raw_string_line, .flow, .writeback, .select, .namespace, .returns, .guard, .line,
-    .suffix, .bound, .memory, .label, .binding, .typed_binding, .field, .assign, .spread, .field_init,
-    .param, .test, .in, .arm, .module_doc, .staged,
+    .\mut, .qualifier, .mode, .raw_string_line, .select, .namespace, .returns, .guard, .label, .binding,
+    .typed_binding, .field, .assign, .spread, .field_init, .param, .test, .in, .arm, .module_doc, .staged,
 ];
 
 /// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
@@ -178,21 +168,11 @@ admits := [
     .{ .fields = &[.body], .kinds = &[.assign] },
 ];
 
-/// Fields read in a context of their own, at any depth of the operands they hold: an
-/// instruction's operands and a memory operand's parts, where the kinds listed are operands in
-/// place of those starting with the same token: `{` opens a bound, not a block, `[` a memory
-/// operand, and a label names an address.
-operand_contexts := [
-    .{ .fields = &[.operands, .parts], .kinds = &[.bound, .memory, .label] },
-];
-
 /// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
 holds := [
     .{ .fields = &[.members], .kinds = &[.binding, .typed_binding, .field, .spread, .module_doc, .staged] },
     .{ .fields = &[.arms], .kinds = &[.arm, .staged] },
-    .{ .fields = &[.lines], .kinds = &[.line, .label] },
     .{ .fields = &[.otherwise], .kinds = &[.block, .\if] },
-    .{ .fields = &[.register], .kinds = &[.name, .int, .prefix] },
     .{ .fields = &[.names], .kinds = &[.name] },
 ];
 
@@ -205,11 +185,8 @@ preferred := [
     &[.\fn, .tuple, .fn_type],
     &[.typed_binding, .field],
     &[.array, .closure],
-    &[.memory, .array],
-    &[.memory, .array, .closure],
     &[.closure, .array_type],
     &[.assign, .field_init],
-    &[.suffix, .dot_name],
     &[.spread, .prefix],
     &[.staged, .prefix],
     &[.block, .typed_lit],
@@ -240,9 +217,6 @@ transparent := [
     .{ .kind = .attr, .tokens = &[.hash_l_bracket] },
 ];
 
-/// Kinds that end with their line: an instruction's operands stop where it does.
-line_ends := [.line];
-
 /// How tightly the forms whose productions begin or end with an operand hold it, loosest first, as
 /// the parser nests them (spec 01, section 6); `infix` stands for the levels of the table `infix`.
 /// Editor grammars resolve by it what the parser decides by nesting.
@@ -252,5 +226,5 @@ precedence := [
     &[.\return, .\break, .\yield, .labeled, .returns, .guard],
     &[.infix],
     &[.prefix, .spread, .array_type],
-    &[.member, .call, .index, .postfix, .asm, .dot_name, .closure, .qualifier, .mode, .suffix, .bound],
+    &[.member, .call, .index, .postfix, .dot_name, .closure, .qualifier, .mode],
 ];

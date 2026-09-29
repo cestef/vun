@@ -23,7 +23,6 @@ impl Builder<'_, '_, '_> {
             // Attributes are read where they apply, from the expression they mark.
             ExprKind::Attributed { inner, .. } => self.operand(*inner),
             ExprKind::Quote(_) => Ok(self.quote(expr, origin)),
-            ExprKind::Asm(_) => self.asm(expr, origin),
             ExprKind::Member { .. }
             | ExprKind::Index { .. }
             | ExprKind::Postfix { op: TokenKind::DotStar, .. } => self.read(expr),

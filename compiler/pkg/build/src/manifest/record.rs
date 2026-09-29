@@ -201,12 +201,8 @@ impl Record for Decl<'_> {
             Literal::Record(fields) if fields.is_empty() => &[],
             _ => return self.invalid(Msg::new().text("a list of records"), cx),
         };
-        let read: Vec<Option<T>> = items
-            .iter()
-            .map(|item| {
-                read(&Decl { name: self.name, doc: Vec::new(), value: item.clone(), span: self.span }, cx)
-            })
-            .collect();
+        let read: Vec<Option<T>> =
+            items.iter().map(|item| read(&Decl::new(self.name, item.clone(), self.span), cx)).collect();
         read.into_iter().collect()
     }
 }

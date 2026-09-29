@@ -116,19 +116,11 @@
     ],
     "keywords": [
       {
-        "match": "(?<=\\{|\\{\\s)\\b(?:inout|out|in)\\b",
-        "scope": "keyword.other.flow.vun"
-      },
-      {
         "match": "(?<=&|&temp\\s)\\b(?:static|temp|take|out)\\b",
         "scope": "keyword.other.borrow.vun"
       },
       {
         "match": "\\b(?:in)\\b",
-        "scope": "keyword.other.vun"
-      },
-      {
-        "match": "(?<=\\.)\\b(?:asm)\\b(?=\\s*\\{)",
         "scope": "keyword.other.vun"
       },
       {

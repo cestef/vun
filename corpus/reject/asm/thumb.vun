@@ -1,15 +1,23 @@
 //! What a block of Thumb instructions reports (spec 07, section 6): a choice of another kind, a
-//! register of another class, an instruction the table lacks, types it does not spell, an offset
-//! no 16-bit form holds, and lists no form takes.
+//! register of another class, a name the table lacks, types no width lists, an offset no 16-bit
+//! form holds, and lists no form takes.
 
 lines := () {
-    unsafe lang.arch.thumb.asm {
-        cpsid sy //~ asm.no_form
-        msr r0, primask //~ asm.register_class
-        yield //~ asm.unknown_mnemonic
-        vadd.f16 s0, s1, s2 //~ asm.unknown_mnemonic
-        ldr.n r0, [r1, 256] //~ asm.no_form
-        vpush d8, d10 //~ asm.no_form
-        push r1, r1 //~ asm.no_form
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        cpsid(sy); //~ asm.no_form
+        msr(r0, primask); //~ asm.register_class
+        vadd(f16, s0, s1, s2); //~ asm.no_form
+        ldr(n, r0, mem(r1, 256)); //~ asm.no_form
+        vpush(d8, d10); //~ asm.no_form
+        push(r1, r1); //~ asm.no_form
+    });
+};
+
+/// A name the table lacks.
+misspelled := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        \yield(); //~ names.unresolved
+    });
 };

@@ -9,6 +9,14 @@ use vun_syntax::literal::Literal;
 use super::emit::Crate;
 use super::spell::{int, word};
 
+/// How an assembler spells the types selecting a width of a form.
+pub(super) enum Spelled {
+    /// As a suffix of the mnemonic naming the width (`ldrb`), by `Size` name.
+    Suffix(&'static [(&'static str, &'static str)]),
+    /// As qualifiers after it, each after a `.` (`vcvt.s32.f32`).
+    Qualifiers,
+}
+
 /// A hole of a family's form, filled from `member`: its own base word, or the member's bits with
 /// these set.
 pub(super) fn fill<'s>(value: &Literal<'s>, member: &Literal<'s>) -> Option<Literal<'s>> {
@@ -23,20 +31,26 @@ pub(super) fn fill<'s>(value: &Literal<'s>, member: &Literal<'s>) -> Option<Lite
 }
 
 /// A form as a `table::Form` value, built by the table's constructors, a builder call for each
-/// field its data sets.
-pub(super) fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
+/// field its data sets, the types selecting a width spelled as `spelled` says.
+pub(super) fn form(c: &Crate, record: &Literal<'_>, spelled: &Spelled) -> Option<TokenStream> {
     let field = |name| record.get(name);
     let base = word(field("base")?)?;
     let sizes = field("sizes")?.as_list()?.iter().map(|s| {
         let (size, bits) = (c.variant("Size", s.get("size")?)?, word(s.get("bits")?)?);
         let mut sized = quote! { table::Sized::new(#size, #bits) };
-        if let Some(suffix) = s.get("suffix").and_then(Literal::as_str).filter(|s| !s.is_empty()) {
-            sized = quote! { #sized.suffix(#suffix) };
-        }
-        let qualifiers = s.get("qualifiers").and_then(Literal::as_list).unwrap_or_default();
-        if !qualifiers.is_empty() {
-            let qualifiers = qualifiers.iter().map(Literal::as_str).collect::<Option<Vec<_>>>()?;
-            sized = quote! { #sized.qualifiers(&[#(#qualifiers),*]) };
+        let types = s.get("types").and_then(Literal::as_list).unwrap_or_default();
+        if !types.is_empty() {
+            sized = match spelled {
+                Spelled::Suffix(suffixes) => {
+                    let width = s.get("size")?.as_name()?;
+                    let suffix = suffixes.iter().find(|(size, _)| *size == width)?.1;
+                    quote! { #sized.suffix(#suffix) }
+                }
+                Spelled::Qualifiers => {
+                    let qualifiers = types.iter().map(qualifier).collect::<Option<Vec<_>>>()?;
+                    quote! { #sized.qualifiers(&[#(#qualifiers),*]) }
+                }
+            };
         }
         if let Some(Literal::Tagged("some", need)) = s.get("requires") {
             let need = c.value("Need", need.first()?)?;
@@ -89,4 +103,18 @@ pub(super) fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
         form = quote! { #form.flags(#flags) };
     }
     Some(form)
+}
+
+/// A type a form computes, as Arm's syntax writes it after the mnemonic: a float's bits after `f`,
+/// an integer's after `s` or `u` (`i32` is `s32`).
+fn qualifier(ty: &Literal<'_>) -> Option<String> {
+    let [name] = ty.as_path()? else { return None };
+    let (kind, bits) = name.split_at(1);
+    let letter = match kind {
+        "f" => "f",
+        "i" => "s",
+        "u" => "u",
+        _ => return None,
+    };
+    bits.parse::<u8>().ok().map(|bits| format!("{letter}{bits}"))
 }

@@ -1,9 +1,10 @@
-//! Where a namespace's members are declared (spec 01, section 8): in its file, through what it
+//! Where a namespace's members are declared (spec 01, section 8): where it is written (its file, or
+//! the `struct` or `enum` literal a declaration binds), as an enum's variant, through what it
 //! spreads (selected names, or every export of a whole spread), or as a child namespace in its
 //! directory.
 
 use vun_codec::{Decode, Encode};
-use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed};
+use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed, Written};
 use vun_hir::tree::{DeclId, ExprId, Hir, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -91,6 +92,11 @@ impl<Id: Ord> Ord for Node<Id> {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Site {
     Decl(DeclRef),
+    /// A variant of the enum `decl` binds, as a spread of the enum brings it.
+    Variant {
+        decl: DeclRef,
+        name: Symbol,
+    },
     /// A namespace, such as a file or directory below another.
     Namespace(Namespace),
 }
@@ -106,15 +112,22 @@ impl Query for Declared {
 
     fn compute(cx: &Cx<'_>, (ns, name): &Self::Key) -> Self::Value {
         let package = cx.get::<Package>(&ns.package);
-        let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
-        if let Some((file, parsed)) = file.and_then(|f| Some((f.clone(), cx.get::<Parsed>(&f)?))) {
+        let mut file_level = true;
+        if let Some(written) = cx.get::<Written>(ns)
+            && let Some(parsed) = cx.get::<Parsed>(&written.file)
+        {
             let hir = &parsed.hir;
-            let root = hir.root?;
-            if let Some(decl) = hir.declaring(root, *name) {
-                return Some(Site::Decl(DeclRef::new(file, hir, decl)));
+            file_level = written.is_file(hir);
+            if let Some(decl) = hir.declaring(written.ns, *name) {
+                return Some(Site::Decl(DeclRef::new(written.file.clone(), hir, decl)));
             }
-            for s in hir.spreads(root) {
+            if let Some(decl) = written.enumerated.filter(|_| written.variants(hir).contains(name)) {
+                return Some(Site::Variant {
+                    decl: DeclRef::new(written.file.clone(), hir, decl),
+                    name: *name,
+                });
+            }
+            for s in hir.spreads(written.ns) {
                 let selects =
                     s.select.as_ref().map(|names| names.iter().any(|&b| hir.binders[b].name == *name));
                 let Some((_, path)) = hir.path(s.path) else { continue };
@@ -125,7 +138,7 @@ impl Query for Declared {
                 }
             }
         }
-        package.children(&ns.path).contains(name).then(|| {
+        (file_level && package.children(&ns.path).contains(name)).then(|| {
             let path = ns.path.iter().copied().chain([*name]).collect();
             Site::Namespace(Namespace { package: ns.package, path })
         })
@@ -141,13 +154,10 @@ impl Declared {
     /// then is a name [`Declared`] does not find no member at all.
     #[must_use]
     pub fn complete(cx: &Cx<'_>, ns: &Namespace) -> bool {
-        let package = cx.get::<Package>(&ns.package);
-        let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
-        let Some(parsed) = file.and_then(|f| cx.get::<Parsed>(&f)) else { return true };
+        let Some(written) = cx.get::<Written>(ns) else { return true };
+        let Some(parsed) = cx.get::<Parsed>(&written.file) else { return true };
         let hir = &parsed.hir;
-        let Some(root) = hir.root else { return true };
-        hir.member_decls(root)
+        hir.member_decls(written.ns)
             .into_iter()
             .all(|d| !matches!(hir.pats[hir.decls[d].pat].kind, PatKind::Computed(_)))
     }

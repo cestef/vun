@@ -12,7 +12,7 @@ mod scope;
 pub use input::{DepData, FileBytes, FileRef, FileText, Package, PackageData, PackageId, Unloaded};
 pub use layout::Namespace;
 pub use names::{CheckedNames, FileNames, FileScope, Spreads};
-pub use namespace::{Exports, Members, NamespaceAt, Unfound};
+pub use namespace::{Exports, Members, NamespaceAt, Unfound, Written};
 pub use parsed::{Parsed, ParsedFile};
 pub use scope::{Outer, Scope, ScopeData};
 
@@ -28,6 +28,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<FileNames>,
     Db::persist::<Scope>,
     Db::persist::<NamespaceAt>,
+    Db::persist::<Written>,
     Db::persist::<Members>,
     Db::persist::<Exports>,
 ];

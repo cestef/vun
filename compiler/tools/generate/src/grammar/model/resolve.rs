@@ -9,7 +9,7 @@ use vun_syntax::literal::{Mismatch, Name, Path};
 use super::paths::{Files, Named as _};
 
 use super::written::{self, Entry, TokenRef, Written};
-use super::{Contents, Field, Kind, Kinds, Model, OperandContext, Restriction, Table, Term, Token, Variant};
+use super::{Contents, Field, Kind, Kinds, Model, Restriction, Table, Term, Token, Variant};
 use crate::generate::{Read, Source};
 use crate::grammar::{GENERATOR, SHAPE, UNRESOLVED};
 
@@ -26,11 +26,9 @@ impl Model {
             slots: Vec::new(),
             parts: Vec::new(),
             contents: BTreeMap::new(),
-            operand_contexts: Vec::new(),
             preferred: Vec::new(),
             unterminated: Vec::new(),
             transparent: Vec::new(),
-            line_ends: Vec::new(),
             precedence: Vec::new(),
             infix: Vec::new(),
             delimiters: Vec::new(),
@@ -189,7 +187,6 @@ impl Model {
                 Ok((self.kind_named("transparent", &row.kind)?, tokens))
             })
             .collect::<Read<_>>()?;
-        self.line_ends = kinds(self, "line_ends", &written.line_ends)?;
         self.preferred =
             written.preferred.iter().map(|set| kinds(self, "preferred", set)).collect::<Read<_>>()?;
         self.precedence =
@@ -206,12 +203,6 @@ impl Model {
                     entry.kinds.extend(&listed);
                 }
             }
-        }
-        for row in &written.operand_contexts {
-            let fields =
-                row.fields.iter().map(|f| self.field_named("operand_contexts", f)).collect::<Read<_>>()?;
-            self.operand_contexts
-                .push(OperandContext { fields, kinds: kinds(self, "operand_contexts", &row.kinds)? });
         }
         self.infix = written
             .infix

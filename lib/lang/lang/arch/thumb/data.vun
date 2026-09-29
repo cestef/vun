@@ -126,21 +126,20 @@ _carry: &[_t.Form(_t.Word)] = &[
 ];
 
 logic := _t.Family{
-    .members = &[
-        _t.Member{ .name = .\and },
-        _t.Member{ .name = .bic, .bits = 0x200000 },
-        _t.Member{ .name = .orr, .bits = 0x400000 },
-        _t.Member{ .name = .orn, .bits = 0x600000 },
-        _t.Member{ .name = .eor, .bits = 0x800000 },
-        _t.Member{ .name = .rsb, .bits = 0x1c00000 },
-    ],
     .forms = _wide,
 };
+\and := _t.Member{ .family = logic };
+bic := _t.Member{ .family = logic, .bits = 0x200000 };
+orr := _t.Member{ .family = logic, .bits = 0x400000 };
+orn := _t.Member{ .family = logic, .bits = 0x600000 };
+eor := _t.Member{ .family = logic, .bits = 0x800000 };
+rsb := _t.Member{ .family = logic, .bits = 0x1c00000 };
 
 carry := _t.Family{
-    .members = &[_t.Member{ .name = .adc, .bits = 0x1400000 }, _t.Member{ .name = .sbc, .bits = 0x1600000 }],
     .forms = _carry,
 };
+adc := _t.Member{ .family = carry, .bits = 0x1400000 };
+sbc := _t.Member{ .family = carry, .bits = 0x1600000 };
 
 /// The operations with a 16-bit form of two operands, the first also the result, setting the flags.
 ands := _t.Instruction{ .forms = &[

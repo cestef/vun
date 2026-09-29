@@ -28,5 +28,3 @@ pub(super) const RAW_STRING_LINE: &[NodeTerm] = &[
 ];
 pub(super) const LABEL: &[NodeTerm] = &[NodeTerm::Token(&[TokenKind::Label])];
 pub(super) const REST: &[NodeTerm] = &[NodeTerm::Token(&[TokenKind::DotDot])];
-pub(super) const FLOW: &[NodeTerm] = &[NodeTerm::Word(&["in", "out", "inout"])];
-pub(super) const WRITEBACK: &[NodeTerm] = &[NodeTerm::Token(&[TokenKind::Bang])];

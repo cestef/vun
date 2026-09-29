@@ -49,30 +49,37 @@ impl<'s> Reader<'_, 's> {
 
     /// Declarations among `nodes`, looking through doc comments and attributes.
     pub(super) fn decls(&self, nodes: impl Iterator<Item = NodeId>) -> Vec<Decl<'s>> {
-        nodes.filter_map(|n| self.decl(n, Vec::new())).collect()
+        nodes.filter_map(|n| self.decl(n, Vec::new(), Vec::new())).collect()
     }
 
-    fn decl(&self, n: NodeId, mut doc: Vec<&'s str>) -> Option<Decl<'s>> {
+    fn decl(&self, n: NodeId, mut doc: Vec<&'s str>, mut attrs: Vec<Literal<'s>>) -> Option<Decl<'s>> {
         let children = self.children(n);
         match self.cst.kind(n) {
             NodeKind::Doc => {
                 doc.push(self.doc_line(n)?);
-                self.decl(*children.last()?, doc)
+                self.decl(*children.last()?, doc, attrs)
             }
-            NodeKind::Attr => self.decl(*children.last()?, doc),
+            NodeKind::Attr => {
+                let (decorated, written) = children.split_last()?;
+                attrs.extend(
+                    written.iter().filter(|&&c| !self.cst.kind(c).is_token()).map(|&c| self.value(c)),
+                );
+                self.decl(*decorated, doc, attrs)
+            }
             // A field of a `struct` literal, its value the default it declares, if any.
             NodeKind::Field => {
                 let fields = self.cst.fields(n)?;
                 let name = self.name(fields.one(NodeField::Pattern)?)?;
                 let value = fields.one(NodeField::Value).map_or(Literal::Opaque, |v| self.value(v));
-                Some(Decl { name, doc, value, span: self.span(n) })
+                Some(Decl { doc, attrs, ..Decl::new(name, value, self.span(n)) })
             }
             NodeKind::Binding | NodeKind::TypedBinding => {
                 let fields = self.cst.fields(n)?;
                 let name = self.name(fields.one(NodeField::Pattern)?)?;
                 let value = fields.one(NodeField::Value);
                 let span = self.span(value.unwrap_or(n));
-                Some(Decl { name, doc, value: value.map_or(Literal::Opaque, |v| self.value(v)), span })
+                let value = value.map_or(Literal::Opaque, |v| self.value(v));
+                Some(Decl { doc, attrs, ..Decl::new(name, value, span) })
             }
             _ => None,
         }
@@ -127,7 +134,16 @@ impl<'s> Reader<'_, 's> {
                     Literal::List(inits.into_iter().map(|c| self.value(c)).collect())
                 }
             }
-            NodeKind::Enum => Literal::Enum(items().filter_map(|c| self.variant(c, Vec::new())).collect()),
+            NodeKind::Enum => {
+                let fields = self.cst.fields(n)?;
+                let variants =
+                    fields.get(NodeField::Variants).iter().filter_map(|&c| self.variant(c, Vec::new()));
+                let namespace = match fields.one(NodeField::Namespace) {
+                    Some(ns) => self.decls(self.cst.fields(ns)?.get(NodeField::Members).iter().copied()),
+                    None => Vec::new(),
+                };
+                Literal::Enum(variants.collect(), namespace)
+            }
             NodeKind::Struct => Literal::Namespace(self.decls(items())),
             NodeKind::Fn => {
                 let body = self.cst.fields(n)?.one(NodeField::Block)?;
@@ -166,7 +182,7 @@ impl<'s> Reader<'_, 's> {
         let fields = self.cst.fields(n)?;
         let (target, value) = (fields.one(NodeField::Target)?, fields.one(NodeField::Value)?);
         let name = self.name(self.cst.fields(target)?.one(NodeField::Property)?)?;
-        Some(Decl { name, doc, value: self.value(value), span: self.span(value) })
+        Some(Decl { doc, ..Decl::new(name, self.value(value), self.span(value)) })
     }
 
     /// Whether `n` is a field of a record, under its doc comments.
@@ -188,12 +204,10 @@ impl<'s> Reader<'_, 's> {
                 doc.push(self.doc_line(n)?);
                 self.variant(*self.children(n).last()?, doc)
             }
-            NodeKind::Name => {
-                Some(Decl { name: self.name(n)?, doc, value: Literal::Opaque, span: self.span(n) })
-            }
+            NodeKind::Name => Some(Decl { doc, ..Decl::new(self.name(n)?, Literal::Opaque, self.span(n)) }),
             NodeKind::Call => {
                 let name = self.name(*self.children(n).first()?)?;
-                Some(Decl { name, doc, value: Literal::Opaque, span: self.span(n) })
+                Some(Decl { doc, ..Decl::new(name, Literal::Opaque, self.span(n)) })
             }
             _ => None,
         }

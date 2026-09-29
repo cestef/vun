@@ -55,14 +55,6 @@ impl BorrowWord {
     }
 }
 
-impl Flow {
-    /// The word spelled `text`, if one is.
-    #[must_use]
-    pub fn spelled(text: &str) -> Option<Self> {
-        Self::FLOWS.iter().copied().find(|w| w.text() == Some(text))
-    }
-}
-
 impl NodeKind {
     #[must_use]
     pub fn is_leaf(self) -> bool {

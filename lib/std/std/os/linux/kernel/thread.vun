@@ -63,53 +63,59 @@ clone := (request: Clone) -> isize {
     at := std.ptr.to(Clone, &request).address();
     mut result: usize = 0;
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm {
-            mov rdi, [{in(rax) at} + 8]
-            mov rsi, [rax + 16]
-            mov rdx, [rax + 24]
-            mov r10, [rax + 32]
-            mov rax, [rax]
-            syscall
-            test rax, rax
-            jnz 'parent
-            mov rdi, [rsp + 8]
-            jmp [rsp + 16]
-            'parent:
-            mov {out(rax) result}, rax
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            parent := label();
+            mov(rdi, mem(in(at).at(rax), 8));
+            mov(rsi, mem(rax, 16));
+            mov(rdx, mem(rax, 24));
+            mov(r10, mem(rax, 32));
+            mov(rax, mem(rax));
+            syscall();
+            \test(rax, rax);
+            j(nz, parent);
+            mov(rdi, mem(rsp, 8));
+            jmp(mem(rsp, 16));
+            place(parent);
+            mov(out(result).at(rax), rax);
+        });
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm {
-                ldr x8, [{in(x0) at}]
-                ldr x1, [x0, 16]
-                ldr x2, [x0, 24]
-                ldr x4, [x0, 32]
-                ldr x0, [x0, 8]
-                svc 0
-                cbnz x0, 'parent
-                ldr x16, [sp, 8]
-                ldr x0, [sp]
-                br x16
-                'parent:
-                mov {out(x0) result}, x0
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.arm64.names;
+                parent := label();
+                ldr(x8, mem(in(at).at(x0)));
+                ldr(x1, mem(x0, 16));
+                ldr(x2, mem(x0, 24));
+                ldr(x4, mem(x0, 32));
+                ldr(x0, mem(x0, 8));
+                svc(0);
+                cbnz(x0, parent);
+                ldr(x16, mem(sp, 8));
+                ldr(x0, mem(sp));
+                br(x16);
+                place(parent);
+                mov(out(result).at(x0), x0);
+            });
         } else {
-            unsafe lang.arch.thumb.asm {
-                push r4, r7
-                ldr r7, [{in(r0) at}]
-                ldr r1, [r0, 8]
-                ldr r2, [r0, 12]
-                ldr r4, [r0, 16]
-                ldr r0, [r0, 4]
-                svc 0
-                cbnz r0, 'parent
-                ldr r1, [sp, 4]
-                ldr r0, [sp]
-                bx r1
-                'parent:
-                pop r4, r7
-                mov {out(r0) result}, r0
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.thumb.names;
+                parent := label();
+                push(r4, r7);
+                ldr(r7, mem(in(at).at(r0)));
+                ldr(r1, mem(r0, 8));
+                ldr(r2, mem(r0, 12));
+                ldr(r4, mem(r0, 16));
+                ldr(r0, mem(r0, 4));
+                svc(0);
+                cbnz(r0, parent);
+                ldr(r1, mem(sp, 4));
+                ldr(r0, mem(sp));
+                bx(r1);
+                place(parent);
+                pop(r4, r7);
+                mov(out(result).at(r0), r0);
+            });
         }
     }
     result.wrap(isize)
@@ -122,7 +128,7 @@ begin := (record: usize) -> lang.never {
     held := unsafe lang.mem.pointer_at(Record, record).read();
     std.os.linux.kernel.tls.point(held.pointer);
     held.start(held.context);
-    std.os.linux.kernel.call(std.os.linux.kernel.numbers.exit, [0, 0, 0, 0, 0, 0]);
+    std.os.linux.kernel.request(std.os.linux.kernel.numbers.exit, [0, 0, 0, 0, 0, 0]);
     unsafe lang.hint.unreachable()
 };
 
@@ -156,7 +162,7 @@ exports := struct {
             .parent = placed.record,
             .child = placed.record,
         };
-        guarded := std.os.linux.kernel.call(std.os.linux.kernel.numbers.mprotect, [mapped, guard_bytes, inaccessible, 0, 0, 0]);
+        guarded := std.os.linux.kernel.request(std.os.linux.kernel.numbers.mprotect, [mapped, guard_bytes, inaccessible, 0, 0, 0]);
         started := if guarded < 0 { guarded } else { clone(request) };
         match std.os.linux.kernel.outcome(started) {
             .ok(_) => .ok(placed.record),
@@ -172,7 +178,7 @@ exports := struct {
         tid := unsafe lang.mem.pointer_at(u32, thread);
         mut running := unsafe lang.mem.atomic_load(u32, tid, .acquire);
         for running != 0 {
-            std.os.linux.kernel.call(std.os.linux.kernel.numbers.futex, [thread, wait, running.to(usize), 0, 0, 0]);
+            std.os.linux.kernel.request(std.os.linux.kernel.numbers.futex, [thread, wait, running.to(usize), 0, 0, 0]);
             running = unsafe lang.mem.atomic_load(u32, tid, .acquire);
         }
         held := unsafe lang.mem.pointer_at(Record, thread).read();

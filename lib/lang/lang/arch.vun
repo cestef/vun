@@ -1,7 +1,78 @@
 //! The instruction sets a block of instructions is written in, each a namespace declaring its
-//! table (spec 07, section 6): `x86_64`, `arm64` and `thumb`.
+//! table (spec 07, section 6): `x86_64`, `arm64` and `thumb`; and what a block is written with,
+//! whatever its instruction set.
 
 /// What a form of an instruction set's table, or a width of it, needs of a processor beyond what
 /// every processor of the set has: a feature of the set (`Feature`, `lang.target.Spec.features`),
 /// or a floating-point unit computing floats of a width (`Size`, `lang.target.Spec.floats`).
 Need := ($Feature: type, $Size: type) -> type { enum { feature(Feature), float(Size) } };
+
+/// What the variants of an enum of an instruction set name, written as the enum's attribute
+/// (`#[Registers{ .class = .general, .size = .some(.b32) }]`): registers of a class, at a width
+/// where their names give one, the `n`th variant
+/// naming register `n * step` of the class (`d1` is the second double-precision register, the
+/// third of its class counted as single-precision ones).
+Registers := ($Class: type, $Size: type) -> type { struct { class: Class, size: ?Size = .none, step: u8 = 1 } };
+
+/// A block of instructions (spec 07, section 6): each statement of `code` calls an instruction of
+/// one instruction set's table, or makes or marks a label. Sema reads the block against that
+/// table; the block is `never` where its last instruction does not return.
+asm: unsafe ($code: lang.meta.Code(())) -> () = _;
+
+/// What an operand form gives (`in(e)`, `mem(...)`): nothing a program holds, only the call sema
+/// reads.
+Operand := struct {
+    at := lang.arch.at;
+};
+
+/// A place in a block that a jump names: made where it is marked (`here()`), or before
+/// (`label()`, marked by `place`).
+Label := struct {};
+
+/// The value of `value`, read by the instruction from a register the backend picks.
+in: ($T: type, value: T) -> Operand = _;
+
+/// A register the backend picks, written into the place `place` after the block.
+out: ($T: type, place: T) -> Operand = _;
+
+/// A register holding the value of the place `place`, written back into it after the block.
+inout: ($T: type, place: T) -> Operand = _;
+
+/// `self`, a value bound by `in`, `out` or `inout`, in the register `register` names instead
+/// of one the backend picks (`in(e).at(rdi)`).
+at: (self: Operand, $R: type, register: R) -> Operand = _;
+
+/// Memory at the address its parts give: a base, then an index and an offset, as the instruction
+/// set writes them (`mem(x1, 8)`, `mem(rax, scaled(rcx, 8), 16)`).
+mem: ($P: type, ..parts: P) -> Operand = _;
+
+/// An index register times `scale` bytes, a part of memory where the instruction set scales one.
+scaled: ($R: type, index: R, scale: u8) -> Operand = _;
+
+/// `memory`, its address written back into its base before the access (`[x1, 8]!`).
+pre: (memory: Operand) -> Operand = _;
+
+/// `memory`, its base moved by `offset` after the access (`[x1], 8`).
+post: ($T: type, memory: Operand, offset: T) -> Operand = _;
+
+/// A label marking the next instruction.
+here: () -> Label = _;
+
+/// A label a later `place` marks.
+label: () -> Label = _;
+
+/// Marks the next instruction with `at`.
+place: (at: Label) -> () = _;
+
+/// What an instruction called outside a block does: it cannot run there, so a program calling one
+/// is refused where it is built.
+outside: () -> never = _;
+
+/// The witness making each instruction of type `I` callable with any operands (spec 02, section
+/// 3): an instruction set declares `#[impl(lang.ops.Call(_, ())(Instruction))]` on
+/// `called(Instruction)`, so that a block's calls are typed as any call is.
+called := ($I: type) -> ($Params: type) -> type {
+    ($Params: type) -> type { struct {
+        call := (self: &mut I, operands: Params) { outside() };
+    } }
+};

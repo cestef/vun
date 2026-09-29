@@ -48,11 +48,4 @@ impl Parser<'_, '_, '_> {
         }
         t
     }
-
-    /// Whether a line break stands before the token `t`.
-    pub(super) fn line_ends_before(&self, t: TokenId) -> bool {
-        self.tokens
-            .leading_trivia(t)
-            .any(|l| l.kind == TokenKind::Whitespace && l.range.of(self.source).contains('\n'))
-    }
 }

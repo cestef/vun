@@ -71,6 +71,7 @@ impl Builder<'_, '_, '_> {
             HirStmt::Block(inner) => {
                 self.block(*inner)?;
             }
+            HirStmt::Spread(_) => {}
             HirStmt::Assign { op, place, value, origin } => self.store(*op, *place, *value, *origin)?,
         }
         Ok(())

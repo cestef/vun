@@ -186,8 +186,8 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   `color_t` is `ColorT`, `MODE_READ` is `mode_read`, and a function or variable keeps its C name
   for the linker through `link.symbol`. `vun tool header` emits a C header for a Vun library. Both are tools, not
   language features (spec 12).
-- Inline assembly is an `unsafe` block of an architecture's instructions, `lang.arch.<arch>.asm
-  { ... }` (section 6).
+- Inline assembly is an `unsafe` call of `lang.arch.asm` on a block of an architecture's
+  instructions, `lang.arch.asm({ ... })` (section 6).
 
 ## 6. Inline assembly
 
@@ -195,69 +195,99 @@ An architecture's instruction set is data in `lang.arch.<arch>` (`lib/lang/lang/
 registers by class, and each instruction's forms, as the native backend's assemblers use them
 (spec 13, section 8.3), with the registers and flags each form reads and writes. The toolchain's
 assembler tables are generated from these declarations, so the language, the assembler and the
-listings share one table.
+listings share one table. A block of instructions is ordinary Vun: a block of calls, each calling
+an instruction the table declares, passed as code.
 
 ```vun
 entry := () -> never {
-    unsafe lang.arch.x86_64.asm {
-        mov rdi, rsp
-        and rsp, -16
-        call {_boot}
-    }
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(rdi, rsp);
+        \and(rsp, -16);
+        call(_boot);
+    })
 };
 
 add3 := (a: u64) -> u64 {
     mut r: u64 = 0;
-    unsafe lang.arch.x86_64.asm {
-        lea {out r}, [{in a} + 3]
-    };
+    unsafe lang.arch.asm({ ..lang.arch.x86_64.names; lea(out(r), mem(in(a), 3)); });
     r
+};
+
+countdown := (n: u32) -> u32 {
+    mut left: u32 = n;
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        top := here();
+        subs(inout(left), inout(left), 1);
+        b(ne, top);
+    });
+    left
 };
 ```
 
-- **A block of instructions.** `lang.arch.<arch>.asm { ... }` holds one instruction per line in the
-  architecture's usual syntax: the mnemonic, then operands separated by `,` up to the line's end,
-  `[...]` holding a memory operand's parts. `asm` is a contextual word, the block's only when `{`
-  follows it where a brace continues an expression, so `if c.asm { }` reads the member `asm`.
-  Immediates are plain integers on every architecture (`add x0, x0, 1`, no `#`). It is read at
-  compile time against the architecture's table, into typed values of it; the block is an expression
-  of type `()`, or `never` when its last instruction does not return. It is `unsafe`.
-- **Operands are Vun.** A register is named as the table names it, at a width where its name
-  gives one (`eax`). An immediate is an integer the operation's width holds, signed or unsigned,
-  and the form's immediate holds as it extends it; a constant is never cut to the bits read.
-  Memory is `[...]`: one sum on x86-64 (`[base + index * 8 + 16]`), parts on arm64 and Thumb
-  (`[x1, 8]`, `[x1, x2]`), where `[x1, 8]!` writes the address back before the access and
-  `[x1], 8` after it. A list of registers is the rest of the line (`push r4, lr`, `vpush d8,
-  d9`). `'name` is the instruction a label
-  `'name:` marks. `{name}` is a declaration's address, relocated when linking. `{in e}` passes
-  the value of `e` in a register the backend picks, of the class and width its type needs (a
-  float in a floating-point register); `{out p}` writes a register into the place `p`, `{inout
-  p}` both, and each takes a place; `{in(rdi) e}` names the register. A bound value's width is its type's
-  on the target, so it is checked only where the target's instruction set is the block's
-  (`lang.target.Spec.isa`); elsewhere the block is checked for its registers' classes alone.
-- **Forms are chosen as the assembler chooses.** A mnemonic spells the forms of its
-  instructions, in the table's order, with a condition as its suffix where a form takes one
-  (`jz`, `beq`), or after a `.` (`b.eq`), an access width as a suffix (`ldrb`, whose register is
-  `w0`: general registers are named at 32 or 64 bits), and qualifiers each after a `.`: a
-  Thumb form's encoding width (`add.w` a 32-bit form, `add.n` a 16-bit one, either chosen
-  without it) and the types of a floating-point form (`vcvt.s32.f32`); the instruction's width is the one its registers of that width give, and the first form
-  taking the operands at that width is the instruction's. Where no operand gives the width and
-  the form has several (`mov [rax], 1`), none is chosen.
+- **The names are the architecture's declarations.** `lang.arch.<arch>` declares each instruction
+  as a value of its `Instruction`, or of its `Member` for one of a `Family` sharing its forms, and
+  a `Mnemonic` for a name spelling several (`b` is `b_always`, or `bcond` given a condition). An
+  enum naming registers says what it names as its attribute (`#[Registers{ .class = .general,
+  .size = .some(.b32) }] R32 := enum { eax, ... }`), an enum of named choices its kind
+  (`#[Choice.barrier]`). The namespace `lang.arch.<arch>.names` spreads what a block is written
+  with: the operand forms, the enums of registers at each width (`eax`, `w0`, `d8`), the
+  conditions (`ne`), the choices (`primask`, `sy`, `ish`) and the instructions, whose variants
+  and members a spread brings (spec 01, section 8). A block of instructions starts with the spread
+  (`lang.arch.asm({ ..lang.arch.x86_64.names; ... })`), which brings them into that block alone,
+  looked up after the names of the file and of the scopes around it, so a parameter `a` stays the
+  parameter and the condition is `Cond.a`, and a function of the file named as an instruction is
+  reached instead. The declarations' names are the assembler's, escaped where they are reserved
+  (`\and`).
+- **A block is `lang.arch.asm({ ... })`.** `lang.arch.asm` takes the block as code (`$code:
+  Code(())`, spec 03, section 4) and is `unsafe`; each statement of the block calls an instruction,
+  declares a label, or spreads the names. An instruction is callable with any operands, its `lang.ops.Call` impl covering every
+  argument tuple (`_`, spec 02, section 3), so the block is typed as any code is; sema then reads
+  the typed block against the table of the instructions' architecture, into typed values of it.
+  The call is of type `()`, or `never` when its last instruction does not return.
+- **Operands are values.** A register is a variant of its width's enum. An immediate is an integer
+  known at compile time, which the operation's width holds, signed or unsigned, and the form's
+  immediate holds as it extends it; a constant is never cut to the bits read. A declaration's
+  address (a function, or `&x` of an item) is relocated when linking. `in(e)` passes the value of
+  `e` in a register the backend picks, of the class and width its type needs (a float in a
+  floating-point register); `out(p)` writes a register into the place `p`, `inout(p)` both;
+  `.at(rdi)` names the register instead (`in(e).at(rdi)`, `Operand.at`). Memory is `mem(...)` of its
+  parts: a base, then an index (`scaled(rcx, 8)` on x86-64) and an offset (`mem(rax, scaled(rcx,
+  8), 16)`, `mem(x1, 8)`, `mem(x1, x2)`); `pre(mem(x1, 8))` writes the address back before the
+  access (`[x1, 8]!`), `post(mem(x1), 16)` after it (`[x1], 16`). A list of registers is the
+  operands themselves (`push(r4, r5, lr)`). A label is a value: `top := here();` marks the next
+  instruction, `end := label();` makes one a later `place(end);` marks, and a jump takes it
+  (`b(ne, top)`). A bound value's width is its type's on the target, so it is checked only where
+  the target's instruction set is the block's (`lang.target.Spec.isa`); elsewhere the block is
+  checked for its registers' classes alone.
+- **Forms are chosen as the assembler chooses.** A call writes what its assembler spells into the
+  mnemonic before its operands: types, then a Thumb form's encoding width (`add(w, r0, r1, r2)`, a
+  32-bit form; `n` a 16-bit one; either chosen without it). A condition is an operand, the first
+  (`b(ne, top)`, `j(z, top)`, x86-64's `jz`; `b(w, eq, end)`). A width a form is defined at lists
+  the types that select it where its spelling names it apart (`Sized.types`: `&[u8]` for `ldrb`,
+  `&[i32, f32]` for `vcvt.s32.f32`), and is selected by a call writing them (`ldr(u8, w1, mem(p,
+  3))`, `vcvt(i32, f32, s0, s1)`); one listing none, by a call writing none or the one type of its
+  width (`adds(f64, ...)` on x86-64). The assemblers' spelling of the types is derived from them
+  where the tables are generated. The instruction's width is the one its registers of that width
+  give, and the first form, in the table's order, taking the operands at that width is
+  the instruction's. Where no operand gives the width and the form has several (`mov(mem(rax),
+  1)`), none is chosen.
 - **Clobbers are derived.** Each form declares what it writes, so the registers and flags a block
   writes, beyond its outputs, are known without being listed, and the backend saves what it must.
-- **Checked when compiling.** A path before `.asm` that is no architecture
-  (`asm.unknown_arch`), a mnemonic the table lacks (`asm.unknown_mnemonic`), a word, label or
-  expression that is no operand (`asm.unknown_operand`), operands no form of it takes
-  (`asm.no_form`), an immediate wider than the form's (`asm.immediate_too_wide`), or a register of
-  another class (`asm.register_class`) is an error at the instruction or the operand.
+- **Checked when compiling.** Instructions of more than one architecture in a block
+  (`asm.unknown_arch`), a call of what is no instruction (`asm.unknown_mnemonic`), an operand that
+  is none of the above (`asm.unknown_operand`), operands no form of it takes (`asm.no_form`), an
+  immediate wider than the form's (`asm.immediate_too_wide`), or a register of another class
+  (`asm.register_class`) is an error at the instruction or the operand.
 - **Backends.** The native backend encodes the instructions itself; the C backend writes them as
   GNU `__asm__` from the same forms, with the constraints the bindings give, naming a symbol as
   the object does where that is as C does (ELF) and keeping what a block names
   (`__attribute__((used))`); a naked function is `__attribute__((naked))` over plain `__asm__`
   alone, which is all GNU C allows it. A block is compiled
   where the target's code is in its instruction set, `lang.arch.<isa>` for the target's `isa`
-  (`thumb` on 32-bit Arm, whose `arch` is `arm`); sema checks a block against the table it
-  names whatever the target, so a library may hold blocks for several behind `$if`, and a backend
+  (`thumb` on 32-bit Arm, whose `arch` is `arm`); sema checks a block against its architecture's
+  table whatever the target, so a library may hold blocks for several behind `$if`, and a backend
   given one of another instruction set, or without the block's (wasm), refuses it
   (`backend.lacks`). A form may need what not every processor of its instruction set has
   (`requires: ?Need`, each table's `Need` being `lang.arch.Need(Feature, Size)`: a feature of the

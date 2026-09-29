@@ -10,9 +10,10 @@ rather than a silently different constant.
 
 ```vun
 big := () {
-    unsafe lang.arch.x86_64.asm {
-        add eax, 5000000000 //~ asm.immediate_too_wide
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        add(eax, 5000000000); //~ asm.immediate_too_wide
+    });
 };
 ```
 
@@ -22,9 +23,10 @@ Load the constant into a register at a width that holds it, then use the registe
 
 ```vun
 big := () {
-    unsafe lang.arch.x86_64.asm {
-        mov rcx, 5000000000
-        add rax, rcx
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(rcx, 5000000000);
+        add(rax, rcx);
+    });
 };
 ```

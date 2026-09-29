@@ -39,12 +39,9 @@ pub const PRECEDENCE: &[&[NodeKind]] = &[
         NodeKind::Call,
         NodeKind::Index,
         NodeKind::Postfix,
-        NodeKind::Asm,
         NodeKind::DotName,
         NodeKind::Closure,
         NodeKind::Qualifier,
         NodeKind::Mode,
-        NodeKind::Suffix,
-        NodeKind::Bound,
     ],
 ];

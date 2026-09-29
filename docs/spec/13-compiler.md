@@ -376,7 +376,7 @@ scopes are named as the generator's typed enums declare them.
 
 The same task writes `editors/sublime/vun.sublime-syntax`, the highlighting that editors, the
 whitepaper and the README's code card read (through syntect): keywords, contextual words, borrow
-and flow words and every punctuation token come from the grammar, each punctuation token scoped as
+words and every punctuation token come from the grammar, each punctuation token scoped as
 `editors.vun` says, and the tokens the lexer reads by hand (comments, strings, numbers, labels)
 from the lexer's constants.
 
@@ -388,11 +388,8 @@ spread over the infix levels stands for those levels; a restricted field (`.of`,
 holds variants of the kinds reaching an allowed one through their edge field, aliased to the
 kind, and, as the parser's `standing_for`, those of the `transparent` kinds ending with one where
 no kind it allows continues an operand (a transparent node before a form continuing one holds
-the form: `$T{}` is `$(T{})`), and completes its entry where its kind has no level of its own; the fields of an
-operand context (`operand_contexts`: an instruction's operands and a memory operand's parts) read
-their operands at any depth in the context, where the kinds it lists replace those starting with
-the same token (`{` opens a bound, not a block), through variants of each kind holding operands;
-the kinds of `line_ends` end at a line break an external scanner finds; a kind of `transparent`
+the form: `$T{}` is `$(T{})`), and completes its entry where its kind has no level of its own; a
+kind of `transparent`
 ends with its last child only when written with one of the tokens its row lists (`$`, `unsafe`,
 a doc comment, `#[`); where several kinds fit,
 the first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of
@@ -409,7 +406,7 @@ source order, `.binding(.optional(.\mut), .pattern, ":=", .value)`. A term is a 
 spelling (`":="`, `"if"`, or a name spelled so where it is a word: `"in"`), `.token(...)` for a
 token of the kinds it names (`.token(.ident)`) and of the lists of the token kind or tables of
 tokens its paths name (`.token(grammar.infix)`), `.word(path)` for a name or keyword spelled as a
-variant of the kind, or the list of one, the path names (`.word(grammar.Flow)`), a child
+variant of the kind, or the list of one, the path names (`.word(grammar.BorrowWord.modes)`), a child
 `.field`, `.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing
 separator), `.choice(...)`, a sequence `.seq(...)`, or a child restricted by a table: of a kind it
 lists (`.of(.field, table)`), or starting with a token it lists (`.starting`). Wherever a table
@@ -426,17 +423,16 @@ terms, one position per token, word or child term (Glushkov's construction, `vun
 and a stack of frames reads the tokens, readings of nodes alternating with the operands they read.
 A reading keeps every kind the node may still be, each at the positions of its automaton it stands
 at; a child is read once for every position reading it, taking what they take merged
-(`engine::Spec`: the kinds they name, whether any operand, the parts `admits` lists, the level,
-the operand context), and positions that may not hold what was read drop. One rule says who reads
+(`engine::Spec`: the kinds they name, whether any operand, the parts `admits` lists, the level),
+and positions that may not hold what was read drop. One rule says who reads
 a token: the outermost reading that reads it where it stands, every frame above it able to end
 (so `if x {` opens the body and `if a {} .x;` starts a statement); else the innermost operand a
 form may continue (a kind whose production begins with a child the operand may fill, reachable
 from what the position takes), at the operand's level of `precedence` or tighter, the one reading
-the longest run of tokens before its next child (`.asm {` over `.`), forms reading as long a run
+the longest run of tokens before its next child, forms reading as long a run
 continuing together (`x: T` is a `typed_binding` or a `field`); else the top frame ends where it
 may. A child starts only where a kind it may be starts with the token (its production's first
-token or word, or a first child that is no operand, as `mut`), the kinds of `operand_contexts`
-starting there in place of any other, a `transparent` kind standing for one named only with its
+token or word, or a first child that is no operand, as `mut`), a `transparent` kind standing for one named only with its
 tokens, so every move reads a token. An operand is read at a level: an edge child at its parent's
 (the infix form's right operand tighter than its operator), an interior one at the loosest, and
 where positions reading one child disagree, at the tightest. In a node of a kind of `line_ends`,

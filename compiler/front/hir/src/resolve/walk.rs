@@ -107,6 +107,12 @@ impl Visitor for Resolver<'_, '_> {
         self.namespaces.pop();
     }
 
+    fn spread_scope(&mut self, hir: &Hir, ns: NsId) {
+        visit::walk_namespace(self, hir, ns);
+        self.parents[ns] = self.namespaces.last().copied();
+        self.namespaces.push(ns);
+    }
+
     fn decl(&mut self, hir: &Hir, decl: DeclId) {
         let d = &hir.decls[decl];
         // Namespace members are already declared. In a block a binding is visible after its value,
@@ -136,7 +142,10 @@ impl Visitor for Resolver<'_, '_> {
     fn block(&mut self, hir: &Hir, block: BlockId) {
         let declaring = std::mem::replace(&mut self.declaring, false);
         let members = std::mem::replace(&mut self.members, false);
+        // The namespaces of the spreads written in it are left at its end.
+        let spreads = self.namespaces.len();
         self.with_scope(Kind::Local, |this| visit::walk_block(this, hir, block));
+        self.namespaces.truncate(spreads);
         self.declaring = declaring;
         self.members = members;
     }

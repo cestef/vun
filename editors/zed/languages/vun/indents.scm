@@ -18,6 +18,3 @@
 (call "(" ")" @end) @indent
 (index "[" "]" @end) @indent
 (match "{" "}" @end) @indent
-(asm "{" "}" @end) @indent
-(bound "{" "}" @end) @indent
-(memory "[" "]" @end) @indent

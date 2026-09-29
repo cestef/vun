@@ -25,15 +25,17 @@ processor lacks them:
 load := (p: usize) -> u32 {
     $if lang.target.has(.application) {
         mut (low, high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) p}]
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            ldrexd(out(low).at(r2), out(high).at(r3), mem(in(p).at(r0)));
+        });
         low
     } else {
         mut low: u32 = 0;
-        unsafe lang.arch.thumb.asm {
-            ldr {out(r2) low}, [{in(r0) p}]
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            ldr(out(low).at(r2), mem(in(p).at(r0)));
+        });
         low
     }
 };

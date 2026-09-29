@@ -26,8 +26,6 @@ impl NodeKind {
             Self::RawStringLine => "raw_string_line",
             Self::Label => "label",
             Self::Rest => "rest",
-            Self::Flow => "flow",
-            Self::Writeback => "writeback",
             Self::Error => "error",
             Self::File => "file",
             Self::Doc => "doc",
@@ -78,11 +76,6 @@ impl NodeKind {
             Self::Yield => "yield",
             Self::Defer => "defer",
             Self::Staged => "staged",
-            Self::Asm => "asm",
-            Self::Line => "line",
-            Self::Suffix => "suffix",
-            Self::Bound => "bound",
-            Self::Memory => "memory",
         }
     }
 }

@@ -41,7 +41,7 @@ mod then;
 pub use then::*;
 mod feature;
 pub use feature::*;
-mod b;
+mod b_always;
 mod bcond;
 mod bl;
 mod blx;

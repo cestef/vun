@@ -24,7 +24,6 @@ const LANGUAGE: &str = "Vun";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, vun_syntax::literal::FromLiteral)]
 pub(crate) enum Recognized {
     ForPattern,
-    AsmBlock,
 }
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {

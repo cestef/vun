@@ -11,7 +11,7 @@ fn a_branch_to_a_label_is_patched_where_it_is_bound() {
     let mut asm = Asm::<Sym>::new(Processor::every());
     let (back, ahead) = (asm.label(), asm.label());
     asm.bind(back);
-    asm.emit(Op::B, Size::B32, &[Operand::Label(ahead)]);
+    asm.emit(Op::BAlways, Size::B32, &[Operand::Label(ahead)]);
     asm.emit(Op::Bcond, Size::B32, &[Operand::Cond(Cc::Ne), Operand::Label(back)]);
     asm.bind(ahead);
     let code = asm.finish().expect("both bound");

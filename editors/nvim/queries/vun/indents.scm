@@ -18,6 +18,3 @@
 (call "(" ")" @indent.branch) @indent.begin
 (index "[" "]" @indent.branch) @indent.begin
 (match "{" "}" @indent.branch) @indent.begin
-(asm "{" "}" @indent.branch) @indent.begin
-(bound "{" "}" @indent.branch) @indent.begin
-(memory "[" "]" @indent.branch) @indent.begin

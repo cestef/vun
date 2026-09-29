@@ -146,12 +146,12 @@ set_tls: usize = 0xf_0005;
 /// Sets the calling thread's pointer to `pointer`.
 point := (pointer: usize) {
     $if lang.target.current.arch == .x86_64 {
-        std.os.linux.kernel.call(arch_prctl, [set_fs, pointer, 0, 0, 0, 0]);
+        std.os.linux.kernel.request(arch_prctl, [set_fs, pointer, 0, 0, 0, 0]);
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm { msr tpidr_el0, {in(x0) pointer} };
+            unsafe lang.arch.asm({ ..lang.arch.arm64.names; msr(tpidr_el0, in(pointer).at(x0)); });
         } else {
-            std.os.linux.kernel.call(set_tls, [pointer, 0, 0, 0, 0, 0]);
+            std.os.linux.kernel.request(set_tls, [pointer, 0, 0, 0, 0, 0]);
         }
     }
 };

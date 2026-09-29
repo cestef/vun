@@ -18,7 +18,7 @@ use quote::quote;
 use vun_build::layout::SEPARATOR;
 use vun_syntax::literal::Decl;
 
-use crate::generate::{Access, Emit, Generator, Module, Read, Source};
+use crate::generate::{Access, Emit, Generator, JOIN, Module, Read, Source};
 use crate::names::{docs, raw};
 
 pub(crate) const LANG: Generator = Generator {
@@ -113,6 +113,12 @@ impl Handles {
                     None => (ROOT.to_owned(), Access::Glob),
                     Some(inner) => (inner, Access::Path),
                 };
+                // The modules of a namespace's descendants are declared in a directory named
+                // after the namespace and the joiner they start with: `arch_arm64` in `arch_`.
+                let dir = (namespace.len() > 2)
+                    .then(|| Module::nested(&namespace[..2]))
+                    .flatten()
+                    .map(|n| n + JOIN);
                 let doc = format!(" The declarations of `{}`.", namespace.join(SEPARATOR));
                 let items = quote! {
                     #![doc = #doc]
@@ -124,7 +130,7 @@ impl Handles {
                     use crate::Item;
                     #(#items)*
                 };
-                Module { name, access, items }
+                Module { name, access, items, dir }
             })
             .collect()
     }

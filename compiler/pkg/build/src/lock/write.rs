@@ -15,7 +15,7 @@ const WRITTEN_BY: &str = "Written by `vun pkg` from the selected versions; do no
 impl Lock {
     /// Its declarations, located at `span`.
     fn decls(&self, span: Span) -> Vec<Decl<'_>> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
+        let at = |name, value| Decl::new(name, value, span);
         let mut decls = vec![
             Decl { doc: vec![WRITTEN_BY], ..at(field::LAYOUT, Literal::Int(LAYOUT.into())) },
             at(field::DEPS, Literal::List(self.entries.iter().map(|e| e.literal(span)).collect())),
@@ -42,7 +42,7 @@ impl fmt::Display for Lock {
 
 impl Locked {
     fn literal(&self, span: Span) -> Literal<'_> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
+        let at = |name, value| Decl::new(name, value, span);
         let text = |s: String| Literal::String(Cow::Owned(s));
         let id = self.identity.map_or(Literal::Name(field::FOREIGN), |i| i.literal(span));
         let mut fields = vec![
@@ -58,7 +58,7 @@ impl Locked {
 
 impl Replaced {
     fn literal(&self, span: Span) -> Literal<'_> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
+        let at = |name, value| Decl::new(name, value, span);
         let with = match &self.with {
             Replacing::Stored(hash) => at(field::HASH, Literal::String(Cow::Owned(hash.to_string()))),
             Replacing::Path(path) => at(field::PATH, Literal::String(Cow::Borrowed(path))),
@@ -73,7 +73,7 @@ impl Replaced {
 
 impl Identity {
     fn literal(self, span: Span) -> Literal<'static> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
+        let at = |name, value| Decl::new(name, value, span);
         Literal::Record(vec![
             at(field::ID, Literal::Int(self.id.into())),
             at(field::MAJOR, Literal::Int(self.major.into())),

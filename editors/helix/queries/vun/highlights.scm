@@ -8,7 +8,7 @@
 (dot_name property: (name) @type.enum.variant)
 (member property: (name) @variable.other.member)
 (param pattern: (name) @variable.parameter)
-[(mut) (qualifier) (mode) (flow)] @keyword
+[(mut) (qualifier) (mode)] @keyword
 (rest) @operator
 (hole) @variable.builtin
 (label) @label
@@ -24,6 +24,6 @@
 [".*" "?"] @operator
 ["(" ")" "[" "]" "#[" "{" "}" "#{" ".{"] @punctuation.bracket
 ["," ";" ":"] @punctuation.delimiter
-["in" "asm"] @keyword
+"in" @keyword
 ((name) @type (#match? @type "^[A-Z][A-Za-z0-9_]*$"))
 (name) @variable

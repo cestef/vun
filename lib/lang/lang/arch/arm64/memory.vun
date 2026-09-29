@@ -1,0 +1,183 @@
+//! Loads, stores and atomics (Arm A64 ISA, loads and stores). A single access has a form per
+//! addressing mode, tried in order: a scaled offset, an unscaled one (`ldur`), a register index,
+//! pre- and post-index, then the low bits of a symbol's address.
+
+_a := lang.arch.arm64;
+
+_access: &[_a.Sized] = &[
+    .{ .size = .b8, .types = &[u8] },
+    .{ .size = .b16, .bits = 0x40000000, .types = &[u16] },
+    .{ .size = .b32, .bits = 0x80000000 },
+    .{ .size = .b64, .bits = 0xc0000000 },
+];
+_fp_access: &[_a.Sized] = &[.{ .size = .b32, .bits = 0x80000000 }, .{ .size = .b64, .bits = 0xc0000000 }];
+_signed: &[_a.Sized] = &[
+    .{ .size = .b8, .types = &[i8] },
+    .{ .size = .b16, .bits = 0x40000000, .types = &[i16] },
+    .{ .size = .b32, .bits = 0x80000000, .types = &[i32] },
+];
+_pairs: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x80000000 }];
+_fp_pairs: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x40000000 }];
+
+_f_a: _a.Arg = .{ .kind = .fpr(.inst), .at = 10, .access = .read };
+_f_a_w: _a.Arg = .{ .kind = .fpr(.inst), .at = 10, .access = .write };
+_f_d: _a.Arg = .{ .kind = .fpr(.inst), .at = 0, .access = .read };
+_f_d_w: _a.Arg = .{ .kind = .fpr(.inst), .at = 0, .access = .write };
+_mem_base_n: _a.Arg = .{ .kind = .mem(.base, .inst), .at = 5, .access = .read };
+_mem_base_n_rw: _a.Arg = .{ .kind = .mem(.base, .inst), .at = 5, .access = .read_write };
+_mem_base_n_w: _a.Arg = .{ .kind = .mem(.base, .inst), .at = 5, .access = .write };
+_mem_index_n: _a.Arg = .{ .kind = .mem(.index, .inst), .at = 5, .access = .read };
+_mem_index_n_w: _a.Arg = .{ .kind = .mem(.index, .inst), .at = 5, .access = .write };
+_mem_lo12_n: _a.Arg = .{ .kind = .mem(.lo12, .inst), .at = 5, .access = .read };
+_mem_lo12_n_w: _a.Arg = .{ .kind = .mem(.lo12, .inst), .at = 5, .access = .write };
+_mem_pair_n: _a.Arg = .{ .kind = .mem(.pair, .inst), .at = 5, .access = .read };
+_mem_pair_n_w: _a.Arg = .{ .kind = .mem(.pair, .inst), .at = 5, .access = .write };
+_mem_pair_post_n: _a.Arg = .{ .kind = .mem(.pair_post, .inst), .at = 5, .access = .read };
+_mem_pair_post_n_w: _a.Arg = .{ .kind = .mem(.pair_post, .inst), .at = 5, .access = .write };
+_mem_pair_pre_n: _a.Arg = .{ .kind = .mem(.pair_pre, .inst), .at = 5, .access = .read };
+_mem_pair_pre_n_w: _a.Arg = .{ .kind = .mem(.pair_pre, .inst), .at = 5, .access = .write };
+_mem_post_n: _a.Arg = .{ .kind = .mem(.post, .inst), .at = 5, .access = .read };
+_mem_post_n_w: _a.Arg = .{ .kind = .mem(.post, .inst), .at = 5, .access = .write };
+_mem_pre_n: _a.Arg = .{ .kind = .mem(.pre, .inst), .at = 5, .access = .read };
+_mem_pre_n_w: _a.Arg = .{ .kind = .mem(.pre, .inst), .at = 5, .access = .write };
+_mem_scaled_n: _a.Arg = .{ .kind = .mem(.scaled, .inst), .at = 5, .access = .read };
+_mem_scaled_n_w: _a.Arg = .{ .kind = .mem(.scaled, .inst), .at = 5, .access = .write };
+_mem_unscaled_n: _a.Arg = .{ .kind = .mem(.unscaled, .inst), .at = 5, .access = .read };
+_mem_unscaled_n_w: _a.Arg = .{ .kind = .mem(.unscaled, .inst), .at = 5, .access = .write };
+_r_a: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 10, .access = .read };
+_r_a_w: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 10, .access = .write };
+_r_d: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 0, .access = .read };
+_r_d_w: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 0, .access = .write };
+_r_m: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 16, .access = .read };
+_r_m_rw: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 16, .access = .read_write };
+_w_m_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b32)), .at = 16, .access = .write };
+_x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
+
+/// A load of the instruction's width, zero-extended.
+ldr := _a.Instruction{ .forms = &[
+    .{ .base = 0x39400000, .sizes = _access, .args = &[_r_d_w, _mem_scaled_n] },
+    .{ .base = 0x38400000, .sizes = _access, .args = &[_r_d_w, _mem_unscaled_n], .name = .some("ldur") },
+    .{ .base = 0x38600800, .sizes = _access, .args = &[_r_d_w, _mem_index_n] },
+    .{ .base = 0x38400c00, .sizes = _access, .args = &[_r_d_w, _mem_pre_n] },
+    .{ .base = 0x38400400, .sizes = _access, .args = &[_r_d_w, _mem_post_n] },
+    .{ .base = 0x39400000, .sizes = _access, .args = &[_r_d_w, _mem_lo12_n] },
+    .{ .base = 0x3d400000, .sizes = _fp_access, .args = &[_f_d_w, _mem_scaled_n] },
+    .{
+        .base = 0x3c400000,
+        .sizes = _fp_access,
+        .args = &[_f_d_w, _mem_unscaled_n],
+        .name = .some("ldur"),
+    },
+    .{ .base = 0x3c600800, .sizes = _fp_access, .args = &[_f_d_w, _mem_index_n] },
+    .{ .base = 0x3c400c00, .sizes = _fp_access, .args = &[_f_d_w, _mem_pre_n] },
+    .{ .base = 0x3c400400, .sizes = _fp_access, .args = &[_f_d_w, _mem_post_n] },
+    .{ .base = 0x3d400000, .sizes = _fp_access, .args = &[_f_d_w, _mem_lo12_n] },
+] };
+
+str := _a.Instruction{ .forms = &[
+    .{ .base = 0x39000000, .sizes = _access, .args = &[_r_d, _mem_scaled_n_w] },
+    .{ .base = 0x38000000, .sizes = _access, .args = &[_r_d, _mem_unscaled_n_w], .name = .some("stur") },
+    .{ .base = 0x38200800, .sizes = _access, .args = &[_r_d, _mem_index_n_w] },
+    .{ .base = 0x38000c00, .sizes = _access, .args = &[_r_d, _mem_pre_n_w] },
+    .{ .base = 0x38000400, .sizes = _access, .args = &[_r_d, _mem_post_n_w] },
+    .{ .base = 0x39000000, .sizes = _access, .args = &[_r_d, _mem_lo12_n_w] },
+    .{ .base = 0x3d000000, .sizes = _fp_access, .args = &[_f_d, _mem_scaled_n_w] },
+    .{
+        .base = 0x3c000000,
+        .sizes = _fp_access,
+        .args = &[_f_d, _mem_unscaled_n_w],
+        .name = .some("stur"),
+    },
+    .{ .base = 0x3c200800, .sizes = _fp_access, .args = &[_f_d, _mem_index_n_w] },
+    .{ .base = 0x3c000c00, .sizes = _fp_access, .args = &[_f_d, _mem_pre_n_w] },
+    .{ .base = 0x3c000400, .sizes = _fp_access, .args = &[_f_d, _mem_post_n_w] },
+    .{ .base = 0x3d000000, .sizes = _fp_access, .args = &[_f_d, _mem_lo12_n_w] },
+] };
+
+/// A load of the instruction's width, sign-extended to 64 bits.
+ldrs := _a.Instruction{ .forms = &[
+    .{ .base = 0x39800000, .sizes = _signed, .args = &[_x_d_w, _mem_scaled_n] },
+    .{ .base = 0x38800000, .sizes = _signed, .args = &[_x_d_w, _mem_unscaled_n], .name = .some("ldurs") },
+    .{ .base = 0x38a00800, .sizes = _signed, .args = &[_x_d_w, _mem_index_n] },
+    .{ .base = 0x38800c00, .sizes = _signed, .args = &[_x_d_w, _mem_pre_n] },
+    .{ .base = 0x38800400, .sizes = _signed, .args = &[_x_d_w, _mem_post_n] },
+    .{ .base = 0x39800000, .sizes = _signed, .args = &[_x_d_w, _mem_lo12_n] },
+] };
+
+ldp := _a.Instruction{ .forms = &[
+    .{ .base = 0x29400000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_n] },
+    .{ .base = 0x29c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_pre_n] },
+    .{ .base = 0x28c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_post_n] },
+    .{ .base = 0x2d400000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_n] },
+    .{ .base = 0x2dc00000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_pre_n] },
+    .{ .base = 0x2cc00000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_post_n] },
+] };
+
+stp := _a.Instruction{ .forms = &[
+    .{ .base = 0x29000000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_n_w] },
+    .{ .base = 0x29800000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_pre_n_w] },
+    .{ .base = 0x28800000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_post_n_w] },
+    .{ .base = 0x2d000000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_n_w] },
+    .{ .base = 0x2d800000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_pre_n_w] },
+    .{ .base = 0x2c800000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_post_n_w] },
+] };
+
+/// Loads with acquire, or exclusive.
+ordered := _a.Family{
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_d_w, _mem_base_n] },
+    ],
+};
+ldar := _a.Member{ .family = ordered, .bits = 0x8dffc00 };
+ldaxr := _a.Member{ .family = ordered, .bits = 0x85ffc00 };
+ldxr := _a.Member{ .family = ordered, .bits = 0x85f7c00 };
+
+stlr := _a.Instruction{ .forms = &[
+    .{ .base = 0x89ffc00, .sizes = _access, .args = &[_r_d, _mem_base_n_w] },
+] };
+
+/// Exclusive stores, writing whether they failed.
+exclusive := _a.Family{
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_w_m_w, _r_d, _mem_base_n_w] },
+    ],
+};
+stxr := _a.Member{ .family = exclusive, .bits = 0x8007c00 };
+stlxr := _a.Member{ .family = exclusive, .bits = 0x800fc00 };
+
+/// Atomic additions and swaps, the second register receiving what memory held; `a` acquires, `l`
+/// releases.
+atomics := _a.Family{
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _r_d_w, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+    ],
+};
+ldadd := _a.Member{ .family = atomics, .bits = 0x38200000 };
+ldadda := _a.Member{ .family = atomics, .bits = 0x38a00000 };
+ldaddl := _a.Member{ .family = atomics, .bits = 0x38600000 };
+ldaddal := _a.Member{ .family = atomics, .bits = 0x38e00000 };
+swp := _a.Member{ .family = atomics, .bits = 0x38208000 };
+swpa := _a.Member{ .family = atomics, .bits = 0x38a08000 };
+swpl := _a.Member{ .family = atomics, .bits = 0x38608000 };
+swpal := _a.Member{ .family = atomics, .bits = 0x38e08000 };
+
+/// `ldadd` discarding what memory held.
+discarding := _a.Family{
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+    ],
+};
+stadd := _a.Member{ .family = discarding, .bits = 0x3820001f };
+staddl := _a.Member{ .family = discarding, .bits = 0x3860001f };
+
+/// Compares the first register with memory and, if equal, stores the second; the first receives
+/// what memory held.
+compare_swaps := _a.Family{
+    .forms = &[
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m_rw, _r_d, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+    ],
+};
+cas := _a.Member{ .family = compare_swaps, .bits = 0x8a07c00 };
+casa := _a.Member{ .family = compare_swaps, .bits = 0x8e07c00 };
+casl := _a.Member{ .family = compare_swaps, .bits = 0x8a0fc00 };
+casal := _a.Member{ .family = compare_swaps, .bits = 0x8e0fc00 };

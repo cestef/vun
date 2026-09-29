@@ -53,10 +53,12 @@ impl Session {
         let (named, occurrences) = self.occurrences(file, offset).ok_or(Unrenamed::Nothing)?;
         match named.declaration {
             Declaration::Site(Site::Namespace(_)) => return Err(Unrenamed::Namespace),
-            Declaration::Site(Site::Decl(decl)) if decl.file.package != asking => {
+            Declaration::Site(Site::Decl(decl) | Site::Variant { decl, .. })
+                if decl.file.package != asking =>
+            {
                 return Err(Unrenamed::Elsewhere);
             }
-            Declaration::Site(Site::Decl(_)) | Declaration::Local(_) => {}
+            Declaration::Site(Site::Decl(_) | Site::Variant { .. }) | Declaration::Local(_) => {}
         }
         Ok(Renamed { text, spans: occurrences.all() })
     }

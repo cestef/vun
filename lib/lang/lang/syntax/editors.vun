@@ -36,7 +36,7 @@ highlights := .{
         .{ .nodes = &[.label], .capture = .label },
         .{ .nodes = &[.hole], .capture = .builtin },
         .{ .nodes = &[.rest], .capture = .operator },
-        .{ .nodes = &[.\mut, .qualifier, .mode, .flow], .capture = .keyword },
+        .{ .nodes = &[.\mut, .qualifier, .mode], .capture = .keyword },
     ],
     .places = .{
         .{ .kind = .param, .field = .pattern, .node = .name, .capture = .parameter },
@@ -100,19 +100,17 @@ sublime := .{
         .{ .token = .hash_l_bracket, .scope = .annotation },
         .{ .token = .underscore, .scope = .hole },
     ],
-    // The words it scopes as keywords, a borrow's words and flow words, and the punctuation.
+    // The words it scopes as keywords, a borrow's words, and the punctuation.
     .keywords = grammar.TokenKind.keywords,
     .qualifiers = grammar.BorrowWord.qualifiers,
     .modes = grammar.BorrowWord.modes,
-    .flows = grammar.Flow,
     .punctuation = grammar.TokenKind.punctuation,
     // A member after `.`, a call before `(`, a definition before `:=`, a borrow's words after
-    // `&`, a flow word after `{`.
+    // `&`.
     .member = .dot,
     .call = .l_paren,
     .binds = .colon_eq,
     .borrow = .amp,
-    .block = .l_brace,
 };
 
 // The tree-sitter grammar: what tree-sitter has its own of, the token keywords are spelled as,

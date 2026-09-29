@@ -45,7 +45,6 @@ fn the_grammar_resolves() {
         table.members,
         [model.kind("name"), model.kind("member"), model.kind("call")].map(Option::unwrap)
     );
-    assert!(!model.operand_contexts.is_empty());
 }
 
 #[test]

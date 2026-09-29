@@ -47,8 +47,8 @@ impl Decl<'_> {
         })
     }
 
-    /// Its doc comment, then `name := value;` with the value written by `value` from the column
-    /// it starts at.
+    /// Its doc comment and attributes, then `name := value;` with the value written by `value`
+    /// from the column it starts at.
     fn written(
         &self,
         value: impl FnOnce(&Literal<'_>, usize) -> Result<String, Unwritable>,
@@ -56,6 +56,9 @@ impl Decl<'_> {
         let mut w = Writer::default();
         for line in &self.doc {
             w.text(DOC).text(line).text("\n");
+        }
+        for attr in &self.attrs {
+            w.token(TokenKind::HashLBracket).text(&attr.source()?).token(TokenKind::RBracket).text("\n");
         }
         let start = w.out.len();
         w.binder(self.name)?.text(" ").token(TokenKind::ColonEq).text(" ");

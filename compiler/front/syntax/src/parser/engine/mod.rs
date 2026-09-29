@@ -52,7 +52,7 @@ impl Parser<'_, '_, '_> {
     /// Reads the tokens as a node of a root kind, whose production reads the end of the file.
     fn read_root(&mut self) -> u32 {
         let roots = NodeKind::ALL.iter().copied().filter(|k| k.is_root()).fold(KindSet::EMPTY, KindSet::with);
-        self.stack.push(Frame::Reading(Reading::new(roots, KindSet::EMPTY, false)));
+        self.stack.push(Frame::Reading(Reading::new(roots)));
         loop {
             let decision = self.decide();
             tracing::trace!(token = ?self.peek(), at = self.pos, ?decision, depth = self.stack.len());

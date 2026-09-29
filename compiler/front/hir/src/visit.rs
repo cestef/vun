@@ -25,6 +25,10 @@ pub trait Visitor {
     fn spread(&mut self, hir: &Hir, spread: &Spread) {
         self.expr(hir, spread.path);
     }
+    /// The namespace of a spread written in a block, entered where it is written.
+    fn spread_scope(&mut self, hir: &Hir, ns: NsId) {
+        self.namespace(hir, ns);
+    }
     /// A `$for` or `$if` in a list; `entry` visits one entry of its body.
     fn staged<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
         walk_staged(self, hir, staged, entry);
@@ -105,6 +109,7 @@ pub fn walk_block<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, block: BlockId) {
             v.expr(hir, *value);
         }
         Stmt::Block(b) => v.block(hir, *b),
+        Stmt::Spread(ns) => v.spread_scope(hir, *ns),
     });
     each(v, hir, &b.tail);
 }
@@ -231,14 +236,7 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
             each(v, hir, attrs);
             v.expr(hir, *inner);
         }
-        ExprKind::Asm(asm) => walk_asm(v, hir, asm),
     }
-}
-
-/// The architecture of a block of instructions, then the Vun expressions among its operands.
-pub fn walk_asm<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, asm: &crate::tree::Asm) {
-    v.expr(hir, asm.arch);
-    asm.each_expr(&mut |e| v.expr(hir, e));
 }
 
 pub fn walk_params<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, params: &List<crate::tree::Param>) {

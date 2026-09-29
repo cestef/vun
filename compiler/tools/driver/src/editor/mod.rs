@@ -27,7 +27,7 @@ use std::path::PathBuf;
 
 use vun_diag::DiagCtxt;
 use vun_hir::db::{Package, Parsed};
-use vun_hir::tree::ExprId;
+use vun_hir::tree::{ExprId, Name};
 use vun_origin::Resolve;
 use vun_sema::site::{Declaration, NameSite};
 use vun_sema::typeck::{Known, Typed};
@@ -115,6 +115,12 @@ impl Session {
                 let parsed = self.db.get::<Parsed>(&decl.file)?;
                 let hir = &parsed.hir;
                 Some(Target::At(self.source_span(hir.pats[hir.decls[decl.decl.id].pat].origin)))
+            }
+            Declaration::Site(Site::Variant { decl, name }) => {
+                let parsed = self.db.get::<Parsed>(&decl.file)?;
+                let variants = parsed.hir.variants_of(decl.decl.id);
+                let variant = variants.iter().find(|v| v.name == Name::Plain(name))?;
+                Some(Target::At(self.source_span(variant.origin)))
             }
             Declaration::Site(Site::Namespace(ns)) => {
                 let package = self.db.get::<Package>(&ns.package);

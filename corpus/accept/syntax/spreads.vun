@@ -1,0 +1,18 @@
+//! Spreads (spec 01, section 8): an enum's variants are members of its namespace, so a spread of
+//! the enum brings them, each a value of the enum.
+
+..lang.arch.thumb.Cond;
+
+always: lang.arch.thumb.Cond = al;
+
+/// The condition testing the opposite, by name.
+negated := (c: lang.arch.thumb.Cond) -> lang.arch.thumb.Cond {
+    match c { .eq => ne, .ne => eq, _ => al }
+};
+
+/// A spread written in a block brings its names into the block, found after every scope around
+/// them: `nz` is the parameter, `ge` and `z` conditions.
+flags := (nz: bool) -> lang.arch.x86_64.Cond {
+    ..lang.arch.x86_64.Cond;
+    if nz { ge } else { z }
+};

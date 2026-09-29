@@ -27,35 +27,40 @@ exports := struct {
         byte: usize = value.wrap(u8).to(usize);
         at := to.address();
         $if lang.target.current.arch == .x86_64 {
-            unsafe lang.arch.x86_64.asm {
-                mov rdi, {in at}
-                mov rax, {in byte}
-                mov rcx, {in bytes}
-                stosb
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.x86_64.names;
+                mov(rdi, in(at));
+                mov(rax, in(byte));
+                mov(rcx, in(bytes));
+                stosb();
+            });
         } else {
             $if lang.target.current.arch == .arm64 {
-                unsafe lang.arch.arm64.asm {
-                    mov x9, {in at}
-                    mov x10, {in byte}
-                    mov x11, {in bytes}
-                    cbz x11, 'end
-                    'top:
-                    strb w10, [x9], 1
-                    subs x11, x11, 1
-                    b.ne 'top
-                    'end:
-                };
+                unsafe lang.arch.asm({
+                    ..lang.arch.arm64.names;
+                    end := label();
+                    mov(x9, in(at));
+                    mov(x10, in(byte));
+                    mov(x11, in(bytes));
+                    cbz(x11, end);
+                    top := here();
+                    str(u8, w10, post(mem(x9), 1));
+                    subs(x11, x11, 1);
+                    b(ne, top);
+                    place(end);
+                });
             } else {
-                unsafe lang.arch.thumb.asm {
-                    cmp {in(r3) bytes}, 0
-                    beq 'end
-                    'top:
-                    strb {in(r0) byte}, [{in(r1) at}], 1
-                    subs r3, r3, 1
-                    bne 'top
-                    'end:
-                };
+                unsafe lang.arch.asm({
+                    ..lang.arch.thumb.names;
+                    end := label();
+                    cmp(in(bytes).at(r3), 0);
+                    b(eq, end);
+                    top := here();
+                    strb(in(byte).at(r0), post(mem(in(at).at(r1)), 1));
+                    subs(r3, r3, 1);
+                    b(ne, top);
+                    place(end);
+                });
             }
         }
         to
@@ -80,37 +85,42 @@ exports := struct {
 /// Copies `bytes` from `from` to `to`, from the first byte up.
 forward := (to: usize, from: usize, bytes: usize) {
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm {
-            mov rdi, {in to}
-            mov rsi, {in from}
-            mov rcx, {in bytes}
-            movsb
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            mov(rdi, in(to));
+            mov(rsi, in(from));
+            mov(rcx, in(bytes));
+            movsb();
+        });
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm {
-                mov x9, {in to}
-                mov x10, {in from}
-                mov x11, {in bytes}
-                cbz x11, 'end
-                'top:
-                ldrb w12, [x10], 1
-                strb w12, [x9], 1
-                subs x11, x11, 1
-                b.ne 'top
-                'end:
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.arm64.names;
+                end := label();
+                mov(x9, in(to));
+                mov(x10, in(from));
+                mov(x11, in(bytes));
+                cbz(x11, end);
+                top := here();
+                ldr(u8, w12, post(mem(x10), 1));
+                str(u8, w12, post(mem(x9), 1));
+                subs(x11, x11, 1);
+                b(ne, top);
+                place(end);
+            });
         } else {
-            unsafe lang.arch.thumb.asm {
-                cmp {in(r3) bytes}, 0
-                beq 'end
-                'top:
-                ldrb r0, [{in(r2) from}], 1
-                strb r0, [{in(r1) to}], 1
-                subs r3, r3, 1
-                bne 'top
-                'end:
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.thumb.names;
+                end := label();
+                cmp(in(bytes).at(r3), 0);
+                b(eq, end);
+                top := here();
+                ldrb(r0, post(mem(in(from).at(r2)), 1));
+                strb(r0, post(mem(in(to).at(r1)), 1));
+                subs(r3, r3, 1);
+                b(ne, top);
+                place(end);
+            });
         }
     }
 };
@@ -119,34 +129,37 @@ forward := (to: usize, from: usize, bytes: usize) {
 backward := (to: usize, from: usize, bytes: usize) {
     (last_to, last_from) := ((to + bytes - 1).wrap(usize), (from + bytes - 1).wrap(usize));
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm {
-            mov rdi, {in last_to}
-            mov rsi, {in last_from}
-            mov rcx, {in bytes}
-            std
-            movsb
-            cld
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            mov(rdi, in(last_to));
+            mov(rsi, in(last_from));
+            mov(rcx, in(bytes));
+            \std();
+            movsb();
+            cld();
+        });
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm {
-                mov x9, {in last_to}
-                mov x10, {in last_from}
-                mov x11, {in bytes}
-                'top:
-                ldrb w12, [x10], -1
-                strb w12, [x9], -1
-                subs x11, x11, 1
-                b.ne 'top
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.arm64.names;
+                mov(x9, in(last_to));
+                mov(x10, in(last_from));
+                mov(x11, in(bytes));
+                top := here();
+                ldr(u8, w12, post(mem(x10), -1));
+                str(u8, w12, post(mem(x9), -1));
+                subs(x11, x11, 1);
+                b(ne, top);
+            });
         } else {
-            unsafe lang.arch.thumb.asm {
-                'top:
-                ldrb r0, [{in(r2) last_from}], -1
-                strb r0, [{in(r1) last_to}], -1
-                subs r3, {in(r3) bytes}, 1
-                bne 'top
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.thumb.names;
+                top := here();
+                ldrb(r0, post(mem(in(last_from).at(r2)), -1));
+                strb(r0, post(mem(in(last_to).at(r1)), -1));
+                subs(r3, in(bytes).at(r3), 1);
+                b(ne, top);
+            });
         }
     }
 };

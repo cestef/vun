@@ -19,14 +19,6 @@ pub(crate) struct Group {
     pub(crate) anchor: Option<NodeKind>,
 }
 
-impl Group {
-    /// The spacing inside the group: its row's, except that a value bound to an instruction's
-    /// operand is tight, `{in a}`.
-    fn inside(self) -> Spacing {
-        if self.anchor == Some(NodeKind::Bound) { Spacing::Tight } else { self.row.inside }
-    }
-}
-
 /// Where two tokens stand towards the groups around them.
 pub(crate) struct Between {
     /// The group `next` closes, if it closes one.
@@ -41,11 +33,10 @@ impl Tok {
     pub(crate) fn spaced(self, next: Self, between: &Between) -> bool {
         if let Some(row) = self.kind.delimiter() {
             // An empty group is tight: `()`, `.{}`.
-            let group = Group { row, anchor: self.anchor };
-            return next.kind != row.close && group.inside() == Spacing::Spaced;
+            return next.kind != row.close && row.inside == Spacing::Spaced;
         }
         if let Some(group) = between.closing {
-            return group.inside() == Spacing::Spaced;
+            return group.row.inside == Spacing::Spaced;
         }
         if SEPARATORS.contains(&next.kind) || between.closed == Some(NodeKind::ArrayType) {
             return false;
@@ -54,25 +45,21 @@ impl Tok {
         let prefix = matches!(self.anchor, Some(NodeKind::Prefix | NodeKind::Spread | NodeKind::Staged))
             && !self.kind.is_keyword();
         let dot = |t: Self| {
-            t.kind == TokenKind::Dot
-                && matches!(
-                    t.anchor,
-                    Some(NodeKind::Member | NodeKind::DotName | NodeKind::Asm | NodeKind::Suffix)
-                )
+            t.kind == TokenKind::Dot && matches!(t.anchor, Some(NodeKind::Member | NodeKind::DotName))
         };
         if prefix
             || dot(self)
-            || matches!(next.anchor, Some(NodeKind::Postfix | NodeKind::Writeback))
-            || (dot(next) && matches!(next.anchor, Some(NodeKind::Member | NodeKind::Asm | NodeKind::Suffix)))
+            || matches!(next.anchor, Some(NodeKind::Postfix))
+            || (dot(next) && next.anchor == Some(NodeKind::Member))
         {
             return false;
         }
-        // A call, an index, a typed literal, a selection and a flow's register open right after
-        // what they apply to: `f(x)`, `a[i]`, `Point{ }`, `..std.{ fmt }`, `{in(rdi) p}`.
+        // A call, an index, a typed literal and a selection open right after what they apply to:
+        // `f(x)`, `a[i]`, `Point{ }`, `..std.{ fmt }`.
         let applied = matches!(
             next.anchor,
             Some(NodeKind::Call | NodeKind::Index | NodeKind::TypedLit | NodeKind::Select)
-        ) || self.anchor == Some(NodeKind::Flow);
+        );
         if next.kind.opens() && applied {
             return false;
         }

@@ -49,7 +49,7 @@ impl Session {
         let (declaring, decl) = match self.db.get::<NameSite>(&ExprRef::new(key.clone(), hir, callee))? {
             Declaration::Site(Site::Decl(decl)) => (decl.file, decl.decl.id),
             Declaration::Local(origin) => (key, Self::local_decl(hir, origin)?),
-            Declaration::Site(Site::Namespace(_)) => return None,
+            Declaration::Site(Site::Namespace(_) | Site::Variant { .. }) => return None,
         };
         let declared = self.db.get::<Parsed>(&declaring)?;
         let decl = &declared.hir.decls[decl];

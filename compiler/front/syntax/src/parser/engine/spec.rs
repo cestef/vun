@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use vun_grammar::{Child, KindSet, Level, NodeKind, OPERAND_CONTEXTS, TRANSPARENT, TokenSet};
+use vun_grammar::{Child, KindSet, Level, NodeKind, TRANSPARENT, TokenSet};
 
 /// The kinds of `transparent`.
 static TRANSPARENT_KINDS: LazyLock<KindSet> =
@@ -26,15 +26,11 @@ pub(super) struct Spec {
     pub(super) starting: Option<TokenSet>,
     /// How tightly it holds the forms continuing it.
     pub(super) level: Level,
-    /// The kinds `operand_contexts` makes operands here, in place of those starting with the same
-    /// tokens, inherited by everything read inside.
-    pub(super) context: KindSet,
 }
 
 impl Spec {
-    /// What a position reading `child` takes at `level`, read in `context`.
-    pub(super) fn child(child: &Child, level: Level, context: KindSet) -> Self {
-        let rows = OPERAND_CONTEXTS.iter().filter(|row| row.fields.contains(&child.field));
+    /// What a position reading `child` takes at `level`.
+    pub(super) fn child(child: &Child, level: Level) -> Self {
         Self {
             free: child.kinds.is_none(),
             named: child.kinds.unwrap_or_default(),
@@ -43,7 +39,6 @@ impl Spec {
             leading: child.field.leading(),
             starting: child.starting,
             level,
-            context: rows.fold(context, |set, row| set.union(KindSet::of(row.kinds))),
         }
     }
 
@@ -58,7 +53,6 @@ impl Spec {
             leading: self.leading.union(other.leading),
             starting: self.starting.zip(other.starting).map(|(a, b)| a.union(b)),
             level: self.level.max(other.level),
-            context: self.context.union(other.context),
         }
     }
 
@@ -72,10 +66,10 @@ impl Spec {
         self.held().contains(kind)
     }
 
-    /// The kinds a node may stand here as: those named, of the context, an `Error`, and where it
-    /// is free, operands and the parts admitted.
+    /// The kinds a node may stand here as: those named, an `Error`, and where it is free, operands
+    /// and the parts admitted.
     fn held(&self) -> KindSet {
-        let named = self.named.union(self.context).with(NodeKind::Error);
+        let named = self.named.with(NodeKind::Error);
         if self.free { named.union(NodeKind::operands()).union(self.admits) } else { named }
     }
 
@@ -98,7 +92,7 @@ impl Spec {
         let continuing = self.named.iter().any(NodeKind::continues);
         let named = if continuing { self.named.leading() } else { self.named };
         let parts = named.union(self.leading);
-        if self.free || continuing { parts.union(NodeKind::operands()).union(self.context) } else { parts }
+        if self.free || continuing { parts.union(NodeKind::operands()) } else { parts }
     }
 
     /// The transparent kinds that may stand for a kind named, where nothing else reaches them.

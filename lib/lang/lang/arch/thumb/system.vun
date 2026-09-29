@@ -49,10 +49,8 @@ nop := _t.Instruction{ .forms = &[.{ .base = 0xbf00, .args = &[] }] };
 /// Barriers: every access before completes before any after (`dsb`), in order of memory
 /// (`dmb`), and the instructions after are fetched again (`isb`).
 barriers := _t.Family{
-    .members = &[
-        _t.Member{ .name = .dsb, .bits = 0x40 },
-        _t.Member{ .name = .dmb, .bits = 0x50 },
-        _t.Member{ .name = .isb, .bits = 0x60 },
-    ],
     .forms = &[.{ .base = .\or(0xf3bf8f00), .args = &[.{ .kind = .barrier, .access = .read }] }],
 };
+dsb := _t.Member{ .family = barriers, .bits = 0x40 };
+dmb := _t.Member{ .family = barriers, .bits = 0x50 };
+isb := _t.Member{ .family = barriers, .bits = 0x60 };

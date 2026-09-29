@@ -1,34 +1,36 @@
 # asm.unknown_operand
 
-An operand is none the architecture has: a word that names no register or condition, a label
-the block does not mark, or an expression that is not an operand.
+An operand is none the architecture has: a value that names no register, condition or choice, a
+run-time value not bound to a register, or an output that is no place.
 
-An operand is a register or a condition as the table names it, an integer, a label `'name` the
-block marks with `'name:`, memory `[...]`, or a Vun value bound to it in braces (spec 07,
-section 6). Other Vun expressions go in braces: `{in f(x)}`.
+An operand is a register, a condition or a choice as the table names it, an integer known at
+compile time, a label, memory (`mem(...)`), or a Vun value bound to a register by `in`, `out` or
+`inout` (spec 07, section 6). A value known only at run time is passed with `in(e)`.
 
 ## Example
 
 ```vun
-two := () -> u64 {
+two := (x: u64) -> u64 {
     mut r: u64 = 0;
-    unsafe lang.arch.x86_64.asm {
-        mov {out r}, rxa //~ asm.unknown_operand
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(out(r), x); //~ asm.unknown_operand
+    });
     r
 };
 ```
 
 ## Fix
 
-Name a register of the table:
+Bind the value to a register:
 
 ```vun
-two := () -> u64 {
+two := (x: u64) -> u64 {
     mut r: u64 = 0;
-    unsafe lang.arch.x86_64.asm {
-        mov {out r}, rax
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(out(r), in(x));
+    });
     r
 };
 ```

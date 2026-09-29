@@ -67,7 +67,7 @@ impl Session {
         let value = match &site {
             Some(Site::Namespace(ns)) => Some(Value::Namespace(ns.clone())),
             Some(Site::Decl(decl)) => self.db.get::<DeclValue>(decl).ok(),
-            None => None,
+            Some(Site::Variant { .. }) | None => None,
         };
         match value {
             Some(Value::Namespace(ns)) => self.namespace_members(&object.file, &ns),
@@ -141,6 +141,7 @@ impl Session {
     fn site_class(&self, site: Option<Site>) -> Class {
         match site {
             Some(Site::Decl(decl)) => Names::declared(self, &decl).0,
+            Some(Site::Variant { .. }) => Class::Variant,
             Some(Site::Namespace(_)) => Class::Namespace,
             None => Class::Variable,
         }

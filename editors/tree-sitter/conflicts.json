@@ -1,179 +1,212 @@
 [
   [
-    "_attr_in_operands",
+    "_attr_as_args",
     "attr"
   ],
   [
-    "_break_in_operands",
-    "_operand_in_operands",
-    "break"
+    "_attr_as_body",
+    "attr"
   ],
   [
-    "_break_in_operands",
-    "break"
+    "_attr_as_condition",
+    "attr"
   ],
   [
-    "_doc_in_operands",
+    "_attr_as_fields",
+    "attr"
+  ],
+  [
+    "_attr_as_head",
+    "attr"
+  ],
+  [
+    "_attr_as_items",
+    "_attr_as_params",
+    "attr"
+  ],
+  [
+    "_attr_as_items",
+    "attr"
+  ],
+  [
+    "_attr_as_members",
+    "_attr_unterminated"
+  ],
+  [
+    "_attr_as_params",
+    "attr"
+  ],
+  [
+    "_attr_as_pattern",
+    "attr"
+  ],
+  [
+    "_attr_as_statements",
+    "_attr_unterminated"
+  ],
+  [
+    "_attr_as_statements",
+    "attr"
+  ],
+  [
+    "_attr_as_values",
+    "attr"
+  ],
+  [
+    "_attr_as_variants",
+    "attr"
+  ],
+  [
+    "_attr_staged_forms",
+    "_attr_unterminated"
+  ],
+  [
+    "_attr_staged_forms",
+    "_attr_unterminated",
+    "_operand"
+  ],
+  [
+    "_doc_as_args",
     "doc"
   ],
   [
-    "_dot_name_in_operands",
-    "dot_name"
+    "_doc_as_body",
+    "doc"
   ],
   [
-    "_dot_name_in_operands",
-    "dot_name",
-    "suffix"
+    "_doc_as_condition",
+    "doc"
   ],
   [
-    "_dot_name_in_operands",
-    "suffix"
+    "_doc_as_fields",
+    "doc"
   ],
   [
-    "_enum_in_operands",
-    "enum"
+    "_doc_as_head",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands"
+    "_doc_as_items",
+    "_doc_as_params",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "_paren_in_operands",
-    "_tuple_in_operands"
+    "_doc_as_items",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "_tuple_in_operands"
+    "_doc_as_members",
+    "_doc_unterminated"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "_tuple_in_operands",
-    "fn"
+    "_doc_as_params",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "_tuple_in_operands",
-    "fn",
-    "fn_type",
-    "tuple"
+    "_doc_as_pattern",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "fn"
+    "_doc_as_statements",
+    "_doc_unterminated"
   ],
   [
-    "_fn_in_operands",
-    "_fn_type_in_operands",
-    "fn",
-    "fn_type"
+    "_doc_as_statements",
+    "doc"
   ],
   [
-    "_fn_in_operands",
-    "fn"
+    "_doc_as_values",
+    "doc"
   ],
   [
-    "_fn_type_in_operands",
-    "_paren_in_operands",
-    "_tuple_in_operands"
+    "_doc_as_variants",
+    "doc"
   ],
   [
-    "_fn_type_in_operands",
-    "_tuple_in_operands"
+    "_doc_staged_forms",
+    "_doc_unterminated"
   ],
   [
-    "_fn_type_in_operands",
-    "_tuple_in_operands",
-    "fn_type",
-    "tuple"
-  ],
-  [
-    "_fn_type_in_operands",
-    "fn_type"
-  ],
-  [
-    "_for_in_operands",
-    "_operand",
-    "for"
-  ],
-  [
-    "_for_in_operands",
-    "for"
-  ],
-  [
-    "_if_in_operands",
-    "if"
+    "_doc_staged_forms",
+    "_doc_unterminated",
+    "_operand"
   ],
   [
     "_operand",
-    "_operand_in_operands"
-  ],
-  [
-    "_operand",
-    "_operand_in_operands",
-    "_typed_lit_in_operands",
-    "typed_lit"
-  ],
-  [
-    "_operand",
-    "_quote_in_operands",
-    "quote"
-  ],
-  [
-    "_operand",
-    "_struct_in_operands",
-    "struct"
-  ],
-  [
-    "_operand",
-    "_typed_lit_in_operands",
-    "typed_lit"
+    "_prefix_staged_forms",
+    "_prefix_unterminated"
   ],
   [
     "_operand",
     "typed_lit"
   ],
   [
-    "_operand_in_operands",
-    "_typed_lit_in_operands",
-    "typed_lit"
+    "_prefix_as_args",
+    "prefix"
   ],
   [
-    "_quote_in_operands",
-    "quote"
+    "_prefix_as_body",
+    "prefix"
   ],
   [
-    "_return_in_operands",
-    "return"
+    "_prefix_as_condition",
+    "prefix"
   ],
   [
-    "_struct_in_operands",
-    "struct"
+    "_prefix_as_fields",
+    "prefix"
   ],
   [
-    "_struct_lit_in_operands",
-    "struct_lit"
+    "_prefix_as_head",
+    "prefix"
   ],
   [
-    "_tuple_in_operands",
-    "tuple"
+    "_prefix_as_items",
+    "_prefix_as_params",
+    "prefix"
   ],
   [
-    "_typed_lit_in_operands",
-    "typed_lit"
+    "_prefix_as_items",
+    "prefix"
+  ],
+  [
+    "_prefix_as_members",
+    "_prefix_unterminated"
+  ],
+  [
+    "_prefix_as_params",
+    "prefix"
+  ],
+  [
+    "_prefix_as_pattern",
+    "prefix"
+  ],
+  [
+    "_prefix_as_statements",
+    "_prefix_unterminated"
+  ],
+  [
+    "_prefix_as_statements",
+    "prefix"
+  ],
+  [
+    "_prefix_as_values",
+    "prefix"
+  ],
+  [
+    "_prefix_as_variants",
+    "prefix"
+  ],
+  [
+    "_prefix_staged_forms",
+    "_prefix_unterminated"
   ],
   [
     "array",
     "closure"
   ],
   [
-    "array",
-    "memory"
+    "binding"
   ],
   [
     "field",

@@ -9,6 +9,7 @@ use vun_origin::OriginId;
 use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
+use vun_sema::typeck::Operation;
 use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
@@ -36,6 +37,14 @@ impl Builder<'_, '_, '_> {
         let unbuilt = move || Unbuilt::at(origin);
         if let Some(value) = self.frame_call(call, callee, args, origin)? {
             return Ok(value);
+        }
+        // A value that is no function is called through its type's witness.
+        if self.typed().is_some_and(|t| t.operators.contains_key(&Operation::Expr(call))) {
+            return self.call_through(call, callee, args, origin);
+        }
+        // A block of instructions is the block typing checked.
+        if self.typed().is_some_and(|t| t.asm.contains_key(&call)) {
+            return self.asm(call, origin);
         }
         // The `$` arguments the call leaves out, as the typer inferred them.
         let inferred = self.typed().and_then(|t| t.inferred.get(&call).cloned()).unwrap_or_default();

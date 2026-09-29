@@ -161,7 +161,7 @@ impl<'s> Grammar<'s> {
                     })?;
                     enums.push(Enum::kind(d, lists));
                 }
-                Literal::Enum(variants) => enums.push(Enum {
+                Literal::Enum(variants, _) => enums.push(Enum {
                     name: Cow::Borrowed(d.name),
                     doc: docs(&d.doc),
                     variants: variants

@@ -20,12 +20,12 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
         table.ops.iter().map(|op| (op.name.as_str().to_owned(), op.forms.len())).collect::<Vec<_>>()
     };
     let x86_64: Vec<_> =
-        vun_isa_x86_64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
+        vun_isa_x86_64::Op::ALL.iter().map(|op| (op.name().to_owned(), op.forms().len())).collect();
     let arm64: Vec<_> =
-        vun_isa_arm64::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
+        vun_isa_arm64::Op::ALL.iter().map(|op| (op.name().to_owned(), op.forms().len())).collect();
     assert_eq!(read(Arch::X86_64), x86_64);
     let thumb: Vec<_> =
-        vun_isa_thumb::Op::ALL.iter().map(|op| (op.mnemonic().to_owned(), op.forms().len())).collect();
+        vun_isa_thumb::Op::ALL.iter().map(|op| (op.name().to_owned(), op.forms().len())).collect();
     assert_eq!(read(Arch::Arm64), arm64);
     assert_eq!(read(Arch::Thumb), thumb);
 }
@@ -36,18 +36,17 @@ const NAKED: &str = "\
 #[abi.naked]
 hop := () -> never {
     unsafe {
-        lang.arch.x86_64.asm {
-            sub rsp, 8
-            call {finish}
-        };
+        lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            sub(rsp, 8);
+            call(finish);
+        });
         lang.hint.unreachable()
     }
 };
 #[abi.naked]
 leap := () -> never {
-    unsafe lang.arch.x86_64.asm {
-        jmp {finish}
-    }
+    unsafe lang.arch.asm({ ..lang.arch.x86_64.names; jmp(finish); })
 };
 finish := () -> never { std.os.linux.kernel.end(7) };
 start := std.os.start(main);
@@ -86,11 +85,12 @@ start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     x: u64 = (sys.args().len() + 40).wrap(u64);
     mut y: u64 = 0;
-    unsafe lang.arch.x86_64.asm {
-        lea rcx, [{in(rax) x} + 1]
-        mov rax, rcx
-        mov {out(rdx) y}, rcx
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        lea(rcx, mem(in(x).at(rax), 1));
+        mov(rax, rcx);
+        mov(out(y).at(rdx), rcx);
+    });
     std.os.Exit.of(if x == 41 and y == 42 { 7 } else { 1 })
 };
 ";
@@ -111,7 +111,7 @@ fn a_value_read_in_a_register_a_block_writes_is_kept_apart_through_each_backend(
 fn thumb(line: &str) -> String {
     format!(
         "#[link.export(\"f\")]\nf := (at: usize) -> u32 {{\n    mut (low, high): (u32, u32) = (0, 0);\n    \
-         unsafe lang.arch.thumb.asm {{\n        {line}\n    }};\n    low ^ high\n}};\n"
+         unsafe lang.arch.asm({{ ..lang.arch.thumb.names; {line}; }});\n    low ^ high\n}};\n"
     )
 }
 
@@ -131,16 +131,21 @@ fn a_block_is_refused_for_a_processor_lacking_what_one_of_its_forms_needs() {
     let feature = |name| Some(Why::Unavailable(Needed::Feature(Symbol::intern(name))));
     let cases = [
         // Two words loaded exclusively: Arm's application profile.
-        ("paired", "ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]", m4f, feature("application")),
-        ("paired", "ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]", a, None),
+        (
+            "paired",
+            "ldrexd(out(low).at(r2), out(high).at(r3), mem(in(at).at(r0)))",
+            m4f,
+            feature("application"),
+        ),
+        ("paired", "ldrexd(out(low).at(r2), out(high).at(r3), mem(in(at).at(r0)))", a, None),
         // A special register: the microcontroller profile's, but for the flags.
-        ("masked", "mrs {out(r2) low}, primask", a, feature("microcontroller")),
-        ("masked", "mrs {out(r2) low}, primask", m4f, None),
-        ("flags", "mrs {out(r2) low}, apsr", a, None),
+        ("masked", "mrs(out(low).at(r2), primask)", a, feature("microcontroller")),
+        ("masked", "mrs(out(low).at(r2), primask)", m4f, None),
+        ("flags", "mrs(out(low).at(r2), apsr)", a, None),
         // Double precision: Cortex-M4F computes single precision alone.
-        ("double", "vadd.f64 d0, d0, d1", m4f, Some(Why::Unavailable(Needed::Float(64)))),
-        ("double", "vadd.f64 d0, d0, d1", a, None),
-        ("single", "vadd.f32 s0, s0, s1", m4f, None),
+        ("double", "vadd(f64, d0, d0, d1)", m4f, Some(Why::Unavailable(Needed::Float(64)))),
+        ("double", "vadd(f64, d0, d0, d1)", a, None),
+        ("single", "vadd(f32, s0, s0, s1)", m4f, None),
     ];
     for (name, line, target, why) in cases {
         assert_eq!(unlowered(name, &thumb(line), target), why, "{line} on {target:?}");

@@ -26,7 +26,7 @@ impl Decl<'_> {
         let field = Item::Field(name, value);
         let comma = Writer::spelling(TokenKind::Comma);
         let Some(last) = fields.last() else {
-            let decl = Decl { name, doc: Vec::new(), value: value.clone(), span: self.span };
+            let decl = Decl::new(name, value.clone(), self.span);
             return Ok(self.edit(lo, hi, Literal::Record(vec![decl]).laid_out(indent, lo - line)?));
         };
         let end = last.span.range.hi as usize;

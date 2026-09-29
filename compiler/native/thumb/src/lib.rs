@@ -98,7 +98,7 @@ impl Arch for Thumb2 {
     }
 
     fn jump(code: &mut Asm<Address>, to: vun_asm::Label) {
-        code.emit(Op::B, Size::B32, &[to.into()]);
+        code.emit(Op::BAlways, Size::B32, &[to.into()]);
     }
 
     /// A double lives in its home, two words no general register holds; everything else,

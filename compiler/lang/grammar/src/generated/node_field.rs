@@ -54,15 +54,6 @@ pub enum NodeField {
     Body,
     Label,
     Control,
-    Arch,
-    Lines,
-    Suffix,
-    Operands,
-    Name,
-    Flow,
-    Register,
-    Parts,
-    Writeback,
 }
 impl NodeField {
     /// Every field, in the order first named.
@@ -113,15 +104,6 @@ impl NodeField {
         Self::Body,
         Self::Label,
         Self::Control,
-        Self::Arch,
-        Self::Lines,
-        Self::Suffix,
-        Self::Operands,
-        Self::Name,
-        Self::Flow,
-        Self::Register,
-        Self::Parts,
-        Self::Writeback,
     ];
     /// The name of this field in `nodes.vun`.
     #[must_use]
@@ -173,15 +155,6 @@ impl NodeField {
             Self::Body => "body",
             Self::Label => "label",
             Self::Control => "control",
-            Self::Arch => "arch",
-            Self::Lines => "lines",
-            Self::Suffix => "suffix",
-            Self::Operands => "operands",
-            Self::Name => "name",
-            Self::Flow => "flow",
-            Self::Register => "register",
-            Self::Parts => "parts",
-            Self::Writeback => "writeback",
         }
     }
 }

@@ -117,8 +117,6 @@ TokenKind := .{
 Context := enum {
     /// After the pattern of a `for`.
     for_pattern,
-    /// After a `.` and before `{`: a block of an architecture's instructions (spec 07, section 6).
-    asm_block,
 };
 
 /// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
@@ -128,13 +126,6 @@ Context := enum {
 BorrowWord := .{
     .qualifiers = ["temp"],
     .modes = ["mut", "out", "take", "static"],
-};
-
-/// The words opening a value bound to an instruction's operand (spec 07, section 6): whether the
-/// instruction reads it, writes it, or both. They are words only there.
-#[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
-Flow := .{
-    .flows = ["in", "out", "inout"],
 };
 
 /// How an infix operator groups with its own level.
@@ -147,7 +138,6 @@ Assoc := enum {
 /// Words that are keywords only in one context.
 contextual := [
     .{ .text = "in", .context = .for_pattern },
-    .{ .text = "asm", .context = .asm_block },
 ];
 
 /// How the formatter spaces tokens where a table says (spec 13, section 5).

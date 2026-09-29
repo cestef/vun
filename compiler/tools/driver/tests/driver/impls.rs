@@ -103,3 +103,39 @@ mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { 
         [(errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned())]
     );
 }
+
+#[test]
+fn a_value_that_is_no_function_is_called_through_its_witness() {
+    let fixture = Fixture::new("impls-holed");
+    let file = fixture.root.write(
+        "counter.vun",
+        "\
+Counter := struct { calls: usize };
+#[impl(lang.ops.Call(_, usize)(Counter))]
+counter_call := ($Params: type) -> type { struct {
+    call := (self: &mut Counter, args: Params) -> usize {
+        self.calls += 1;
+        lang.meta.items(Params).len()
+    };
+} };
+count := () -> usize {
+    mut c: Counter = .{ .calls = 0 };
+    (c(1, true) + c() + c(2) + c.calls).wrap(usize)
+};
+Six := Int(0..=count());
+fits: Six = 6;
+over: Six = 7;
+wrong := () -> bool {
+    mut c: Counter = .{ .calls = 0 };
+    c(1)
+};
+",
+    );
+    assert_eq!(
+        fixture.reported(&file),
+        [
+            (errors::INT_DOES_NOT_FIT, "value does not fit the type `Six`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..2^64)`".to_owned()),
+        ]
+    );
+}

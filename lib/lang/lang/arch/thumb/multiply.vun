@@ -20,20 +20,16 @@ mls := _t.Instruction{ .forms = &[.{ .base = 0xfb000010, .args = &[_d_w, _n, _m,
 
 /// A 64-bit product, signed or not, its low half first; added to the pair with accumulation.
 long := _t.Family{
-    .members = &[
-        _t.Member{ .name = .smull, .bits = 0x800000 },
-        _t.Member{ .name = .umull, .bits = 0xa00000 },
-    ],
     .forms = &[.{ .base = .\or(0xfb000000), .args = &[_low_w, _d_w, _n, _m], .apart = &[[0, 1]] }],
 };
+smull := _t.Member{ .family = long, .bits = 0x800000 };
+umull := _t.Member{ .family = long, .bits = 0xa00000 };
 
 long_add := _t.Family{
-    .members = &[
-        _t.Member{ .name = .smlal, .bits = 0xc00000 },
-        _t.Member{ .name = .umlal, .bits = 0xe00000 },
-    ],
     .forms = &[.{ .base = .\or(0xfb000000), .args = &[_low_rw, _d_rw, _n, _m], .apart = &[[0, 1]] }],
 };
+smlal := _t.Member{ .family = long_add, .bits = 0xc00000 };
+umlal := _t.Member{ .family = long_add, .bits = 0xe00000 };
 
 /// Division rounding toward zero; a division by zero gives zero.
 sdiv := _t.Instruction{ .forms = &[.{ .base = 0xfb90f0f0, .args = &[_d_w, _n, _m], .requires = _divide }] };

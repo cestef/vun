@@ -12,15 +12,17 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     mut product: f32 = a;
     mut sum: f64 = c;
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm {
-            mulss {inout product}, {in b}
-            addsd {inout sum}, {in d}
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            muls(inout(product), in(b));
+            adds(inout(sum), in(d));
+        });
     } else {
-        unsafe lang.arch.arm64.asm {
-            fmul {out product}, {in a}, {in b}
-            fadd {out sum}, {in c}, {in d}
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.arm64.names;
+            fmul(out(product), in(a), in(b));
+            fadd(out(sum), in(c), in(d));
+        });
     }
     mut failed: Int(0..=2) = 0;
     if product != 6.0 { failed +|= 1; }

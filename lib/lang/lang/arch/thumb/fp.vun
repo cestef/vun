@@ -8,12 +8,12 @@ _t := lang.arch.thumb;
 _single: ?_t.Need = .some(.float(.b32));
 _double: ?_t.Need = .some(.float(.b64));
 
-_float: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64"], .requires = _double }];
+_float: &[_t.Sized] = &[.{ .size = .b32, .types = &[f32] }, .{ .size = .b64, .bits = 0x100, .types = &[f64], .requires = _double }];
 _plain: &[_t.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x100 }];
-_to_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["s32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["s32", "f64"], .requires = _double }];
-_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["u32", "f32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["u32", "f64"], .requires = _double }];
-_from_signed: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "s32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "s32"], .requires = _double }];
-_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .qualifiers = &["f32", "u32"] }, .{ .size = .b64, .bits = 0x100, .qualifiers = &["f64", "u32"], .requires = _double }];
+_to_signed: &[_t.Sized] = &[.{ .size = .b32, .types = &[i32, f32] }, .{ .size = .b64, .bits = 0x100, .types = &[i32, f64], .requires = _double }];
+_to_unsigned: &[_t.Sized] = &[.{ .size = .b32, .types = &[u32, f32] }, .{ .size = .b64, .bits = 0x100, .types = &[u32, f64], .requires = _double }];
+_from_signed: &[_t.Sized] = &[.{ .size = .b32, .types = &[f32, i32] }, .{ .size = .b64, .bits = 0x100, .types = &[f64, i32], .requires = _double }];
+_from_unsigned: &[_t.Sized] = &[.{ .size = .b32, .types = &[f32, u32] }, .{ .size = .b64, .bits = 0x100, .types = &[f64, u32], .requires = _double }];
 
 _d_w: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .write };
 _d: _t.Arg = .{ .kind = .fpr(.inst, .d), .access = .read };
@@ -34,24 +34,20 @@ _mem_w: _t.Arg = .{ .kind = .mem(.fp, .inst), .access = .write };
 
 /// Arithmetic of two operands.
 binary := _t.Family{
-    .members = &[
-        _t.Member{ .name = .vadd, .bits = 0x300000 },
-        _t.Member{ .name = .vsub, .bits = 0x300040 },
-        _t.Member{ .name = .vmul, .bits = 0x200000 },
-        _t.Member{ .name = .vdiv, .bits = 0x800000 },
-    ],
     .forms = &[.{ .base = .\or(0xee000a00), .sizes = _float, .args = &[_d_w, _n, _m], .requires = _single }],
 };
+vadd := _t.Member{ .family = binary, .bits = 0x300000 };
+vsub := _t.Member{ .family = binary, .bits = 0x300040 };
+vmul := _t.Member{ .family = binary, .bits = 0x200000 };
+vdiv := _t.Member{ .family = binary, .bits = 0x800000 };
 
 /// Arithmetic of one operand, and a move between floating-point registers.
 unary := _t.Family{
-    .members = &[
-        _t.Member{ .name = .vneg, .bits = 0x10040 },
-        _t.Member{ .name = .vabs, .bits = 0xc0 },
-        _t.Member{ .name = .vsqrt, .bits = 0x100c0 },
-    ],
     .forms = &[.{ .base = .\or(0xeeb00a00), .sizes = _float, .args = &[_d_w, _m], .requires = _single }],
 };
+vneg := _t.Member{ .family = unary, .bits = 0x10040 };
+vabs := _t.Member{ .family = unary, .bits = 0xc0 };
+vsqrt := _t.Member{ .family = unary, .bits = 0x100c0 };
 
 /// Moves between floating-point registers, and between them and general ones: a single-precision
 /// register's bits, or a double-precision one's as two general registers, the low half first.
@@ -86,32 +82,32 @@ vstr := _t.Instruction{ .forms = &[.{ .base = 0xed000a00, .sizes = _plain, .args
 /// single-precision register.
 vcvt_signed := _t.Instruction{
     .forms = &[.{ .base = 0xeebd0ac0, .sizes = _to_signed, .args = &[_s_d_w, _m], .requires = _single }],
-    .mnemonic = .some("vcvt"),
 };
 
 vcvt_unsigned := _t.Instruction{
     .forms = &[.{ .base = 0xeebc0ac0, .sizes = _to_unsigned, .args = &[_s_d_w, _m], .requires = _single }],
-    .mnemonic = .some("vcvt"),
 };
 
 vcvt_from_signed := _t.Instruction{
     .forms = &[.{ .base = 0xeeb80ac0, .sizes = _from_signed, .args = &[_d_w, _s_m], .requires = _single }],
-    .mnemonic = .some("vcvt"),
 };
 
 vcvt_from_unsigned := _t.Instruction{
     .forms = &[.{ .base = 0xeeb80a40, .sizes = _from_unsigned, .args = &[_d_w, _s_m], .requires = _single }],
-    .mnemonic = .some("vcvt"),
 };
 
 /// Conversions between the precisions: to double from single, and to single from double.
 vcvt_precision := _t.Instruction{
     .forms = &[
-        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .qualifiers = &["f64", "f32"], .requires = _double }], .args = &[_d_w, _s_m], .requires = _single },
-        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .qualifiers = &["f32", "f64"], .requires = _double }], .args = &[_d_w, _d_m], .requires = _single },
+        .{ .base = 0xeeb70ac0, .sizes = &[.{ .size = .b64, .types = &[f64, f32], .requires = _double }], .args = &[_d_w, _s_m], .requires = _single },
+        .{ .base = 0xeeb70bc0, .sizes = &[.{ .size = .b32, .types = &[f32, f64], .requires = _double }], .args = &[_d_w, _d_m], .requires = _single },
     ],
-    .mnemonic = .some("vcvt"),
 };
+
+/// Every conversion, as its types say (`vcvt(i32, f32, s0, s1)`).
+vcvt := _t.Mnemonic{ .instructions = &[
+    .vcvt_signed, .vcvt_unsigned, .vcvt_from_signed, .vcvt_from_unsigned, .vcvt_precision,
+] };
 
 /// Stores double-precision registers below the stack pointer and moves it down; `vpop` loads them
 /// back and moves it up.

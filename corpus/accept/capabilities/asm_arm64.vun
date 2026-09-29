@@ -1,34 +1,34 @@
 //! Blocks of arm64 instructions (spec 07, section 6): registers named by width (`w0`, `x0`),
-//! conditions after the mnemonic's `.`, access widths as its suffix, barriers as words, and
-//! memory as `[base, offset]`, written back before the access with `!` or after it.
+//! conditions and access widths as leading operands, barriers as words, and memory as
+//! `mem(base, offset)`, written back before the access (`pre`) or after it (`post`).
 
 add3 := (a: u64) -> u64 {
     mut r: u64 = 0;
-    unsafe lang.arch.arm64.asm {
-        add {out r}, {in a}, 3
-    };
+    unsafe lang.arch.asm({ ..lang.arch.arm64.names; add(out(r), in(a), 3); });
     r
 };
 
 countdown := (n: u32) -> u32 {
     mut left: u32 = n;
-    unsafe lang.arch.arm64.asm {
-        'top:
-        subs {inout left}, {inout left}, 1
-        b.ne 'top
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.arm64.names;
+        top := here();
+        subs(inout(left), inout(left), 1);
+        b(ne, top);
+    });
     left
 };
 
 loads := (p: *u8) -> u64 {
     mut r: u64 = 0;
-    unsafe lang.arch.arm64.asm {
-        ldrb w1, [{in p}, 3]
-        ldr x2, [{in p}, 8]!
-        ldr x3, [{in p}], 16
-        add {out r}, x2, x3
-        dmb ish
-        mrs x4, nzcv
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.arm64.names;
+        ldr(u8, w1, mem(in(p), 3));
+        ldr(x2, pre(mem(in(p), 8)));
+        ldr(x3, post(mem(in(p)), 16));
+        add(out(r), x2, x3);
+        dmb(ish);
+        mrs(x4, nzcv);
+    });
     r
 };

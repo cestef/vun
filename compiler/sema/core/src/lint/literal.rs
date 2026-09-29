@@ -3,10 +3,10 @@
 
 use vun_hir::tree::{Entry, ExprId, ExprKind, Member};
 use vun_query::Cx;
+use vun_sema_ty::TyKind;
 use vun_sema_ty::item::ExprRef;
-use vun_sema_ty::{TyKind, Value};
 
-use crate::callable::Written;
+use crate::callable::{Callable, Written};
 use crate::env::Env;
 
 /// A literal, with the file it is written in: a value's, or the annotation of a primitive's
@@ -32,8 +32,8 @@ impl<'a, 'db> Literal<'a, 'db> {
         &self.env.parsed.hir.exprs[self.at.expr.id].kind
     }
 
-    /// Whether this struct literal is a namespace: declarations, no field, and no method
-    /// receiving the struct itself, which makes it a type with no data.
+    /// Whether this struct literal is a namespace: declarations or spreads of them, no field, and
+    /// no method receiving the struct itself, which makes it a type with no data.
     pub(super) fn namespace(&self) -> bool {
         let hir = &self.env.parsed.hir;
         let ExprKind::Struct(ns) = *self.kind() else { return false };
@@ -41,21 +41,21 @@ impl<'a, 'db> Literal<'a, 'db> {
         for member in hir.namespaces[ns].members.iter().filter_map(Entry::written) {
             match member {
                 Member::Decl(d) if self.receives(hir.decls[*d].value) => return false,
-                Member::Decl(_) => decls = true,
+                Member::Decl(_) | Member::Spread(_) => decls = true,
                 Member::Field(_) => fields = true,
-                Member::Spread(_) => {}
             }
         }
         decls && !fields
     }
 
     /// Whether `value`, the value of one of this struct's declarations, is a function whose first
-    /// parameter is the struct, by value or through a borrow or a pointer.
+    /// parameter is the struct, by value or through a borrow or a pointer: a function literal, or
+    /// a function or primitive it names (`at := lang.arch.at`).
     fn receives(&self, value: Option<ExprId>) -> bool {
-        let hir = &self.env.parsed.hir;
-        let Some(ExprKind::Fn { params, .. }) = value.map(|v| &hir.exprs[v].kind) else { return false };
-        let Some(ty) = params.iter().find_map(Entry::written).and_then(|p| p.ty) else { return false };
-        let Ok(Value::Type(ty)) = self.env.eval(ty) else { return false };
+        let Some(callable) = value.and_then(|v| Callable::of(self.env.eval(v).ok()?)) else { return false };
+        let Some(Some(ty)) = callable.types(&self.env).and_then(|types| types.into_iter().next()) else {
+            return false;
+        };
         let ty = ty.pointee().unwrap_or(ty);
         matches!(&*ty, TyKind::Nominal(n) if n.literal == self.at)
     }

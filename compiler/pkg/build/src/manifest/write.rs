@@ -15,7 +15,7 @@ impl Manifest {
     /// Its `package` literal: the fields the reader takes back, without defaults.
     #[must_use]
     pub fn literal(&self) -> Literal<'_> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.prelude_span };
+        let at = |name, value| Decl::new(name, value, self.prelude_span);
         let text = |s: String| Literal::String(Cow::Owned(s));
         let mut fields = vec![
             at(field::NAME, Literal::String(Cow::Borrowed(&self.name))),
@@ -50,14 +50,14 @@ impl Manifest {
     /// # Errors
     /// Returns why a field has no literal source.
     pub fn source(&self) -> Result<String, Unwritable> {
-        Decl { name: PACKAGE, doc: Vec::new(), value: self.literal(), span: self.prelude_span }.source()
+        Decl::new(PACKAGE, self.literal(), self.prelude_span).source()
     }
 }
 
 impl Source {
     /// Its fields in a `.deps` or `.replace` entry.
     fn fields(&self, span: Span) -> Vec<Decl<'_>> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span };
+        let at = |name, value| Decl::new(name, value, span);
         let text = |s: String| Literal::String(Cow::Owned(s));
         match self {
             Self::Path(path) => vec![at(field::PATH, Literal::String(Cow::Borrowed(path)))],
@@ -79,7 +79,7 @@ impl Replacement {
     /// Its entry in `.replace`.
     #[must_use]
     pub fn literal(&self) -> Literal<'_> {
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
+        let at = |name, value| Decl::new(name, value, self.span);
         let mut fields = vec![
             at(field::ID, Literal::Int(self.identity.id.into())),
             at(field::MAJOR, Literal::Int(self.identity.major.into())),
@@ -95,7 +95,7 @@ impl Dep {
     pub fn literal(&self) -> Literal<'_> {
         let mut fields = self.source.fields(self.span);
         let kind = DEP_KINDS.iter().find(|&&(_, k)| k == self.kind && k != DepKind::Vun);
-        let at = |name, value| Decl { name, doc: Vec::new(), value, span: self.span };
+        let at = |name, value| Decl::new(name, value, self.span);
         fields.extend(kind.map(|&(name, _)| at(field::KIND, Literal::Name(name))));
         Literal::Record(fields)
     }
@@ -125,7 +125,7 @@ impl Dep {
         {
             deps.insert(source, &self.name, &entry)
         } else {
-            let decl = Decl { name: &self.name, doc: Vec::new(), value: entry, span: self.span };
+            let decl = Decl::new(&self.name, entry, self.span);
             package.insert(source, field::DEPS, &Literal::Record(vec![decl]))
         }
     }

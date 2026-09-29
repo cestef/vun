@@ -1,8 +1,8 @@
 //! Thumb, the instruction set of Arm's M profile and of Arm's A profile in its Thumb state (spec
 //! 07, section 6): its registers, and each instruction with its forms as the toolchain's
 //! assembler encodes them (Armv7-M, Thumb-2 with the floating-point extension), with what each
-//! form reads and writes. The instructions are declared in `data`, `multiply`, `memory`,
-//! `control`, `fp` and `system`, what their operand positions take in `operand`; `vun-isa-thumb`'s
+//! form reads and writes. The instructions are declared in `branch`, `data`, `fp`, `memory`,
+//! `multiply` and `system`, what their operand positions take in `operand`; `vun-isa-thumb`'s
 //! tables are generated from these declarations.
 //!
 //! A form's base is its encoding: a halfword for a 16-bit instruction, the two halfwords of a
@@ -14,6 +14,7 @@
 Size := enum { b8, b16, b32, b64 };
 
 /// A general register, by its encoding.
+#[Registers{ .class = .general, .size = .some(.b32) }]
 Reg := enum {
     r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
     sp,
@@ -29,23 +30,21 @@ V := enum {
     v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31,
 };
 
-/// The names of the floating-point registers at each width: `s{n}` at 32 bits, and at 64 bits
-/// `d{k}` for `v{2k}` alone.
-fp_names := .{
-    .b32 = .{
-        .v0 = "s0", .v1 = "s1", .v2 = "s2", .v3 = "s3", .v4 = "s4", .v5 = "s5", .v6 = "s6", .v7 = "s7",
-        .v8 = "s8", .v9 = "s9", .v10 = "s10", .v11 = "s11", .v12 = "s12", .v13 = "s13", .v14 = "s14", .v15 = "s15",
-        .v16 = "s16", .v17 = "s17", .v18 = "s18", .v19 = "s19", .v20 = "s20", .v21 = "s21", .v22 = "s22", .v23 = "s23",
-        .v24 = "s24", .v25 = "s25", .v26 = "s26", .v27 = "s27", .v28 = "s28", .v29 = "s29", .v30 = "s30", .v31 = "s31",
-    },
-    .b64 = .{
-        .v0 = "d0", .v2 = "d1", .v4 = "d2", .v6 = "d3", .v8 = "d4", .v10 = "d5", .v12 = "d6", .v14 = "d7",
-        .v16 = "d8", .v18 = "d9", .v20 = "d10", .v22 = "d11", .v24 = "d12", .v26 = "d13", .v28 = "d14", .v30 = "d15",
-    },
+/// A floating-point register named at 32 bits, in the order of `V`.
+#[Registers{ .class = .fp, .size = .some(.b32) }]
+S := enum {
+    s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23, s24, s25, s26, s27, s28, s29, s30, s31,
+};
+
+/// A floating-point register named at 64 bits: `d{k}` is `v{2k}`.
+#[Registers{ .class = .fp, .size = .some(.b64), .step = 2 }]
+D := enum {
+    d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15,
 };
 
 /// A special register, which `mrs` reads and `msr` writes: the flags, the interrupt masks and
 /// the control of the stack and privilege.
+#[Registers{ .class = .special }]
 Special := enum {
     /// The flags; `msr` writes its `nzcvq` bits.
     apsr,
@@ -60,7 +59,10 @@ Special := enum {
 
 /// The registers `vmrs` names: the floating-point status and control register, and the flags it
 /// is read into.
-Status := enum { apsr_nzcv, fpscr };
+#[Registers{ .class = .status }]
+Status := enum {
+    apsr_nzcv, fpscr,
+};
 
 /// The classes of registers an operand names: general ones (`Reg`), floating-point ones (`V`),
 /// special ones (`Special`) and those `vmrs` names (`Status`).
@@ -85,19 +87,32 @@ Cond := enum {
 
 /// The interrupts `cpsid` and `cpsie` mask and unmask, by their bit: those of configurable
 /// priority and the faults (`f`, the mask `faultmask` holds), or those alone (`i`, `primask`).
-Mask := enum { f, i };
+#[Choice.mask]
+Mask := enum {
+    f, i,
+};
 
 /// The domain a barrier orders: the full system.
-Barrier := enum { sy };
+#[Choice.barrier]
+Barrier := enum {
+    sy,
+};
 
 /// A coprocessor, which `mrc` names by its number: the system control one is `p15`.
-Coprocessor := enum { p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15 };
+#[Choice.coprocessor]
+Coprocessor := enum {
+    p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15,
+};
 
 /// A register of a coprocessor, by its number: `mrc` names one by two of them (`c13, c0`), the
 /// thread pointer the kernel sets among the system control coprocessor's (`p15, 0, c13, c0, 3`).
-Cr := enum { c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15 };
+#[Choice.cr]
+Cr := enum {
+    c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15,
+};
 
-/// The kinds of named choice a position takes, each an enum of its own.
+/// The kinds of named choice a position takes, each an enum of its own marked with its kind as an
+/// attribute (`#[Choice.barrier]`).
 Choice := enum { mask, barrier, coprocessor, cr };
 
 /// What a form does with an operand, or with the flags.
@@ -142,22 +157,23 @@ Arg := struct {
     access: Access,
 };
 
-/// A width a form is defined at, the bits it sets in the word, the qualifiers written after the
-/// mnemonic, each after a `.` (`vcvt.s32.f32`), and what the form needs at this width beyond what
-/// it needs at every one.
-Sized := struct { size: Size, bits: u32 = 0, qualifiers: &[&[u8]] = &[], requires: ?Need = .none };
+/// A width a form is defined at, the bits it sets in the word, the types it computes, which a
+/// block writes before its operands and a listing after the mnemonic (`vcvt(i32, f32, ...)`,
+/// `vcvt.s32.f32`), and what the form needs at this width beyond what it needs at every one.
+Sized := struct { size: Size, bits: u32 = 0, types: &[type] = &[], requires: ?Need = .none };
 
-/// The qualifier naming the width of a form's encoding, after the mnemonic's `.`: `n` a 16-bit
-/// form, `w` a 32-bit one. A mnemonic written without it takes the first form its operands fit.
+/// The width of a form's encoding, which a block may write before its operands (`add(w, ...)`,
+/// `add.w`): `n` a 16-bit form, `w` a 32-bit one. An instruction called without it takes the
+/// first form its operands fit.
 Encoding := enum { n, w };
 
 /// A base word of the forms of a family: fixed, or its member's bits with these set.
 Word := enum { fixed(u32), \or(u32) };
 
-/// One form of an instruction, its base word of type `W`: the widths it is defined at, its
+/// One form of an instruction, its base word of type `Base`: the widths it is defined at, its
 /// operands, and what it reads and writes beyond them.
-Form := ($W: type) -> type { struct {
-    base: W,
+Form := ($Base: type) -> type { struct {
+    base: Base,
     sizes: &[Sized] = &[.{ .size = .b32 }],
     args: &[Arg],
     /// The mnemonic, where it is not the instruction's (`ldrb`).
@@ -173,12 +189,51 @@ Form := ($W: type) -> type { struct {
     requires: ?Need = .none,
 } };
 
-/// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is
-/// written `b`).
-Instruction := struct { forms: &[Form(u32)], mnemonic: ?&[u8] = .none };
+/// An instruction, named as its declaration is.
+Instruction := struct { forms: &[Form(u32)] };
 
-/// An instruction of a family, and the bits it sets in the family's base words.
-Member := struct { name: lang.meta.Name, bits: u32 = 0 };
+/// An instruction of a family, named as its declaration is, and the bits it sets in the family's
+/// base words.
+Member := struct { family: Family, bits: u32 = 0 };
 
-/// Instructions sharing their forms but for a few bits.
-Family := struct { members: &[Member], forms: &[Form(Word)] };
+/// Instructions sharing their forms but for a few bits, each a `Member` declared after it.
+Family := struct { forms: &[Form(Word)] };
+
+/// A mnemonic spelling several instructions, named here, each tried in order (`b` is `b_always`
+/// or, given a condition, `bcond`).
+Mnemonic := struct { instructions: &[lang.meta.Name] };
+
+/// What an enum of registers names, written as its attribute.
+Registers := lang.arch.Registers(Class, Size);
+
+/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
+#[impl(lang.ops.Call(_, ())(Instruction))]
+instruction_call := lang.arch.called(Instruction);
+#[impl(lang.ops.Call(_, ())(Member))]
+member_call := lang.arch.called(Member);
+#[impl(lang.ops.Call(_, ())(Mnemonic))]
+mnemonic_call := lang.arch.called(Mnemonic);
+
+/// The names a block of instructions is written with, spread first in it
+/// (`lang.arch.asm({ ..lang.arch.thumb.names; ... })`): the operand forms, the registers at each
+/// width, the conditions, the named choices and the instructions.
+names := struct {
+    ..lang.arch.{ in, out, inout, mem, scaled, pre, post, here, label, place };
+    ..lang.arch.thumb.Reg;
+    ..lang.arch.thumb.S;
+    ..lang.arch.thumb.D;
+    ..lang.arch.thumb.Special;
+    ..lang.arch.thumb.Status;
+    ..lang.arch.thumb.Cond;
+    ..lang.arch.thumb.Encoding;
+    ..lang.arch.thumb.Mask;
+    ..lang.arch.thumb.Barrier;
+    ..lang.arch.thumb.Coprocessor;
+    ..lang.arch.thumb.Cr;
+    ..lang.arch.thumb.branch;
+    ..lang.arch.thumb.data;
+    ..lang.arch.thumb.fp;
+    ..lang.arch.thumb.memory;
+    ..lang.arch.thumb.multiply;
+    ..lang.arch.thumb.system;
+};

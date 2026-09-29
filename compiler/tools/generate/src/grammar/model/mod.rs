@@ -52,13 +52,6 @@ pub(crate) struct Contents {
     pub(crate) operands: bool,
 }
 
-/// Fields whose operands, at any depth, read in a context: `kinds` are operands there, in place
-/// of those starting with the same token.
-pub(crate) struct OperandContext {
-    pub(crate) fields: Vec<Field>,
-    pub(crate) kinds: Vec<Kind>,
-}
-
 pub(crate) struct Model {
     pub(crate) tokens: Kinds<Token, ()>,
     pub(crate) nodes: Kinds<Kind, Term>,
@@ -69,13 +62,11 @@ pub(crate) struct Model {
     /// Kinds that are never operands.
     pub(crate) parts: Vec<Kind>,
     pub(crate) contents: BTreeMap<Field, Contents>,
-    pub(crate) operand_contexts: Vec<OperandContext>,
     /// Sets of kinds that may spell the same source, most preferred first.
     pub(crate) preferred: Vec<Vec<Kind>>,
     pub(crate) unterminated: Vec<Kind>,
     /// Kinds that end with their last child when written with one of the tokens.
     pub(crate) transparent: Vec<(Kind, Vec<Token>)>,
-    pub(crate) line_ends: Vec<Kind>,
     /// Levels of the forms open at an edge, loosest first; the row holding the infix kind stands
     /// for the levels of [`Self::infix`].
     pub(crate) precedence: Vec<Vec<Kind>>,

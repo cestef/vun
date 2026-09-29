@@ -4,8 +4,7 @@
 /fuzz/corpus
 /fuzz/artifacts
 # Written by `tree-sitter generate` from grammar.js (`cargo xtask tree-sitter`).
-editors/tree-sitter/src/*
-!editors/tree-sitter/src/scanner.c
+editors/tree-sitter/src/
 editors/zed/target
 editors/zed/Cargo.lock
 editors/vscode/node_modules

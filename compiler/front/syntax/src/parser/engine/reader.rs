@@ -4,7 +4,7 @@
 
 use vun_grammar::{KindSet, Positions, Read};
 
-use super::frame::{Candidate, Content, Frame, Line, Reading};
+use super::frame::{Candidate, Content, Frame, Reading};
 use super::spec::Spec;
 use super::tree::Piece;
 use crate::parser::Parser;
@@ -24,7 +24,6 @@ pub(super) enum Decision {
 
 impl Parser<'_, '_, '_> {
     pub(super) fn decide(&self) -> Decision {
-        let broke = self.line_ends_before(self.current());
         let top = self.stack.len() - 1;
         let (mut reader, mut continuation, mut top_ends) = (None, None, false);
         let mut content = Content::Kinds { kinds: KindSet::EMPTY, ends: KindSet::EMPTY };
@@ -34,9 +33,7 @@ impl Parser<'_, '_, '_> {
                     let outer = self.outer(i);
                     let at =
                         |c: Candidate| if i == top { c.at } else { Some(self.holding(r, c, content, outer)) };
-                    let lined = r.line != Line::Free && broke && r.started();
-                    let reads =
-                        !lined && r.candidates.iter().any(|&c| self.reads_next(r, c.kind, at(c), outer));
+                    let reads = r.candidates.iter().any(|&c| self.reads_next(r, c.kind, at(c), outer));
                     if reads {
                         reader = Some(i);
                     }
@@ -45,12 +42,11 @@ impl Parser<'_, '_, '_> {
                         kinds,
                         ends: self.ending_with(r, kinds, (i != top).then_some(content)),
                     };
-                    // A node ending with its line holds on to it while it reads.
-                    !kinds.is_empty() && (r.line != Line::Ends || !reads)
+                    !kinds.is_empty()
                 }
                 Frame::Operand(o) => {
                     content = o.piece.map_or(content, Content::Node);
-                    if continuation.is_none() && !(o.line && broke) {
+                    if continuation.is_none() {
                         continuation = self.continuation(o, content).map(|kinds| (i, kinds));
                     }
                     self.held_below(i, content)

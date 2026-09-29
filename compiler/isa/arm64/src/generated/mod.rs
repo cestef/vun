@@ -9,7 +9,7 @@ mod choice;
 pub use choice::*;
 mod feature;
 pub use feature::*;
-mod b;
+mod b_always;
 mod bcond;
 mod bl;
 mod br;

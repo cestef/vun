@@ -38,7 +38,7 @@ impl Sel<'_, '_> {
         let pointer = Reg::R1;
         let (word, past) = (self.asm.label(), self.asm.label());
         self.asm.emit(Op::Ldr, Size::B32, &[address.into(), word.into()]);
-        self.asm.emit(Op::B, Size::B32, &[past.into()]);
+        self.asm.emit(Op::BAlways, Size::B32, &[past.into()]);
         self.asm.word(word, OFFSET_BYTES, Address::Data(data), RelocKind::ThreadOffset32, 0);
         self.asm.bind(past);
         let (coprocessor, opc1, n, m, opc2) = THREAD_POINTER;

@@ -11,9 +11,8 @@ struct enum                            type literals
 unsafe                                 the audit boundary
 ```
 
-**15 reserved words**, plus **7 contextual** ones: `in` (only after `for <pattern>`), `out`,
-`take`, `static` and `temp` (only after `&`), `asm` (only between `.` and `{`), and `in`, `out` and
-`inout` opening a value bound to an instruction's operand (spec 07, section 6). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
+**15 reserved words**, plus **5 contextual** ones: `in` (only after `for <pattern>`), and `out`,
+`take`, `static` and `temp` (only after `&`). Lua has 22, Go 25, Rust 39, C 44, Zig 49.
 
 A reserved word becomes an ordinary name when escaped with a backslash: `\unsafe` is the name
 `unsafe`. The escape is how a declaration mirrors a foreign or domain name that collides with a
@@ -108,7 +107,8 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
   - inside `lang`, the compiler provides it (primitives);
   - with a `link` attribute, the linker provides it (C imports, typed link symbols, spec 08);
   - inside an interface, the conforming `impl` provides it (spec 02).
-  Anywhere else, `_` as a value is an error.
+  An argument of an impl's interface may be `_`, any (spec 02, section 3). Anywhere else, `_` as a
+  value is an error.
 
 ## 4. Functions
 
@@ -387,8 +387,8 @@ drivers/
   namespaces listed in the manifest's `.prelude` (spec 12), `.{ "std.prelude" }` by default, and
   none for `.{}`. It is part of the literal manifest so that tools resolve names without evaluating
   the build.
-- A name is looked up in the file (its scopes, then the names spread into its enclosing
-  namespaces, innermost first), then among the package and its dependencies, then in the prelude,
+- A name is looked up in the file (its scopes, then the names spread into its enclosing blocks
+  and namespaces, innermost first), then among the package and its dependencies, then in the prelude,
   the first listed namespace first.
 
 ```vun
@@ -413,3 +413,10 @@ brings: an umbrella namespace is a list of spreads.
 - A whole spread brings the public names, so it resolves without evaluation. A selection may name a
   restricted name visible where the spread is written, and any other is `names.private`. A spread
   member keeps the declaration's scope, so re-exporting never widens it.
+- `path` may name an enum: its variants are members of its namespace, as `Cond.ne` reads one, so a
+  spread brings them, each a value of the enum (`..lang.arch.thumb.Cond;` makes `ne` a name).
+- A spread written as a statement of a block brings its names into the block, from where it is
+  written to the block's end. They are found after every scope around the name (the block's locals
+  and parameters, and the locals of the blocks around it), so a spread shadows nothing and adds no
+  name a local could not reuse; a block exports nothing, so nothing is re-exported. A block of
+  instructions spreads its architecture so (spec 07, section 6).

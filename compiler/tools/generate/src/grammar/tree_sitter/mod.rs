@@ -13,7 +13,6 @@ pub(crate) mod dialects;
 mod lexical;
 pub(crate) mod queries;
 mod rules;
-mod scanner;
 
 use rules::Rules;
 
@@ -63,7 +62,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         name: LANGUAGE.to_owned(),
         word: Some(rules::hidden(model.token_name(editors.tree_sitter.word))),
         extras,
-        externals: vec![Rule::symbol(scanner::LINE_END)],
+        externals: Vec::new(),
         conflicts: Vec::new(),
         conflicts_file: Some(CONFLICTS.to_owned()),
         rules: all,
@@ -76,7 +75,6 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
             format: Format::Json,
             text: format!("{:#}\n", vun_data::json::Json(&config.to_data())),
         },
-        Data { name: "src/scanner.c".to_owned(), format: Format::C, text: scanner::source() },
         Data {
             name: HIGHLIGHTS.to_owned(),
             format: Format::Query,

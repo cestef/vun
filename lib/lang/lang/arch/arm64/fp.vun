@@ -28,28 +28,24 @@ fmov := _a.Instruction{ .forms = &[
 
 /// Two operands into a third.
 binaries := _a.Family{
-    .members = &[
-        .{ .name = .fadd, .bits = 0x1e202800 },
-        .{ .name = .fsub, .bits = 0x1e203800 },
-        .{ .name = .fmul, .bits = 0x1e200800 },
-        .{ .name = .fdiv, .bits = 0x1e201800 },
-    ],
     .forms = &[
         .{ .base = .\or(0x0), .sizes = _ftype, .args = &[_f_d_w, _f_n, _f_m] },
     ],
 };
+fadd := _a.Member{ .family = binaries, .bits = 0x1e202800 };
+fsub := _a.Member{ .family = binaries, .bits = 0x1e203800 };
+fmul := _a.Member{ .family = binaries, .bits = 0x1e200800 };
+fdiv := _a.Member{ .family = binaries, .bits = 0x1e201800 };
 
 /// One operand into another.
 unaries := _a.Family{
-    .members = &[
-        .{ .name = .fneg, .bits = 0x1e214000 },
-        .{ .name = .fabs, .bits = 0x1e20c000 },
-        .{ .name = .fsqrt, .bits = 0x1e21c000 },
-    ],
     .forms = &[
         .{ .base = .\or(0x0), .sizes = _ftype, .args = &[_f_d_w, _f_n] },
     ],
 };
+fneg := _a.Member{ .family = unaries, .bits = 0x1e214000 };
+fabs := _a.Member{ .family = unaries, .bits = 0x1e20c000 };
+fsqrt := _a.Member{ .family = unaries, .bits = 0x1e21c000 };
 
 fcmp := _a.Instruction{ .forms = &[
     .{ .base = 0x1e202000, .sizes = _ftype, .args = &[_f_n, _f_m], .flags = .some(.write) },
@@ -62,35 +58,47 @@ fcvt := _a.Instruction{ .forms = &[
 ] };
 
 /// A signed integer of the instruction's width to single precision.
-scvtf_s := _a.Instruction{ .mnemonic = .some("scvtf"), .forms = &[
+scvtf_s := _a.Instruction{ .forms = &[
     .{ .base = 0x1e220000, .sizes = _sf, .args = &[_fs_d_w, _r_n] },
 ] };
 
-scvtf_d := _a.Instruction{ .mnemonic = .some("scvtf"), .forms = &[
+scvtf_d := _a.Instruction{ .forms = &[
     .{ .base = 0x1e620000, .sizes = _sf, .args = &[_fd_d_w, _r_n] },
 ] };
 
-ucvtf_s := _a.Instruction{ .mnemonic = .some("ucvtf"), .forms = &[
+/// A signed integer to single or double precision.
+scvtf := _a.Mnemonic{ .instructions = &[.scvtf_s, .scvtf_d] };
+
+ucvtf_s := _a.Instruction{ .forms = &[
     .{ .base = 0x1e230000, .sizes = _sf, .args = &[_fs_d_w, _r_n] },
 ] };
 
-ucvtf_d := _a.Instruction{ .mnemonic = .some("ucvtf"), .forms = &[
+ucvtf_d := _a.Instruction{ .forms = &[
     .{ .base = 0x1e630000, .sizes = _sf, .args = &[_fd_d_w, _r_n] },
 ] };
 
+/// An unsigned integer to single or double precision.
+ucvtf := _a.Mnemonic{ .instructions = &[.ucvtf_s, .ucvtf_d] };
+
 /// Single precision to a signed integer of the instruction's width, rounded toward zero.
-fcvtzs_s := _a.Instruction{ .mnemonic = .some("fcvtzs"), .forms = &[
+fcvtzs_s := _a.Instruction{ .forms = &[
     .{ .base = 0x1e380000, .sizes = _sf, .args = &[_r_d_w, _fs_n] },
 ] };
 
-fcvtzs_d := _a.Instruction{ .mnemonic = .some("fcvtzs"), .forms = &[
+fcvtzs_d := _a.Instruction{ .forms = &[
     .{ .base = 0x1e780000, .sizes = _sf, .args = &[_r_d_w, _fd_n] },
 ] };
 
-fcvtzu_s := _a.Instruction{ .mnemonic = .some("fcvtzu"), .forms = &[
+/// Single or double precision to a signed integer, rounded toward zero.
+fcvtzs := _a.Mnemonic{ .instructions = &[.fcvtzs_s, .fcvtzs_d] };
+
+fcvtzu_s := _a.Instruction{ .forms = &[
     .{ .base = 0x1e390000, .sizes = _sf, .args = &[_r_d_w, _fs_n] },
 ] };
 
-fcvtzu_d := _a.Instruction{ .mnemonic = .some("fcvtzu"), .forms = &[
+fcvtzu_d := _a.Instruction{ .forms = &[
     .{ .base = 0x1e790000, .sizes = _sf, .args = &[_r_d_w, _fd_n] },
 ] };
+
+/// Single or double precision to an unsigned integer, rounded toward zero.
+fcvtzu := _a.Mnemonic{ .instructions = &[.fcvtzu_s, .fcvtzu_d] };

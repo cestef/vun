@@ -186,8 +186,8 @@ impl Parser<'_, '_, '_> {
     fn mend_operand(&mut self, mut o: Operand) {
         let piece = o.piece.expect("an operand mends once read");
         let continuing = |kind: NodeKind| {
-            let mut r = Reading::new(KindSet::EMPTY.with(kind), o.spec.context, o.line);
-            r.move_to([self.leading(kind, Content::Node(piece), o.spec.context)]);
+            let mut r = Reading::new(KindSet::EMPTY.with(kind));
+            r.move_to([self.leading(kind, Content::Node(piece))]);
             r
         };
         let named: Vec<Reading> =
@@ -211,7 +211,7 @@ impl Parser<'_, '_, '_> {
         self.stack.push(Frame::Operand(o));
         self.continue_operand(KindSet::EMPTY.with(kind));
         if let Some(Frame::Reading(r)) = self.stack.last_mut() {
-            let mut r = std::mem::replace(r, Reading::new(KindSet::EMPTY, KindSet::EMPTY, false));
+            let mut r = std::mem::replace(r, Reading::new(KindSet::EMPTY));
             self.suppose(&mut r, Some(&outer));
             *self.stack.last_mut().expect("the reading is on top") = Frame::Reading(r);
         }

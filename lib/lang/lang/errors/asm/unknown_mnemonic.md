@@ -1,29 +1,37 @@
 # asm.unknown_mnemonic
 
-An instruction's mnemonic is none the architecture declares.
+A statement of a block calls something that is no instruction of the block's architecture.
 
-Each instruction of `lang.arch.<arch>` is spelled by its declaration's name, or by the name one
-of its forms gives; a condition an instruction takes may follow it (`jz` on x86-64) (spec 07,
-section 6). An instruction the table lacks is declared there, with its forms.
+Each statement of a block calls an instruction `lang.arch.<arch>` declares, or makes or marks a
+label (spec 07, section 6). A function, or anything else callable, runs outside the block: call
+it before or after it, or reach it by its address with the architecture's call instruction.
 
 ## Example
 
 ```vun
+helper := () {};
+
 clear := () {
-    unsafe lang.arch.x86_64.asm {
-        xro eax, eax //~ asm.unknown_mnemonic
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        xor(eax, eax);
+        helper(); //~ asm.unknown_mnemonic
+    });
 };
 ```
 
 ## Fix
 
-Spell the instruction as the table does:
+Call the function outside the block:
 
 ```vun
+helper := () {};
+
 clear := () {
-    unsafe lang.arch.x86_64.asm {
-        xor eax, eax
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        xor(eax, eax);
+    });
+    helper();
 };
 ```

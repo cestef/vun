@@ -1,5 +1,6 @@
-//! Namespaces and their members (spec 01, section 8): the declarations of a namespace's file, the
-//! public members of what it spreads whole, and what its directory holds.
+//! Namespaces and their members (spec 01, section 8): the declarations of a namespace's file, or of
+//! the `struct` or `enum` literal a declaration of it binds, the public members of what it spreads
+//! whole, an enum's variants, and what its directory holds.
 
 use std::sync::Arc;
 
@@ -12,6 +13,7 @@ use vun_syntax::visibility::Visibility;
 use super::input::{FileRef, Package, PackageId, Unloaded};
 use super::layout::Namespace;
 use super::parsed::Parsed;
+use crate::tree::{DeclId, ExprKind, Hir, Name, NsId};
 
 /// Why a path names no namespace.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -51,13 +53,70 @@ impl Query for NamespaceAt {
             let dep = data.deps.iter().find(|d| d.name == first).ok_or(Unfound::Root)?;
             dep.package.clone().map_err(Unfound::Dep)?
         };
-        let held = cx.get::<Package>(&root).holds(rest);
-        held.then(|| Namespace { package: root, path: rest.to_vec() }).ok_or(Unfound::Absent)
+        let ns = Namespace { package: root, path: rest.to_vec() };
+        let held = cx.get::<Package>(&root).holds(rest) || cx.get::<Written>(&ns).is_some();
+        held.then_some(ns).ok_or(Unfound::Absent)
     }
 }
 
-/// The names of a namespace: declared in its file, exported by what it spreads whole, and held
-/// in its directory. A namespace reached again through its own spreads contributes nothing more.
+/// Where a namespace is written: the file holding it, and the namespace of the file's tree its
+/// path leads to: the file's own, or past it, that of the `struct` or `enum` literal each name
+/// declares in the one before (`lang.arch.thumb.Cond`); for an enum literal, the declaration
+/// binding it, whose variants are members too. `None` for a namespace no file holds, such as a
+/// directory alone.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Written {
+    pub file: FileRef,
+    pub ns: NsId,
+    pub enumerated: Option<DeclId>,
+}
+
+impl Query for Written {
+    const NAME: &'static str = "written";
+    type Key = Namespace;
+    type Value = Option<Written>;
+
+    fn compute(cx: &Cx<'_>, ns: &Namespace) -> Self::Value {
+        let package = cx.get::<Package>(&ns.package);
+        let (at, path) =
+            (0..=ns.path.len()).rev().find_map(|n| Some((n, package.file_of(&ns.path[..n])?)))?;
+        let file = FileRef { package: ns.package, path: Symbol::intern(path) };
+        let parsed = cx.get::<Parsed>(&file)?;
+        let hir = &parsed.hir;
+        let mut written = Written { file, ns: hir.root?, enumerated: None };
+        for &name in &ns.path[at..] {
+            let decl = hir.declaring(written.ns, name)?;
+            written = match hir.exprs[hir.decls[decl].value?].kind {
+                ExprKind::Struct(inner) => Written { ns: inner, enumerated: None, ..written },
+                ExprKind::Enum { ns: inner, .. } => Written { ns: inner, enumerated: Some(decl), ..written },
+                _ => return None,
+            };
+        }
+        Some(written)
+    }
+}
+
+impl Written {
+    /// Whether it is its file's own namespace, whose directory holds members too.
+    #[must_use]
+    pub fn is_file(&self, hir: &Hir) -> bool {
+        hir.root == Some(self.ns)
+    }
+
+    /// The variants of the enum literal it is, written with plain names.
+    #[must_use]
+    pub fn variants(&self, hir: &Hir) -> Vec<Symbol> {
+        let variants = self.enumerated.map(|d| hir.variants_of(d)).unwrap_or_default();
+        variants
+            .iter()
+            .filter_map(|v| if let Name::Plain(name) = v.name { Some(name) } else { None })
+            .collect()
+    }
+}
+
+/// The names of a namespace: declared where it is written, exported by what it spreads whole, an
+/// enum's variants, and held in its directory. A namespace reached again through its own spreads
+/// contributes nothing more.
 pub struct Members;
 
 impl Query for Members {
@@ -68,21 +127,24 @@ impl Query for Members {
     fn compute(cx: &Cx<'_>, ns: &Namespace) -> Self::Value {
         let package = cx.get::<Package>(&ns.package);
         let mut names = Vec::new();
-        let file =
-            package.file_of(&ns.path).map(|path| FileRef { package: ns.package, path: Symbol::intern(path) });
-        if let Some(parsed) = file.and_then(|f| cx.get::<Parsed>(&f)) {
+        let mut file_level = true;
+        if let Some(written) = cx.get::<Written>(ns)
+            && let Some(parsed) = cx.get::<Parsed>(&written.file)
+        {
             let hir = &parsed.hir;
-            if let Some(root) = hir.root {
-                names.extend(hir.members(root).into_iter().map(|b| hir.binders[b].name));
-                let whole = hir.spreads(root).into_iter().filter(|s| s.select.is_none());
-                for (_, path) in whole.filter_map(|s| hir.path(s.path)) {
-                    if let Ok(target) = cx.get::<NamespaceAt>(&(ns.package, path)) {
-                        names.extend(cx.get::<Exports>(&target).iter().copied());
-                    }
+            file_level = written.is_file(hir);
+            names.extend(hir.members(written.ns).into_iter().map(|b| hir.binders[b].name));
+            names.extend(written.variants(hir));
+            let whole = hir.spreads(written.ns).into_iter().filter(|s| s.select.is_none());
+            for (_, path) in whole.filter_map(|s| hir.path(s.path)) {
+                if let Ok(target) = cx.get::<NamespaceAt>(&(ns.package, path)) {
+                    names.extend(cx.get::<Exports>(&target).iter().copied());
                 }
             }
         }
-        names.extend(package.children(&ns.path));
+        if file_level {
+            names.extend(package.children(&ns.path));
+        }
         names.into()
     }
 

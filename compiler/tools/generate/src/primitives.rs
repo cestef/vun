@@ -108,7 +108,7 @@ impl Namespace {
                     }
                 }
         };
-        Module { name: module.to_string(), access: Access::Path, items }
+        Module { name: module.to_string(), access: Access::Path, items, dir: None }
     }
 }
 

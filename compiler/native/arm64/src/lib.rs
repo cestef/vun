@@ -114,7 +114,7 @@ impl Arch for Arm {
     }
 
     fn jump(code: &mut Asm<Address>, to: vun_asm::Label) {
-        code.emit(Op::B, Size::B64, &[to.into()]);
+        code.emit(Op::BAlways, Size::B64, &[to.into()]);
     }
 }
 

@@ -63,15 +63,13 @@ pub(crate) struct Sublime {
     pub(crate) keywords: Vec<Token>,
     pub(crate) qualifiers: Vec<String>,
     pub(crate) modes: Vec<String>,
-    pub(crate) flows: Vec<String>,
     pub(crate) punctuation: Vec<Token>,
     /// The tokens placing names: a member after, a call before, a definition before, a borrow's
-    /// words after, a flow word after.
+    /// words after.
     pub(crate) member: Token,
     pub(crate) call: Token,
     pub(crate) binds: Token,
     pub(crate) borrow: Token,
-    pub(crate) block: Token,
 }
 
 /// What the tree-sitter grammar leaves to tree-sitter: the kind of skipped source and the tokens
@@ -144,13 +142,11 @@ impl Model {
             keywords: self.tokens_of(files, &s.keywords)?,
             qualifiers: files.words(&s.qualifiers)?,
             modes: files.words(&s.modes)?,
-            flows: files.words(&s.flows)?,
             punctuation: self.tokens_of(files, &s.punctuation)?,
             member: token(&s.member)?,
             call: token(&s.call)?,
             binds: token(&s.binds)?,
             borrow: token(&s.borrow)?,
-            block: token(&s.block)?,
         };
         let t = &written.tree_sitter;
         let tree_sitter = TreeSitter {

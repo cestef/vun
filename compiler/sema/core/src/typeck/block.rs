@@ -38,6 +38,8 @@ impl Typer<'_, '_, '_> {
             Stmt::Block(b) => {
                 self.block_value(*b, None);
             }
+            // Its names are resolved; it computes nothing.
+            Stmt::Spread(_) => {}
             // `x op= y` narrows back to the type of `x` (spec 04, rule 9): a trap site, not a
             // type error.
             Stmt::Assign { op, place, value, .. } => {

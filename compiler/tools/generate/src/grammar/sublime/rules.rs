@@ -23,9 +23,6 @@ impl Scoped<'_> {
     pub(super) fn keywords(&self) -> Vec<Rule> {
         let sublime = &self.editors.sublime;
         let keywords = self.texts(&sublime.keywords);
-        let block = self.token(sublime.block);
-        let flows = Pattern::words(sublime.flows.iter().map(String::as_str))
-            .after(&[block.clone(), block.then(Pattern::raw(r"\s"))]);
         let borrow = self.token(sublime.borrow);
         let mut after_borrow = vec![borrow.clone()];
         after_borrow.extend(
@@ -41,10 +38,7 @@ impl Scoped<'_> {
             .map(String::as_str)
             .filter(|w| !keywords.contains(w))
             .collect::<Vec<_>>();
-        let mut rules = vec![
-            Rule::of(flows, Scope::Flow),
-            Rule::of(Pattern::words(words).after(&after_borrow), Scope::Borrow),
-        ];
+        let mut rules = vec![Rule::of(Pattern::words(words).after(&after_borrow), Scope::Borrow)];
         rules.extend(self.contextual());
         rules.push(Rule::of(Pattern::words(keywords), Scope::Keyword));
         rules
@@ -52,17 +46,10 @@ impl Scoped<'_> {
 
     /// A rule per contextual keyword, placed as its context says.
     fn contextual(&self) -> Vec<Rule> {
-        let sublime = &self.editors.sublime;
         let rules = self.model.contextual.iter().map(|(text, recognized)| {
             let word = Pattern::words([text.as_str()]);
             match recognized {
                 Recognized::ForPattern => Rule::of(word, Scope::Contextual),
-                // `.asm {`: after the dot, which stays punctuation.
-                Recognized::AsmBlock => Rule::of(
-                    word.after(&[self.token(sublime.member)])
-                        .before(&Pattern::space().then(self.token(sublime.block))),
-                    Scope::Contextual,
-                ),
             }
         });
         rules.collect()

@@ -27,7 +27,7 @@ longer generated. Generated files are held to the 300-line limit too.
 | `compiler/front/desugar/src/generated/` | `lib/lang/lang/syntax/desugar.vun` |
 | `compiler/base/diag/src/errors/` | `lib/lang/lang/errors.vun` |
 | `compiler/lang/primitives/src/generated/` | the `= _` declarations of `lib/lang` |
-| `compiler/lang/items/src/{lang,std,targets}/` | a handle per public declaration of `lib` |
+| `compiler/lang/items/src/{lang,std,targets}/` | a handle per public declaration of `lib`; the modules of a namespace's descendants in a directory `<namespace>_/` (`arch_/`), re-exported flat |
 
 Rust names `lang` and `std` items only through `vun_items`.
 

@@ -60,11 +60,12 @@ place := (w: &mut std.os.Stream, o: &lang.trace.Origin) {
 unsigned := (saved: usize) -> usize {
     mut address := saved;
     $if lang.target.current.arch == .arm64 {
-        unsafe lang.arch.arm64.asm {
-            mov x30, {in(x0) saved}
-            xpaclri
-            mov {out(x0) address}, x30
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.arm64.names;
+            mov(x30, in(saved).at(x0));
+            xpaclri();
+            mov(out(address).at(x0), x30);
+        });
     }
     address
 };
@@ -76,13 +77,13 @@ unsigned := (saved: usize) -> usize {
 calls := (frames: &mut [depth]usize) -> usize {
     mut at: usize = 0;
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm { mov {out(rax) at}, rbp };
+        unsafe lang.arch.asm({ ..lang.arch.x86_64.names; mov(out(at).at(rax), rbp); });
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm { mov {out(x0) at}, x29 };
+            unsafe lang.arch.asm({ ..lang.arch.arm64.names; mov(out(at).at(x0), x29); });
         } else {
             $if lang.target.current.arch == .arm {
-                unsafe lang.arch.thumb.asm { mov {out(r0) at}, r7 };
+                unsafe lang.arch.asm({ ..lang.arch.thumb.names; mov(out(at).at(r0), r7); });
             }
         }
     }

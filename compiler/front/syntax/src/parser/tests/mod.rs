@@ -1,4 +1,3 @@
-mod asm;
 mod recovery;
 
 use vun_diag::{DiagCx, DiagId, errors};

@@ -52,8 +52,9 @@ pub enum Literal<'s> {
     Path(Vec<&'s str>),
     /// `a.f(x, y)`: a call of a path, which a reader interprets by the path.
     Call(Vec<&'s str>, Vec<Literal<'s>>),
-    /// `enum { a, b(T) }`; the payloads read as `Opaque`.
-    Enum(Vec<Decl<'s>>),
+    /// `enum { a, b(T); declarations }`: its variants, their payloads read as `Opaque`, and the
+    /// declarations of its namespace.
+    Enum(Vec<Decl<'s>>, Vec<Decl<'s>>),
     /// `struct { name := value; }`; a field reads as its default, or `Opaque` without one.
     Namespace(Vec<Decl<'s>>),
     /// `($T: type) -> type { struct { ... } }`: a function whose body is only the value it
@@ -64,14 +65,23 @@ pub enum Literal<'s> {
     Opaque,
 }
 
-/// A named value with its doc comment lines.
+/// A named value with its doc comment lines and the values of its attributes.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Decl<'s> {
     pub name: &'s str,
     pub doc: Vec<&'s str>,
+    pub attrs: Vec<Literal<'s>>,
     pub value: Literal<'s>,
     /// The source of the value, or of the whole declaration when it has none.
     pub span: Span,
+}
+
+impl<'s> Decl<'s> {
+    /// `name` declared as `value`, without doc comment or attributes.
+    #[must_use]
+    pub const fn new(name: &'s str, value: Literal<'s>, span: Span) -> Self {
+        Self { name, doc: Vec::new(), attrs: Vec::new(), value, span }
+    }
 }
 
 impl<'s> Literal<'s> {
@@ -80,12 +90,21 @@ impl<'s> Literal<'s> {
         Self::List(items.into_iter().map(|s| Self::String(Cow::Borrowed(s))).collect())
     }
 
+    /// The path of `a.b.c`.
+    #[must_use]
+    pub fn as_path(&self) -> Option<&[&'s str]> {
+        match self {
+            Self::Path(path) => Some(path),
+            _ => None,
+        }
+    }
+
     /// The value of the field `name` of a record, typed record or namespace.
     #[must_use]
     pub fn get(&self, name: &str) -> Option<&Self> {
         match self {
             Self::Typed(_, record) => record.get(name),
-            Self::Record(decls) | Self::Namespace(decls) | Self::Enum(decls) => {
+            Self::Record(decls) | Self::Namespace(decls) | Self::Enum(decls, _) => {
                 decls.iter().find(|d| d.name == name).map(|d| &d.value)
             }
             _ => None,
@@ -140,7 +159,7 @@ impl<'s> Literal<'s> {
     #[must_use]
     pub fn members(&self) -> Option<&[Decl<'s>]> {
         match self {
-            Self::Enum(decls) | Self::Namespace(decls) => Some(decls),
+            Self::Enum(decls, _) | Self::Namespace(decls) => Some(decls),
             Self::Made(made) => made.members(),
             Self::Call(_, args) => match args.as_slice() {
                 [made @ Self::Made(_)] => made.members(),
@@ -154,7 +173,16 @@ impl<'s> Literal<'s> {
     #[must_use]
     pub fn decls(&self) -> Option<&[Decl<'s>]> {
         match self {
-            Self::Record(decls) | Self::Enum(decls) | Self::Namespace(decls) => Some(decls),
+            Self::Record(decls) | Self::Enum(decls, _) | Self::Namespace(decls) => Some(decls),
+            _ => None,
+        }
+    }
+
+    /// The declarations of an enum's namespace, or of a `struct`'s.
+    #[must_use]
+    pub fn namespace(&self) -> Option<&[Decl<'s>]> {
+        match self {
+            Self::Enum(_, decls) | Self::Namespace(decls) => Some(decls),
             _ => None,
         }
     }

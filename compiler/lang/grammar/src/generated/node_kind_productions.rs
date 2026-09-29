@@ -64,11 +64,6 @@ impl NodeKind {
             Self::Yield => node_kind_control::YIELD_SLOTS,
             Self::Defer => node_kind_control::DEFER_SLOTS,
             Self::Staged => node_kind_control::STAGED_SLOTS,
-            Self::Asm => node_kind_assembly::ASM_SLOTS,
-            Self::Line => node_kind_assembly::LINE_SLOTS,
-            Self::Suffix => node_kind_assembly::SUFFIX_SLOTS,
-            Self::Bound => node_kind_assembly::BOUND_SLOTS,
-            Self::Memory => node_kind_assembly::MEMORY_SLOTS,
             _ => &[],
         }
     }
@@ -93,7 +88,6 @@ impl NodeKind {
             Self::RawStringLine => &[TokenKind::RawStringLine],
             Self::Label => &[TokenKind::Label],
             Self::Rest => &[TokenKind::DotDot],
-            Self::Writeback => &[TokenKind::Bang],
             Self::Doc => &[TokenKind::DocComment],
             Self::Attr => &[TokenKind::HashLBracket],
             Self::Spread => &[TokenKind::DotDot],
@@ -126,29 +120,6 @@ impl NodeKind {
             Self::Yield => &[TokenKind::Yield],
             Self::Defer => &[TokenKind::Defer],
             Self::Staged => &[TokenKind::Dollar],
-            Self::Line => {
-                &[
-                    TokenKind::Ident,
-                    TokenKind::Mut,
-                    TokenKind::If,
-                    TokenKind::Else,
-                    TokenKind::Match,
-                    TokenKind::For,
-                    TokenKind::Break,
-                    TokenKind::Continue,
-                    TokenKind::Return,
-                    TokenKind::Yield,
-                    TokenKind::Defer,
-                    TokenKind::And,
-                    TokenKind::Or,
-                    TokenKind::Struct,
-                    TokenKind::Enum,
-                    TokenKind::Unsafe,
-                ]
-            }
-            Self::Suffix => &[TokenKind::Dot],
-            Self::Bound => &[TokenKind::LBrace],
-            Self::Memory => &[TokenKind::LBracket],
             _ => &[],
         }
     }
@@ -171,8 +142,6 @@ impl NodeKind {
             Self::RawStringLine => Some(node_kind_leaves::RAW_STRING_LINE),
             Self::Label => Some(node_kind_leaves::LABEL),
             Self::Rest => Some(node_kind_leaves::REST),
-            Self::Flow => Some(node_kind_leaves::FLOW),
-            Self::Writeback => Some(node_kind_leaves::WRITEBACK),
             Self::Error => Some(node_kind_structure::ERROR),
             Self::File => Some(node_kind_structure::FILE),
             Self::Doc => Some(node_kind_structure::DOC),
@@ -223,11 +192,6 @@ impl NodeKind {
             Self::Yield => Some(node_kind_control::YIELD),
             Self::Defer => Some(node_kind_control::DEFER),
             Self::Staged => Some(node_kind_control::STAGED),
-            Self::Asm => Some(node_kind_assembly::ASM),
-            Self::Line => Some(node_kind_assembly::LINE),
-            Self::Suffix => Some(node_kind_assembly::SUFFIX),
-            Self::Bound => Some(node_kind_assembly::BOUND),
-            Self::Memory => Some(node_kind_assembly::MEMORY),
             Self::Punct | Self::Skipped => None,
         }
     }

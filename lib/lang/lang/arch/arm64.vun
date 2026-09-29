@@ -1,7 +1,7 @@
 //! 64-bit ARM (spec 07, section 6): its registers, and each instruction with its forms as the
 //! toolchain's assembler encodes them (Arm A64 ISA), with what each form reads and writes. The
-//! instructions are declared in `control`, `fp`, `int` and `mem`; `vun-isa-arm64`'s tables are
-//! generated from these declarations. An alias is an instruction of its own, its fixed fields in
+//! instructions are declared in `control`, `fp`, `int` and `memory`, what their operand positions
+//! take in `operand`; `vun-isa-arm64`'s tables are generated from these declarations. An alias is an instruction of its own, its fixed fields in
 //! its base word: `mov` is `orr` from the zero register, `cmp` is `subs` into it.
 
 /// The width of an operation or an operand.
@@ -19,44 +19,16 @@ Reg := enum {
     zr,
 };
 
-/// A general register's name at each width.
-Names := struct { w: &[u8], x: &[u8] };
+/// A general register named at 64 bits, in the order of `Reg`.
+#[Registers{ .class = .general, .size = .some(.b64) }]
+X := enum {
+    x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30, sp, xzr,
+};
 
-/// The names of each general register.
-names := .{
-    .x0 = Names{ .w = "w0", .x = "x0" },
-    .x1 = Names{ .w = "w1", .x = "x1" },
-    .x2 = Names{ .w = "w2", .x = "x2" },
-    .x3 = Names{ .w = "w3", .x = "x3" },
-    .x4 = Names{ .w = "w4", .x = "x4" },
-    .x5 = Names{ .w = "w5", .x = "x5" },
-    .x6 = Names{ .w = "w6", .x = "x6" },
-    .x7 = Names{ .w = "w7", .x = "x7" },
-    .x8 = Names{ .w = "w8", .x = "x8" },
-    .x9 = Names{ .w = "w9", .x = "x9" },
-    .x10 = Names{ .w = "w10", .x = "x10" },
-    .x11 = Names{ .w = "w11", .x = "x11" },
-    .x12 = Names{ .w = "w12", .x = "x12" },
-    .x13 = Names{ .w = "w13", .x = "x13" },
-    .x14 = Names{ .w = "w14", .x = "x14" },
-    .x15 = Names{ .w = "w15", .x = "x15" },
-    .x16 = Names{ .w = "w16", .x = "x16" },
-    .x17 = Names{ .w = "w17", .x = "x17" },
-    .x18 = Names{ .w = "w18", .x = "x18" },
-    .x19 = Names{ .w = "w19", .x = "x19" },
-    .x20 = Names{ .w = "w20", .x = "x20" },
-    .x21 = Names{ .w = "w21", .x = "x21" },
-    .x22 = Names{ .w = "w22", .x = "x22" },
-    .x23 = Names{ .w = "w23", .x = "x23" },
-    .x24 = Names{ .w = "w24", .x = "x24" },
-    .x25 = Names{ .w = "w25", .x = "x25" },
-    .x26 = Names{ .w = "w26", .x = "x26" },
-    .x27 = Names{ .w = "w27", .x = "x27" },
-    .x28 = Names{ .w = "w28", .x = "x28" },
-    .x29 = Names{ .w = "w29", .x = "x29" },
-    .x30 = Names{ .w = "w30", .x = "x30" },
-    .sp = Names{ .w = "wsp", .x = "sp" },
-    .zr = Names{ .w = "wzr", .x = "xzr" },
+/// A general register named at 32 bits, in the order of `Reg`.
+#[Registers{ .class = .general, .size = .some(.b32) }]
+W := enum {
+    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14, w15, w16, w17, w18, w19, w20, w21, w22, w23, w24, w25, w26, w27, w28, w29, w30, wsp, wzr,
 };
 
 /// A condition, by its encoding: what the flags say after a comparison (`hs`, higher or same,
@@ -88,146 +60,53 @@ V := enum {
     v16, v17, v18, v19, v20, v21, v22, v23, v24, v25, v26, v27, v28, v29, v30, v31,
 };
 
-/// A floating-point register's name at each width.
-FpNames := struct { b8: &[u8], b16: &[u8], b32: &[u8], b64: &[u8], b128: &[u8] };
+/// A floating-point register named at 8 bits, in the order of `V`.
+#[Registers{ .class = .fp, .size = .some(.b8) }]
+B := enum {
+    b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16, b17, b18, b19, b20, b21, b22, b23, b24, b25, b26, b27, b28, b29, b30, b31,
+};
 
-/// The names of each floating-point register.
-fp_names := .{
-    .v0 = FpNames{ .b8 = "b0", .b16 = "h0", .b32 = "s0", .b64 = "d0", .b128 = "q0" },
-    .v1 = FpNames{ .b8 = "b1", .b16 = "h1", .b32 = "s1", .b64 = "d1", .b128 = "q1" },
-    .v2 = FpNames{ .b8 = "b2", .b16 = "h2", .b32 = "s2", .b64 = "d2", .b128 = "q2" },
-    .v3 = FpNames{ .b8 = "b3", .b16 = "h3", .b32 = "s3", .b64 = "d3", .b128 = "q3" },
-    .v4 = FpNames{ .b8 = "b4", .b16 = "h4", .b32 = "s4", .b64 = "d4", .b128 = "q4" },
-    .v5 = FpNames{ .b8 = "b5", .b16 = "h5", .b32 = "s5", .b64 = "d5", .b128 = "q5" },
-    .v6 = FpNames{ .b8 = "b6", .b16 = "h6", .b32 = "s6", .b64 = "d6", .b128 = "q6" },
-    .v7 = FpNames{ .b8 = "b7", .b16 = "h7", .b32 = "s7", .b64 = "d7", .b128 = "q7" },
-    .v8 = FpNames{ .b8 = "b8", .b16 = "h8", .b32 = "s8", .b64 = "d8", .b128 = "q8" },
-    .v9 = FpNames{ .b8 = "b9", .b16 = "h9", .b32 = "s9", .b64 = "d9", .b128 = "q9" },
-    .v10 = FpNames{ .b8 = "b10", .b16 = "h10", .b32 = "s10", .b64 = "d10", .b128 = "q10" },
-    .v11 = FpNames{ .b8 = "b11", .b16 = "h11", .b32 = "s11", .b64 = "d11", .b128 = "q11" },
-    .v12 = FpNames{ .b8 = "b12", .b16 = "h12", .b32 = "s12", .b64 = "d12", .b128 = "q12" },
-    .v13 = FpNames{ .b8 = "b13", .b16 = "h13", .b32 = "s13", .b64 = "d13", .b128 = "q13" },
-    .v14 = FpNames{ .b8 = "b14", .b16 = "h14", .b32 = "s14", .b64 = "d14", .b128 = "q14" },
-    .v15 = FpNames{ .b8 = "b15", .b16 = "h15", .b32 = "s15", .b64 = "d15", .b128 = "q15" },
-    .v16 = FpNames{ .b8 = "b16", .b16 = "h16", .b32 = "s16", .b64 = "d16", .b128 = "q16" },
-    .v17 = FpNames{ .b8 = "b17", .b16 = "h17", .b32 = "s17", .b64 = "d17", .b128 = "q17" },
-    .v18 = FpNames{ .b8 = "b18", .b16 = "h18", .b32 = "s18", .b64 = "d18", .b128 = "q18" },
-    .v19 = FpNames{ .b8 = "b19", .b16 = "h19", .b32 = "s19", .b64 = "d19", .b128 = "q19" },
-    .v20 = FpNames{ .b8 = "b20", .b16 = "h20", .b32 = "s20", .b64 = "d20", .b128 = "q20" },
-    .v21 = FpNames{ .b8 = "b21", .b16 = "h21", .b32 = "s21", .b64 = "d21", .b128 = "q21" },
-    .v22 = FpNames{ .b8 = "b22", .b16 = "h22", .b32 = "s22", .b64 = "d22", .b128 = "q22" },
-    .v23 = FpNames{ .b8 = "b23", .b16 = "h23", .b32 = "s23", .b64 = "d23", .b128 = "q23" },
-    .v24 = FpNames{ .b8 = "b24", .b16 = "h24", .b32 = "s24", .b64 = "d24", .b128 = "q24" },
-    .v25 = FpNames{ .b8 = "b25", .b16 = "h25", .b32 = "s25", .b64 = "d25", .b128 = "q25" },
-    .v26 = FpNames{ .b8 = "b26", .b16 = "h26", .b32 = "s26", .b64 = "d26", .b128 = "q26" },
-    .v27 = FpNames{ .b8 = "b27", .b16 = "h27", .b32 = "s27", .b64 = "d27", .b128 = "q27" },
-    .v28 = FpNames{ .b8 = "b28", .b16 = "h28", .b32 = "s28", .b64 = "d28", .b128 = "q28" },
-    .v29 = FpNames{ .b8 = "b29", .b16 = "h29", .b32 = "s29", .b64 = "d29", .b128 = "q29" },
-    .v30 = FpNames{ .b8 = "b30", .b16 = "h30", .b32 = "s30", .b64 = "d30", .b128 = "q30" },
-    .v31 = FpNames{ .b8 = "b31", .b16 = "h31", .b32 = "s31", .b64 = "d31", .b128 = "q31" },
+/// A floating-point register named at 16 bits, in the order of `V`.
+#[Registers{ .class = .fp, .size = .some(.b16) }]
+H := enum {
+    h0, h1, h2, h3, h4, h5, h6, h7, h8, h9, h10, h11, h12, h13, h14, h15, h16, h17, h18, h19, h20, h21, h22, h23, h24, h25, h26, h27, h28, h29, h30, h31,
+};
+
+/// A floating-point register named at 32 bits, in the order of `V`.
+#[Registers{ .class = .fp, .size = .some(.b32) }]
+S := enum {
+    s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23, s24, s25, s26, s27, s28, s29, s30, s31,
+};
+
+/// A floating-point register named at 64 bits, in the order of `V`.
+#[Registers{ .class = .fp, .size = .some(.b64) }]
+D := enum {
+    d0, d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11, d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22, d23, d24, d25, d26, d27, d28, d29, d30, d31,
+};
+
+/// A floating-point register named at 128 bits, in the order of `V`.
+#[Registers{ .class = .fp }]
+Q := enum {
+    q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15, q16, q17, q18, q19, q20, q21, q22, q23, q24, q25, q26, q27, q28, q29, q30, q31,
 };
 
 /// What a memory barrier orders (`dmb`): accesses within the outer (`osh`), non-shareable (`nsh`)
 /// or inner (`ish`) shareability domain, or the full system (`sy`), each for loads (`ld`),
 /// stores (`st`) or both.
-Barrier := enum { oshld, oshst, osh, nshld, nshst, nsh, ishld, ishst, ish, ld, st, sy };
+#[Choice.barrier]
+Barrier := enum {
+    oshld, oshst, osh, nshld, nshst, nsh, ishld, ishst, ish, ld, st, sy,
+};
 
 /// A system register `mrs` reads and `msr` writes: the flags, and the thread pointer.
-SysReg := enum { nzcv, tpidr_el0 };
+#[Choice.sys]
+SysReg := enum {
+    nzcv, tpidr_el0,
+};
 
-/// The kinds of named choice a position takes, each an enum of its own: a barrier's domain
-/// (`ish`), a system register (`nzcv`).
+/// The kinds of named choice a position takes, each an enum of its own marked with its kind as an
+/// attribute (`#[Choice.barrier]`): a barrier's domain (`ish`), a system register (`nzcv`).
 Choice := enum { barrier, sys };
-
-/// What register 31 is at a position.
-R31 := enum { zr, sp };
-
-/// The width of an operand: the instruction's, or its own.
-Width := enum { inst, is(Size) };
-
-/// An immediate encoding.
-Imm := enum {
-    /// 12 bits, or 12 bits shifted left by 12: `add`, `sub`.
-    arith,
-    /// A run of ones, rotated and repeated: the logical instructions.
-    bitmask,
-    /// A value whose set bits lie in one aligned 16 bits (`movz`), written whole.
-    wide,
-    /// A value whose complement is `wide` (`movn`), written whole.
-    wide_not,
-    /// `wide`, written as its 16 bits and their shift (`movk`).
-    half,
-    /// A left shift by 1 to the width less one, as `ubfm`'s rotation and top bit.
-    lsl,
-    /// A right shift by 1 to the width less one, as the rotation and top bit of `ubfm` or `sbfm`.
-    shr,
-    /// 16 bits, unsigned.
-    u16,
-    /// Floating-point zero, which `fcmp` compares with.
-    zero,
-};
-
-/// An addressing mode: which memory operands a position takes. `pre` and `post` write the base
-/// register back.
-Mode := enum {
-    /// `[base, #offset]`, the offset a multiple of the access width, below 4096 of them.
-    scaled,
-    /// `[base, #offset]`, the offset -256 to 255 (`ldur`, `stur`).
-    unscaled,
-    /// `[base, #offset]!`, -256 to 255.
-    pre,
-    /// `[base], #offset`, -256 to 255.
-    post,
-    /// `[base, index, extend]`, the index 64 bits or 32 extended, scaled by 1 or the access width.
-    index,
-    /// `[base, #offset]` of a pair, the offset a multiple of the access width, -64 to 63 of them.
-    pair,
-    pair_pre,
-    pair_post,
-    /// `[base]`: exclusive and atomic accesses.
-    base,
-    /// `[base, :lo12:target]`, through the global offset table for a 64-bit load only.
-    lo12,
-};
-
-/// Which shifts a shifted register operand takes: `lsl`, `lsr`, `asr`, and for `logic` `ror`.
-Shifts := enum { arith, logic };
-
-/// How a condition is written and encoded.
-Condition := enum {
-    /// As the mnemonic's suffix: `b.eq`.
-    suffix,
-    operand,
-    /// As an operand, encoded as the condition it is not: `cset` is `csinc` of the inverse.
-    inverted,
-};
-
-/// A branch's field, and the relocation that fills it with a symbol's address.
-Branch := enum { jump26, call26, cond19 };
-
-/// What an operand position takes.
-Kind := enum {
-    gpr(R31, Width),
-    fpr(Width),
-    imm(Imm),
-    /// A register, shifted or not, at the instruction's width; 31 is the zero register.
-    shifted(Shifts),
-    /// A register, extended or read as it is; 31 is the zero register.
-    extended,
-    /// Memory accessed at a width.
-    mem(Mode, Width),
-    cond(Condition),
-    /// A label, or a symbol the linker places.
-    target(Branch),
-    /// A symbol's page, or its entry's in the global offset table (`adrp`).
-    page,
-    /// A symbol's low 12 bits (`add`).
-    lo12,
-    /// What a barrier orders (`dmb`).
-    barrier,
-    /// A system register (`mrs`, `msr`).
-    sys,
-};
 
 /// What a form does with an operand, or with the flags.
 Access := enum {
@@ -251,7 +130,7 @@ Flow := enum {
 /// An operand position: what it takes, the bit its field starts at, and what the form does with
 /// it.
 Arg := struct {
-    kind: Kind,
+    kind: lang.arch.arm64.operand.Kind,
     at: u8,
     /// Where the same field goes again, for an alias reading one register in two fields (`cneg`
     /// is `csneg` of a register and itself).
@@ -266,17 +145,17 @@ Feature := enum { lse };
 /// What a form needs of a processor beyond Armv8.0.
 Need := lang.arch.Need(Feature, Size);
 
-/// A width a form is defined at, the bits it sets in the word, and the suffix it gives the
-/// mnemonic.
-Sized := struct { size: Size, bits: u32 = 0, suffix: &[u8] = "" };
+/// A width a form is defined at, the bits it sets in the word, and the type a call writes before
+/// its operands to select it, where the mnemonic names the width apart (`ldr(u8, ...)` is `ldrb`).
+Sized := struct { size: Size, bits: u32 = 0, types: &[type] = &[] };
 
 /// A base word of the forms of a family: fixed, or its member's bits with these set.
 Word := enum { fixed(u32), \or(u32) };
 
-/// One form of an instruction, its base word of type `W`: the widths it is defined at, its
+/// One form of an instruction, its base word of type `Base`: the widths it is defined at, its
 /// operands, and what it reads and writes beyond them.
-Form := ($W: type) -> type { struct {
-    base: W,
+Form := ($Base: type) -> type { struct {
+    base: Base,
     sizes: &[Sized],
     args: &[Arg],
     /// The mnemonic, where it is not the instruction's (`ldur`).
@@ -289,12 +168,48 @@ Form := ($W: type) -> type { struct {
     requires: ?Need = .none,
 } };
 
-/// An instruction, named as its declaration is unless `mnemonic` says otherwise (`bcond` is
-/// written `b`).
-Instruction := struct { forms: &[Form(u32)], mnemonic: ?&[u8] = .none };
+/// An instruction, named as its declaration is.
+Instruction := struct { forms: &[Form(u32)] };
 
-/// An instruction of a family, and the bits it sets in the family's base words.
-Member := struct { name: lang.meta.Name, bits: u32 = 0 };
+/// An instruction of a family, named as its declaration is, and the bits it sets in the family's
+/// base words.
+Member := struct { family: Family, bits: u32 = 0 };
 
-/// Instructions sharing their forms but for a few bits.
-Family := struct { members: &[Member], forms: &[Form(Word)] };
+/// Instructions sharing their forms but for a few bits, each a `Member` declared after it.
+Family := struct { forms: &[Form(Word)] };
+
+/// A mnemonic spelling several instructions, named here, each tried in order (`b` is `b_always`
+/// or, given a condition, `bcond`).
+Mnemonic := struct { instructions: &[lang.meta.Name] };
+
+/// What an enum of registers names, written as its attribute.
+Registers := lang.arch.Registers(Class, Size);
+
+/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
+#[impl(lang.ops.Call(_, ())(Instruction))]
+instruction_call := lang.arch.called(Instruction);
+#[impl(lang.ops.Call(_, ())(Member))]
+member_call := lang.arch.called(Member);
+#[impl(lang.ops.Call(_, ())(Mnemonic))]
+mnemonic_call := lang.arch.called(Mnemonic);
+
+/// The names a block of instructions is written with, spread first in it
+/// (`lang.arch.asm({ ..lang.arch.arm64.names; ... })`): the operand forms, the registers at each
+/// width, the conditions, the named choices and the instructions.
+names := struct {
+    ..lang.arch.{ in, out, inout, mem, scaled, pre, post, here, label, place };
+    ..lang.arch.arm64.X;
+    ..lang.arch.arm64.W;
+    ..lang.arch.arm64.B;
+    ..lang.arch.arm64.H;
+    ..lang.arch.arm64.S;
+    ..lang.arch.arm64.D;
+    ..lang.arch.arm64.Q;
+    ..lang.arch.arm64.Cond;
+    ..lang.arch.arm64.Barrier;
+    ..lang.arch.arm64.SysReg;
+    ..lang.arch.arm64.control;
+    ..lang.arch.arm64.fp;
+    ..lang.arch.arm64.int;
+    ..lang.arch.arm64.memory;
+};

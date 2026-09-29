@@ -7,15 +7,14 @@ use super::{At, Rules};
 use crate::grammar::model::{Term, Token};
 
 impl Rules<'_> {
-    /// The infix form, one alternative per infix level, each at its precedence, its operands read
-    /// in `context` if one is given.
-    pub(super) fn infix(&self, terms: &[Term], context: Option<usize>) -> Rule {
+    /// The infix form, one alternative per infix level, each at its precedence.
+    pub(super) fn infix(&self, terms: &[Term]) -> Rule {
         let sequences = Term::spelled_out(terms);
         let mut alternatives = Vec::new();
         for (i, operators) in self.model.infix.iter().enumerate() {
             for sequence in &sequences {
                 let body: Option<Vec<Rule>> =
-                    sequence.iter().map(|t| self.restricted(t, operators, context)).collect();
+                    sequence.iter().map(|t| self.restricted(t, operators)).collect();
                 let Some(body) = body else { continue };
                 // A form without its right operand takes one after it where one follows: `0..(n)`.
                 // A chain of a level without grouping is an error the parser reports; parsed, it
@@ -32,14 +31,14 @@ impl Rules<'_> {
 
     /// A term of the infix form at one level: its operator tokens those of `operators` alone;
     /// `None` where it names only operators of other levels, and so cannot stand at this one.
-    fn restricted(&self, term: &Term, operators: &[Token], context: Option<usize>) -> Option<Rule> {
+    fn restricted(&self, term: &Term, operators: &[Token]) -> Option<Rule> {
         match term {
             Term::Tokens(tokens) => {
                 let at: Vec<Rule> =
                     tokens.iter().filter(|t| operators.contains(t)).map(|&t| self.token(t, true)).collect();
                 (!at.is_empty()).then(|| Rule::choice(at))
             }
-            _ => self.term(term, At { context, ..At::RANKED }),
+            _ => self.term(term, At::RANKED),
         }
     }
 }

@@ -16,7 +16,6 @@ pub(crate) enum Format {
     JavaScript,
     /// Tree-sitter queries.
     Query,
-    C,
     Rust,
     Toml,
     Lua,
@@ -29,7 +28,7 @@ impl Format {
     pub(super) fn header(self, header: &str) -> String {
         let (preamble, comment) = match self {
             Self::Yaml => ("%YAML 1.2\n---\n", "#"),
-            Self::JavaScript | Self::C | Self::Rust => ("", "//"),
+            Self::JavaScript | Self::Rust => ("", "//"),
             Self::Toml => ("", "#"),
             Self::Lua => ("", "--"),
             Self::Query => ("", ";"),

@@ -1,102 +1,151 @@
-//! A block of instructions (spec 07, section 6): unchecked, so written in `unsafe`; its
-//! architecture a namespace of `lang.arch` known at compile time; each value bound in braces
-//! typed, an output a place; the block checked against the architecture's table. It is `()`, or
-//! `never` when its end is not reached.
+//! A block of instructions (spec 07, section 6): `lang.arch.asm({ ... })`, a call of `lang.arch.asm` whose
+//! code, a block, calls the instructions of one architecture's table; each value bound (`in(e)`)
+//! typed, an output a place; the block checked against the table. The call is `()`, or `never`
+//! when the end of the block is not reached.
 
 use std::collections::BTreeMap;
 
-use vun_diag::{Diagnostic, Msg, errors};
-use vun_grammar::Flow;
-use vun_hir::tree::{Asm, AsmEntry, ExprId, Operand, OperandKind};
+use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
+use vun_hir::tree::{Arg, BlockId, Entry, ExprId, ExprKind, Hir};
+use vun_hir::visit::{self, Visitor};
+use vun_primitives::Primitive;
+use vun_primitives::arch::Arch as Form;
 use vun_sema_float::Format;
+use vun_sema_ty::TyKind;
 use vun_sema_ty::float::FloatType;
-use vun_sema_ty::{TyKind, Value};
+use vun_sema_ty::item::Site;
 
 use super::{Known, Stage, Typer};
-use crate::asm::{Arch, ArchTable, Checker};
+use crate::asm::{Arch, ArchTable, Checker, Table};
+use crate::callable::Callable;
 use crate::layout::Shapes;
 use crate::target::TargetOf;
 
 impl Typer<'_, '_, '_> {
-    pub(super) fn asm(&mut self, expr: ExprId, asm: &Asm) -> Option<Known> {
-        self.unchecked(expr, Msg::new().text("a block of instructions"));
-        let mut bindings = Vec::new();
-        for entry in &asm.entries {
-            if let AsmEntry::Inst(inst) = entry {
-                inst.operands.iter().for_each(|o| Self::bindings(o, &mut bindings));
-            }
+    /// The call `call` of `lang.arch.asm` with the code `code`, typed as it was.
+    pub(super) fn asm(&mut self, call: ExprId, code: ExprId) -> Option<Known> {
+        let unit = Known { ty: TyKind::unit(), stage: Stage::Run };
+        let hir = self.hir();
+        let ExprKind::Block(block) = hir.exprs[code].kind else {
+            let msg = Msg::new()
+                .text("a block of instructions is a block of their calls: ")
+                .code("lang.arch.asm({ ... })");
+            self.diag
+                .error(Diagnostic::error(errors::ASM_UNKNOWN_OPERAND, msg).at(hir.exprs[code].origin, None));
+            return Some(unit);
+        };
+        let calls = Calls::of(hir, block);
+        // A block whose calls depend on a `$` parameter is read where it is instantiated, as the
+        // calls are typed there.
+        if calls.iter().any(|c| !self.found.types.contains_key(&c.expr)) {
+            return Some(unit);
         }
+        let forms: BTreeMap<ExprId, Form> = calls
+            .iter()
+            .filter_map(|c| match self.called(c.callee)? {
+                Callable::Primitive(Primitive::Arch(form)) => Some((c.callee, form)),
+                Callable::Primitive(_) | Callable::Fn(_) => None,
+            })
+            .collect();
+        // The values bound to registers, each with the form binding it.
+        let bindings: Vec<(Form, ExprId)> = calls
+            .iter()
+            .filter_map(|c| match forms.get(&c.callee)? {
+                form @ (Form::r#in | Form::out | Form::inout) => Some((*form, c.first?)),
+                _ => None,
+            })
+            .collect();
         let mut placed = true;
-        for &(flow, value) in &bindings {
-            self.typed(value);
-            if flow.is_some_and(|f| f != Flow::In) && !self.hir().exprs[value].kind.is_place() {
+        for &(form, value) in &bindings {
+            if form != Form::r#in && !hir.exprs[value].kind.is_place() {
                 placed = false;
                 let msg = Msg::new()
                     .text("an output is written into a place: a local, a field, an item or ")
                     .code("p.*");
                 self.diag.error(
-                    Diagnostic::error(errors::ASM_UNKNOWN_OPERAND, msg)
-                        .at(self.hir().exprs[value].origin, None),
+                    Diagnostic::error(errors::ASM_UNKNOWN_OPERAND, msg).at(hir.exprs[value].origin, None),
                 );
             }
         }
-        asm.each_expr(&mut |e| {
-            if !bindings.iter().any(|&(_, v)| v == e) {
-                self.typed(e);
-            }
-        });
-        let unit = Known { ty: TyKind::unit(), stage: Stage::Run };
-        let Some((arch, table)) = self.arch(asm.arch).filter(|_| placed) else { return Some(unit) };
+        let instructions = calls.iter().map(|c| c.callee).filter(|c| !forms.contains_key(c));
+        let Some((arch, table)) = self.arch_of(instructions).filter(|_| placed) else { return Some(unit) };
         // A value's width is known only where the target's code is the block's: elsewhere the
         // block is checked for its class of register alone.
         let targeted = self.env().cx.get::<TargetOf>(&()).is_some_and(|t| t.isa == arch.namespace().symbol());
         let mut bound = BTreeMap::new();
-        for &(flow, value) in &bindings {
-            let Some(known) = flow.and(self.found.types.get(&value).copied()) else { continue };
+        for &(_, value) in &bindings {
+            let Some(known) = self.found.types.get(&value).copied() else { continue };
             let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size).filter(|_| targeted);
             let float = Format::of(&known.ty).is_some();
             if let Some(register) = arch.register(&table, bytes, float) {
                 bound.insert(value, register);
             }
         }
-        let block = Checker { arch, table: &table, bound: &bound, diag: &mut self.diag }.block(asm)?;
+        let mut diag = DiagCtxt::new();
+        let checked =
+            Checker { env: self.env(), arch, table: &table, forms: &forms, bound: &bound, diag: &mut diag }
+                .block(block);
+        self.diag.absorb(&diag);
+        let block = checked?;
         let known = if block.returns { unit } else { self.never()? };
-        self.finding().asm.insert(expr, block);
+        self.finding().asm.insert(call, block);
         Some(known)
     }
 
-    /// The architecture a block names at `at`, and its table; `None` when it is none, which is
-    /// reported.
-    fn arch(&mut self, at: ExprId) -> Option<(Arch, std::sync::Arc<crate::asm::Table>)> {
-        self.typed(at);
+    /// The architecture whose table holds the instructions `callees` name, and the table; `None`
+    /// when they are of none, or of several, which is reported.
+    fn arch_of(&mut self, callees: impl Iterator<Item = ExprId>) -> Option<(Arch, std::sync::Arc<Table>)> {
         let env = self.env();
-        let value = env.eval(at).ok();
-        let found = Arch::ALL.iter().copied().find(|arch| match (&value, env.item(arch.namespace())) {
-            (Some(Value::Namespace(ns)), Ok(Value::Namespace(declared))) => *ns == declared,
-            _ => false,
-        });
-        let Some(arch) = found else {
-            let msg = Msg::new().text("this is not an architecture of ").code("lang.arch");
-            self.diag.error(
-                Diagnostic::error(errors::ASM_UNKNOWN_ARCH, msg).at(self.hir().exprs[at].origin, None),
-            );
-            return None;
-        };
-        let table = self.env().cx.get::<ArchTable>(&(self.env().file.package, arch)).ok()?;
-        Some((arch, table))
-    }
-
-    /// The expressions `operand` binds in braces, with how: `None` for the address `{name}`.
-    fn bindings(operand: &Operand, out: &mut Vec<(Option<Flow>, ExprId)>) {
-        match &operand.kind {
-            OperandKind::Bound { flow, value, .. } => out.push((*flow, *value)),
-            OperandKind::Prefix { operand, .. } => Self::bindings(operand, out),
-            OperandKind::Infix { left, right, .. } => {
-                Self::bindings(left, out);
-                Self::bindings(right, out);
+        let package = env.file.package;
+        let tables: Vec<_> = Arch::ALL
+            .iter()
+            .filter_map(|&arch| Some((arch, env.cx.get::<ArchTable>(&(package, arch)).ok()?)))
+            .collect();
+        let mut found: Option<usize> = None;
+        for callee in callees {
+            let Ok(Site::Decl(decl)) = env.resolve(callee) else { continue };
+            let Some(at) = tables.iter().position(|(_, t)| t.callables.contains_key(&decl)) else { continue };
+            if found.is_some_and(|f| f != at) {
+                let msg =
+                    Msg::new().text("this instruction is of another architecture than the block's first");
+                let origin = self.hir().exprs[callee].origin;
+                self.diag.error(Diagnostic::error(errors::ASM_UNKNOWN_ARCH, msg).at(origin, None));
+                return None;
             }
-            OperandKind::Memory { parts, .. } => parts.iter().for_each(|p| Self::bindings(p, out)),
-            _ => {}
+            found = Some(at);
         }
+        found.map(|at| tables[at].clone())
+    }
+}
+
+/// A call a block makes: its expression, its callee, and its first argument written without a
+/// name.
+struct Call {
+    expr: ExprId,
+    callee: ExprId,
+    first: Option<ExprId>,
+}
+
+/// The calls a block makes.
+struct Calls(Vec<Call>);
+
+impl Calls {
+    fn of(hir: &Hir, block: BlockId) -> Vec<Call> {
+        let mut calls = Self(Vec::new());
+        calls.block(hir, block);
+        calls.0
+    }
+}
+
+impl Visitor for Calls {
+    fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        if let ExprKind::Call { callee, args } = &hir.exprs[expr].kind {
+            let first = match args.first() {
+                Some(Entry::One(Arg { name: None, value })) => Some(*value),
+                _ => None,
+            };
+            self.0.push(Call { expr, callee: *callee, first });
+        }
+        visit::walk_expr(self, hir, expr);
     }
 }

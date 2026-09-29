@@ -1,25 +1,25 @@
 //! An architecture's table as its namespace declares it: its instructions, each a value of its
-//! `Instruction` or a member of a `Family`, read from its child namespaces in path order and in
-//! declaration order in each, families expanded, so that their positions are the ones the
-//! generated assemblers number them by (`vun_inline::OpId`, `FormId`).
+//! `Instruction` or a `Member` of a `Family`, read from its child namespaces in path order and in
+//! declaration order in each, so that their positions are the ones the generated assemblers
+//! number them by (`vun_inline::OpId`); and which of them each declaration a block calls names:
+//! an instruction or a member its own, a `Mnemonic` those it spells.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
-use vun_hir::db::{Exports, FileRef, Namespace, Package, PackageId};
+use vun_hir::db::{Exports, Namespace, Package, PackageId};
 use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Query};
-use vun_sema_ty::item::Site;
+use vun_sema_ty::item::{DeclRef, Declared, Site};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
 
 use super::Arch;
-use super::given::Word;
 use super::need::Needs;
-use super::spell::Mnemonic;
+use super::parts::Widths;
 use crate::env::{Env, ItemSite};
 use crate::member::Members as TypeMembers;
 use crate::target::Members;
@@ -35,14 +35,6 @@ pub enum Flow {
     Ends,
 }
 
-/// A form an instruction is spelled with.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub struct Spelling {
-    pub op: OpId,
-    pub form: FormId,
-    pub fixed: vun_isa::Fixed,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Op {
     pub name: Symbol,
@@ -54,14 +46,11 @@ pub struct Op {
 pub(super) struct Shape {
     pub(super) instruction: Item,
     pub(super) instruction_forms: Item,
-    /// The field of an instruction naming its mnemonic, where it is not its name.
-    pub(super) instruction_mnemonic: Option<Item>,
-    pub(super) family: Item,
     pub(super) family_forms: Item,
-    pub(super) members: Item,
-    pub(super) member_name: Item,
-    /// The field of a form naming its mnemonic, where it is not its instruction's.
-    pub(super) form_name: Item,
+    pub(super) member: Item,
+    pub(super) member_family: Item,
+    /// Its `Mnemonic` and the field naming the instructions one spells, where it has any.
+    pub(super) mnemonic: Option<(Item, Item)>,
     pub(super) form_flow: Item,
     /// How its forms say what a processor needs to have them.
     pub(super) needs: Needs,
@@ -70,17 +59,19 @@ pub(super) struct Shape {
     pub(super) size: Item,
     pub(super) cond: Item,
     pub(super) class: Item,
-    /// Reads the architecture's words into the table.
-    pub(super) registers: fn(&Env<'_, '_>, &mut Table) -> Result<(), Unevaluated>,
-    /// The mnemonics a form of an instruction is spelled with, and what each fixes.
-    pub(super) spellings: fn(&Table, Symbol, &Value) -> Vec<(Mnemonic, vun_isa::Fixed)>,
+    /// Its `Registers`, which an enum naming registers declares what it names with, and its
+    /// `Choice`, the kinds of named choice, which an enum of choices declares its kind with.
+    pub(super) registers: Item,
+    pub(super) choice: Option<Item>,
+    /// How its forms' widths are read, and which parts of a call select them.
+    pub(super) widths: Widths,
     /// The bits of each width.
     pub(super) bits: &'static [(Item, u32)],
 }
 
 /// An architecture's table: its instructions in order, the names of its widths, conditions and
-/// register classes in declaration order, its words by the name a line writes, and the forms each
-/// mnemonic spells.
+/// register classes in declaration order, and the instructions each declaration a block may call
+/// names, in the order they are tried.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Table {
     pub ops: Vec<Op>,
@@ -89,17 +80,10 @@ pub struct Table {
     pub bits: Vec<Option<u32>>,
     pub conds: Vec<Symbol>,
     pub classes: Vec<Symbol>,
-    pub words: BTreeMap<Symbol, Word>,
-    pub spellings: BTreeMap<Mnemonic, Vec<Spelling>>,
+    pub callables: BTreeMap<DeclRef, Vec<OpId>>,
 }
 
 impl Table {
-    /// The form `spelling` names.
-    #[must_use]
-    pub fn form(&self, spelling: Spelling) -> &Value {
-        &self.ops[usize::from(spelling.op.0)].forms[usize::from(spelling.form.0)]
-    }
-
     /// The width `item` names, a variant of the architecture's `Size`.
     #[must_use]
     pub fn size(&self, item: Symbol) -> Option<SizeId> {
@@ -125,6 +109,12 @@ impl Table {
         position(&self.classes, item.symbol()).map(ClassId)
     }
 
+    /// The form `form` of `op`.
+    #[must_use]
+    pub fn form(&self, op: OpId, form: FormId) -> Option<&Value> {
+        self.ops.get(usize::from(op.0))?.forms.get(usize::from(form.0))
+    }
+
     /// Where control goes after `form`, of `arch`.
     #[must_use]
     pub fn flow(arch: Arch, form: &Value) -> Flow {
@@ -136,19 +126,18 @@ impl Table {
 }
 
 /// Where `name` is among `names`, as the index of a table.
-fn position(names: &[Symbol], name: Symbol) -> Option<u8> {
+pub(super) fn position(names: &[Symbol], name: Symbol) -> Option<u8> {
     names.iter().position(|&n| n == name).and_then(|i| u8::try_from(i).ok())
 }
 
-/// The variants of the enum `item` declares, in declaration order.
-pub(super) fn variants(env: &Env<'_, '_>, item: Item) -> Result<Vec<Symbol>, Unevaluated> {
-    let Value::Type(ty) = env.item(item)? else { return Err(Unevaluated::Unsupported) };
+/// The variants of the enum type `ty`, in declaration order.
+pub(super) fn variants_of(env: &Env<'_, '_>, ty: Ty) -> Result<Vec<Symbol>, Unevaluated> {
     let members = env.cx.get::<TypeMembers>(&ty).ok_or(Unevaluated::Unsupported)?;
     Ok(members.variants.iter().map(|v| v.name).collect())
 }
 
 /// The type `item` declares.
-fn declared(env: &Env<'_, '_>, item: Item) -> Result<Ty, Unevaluated> {
+pub(super) fn declared(env: &Env<'_, '_>, item: Item) -> Result<Ty, Unevaluated> {
     match env.item(item)? {
         Value::Type(ty) => Ok(ty),
         _ => Err(Unevaluated::Unsupported),
@@ -169,10 +158,10 @@ impl Query for ArchTable {
         };
         let package = cx.get::<Package>(&ns.package);
         let path = package.file_of(&ns.path).ok_or(Unevaluated::Absent)?;
-        let file = FileRef { package: ns.package, path: Symbol::intern(path) };
+        let file = vun_hir::db::FileRef { package: ns.package, path: Symbol::intern(path) };
         let env = Env::of(cx, &file).ok_or(Unevaluated::Absent)?;
         let shape = arch.shape();
-        let sizes = variants(&env, shape.size)?;
+        let sizes = variants_of(&env, declared(&env, shape.size)?)?;
         let bits = sizes
             .iter()
             .map(|&s| shape.bits.iter().find(|(i, _)| i.symbol() == s).map(|&(_, b)| b))
@@ -180,55 +169,53 @@ impl Query for ArchTable {
         let mut table = Table {
             sizes,
             bits,
-            conds: variants(&env, shape.cond)?,
-            classes: variants(&env, shape.class)?,
+            conds: variants_of(&env, declared(&env, shape.cond)?)?,
+            classes: variants_of(&env, declared(&env, shape.class)?)?,
             ..Table::default()
         };
-        let (instruction, family) = (declared(&env, shape.instruction)?, declared(&env, shape.family)?);
+        let (instruction, member) = (declared(&env, shape.instruction)?, declared(&env, shape.member)?);
+        let mnemonic = shape.mnemonic.map(|(m, _)| declared(&env, m)).transpose()?;
+        let mut mnemonics = Vec::new();
         for child in package.children(&ns.path) {
             let child = Namespace { package: ns.package, path: [ns.path.as_slice(), &[child]].concat() };
             for &name in cx.get::<Exports>(&child).iter() {
                 let value = env.member(Value::Namespace(child.clone()), name)?;
                 let Value::Struct { ty, .. } = &value else { continue };
-                let members = Members::of(&value).map_err(|_| Unevaluated::Unsupported)?;
-                let forms = |field| members.get(field).ok().and_then(|f| f.clone().items());
-                if *ty == instruction {
-                    let named = shape.instruction_mnemonic.and_then(|m| members.symbol(m).ok().flatten());
-                    let forms = forms(shape.instruction_forms).unwrap_or_default();
-                    table.ops.push(Op { name: named.unwrap_or(name), forms });
-                } else if *ty == family {
-                    let shared = forms(shape.family_forms).unwrap_or_default();
-                    let family = members.get(shape.members).ok().and_then(|m| m.clone().items());
-                    for member in family.unwrap_or_default() {
-                        let name = Members::of(&member).and_then(|m| m.name(shape.member_name));
-                        let name = name.map_err(|_| Unevaluated::Unsupported)?;
-                        table.ops.push(Op { name, forms: shared.clone() });
+                let Some(Site::Decl(decl)) = cx.get::<Declared>(&(child.clone(), name)) else { continue };
+                let items = |value: &Value, field| {
+                    Members::of(value).ok().and_then(|m| m.get(field).ok()).and_then(|f| f.clone().items())
+                };
+                let forms = if *ty == instruction {
+                    items(&value, shape.instruction_forms)
+                } else if *ty == member {
+                    let members = Members::of(&value).map_err(|_| Unevaluated::Unsupported)?;
+                    let family = members.get(shape.member_family).map_err(|_| Unevaluated::Unsupported)?;
+                    items(family, shape.family_forms)
+                } else {
+                    if Some(*ty) == mnemonic {
+                        mnemonics.push((decl, value, child.clone()));
                     }
-                }
+                    continue;
+                };
+                let op = OpId(u16::try_from(table.ops.len()).map_err(|_| Unevaluated::Unsupported)?);
+                table.ops.push(Op { name, forms: forms.unwrap_or_default() });
+                table.callables.insert(decl, vec![op]);
             }
         }
-        (shape.registers)(&env, &mut table)?;
-        table.spellings = spellings(&table, shape);
+        // A mnemonic names the instructions it spells, each declared beside it.
+        for (decl, value, child) in mnemonics {
+            let Some((_, field)) = shape.mnemonic else { continue };
+            let spelled = Members::of(&value).ok().and_then(|m| m.get(field).ok().cloned());
+            let mut ops = Vec::new();
+            for name in spelled.and_then(Value::items).unwrap_or_default() {
+                let Value::Name(name) = name else { return Err(Unevaluated::Unsupported) };
+                let Some(Site::Decl(of)) = cx.get::<Declared>(&(child.clone(), name)) else {
+                    return Err(Unevaluated::Absent);
+                };
+                ops.extend(table.callables.get(&of).into_iter().flatten().copied());
+            }
+            table.callables.insert(decl, ops);
+        }
         Ok(Arc::new(table))
     }
-}
-
-/// The forms each mnemonic spells, in the table's order: the first that fits is chosen.
-fn spellings(table: &Table, shape: &Shape) -> BTreeMap<Mnemonic, Vec<Spelling>> {
-    let mut spellings: BTreeMap<Mnemonic, Vec<Spelling>> = BTreeMap::new();
-    for (op, instruction) in table.ops.iter().enumerate() {
-        for (form, value) in instruction.forms.iter().enumerate() {
-            let (Ok(op), Ok(form)) = (u16::try_from(op), u16::try_from(form)) else { continue };
-            let named = Members::of(value).ok().and_then(|m| m.symbol(shape.form_name).ok().flatten());
-            let name = named.unwrap_or(instruction.name);
-            for (mnemonic, fixed) in (shape.spellings)(table, name, value) {
-                spellings.entry(mnemonic).or_default().push(Spelling {
-                    op: OpId(op),
-                    form: FormId(form),
-                    fixed,
-                });
-            }
-        }
-    }
-    spellings
 }

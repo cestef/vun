@@ -8,14 +8,14 @@ _x64: &[_a.Sized] = &[.{ .size = .b64 }];
 _sf_n: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64, .bits = 0x80400000 }];
 _words: &[_a.Sized] = &[.{ .size = .b32 }, .{ .size = .b64 }];
 _sxt: &[_a.Sized] = &[
-    .{ .size = .b8, .bits = 0x80401c00, .suffix = "b" },
-    .{ .size = .b16, .bits = 0x80403c00, .suffix = "h" },
-    .{ .size = .b32, .bits = 0x80407c00, .suffix = "w" },
+    .{ .size = .b8, .bits = 0x80401c00, .types = &[i8] },
+    .{ .size = .b16, .bits = 0x80403c00, .types = &[i16] },
+    .{ .size = .b32, .bits = 0x80407c00, .types = &[i32] },
 ];
 _mov_x: &[_a.Sized] = &[.{ .size = .b64, .bits = 0x80000000 }];
 _uxt: &[_a.Sized] = &[
-    .{ .size = .b8, .bits = 0x1c00, .suffix = "b" },
-    .{ .size = .b16, .bits = 0x3c00, .suffix = "h" },
+    .{ .size = .b8, .bits = 0x1c00, .types = &[u8] },
+    .{ .size = .b16, .bits = 0x3c00, .types = &[u16] },
 ];
 
 _arith_a: _a.Arg = .{ .kind = .imm(.arith), .at = 10, .access = .read };
@@ -65,7 +65,6 @@ add := _a.Instruction{ .forms = &[
 
 /// `adds` and `subs`, over a shifted register, an immediate and an extended register.
 arith_flags := _a.Family{
-    .members = &[.{ .name = .adds, .bits = 0x20000000 }, .{ .name = .subs, .bits = 0x60000000 }],
     .forms = &[
         .{
             .base = .\or(0xb000000),
@@ -87,6 +86,8 @@ arith_flags := _a.Family{
         },
     ],
 };
+adds := _a.Member{ .family = arith_flags, .bits = 0x20000000 };
+subs := _a.Member{ .family = arith_flags, .bits = 0x60000000 };
 
 sub := _a.Instruction{ .forms = &[
     .{ .base = 0x4b000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _shifted_a] },
@@ -96,13 +97,14 @@ sub := _a.Instruction{ .forms = &[
 
 /// `cmp` and `cmn`: `subs` and `adds` into the zero register.
 compares := _a.Family{
-    .members = &[.{ .name = .cmp, .bits = 0x60000000 }, .{ .name = .cmn, .bits = 0x20000000 }],
     .forms = &[
         .{ .base = .\or(0xb00001f), .sizes = _sf, .args = &[_r_n, _shifted_a], .flags = .some(.write) },
         .{ .base = .\or(0x1100001f), .sizes = _sf, .args = &[_rsp_n, _arith_a], .flags = .some(.write) },
         .{ .base = .\or(0xb20001f), .sizes = _sf, .args = &[_rsp_n, _extended_a], .flags = .some(.write) },
     ],
 };
+cmp := _a.Member{ .family = compares, .bits = 0x60000000 };
+cmn := _a.Member{ .family = compares, .bits = 0x20000000 };
 
 neg := _a.Instruction{ .forms = &[
     .{ .base = 0x4b0003e0, .sizes = _sf, .args = &[_r_d_w, _shifted_a] },
@@ -147,16 +149,14 @@ udiv := _a.Instruction{ .forms = &[
 
 /// `and`, `orr` and `eor`, over a shifted register and a bitmask.
 logic := _a.Family{
-    .members = &[
-        .{ .name = .\and },
-        .{ .name = .orr, .bits = 0x20000000 },
-        .{ .name = .eor, .bits = 0x40000000 },
-    ],
     .forms = &[
         .{ .base = .\or(0xa000000), .sizes = _sf, .args = &[_r_d_w, _r_n, _logic_a] },
         .{ .base = .\or(0x12000000), .sizes = _sf, .args = &[_rsp_d_w, _r_n, _bitmask_a] },
     ],
 };
+\and := _a.Member{ .family = logic };
+orr := _a.Member{ .family = logic, .bits = 0x20000000 };
+eor := _a.Member{ .family = logic, .bits = 0x40000000 };
 
 ands := _a.Instruction{ .forms = &[
     .{ .base = 0x6a000000, .sizes = _sf, .args = &[_r_d_w, _r_n, _logic_a], .flags = .some(.write) },
@@ -165,11 +165,12 @@ ands := _a.Instruction{ .forms = &[
 
 /// `bic` and `orn`: `and` and `orr` of a negated shifted register.
 negated := _a.Family{
-    .members = &[.{ .name = .bic }, .{ .name = .orn, .bits = 0x20000000 }],
     .forms = &[
         .{ .base = .\or(0xa200000), .sizes = _sf, .args = &[_r_d_w, _r_n, _logic_a] },
     ],
 };
+bic := _a.Member{ .family = negated };
+orn := _a.Member{ .family = negated, .bits = 0x20000000 };
 
 tst := _a.Instruction{ .forms = &[
     .{ .base = 0x6a00001f, .sizes = _sf, .args = &[_r_n, _logic_a], .flags = .some(.write) },
@@ -197,11 +198,12 @@ asr := _a.Instruction{ .forms = &[
 
 /// Sign extensions from the low byte or half to the instruction's width.
 signs := _a.Family{
-    .members = &[.{ .name = .sxtb, .bits = 0x1c00 }, .{ .name = .sxth, .bits = 0x3c00 }],
     .forms = &[
         .{ .base = .\or(0x13000000), .sizes = _sf_n, .args = &[_r_d_w, _w_n] },
     ],
 };
+sxtb := _a.Member{ .family = signs, .bits = 0x1c00 };
+sxth := _a.Member{ .family = signs, .bits = 0x3c00 };
 
 sxtw := _a.Instruction{ .forms = &[
     .{ .base = 0x93407c00, .sizes = _x64, .args = &[_r_d_w, _w_n] },
@@ -209,11 +211,12 @@ sxtw := _a.Instruction{ .forms = &[
 
 /// Zero extensions from the low byte or half to 32 bits, which clears the upper half too.
 zeros := _a.Family{
-    .members = &[.{ .name = .uxtb, .bits = 0x1c00 }, .{ .name = .uxth, .bits = 0x3c00 }],
     .forms = &[
         .{ .base = .\or(0x53000000), .sizes = _words, .args = &[_w_d_w, _w_n] },
     ],
 };
+uxtb := _a.Member{ .family = zeros, .bits = 0x1c00 };
+uxth := _a.Member{ .family = zeros, .bits = 0x3c00 };
 
 /// Sign-extends to 64 bits from the instruction's width: `sxtb`, `sxth`, `sxtw`, a `mov` from 64.
 sxt := _a.Instruction{ .forms = &[
@@ -230,12 +233,6 @@ uxt := _a.Instruction{ .forms = &[
 /// Conditional selects: the first register if the condition holds, else the second, incremented,
 /// inverted or negated.
 selects := _a.Family{
-    .members = &[
-        .{ .name = .csel },
-        .{ .name = .csinc, .bits = 0x400 },
-        .{ .name = .csinv, .bits = 0x40000000 },
-        .{ .name = .csneg, .bits = 0x40000400 },
-    ],
     .forms = &[
         .{
             .base = .\or(0x1a800000),
@@ -245,22 +242,22 @@ selects := _a.Family{
         },
     ],
 };
+csel := _a.Member{ .family = selects };
+csinc := _a.Member{ .family = selects, .bits = 0x400 };
+csinv := _a.Member{ .family = selects, .bits = 0x40000000 };
+csneg := _a.Member{ .family = selects, .bits = 0x40000400 };
 
 /// 1, or all ones, if the condition holds, else 0.
 sets := _a.Family{
-    .members = &[.{ .name = .cset, .bits = 0x400 }, .{ .name = .csetm, .bits = 0x40000000 }],
     .forms = &[
         .{ .base = .\or(0x1a9f03e0), .sizes = _sf, .args = &[_r_d_w, _inverted_cc], .flags = .some(.read) },
     ],
 };
+cset := _a.Member{ .family = sets, .bits = 0x400 };
+csetm := _a.Member{ .family = sets, .bits = 0x40000000 };
 
 /// A register incremented, inverted or negated if the condition holds.
-unaries := _a.Family{
-    .members = &[
-        .{ .name = .cinc, .bits = 0x400 },
-        .{ .name = .cinv, .bits = 0x40000000 },
-        .{ .name = .cneg, .bits = 0x40000400 },
-    ],
+conditional_unaries := _a.Family{
     .forms = &[
         .{
             .base = .\or(0x1a800000),
@@ -270,3 +267,6 @@ unaries := _a.Family{
         },
     ],
 };
+cinc := _a.Member{ .family = conditional_unaries, .bits = 0x400 };
+cinv := _a.Member{ .family = conditional_unaries, .bits = 0x40000000 };
+cneg := _a.Member{ .family = conditional_unaries, .bits = 0x40000400 };

@@ -17,6 +17,8 @@ use super::{Known, Typer};
 use crate::callable::Callable;
 use crate::callable::Parameters;
 use crate::member::MemberValue;
+use vun_primitives::Primitive;
+use vun_primitives::arch::Arch as Form;
 
 impl Typer<'_, '_, '_> {
     /// A call of a value of function type: its arguments are checked against the parameters, and
@@ -45,12 +47,21 @@ impl Typer<'_, '_, '_> {
             }
             return None;
         };
+        // A value that is no function is called through its type's witness (spec 02, section 4).
+        if signature.is_none()
+            && !self.found.methods.contains_key(&callee)
+            && self.called(callee).is_none()
+            && let Some(known) = self.call_through(call, callee, &written)
+        {
+            return Some(known);
+        }
         // A method's receiver is passed in the mode its first parameter asks for.
         let receiver = match &self.hir().exprs[callee].kind {
             ExprKind::Member { object, .. } if self.found.methods.contains_key(&callee) => Some(*object),
             _ => None,
         };
         let target = Callee { f: self.called(callee), signature, receiver, passing: Passing::Written };
+        let code = written.first().copied();
         let written: Vec<Argument> = written.into_iter().map(Argument::Expr).collect();
         let applied = self.apply(call, &target, &written)?;
         if let Some(inferred) = applied.inferred {
@@ -58,6 +69,10 @@ impl Typer<'_, '_, '_> {
         }
         if let Some(pack) = applied.pack {
             self.finding().packs.insert(call, pack);
+        }
+        // A block of instructions is checked against its architecture's table.
+        if let (Some(Callable::Primitive(Primitive::Arch(Form::asm))), Some(code)) = (&target.f, code) {
+            return self.asm(call, code);
         }
         Some(applied.known)
     }
@@ -125,7 +140,7 @@ impl Typer<'_, '_, '_> {
 
     /// What a call of `callee` runs, when known here: a method, or a function or primitive
     /// known at compile time.
-    fn called(&self, callee: ExprId) -> Option<Callable> {
+    pub(super) fn called(&self, callee: ExprId) -> Option<Callable> {
         let f = match self.found.methods.get(&callee) {
             Some(method) => self.env().cx.get::<MemberValue>(method),
             None => self.evaluating().eval(callee),

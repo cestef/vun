@@ -33,14 +33,7 @@ impl Value {
             Self::Struct { fields, .. } => Literal::Record(
                 fields
                     .iter()
-                    .map(|(name, v)| {
-                        Some(Decl {
-                            name: name.as_str(),
-                            doc: Vec::new(),
-                            value: v.literal(span, package)?,
-                            span,
-                        })
-                    })
+                    .map(|(name, v)| Some(Decl::new(name.as_str(), v.literal(span, package)?, span)))
                     .collect::<Option<_>>()?,
             ),
             Self::Variant { name, payload, .. } if payload.is_empty() => Literal::Name(name.as_str()),

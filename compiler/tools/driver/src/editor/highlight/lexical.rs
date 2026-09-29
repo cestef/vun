@@ -21,8 +21,8 @@ pub(super) fn trivia(kind: TokenKind) -> Option<(Class, Modifiers)> {
     (kind == TokenKind::Comment).then_some((Class::Comment, Modifiers::default()))
 }
 
-/// The tokens of a file that are words only where they stand: a borrow mode, an operand's flow,
-/// the `in` of a `for`, the `asm` of an assembly block, an instruction's mnemonic.
+/// The tokens of a file that are words only where they stand: a borrow's words and the `in` of a
+/// `for`.
 pub(super) struct Contextual(IndexVec<TokenId, bool>);
 
 impl Contextual {
@@ -30,15 +30,8 @@ impl Contextual {
         let (cst, tokens) = (&parsed.cst, &parsed.tokens);
         let mut words = IndexVec::filled(false, tokens.len());
         for n in cst.ids() {
-            let word = matches!(
-                cst.kind(n),
-                NodeKind::Qualifier
-                    | NodeKind::Mode
-                    | NodeKind::Flow
-                    | NodeKind::In
-                    | NodeKind::Punct
-                    | NodeKind::Line
-            );
+            let word =
+                matches!(cst.kind(n), NodeKind::Qualifier | NodeKind::Mode | NodeKind::In | NodeKind::Punct);
             if let Anchor::Token(t) = cst.anchor(n)
                 && word
                 && matches!(tokens.kind(t), TokenKind::Ident | TokenKind::RawIdent)

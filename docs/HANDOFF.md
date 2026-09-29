@@ -121,16 +121,25 @@ placements) were the owner's choice.
 
 0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim). The
    parser reads the productions (340) and every source agrees with tree-sitter. In order:
-   (a) inline assembly as ordinary Vun, the owner's choice: a block is a quote of calls,
-   `asm(#{ mov(rdi, rsp); \and(rsp, -16); call(_boot); })`, its names brought in by a spread
-   (`..lang.arch.x86_64;`): `lang.arch.<arch>` declares each register (at each width) and each
-   mnemonic (the members of a family too) as declarations, memory operands as `mem(...)`,
-   write-back as `pre`/`post`, outputs as `out(p)`/`inout(p)`, a register binding explicit, a
-   label a value (`top := label();`); sema reads the quote's typed HIR against the table as it
-   reads the `Asm` HIR today. The `asm`, `line`, `suffix`, `bound` and `memory` kinds,
-   `operand_contexts` and `line_ends` then leave the grammar, and with them the engine's line and
-   context handling. 55 blocks in `lib/` and the corpus change; spec 07 section 6, spec 01, the
-   decision replacing 258;
+   (a) inline assembly as ordinary Vun (decision 343, spec 07 section 6). Landed:
+   a block is `unsafe lang.arch.asm({ ..lang.arch.x86_64.names; mov(rdi, rsp); ... })`, the
+   block passed as code (`$code: Code(())`), the spread inside it; `in(e).at(rdi)` pins a
+   register (`Operand.at`); `Sized.types` select widths (`ldr(u8, ...)`, `vcvt(i32, f32, ...)`),
+   an entry listing none by no type or the one type of its width; register enums say what they
+   name as an attribute (`#[Registers{ ... }]`, `#[Choice.barrier]`, read by type from
+   `Attributes::values` and the literal reader's `Decl::attrs`); `lang.arch.<a>.names` spreads
+   what blocks use; the old block syntax is gone from the grammar, the engine (`Line`, operand
+   contexts) and the generators (tree-sitter scanner, sublime flow words). A block in a generic
+   body whose calls are untyped there is read where it is instantiated. The kernel's `call` is
+   `request` (a file's names are found before a block's spread). `vun_items` writes the modules
+   of a namespace's descendants in `<ns>_/` directories; the isa `Op` derives `Variants`.
+   Checked: fmt, clippy, gen --check, lines, corpus, full nextest and `VUN_QUERY_CHECK=1` driver
+   tests on am3, the asm driver tests on petal (x86), tree-sitter (204 of 204 agree), the parse
+   fuzzer (3 minutes).
+   Open: calling an instruction outside a block fails in MIR at `lang.arch.outside` with an
+   origin inside `lib/lang/lang/arch.vun`; it should be refused at the caller's call (carry the
+   instantiation's call site through lowering failures). Holed impls (`_`) are not checked
+   against the interface's requirements.
    (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
    tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
    (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension

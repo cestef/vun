@@ -6,7 +6,7 @@ use vun_syntax::cst::{Fields, NodeId};
 use super::Lower;
 use super::pats::Mode;
 use crate::tree::{
-    Block, BlockId, Decl, DeclId, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Spread, Stmt,
+    Block, BlockId, Decl, DeclId, Entry, ExprId, FieldDef, List, Member, Name, Namespace, NsId, Spread, Stmt,
     Variant,
 };
 
@@ -134,6 +134,11 @@ impl Lower<'_, '_> {
         match self.kind(inner) {
             NodeKind::Binding | NodeKind::TypedBinding => Stmt::Decl(self.decl(inner, doc, attrs)),
             NodeKind::Assign => self.assignment(inner),
+            NodeKind::Spread => {
+                let members = vec![Entry::One(Member::Spread(self.spread(inner)))];
+                let origin = self.origin(inner);
+                Stmt::Spread(self.hir.namespaces.push(Namespace { members, origin }))
+            }
             _ => Stmt::Expr(self.expr(inner)),
         }
     }

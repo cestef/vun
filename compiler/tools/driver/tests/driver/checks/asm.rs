@@ -16,9 +16,7 @@ fn an_assembly_block_under_the_asm_checks_carries_its_site_and_the_runtime_helpe
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut r: u64 = 0;
-    unsafe lang.arch.x86_64.asm {
-        mov {out r}, 7
-    };
+    unsafe lang.arch.asm({ ..lang.arch.x86_64.names; mov(out(r), 7); });
     std.os.Exit.of((r % 100).to(Int(0..=125)))
 };
 ",
@@ -96,9 +94,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
     mut x: u64 = 0;
     n: u64 = 7;
     p := unsafe lang.mem.pointer_to(u64, &x);
-    unsafe lang.arch.{arch}.asm {{
-        {write}
-    }};
+    unsafe lang.arch.asm({{ ..lang.arch.{arch}.names; {write}; }});
     std.os.Exit.of((x % 100).to(Int(0..=125)))
 }};
 "
@@ -111,9 +107,7 @@ fn moving(arch: &str, moves: &str) -> String {
         "\
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {{
-    unsafe lang.arch.{arch}.asm {{
-        {moves}
-    }};
+    unsafe lang.arch.asm({{ ..lang.arch.{arch}.names; {moves}; }});
     .ok
 }};
 "
@@ -122,8 +116,8 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
 
 /// Each architecture's block writing through a binding, and moving the stack pointer.
 const ARCHES: [([&str; 2], &str, &str, &str); 2] = [
-    (["linux", "x86_64"], "x86_64", "mov [{in p} + {past}], {in n}", "push rax"),
-    (["linux", "arm64"], "arm64", "str {in n}, [{in p}, {past}]", "sub sp, sp, 16"),
+    (["linux", "x86_64"], "x86_64", "mov(mem(in(p), {past}), in(n))", "push(rax)"),
+    (["linux", "arm64"], "arm64", "str(in(n), mem(in(p), {past}))", "sub(sp, sp, 16)"),
 ];
 
 #[test]

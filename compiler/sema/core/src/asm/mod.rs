@@ -1,23 +1,23 @@
 //! Blocks of an architecture's instructions (spec 07, section 6), checked against the
-//! architecture's table in `lang.arch`: a line's mnemonic names candidate forms, and the first
-//! whose operands fit is the instruction's, as the native assemblers choose. What the table does
-//! not say, how an operand of each kind is written, each architecture tells here.
+//! architecture's table in `lang.arch`: each call of a block names instructions, the parts it
+//! writes select their forms, and the first whose operands fit is the instruction's, as the native
+//! assemblers choose. What the table does not say, how memory is written and which register a
+//! value is held in, each architecture tells here.
 
 mod arm64;
 mod bracket;
 mod check;
 mod given;
+mod inst;
 mod need;
+mod parts;
 mod read;
-mod spell;
 mod table;
 mod thumb;
 mod x86_64;
 
 pub(crate) use check::Checker;
-pub use given::Word;
-pub use spell::Mnemonic;
-pub use table::{ArchTable, Flow, Op, Spelling, Table};
+pub use table::{ArchTable, Flow, Op, Table};
 use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 use vun_items::{Item, lang};

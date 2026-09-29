@@ -14,12 +14,7 @@ use crate::manifest::record::{Fields, Record};
 impl Lock {
     /// Reads the lockfile whose declarations are `decls`; `file` locates what is missing.
     pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
-        let whole = Decl {
-            name: FILE,
-            doc: Vec::new(),
-            value: Literal::Record(decls.to_vec()),
-            span: Span::new(file, 0, 0),
-        };
+        let whole = Decl::new(FILE, Literal::Record(decls.to_vec()), Span::new(file, 0, 0));
         let mut fields = Fields::new(&whole, &[field::LAYOUT, field::DEPS, field::REPLACE], cx)?;
         let layout = fields.require(field::LAYOUT).and_then(|d| {
             d.int::<u32>(cx).filter(|&l| l == LAYOUT).or_else(|| {

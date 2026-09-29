@@ -8,8 +8,6 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use proc_macro2::TokenStream;
-use quote::quote;
 use vun_build::layout::{Location, SEPARATOR};
 use vun_diag::{ChildKind, DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
 use vun_fs::{Relative, Tree};
@@ -19,12 +17,13 @@ use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 
-use crate::names::raw;
 use crate::{asm, errors, grammar, items, primitives};
 
 mod data;
+mod module;
 
 pub(crate) use data::{Data, Format};
+pub(crate) use module::{Access, JOIN, Module};
 
 pub(crate) struct Generator {
     /// The Vun file, or the directory of them, relative to the repository root.
@@ -45,55 +44,6 @@ pub(crate) enum Emit {
     /// Files of another format, each written with the header of its format.
     Data(fn(&[Source<'_>]) -> Read<Vec<Data>>),
 }
-
-/// One file of a generated directory.
-pub(crate) struct Module {
-    /// The module and file name, without extension.
-    pub(crate) name: String,
-    pub(crate) access: Access,
-    /// Its items, with the imports they need.
-    pub(crate) items: TokenStream,
-}
-
-/// How the items of a generated module are reached.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Access {
-    /// As the directory's own: `pub use name::*`.
-    Glob,
-    /// Through the module's path: `pub mod name`.
-    Path,
-    /// It only adds methods to the types of its siblings, reached through them: `mod name`.
-    Impl,
-    /// Its items are its siblings' alone, which name them by path: `mod name`.
-    Sibling,
-}
-
-impl Module {
-    /// A module of one generated directory whose items name those of its siblings.
-    pub(crate) fn sibling(name: String, items: &TokenStream) -> Self {
-        let items = quote! {
-            #[allow(unused_imports, clippy::wildcard_imports, reason = "generated modules share one namespace")]
-            use super::*;
-            #items
-        };
-        Self { name, access: Access::Glob, items }
-    }
-}
-
-impl Module {
-    /// The module name of the namespace at `path` inside its package, its segments below the
-    /// package joined: `lang.mem.raw` is `mem_raw`; `None` for the package's own namespace.
-    pub(crate) fn nested(path: &[impl AsRef<str>]) -> Option<String> {
-        let inner: Vec<&str> = path.iter().skip(1).map(AsRef::as_ref).collect();
-        (!inner.is_empty()).then(|| inner.join(JOIN))
-    }
-}
-
-/// Joins the namespaces below a package in one module name.
-const JOIN: &str = "_";
-
-/// The name of a directory module's root file.
-const ROOT: &str = "mod";
 
 /// A parsed file handed to a generator.
 pub(crate) struct Source<'s> {
@@ -126,7 +76,7 @@ pub(crate) const ALL: &[Generator] = &[
 const SYNTAX: DiagId = DiagId::new("generate.generate.syntax");
 const EMPTY: DiagId = DiagId::new("generate.generate.empty");
 /// Two modules of one output directory with one name, as `a.b_c` and `a_b.c` join.
-const COLLISION: DiagId = DiagId::new("generate.generate.collision");
+pub(super) const COLLISION: DiagId = DiagId::new("generate.generate.collision");
 
 /// Where packages live, relative to the repository root.
 pub(crate) const PACKAGES: &str = "lib";
@@ -193,28 +143,7 @@ impl Generator {
                 return Ok(files.collect());
             }
         };
-        let format = |items: TokenStream| {
-            let file = syn::parse2(quote! { #![doc = #header] #items }).expect("generators emit Rust items");
-            prettyplease::unparse(&file)
-        };
-        let declared = modules.iter().map(|m| {
-            let name = raw(&m.name);
-            match m.access {
-                Access::Glob => quote! { mod #name; pub use #name::*; },
-                Access::Path => quote! { pub mod #name; },
-                Access::Impl | Access::Sibling => quote! { mod #name; },
-            }
-        });
-        let mut files = BTreeMap::from([(format!("{ROOT}.rs"), format(quote! { #(#declared)* }))]);
-        for module in modules {
-            let name = format!("{}.rs", module.name);
-            if files.contains_key(&name) {
-                let msg = Msg::new().text("generates the module ").code(&module.name).text(" twice");
-                return Err(self.error(COLLISION, &module.name, msg));
-            }
-            files.insert(name, format(module.items));
-        }
-        Ok(files)
+        self.files(modules, &header)
     }
 
     /// How the output directory under `root` differs from `generated`: the files to write, and

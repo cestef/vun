@@ -3,7 +3,8 @@
 use vun_intern::Symbol;
 
 use super::{
-    BinderId, DeclId, Entry, ExprId, FieldDef, Hir, List, Member, Name, NsId, PatId, PatKind, Spread, Staged,
+    BinderId, DeclId, Entry, ExprId, ExprKind, FieldDef, Hir, List, Member, Name, NsId, PatId, PatKind,
+    Spread, Staged, Variant,
 };
 
 impl Hir {
@@ -68,6 +69,17 @@ impl Hir {
     #[must_use]
     pub fn struct_of(&self, ns: NsId) -> Option<ExprId> {
         self.index().literal[ns]
+    }
+
+    /// The variants of the `enum` literal `decl` binds, staged ones included; none for any other
+    /// value.
+    #[must_use]
+    pub fn variants_of(&self, decl: DeclId) -> Vec<&Variant> {
+        let mut out = Vec::new();
+        if let Some(ExprKind::Enum { variants, .. }) = self.decls[decl].value.map(|v| &self.exprs[v].kind) {
+            each_entry(variants, &mut |v| out.push(v));
+        }
+        out
     }
 
     /// The path of the spread selecting `binder`, as `..std.mem.{ Own }` selects `Own`.

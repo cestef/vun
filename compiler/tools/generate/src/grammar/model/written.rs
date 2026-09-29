@@ -16,11 +16,9 @@ pub(super) struct Written {
     pub(super) parts: Vec<Name>,
     pub(super) admits: Vec<Contents>,
     pub(super) holds: Vec<Contents>,
-    pub(super) operand_contexts: Vec<Contents>,
     pub(super) preferred: Vec<Vec<Name>>,
     pub(super) unterminated: Vec<Name>,
     pub(super) transparent: Vec<Transparent>,
-    pub(super) line_ends: Vec<Name>,
     pub(super) precedence: Vec<Vec<Name>>,
     pub(super) infix: Vec<Level>,
     pub(super) delimiters: Vec<Delimiter>,
@@ -102,7 +100,7 @@ pub(crate) enum TokenRef {
     Table(Path),
 }
 
-/// A row of `admits`, `holds` or `operand_contexts`.
+/// A row of `admits` or `holds`.
 #[derive(FromLiteral)]
 pub(super) struct Contents {
     pub(super) fields: Vec<Name>,
@@ -194,13 +192,11 @@ pub(super) struct Sublime {
     pub(super) keywords: Path,
     pub(super) qualifiers: Path,
     pub(super) modes: Path,
-    pub(super) flows: Path,
     pub(super) punctuation: Path,
     pub(super) member: Name,
     pub(super) call: Name,
     pub(super) binds: Name,
     pub(super) borrow: Name,
-    pub(super) block: Name,
 }
 
 #[derive(FromLiteral)]

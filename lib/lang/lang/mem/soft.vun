@@ -26,11 +26,12 @@ load := unsafe ($T: type, p: *T, order: lang.mem.Order) -> T {
     $if _paired(T) {
         at := lang.mem.address(T, p);
         mut (low, high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            dmb sy
-            ldrexd {out(r2) low}, {out(r3) high}, [{in(r0) at}]
-            dmb sy
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            dmb(sy);
+            ldrexd(out(low).at(r2), out(high).at(r3), mem(in(at).at(r0)));
+            dmb(sy);
+        });
         _joined(T, low, high)
     } else {
         $lang.diag.error(_unsupported, .none)
@@ -41,17 +42,18 @@ store := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) {
     $if _paired(T) {
         at := lang.mem.address(T, p);
         (low, high) := _words(T, value);
-        unsafe lang.arch.thumb.asm {
-            push r4, r5
-            dmb sy
-            'again:
-            ldrexd r4, r5, [{in(r0) at}]
-            strexd r1, {in(r2) low}, {in(r3) high}, [r0]
-            cmp r1, 0
-            bne 'again
-            dmb sy
-            pop r4, r5
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            push(r4, r5);
+            dmb(sy);
+            again := here();
+            ldrexd(r4, r5, mem(in(at).at(r0)));
+            strexd(r1, in(low).at(r2), in(high).at(r3), mem(r0));
+            cmp(r1, 0);
+            b(ne, again);
+            dmb(sy);
+            pop(r4, r5);
+        });
     } else {
         $lang.diag.error(_unsupported, .none);
     }
@@ -62,19 +64,20 @@ swap := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         at := lang.mem.address(T, p);
         (low, high) := _words(T, value);
         mut (old_low, old_high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            push r4, r5
-            dmb sy
-            'again:
-            ldrexd r4, r5, [{in(r0) at}]
-            strexd r1, {in(r2) low}, {in(r3) high}, [r0]
-            cmp r1, 0
-            bne 'again
-            dmb sy
-            mov {out(r0) old_low}, r4
-            mov {out(r1) old_high}, r5
-            pop r4, r5
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            push(r4, r5);
+            dmb(sy);
+            again := here();
+            ldrexd(r4, r5, mem(in(at).at(r0)));
+            strexd(r1, in(low).at(r2), in(high).at(r3), mem(r0));
+            cmp(r1, 0);
+            b(ne, again);
+            dmb(sy);
+            mov(out(old_low).at(r0), r4);
+            mov(out(old_high).at(r1), r5);
+            pop(r4, r5);
+        });
         _joined(T, old_low, old_high)
     } else {
         $lang.diag.error(_unsupported, .none)
@@ -90,25 +93,27 @@ compare_swap := unsafe ($T: type, p: *T, expected: T, new: T, order: lang.mem.Or
         wanted: [2]u32 = [new_low, new_high];
         from := lang.mem.address([2]u32, lang.mem.pointer_to([2]u32, &wanted));
         mut (old_low, old_high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            push r4, r5, r6, r8
-            ldrd r6, r8, [{in(r1) from}]
-            dmb sy
-            'again:
-            ldrexd r4, r5, [{in(r0) at}]
-            cmp r4, {in(r2) low}
-            bne 'done
-            cmp r5, {in(r3) high}
-            bne 'done
-            strexd r1, r6, r8, [r0]
-            cmp r1, 0
-            bne 'again
-            'done:
-            dmb sy
-            mov {out(r0) old_low}, r4
-            mov {out(r1) old_high}, r5
-            pop r4, r5, r6, r8
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            done := label();
+            push(r4, r5, r6, r8);
+            ldrd(r6, r8, mem(in(from).at(r1)));
+            dmb(sy);
+            again := here();
+            ldrexd(r4, r5, mem(in(at).at(r0)));
+            cmp(r4, in(low).at(r2));
+            b(ne, done);
+            cmp(r5, in(high).at(r3));
+            b(ne, done);
+            strexd(r1, r6, r8, mem(r0));
+            cmp(r1, 0);
+            b(ne, again);
+            place(done);
+            dmb(sy);
+            mov(out(old_low).at(r0), r4);
+            mov(out(old_high).at(r1), r5);
+            pop(r4, r5, r6, r8);
+        });
         _joined(T, old_low, old_high)
     } else {
         $lang.diag.error(_unsupported, .none)
@@ -120,21 +125,22 @@ add := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         at := lang.mem.address(T, p);
         (low, high) := _words(T, value);
         mut (old_low, old_high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            push r4, r5, r6, r8
-            dmb sy
-            'again:
-            ldrexd r4, r5, [{in(r0) at}]
-            adds r6, r4, {in(r2) low}
-            adc r8, r5, {in(r3) high}
-            strexd r1, r6, r8, [r0]
-            cmp r1, 0
-            bne 'again
-            dmb sy
-            mov {out(r0) old_low}, r4
-            mov {out(r1) old_high}, r5
-            pop r4, r5, r6, r8
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            push(r4, r5, r6, r8);
+            dmb(sy);
+            again := here();
+            ldrexd(r4, r5, mem(in(at).at(r0)));
+            adds(r6, r4, in(low).at(r2));
+            adc(r8, r5, in(high).at(r3));
+            strexd(r1, r6, r8, mem(r0));
+            cmp(r1, 0);
+            b(ne, again);
+            dmb(sy);
+            mov(out(old_low).at(r0), r4);
+            mov(out(old_high).at(r1), r5);
+            pop(r4, r5, r6, r8);
+        });
         _joined(T, old_low, old_high)
     } else {
         $lang.diag.error(_unsupported, .none)
@@ -146,21 +152,22 @@ sub := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         at := lang.mem.address(T, p);
         (low, high) := _words(T, value);
         mut (old_low, old_high): (u32, u32) = (0, 0);
-        unsafe lang.arch.thumb.asm {
-            push r4, r5, r6, r8
-            dmb sy
-            'again:
-            ldrexd r4, r5, [{in(r0) at}]
-            subs r6, r4, {in(r2) low}
-            sbc r8, r5, {in(r3) high}
-            strexd r1, r6, r8, [r0]
-            cmp r1, 0
-            bne 'again
-            dmb sy
-            mov {out(r0) old_low}, r4
-            mov {out(r1) old_high}, r5
-            pop r4, r5, r6, r8
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.thumb.names;
+            push(r4, r5, r6, r8);
+            dmb(sy);
+            again := here();
+            ldrexd(r4, r5, mem(in(at).at(r0)));
+            subs(r6, r4, in(low).at(r2));
+            sbc(r8, r5, in(high).at(r3));
+            strexd(r1, r6, r8, mem(r0));
+            cmp(r1, 0);
+            b(ne, again);
+            dmb(sy);
+            mov(out(old_low).at(r0), r4);
+            mov(out(old_high).at(r1), r5);
+            pop(r4, r5, r6, r8);
+        });
         _joined(T, old_low, old_high)
     } else {
         $lang.diag.error(_unsupported, .none)

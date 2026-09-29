@@ -9,10 +9,11 @@ application_exit: u32 = 0x2_0026;
 exit := (status: u32) -> never {
     block: [2]u32 = [application_exit, status];
     at := lang.mem.address(u32, lang.mem.items_pointer(u32, &block));
-    unsafe lang.arch.thumb.asm {
-        mov r0, {in(r0) exit_extended}
-        mov r1, {in(r1) at}
-        bkpt 0xab
-    };
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        mov(r0, in(exit_extended).at(r0));
+        mov(r1, in(at).at(r1));
+        bkpt(0xab);
+    });
     for {}
 };

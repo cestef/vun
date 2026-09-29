@@ -1,29 +1,33 @@
 # asm.unknown_arch
 
-A block of instructions names something that is not an architecture of `lang.arch`.
+A block of instructions calls instructions of more than one architecture.
 
-`a.asm { ... }` holds instructions of the architecture `a`, whose table is a namespace of
-`lang.arch`: `lang.arch.x86_64`, `lang.arch.arm64` (spec 07, section 6). The path before `.asm`
-is evaluated at compile time and must be one of them.
+A block is written in one instruction set: its instructions are declarations of one namespace of
+`lang.arch`, such as `lang.arch.x86_64` or `lang.arch.arm64`, whose table sema reads the block
+against (spec 07, section 6). The first instruction a block calls gives its architecture.
 
 ## Example
 
 ```vun
-nothing := () {
-    unsafe lang.mem.asm { //~ asm.unknown_arch
-        nop
-    };
+back := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        ret();
+        lang.arch.arm64.control.ret(); //~ asm.unknown_arch
+    });
 };
 ```
 
 ## Fix
 
-Name the architecture's namespace:
+Write a block per architecture, each where the target's instruction set is its own:
 
 ```vun
-nothing := () {
-    unsafe lang.arch.x86_64.asm {
-        xchg rax, rax
-    };
+back := () {
+    $if lang.target.current.arch == .x86_64 {
+        unsafe lang.arch.asm({ ..lang.arch.x86_64.names; ret(); });
+    } else {
+        unsafe lang.arch.asm({ ..lang.arch.arm64.names; ret(); });
+    }
 };
 ```

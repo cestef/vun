@@ -1,37 +1,35 @@
-//! Checking a block against its architecture's table: each line's operands read, its mnemonic's
-//! forms tried in order, the first that takes the operands chosen, and where none does, why the
-//! nearest one does not: an immediate too wide, a register of another class, or no form at all.
+//! Checking a block against its architecture's table: where each label marks, then each
+//! instruction called (`inst`), and whether the end of the block is reached.
 
 use std::collections::BTreeMap;
 
-use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
-use vun_hir::tree::{Asm, AsmEntry, ExprId, Inst, Writeback};
-use vun_inline::{ClassId, Disp, FormId, Line, Mem, OpId, SizeId};
-use vun_intern::Symbol;
-use vun_isa::{Blocks, Fit, Fixed, Misfit, Why};
-use vun_origin::OriginId;
+use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
+use vun_hir::tree::{BlockId, ExprId, PatKind, Stmt};
+use vun_inline::{ClassId, Line, Mem, SizeId};
+use vun_isa::{Blocks, Fit, Fixed, Misfit};
+use vun_primitives::arch::Arch as Form;
 
-use super::given::Given;
-use super::spell::Mnemonic;
+use super::read::Labels;
 use super::table::{Flow, Table};
 use super::{Arch, Block, arm64, bracket, thumb, x86_64};
+use crate::env::Env;
 
-/// A term of an address: a register, one times a scale, bytes, or a declaration's address.
+/// A part of an address: a register, one times a scale, bytes, or a declaration's address.
 pub(super) enum Term {
-    Reg(Given),
-    Scaled(Given, i64),
+    Reg(super::given::Given),
+    Scaled(super::given::Given, i64),
     Bytes(i64),
     Symbol(ExprId),
 }
 
 impl Arch {
     /// How the form `form` of `op` takes `givens`, as the architecture's assembler would.
-    fn fit(
+    pub(super) fn fit(
         self,
-        op: OpId,
-        form: FormId,
+        op: vun_inline::OpId,
+        form: vun_inline::FormId,
         fixed: Fixed,
-        givens: &[Given],
+        givens: &[super::given::Given],
     ) -> Result<Fit<ExprId, ExprId, ExprId>, Misfit> {
         match self {
             Self::X86_64 => <vun_isa_x86_64::X86_64 as Blocks>::fit(op, form, fixed, givens),
@@ -40,17 +38,10 @@ impl Arch {
         }
     }
 
-    /// Memory from the parts between its brackets, if the architecture writes it so.
-    pub(super) fn memory(
-        self,
-        parts: Vec<Vec<Term>>,
-        writeback: Writeback,
-    ) -> Option<Mem<ExprId, ExprId, ExprId>> {
+    /// Memory from its parts, if the architecture writes one so.
+    pub(super) fn memory(self, parts: Vec<Term>) -> Option<Mem<ExprId, ExprId, ExprId>> {
         match self {
-            Self::X86_64 => match (<[_; 1]>::try_from(parts), writeback) {
-                (Ok([terms]), Writeback::No) => x86_64::memory(terms),
-                _ => None,
-            },
+            Self::X86_64 => x86_64::memory(parts),
             Self::Arm64 | Self::Thumb => bracket::memory(parts),
         }
     }
@@ -72,32 +63,45 @@ impl Arch {
 }
 
 /// Checks a block, reporting what does not fit its architecture's table.
-pub(crate) struct Checker<'c> {
+pub(crate) struct Checker<'c, 'a, 'db> {
+    pub(crate) env: &'c Env<'a, 'db>,
     pub(crate) arch: Arch,
     pub(crate) table: &'c Table,
+    /// The operand form of `lang.arch` each callee of the block calls, as it was typed.
+    pub(crate) forms: &'c BTreeMap<ExprId, Form>,
     /// The class and width of register the value of each binding needs.
     pub(crate) bound: &'c BTreeMap<ExprId, (ClassId, Option<SizeId>)>,
     pub(crate) diag: &'c mut DiagCtxt,
 }
 
-impl Checker<'_> {
-    /// The block checked, or `None` when a line does not fit, which is reported.
-    pub(crate) fn block(&mut self, asm: &Asm) -> Option<Block> {
-        let mut labels = BTreeMap::new();
+/// A statement of a block: an instruction called, a label made or marked, or a spread.
+pub(super) enum Entry {
+    Inst(ExprId),
+    Marks(vun_hir::tree::BinderId),
+    Makes,
+    Spread,
+}
+
+impl Checker<'_, '_, '_> {
+    /// The block `block` checked, or `None` when an instruction does not fit, which is reported.
+    pub(crate) fn block(&mut self, block: BlockId) -> Option<Block> {
+        let entries = self.entries(block)?;
+        let mut labels = Labels::new();
         let mut line = 0_u16;
-        for entry in &asm.entries {
+        for entry in &entries {
             match entry {
-                AsmEntry::Label { name, .. } => {
-                    labels.insert(*name, Line(line));
+                Entry::Inst(_) => line = line.checked_add(1)?,
+                Entry::Marks(label) => {
+                    labels.insert(*label, Line(line));
                 }
-                AsmEntry::Inst(_) => line += 1,
+                Entry::Makes | Entry::Spread => {}
             }
         }
         let mut insts = Vec::new();
         let mut fits = true;
-        for entry in &asm.entries {
-            let AsmEntry::Inst(inst) = entry else { continue };
-            match self.inst(inst, &labels) {
+        for entry in &entries {
+            let Entry::Inst(call) = entry else { continue };
+            match self.inst(*call, &labels) {
                 Some(inst) => insts.push(inst),
                 None => fits = false,
             }
@@ -107,114 +111,69 @@ impl Checker<'_> {
         fits.then(|| Block { arch: self.arch.namespace(), insts, returns, needs })
     }
 
-    fn inst(
-        &mut self,
-        inst: &Inst,
-        labels: &BTreeMap<Symbol, Line>,
-    ) -> Option<vun_inline::Inst<ExprId, ExprId, ExprId>> {
-        let givens: Vec<_> = inst.operands.iter().map(|o| self.given(o, labels)).collect();
-        let givens = givens.into_iter().collect::<Option<Vec<_>>>()?;
-        let mnemonic = Mnemonic { word: inst.mnemonic, parts: inst.suffixes.clone() };
-        let Some(spellings) = self.table.spellings.get(&mnemonic) else {
-            let known = self.table.spellings.keys().filter(|m| m.parts.is_empty()).map(|m| m.word.as_str());
-            let near = vun_suggest::closest(inst.mnemonic.as_str(), known);
-            let written = mnemonic.to_string();
-            let msg = Msg::new().text("the architecture has no instruction ").code(written);
-            let mut d = Diagnostic::error(errors::ASM_UNKNOWN_MNEMONIC, msg).at(inst.origin, None);
-            if let Some(near) = near {
-                d = d.child(ChildKind::Help, Msg::did_you_mean(near));
-            }
-            self.diag.error(d);
-            return None;
-        };
-        // A post-index access is written as its memory, then the bytes it moves by: `[x1], 8`.
-        let (folded, written) = Self::post_indexed(&givens);
-        let mut tries: Vec<(&[Given], Option<&[usize]>)> = vec![(&givens, None)];
-        if !folded.is_empty() {
-            tries.push((&folded, Some(&written)));
-        }
-        let mut nearest: Option<Misfit> = None;
-        for &spelling in spellings {
-            for &(givens, written) in &tries {
-                let misfit = match self.arch.fit(spelling.op, spelling.form, spelling.fixed, givens) {
-                    Ok(fit) => {
-                        let (op, form, size, operands) = (spelling.op, spelling.form, fit.size, fit.operands);
-                        vun_trace::tracing::trace!(%mnemonic, op = op.0, form = form.0, size = size.0, "fitted");
-                        return Some(vun_inline::Inst { op, form, size, operands, origin: inst.origin });
+    /// What each statement of `block` is, its value last; `None` where one is none of them,
+    /// which is reported.
+    fn entries(&mut self, block: BlockId) -> Option<Vec<Entry>> {
+        let hir = &self.env.parsed.hir;
+        let b = &hir.blocks[block];
+        let written = b.stmts.iter().filter_map(|s| match s {
+            vun_hir::tree::Entry::One(s) => Some(s),
+            vun_hir::tree::Entry::Staged(_) => None,
+        });
+        let mut entries = Vec::new();
+        let mut read = true;
+        for stmt in written {
+            let entry = match stmt {
+                Stmt::Spread(_) => Some(Entry::Spread),
+                Stmt::Expr(e) => self.entry(*e),
+                Stmt::Decl(d) => {
+                    let decl = &hir.decls[*d];
+                    let made =
+                        decl.value.and_then(|v| self.args(v)).and_then(|(callee, _)| self.form(callee));
+                    match (made, &hir.pats[decl.pat].kind) {
+                        (Some(Form::here), PatKind::Bind(label)) => Some(Entry::Marks(*label)),
+                        (Some(Form::label), PatKind::Bind(_)) => Some(Entry::Makes),
+                        _ => None,
                     }
-                    // Named by its place among the operands written.
-                    Err(Misfit::Operand { at, why }) => {
-                        Misfit::Operand { at: written.map_or(at, |w| w[at]), why }
-                    }
-                    Err(misfit) => misfit,
+                }
+                _ => None,
+            };
+            if let Some(entry) = entry {
+                entries.push(entry);
+            } else {
+                read = false;
+                let origin = match stmt {
+                    Stmt::Decl(d) => hir.decls[*d].origin,
+                    Stmt::Expr(e) => hir.exprs[*e].origin,
+                    Stmt::Assign { origin, .. } => *origin,
+                    Stmt::Block(b) => hir.blocks[*b].origin,
+                    Stmt::Spread(ns) => hir.namespaces[*ns].origin,
                 };
-                let (op, form, fixed) = (spelling.op.0, spelling.form.0, spelling.fixed);
-                vun_trace::tracing::trace!(%mnemonic, op, form, ?fixed, ?misfit, "missed");
-                nearest = Some(nearest.map_or(misfit, |n| n.nearer(misfit)));
+                let msg = Msg::new().text("a block of instructions holds calls of instructions and labels");
+                self.diag.error(Diagnostic::error(errors::ASM_UNKNOWN_MNEMONIC, msg).at(origin, None));
             }
         }
-        self.misfit(inst, nearest.unwrap_or(Misfit::Count));
-        None
-    }
-
-    /// `givens` with each memory operand followed by bytes taken as a post-index access, and the
-    /// place among those written of each; empty when none is.
-    fn post_indexed(givens: &[Given]) -> (Vec<Given>, Vec<usize>) {
-        let (mut folded, mut written) = (Vec::new(), Vec::new());
-        let mut at = 0;
-        while at < givens.len() {
-            match (&givens[at], givens.get(at + 1)) {
-                (
-                    Given::Mem {
-                        mem: Mem { base, index: None, disp: Disp::Bytes(0) },
-                        writeback: vun_isa::Writeback::No,
-                    },
-                    Some(Given::Imm(Some(bytes))),
-                ) => {
-                    let mem = Mem { base: base.clone(), index: None, disp: Disp::Bytes(*bytes) };
-                    folded.push(Given::Mem { mem, writeback: vun_isa::Writeback::Post });
-                    written.push(at);
-                    at += 2;
-                }
-                (given, _) => {
-                    folded.push(given.clone());
-                    written.push(at);
-                    at += 1;
-                }
-            }
+        if let Some(tail) = b.tail {
+            entries.push(self.entry(tail)?);
         }
-        if folded.len() == givens.len() { (Vec::new(), Vec::new()) } else { (folded, written) }
+        read.then_some(entries)
     }
 
-    /// Reports why the nearest form does not take the operands of `inst`.
-    fn misfit(&mut self, inst: &Inst, misfit: Misfit) {
-        let mnemonic = inst.mnemonic.as_str();
-        let (id, origin, msg): (DiagId, OriginId, Msg) = match misfit {
-            Misfit::Operand { at, why: Why::Wide } => {
-                let msg = Msg::new().text("the integer does not fit any immediate of ").code(mnemonic);
-                (errors::ASM_IMMEDIATE_TOO_WIDE, inst.operands[at].origin, msg)
-            }
-            Misfit::Operand { at, why: Why::Class } => {
-                let msg = Msg::new()
-                    .text("the register is of another class than ")
-                    .code(mnemonic)
-                    .text(" takes here");
-                (errors::ASM_REGISTER_CLASS, inst.operands[at].origin, msg)
-            }
-            Misfit::Unsized => {
-                let msg = Msg::new().text("no operand gives the width of ").code(mnemonic);
-                (errors::ASM_NO_FORM, inst.origin, msg)
-            }
-            Misfit::Count | Misfit::Width | Misfit::Operand { .. } => {
-                let msg = Msg::new().text("no form of ").code(mnemonic).text(" takes these operands");
-                (errors::ASM_NO_FORM, inst.origin, msg)
-            }
-        };
-        self.diag.error(Diagnostic::error(id, msg).at(origin, None));
+    /// The statement `expr`: a label marked (`place(end)`), or an instruction called.
+    fn entry(&self, expr: ExprId) -> Option<Entry> {
+        let (callee, args) = self.args(expr)?;
+        match (self.form(callee), args.as_slice()) {
+            (Some(Form::place), [label]) => match self.env.parsed.resolution.names[*label] {
+                Some(vun_hir::resolve::Res::Binder(b)) => Some(Entry::Marks(b)),
+                _ => None,
+            },
+            (Some(_), _) => None,
+            (None, _) => Some(Entry::Inst(expr)),
+        }
     }
 
-    /// Whether the end of the block is reached: past a line that goes on, or by a jump to a label
-    /// at the end; not past one that ends or only jumps.
+    /// Whether the end of the block is reached: past an instruction that goes on, or by a jump to
+    /// a label at the end; not past one that ends or only jumps.
     fn returns(&self, insts: &[vun_inline::Inst<ExprId, ExprId, ExprId>]) -> bool {
         let end = insts.len();
         let mut reached = vec![false; end + 1];
@@ -224,8 +183,7 @@ impl Checker<'_> {
                 continue;
             }
             let Some(inst) = insts.get(at) else { continue };
-            let form = &self.table.ops[usize::from(inst.op.0)].forms[usize::from(inst.form.0)];
-            let flow = Table::flow(self.arch, form);
+            let flow = self.table.form(inst.op, inst.form).map_or(Flow::Next, |f| Table::flow(self.arch, f));
             for operand in &inst.operands {
                 if let vun_inline::Operand::Label(Line(line)) = operand {
                     stack.push(usize::from(*line));
@@ -236,25 +194,5 @@ impl Checker<'_> {
             }
         }
         reached[end]
-    }
-}
-
-/// The nearer of two misses.
-trait Nearer {
-    fn nearer(self, other: Self) -> Self;
-}
-
-impl Nearer for Misfit {
-    /// One at an operand, of the form taking the most operands before it, then the nearest
-    /// reason; then one whose width is unknown.
-    fn nearer(self, other: Self) -> Self {
-        match (self, other) {
-            (Self::Operand { at: a, why: wa }, Self::Operand { at: b, why: wb }) => {
-                if (b, std::cmp::Reverse(wb)) > (a, std::cmp::Reverse(wa)) { other } else { self }
-            }
-            (Self::Operand { .. } | Self::Unsized, _) => self,
-            (_, Self::Operand { .. } | Self::Unsized) => other,
-            _ => self,
-        }
     }
 }

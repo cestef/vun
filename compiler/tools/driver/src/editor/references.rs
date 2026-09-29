@@ -124,7 +124,7 @@ impl Session {
     /// of the package of `asking`.
     fn searched(&mut self, asking: &FileRef, site: &Site) -> Vec<FileRef> {
         let declaring = match site {
-            Site::Decl(decl) => decl.file.package,
+            Site::Decl(decl) | Site::Variant { decl, .. } => decl.file.package,
             Site::Namespace(ns) => ns.package,
         };
         let mut packages = vec![asking.package, declaring];

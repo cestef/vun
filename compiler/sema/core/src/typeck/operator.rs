@@ -6,7 +6,7 @@
 //! range pattern are operators too.
 
 use vun_codec::{Decode, Encode};
-use vun_desugar::{OPERATORS, PREFIX_OPERATORS};
+use vun_desugar::{CALLS, OPERATORS, PREFIX_OPERATORS};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, PatId};
 use vun_intern::Symbol;
@@ -14,7 +14,7 @@ use vun_items::Item;
 use vun_sema_float::Format;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::float::FloatType;
-use vun_sema_ty::{Ty, Value};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::apply::{Argument, Callee, Passing};
 use super::{Known, Stage, Typer};
@@ -135,6 +135,37 @@ impl Typer<'_, '_, '_> {
             self.check_visible(site, function, &method.visible);
             method.owner
         };
+        self.applied(at, site, (owner, function), receiver, left, args)
+    }
+
+    /// `f(a, b)` on a value `f` that is no function: `call(&mut f, (a, b))` of the function the
+    /// table `calls` names, of the witness of `f`'s type for an interface its constructor makes
+    /// with the tuple of the arguments' types (spec 02, section 4). `None` where `f`'s type has
+    /// none, which the caller reports as a call of what is no function.
+    pub(super) fn call_through(&mut self, call: ExprId, callee: ExprId, written: &[ExprId]) -> Option<Known> {
+        let function = *CALLS.first()?;
+        let (constructor, name) = (function.parent()?, function.symbol());
+        let left = self.typed(callee)?;
+        let types = written.iter().map(|&a| Some(self.typed(a)?.ty)).collect::<Option<Vec<_>>>()?;
+        let params = TyKind::Tuple(types).intern();
+        let args = [Some(Value::Type(params)), None];
+        let method = self.env().made_implemented_by(left.ty.through_borrows(), constructor, &args, name)?;
+        self.check_visible(call, name, &method.visible);
+        let args = [Argument::Matched(params)];
+        self.applied(Operation::Expr(call), call, (method.owner, name), callee, left, &args)
+    }
+
+    /// The call at `site` of `method`, a function of a witness or of an interface's requirements,
+    /// with `receiver`, of which `left` is known, then `args`: recorded at `at` for building.
+    fn applied(
+        &mut self,
+        at: Operation,
+        site: ExprId,
+        (owner, function): (Ty, Symbol),
+        receiver: ExprId,
+        left: Known,
+        args: &[Argument],
+    ) -> Option<Known> {
         // The witness's function, or a primitive it names: `add := lang.int.add`.
         let f = self.env().cx.get::<MemberValue>(&(owner, function)).ok().and_then(Callable::of);
         let signature =

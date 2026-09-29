@@ -65,12 +65,18 @@ impl Query for Witnesses {
 }
 
 impl Witness {
-    /// The witness `decl` gives for `ty`, if it covers `ty`.
-    fn of(cx: &Cx<'_>, decl: ImplDecl, ty: Ty) -> Option<Self> {
-        let args = ty.made_by(&decl.target).or_else(|| {
+    /// The arguments the value of `decl` takes for `ty`, if its target covers `ty`: those of the
+    /// constructor that made `ty`, or `ty` and the arguments of the interface it implements.
+    fn covering(decl: &ImplDecl, ty: Ty) -> Option<Vec<Value>> {
+        ty.made_by(&decl.target).or_else(|| {
             let args = ty.implements(&decl.target)?;
             Some(std::iter::once(Value::Type(ty)).chain(args).collect())
-        })?;
+        })
+    }
+
+    /// The witness `decl` gives for `ty`, if it covers `ty`.
+    fn of(cx: &Cx<'_>, decl: ImplDecl, ty: Ty) -> Option<Self> {
+        let args = Self::covering(&decl, ty)?;
         let value = cx.get::<DeclValue>(&decl.decl).ok()?;
         let (witness, requirements) = if let Value::Type(_) = decl.target {
             (value.as_type()?, decl.contract.as_ref().map(|c| c.requirements))
@@ -91,6 +97,35 @@ impl Witness {
             (witness, requirements)
         };
         Some(Self { decl, ty: witness, requirements })
+    }
+
+    /// The witness the holed impl `decl` gives for `ty` and the interface its constructor makes
+    /// with `args`, each `None` where the use leaves it to the impl, where they fit what it
+    /// writes: its value takes the values of its `_` after what its target gives.
+    fn holed(cx: &Cx<'_>, decl: &ImplDecl, ty: Ty, args: &[Option<Value>]) -> Option<Self> {
+        let holed = decl.holed.as_ref()?;
+        let mut taken = Self::covering(decl, ty)?;
+        let mut made = Vec::new();
+        for (written, given) in holed.args.iter().zip(args) {
+            match (written, given) {
+                (Some(written), Some(given)) if written != given => return None,
+                (Some(written), _) => made.push(written.clone()),
+                (None, Some(given)) => {
+                    taken.push(given.clone());
+                    made.push(given.clone());
+                }
+                (None, None) => return None,
+            }
+        }
+        let env = Env::of(cx, &decl.decl.file)?;
+        let value = cx.get::<DeclValue>(&decl.decl).ok()?;
+        let witness = env.apply(value, taken).ok()?.as_type()?;
+        let Value::Interface(interface) = env.apply(Value::Fn(holed.constructor.clone()), made).ok()? else {
+            return None;
+        };
+        let requirements =
+            cx.get::<Call>(&Instance { f: interface, args: vec![Value::Type(ty)] }).ok()?.as_type()?;
+        Some(Self { decl: decl.clone(), ty: witness, requirements: Some(requirements) })
     }
 
     /// The member `name` of this witness, or else the default of its interface.
@@ -145,6 +180,41 @@ impl Env<'_, '_> {
         witnesses
             .iter()
             .filter(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
+            .find_map(|w| w.method(self.cx, function))
+    }
+
+    /// The function `function` of an interface the constructor `constructor` makes with `args`,
+    /// each `None` where any value fits, for `ty`: of an impl of such an interface, or of one of
+    /// every interface the constructor makes with any value where it writes `_`, whose witness is
+    /// made for the values `args` give there (spec 02, section 3).
+    #[must_use]
+    pub fn made_implemented_by(
+        &self,
+        ty: Ty,
+        constructor: Item,
+        args: &[Option<Value>],
+        function: Symbol,
+    ) -> Option<Method> {
+        let Ok(Value::Fn(constructor)) = self.item(constructor) else { return None };
+        let fits = |made: &[Value]| {
+            made.len() == args.len() && made.iter().zip(args).all(|(m, a)| a.as_ref().is_none_or(|a| a == m))
+        };
+        let made = |c: &super::Contract| {
+            c.interface.within.as_deref().is_some_and(|i| i.f == constructor && fits(&i.args))
+        };
+        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
+        let concrete = witnesses.iter().filter(|w| w.decl.contract.as_ref().is_some_and(made));
+        if let Some(method) = concrete.into_iter().find_map(|w| w.method(self.cx, function)) {
+            return Some(method);
+        }
+        let home = match &*ty {
+            TyKind::Nominal(nominal) => Some(&nominal.literal.file),
+            _ => None,
+        };
+        let impls = self.impl_files(home).into_iter().flat_map(|f| self.cx.get::<Impls>(&f).to_vec());
+        impls
+            .filter(|d| d.holed.as_ref().is_some_and(|h| h.constructor == constructor))
+            .filter_map(|d| Witness::holed(self.cx, &d, ty, args))
             .find_map(|w| w.method(self.cx, function))
     }
 

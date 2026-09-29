@@ -4,11 +4,12 @@ start := ($main: (&mut System) -> Exit) -> type { struct {
     #[link.export("_start"), abi.naked]
     entry := () -> never {
         unsafe {
-            lang.arch.x86_64.asm {
-                mov rdi, rsp
-                and rsp, -16
-                call {_boot}
-            };
+            lang.arch.asm({
+                ..lang.arch.x86_64.names;
+                mov(rdi, rsp);
+                \and(rsp, -16);
+                call(_boot);
+            });
             lang.hint.unreachable()
         }
     };

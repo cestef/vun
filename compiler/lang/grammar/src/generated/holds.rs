@@ -29,16 +29,8 @@ pub const HOLDS: &[HoldsRow] = &[
         kinds: &[NodeKind::Arm, NodeKind::Staged],
     },
     HoldsRow {
-        fields: &[NodeField::Lines],
-        kinds: &[NodeKind::Line, NodeKind::Label],
-    },
-    HoldsRow {
         fields: &[NodeField::Otherwise],
         kinds: &[NodeKind::Block, NodeKind::If],
-    },
-    HoldsRow {
-        fields: &[NodeField::Register],
-        kinds: &[NodeKind::Name, NodeKind::Int, NodeKind::Prefix],
     },
     HoldsRow {
         fields: &[NodeField::Names],

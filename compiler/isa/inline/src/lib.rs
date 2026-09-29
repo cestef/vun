@@ -143,8 +143,8 @@ pub enum Disp<S> {
     Symbol(S, i64),
 }
 
-/// A Vun value in a register: read by the block (`{in e}`), written into a place (`{out p}`), or
-/// both (`{inout p}`), in the register named or one the backend picks.
+/// A Vun value in a register: read by the block (`in(e)`), written into a place (`out(p)`), or
+/// both (`inout(p)`), in one the backend picks or the one named (`in(e).at(rdi)`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Bound<V, P> {
     In { value: V, reg: Option<RegRef> },
@@ -158,6 +158,16 @@ impl<V, P> Bound<V, P> {
     pub fn reg(&self) -> Option<RegRef> {
         match self {
             Self::In { reg, .. } | Self::Out { reg, .. } | Self::InOut { reg, .. } => *reg,
+        }
+    }
+
+    /// It in the register `at`.
+    #[must_use]
+    pub fn at(self, at: RegRef) -> Self {
+        match self {
+            Self::In { value, .. } => Self::In { value, reg: Some(at) },
+            Self::Out { place, .. } => Self::Out { place, reg: Some(at) },
+            Self::InOut { place, .. } => Self::InOut { place, reg: Some(at) },
         }
     }
 }

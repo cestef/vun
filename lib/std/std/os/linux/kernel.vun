@@ -16,49 +16,52 @@ Call := struct { number: usize, args: [6]usize };
 /// Makes the system call `number` with `args`, returning what the kernel returns: a negative
 /// error number where the call failed.
 #[panic.never]
-call := (number: usize, args: [6]usize) -> isize {
-    request := Call{ .number = number, .args = args };
-    at := std.ptr.to(Call, &request).address();
+request := (number: usize, args: [6]usize) -> isize {
+    call := Call{ .number = number, .args = args };
+    at := std.ptr.to(Call, &call).address();
     mut result: usize = 0;
     $if lang.target.current.arch == .x86_64 {
-        unsafe lang.arch.x86_64.asm {
-            mov rdi, [{in(rax) at} + 8]
-            mov rsi, [rax + 16]
-            mov rdx, [rax + 24]
-            mov r10, [rax + 32]
-            mov r8, [rax + 40]
-            mov r9, [rax + 48]
-            mov rax, [rax]
-            syscall
-            mov {out(rax) result}, rax
-        };
+        unsafe lang.arch.asm({
+            ..lang.arch.x86_64.names;
+            mov(rdi, mem(in(at).at(rax), 8));
+            mov(rsi, mem(rax, 16));
+            mov(rdx, mem(rax, 24));
+            mov(r10, mem(rax, 32));
+            mov(r8, mem(rax, 40));
+            mov(r9, mem(rax, 48));
+            mov(rax, mem(rax));
+            syscall();
+            mov(out(result).at(rax), rax);
+        });
     } else {
         $if lang.target.current.arch == .arm64 {
-            unsafe lang.arch.arm64.asm {
-                ldr x8, [{in(x0) at}]
-                ldr x1, [x0, 16]
-                ldr x2, [x0, 24]
-                ldr x3, [x0, 32]
-                ldr x4, [x0, 40]
-                ldr x5, [x0, 48]
-                ldr x0, [x0, 8]
-                svc 0
-                mov {out(x0) result}, x0
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.arm64.names;
+                ldr(x8, mem(in(at).at(x0)));
+                ldr(x1, mem(x0, 16));
+                ldr(x2, mem(x0, 24));
+                ldr(x3, mem(x0, 32));
+                ldr(x4, mem(x0, 40));
+                ldr(x5, mem(x0, 48));
+                ldr(x0, mem(x0, 8));
+                svc(0);
+                mov(out(result).at(x0), x0);
+            });
         } else {
-            unsafe lang.arch.thumb.asm {
-                push r4, r5, r7
-                ldr r7, [{in(r0) at}]
-                ldr r1, [r0, 8]
-                ldr r2, [r0, 12]
-                ldr r3, [r0, 16]
-                ldr r4, [r0, 20]
-                ldr r5, [r0, 24]
-                ldr r0, [r0, 4]
-                svc 0
-                pop r4, r5, r7
-                mov {out(r0) result}, r0
-            };
+            unsafe lang.arch.asm({
+                ..lang.arch.thumb.names;
+                push(r4, r5, r7);
+                ldr(r7, mem(in(at).at(r0)));
+                ldr(r1, mem(r0, 8));
+                ldr(r2, mem(r0, 12));
+                ldr(r3, mem(r0, 16));
+                ldr(r4, mem(r0, 20));
+                ldr(r5, mem(r0, 24));
+                ldr(r0, mem(r0, 4));
+                svc(0);
+                pop(r4, r5, r7);
+                mov(out(result).at(r0), r0);
+            });
         }
     }
     result.wrap(isize)
@@ -80,13 +83,13 @@ reserve: usize = 0x4022;
 no_file: usize = (-1).wrap(usize);
 
 /// Maps private memory of `bytes` reserved, backed only where touched: what the kernel returns.
-mapping := (bytes: usize) -> isize { call(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]) };
+mapping := (bytes: usize) -> isize { request(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]) };
 
 /// Private memory of `bytes` reserved, backed only where touched.
 map := (bytes: usize) -> usize { mapping(bytes).wrap(usize) };
 
 /// Gives back the `bytes` mapped at `address`.
-unmap := (address: usize, bytes: usize) { call(numbers.munmap, [address, bytes, 0, 0, 0, 0]); };
+unmap := (address: usize, bytes: usize) { request(numbers.munmap, [address, bytes, 0, 0, 0, 0]); };
 
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
 state := () -> std.check.State { std.check.mapped(map, unmap) };
@@ -102,7 +105,7 @@ clock_id := (clock: std.time.Clock) -> usize { std.os.linux.clocks.id(clock).to(
 
 /// Ends the process with `code`, 0 where it succeeded.
 exit := (code: Int(0..=125)) -> lang.never {
-    call(numbers.exit_group, [code.to(usize), 0, 0, 0, 0, 0]);
+    request(numbers.exit_group, [code.to(usize), 0, 0, 0, 0, 0]);
     unsafe lang.hint.unreachable()
 };
 
@@ -121,27 +124,30 @@ start := ($main: std.os.Main) -> type { struct {
     entry := () -> lang.never {
         unsafe {
             $if lang.target.current.arch == .x86_64 {
-                lang.arch.x86_64.asm {
-                    xor ebp, ebp
-                    mov rdi, rsp
-                    and rsp, -16
-                    call {boot}
-                };
+                lang.arch.asm({
+                    ..lang.arch.x86_64.names;
+                    xor(ebp, ebp);
+                    mov(rdi, rsp);
+                    \and(rsp, -16);
+                    call(boot);
+                });
             } else {
                 $if lang.target.current.arch == .arm64 {
-                    lang.arch.arm64.asm {
-                        mov x29, 0
-                        mov x30, 0
-                        mov x0, sp
-                        bl {boot}
-                    };
+                    lang.arch.asm({
+                        ..lang.arch.arm64.names;
+                        mov(x29, 0);
+                        mov(x30, 0);
+                        mov(x0, sp);
+                        bl(boot);
+                    });
                 } else {
-                    lang.arch.thumb.asm {
-                        mov r7, 0
-                        mov lr, 0
-                        mov r0, sp
-                        bl {boot}
-                    };
+                    lang.arch.asm({
+                        ..lang.arch.thumb.names;
+                        mov(r7, 0);
+                        mov(lr, 0);
+                        mov(r0, sp);
+                        bl(boot);
+                    });
                 }
             }
             lang.hint.unreachable()
@@ -169,32 +175,32 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.write)]
     write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
         address := lang.mem.items_pointer(u8, bytes).address();
-        outcome(call(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
+        outcome(request(numbers.write, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
     };
 
     #[link.export(std.os.symbols.read)]
     read := (fd: i32, bytes: &mut [u8]) -> Result(usize, std.os.Error) {
         address := lang.mem.items_pointer(u8, bytes).address();
-        outcome(call(numbers.read, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
+        outcome(request(numbers.read, [fd.to(usize), address, bytes.len(), 0, 0, 0]))
     };
 
     #[link.export(std.os.symbols.open)]
     open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
         ended := std.os.file.Path.of(path)?;
         at := [std.os.linux.cwd.wrap(usize), ended.start().address(), std.os.linux.flags.of(mode).to(usize), std.os.file.created, 0, 0];
-        .ok(outcome(call(numbers.openat, at))?.to(i32))
+        .ok(outcome(request(numbers.openat, at))?.to(i32))
     };
 
     #[link.export(std.os.symbols.close)]
     close := (fd: i32) -> Result((), std.os.Error) {
-        outcome(call(numbers.close, [fd.to(usize), 0, 0, 0, 0, 0]))?;
+        outcome(request(numbers.close, [fd.to(usize), 0, 0, 0, 0, 0]))?;
         .ok(())
     };
 
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
-        outcome(call(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]))?;
+        outcome(request(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]))?;
         .ok(at.instant())
     };
 
@@ -203,10 +209,10 @@ start := ($main: std.os.Main) -> type { struct {
     pause := (span: std.time.Duration) -> Result((), std.os.Error) {
         mut left := std.os.Timespec.of(span);
         for {
-            request := left;
-            asked := std.ptr.to(std.os.Timespec, &request).address();
+            wanted := left;
+            asked := std.ptr.to(std.os.Timespec, &wanted).address();
             at := std.ptr.to(std.os.Timespec, &left).address();
-            match outcome(call(numbers.clock_nanosleep, [clock_id(.monotonic), 0, asked, at, 0, 0])) {
+            match outcome(request(numbers.clock_nanosleep, [clock_id(.monotonic), 0, asked, at, 0, 0])) {
                 .ok(_) => return .ok(()),
                 .err(.interrupted) => {},
                 .err(e) => return .err(e),
@@ -220,8 +226,8 @@ start := ($main: std.os.Main) -> type { struct {
     enter := () -> std.sync.Mask {
         all := every_signal;
         mut old: Sigset = 0;
-        call(numbers.rt_sigprocmask, [block, std.ptr.to(Sigset, &all).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
-        me := call(numbers.gettid, [0, 0, 0, 0, 0, 0]).wrap(usize);
+        request(numbers.rt_sigprocmask, [block, std.ptr.to(Sigset, &all).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+        me := request(numbers.gettid, [0, 0, 0, 0, 0, 0]).wrap(usize);
         outer := owner.load(.acquire) != me;
         if outer {
             for owner.compare_swap(0, me, .acquire) != 0 {}
@@ -236,13 +242,13 @@ start := ($main: std.os.Main) -> type { struct {
         }
         set: Sigset = mask.bits().wrap(Sigset);
         mut old: Sigset = 0;
-        call(numbers.rt_sigprocmask, [set_mask, std.ptr.to(Sigset, &set).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+        request(numbers.rt_sigprocmask, [set_mask, std.ptr.to(Sigset, &set).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
     };
 
     /// Gives the core to other threads: what fires an event runs on one of them, or in a
     /// signal handler, and nothing is missed between an executor's check and its sleep.
     #[link.export(std.task.symbols.sleep)]
-    sleep := () { call(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
+    sleep := () { request(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.linux.kernel.memory.exports;
     division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else { struct {} };

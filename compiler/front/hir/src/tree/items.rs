@@ -3,7 +3,7 @@
 use vun_grammar::TokenKind;
 use vun_origin::OriginId;
 
-use super::{BinderId, BlockId, Cond, DeclId, ExprId, Name, PatId};
+use super::{BinderId, BlockId, Cond, DeclId, ExprId, Name, NsId, PatId};
 
 /// A list whose entries may be generated at compile time.
 pub type List<T> = Vec<Entry<T>>;
@@ -84,6 +84,10 @@ pub enum Stmt {
     },
     /// A nested block of statements, such as the body of a statement-level `$for`.
     Block(BlockId),
+    /// `..path;` in a block: a namespace holding the spread alone, entered where it is written
+    /// and left at the block's end, so that the names it brings are found after every scope
+    /// (spec 01, section 8).
+    Spread(NsId),
 }
 
 /// A parameter of a function literal or a function type.

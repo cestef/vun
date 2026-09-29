@@ -10,6 +10,8 @@ use super::*;
 pub enum Primitive {
     /// `lang.abi`
     Abi(abi::Abi),
+    /// `lang.arch`
+    Arch(arch::Arch),
     /// `lang.bounds`
     Bounds(bounds::Bounds),
     /// `lang.check`
@@ -66,6 +68,7 @@ impl Primitive {
     pub fn all() -> impl Iterator<Item = Self> {
         std::iter::empty()
             .chain(abi::Abi::ALL.iter().map(|&p| Self::Abi(p)))
+            .chain(arch::Arch::ALL.iter().map(|&p| Self::Arch(p)))
             .chain(bounds::Bounds::ALL.iter().map(|&p| Self::Bounds(p)))
             .chain(check::Check::ALL.iter().map(|&p| Self::Check(p)))
             .chain(comptime::Comptime::ALL.iter().map(|&p| Self::Comptime(p)))
@@ -97,6 +100,7 @@ impl Primitive {
     pub const fn namespace(self) -> vun_items::Item {
         match self {
             Self::Abi(_) => abi::Abi::NAMESPACE,
+            Self::Arch(_) => arch::Arch::NAMESPACE,
             Self::Bounds(_) => bounds::Bounds::NAMESPACE,
             Self::Check(_) => check::Check::NAMESPACE,
             Self::Comptime(_) => comptime::Comptime::NAMESPACE,
@@ -129,6 +133,7 @@ impl Primitive {
     pub const fn item(self) -> vun_items::Item {
         match self {
             Self::Abi(p) => p.item(),
+            Self::Arch(p) => p.item(),
             Self::Bounds(p) => p.item(),
             Self::Check(p) => p.item(),
             Self::Comptime(p) => p.item(),
@@ -161,6 +166,7 @@ impl Primitive {
     pub const fn name(self) -> &'static str {
         match self {
             Self::Abi(p) => p.name(),
+            Self::Arch(p) => p.name(),
             Self::Bounds(p) => p.name(),
             Self::Check(p) => p.name(),
             Self::Comptime(p) => p.name(),

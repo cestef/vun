@@ -12,7 +12,6 @@ impl Context {
     pub const fn name(self) -> &'static str {
         match self {
             Self::ForPattern => "for_pattern",
-            Self::AsmBlock => "asm_block",
         }
     }
 }

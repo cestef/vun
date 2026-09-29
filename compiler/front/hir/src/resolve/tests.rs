@@ -90,10 +90,3 @@ fn each_dollar_escapes_one_stage() {
     assert_eq!(check("f := ($x: u8) { y := $$x; };").0, [errors::META_ESCAPE]);
     assert_eq!(check("f := ($x: u8) { y := #{ $$$x }; };").0, [errors::META_ESCAPE]);
 }
-
-#[test]
-fn instructions_resolve_only_their_bound_values() {
-    let text =
-        "a := (x: u64) { mut r: u64 = 0; arch.asm {\n    lea {out r}, [{in x} + rcx]\n    call {a}\n} };";
-    assert_eq!(check(text), (vec![], 3));
-}

@@ -1,157 +1,202 @@
-//! Reading a line's operands: its words as the architecture's registers, integers as
-//! immediates, labels as the lines they mark, bindings with the register their value needs, and
-//! memory from the terms of its parts.
+//! Reading a call's operands: values known at compile time as the architecture's words,
+//! integers and addresses; labels as the instructions they mark; and the operand forms of
+//! `lang.arch`: bindings with the register their value needs (`in(e)`), memory from its parts
+//! (`mem(x1, 8)`) and its write-back (`pre`, `post`).
 
 use std::collections::BTreeMap;
 
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
-use vun_grammar::{Flow as Binding, TokenKind};
-use vun_hir::tree::{ExprId, Operand, OperandKind, Writeback};
-use vun_inline::{Bound, Line};
-use vun_intern::Symbol;
-use vun_origin::OriginId;
+use vun_hir::resolve::Res;
+use vun_hir::tree::{Arg, BinderId, Entry, ExprId, ExprKind};
+use vun_inline::{Bound, Disp, Line, Mem};
+use vun_isa::Writeback;
+use vun_primitives::arch::Arch as Form;
+use vun_sema_ty::Value;
 
 use super::check::{Checker, Term};
-use super::given::{Given, Word};
+use super::given::Given;
 
-impl Checker<'_> {
-    /// Reports an operand the architecture does not have.
-    fn unknown(&mut self, origin: OriginId, msg: Msg, help: Option<String>) -> Option<Given> {
+/// The instruction each label marks.
+pub(super) type Labels = BTreeMap<BinderId, Line>;
+
+impl Checker<'_, '_, '_> {
+    /// The operand form of `lang.arch` that `callee` calls, if it calls one.
+    pub(super) fn form(&self, callee: ExprId) -> Option<Form> {
+        self.forms.get(&callee).copied()
+    }
+
+    /// The arguments of the call `expr`, each written without a name; `None` for another
+    /// expression.
+    pub(super) fn args(&self, expr: ExprId) -> Option<(ExprId, Vec<ExprId>)> {
+        let ExprKind::Call { callee, args } = &self.env.parsed.hir.exprs[expr].kind else { return None };
+        let args = args.iter().map(|a| match a {
+            Entry::One(Arg { name: None, value }) => Some(*value),
+            _ => None,
+        });
+        Some((*callee, args.collect::<Option<_>>()?))
+    }
+
+    /// Reports an operand the architecture does not take, with `help`.
+    fn unknown(&mut self, arg: ExprId, msg: Msg, help: Option<Msg>) -> Option<Given> {
+        let origin = self.env.parsed.hir.exprs[arg].origin;
         let mut d = Diagnostic::error(errors::ASM_UNKNOWN_OPERAND, msg).at(origin, None);
-        if let Some(near) = help {
-            d = d.child(ChildKind::Help, Msg::did_you_mean(near));
+        if let Some(help) = help {
+            d = d.child(ChildKind::Help, help);
         }
         self.diag.error(d);
         None
     }
 
-    /// The operand `operand` gives, or `None` when it is none, which is reported.
-    pub(super) fn given(&mut self, operand: &Operand, labels: &BTreeMap<Symbol, Line>) -> Option<Given> {
-        match &operand.kind {
-            OperandKind::Error => None,
-            OperandKind::Word(word) => {
-                if let Some(&known) = self.table.words.get(word) {
-                    return Some(known.given());
-                }
-                let near = vun_suggest::closest(word.as_str(), self.table.words.keys().map(|w| w.as_str()));
-                let msg = Msg::new().code(word.as_str()).text(" is no word of the architecture");
-                self.unknown(operand.origin, msg, near.map(str::to_owned))
+    /// The operand `arg` gives, or `None` when it is none, which is reported.
+    pub(super) fn given(&mut self, arg: ExprId, labels: &Labels) -> Option<Given> {
+        if let Some((callee, args)) = self.args(arg)
+            && let Some(form) = self.form(callee)
+        {
+            return self.formed(arg, callee, form, &args, labels);
+        }
+        if let Some(Res::Binder(b)) = self.env.parsed.resolution.names[arg]
+            && let Some(&line) = labels.get(&b)
+        {
+            return Some(Given::Label(line));
+        }
+        match self.env.eval(arg) {
+            Ok(Value::Int(n)) => Some(Given::Imm(n.to_i128().and_then(|n| i64::try_from(n).ok()))),
+            Ok(Value::Variant { ty, name, payload }) if payload.is_empty() => {
+                self.word(ty, name).or_else(|| {
+                    let msg = Msg::new().text("this value names nothing of the architecture");
+                    self.unknown(arg, msg, None)
+                })
             }
-            OperandKind::Int(n) => Some(Given::Imm(i64::try_from(n).ok())),
-            OperandKind::Prefix { op: TokenKind::Minus, operand: inner } => match &inner.kind {
-                OperandKind::Int(n) => Some(Given::Imm(i64::try_from(-n).ok())),
-                _ => self.unfit(operand.origin),
-            },
-            OperandKind::Label(name) => {
-                if let Some(&line) = labels.get(name) {
-                    return Some(Given::Label(line));
-                }
-                let msg = Msg::new().text("the block marks no label named ").code(name.as_str());
-                self.unknown(operand.origin, msg, None)
+            // What the linker places: a function, or an item borrowed.
+            Ok(Value::Fn(_)) => Some(Given::Symbol(arg)),
+            _ if matches!(self.env.parsed.hir.exprs[arg].kind, ExprKind::Borrow { .. }) => {
+                Some(Given::Symbol(arg))
             }
-            OperandKind::Bound { flow: None, register: None, value } => Some(Given::Symbol(*value)),
-            OperandKind::Bound { flow: Some(flow), register, value } => {
-                self.bound(operand, *flow, *register, *value)
+            _ => {
+                let msg = Msg::new().text("this is not an operand of an instruction");
+                let help = Msg::new().text("a run-time value is passed in a register: ").code("in(e)");
+                self.unknown(arg, msg, Some(help))
             }
-            OperandKind::Memory { parts, writeback } => {
-                let mut terms = Vec::with_capacity(parts.len());
-                for part in parts {
-                    let mut out = Vec::new();
-                    self.terms(part, 1, &mut out, labels)?;
-                    terms.push(out);
-                }
-                if let Some(mem) = self.arch.memory(terms, *writeback) {
-                    let writeback = match writeback {
-                        Writeback::No => vun_isa::Writeback::No,
-                        Writeback::Yes => vun_isa::Writeback::Pre,
-                    };
-                    return Some(Given::Mem { mem, writeback });
-                }
-                let msg = Msg::new().text("the architecture has no memory operand of this shape");
-                self.unknown(operand.origin, msg, None)
-            }
-            OperandKind::Bound { .. }
-            | OperandKind::Unfit(_)
-            | OperandKind::Prefix { .. }
-            | OperandKind::Infix { .. } => self.unfit(operand.origin),
         }
     }
 
-    fn unfit(&mut self, origin: OriginId) -> Option<Given> {
-        let msg = Msg::new().text("this is not an operand of an instruction");
-        let help = Msg::new().text("a Vun value goes in braces: ").code("{in e}");
-        let d =
-            Diagnostic::error(errors::ASM_UNKNOWN_OPERAND, msg).at(origin, None).child(ChildKind::Help, help);
-        self.diag.error(d);
-        None
-    }
-
-    /// `{flow(register) value}`: in the register named, of its class and width, or in one of the
-    /// class and width the value's type needs.
-    fn bound(
+    /// The operand the form `form` of `lang.arch`, called as `callee`, makes of `args`, written
+    /// at `at`.
+    fn formed(
         &mut self,
-        operand: &Operand,
-        flow: Binding,
-        register: Option<Symbol>,
-        value: ExprId,
+        at: ExprId,
+        callee: ExprId,
+        form: Form,
+        args: &[ExprId],
+        labels: &Labels,
     ) -> Option<Given> {
-        let named = match register {
-            Some(name) => {
-                let Some(&Word::Reg { reg, size }) = self.table.words.get(&name) else {
-                    let msg = Msg::new().code(name.as_str()).text(" is no register of the architecture");
-                    return self.unknown(operand.origin, msg, None);
+        match (form, args) {
+            (Form::r#in | Form::out | Form::inout, [value]) => self.bound(form, *value),
+            (Form::at, [register]) => {
+                let ExprKind::Member { object, .. } = self.env.parsed.hir.exprs[callee].kind else {
+                    return self.unknown(at, Msg::new().text("a register is named for a bound value"), None);
                 };
-                Some((reg, size))
+                match self.given(object, labels)? {
+                    Given::Bound { bound, .. } => self.pinned(bound, *register),
+                    _ => self.unknown(object, Msg::new().text("a register is named for a bound value"), None),
+                }
             }
-            None => None,
-        };
-        let reg = named.map(|(reg, _)| reg);
-        let (class, size) = match named {
-            Some((reg, size)) => (reg.class, size.or_else(|| self.bound.get(&value)?.1)),
-            None => *self.bound.get(&value)?,
-        };
-        let bound = match flow {
-            Binding::In => Bound::In { value, reg },
-            Binding::Out => Bound::Out { place: value, reg },
-            Binding::Inout => Bound::InOut { place: value, reg },
+            (Form::mem, parts) => {
+                let mut terms = Vec::with_capacity(parts.len());
+                for &part in parts {
+                    terms.push(self.term(part, labels)?);
+                }
+                if let Some(mem) = self.arch.memory(terms) {
+                    Some(Given::Mem { mem, writeback: Writeback::No })
+                } else {
+                    let msg = Msg::new().text("the architecture has no memory operand of these parts");
+                    self.unknown(at, msg, None)
+                }
+            }
+            (Form::pre, [memory]) => {
+                if let Given::Mem { mem, writeback: Writeback::No } = self.given(*memory, labels)? {
+                    Some(Given::Mem { mem, writeback: Writeback::Pre })
+                } else {
+                    self.unknown(at, Msg::new().text("only memory is written back"), None)
+                }
+            }
+            (Form::post, [memory, offset]) => {
+                if let (
+                    Given::Mem {
+                        mem: Mem { base, index: None, disp: Disp::Bytes(0) },
+                        writeback: Writeback::No,
+                    },
+                    Given::Imm(Some(bytes)),
+                ) = (self.given(*memory, labels)?, self.given(*offset, labels)?)
+                {
+                    let mem = Mem { base, index: None, disp: Disp::Bytes(bytes) };
+                    Some(Given::Mem { mem, writeback: Writeback::Post })
+                } else {
+                    let msg = Msg::new().text("a base alone moves after the access, by bytes");
+                    self.unknown(at, msg, None)
+                }
+            }
+            _ => {
+                let msg = Msg::new().code(form.name()).text(" is not an operand here");
+                self.unknown(at, msg, None)
+            }
+        }
+    }
+
+    /// A part of memory: a register or a value read in one, an index scaled (`scaled(rcx, 8)`),
+    /// bytes, or an address the linker places.
+    fn term(&mut self, part: ExprId, labels: &Labels) -> Option<Term> {
+        if let Some((callee, args)) = self.args(part)
+            && self.form(callee) == Some(Form::scaled)
+            && let [index, scale] = args.as_slice()
+        {
+            let index = self.given(*index, labels)?;
+            let Ok(Value::Int(scale)) = self.env.eval(*scale) else {
+                return self
+                    .unknown(part, Msg::new().text("a scale is an integer"), None)
+                    .map(|_| Term::Bytes(0));
+            };
+            return Some(Term::Scaled(index, i64::try_from(scale.to_i128()?).ok()?));
+        }
+        match self.given(part, labels)? {
+            Given::Imm(Some(bytes)) => Some(Term::Bytes(bytes)),
+            Given::Symbol(s) => Some(Term::Symbol(s)),
+            given @ (Given::Reg { .. } | Given::Bound { bound: Bound::In { .. }, .. }) => {
+                Some(Term::Reg(given))
+            }
+            _ => {
+                self.unknown(part, Msg::new().text("this is no part of memory"), None).map(|_| Term::Bytes(0))
+            }
+        }
+    }
+
+    /// `in(value)`, `out(value)` or `inout(value)`: in a register of the class and width the
+    /// value's type needs.
+    fn bound(&mut self, form: Form, value: ExprId) -> Option<Given> {
+        let (class, size) = *self.bound.get(&value)?;
+        let bound = match form {
+            Form::r#in => Bound::In { value, reg: None },
+            Form::out => Bound::Out { place: value, reg: None },
+            _ => Bound::InOut { place: value, reg: None },
         };
         Some(Given::Bound { bound, class, size })
     }
 
-    /// The terms of a sum in an address, each with its sign.
-    fn terms(
-        &mut self,
-        operand: &Operand,
-        sign: i64,
-        out: &mut Vec<Term>,
-        labels: &BTreeMap<Symbol, Line>,
-    ) -> Option<()> {
-        match &operand.kind {
-            OperandKind::Infix { op: op @ (TokenKind::Plus | TokenKind::Minus), left, right } => {
-                self.terms(left, sign, out, labels)?;
-                let sign = if *op == TokenKind::Minus { -sign } else { sign };
-                self.terms(right, sign, out, labels)
-            }
-            OperandKind::Infix { op: TokenKind::Star, left, right } if sign == 1 => {
-                let (reg, scale) = match (&left.kind, &right.kind) {
-                    (_, OperandKind::Int(n)) => (left, n),
-                    (OperandKind::Int(n), _) => (right, n),
-                    _ => return self.unfit(operand.origin).map(|_| ()),
-                };
-                let reg = self.given(reg, labels)?;
-                out.push(Term::Scaled(reg, i64::try_from(scale).ok()?));
-                Some(())
-            }
-            _ => {
-                let term = match self.given(operand, labels)? {
-                    Given::Imm(Some(n)) => Term::Bytes(n.checked_mul(sign)?),
-                    Given::Symbol(s) if sign == 1 => Term::Symbol(s),
-                    given @ (Given::Reg { .. } | Given::Bound { .. }) if sign == 1 => Term::Reg(given),
-                    _ => return self.unfit(operand.origin).map(|_| ()),
-                };
-                out.push(term);
-                Some(())
-            }
-        }
+    /// `bound` in the register `register` names (`in(e).at(rdi)`), of its class, and of its width
+    /// where its name gives one.
+    fn pinned(&mut self, bound: Bound<ExprId, ExprId>, register: ExprId) -> Option<Given> {
+        let value = match &bound {
+            Bound::In { value, .. } => *value,
+            Bound::Out { place, .. } | Bound::InOut { place, .. } => *place,
+        };
+        let named = match self.env.eval(register) {
+            Ok(Value::Variant { ty, name, .. }) => self.word(ty, name),
+            _ => None,
+        };
+        let Some(Given::Reg { reg, size }) = named else {
+            return self.unknown(register, Msg::new().text("this is no register"), None);
+        };
+        let size = size.or_else(|| self.bound.get(&value)?.1);
+        Some(Given::Bound { bound: bound.at(reg), class: reg.class, size })
     }
 }

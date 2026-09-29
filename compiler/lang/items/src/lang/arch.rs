@@ -16,3 +16,50 @@ pub const x86_64: Item = Item::new(&["lang", "arch", "x86_64"]);
 /// every processor of the set has: a feature of the set (`Feature`, `lang.target.Spec.features`),
 /// or a floating-point unit computing floats of a width (`Size`, `lang.target.Spec.floats`).
 pub const Need: Item = Item::new(&["lang", "arch", "Need"]);
+/// What the variants of an enum of an instruction set name, written as the enum's attribute
+/// (`#[Registers{ .class = .general, .size = .some(.b32) }]`): registers of a class, at a width
+/// where their names give one, the `n`th variant
+/// naming register `n * step` of the class (`d1` is the second double-precision register, the
+/// third of its class counted as single-precision ones).
+pub const Registers: Item = Item::new(&["lang", "arch", "Registers"]);
+/// A block of instructions (spec 07, section 6): each statement of `code` calls an instruction of
+/// one instruction set's table, or makes or marks a label. Sema reads the block against that
+/// table; the block is `never` where its last instruction does not return.
+pub const asm: Item = Item::new(&["lang", "arch", "asm"]);
+/// What an operand form gives (`in(e)`, `mem(...)`): nothing a program holds, only the call sema
+/// reads.
+pub const Operand: Item = Item::new(&["lang", "arch", "Operand"]);
+/// A place in a block that a jump names: made where it is marked (`here()`), or before
+/// (`label()`, marked by `place`).
+pub const Label: Item = Item::new(&["lang", "arch", "Label"]);
+/// The value of `value`, read by the instruction from a register the backend picks.
+pub const r#in: Item = Item::new(&["lang", "arch", "in"]);
+/// A register the backend picks, written into the place `place` after the block.
+pub const out: Item = Item::new(&["lang", "arch", "out"]);
+/// A register holding the value of the place `place`, written back into it after the block.
+pub const inout: Item = Item::new(&["lang", "arch", "inout"]);
+/// `self`, a value bound by `in`, `out` or `inout`, in the register `register` names instead
+/// of one the backend picks (`in(e).at(rdi)`).
+pub const at: Item = Item::new(&["lang", "arch", "at"]);
+/// Memory at the address its parts give: a base, then an index and an offset, as the instruction
+/// set writes them (`mem(x1, 8)`, `mem(rax, scaled(rcx, 8), 16)`).
+pub const mem: Item = Item::new(&["lang", "arch", "mem"]);
+/// An index register times `scale` bytes, a part of memory where the instruction set scales one.
+pub const scaled: Item = Item::new(&["lang", "arch", "scaled"]);
+/// `memory`, its address written back into its base before the access (`[x1, 8]!`).
+pub const pre: Item = Item::new(&["lang", "arch", "pre"]);
+/// `memory`, its base moved by `offset` after the access (`[x1], 8`).
+pub const post: Item = Item::new(&["lang", "arch", "post"]);
+/// A label marking the next instruction.
+pub const here: Item = Item::new(&["lang", "arch", "here"]);
+/// A label a later `place` marks.
+pub const label: Item = Item::new(&["lang", "arch", "label"]);
+/// Marks the next instruction with `at`.
+pub const place: Item = Item::new(&["lang", "arch", "place"]);
+/// What an instruction called outside a block does: it cannot run there, so a program calling one
+/// is refused where it is built.
+pub const outside: Item = Item::new(&["lang", "arch", "outside"]);
+/// The witness making each instruction of type `I` callable with any operands (spec 02, section
+/// 3): an instruction set declares `#[impl(lang.ops.Call(_, ())(Instruction))]` on
+/// `called(Instruction)`, so that a block's calls are typed as any call is.
+pub const called: Item = Item::new(&["lang", "arch", "called"]);

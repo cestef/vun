@@ -47,8 +47,6 @@ pub enum NodeKind {
     RawStringLine,
     Label,
     Rest,
-    Flow,
-    Writeback,
     Error,
     File,
     Doc,
@@ -99,11 +97,6 @@ pub enum NodeKind {
     Yield,
     Defer,
     Staged,
-    Asm,
-    Line,
-    Suffix,
-    Bound,
-    Memory,
 }
 impl NodeKind {
     /// Every variant, in the order declared.
@@ -123,8 +116,6 @@ impl NodeKind {
         Self::RawStringLine,
         Self::Label,
         Self::Rest,
-        Self::Flow,
-        Self::Writeback,
         Self::Error,
         Self::File,
         Self::Doc,
@@ -175,11 +166,6 @@ impl NodeKind {
         Self::Yield,
         Self::Defer,
         Self::Staged,
-        Self::Asm,
-        Self::Line,
-        Self::Suffix,
-        Self::Bound,
-        Self::Memory,
     ];
     pub const LEAVES: &[Self] = &[
         Self::Punct,
@@ -197,8 +183,6 @@ impl NodeKind {
         Self::RawStringLine,
         Self::Label,
         Self::Rest,
-        Self::Flow,
-        Self::Writeback,
     ];
     pub const STRUCTURE: &[Self] = &[Self::Error, Self::File, Self::Doc, Self::Attr];
     pub const DECLARATIONS: &[Self] = &[
@@ -256,12 +240,5 @@ impl NodeKind {
         Self::Yield,
         Self::Defer,
         Self::Staged,
-    ];
-    pub const ASSEMBLY: &[Self] = &[
-        Self::Asm,
-        Self::Line,
-        Self::Suffix,
-        Self::Bound,
-        Self::Memory,
     ];
 }

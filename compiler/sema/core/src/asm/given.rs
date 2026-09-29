@@ -1,37 +1,21 @@
-//! Operands as a line gives them, before a form takes them: words read as the architecture's
-//! registers, conditions and choices, integers as immediates, labels as the lines they mark, and
-//! bindings with the class and width of register their value needs.
+//! Operands as a call gives them, before a form takes them: a value of one of the architecture's
+//! enums read as what the enum names (a condition; a register or a choice, as the enum's
+//! attribute, a `Registers` or a `Choice`, says).
 
-use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
-use vun_inline::{Base, Bound, CondId, RegRef, SizeId};
+use vun_inline::{Base, Bound, ClassId, CondId, RegRef};
+use vun_intern::Symbol;
 use vun_isa::ChoiceId;
+use vun_items::lang::arch_Registers as registers;
+use vun_sema_ty::{Ty, TyKind, Value};
+
+use super::check::Checker;
+use super::table::{declared, position, variants_of};
+use crate::attributes::Attributed;
+use crate::target::Members;
 
 /// An operand as written, as the architectures' assemblers fit it.
 pub(crate) type Given = vun_isa::Given<ExprId, ExprId, ExprId>;
-
-/// A word of an architecture.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub enum Word {
-    /// A register, with the width its name gives, if it gives one.
-    Reg { reg: RegRef, size: Option<SizeId> },
-    /// A condition written as an operand (`csel x0, x1, x2, eq`).
-    Cond(CondId),
-    /// One of the choices of a position: its kind, and its index among that kind's (`ish` of a
-    /// barrier).
-    Choice { of: ChoiceId, index: u8 },
-}
-
-impl Word {
-    /// The operand it is.
-    pub(crate) const fn given(self) -> Given {
-        match self {
-            Self::Reg { reg, size } => Given::Reg { reg, size },
-            Self::Cond(cond) => Given::Cond(cond),
-            Self::Choice { of, index } => Given::Choice { of, index },
-        }
-    }
-}
 
 /// What an operand is as the register of an address.
 pub(crate) trait Addressing {
@@ -46,5 +30,42 @@ impl Addressing for Given {
             Self::Bound { bound: bound @ Bound::In { .. }, .. } => Some(Base::Bound(bound)),
             _ => None,
         }
+    }
+}
+
+impl Checker<'_, '_, '_> {
+    /// What the variant `name` of the enum `ty` names: a condition, where `ty` is the table's;
+    /// else a register or a choice, as the enum's attribute says; `None` for any other.
+    pub(super) fn word(&self, ty: Ty, name: Symbol) -> Option<Given> {
+        let shape = self.arch.shape();
+        if declared(self.env, shape.cond).ok() == Some(ty) {
+            return Some(Given::Cond(CondId(position(&self.table.conds, name)?)));
+        }
+        let index = variants_of(self.env, ty).ok()?.iter().position(|&v| v == name)?;
+        let TyKind::Nominal(nominal) = &*ty else { return None };
+        let registers_ty = declared(self.env, shape.registers).ok()?;
+        let choice_ty = shape.choice.and_then(|c| declared(self.env, c).ok());
+        nominal.attributes(self.env.cx)?.values().into_iter().find_map(|attr| match attr {
+            Value::Struct { ty: of, .. } if of == registers_ty => self.register(&attr, index),
+            Value::Variant { ty: of, name: kind, .. } if Some(of) == choice_ty => {
+                let kinds = variants_of(self.env, of).ok()?;
+                let of = ChoiceId(position(&kinds, kind)?);
+                Some(Given::Choice { of, index: u8::try_from(index).ok()? })
+            }
+            _ => None,
+        })
+    }
+
+    /// The register at `index` of an enum whose `Registers` is `registers`.
+    fn register(&self, registers: &Value, index: usize) -> Option<Given> {
+        let fields = Members::of(registers).ok()?;
+        let class = ClassId(position(&self.table.classes, fields.case(registers::class).ok()?)?);
+        let size = match fields.option(registers::size).ok()? {
+            Some(Value::Variant { name, .. }) => Some(self.table.size(*name)?),
+            _ => None,
+        };
+        let step: usize = fields.int(registers::step).ok()?;
+        let number = u8::try_from(index.checked_mul(step)?).ok()?;
+        Some(Given::Reg { reg: RegRef { class, number }, size })
     }
 }
