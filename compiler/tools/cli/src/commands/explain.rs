@@ -33,8 +33,8 @@ fn explain(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Res
         return Ok(Outcome::Usage);
     };
     let Some(text) = session.read(&Path::new(LIBRARY).join(page)) else { return Ok(Outcome::Failure) };
-    match shell.format {
-        Format::Human => shell.page(&Text::markdown(&text))?,
+    match shell.format() {
+        Format::Human | Format::Styled => shell.page(&Text::markdown(&text))?,
         Format::Json => shell.result(&Document { kind: "explanation", name: id.to_owned(), text })?,
     }
     Ok(Outcome::Success)

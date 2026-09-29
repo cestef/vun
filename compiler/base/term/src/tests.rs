@@ -87,7 +87,7 @@ fn reported(format: Format) -> (String, String) {
     let (mut out, mut err) = (Vec::new(), Vec::new());
     {
         let mut shell = Shell::plain(&mut out, &mut err);
-        shell.format = format;
+        shell.show(format);
         shell.status(&Done(1));
         shell.verbosity = Verbosity::Quiet;
         shell.status(&Done(2));
@@ -125,4 +125,39 @@ fn markdown_keeps_its_text_and_styles_code() {
     };
     assert_eq!(styled(Style::Heading), ["# id"]);
     assert_eq!(styled(Style::Literal), ["f", "$ vun check a.vun"]);
+}
+
+#[test]
+fn styled_lines_are_pieces_on_the_stream_people_read() {
+    use vun_data::{Object, ToData};
+    let piece = |style, text: &'static str| Piece { style, text: text.into() };
+    let line = |stream: Stream, pieces: Vec<Piece>| {
+        let object = Object::new()
+            .with("type", "line")
+            .with("stream", stream.to_data())
+            .with("pieces", pieces.to_data());
+        vun_data::Value::Object(object)
+    };
+    let (out, err) = reported(Format::Styled);
+    let finished = vec![
+        piece(None, "    "),
+        piece(Some(Style::Good), "Finished"),
+        piece(None, " "),
+        piece(None, "in 1s"),
+    ];
+    assert_eq!(
+        (out, vun_data::json::parse(err.trim()).unwrap()),
+        (String::new(), line(Stream::Stderr, finished))
+    );
+
+    let (mut out, mut bytes) = (Vec::new(), Vec::new());
+    {
+        let mut shell = Shell::plain(&mut out, &mut bytes);
+        shell.show(Format::Styled);
+        write!(shell.err.writer(), "plain\nunended").unwrap();
+    }
+    let written = String::from_utf8(bytes).unwrap();
+    let lines: Vec<_> = written.lines().map(|l| vun_data::json::parse(l).unwrap()).collect();
+    let plain = |text| line(Stream::Stderr, vec![piece(None, text)]);
+    assert_eq!(lines, [plain("plain"), plain("unended")]);
 }

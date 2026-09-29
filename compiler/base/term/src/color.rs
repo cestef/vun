@@ -84,7 +84,7 @@ impl Env {
 }
 
 /// A standard stream, to ask whether it is a terminal.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_data::ToData)]
 pub enum Stream {
     Stdout,
     Stderr,

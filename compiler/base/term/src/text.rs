@@ -9,7 +9,7 @@ use crate::Style;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Text(Vec<Piece>);
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, vun_data::ToData)]
 pub struct Piece {
     pub style: Option<Style>,
     pub text: Cow<'static, str>,

@@ -48,18 +48,21 @@ pub type HumanSink = for<'w> fn(&'w mut dyn Write, Color) -> Box<dyn DiagSink + 
 
 /// Where a shell shows diagnostics.
 pub trait Diagnostics {
-    /// The sink for diagnostics: `human` on standard error, or JSON lines on standard output.
+    /// The sink for diagnostics: `human` on standard error, as text or as lines of pieces, or
+    /// JSON lines on standard output.
     fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_>;
 }
 
 impl Diagnostics for Shell<'_> {
     fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_> {
-        match self.format {
+        match self.format() {
             Format::Human => {
                 let color = self.err.color();
                 human(self.err.writer(), color)
             }
             Format::Json => Box::new(JsonRenderer::new(self.out.writer())),
+            // Plain, for the stream to cut into lines of pieces.
+            Format::Styled => human(self.err.writer(), Color::Never),
         }
     }
 }
@@ -96,9 +99,9 @@ impl<Cx> Program<Cx> {
         let written = match request {
             Request::Help(selected, _, detail) => {
                 let page = selected.help(detail);
-                match (shell.format, detail) {
-                    (Format::Human, Detail::Short) => shell.out.print(&page),
-                    (Format::Human, Detail::Long) => shell.page(&page),
+                match (shell.format(), detail) {
+                    (Format::Human | Format::Styled, Detail::Short) => shell.out.print(&page),
+                    (Format::Human | Format::Styled, Detail::Long) => shell.page(&page),
                     (Format::Json, _) => {
                         let name = selected.last().name.to_owned();
                         shell.result(&Document { kind: HELP, name, text: page.to_string() })
@@ -154,7 +157,7 @@ impl<Cx> Program<Cx> {
             shell.choose(*choice);
         }
         if let Some(format) = args.choice(&FORMAT, &Format::ALL, |f| f.name()) {
-            shell.format = *format;
+            shell.show(*format);
         }
         if args.flag(&QUIET) {
             shell.verbosity = Verbosity::Quiet;

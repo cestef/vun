@@ -3,8 +3,9 @@
 //! so help, status lines, tables, logs and diagnostics look like one tool.
 
 use anstyle::{AnsiColor, Effects};
+use vun_data::ToData;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, ToData)]
 pub enum Style {
     /// Section titles and table heads: `Usage:`, `Commands:`.
     Heading,

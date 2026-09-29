@@ -3,29 +3,32 @@
 
 use std::io::{self, Write};
 
-use crate::{Color, ColorChoice, Env, Format, Style, Text};
+use crate::styled::Lines;
+use crate::{Color, ColorChoice, Env, Format, Stream, Style, Text};
 
 /// A stream and whether it shows colors. Plain writes pass through; [`Out::print`] styles.
+/// Showing [`Format::Styled`], it writes every line as its pieces instead.
 pub struct Out<'a> {
     w: &'a mut dyn Write,
     terminal: bool,
     color: Color,
+    lines: Option<Lines>,
 }
 
 impl<'a> Out<'a> {
     /// A stream that is not a terminal: plain, whatever `auto` would say.
     pub fn plain(w: &'a mut dyn Write) -> Self {
-        Self { w, terminal: false, color: Color::Never }
+        Self { w, terminal: false, color: Color::Never, lines: None }
     }
 
     /// A stream shown on a terminal when `terminal`.
     pub fn new(w: &'a mut dyn Write, terminal: bool) -> Self {
-        Self { w, terminal, color: Color::Never }
+        Self { w, terminal, color: Color::Never, lines: None }
     }
 
     /// A stream whose colors are already decided, as a renderer holding its choice writes.
     pub fn colored(w: &'a mut dyn Write, color: Color) -> Self {
-        Self { w, terminal: false, color }
+        Self { w, terminal: false, color, lines: None }
     }
 
     #[must_use]
@@ -40,7 +43,7 @@ impl<'a> Out<'a> {
 
     /// The writer, for renderers that style their own output.
     pub fn writer(&mut self) -> &mut dyn Write {
-        self.w
+        self
     }
 
     /// Writes `text`, styled when this stream shows colors.
@@ -48,6 +51,9 @@ impl<'a> Out<'a> {
     /// # Errors
     /// Fails when the stream does.
     pub fn print(&mut self, text: &Text) -> io::Result<()> {
+        if let Some(lines) = &mut self.lines {
+            return lines.print(self.w, text);
+        }
         for piece in text.pieces() {
             match (piece.style, self.color) {
                 (Some(style), Color::Always) => {
@@ -66,17 +72,34 @@ impl<'a> Out<'a> {
     /// Fails when the stream does.
     pub fn line(&mut self, text: &Text) -> io::Result<()> {
         self.print(text)?;
-        self.w.write_all(b"\n")
+        self.write_all(b"\n")
     }
 
     fn choose(&mut self, choice: ColorChoice, env: Env) {
         self.color = choice.color(env, self.terminal);
     }
+
+    // Shows `format` as the stream `stream`.
+    fn show(&mut self, format: Format, stream: Stream) {
+        self.lines = (format == Format::Styled).then(|| Lines::new(stream));
+    }
+}
+
+impl Drop for Out<'_> {
+    // A line of pieces begun and never ended is still written.
+    fn drop(&mut self) {
+        if let Some(lines) = &mut self.lines {
+            let _ = lines.finish(self.w);
+        }
+    }
 }
 
 impl Write for Out<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.w.write(buf)
+        match &mut self.lines {
+            Some(lines) => lines.write(self.w, buf).map(|()| buf.len()),
+            None => self.w.write(buf),
+        }
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -138,7 +161,7 @@ pub struct Shell<'a> {
     pub out: Out<'a>,
     pub err: Out<'a>,
     pub verbosity: Verbosity,
-    pub format: Format,
+    format: Format,
     env: Env,
 }
 
@@ -160,6 +183,18 @@ impl<'a> Shell<'a> {
             format: Format::Human,
             env: Env::default(),
         }
+    }
+
+    #[must_use]
+    pub const fn format(&self) -> Format {
+        self.format
+    }
+
+    /// Shows records in `format` on both streams.
+    pub fn show(&mut self, format: Format) {
+        self.format = format;
+        self.out.show(format, Stream::Stdout);
+        self.err.show(format, Stream::Stderr);
     }
 
     /// Applies a `--color` choice to both streams.

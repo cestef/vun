@@ -2,7 +2,8 @@
 //! ([`Style`]), one palette decides how it looks, and each stream decides whether it shows
 //! colors ([`ColorChoice`], `--color`). Commands report [`Record`]s through a [`Shell`], which
 //! shows them for people (results on standard output, status lines and diagnostics on standard
-//! error) or as JSON lines on standard output ([`Format`], `--format`).
+//! error), as JSON lines on standard output, or as what people read in JSON lines of styled
+//! pieces ([`Format`], `--format`).
 
 mod color;
 mod markdown;
@@ -10,6 +11,7 @@ mod pager;
 mod record;
 mod shell;
 mod style;
+mod styled;
 mod table;
 #[cfg(test)]
 mod tests;

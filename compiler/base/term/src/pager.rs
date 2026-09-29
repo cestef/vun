@@ -3,7 +3,7 @@
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
-use crate::{Out, Shell, Text};
+use crate::{Format, Out, Shell, Text};
 
 /// The variable naming the pager, with its arguments.
 const PAGER: &str = "PAGER";
@@ -11,13 +11,13 @@ const PAGER: &str = "PAGER";
 const DEFAULT: [&str; 2] = ["less", "-FRX"];
 
 impl Shell<'_> {
-    /// Shows `text` through the pager when standard output is a terminal; prints it otherwise,
-    /// or when no pager starts.
+    /// Shows `text` through the pager when standard output is a terminal shown for people;
+    /// prints it otherwise, or when no pager starts.
     ///
     /// # Errors
     /// Fails when the output does.
     pub fn page(&mut self, text: &Text) -> io::Result<()> {
-        if !self.out.is_terminal() {
+        if !self.out.is_terminal() || self.format() == Format::Styled {
             return self.out.print(text);
         }
         let named = std::env::var(PAGER).ok().filter(|p| !p.trim().is_empty());

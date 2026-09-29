@@ -15,16 +15,20 @@ pub enum Format {
     /// One JSON object per line on standard output, each naming its `type`: results, status
     /// events and diagnostics alike.
     Json,
+    /// What people read, on the streams they read it on, each line a JSON object of its pieces
+    /// and their styles: for tools that draw vun's output themselves, as the brand's videos do.
+    Styled,
 }
 
 impl Format {
-    pub const ALL: [Self; 2] = [Self::Human, Self::Json];
+    pub const ALL: [Self; 3] = [Self::Human, Self::Json, Self::Styled];
 
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::Human => "human",
             Self::Json => "json",
+            Self::Styled => "styled",
         }
     }
 }
@@ -86,10 +90,10 @@ impl Shell<'_> {
     /// # Errors
     /// Fails when the output does.
     pub fn result(&mut self, record: &dyn Record) -> io::Result<()> {
-        match self.format {
-            Format::Human if record.text().width() == 0 => Ok(()),
-            Format::Human => self.out.line(&record.text()),
+        match self.format() {
             Format::Json => self.out.line(&Text::from(vun_data::json::Json(&record.json()).to_string())),
+            Format::Human | Format::Styled if record.text().width() == 0 => Ok(()),
+            Format::Human | Format::Styled => self.out.line(&record.text()),
         }
     }
 
@@ -98,8 +102,10 @@ impl Shell<'_> {
     /// # Errors
     /// Fails when the output does.
     pub fn table<R: Row>(&mut self, rows: &[R]) -> io::Result<()> {
-        match self.format {
-            Format::Human => self.out.print(&Table::new(R::COLUMNS).rows(rows.iter().map(Row::cells)).text()),
+        match self.format() {
+            Format::Human | Format::Styled => {
+                self.out.print(&Table::new(R::COLUMNS).rows(rows.iter().map(Row::cells)).text())
+            }
             Format::Json => rows.iter().try_for_each(|r| self.result(r)),
         }
     }
@@ -128,8 +134,8 @@ impl Shell<'_> {
         if self.verbosity == Verbosity::Quiet {
             return;
         }
-        let _ = match self.format {
-            Format::Human => self.err.line(&status.verb().line(status.text())),
+        let _ = match self.format() {
+            Format::Human | Format::Styled => self.err.line(&status.verb().line(status.text())),
             Format::Json => self.result(status),
         };
     }

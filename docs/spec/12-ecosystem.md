@@ -336,7 +336,7 @@ list|install|prune`.
 Options:
 
 - **Global**, on every command: `--color <auto|always|never>` (or `VUN_COLOR`), `--format
-  <human|json>` (or `VUN_FORMAT`; below), `-q`/`--quiet`
+  <human|json|styled>` (or `VUN_FORMAT`; below), `-q`/`--quiet`
   (results and diagnostics only, no status lines), `-h` (help) and `--help` (the long page,
   through the pager on a terminal: aliases, the values and variables of options, examples),
   and `-V`/`--version` on the root.
@@ -355,7 +355,11 @@ Output is machine-readable with `--format json`: every line of standard output i
 object naming its `type`, for results (`component`, `stored`, `dump`, `explanation`, ...), progress
 (`started`, `finished` with `success`, `errors`, `warnings` and the time, `downloaded`, ...) and
 diagnostics (`diagnostic`, schema in spec 10) alike; logs stay on standard error. Commands report
-typed records, each shown both ways, so a command has one output and two views of it. Global
+typed records, each shown both ways, so a command has one output and two views of it.
+`--format styled` shows what people read, on the streams they read it on, each line one JSON
+object (`"type": "line"`) of its pieces and the style each names (`good`, `strong`, `error`, ...,
+the styles of `vun_term::Style`); diagnostics are rendered as for people, without colors. It is
+for tools that draw vun's output themselves, as the brand's videos do (`pnpm record`). Global
 options are read before the rest of the command line, so a usage error follows them too. A
 program that `vun run` starts writes its own output as it pleases.
 
