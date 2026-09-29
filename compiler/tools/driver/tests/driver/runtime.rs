@@ -196,7 +196,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ";
 
 #[test]
-fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts() {
+fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts_then_those_spawning_it() {
     if !cfg!(target_os = "linux") {
         return;
     }
@@ -213,6 +213,9 @@ fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts() {
             ["trap", &at, "  in pick, inlined", "  in main.f, inlined"],
             "{backend}: {text}"
         );
-        assert!(lines.last().is_some_and(|l| l.starts_with("  in Thread.run (")), "{backend}: {text}");
+        let spawned = lines.iter().position(|&l| l == "  spawned by").expect(&text);
+        assert!(lines[spawned - 1].starts_with("  in Thread.run ("), "{backend}: {text}");
+        let main = format!("  in main ({file}:");
+        assert!(lines[spawned..].iter().any(|l| l.starts_with(&main)), "{backend}: {text}");
     }
 }

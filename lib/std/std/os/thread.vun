@@ -34,10 +34,12 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
     _f: &mut F,
     _handle: usize,
 
-    /// What the thread starts with: its closure, and where what it returns goes.
+    /// What the thread starts with: its closure, where what it returns goes, and the calls that
+    /// spawned it, which its backtrace names.
     Context := struct {
         f: *F,
         result: ?R,
+        spawn: std.trace.Spawn,
 
         /// Its bytes, which a runtime copies.
         bytes := (self: &Context) -> *u8 { unsafe std.ptr.to(Context, self).cast(u8) };
@@ -45,7 +47,8 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
 
     /// Starts a thread running `f`.
     spawn := (f: &mut F) -> Result(Thread(R, F), std.os.Error) {
-        context := Context{ .f = std.ptr.to(F, f), .result = .none };
+        spawn := std.trace.spawning(std.trace.code((f: &mut F) -> Result(Thread(R, F), std.os.Error), Thread(R, F).spawn));
+        context := Context{ .f = std.ptr.to(F, f), .result = .none, .spawn = spawn };
         handle := unsafe std.os.spawn(run, context.bytes(), lang.meta.size(Context))?;
         .ok(.{ ._f = f, ._handle = handle })
     };
@@ -53,7 +56,7 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
     /// Waits for the thread to end, and gives what its closure returned.
     join := (self: Thread(R, F)) -> R {
         .{ ._f = f, ._handle = handle } := self;
-        mut context := Context{ .f = std.ptr.to(F, f), .result = .none };
+        mut context := Context{ .f = std.ptr.to(F, f), .result = .none, .spawn = .{} };
         unsafe std.os.join(handle, context.bytes(), lang.meta.size(Context));
         match context.result {
             .some(result) => result,
@@ -61,12 +64,15 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
         }
     };
 
-    /// Where the thread starts: calls the closure and puts what it returns in the context.
+    /// Where the thread starts: calls the closure and puts what it returns in the context, the
+    /// calls that spawned the thread kept here meanwhile.
     #[abi.c]
     run := (at: usize) {
         context := unsafe lang.mem.pointer_at(Context, at);
-        at_f := unsafe context.read().f;
+        held := unsafe context.read();
+        (at_f, spawn) := (held.f, held.spawn);
+        std.trace.spawned(&spawn);
         result := unsafe { at_f.*() };
-        unsafe context.write(Context{ .f = at_f, .result = .some(result) });
+        unsafe context.write(Context{ .f = at_f, .result = .some(result), .spawn = spawn });
     };
 } };

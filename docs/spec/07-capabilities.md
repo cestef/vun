@@ -103,8 +103,11 @@ itself lays out each thread's block and sets the thread pointer (spec 08, sectio
   into, then, at `calls`, the function of each call on the chain of frame records every function keeps (native code always keeps a frame pointer; C is
   compiled with `-fno-omit-frame-pointer`), past the handler's own frames and up to the first
   function foreign code calls, whose caller's frames need not be chained. On arm64 the saved
-  return addresses are stripped of pointer authentication. WebAssembly's frames are not memory a
-  program reads: there it names the site alone. A failed check of unsafe code reports the same
+  return addresses are stripped of pointer authentication. In a thread, the chain ends where the
+  thread starts (`Thread.run`); the backtrace goes on, after `spawned by`, with the calls that
+  spawned it, which `Thread.spawn` takes (`std.trace.Spawn`, empty below `calls`) and the thread
+  keeps while it runs, pointed at by `std.trace.spawner`, a `Local`. WebAssembly's frames are not
+  memory a program reads: there it names the site alone. A failed check of unsafe code reports the same
   way (spec 13, section 8.7).
 - **`#[panic.never]`** on a function is checked transitively: its body may contain no undischarged
   trap site, and it may call only `#[panic.never]` functions. A closure called in a

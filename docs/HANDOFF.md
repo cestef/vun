@@ -295,8 +295,7 @@ Next, most useful first:
    `kernel/tls.vun` lays each block out and sets the thread pointer, each thread its own first;
    `corpus/accept/programs/locals.vun`, `link.rs`'s library counting per thread; native 32-bit
    Arm loads the offset from a word beside the code and reads the pointer with `mrc`). Left: Mach-O
-   (thread-local variables are its own model), and a thread's trace naming where it was spawned
-   (`spawn` keeping the spawner's chain in a `Local`); riscv64 numbers; directories, seeking,
+   (thread-local variables are its own model); riscv64 numbers; directories, seeking,
    environment.
 2a. Backtraces (decision 309): a trap or failed check writes why it ends, its site's place, each
    function its code is inlined into and the chain of calls, through `std.trace.report` from
@@ -306,7 +305,7 @@ Next, most useful first:
    inlines only callees none of whose calls return. Checked on linux x86_64, arm64 and arm
    through both backends, glibc, and WASI (site only). Left: the call line of each frame (native
    marks each call's origin; C cannot say where a call returns), macOS (compact unwind, PAC).
-   A thread's trace ends at `Thread.run`; naming where it was spawned is item 2's.
+   A thread's trace goes on past `Thread.run` with the calls that spawned it (decision 313).
 2b. Speed (decisions 291, 301 and 302). Inspect with `--timings` (with the thread report) and `--memos`,
    `VUN_THREADS=1` for exact counts; the CPU clock varies (a laptop on battery), so compare A/B
    runs made together, never across time. Durability made warm `files.vun` restore 1.7k memos

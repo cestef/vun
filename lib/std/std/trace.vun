@@ -161,39 +161,84 @@ inlined := (w: &mut std.os.Stream, index: u32) {
 };
 
 /// Writes the function of each call on the chain past the last returning into the function at
-/// `handler`, up to the first function foreign code calls.
+/// `handler`, up to the first function foreign code calls; then, in a thread, those of the calls
+/// that spawned it.
 called := (w: &mut std.os.Stream, handler: usize) {
-    mut frames: [depth]usize = [0; depth];
-    count := calls(&mut frames);
-    mut first: usize = 0;
-    for i in 0..count {
-        match function((frames[i] - 1).wrap(usize)) {
-            .some(f) => if f.at == handler { first = i + 1; },
-            .none => {},
-        }
-    }
-    mut i := first;
-    for i < count {
-        match function((frames[i] - 1).wrap(usize)) {
-            .some(f) => {
-                // Past a function foreign code calls, the frames are not the program's.
-                if f.foreign { i = count; } else { i += 1; }
-                std.fmt.print(w, "  in {}", .{ text(f.name) });
-                match origin(f.origin) {
-                    .some(o) => {
-                        std.fmt.print(w, " (", .{});
-                        place(w, o);
-                        std.fmt.print(w, ")", .{});
-                    },
-                    .none => {},
-                }
-                std.fmt.print(w, "\n", .{});
-            },
-            // Code before the program's is not its own either.
-            .none => { i = count; },
-        }
+    Chain.of(handler).write(w);
+    at := spawner.get();
+    if at != 0 {
+        std.fmt.print(w, "  spawned by\n", .{});
+        unsafe lang.mem.pointer_at(Chain, at).read().write(w);
     }
 };
+
+/// Calls on the calling thread's chain, by where each returns to: `count` of them, none unless
+/// taken.
+Chain := struct {
+    frames: [depth]usize = [0; depth],
+    count: usize = 0,
+
+    /// The chain past the last call returning into the function at `from`, and so past this
+    /// function's own frames wherever it is inlined.
+    of := (from: usize) -> Chain {
+        mut all: [depth]usize = [0; depth];
+        count := calls(&mut all);
+        mut first: usize = 0;
+        for i in 0..count {
+            match function((all[i] - 1).wrap(usize)) {
+                .some(f) => if f.at == from { first = i + 1; },
+                .none => {},
+            }
+        }
+        mut chain := Chain{ .count = (count - first).wrap(usize) };
+        for i in first..count { chain.frames[(i - first).wrap(usize)] = all[i]; }
+        chain
+    };
+
+    /// Writes the function of each call, up to the first function foreign code calls.
+    write := (self: &Chain, w: &mut std.os.Stream) {
+        mut i: usize = 0;
+        for i < self.count {
+            match function((self.frames[i] - 1).wrap(usize)) {
+                .some(f) => {
+                    // Past a function foreign code calls, the frames are not the program's.
+                    if f.foreign { i = self.count; } else { i += 1; }
+                    std.fmt.print(w, "  in {}", .{ text(f.name) });
+                    match origin(f.origin) {
+                        .some(o) => {
+                            std.fmt.print(w, " (", .{});
+                            place(w, o);
+                            std.fmt.print(w, ")", .{});
+                        },
+                        .none => {},
+                    }
+                    std.fmt.print(w, "\n", .{});
+                },
+                // Code before the program's is not its own either.
+                .none => { i = self.count; },
+            }
+        }
+    };
+};
+
+/// What a thread keeps of the calls that spawned it, which its backtrace names past its own:
+/// their chain where the table describes calls, else nothing.
+Spawn := $if lang.trace.current == .calls { Chain } else { struct {} };
+
+/// The calls spawning a thread, past the last returning into the function at `from`, which
+/// spawns it.
+spawning := (from: usize) -> Spawn {
+    $if lang.trace.current == .calls { Chain.of(from) } else { .{} }
+};
+
+/// Makes `spawn`, which the calling thread keeps while it runs, the calls its backtrace names
+/// past its own.
+spawned := (spawn: &Spawn) {
+    $if lang.trace.current == .calls { spawner.set(std.ptr.to(Spawn, spawn).address()); }
+};
+
+/// The address of the chain of the calls that spawned the calling thread, 0 in the main one.
+spawner: std.sync.Local(usize) = .init(0);
 
 /// What handles traps: the function a runtime exports as `lang.panic.trap`.
 Handler := (t: &lang.panic.Trap) -> lang.never;

@@ -46,8 +46,23 @@ pub const written: Item = Item::new(&["std", "trace", "written"]);
 /// first, up to the one it is not: that one's frame is on the chain.
 pub const inlined: Item = Item::new(&["std", "trace", "inlined"]);
 /// Writes the function of each call on the chain past the last returning into the function at
-/// `handler`, up to the first function foreign code calls.
+/// `handler`, up to the first function foreign code calls; then, in a thread, those of the calls
+/// that spawned it.
 pub const called: Item = Item::new(&["std", "trace", "called"]);
+/// Calls on the calling thread's chain, by where each returns to: `count` of them, none unless
+/// taken.
+pub const Chain: Item = Item::new(&["std", "trace", "Chain"]);
+/// What a thread keeps of the calls that spawned it, which its backtrace names past its own:
+/// their chain where the table describes calls, else nothing.
+pub const Spawn: Item = Item::new(&["std", "trace", "Spawn"]);
+/// The calls spawning a thread, past the last returning into the function at `from`, which
+/// spawns it.
+pub const spawning: Item = Item::new(&["std", "trace", "spawning"]);
+/// Makes `spawn`, which the calling thread keeps while it runs, the calls its backtrace names
+/// past its own.
+pub const spawned: Item = Item::new(&["std", "trace", "spawned"]);
+/// The address of the chain of the calls that spawned the calling thread, 0 in the main one.
+pub const spawner: Item = Item::new(&["std", "trace", "spawner"]);
 /// What handles traps: the function a runtime exports as `lang.panic.trap`.
 pub const Handler: Item = Item::new(&["std", "trace", "Handler"]);
 /// Writes the backtrace of the trap `t` to the standard error, from `handler`, which handles it.
