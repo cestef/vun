@@ -38,7 +38,7 @@ fn parsed(text: &str) -> (Cst, Tokens, Vec<DiagId>) {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    assert_eq!(cst.verify(&tokens), Ok(()), "{text:?}");
+    assert_eq!(cst.verify(&tokens, text), Ok(()), "{text:?}");
     (cst, tokens, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
 }
 

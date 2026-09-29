@@ -39,7 +39,44 @@ fn operator_tables_are_disjoint_where_they_must_be() {
 }
 
 #[test]
-fn node_kinds_are_leaves_or_branches() {
-    assert!(NodeKind::LEAVES.iter().all(|k| k.is_leaf()));
-    assert!(NodeKind::BRANCHES.iter().all(|k| !k.is_leaf()));
+fn leaves_spell_one_token_and_hold_nothing() {
+    for &k in NodeKind::LEAVES {
+        assert!(k.is_leaf() && k.slots().is_empty(), "{k:?}");
+        assert!(
+            k.production().is_none_or(|p| matches!(p, [NodeTerm::Token(_) | NodeTerm::Word(_)])),
+            "{k:?}"
+        );
+    }
+}
+
+fn token(kind: TokenKind) -> Element<'static> {
+    Element::Token { kind, text: kind.text().unwrap_or_default() }
+}
+
+#[test]
+fn productions_match_as_regular_expressions() {
+    use Element::Child;
+    let (l, r, comma) = (token(TokenKind::LParen), token(TokenKind::RParen), token(TokenKind::Comma));
+    let (callee, arg) = (Child(NodeField::Callee), Child(NodeField::Args));
+    // `.call(.callee, "(", .separated(.args, ","), ")")`
+    assert!(NodeKind::Call.spelled_by(&[callee, l, r]));
+    assert!(NodeKind::Call.spelled_by(&[callee, l, arg, comma, arg, r]));
+    assert!(NodeKind::Call.spelled_by(&[callee, l, arg, comma, r]));
+    assert!(!NodeKind::Call.spelled_by(&[callee, l, arg, arg, r]));
+    assert!(!NodeKind::Call.spelled_by(&[callee, l, comma, r]));
+    assert!(!NodeKind::Call.spelled_by(&[l, arg, r]));
+    // `.in(.pattern, "in", .value)`: a word is a name spelled so.
+    let word = |text| Element::Token { kind: TokenKind::Ident, text };
+    let (pattern, value) = (Child(NodeField::Pattern), Child(NodeField::Value));
+    assert!(NodeKind::In.spelled_by(&[pattern, word("in"), value]));
+    assert!(!NodeKind::In.spelled_by(&[pattern, word("on"), value]));
+}
+
+#[test]
+fn long_repetitions_match_without_recursing() {
+    let (statement, semi) = (Element::Child(NodeField::Statements), token(TokenKind::Semi));
+    let mut elements = vec![token(TokenKind::LBrace)];
+    elements.extend([statement, semi].repeat(100_000));
+    elements.push(token(TokenKind::RBrace));
+    assert!(NodeKind::Block.spelled_by(&elements));
 }

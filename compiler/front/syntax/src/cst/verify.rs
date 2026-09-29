@@ -23,6 +23,8 @@ pub enum Malformed {
     Scattered { node: NodeId },
     /// The children of a node do not fit the slots of its kind.
     Fields { node: NodeId },
+    /// A node does not spell its kind's production.
+    Production { node: NodeId },
 }
 
 impl std::fmt::Display for Malformed {
@@ -36,6 +38,9 @@ impl std::fmt::Display for Malformed {
             Self::Scattered { node } => write!(f, "node {}: its tokens are not contiguous", node.index()),
             Self::Fields { node } => {
                 write!(f, "node {}: its children do not fit its kind's slots", node.index())
+            }
+            Self::Production { node } => {
+                write!(f, "node {}: it does not spell its kind's production", node.index())
             }
         }
     }
@@ -75,12 +80,13 @@ impl Extent {
 impl Cst {
     /// Checks the tree's invariants: subtree sizes nest, leaves have no children, the array is one
     /// tree rooted at `File`, every token anchors exactly one node, every subtree covers a
-    /// contiguous run of tokens, and the children of every node fit its kind's slots. This is the
-    /// verifier of this representation.
+    /// contiguous run of tokens, the children of every node fit its kind's slots, and every node
+    /// but those recovery built spells its kind's production. This is the verifier of this
+    /// representation.
     ///
     /// # Errors
     /// Returns the first violation found.
-    pub fn verify(&self, tokens: &Tokens) -> Result<(), Malformed> {
+    pub fn verify(&self, tokens: &Tokens, source: &str) -> Result<(), Malformed> {
         let mut owned = vec![false; tokens.len()];
         let mut finished: Vec<Extent> = Vec::new();
         for n in self.ids() {
@@ -109,8 +115,9 @@ impl Cst {
             if !extent.contiguous() {
                 return Err(Malformed::Scattered { node: n });
             }
-            if self.fields(n).is_none() {
-                return Err(Malformed::Fields { node: n });
+            let fields = self.fields(n).ok_or(Malformed::Fields { node: n })?;
+            if !self.spells(n, &fields, tokens, source) {
+                return Err(Malformed::Production { node: n });
             }
             finished.push(extent);
         }

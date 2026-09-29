@@ -29,7 +29,7 @@ impl<'s> Grammar<'s> {
         for e in self.enums.iter().filter(|e| own.contains(e.name)) {
             let items = e.emit();
             modules.push(Module::sibling(e.name.snake(), &quote! { #uses #items }));
-            modules.extend(self.slots(e)?);
+            modules.extend(self.slots(e, &source.decls)?);
         }
         for d in source.decls.iter().filter(|d| own.contains(d.name)) {
             if let Some(items) = d.value.as_list() {

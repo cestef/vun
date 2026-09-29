@@ -10,3 +10,5 @@ use crate::Item;
 pub const desugar: Item = Item::new(&["lang", "syntax", "desugar"]);
 /// The namespace `lang.syntax.grammar`.
 pub const grammar: Item = Item::new(&["lang", "syntax", "grammar"]);
+/// The namespace `lang.syntax.nodes`.
+pub const nodes: Item = Item::new(&["lang", "syntax", "nodes"]);

@@ -6,7 +6,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use vun_syntax::literal::Literal;
 
-use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Slot, Variant};
+use super::production::Term;
+use super::{ENTRY_NAME, ENTRY_TEXT, Enum, Variant};
 use crate::names::{constant, ident, pascal};
 
 impl Enum<'_> {
@@ -49,13 +50,13 @@ impl Enum<'_> {
 
 impl<'s> Variant<'s> {
     /// A kind's entry: `.name`, a spelling `"text"` named after itself, `.{ .name, .text }`, or
-    /// `.name(.count(.field), ...)` with the kind's children.
+    /// `.name(terms...)` with the kind's production.
     pub(super) fn entry(entry: &Literal<'s>) -> Option<Self> {
         let (name, text) = match entry {
             Literal::Name(name) => (*name, None),
             Literal::Tagged(name, payload) => {
-                let slots = payload.iter().map(Slot::of).collect::<Option<_>>()?;
-                return Some(Self { name, doc: Vec::new(), text: None, slots });
+                let production = payload.iter().map(Term::read).collect::<Option<_>>()?;
+                return Some(Self { name, doc: Vec::new(), text: None, production: Some(production) });
             }
             // Named after itself, so written without escapes.
             Literal::String(Cow::Borrowed(text)) => (*text, Some(Cow::Borrowed(*text))),
@@ -65,14 +66,6 @@ impl<'s> Variant<'s> {
             },
             _ => return None,
         };
-        Some(Self { name, doc: Vec::new(), text, slots: Vec::new() })
-    }
-}
-
-impl<'s> Slot<'s> {
-    /// `.count(.field)`.
-    fn of(value: &Literal<'s>) -> Option<Self> {
-        let (count, [Literal::Name(field)]) = value.as_tagged()? else { return None };
-        Some(Self { count, field })
+        Some(Self { name, doc: Vec::new(), text, production: None })
     }
 }

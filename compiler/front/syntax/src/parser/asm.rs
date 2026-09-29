@@ -62,8 +62,8 @@ impl Parser<'_, '_, '_> {
             && !self.at(TokenKind::Eof)
             && !self.line_ends_before(self.current())
         {
-            if !first && !self.eat(TokenKind::Comma) {
-                self.report_expected(&[TokenKind::Comma]);
+            if !first {
+                self.expect(TokenKind::Comma);
             }
             first = false;
             let before = self.pos;

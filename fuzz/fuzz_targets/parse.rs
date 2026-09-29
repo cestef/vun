@@ -15,7 +15,7 @@ fuzz_target!(|text: &str| {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    if let Err(malformed) = cst.verify(&tokens) {
+    if let Err(malformed) = cst.verify(&tokens, text) {
         panic!("{malformed:?}");
     }
 });

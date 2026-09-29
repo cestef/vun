@@ -8,12 +8,6 @@
 use crate::Item;
 /// Kinds of tokens.
 pub const TokenKind: Item = Item::new(&["lang", "syntax", "grammar", "TokenKind"]);
-/// How many nodes a child position of a kind holds.
-pub const Count: Item = Item::new(&["lang", "syntax", "grammar", "Count"]);
-/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children. A branch lists its
-/// children in source order, punctuation left out; `Cst::fields` matches them. An `error` stands for
-/// skipped or absent source; a skipped group holds the tokens after its first.
-pub const NodeKind: Item = Item::new(&["lang", "syntax", "grammar", "NodeKind"]);
 /// Where a contextual keyword is recognized; elsewhere it is a name.
 pub const Context: Item = Item::new(&["lang", "syntax", "grammar", "Context"]);
 /// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier

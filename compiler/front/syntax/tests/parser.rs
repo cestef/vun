@@ -47,7 +47,7 @@ fn repository_sources_parse_cleanly_and_verify() {
         for d in parsed.diag.sorted(&parsed.origins) {
             failures.push(format!("{}: {}", path.display(), d.message));
         }
-        if let Err(malformed) = parsed.cst.verify(&parsed.tokens) {
+        if let Err(malformed) = parsed.cst.verify(&parsed.tokens, &text) {
             failures.push(format!("{}: {malformed:?}", path.display()));
         }
     }

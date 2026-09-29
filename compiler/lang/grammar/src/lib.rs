@@ -8,8 +8,10 @@ use std::sync::LazyLock;
 
 #[rustfmt::skip]
 mod generated;
+mod production;
 
 pub use generated::*;
+pub use production::Element;
 
 /// Separates the members of a path, as written: `std.prelude`.
 pub const PATH_SEPARATOR: &str = TokenKind::Dot.text().unwrap();

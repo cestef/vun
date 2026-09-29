@@ -5,9 +5,24 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// Kinds of syntax tree nodes (spec 13, section 2). A leaf never has children. A branch lists its
-/// children in source order, punctuation left out; `Cst::fields` matches them. An `error` stands for
-/// skipped or absent source; a skipped group holds the tokens after its first.
+/// Kinds of syntax tree nodes (spec 13, section 2), each with its production: the tokens and
+/// children it spells, in source order.
+///
+/// A term of a production is a token spelled `"text"` (a punctuation or keyword token, or a name
+/// spelled so where the grammar makes it a word), `.token(.a, ...)` for a token of one of these
+/// kinds, lists of the token kind or tables of tokens, `.word(.Kind)` for a name or keyword spelled
+/// as a variant of `Kind`, a child `.field`, `.optional(...)` and `.many(...)` for terms written
+/// once or not and any number of times, `.separated(term, "sep")` for any number of `term` with
+/// `sep` between them and after the last if written, `.choice(a, ...)` for one of the terms, and
+/// `[...]` for terms in sequence.
+///
+/// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
+/// its children fill its fields. A field's count follows from where it stands: `many` in `many`
+/// or `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a
+/// kind holds a node of that kind, any other field any node. A leaf spells one token and holds
+/// nothing; `punct` holds the token its parent's production names. An `error` stands for skipped
+/// or absent source, and fits any field; an `error`, and a node holding one or anchored at an
+/// absent token, are recovery's shapes: they fit their kind's fields, not its production.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 pub enum NodeKind {
     Punct,
@@ -34,6 +49,7 @@ pub enum NodeKind {
     Field,
     Spread,
     Select,
+    Namespace,
     Param,
     Returns,
     Fn,
@@ -43,7 +59,6 @@ pub enum NodeKind {
     Quote,
     Struct,
     Enum,
-    Namespace,
     Paren,
     Tuple,
     Array,
@@ -52,6 +67,7 @@ pub enum NodeKind {
     StructLit,
     TypedLit,
     FieldInit,
+    MultilineString,
     DotName,
     Member,
     Call,
@@ -73,7 +89,6 @@ pub enum NodeKind {
     Continue,
     Yield,
     Defer,
-    MultilineString,
     Asm,
     Line,
     Suffix,
@@ -98,26 +113,27 @@ impl NodeKind {
         Self::Flow,
         Self::Writeback,
     ];
-    pub const BRANCHES: &[Self] = &[
-        Self::Error,
-        Self::File,
-        Self::Doc,
-        Self::Attr,
+    pub const STRUCTURE: &[Self] = &[Self::Error, Self::File, Self::Doc, Self::Attr];
+    pub const DECLARATIONS: &[Self] = &[
         Self::Binding,
         Self::TypedBinding,
         Self::Field,
         Self::Spread,
         Self::Select,
+        Self::Namespace,
+    ];
+    pub const FUNCTIONS: &[Self] = &[
         Self::Param,
         Self::Returns,
         Self::Fn,
         Self::FnType,
         Self::Closure,
+    ];
+    pub const VALUES: &[Self] = &[
         Self::Block,
         Self::Quote,
         Self::Struct,
         Self::Enum,
-        Self::Namespace,
         Self::Paren,
         Self::Tuple,
         Self::Array,
@@ -126,6 +142,9 @@ impl NodeKind {
         Self::StructLit,
         Self::TypedLit,
         Self::FieldInit,
+        Self::MultilineString,
+    ];
+    pub const OPERATORS: &[Self] = &[
         Self::DotName,
         Self::Member,
         Self::Call,
@@ -134,6 +153,8 @@ impl NodeKind {
         Self::Postfix,
         Self::Infix,
         Self::Assign,
+    ];
+    pub const CONTROL: &[Self] = &[
         Self::If,
         Self::Test,
         Self::For,
@@ -147,7 +168,8 @@ impl NodeKind {
         Self::Continue,
         Self::Yield,
         Self::Defer,
-        Self::MultilineString,
+    ];
+    pub const ASSEMBLY: &[Self] = &[
         Self::Asm,
         Self::Line,
         Self::Suffix,

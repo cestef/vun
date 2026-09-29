@@ -1,5 +1,5 @@
 //! The kinds and tables of `lib/lang/lang/syntax`, read as one set of declarations so that a
-//! table may name any kind, and written apart: `grammar.vun` into `vun-grammar`, which the lexer
+//! table may name any kind, and written apart: `grammar.vun` and `nodes.vun` into `vun-grammar`, which the lexer
 //! and parser (and so this generator) are built from, `desugar.vun` into `vun-desugar`, which
 //! only the compiler's later stages read. A desugaring table can then never keep the generator
 //! from building (decision 132).
@@ -23,6 +23,7 @@ use crate::generate::{Emit, Generator, Module, Read, Source};
 
 mod editor;
 mod enums;
+mod production;
 mod slots;
 mod tables;
 
@@ -44,9 +45,28 @@ pub(crate) const DESUGAR: Generator = Generator {
     emit: Emit::Rust(emit_desugar),
 };
 
-/// The file of each, by stem.
-const GRAMMAR_FILE: &str = "grammar";
+/// The stem of the file that goes to `vun-desugar`; every other goes to `vun-grammar`.
 const DESUGAR_FILE: &str = "desugar";
+
+/// The part of the directory a file belongs to.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Part {
+    Grammar,
+    Desugar,
+}
+
+impl Part {
+    fn of(source: &Source<'_>) -> Self {
+        let desugar = Path::new(&source.path).file_stem().is_some_and(|f| f == DESUGAR_FILE);
+        if desugar { Self::Desugar } else { Self::Grammar }
+    }
+}
+
+/// The declarations of the grammar's files, as one source.
+fn grammar<'s>(sources: &[Source<'s>]) -> Source<'s> {
+    let decls = sources.iter().filter(|s| Part::of(s) == Part::Grammar).flat_map(|s| s.decls.iter().cloned());
+    Source { path: SYNTAX.to_owned(), decls: decls.collect() }
+}
 
 const SHAPE: DiagId = DiagId::new("generate.grammar.shape");
 const UNRESOLVED: DiagId = DiagId::new("generate.grammar.unresolved");
@@ -56,7 +76,7 @@ const ENTRY_NAME: &str = "name";
 const ENTRY_TEXT: &str = "text";
 
 fn emit_grammar(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    emit(sources, GRAMMAR_FILE, &TokenStream::new())
+    emit(sources, Part::Grammar, &TokenStream::new())
 }
 
 fn emit_desugar(sources: &[Source<'_>]) -> Read<Vec<Module>> {
@@ -64,15 +84,15 @@ fn emit_desugar(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         #[allow(unused_imports, clippy::wildcard_imports, reason = "tables name the grammar's kinds")]
         use vun_grammar::*;
     };
-    emit(sources, DESUGAR_FILE, &uses)
+    emit(sources, Part::Desugar, &uses)
 }
 
-/// The kinds and tables declared in the file `stem`, resolved against every file's kinds; each
+/// The kinds and tables declared in the files of `part`, resolved against every file's kinds; each
 /// module also has `uses`, the imports of kinds declared elsewhere.
-fn emit(sources: &[Source<'_>], stem: &str, uses: &TokenStream) -> Read<Vec<Module>> {
+fn emit(sources: &[Source<'_>], part: Part, uses: &TokenStream) -> Read<Vec<Module>> {
     let decls = sources.iter().flat_map(|s| s.decls.iter().cloned()).collect();
     let all = Source { path: SYNTAX.to_owned(), decls };
-    let own = sources.iter().filter(|s| Path::new(&s.path).file_stem().is_some_and(|f| f == stem));
+    let own = sources.iter().filter(|s| Part::of(s) == part);
     let own: HashSet<&str> = own.flat_map(|s| s.decls.iter().map(|d| d.name)).collect();
     Grammar::read(&all)?.emit(&all, &own, uses)
 }
@@ -92,11 +112,11 @@ struct Variant<'s> {
     doc: Vec<String>,
     /// Its fixed spelling, escaped in the source or not.
     text: Option<Cow<'s, str>>,
-    /// For a kind entry written `.name(slots...)`, its children.
-    slots: Vec<Slot<'s>>,
+    /// For a kind entry written `.name(terms...)`, its production.
+    production: Option<Vec<production::Term<'s>>>,
 }
 
-/// One child position of a kind: `.count(.field)`.
+/// One child position of a kind, derived from its production.
 struct Slot<'s> {
     count: &'s str,
     field: &'s str,
@@ -129,7 +149,7 @@ impl<'s> Grammar<'s> {
                     doc: docs(&d.doc),
                     variants: variants
                         .iter()
-                        .map(|v| Variant { name: v.name, doc: docs(&v.doc), text: None, slots: Vec::new() })
+                        .map(|v| Variant { name: v.name, doc: docs(&v.doc), text: None, production: None })
                         .collect(),
                     lists: Vec::new(),
                 }),
@@ -152,7 +172,7 @@ impl<'s> Grammar<'s> {
                 let variant = Variant::entry(entry).ok_or_else(|| {
                     let record = format!(".{{ .{ENTRY_NAME} = .x, .{ENTRY_TEXT} = \"...\" }}");
                     let msg = Msg::new().text("entries are ").code(".name").text(", ").code("\"text\"");
-                    let msg = msg.text(", ").code(record).text(" or ").code(".name(.count(.field), ...)");
+                    let msg = msg.text(", ").code(record).text(" or a production ").code(".name(terms...)");
                     GENERATOR.error(SHAPE, d.name, msg)
                 })?;
                 names.push(variant.name);

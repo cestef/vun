@@ -1,0 +1,116 @@
+//! The kinds of syntax tree nodes and their productions, part of the grammar with `grammar.vun`,
+//! whose header says how both are read.
+
+/// How many nodes a child position of a kind holds.
+Count := enum {
+    one,
+    optional,
+    many,
+};
+
+/// Kinds of syntax tree nodes (spec 13, section 2), each with its production: the tokens and
+/// children it spells, in source order.
+///
+/// A term of a production is a token spelled `"text"` (a punctuation or keyword token, or a name
+/// spelled so where the grammar makes it a word), `.token(.a, ...)` for a token of one of these
+/// kinds, lists of the token kind or tables of tokens, `.word(.Kind)` for a name or keyword spelled
+/// as a variant of `Kind`, a child `.field`, `.optional(...)` and `.many(...)` for terms written
+/// once or not and any number of times, `.separated(term, "sep")` for any number of `term` with
+/// `sep` between them and after the last if written, `.choice(a, ...)` for one of the terms, and
+/// `[...]` for terms in sequence.
+///
+/// A node is anchored at the first token of its production; its other tokens are `punct` leaves,
+/// its children fill its fields. A field's count follows from where it stands: `many` in `many`
+/// or `separated`, else `optional` in `optional` or `choice`, else `one`. A field named after a
+/// kind holds a node of that kind, any other field any node. A leaf spells one token and holds
+/// nothing; `punct` holds the token its parent's production names. An `error` stands for skipped
+/// or absent source, and fits any field; an `error`, and a node holding one or anchored at an
+/// absent token, are recovery's shapes: they fit their kind's fields, not its production.
+NodeKind := .{
+    .leaves = [
+        .punct,
+        .module_doc(.token(.module_doc_comment)),
+        .\mut("mut"),
+        .mode(.word(.BorrowWord)),
+        .name(.token(.ident, .raw_ident)),
+        .hole("_"),
+        .int(.token(.int)),
+        .float(.token(.float)),
+        .char(.token(.char)),
+        .string(.token(.string, .raw_string)),
+        .raw_string_line(.token(.raw_string_line)),
+        .label(.token(.label)),
+        .rest(".."),
+        .flow(.word(.Flow)),
+        .writeback("!"),
+    ],
+    .structure = [
+        .error(.many(.skipped)),
+        .file(.many(.choice(.items, ";", ",")), .token(.eof)),
+        .doc(.token(.doc_comment), .target),
+        .attr("#[", .separated(.values, ","), "]", .target),
+    ],
+    .declarations = [
+        .binding(.optional(.\mut), .pattern, ":=", .value),
+        .typed_binding(.optional(.\mut), .pattern, ":", .type, .optional("=", .value)),
+        .field(.optional(.\mut), .pattern, ":", .type, .optional("=", .value)),
+        .spread("..", .source, .optional(.select)),
+        .select(".{", .separated(.names, ","), "}"),
+        .namespace(";", .many(.choice(.members, ";", ","))),
+    ],
+    .functions = [
+        .param(.pattern, ":", .type),
+        .returns("->", .type),
+        .\fn("(", .separated(.params, ","), ")", .optional(.returns), .block),
+        .fn_type("(", .separated(.params, ","), ")", .optional(.returns)),
+        .closure("[", .separated(.captures, ","), "]", .\fn),
+    ],
+    .values = [
+        // Under `$` among members or items, a block holds those: `$for f in fs { x: T, }`.
+        .block("{", .many(.choice(.statements, ";", ",")), "}"),
+        .quote("#{", .many(.choice(.statements, ";")), "}"),
+        .\struct("struct", "{", .many(.choice(.members, ";", ",")), "}"),
+        .\enum("enum", "{", .separated(.variants, ","), .optional(.namespace), "}"),
+        .paren("(", .inner, ")"),
+        .tuple("(", .separated(.items, ","), ")"),
+        .array("[", .separated(.items, ","), "]"),
+        .array_repeat("[", .value, ";", .count, "]"),
+        .array_type("[", .length, "]", .element),
+        .struct_lit(".{", .separated(.fields, ","), "}"),
+        .typed_lit(.type, "{", .separated(.fields, ","), "}"),
+        .field_init(.target, "=", .value),
+        .multiline_string(.token(.raw_string_line), .many(.lines)),
+    ],
+    .operators = [
+        .dot_name(".", .property),
+        .member(.object, ".", .property),
+        .call(.callee, "(", .separated(.args, ","), ")"),
+        .index(.object, "[", .subscript, "]"),
+        .prefix(.token(.prefix), .many(.mode), .operand),
+        .postfix(.operand, .token(.postfix)),
+        .infix(.left, .token(.infix), .optional(.right)),
+        .assign(.place, .token(.assign), .value),
+    ],
+    .control = [
+        .\if("if", .condition, .block, .optional("else", .otherwise)),
+        .test(.pattern, "=", .value),
+        .\for("for", .optional(.head), .block),
+        .in(.pattern, "in", .value),
+        .\match("match", .scrutinee, "{", .separated(.arms, ","), "}"),
+        .arm(.pattern, .optional(.guard), "=>", .optional(.value)),
+        .guard("if", .condition),
+        .labeled(.token(.label), ":", .body),
+        .\return("return", .optional(.value)),
+        .\break("break", .optional(.label), .optional(.value)),
+        .\continue("continue", .optional(.label)),
+        .\yield("yield", .value),
+        .\defer("defer", .body),
+    ],
+    .assembly = [
+        .asm(.target, ".", "asm", "{", .many(.lines, .optional(":")), "}"),
+        .line(.token(.ident, .keywords), .many(.suffix), .separated(.operands, ",")),
+        .suffix(".", .name),
+        .bound("{", .optional(.flow, .optional("(", .register, ")")), .value, "}"),
+        .memory("[", .separated(.parts, ","), "]", .optional(.writeback)),
+    ],
+};

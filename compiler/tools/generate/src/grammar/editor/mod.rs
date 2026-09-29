@@ -6,7 +6,7 @@
 use vun_diag::{DiagId, Msg};
 use vun_syntax::literal::Literal;
 
-use super::{Enum, Grammar};
+use super::{Enum, Grammar, SYNTAX, grammar};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 
 mod lexical;
@@ -20,11 +20,8 @@ use lexical::{IDENT, TYPE_NAME};
 use pattern::Pattern;
 use syntax::{Context, Rule, Scope, Syntax};
 
-pub(crate) const EDITOR: Generator = Generator {
-    source: "lib/lang/lang/syntax/grammar.vun",
-    output: "editors/sublime",
-    emit: Emit::Data(emit),
-};
+pub(crate) const EDITOR: Generator =
+    Generator { source: SYNTAX, output: "editors/sublime", emit: Emit::Data(emit) };
 
 const FILE: &str = "vun.sublime-syntax";
 const LANGUAGE: &str = "Vun";
@@ -83,7 +80,7 @@ impl Recognized {
 }
 
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
-    let [source] = sources else { unreachable!("the source is one file") };
+    let source = &grammar(sources);
     let tables = Tables { grammar: Grammar::read(source)?, source };
     let syntax = Syntax {
         name: LANGUAGE,

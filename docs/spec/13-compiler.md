@@ -330,11 +330,11 @@ compiler, reject any entity without one.
 
 ## 5. One grammar, many consumers
 
-The grammar (tokens, node kinds, their fields) is defined once, in `lang/syntax/grammar.vun`, as Vun
-data. From it are generated: the Rust kind enums and typed accessors used by the parser and every
-compiler crate; `lang.syntax`, which compile-time code uses to read code values (spec 03); the
-formatter's node table; and the tree-sitter grammar for editors. Tokens and nodes are therefore
-defined in exactly one place and cannot drift.
+The grammar (tokens, node kinds, their productions) is defined once, in `lang/syntax/grammar.vun`
+and `lang/syntax/nodes.vun`, as Vun data. From it are generated: the Rust kind enums and typed
+accessors used by the parser and every compiler crate; `lang.syntax`, which compile-time code uses
+to read code values (spec 03); the formatter's node table; and the tree-sitter grammar for editors.
+Tokens and nodes are therefore defined in exactly one place and cannot drift.
 
 `cargo gen` reads the grammar with the compiler's own parser as literal data (the
 reader of `build.vun` manifests, spec 12) and translates each declaration by the shape of its
@@ -344,7 +344,7 @@ struct named after it (`iteration` holds `IterationRow`s), read by field name, a
 paths into `lang` (`"lang.ops.Try.branch"`) is generated as their handles, members of type
 constructors and interface requirements included. Rust reads what a handle declares through it
 (`Item::parent`, `Item::symbol`), and a borrow mode is a row of the table `borrows`
-(`vun_desugar::Borrow`), never its words. `grammar.vun` goes to `vun-grammar`, which the parser is built
+(`vun_desugar::Borrow`), never its words. `grammar.vun` and `nodes.vun` go to `vun-grammar`, which the parser is built
 from, and `desugar.vun` to `vun-desugar`, which only later stages read. The same task generates the
 diagnostic ids of `vun-diag` from `lang/errors.vun`, a typed handle (`vun_items::Item`) for every
 public declaration and namespace of `lang` and `std` (`vun_items::lang::int::unsigned`), through
@@ -368,15 +368,25 @@ and flow words and every punctuation token come from `grammar.vun`, each punctua
 by the tables it is in (`assign`, `infix`, ...), and the tokens the lexer reads by hand
 (comments, strings, numbers, labels) from the lexer's constants.
 
-**Node fields.** A branch kind declares its children as tagged slots, in source order and without
-punctuation: `.binding(.optional(.\mut), .one(.pattern), .one(.value))`. A slot is `one`,
-`optional` or `many`; a field named after a node kind holds a node of that kind, any other field
-any node. The generator derives a field enum and each kind's slots; `Cst::fields` assigns a node's
-children to them (left to right, backtracking, leaving a node to a later slot restricted to its
-kind), and the CST verifier requires every node to fit. Each distinct shape is its own kind, so a
-kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
-`typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
-node, which holds what recovery skipped and fits any slot. Dumps print each child's field.
+**Productions.** Each node kind is declared by its production: the tokens and children it spells,
+in source order, `.binding(.optional(.\mut), .pattern, ":=", .value)`. A term is a token by its
+spelling (`":="`, `"if"`, or a name spelled so where it is a word: `"in"`), `.token(...)` for a
+token of the kinds, lists of the token kind or tables of tokens it names (`.token(.infix)`),
+`.word(.Kind)` for a name or keyword spelled as a variant of `Kind`, a child `.field`,
+`.optional(...)`, `.many(...)`, `.separated(term, ",")` (with an optional trailing separator),
+`.choice(...)` or a sequence `[...]`. A leaf spells one token. A node is anchored at its
+production's first token; its other tokens are `punct` leaves. The generator derives from the
+productions a field enum and each kind's slots: a field under `many` or `separated` holds many
+nodes, one under `optional` or `choice` one at most, any other exactly one; a field named after a
+node kind holds a node of that kind, any other field any node. `Cst::fields` assigns a node's
+children to its slots (left to right, backtracking, leaving a node to a later slot restricted to
+its kind). Each distinct shape is its own kind, so a kind's fields never depend on its anchor
+token: `x := e` is `binding` and `x: T = e` is `typed_binding`, `.{ }` is `struct_lit` and `T{ }`
+is `typed_lit`. Malformed source is an `error` node, which holds what recovery skipped and fits
+any slot. The CST verifier requires every node to fit its slots and every node recovery did not
+build (an `error`, a node holding one or anchored at an absent token) to spell its production,
+matched as a regular expression by the sets of positions each term may end at. Dumps print each
+child's field.
 
 **The formatter.** `vun fmt` (`vun-fmt`) changes whitespace only: a file's tokens, comments
 included, are the same before and after, and formatting twice changes nothing. It keeps the line
