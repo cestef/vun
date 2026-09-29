@@ -20,19 +20,29 @@ impl Rules<'_> {
     }
 
     /// A node of a kind `table` lists, or of a transparent kind ending with one: that kind's
-    /// production with its last field holding what this does, as a hidden rule named after both
-    /// and aliased to the kind.
+    /// production, its first token narrowed to those making it transparent, with its last field
+    /// holding what this does, as a hidden rule named after both and aliased to the kind.
     fn of_table(&self, table: &Table<Kind>, ending: bool) -> Rule {
         let name = |k: Kind| self.model.kind_name(k);
         let mut kinds: Vec<Rule> = table.members.iter().map(|&k| Rule::symbol(name(k))).collect();
         let transparent = if ending { self.model.transparent.as_slice() } else { &[] };
-        for &kind in transparent {
+        for (kind, tokens) in transparent {
+            let kind = *kind;
             let hidden = ["_", name(kind), "_", &table.name].concat();
             if !self.defined(&hidden) {
                 self.define(hidden.clone(), Rule::seq(Vec::new()));
                 let terms = self.model.production(kind).unwrap_or_default();
                 if let Some((Term::Field(field, None), rest)) = terms.split_last() {
-                    let mut body: Vec<Rule> = rest.iter().filter_map(|t| self.term(t, At::RANKED)).collect();
+                    let mut body: Vec<Rule> = rest
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, t)| match t {
+                            Term::Tokens(_) if i == 0 => {
+                                Some(Rule::choice(tokens.iter().map(|&t| self.token(t, true)).collect()))
+                            }
+                            _ => self.term(t, At::RANKED),
+                        })
+                        .collect();
                     body.push(self.of_table(table, true).field(self.model.field_name(*field)));
                     let level = self.levels.get(&kind).copied().unwrap_or_default();
                     self.define(hidden.clone(), Rule::seq(body).prec(Assoc::Right, level));

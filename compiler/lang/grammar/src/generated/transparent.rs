@@ -5,6 +5,18 @@
     reason = "generated modules share one namespace"
 )]
 use super::*;
-/// Kinds that end with the kind of their last child, where a production says so (`.ending`):
-/// `$if a {}` and `unsafe {}` are unterminated as an `if` and a block are.
-pub const TRANSPARENT: &[NodeKind] = &[NodeKind::Prefix];
+/// A row of [`TRANSPARENT`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TransparentRow {
+    pub kind: NodeKind,
+    pub tokens: &'static [TokenKind],
+}
+/// Kinds that end with the kind of their last child when written with one of the tokens listed,
+/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
+/// and a block are.
+pub const TRANSPARENT: &[TransparentRow] = &[
+    TransparentRow {
+        kind: NodeKind::Prefix,
+        tokens: &[TokenKind::Dollar, TokenKind::Unsafe],
+    },
+];

@@ -1,7 +1,10 @@
 //! Operator expressions and operands.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_grammar::{Assoc, BorrowWord, LITERAL_TYPES, NodeKind, OPEN_ENDED, POSTFIX, PREFIX, Prec, TokenKind};
+use vun_grammar::{
+    Assoc, BorrowWord, LITERAL_TYPES, MEMBER_NAMES, NodeKind, OPEN_ENDED, OPERAND_CONTEXTS, POSTFIX, PREFIX,
+    Prec, TokenKind,
+};
 
 use super::nesting::Chain;
 use super::{Brace, Item, List, Parser};
@@ -108,6 +111,12 @@ impl Parser<'_, '_, '_> {
         }
     }
 
+    /// The kind of `operand_contexts` an operand starting with `token` is, among an instruction's
+    /// operands: `{` a bound, `[` a memory operand, a label a label.
+    fn context_kind(token: TokenKind) -> Option<NodeKind> {
+        OPERAND_CONTEXTS.iter().flat_map(|row| row.kinds).copied().find(|k| k.starts().contains(&token))
+    }
+
     pub(super) fn member_name(&mut self) {
         match self.peek() {
             TokenKind::Ident | TokenKind::RawIdent => self.leaf(NodeKind::Name),
@@ -115,7 +124,7 @@ impl Parser<'_, '_, '_> {
             TokenKind::Dollar => {
                 let mark = self.out.mark();
                 let token = self.bump();
-                self.nested(|p| p.primary(Brace::Continues));
+                self.nested(Self::computed_name);
                 self.out.node(NodeKind::Prefix, Anchor::Token(token), mark);
             }
             _ => {
@@ -123,6 +132,19 @@ impl Parser<'_, '_, '_> {
                 self.report_missing(errors::SYNTAX_EXPECTED_NAME, msg);
                 self.missing(NodeKind::Error);
             }
+        }
+    }
+
+    /// The value naming a member after `.$`, of a kind `member_names` lists; another is reported
+    /// and held by an `Error`.
+    fn computed_name(&mut self) {
+        let (mark, at) = (self.out.mark(), self.current());
+        self.primary(Brace::Continues);
+        if self.out.last().is_some_and(|k| k != NodeKind::Error && !MEMBER_NAMES.contains(&k)) {
+            let msg = Msg::new().text("expected a name, an index or a parenthesized value naming a member");
+            self.report(self.tokens.span(at), Diagnostic::error(errors::SYNTAX_EXPECTED_NAME, msg));
+            // Its tokens anchor the nodes it holds; the error stands where the name was expected.
+            self.out.node(NodeKind::Error, Anchor::Missing(at), mark);
         }
     }
 
@@ -141,6 +163,16 @@ impl Parser<'_, '_, '_> {
             self.leaf(kind);
             return;
         }
+        if brace == Brace::Hole
+            && let Some(kind) = Self::context_kind(self.peek())
+        {
+            match kind {
+                NodeKind::Bound => self.bound(),
+                NodeKind::Memory => self.memory(),
+                leaf => self.leaf(leaf),
+            }
+            return;
+        }
         let mark = self.out.mark();
         let (kind, token) = match self.peek() {
             TokenKind::RawStringLine => {
@@ -157,9 +189,6 @@ impl Parser<'_, '_, '_> {
             }
             TokenKind::DotLBrace => (NodeKind::StructLit, self.group_of(List::Items(Item::Value)).0),
             TokenKind::HashLBrace => (NodeKind::Quote, self.group_of(List::Statements).0),
-            TokenKind::LBrace if brace == Brace::Hole => return self.bound(),
-            TokenKind::Label if brace == Brace::Hole => return self.leaf(NodeKind::Label),
-            TokenKind::LBracket if brace == Brace::Hole => return self.memory(),
             TokenKind::LParen => return self.function_or_tuple(brace),
             TokenKind::LBracket => return self.bracket(brace),
             TokenKind::LBrace | TokenKind::If | TokenKind::For | TokenKind::Match | TokenKind::Label => {

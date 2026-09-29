@@ -390,7 +390,8 @@ to the kind, and completes its entry where its kind has no level of its own; the
 operand context (`operand_contexts`: an instruction's operands and a memory operand's parts) read
 their operands at any depth in the context, where the kinds it lists replace those starting with
 the same token (`{` opens a bound, not a block), through variants of each kind holding operands;
-the kinds of `line_ends` end at a line break an external scanner finds; where several kinds fit,
+the kinds of `line_ends` end at a line break an external scanner finds; a kind of `transparent`
+ends with its last child only when written with one of the tokens its row lists (`$`, `unsafe`); where several kinds fit,
 the first of `preferred` wins. The sets of rules tree-sitter must keep apart are an artifact of
 its tables and are found, not written: `cargo xtask tree-sitter` generates the parser until it
 builds (`conflicts.json`), then parses every source and compares each tree with the compiler's;
@@ -415,12 +416,17 @@ productions a field enum and each kind's slots: a field under `many` or `separat
 nodes, one under `optional` or `choice` one at most, any other exactly one, and one standing in
 several places in a row many; a field named after a node kind holds a node of that kind, any other
 field any node. `Cst::fields` assigns a node's children to its slots (left to right, backtracking,
-leaving a node to a later slot restricted to its kind). Each distinct shape is its own kind, so a
+leaving a node to a later slot restricted to its kind). The parser reads the tables it shares with
+editors rather than restating them: the entries needing no `;` start as the kinds of `unterminated`
+holding children do (`NodeKind::starts`, from the productions), under the tokens of `transparent`; a
+label names what `labeled_bodies` lists; an instruction's operands read the kinds of
+`operand_contexts`; a member named by `$` is of a kind `member_names` lists. Each distinct shape is its own kind, so a
 kind's fields never depend on its anchor token: `x := e` is `binding` and `x: T = e` is
 `typed_binding`, `.{ }` is `struct_lit` and `T{ }` is `typed_lit`. Malformed source is an `error`
 node, which holds what recovery skipped and fits any slot. The CST verifier requires every node to
 fit its slots and every node recovery did not build (an `error`, a node holding one or anchored at
-an absent token) to spell its production, matched as a regular expression by the sets of positions
+an absent token, and a node holding such a node, whose extent recovery decided) to spell its
+production, matched as a regular expression by the sets of positions
 each term may end at. Dumps print each child's field.
 
 **The formatter.** `vun fmt` (`vun-fmt`) changes whitespace only: a file's tokens, comments

@@ -61,8 +61,9 @@ pub const labeled_bodies: Item = Item::new(
 );
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 pub const member_names: Item = Item::new(&["lang", "syntax", "nodes", "member_names"]);
-/// Kinds that end with the kind of their last child, where a production says so (`.ending`):
-/// `$if a {}` and `unsafe {}` are unterminated as an `if` and a block are.
+/// Kinds that end with the kind of their last child when written with one of the tokens listed,
+/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
+/// and a block are.
 pub const transparent: Item = Item::new(&["lang", "syntax", "nodes", "transparent"]);
 /// Kinds that end with their line: an instruction's operands stop where it does.
 pub const line_ends: Item = Item::new(&["lang", "syntax", "nodes", "line_ends"]);

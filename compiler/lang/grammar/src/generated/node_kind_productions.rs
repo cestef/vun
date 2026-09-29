@@ -68,6 +68,98 @@ impl NodeKind {
             _ => &[],
         }
     }
+    /// The tokens this kind's production may start with; empty where it starts with a
+    /// child.
+    #[must_use]
+    #[allow(
+        clippy::too_many_lines,
+        clippy::match_same_arms,
+        reason = "one arm per kind, as declared"
+    )]
+    pub const fn starts(self) -> &'static [TokenKind] {
+        match self {
+            Self::ModuleDoc => &[TokenKind::ModuleDocComment],
+            Self::Mut => &[TokenKind::Mut],
+            Self::Name => &[TokenKind::Ident, TokenKind::RawIdent],
+            Self::Hole => &[TokenKind::Underscore],
+            Self::Int => &[TokenKind::Int],
+            Self::Float => &[TokenKind::Float],
+            Self::Char => &[TokenKind::Char],
+            Self::String => &[TokenKind::String, TokenKind::RawString],
+            Self::RawStringLine => &[TokenKind::RawStringLine],
+            Self::Label => &[TokenKind::Label],
+            Self::Rest => &[TokenKind::DotDot],
+            Self::Writeback => &[TokenKind::Bang],
+            Self::Doc => &[TokenKind::DocComment],
+            Self::Attr => &[TokenKind::HashLBracket],
+            Self::Spread => &[TokenKind::DotDot],
+            Self::Select => &[TokenKind::DotLBrace],
+            Self::Namespace => &[TokenKind::Semi],
+            Self::Returns => &[TokenKind::Arrow],
+            Self::Fn => &[TokenKind::LParen],
+            Self::FnType => &[TokenKind::LParen],
+            Self::Closure => &[TokenKind::LBracket],
+            Self::Block => &[TokenKind::LBrace],
+            Self::Quote => &[TokenKind::HashLBrace],
+            Self::Struct => &[TokenKind::Struct],
+            Self::Enum => &[TokenKind::Enum],
+            Self::Paren => &[TokenKind::LParen],
+            Self::Tuple => &[TokenKind::LParen],
+            Self::Array => &[TokenKind::LBracket],
+            Self::ArrayRepeat => &[TokenKind::LBracket],
+            Self::ArrayType => &[TokenKind::LBracket],
+            Self::StructLit => &[TokenKind::DotLBrace],
+            Self::MultilineString => &[TokenKind::RawStringLine],
+            Self::DotName => &[TokenKind::Dot],
+            Self::Prefix => {
+                &[
+                    TokenKind::Minus,
+                    TokenKind::Bang,
+                    TokenKind::Tilde,
+                    TokenKind::Amp,
+                    TokenKind::Star,
+                    TokenKind::Question,
+                    TokenKind::DotDot,
+                    TokenKind::Dollar,
+                    TokenKind::Unsafe,
+                ]
+            }
+            Self::If => &[TokenKind::If],
+            Self::For => &[TokenKind::For],
+            Self::Match => &[TokenKind::Match],
+            Self::Guard => &[TokenKind::If],
+            Self::Labeled => &[TokenKind::Label],
+            Self::Return => &[TokenKind::Return],
+            Self::Break => &[TokenKind::Break],
+            Self::Continue => &[TokenKind::Continue],
+            Self::Yield => &[TokenKind::Yield],
+            Self::Defer => &[TokenKind::Defer],
+            Self::Line => {
+                &[
+                    TokenKind::Ident,
+                    TokenKind::Mut,
+                    TokenKind::If,
+                    TokenKind::Else,
+                    TokenKind::Match,
+                    TokenKind::For,
+                    TokenKind::Break,
+                    TokenKind::Continue,
+                    TokenKind::Return,
+                    TokenKind::Yield,
+                    TokenKind::Defer,
+                    TokenKind::And,
+                    TokenKind::Or,
+                    TokenKind::Struct,
+                    TokenKind::Enum,
+                    TokenKind::Unsafe,
+                ]
+            }
+            Self::Suffix => &[TokenKind::Dot],
+            Self::Bound => &[TokenKind::LBrace],
+            Self::Memory => &[TokenKind::LBracket],
+            _ => &[],
+        }
+    }
     /// What this kind spells, in source order; `None` for a kind declared without a
     /// production.
     #[must_use]

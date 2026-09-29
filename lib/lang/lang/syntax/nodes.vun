@@ -210,9 +210,10 @@ labeled_bodies := [.\for, .block];
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 member_names := [.name, .int, .paren];
 
-/// Kinds that end with the kind of their last child, where a production says so (`.ending`):
-/// `$if a {}` and `unsafe {}` are unterminated as an `if` and a block are.
-transparent := [.prefix];
+/// Kinds that end with the kind of their last child when written with one of the tokens listed,
+/// where a production says so (`.ending`): `$if a {}` and `unsafe {}` are unterminated as an `if`
+/// and a block are.
+transparent := [.{ .kind = .prefix, .tokens = &[.dollar, .\unsafe] }];
 
 /// Kinds that end with their line: an instruction's operands stop where it does.
 line_ends := [.line];

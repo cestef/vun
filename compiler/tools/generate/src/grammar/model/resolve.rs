@@ -183,7 +183,15 @@ impl Model {
         let kinds = |model: &Self, owner: &str, names: &[Name]| model.kinds_named(owner, names);
         self.parts = kinds(self, "parts", &written.parts)?;
         self.unterminated = kinds(self, "unterminated", &written.unterminated)?;
-        self.transparent = kinds(self, "transparent", &written.transparent)?;
+        self.transparent = written
+            .transparent
+            .iter()
+            .map(|row| {
+                let tokens =
+                    row.tokens.iter().map(|t| self.token_named("transparent", t)).collect::<Read<_>>()?;
+                Ok((self.kind_named("transparent", &row.kind)?, tokens))
+            })
+            .collect::<Read<_>>()?;
         self.line_ends = kinds(self, "line_ends", &written.line_ends)?;
         self.preferred =
             written.preferred.iter().map(|set| kinds(self, "preferred", set)).collect::<Read<_>>()?;

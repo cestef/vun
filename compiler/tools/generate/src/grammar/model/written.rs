@@ -19,7 +19,7 @@ pub(super) struct Written {
     pub(super) operand_contexts: Vec<Contents>,
     pub(super) preferred: Vec<Vec<Name>>,
     pub(super) unterminated: Vec<Name>,
-    pub(super) transparent: Vec<Name>,
+    pub(super) transparent: Vec<Transparent>,
     pub(super) line_ends: Vec<Name>,
     pub(super) precedence: Vec<Vec<Name>>,
     pub(super) infix: Vec<Level>,
@@ -108,6 +108,13 @@ pub(crate) enum TokenRef {
 pub(super) struct Contents {
     pub(super) fields: Vec<Name>,
     pub(super) kinds: Vec<Name>,
+}
+
+/// A row of `transparent`.
+#[derive(FromLiteral)]
+pub(super) struct Transparent {
+    pub(super) kind: Name,
+    pub(super) tokens: Vec<Name>,
 }
 
 /// A row of `infix`.

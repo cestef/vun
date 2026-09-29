@@ -40,8 +40,9 @@ impl Element<'_> {
             (NodeTerm::Of(field, kinds), Self::Child { field: child, kind, .. }) => {
                 field == child && kinds.contains(&kind)
             }
+            // What recovery built at the end fits, as it fits any field: `.$` missing its name.
             (NodeTerm::Ending(field, kinds), Self::Child { field: child, kind, ends, .. }) => {
-                field == child && (kinds.contains(&kind) || kinds.contains(&ends))
+                field == child && (kinds.contains(&kind) || kinds.contains(&ends) || ends == NodeKind::Error)
             }
             (NodeTerm::Starting(field, tokens), Self::Child { field: child, first, .. }) => {
                 field == child && tokens.contains(&first)

@@ -231,9 +231,10 @@ fn long_chains_are_bounded() {
 
 #[test]
 fn recovered_trees_fit_their_slots() {
-    // Inputs the fuzzer found: junk in a list, a dangling doc before a failed entry, and brackets
-    // before a group that is neither a closure nor an array type.
-    for text in ["[)#[", "///\n'''", "[](", "[a, b](c)"] {
+    // Inputs the fuzzer found: junk in a list, a dangling doc before a failed entry, brackets
+    // before a group that is neither a closure nor an array type, and a member named by `$` and
+    // nothing, and an attribute whose recovery took the `;` ending its entry.
+    for text in ["[)#[", "///\n'''", "[](", "[a, b](c)", ".$", ".$.", ".$[", "#[\u{5};#["] {
         let (_, ids) = parse_text(text);
         assert!(!ids.is_empty(), "{text:?} should report");
     }

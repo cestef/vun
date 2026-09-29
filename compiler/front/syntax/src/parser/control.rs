@@ -1,6 +1,8 @@
 //! Functions, brackets, block-like expressions and jumps: the forms chosen after their children.
 
-use vun_grammar::{ASSIGN, Context, ELEMENT_TYPES, NodeKind, TokenKind};
+use vun_grammar::{
+    ASSIGN, Context, ELEMENT_TYPES, LABELED_BODIES, NodeKind, TRANSPARENT, TokenKind, UNTERMINATED,
+};
 
 use super::{Brace, Form, Item, List, Operand, Parser};
 use crate::cst::{Anchor, Mark};
@@ -96,10 +98,11 @@ impl Parser<'_, '_, '_> {
             TokenKind::Label => {
                 let token = self.bump();
                 self.expect(TokenKind::Colon);
-                if matches!(self.peek(), TokenKind::For | TokenKind::LBrace) {
+                let bodies = || LABELED_BODIES.iter().flat_map(|k| k.starts());
+                if bodies().any(|&k| k == self.peek()) {
                     self.control(list);
                 } else {
-                    self.report_expected(&[TokenKind::For, TokenKind::LBrace]);
+                    self.report_expected(&bodies().copied().collect::<Vec<_>>());
                     self.missing(NodeKind::Error);
                 }
                 (NodeKind::Labeled, token)
@@ -136,9 +139,9 @@ impl Parser<'_, '_, '_> {
         }
     }
 
-    /// A block-like expression, possibly under `$` or `unsafe`.
+    /// A block-like expression, possibly under a token making a prefix transparent: `$`, `unsafe`.
     pub(super) fn block_like(&mut self, list: List) {
-        if matches!(self.peek(), TokenKind::Dollar | TokenKind::Unsafe) {
+        if Self::makes_transparent(self.peek()) {
             let mark = self.out.mark();
             let token = self.bump();
             self.nested(|p| p.block_like(list));
@@ -148,15 +151,20 @@ impl Parser<'_, '_, '_> {
         }
     }
 
+    /// Whether an entry needing no `;` starts here: one of the kinds of `unterminated` holding
+    /// children, under tokens making a prefix transparent.
     pub(super) fn block_like_at(&self) -> bool {
         let mut ahead = 0;
-        while matches!(self.nth(ahead), TokenKind::Dollar | TokenKind::Unsafe) {
+        while Self::makes_transparent(self.nth(ahead)) {
             ahead += 1;
         }
-        matches!(
-            self.nth(ahead),
-            TokenKind::LBrace | TokenKind::If | TokenKind::For | TokenKind::Match | TokenKind::Label
-        )
+        let at = self.nth(ahead);
+        UNTERMINATED.iter().any(|k| !k.slots().is_empty() && k.starts().contains(&at))
+    }
+
+    /// Whether a prefix written with `token` ends with the kind of its operand.
+    fn makes_transparent(token: TokenKind) -> bool {
+        TRANSPARENT.iter().any(|row| row.kind == NodeKind::Prefix && row.tokens.contains(&token))
     }
 
     pub(super) fn jump(&mut self, brace: Brace) {

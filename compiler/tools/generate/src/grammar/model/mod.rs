@@ -73,7 +73,8 @@ pub(crate) struct Model {
     /// Sets of kinds that may spell the same source, most preferred first.
     pub(crate) preferred: Vec<Vec<Kind>>,
     pub(crate) unterminated: Vec<Kind>,
-    pub(crate) transparent: Vec<Kind>,
+    /// Kinds that end with their last child when written with one of the tokens.
+    pub(crate) transparent: Vec<(Kind, Vec<Token>)>,
     pub(crate) line_ends: Vec<Kind>,
     /// Levels of the forms open at an edge, loosest first; the row holding the infix kind stands
     /// for the levels of [`Self::infix`].

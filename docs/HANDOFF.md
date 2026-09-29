@@ -26,7 +26,9 @@ stills and CSS animations in `assets/mascot`, and cards with the mascot under ea
 `<variants>` metadata and compiles in parallel. Open: removing PNGs of variants no longer
 declared, as `cargo gen` does.
 
-Last landed: editor integration, third batch (323). The generator reads what it interprets of the
+Last landed: the parser reads `unterminated`, `transparent` (rows naming their tokens),
+`labeled_bodies`, `operand_contexts` and `member_names` (323), and the fuzzer's finds are fixed.
+Before that, editor integration, third batch (323): the generator reads what it interprets of the
 grammar by type (`#[derive(FromLiteral)]`, `vun-literal-derive`) into one resolved model
 (`vun-generate`'s `grammar/model/`), which the Rust productions, the Sublime syntax, the
 tree-sitter grammar, the queries and the editor packages all write from; productions name tables
@@ -67,7 +69,6 @@ the owner's choice.
 
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
-- Thumb: 9 of the 13 driver programs agree with x86-64 (last count).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and
   generated; no target check yet that the convention's word matches `pointer_bits`.
 - Backtraces: no call line per frame (native marks each call's origin; C cannot say where a
@@ -89,26 +90,25 @@ the owner's choice.
 0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim). The
    owner chose: the parser reads the grammar's tables rather than stating the same facts in code,
    and every source must agree with tree-sitter (all 199 do). In order:
-   (a) the parser reads the tables it restates in code, from the generated tables the model
-   writes: `precedence` (its nesting in `expr.rs`), `unterminated` and `transparent`
-   (`block_like_at`), `admits`/`holds` (its list contexts), `operand_contexts` (`Brace::Hole`),
-   `labeled_bodies` (`control.rs`), `line_ends` (`line_ends_before`), `preferred` (its choice of
-   kind after the children); keep only tables some consumer reads, and mark the editor-only ones.
-   Then the engine over the productions, diffed against the hand parser on every file and by
-   fuzzing;
-   (b) publish `tree-sitter-vun` (the owner chose a repository of its own for the 8 MiB
-   `parser.c`): an xtask task copying `grammar.js`, `conflicts.json`, `src/` and the queries and
-   pushing; the editor packages point at it by `main` (Zed and Helix may need a commit hash:
-   have the task record it and `cargo gen` read it);
+   (a) the parser reads the tables it restates in code. Done: `unterminated`, `transparent`
+   (whose rows now name their tokens), `labeled_bodies`, `operand_contexts`, `member_names`
+   (through the generated `NodeKind::starts`). Left, which need the engine rather than a lookup:
+   `precedence` (the nesting in `expr.rs`), `admits`/`holds` (its list contexts), `preferred`
+   (its choice of kind after the children), `parts`; `line_ends` names the one kind the scanner
+   and `line_ends_before` serve. Then the engine over the productions, diffed against the hand
+   parser on every file and by fuzzing (the fuzzer runs on `am3.wg` with nightly and
+   `cargo-fuzz`; 5 minutes of `parse` pass);
+   (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
+   tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
    (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension
-   passes `cargo check`). A peer session took the LSP features (completion, signature help,
-   references, rename, code actions from diagnostic fixes, inlay hints; decisions 324 and up).
+   passes `cargo check`), and the LSP features (324) in them.
    Gap: a doc comment on a record's field (`.{ /// d\n .x = 1 }`) reads as a doc of an assignment
    in tree-sitter, which cannot tell a `doc`'s list apart (`editors.vun` uses `//` inside records
    for now); `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file
    and the toolchain file.
-1. Backends: finish Thumb (the remaining driver programs); `macos.arm64` linking (lld, an SDK);
-   riscv64 (`qemu-riscv64` is here, no sysroot); DWARF `DW_TAG_subprogram`s; memory regions
+1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
+   `macos.arm64` linking (lld, an SDK the owner provides); riscv64 (`qemu-riscv64` is here, no
+   sysroot); DWARF `DW_TAG_subprogram`s (a peer session is on it); memory regions
    into `LinkPlan` and a bare-metal runtime (`stm32f4` has an empty vector table and no
    `init_memory`).
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
