@@ -9,7 +9,7 @@ mod namespace;
 mod parsed;
 mod scope;
 
-pub use input::{DepData, FileRef, FileText, Package, PackageData, PackageId, Unloaded};
+pub use input::{DepData, FileBytes, FileRef, FileText, Package, PackageData, PackageId, Unloaded};
 pub use layout::Namespace;
 pub use names::{CheckedNames, FileNames, FileScope, Spreads};
 pub use namespace::{Exports, Members, NamespaceAt, Unfound};
@@ -23,6 +23,7 @@ use vun_query::Db;
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<Package>,
     Db::trace::<FileText>,
+    Db::trace::<FileBytes>,
     Db::trace::<Parsed>,
     Db::persist::<FileNames>,
     Db::persist::<Scope>,

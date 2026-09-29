@@ -10,3 +10,5 @@ use crate::Item;
 pub const source: Item = Item::new(&["std", "meta", "Quoted", "source"]);
 /// Where the code is written.
 pub const span: Item = Item::new(&["std", "meta", "Quoted", "span"]);
+/// Where the bytes `bytes` of the string literal the code writes are written, inside it.
+pub const within: Item = Item::new(&["std", "meta", "Quoted", "within"]);

@@ -67,9 +67,57 @@ pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
     out
 };
 
+/// What is wrong in a format string, whose only brace pair is `{}`.
+Problem := enum {
+    /// A `{` that no `}` closes.
+    unclosed,
+    /// A `{` closed after something other than `}`: a specifier the format does not know.
+    unknown,
+    /// A `}` that closes no `{`.
+    unopened;
+
+    /// The problem, as a report says it.
+    text := (self: Problem) -> &[u8] {
+        match self {
+            .unclosed => "this `{` is not closed",
+            .unknown => "unknown format specifier",
+            .unopened => "this `}` closes no `{`",
+        }
+    };
+};
+
+/// A problem of a format string, and the bytes of the string it covers.
+Error := struct {
+    reason: Problem,
+    at: lang.Range,
+};
+
+/// `format` split at each `{}`, or its first problem: every `{` is closed at once by `}`.
+parse := ($format: &[u8]) -> Result([holes(format) + 1]Piece, Error) {
+    // Where the `{` being read opened, until a `}` closes it.
+    mut opened: ?usize = .none;
+    for i in 0..format.len() {
+        b := format[i];
+        if .some(at) = opened {
+            if b == close {
+                if i > at + 1 { return .err(.{ .reason = .unknown, .at = at..i + 1 }); }
+                opened = .none;
+            }
+        } else if b == open {
+            opened = .some(i);
+        } else if b == close {
+            return .err(.{ .reason = .unopened, .at = i..i + 1 });
+        }
+    }
+    if .some(at) = opened { return .err(.{ .reason = .unclosed, .at = at..at + 1 }); }
+    .ok(pieces(format))
+};
+
 /// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`.
 print := ($W: Writer, w: &mut W, $format: &[u8], $A: type, ..args: A) -> Result((), W.Error) {
-    $if holes(format) != lang.meta.items(A).len() {
+    $if .err(bad) = parse(format) {
+        $std.diag.error(.{ .msg = bad.reason.text() });
+    } else if holes(format) != lang.meta.items(A).len() {
         $std.diag.error(.{ .msg = "the format string takes one argument for each `{}`" });
     } else {
         $for piece in pieces(format) {

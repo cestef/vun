@@ -4,7 +4,9 @@
 
 use vun_codec::{Decode, Encode};
 use vun_desugar::{FORMS, Form};
-use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind};
+use vun_hir::tree::{BlockId, Cond, ExprId, ExprKind, PatId};
+use vun_sema_ty::call::Staging;
+use vun_sema_ty::item::Node;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
 
@@ -38,6 +40,29 @@ impl Env<'_, '_> {
         match value {
             Value::Variant { ty, .. } if *ty == self.condition()? => Ok(*value == truth),
             _ => Err(Unevaluated::Unsupported),
+        }
+    }
+
+    /// Whether the condition of a `$if` holds here, with what a test `p = e` binds when it does:
+    /// the binders of `p` bound to the parts of `e` it takes (spec 03, section 1). `None` when it
+    /// does not hold.
+    ///
+    /// # Errors
+    /// Returns why the condition, or the value tested, has no value here.
+    pub fn tested(&self, cond: &Cond) -> Result<Option<Vec<Staging>>, Unevaluated> {
+        match cond {
+            Cond::Expr(c) => Ok(self.holds(&self.eval(*c)?)?.then(Vec::new)),
+            Cond::Test { pat, value } => {
+                let mut bound = Vec::new();
+                if !self.takes(*pat, &self.eval(*value)?, self.type_of(*value), &mut bound)? {
+                    return Ok(None);
+                }
+                let binders = &self.parsed.hir.binders;
+                let staged = bound
+                    .into_iter()
+                    .map(|(id, value)| Staging { binder: Node { id, origin: binders[id].origin }, value });
+                Ok(Some(staged.collect()))
+            }
         }
     }
 
@@ -76,15 +101,18 @@ impl Env<'_, '_> {
     /// a value selects its branch at compile time (spec 03, section 1), `else if` included.
     ///
     /// # Errors
-    /// Returns why a condition has no value here; a test condition (`if p = e`) is not selected.
+    /// Returns why a condition, or a value tested, has no value here.
     pub fn select(&self, mut expr: ExprId) -> Result<Selected, Unevaluated> {
         let hir = &self.parsed.hir;
         loop {
-            let ExprKind::If { cond: Cond::Expr(cond), then, otherwise } = &hir.exprs[expr].kind else {
+            let ExprKind::If { cond, then, otherwise } = &hir.exprs[expr].kind else {
                 return Err(Unevaluated::Unsupported);
             };
-            if self.holds(&self.eval(*cond)?)? {
-                return Ok(Selected::Block(*then));
+            if let Some(bound) = self.tested(cond)? {
+                return Ok(match cond {
+                    Cond::Expr(_) => Selected::Block(*then),
+                    Cond::Test { pat, .. } => Selected::Tested { block: *then, pat: *pat, bound },
+                });
             }
             match otherwise {
                 None => return Ok(Selected::Unit),
@@ -96,9 +124,16 @@ impl Env<'_, '_> {
 }
 
 /// The branch a `$if` takes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Selected {
     Block(BlockId),
+    /// The branch of a test `p = e` that held, with what `p` binds: a step of its own (spec 03,
+    /// section 1).
+    Tested {
+        block: BlockId,
+        pat: PatId,
+        bound: Vec<Staging>,
+    },
     /// An `else` that is not a block, or not a block written as one.
     Expr(ExprId),
     /// No `else`, and no condition held: `()`.

@@ -3,7 +3,7 @@
 use vun_grammar::TokenKind;
 use vun_origin::OriginId;
 
-use super::{BinderId, BlockId, DeclId, ExprId, Name, PatId};
+use super::{BinderId, BlockId, Cond, DeclId, ExprId, Name, PatId};
 
 /// A list whose entries may be generated at compile time.
 pub type List<T> = Vec<Entry<T>>;
@@ -15,8 +15,19 @@ pub enum Entry<T> {
 }
 
 pub enum Staged<T> {
-    For { pat: PatId, iter: ExprId, body: List<T>, origin: OriginId },
-    If { cond: ExprId, then: List<T>, otherwise: List<T>, origin: OriginId },
+    For {
+        pat: PatId,
+        iter: ExprId,
+        body: List<T>,
+        origin: OriginId,
+    },
+    /// `$if c { then } else { otherwise }`; a test `$if p = e` binds what `p` takes in `then`.
+    If {
+        cond: Cond,
+        then: List<T>,
+        otherwise: List<T>,
+        origin: OriginId,
+    },
 }
 
 pub enum Member {

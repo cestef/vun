@@ -169,13 +169,15 @@ error[types.mismatch]: expected `&[u8]`, found `u32`
 Compile-time code reports diagnostics with the same model, through `std.diag` over `lang.diag`:
 
 ```vun
-$if !fmt.valid(spec) {
-    std.diag.error(.{
-        .at = std.meta.span(spec, bad.lo, bad.hi),        // points inside the string literal
-        .msg = "unknown format specifier",
-        .fixes = .{ .{ .msg = "use {x}", .safety = .safe, .text = "{x}" } },
-    });
-}
+format := ($spec: Code(&[u8])) {
+    $if .err(bad) = fmt.parse($spec) {
+        $std.diag.error(.{
+            .at = .some(spec.within(bad.at)),               // the bytes inside the literal
+            .msg = bad.reason.text(),
+            .fixes = &[.{ .msg = "write `{}`", .safety = .safe, .text = "{}" }],
+        });
+    }
+};
 ```
 
 - `std.diag.error` stops evaluation with a real diagnostic (`comptime.reported`, over
@@ -183,8 +185,14 @@ $if !fmt.valid(spec) {
   the call that led to it from outside the reporting code, the place it was reported labeled; a
   `$e` is run while typing wherever it surely runs and all it reads is known, and a `$if` or
   `$for` not decided there runs none of its `$e`. `.fixes` are carried, not shown yet.
-- Spans come from `std.meta.caller()` (the call site), `std.meta.span(arg)` (a compile-time argument,
-  including substrings of literals), and `std.meta.origin(x)`.
+- Places come from code: a `Code(T)` parameter knows where its argument is written
+  (`c.span()`), and `c.within(bytes)` where the bytes `bytes` of the string literal it writes are,
+  escapes mapped to the source that writes them (`lang.meta.within`, an origin derived from the
+  literal's). A value carries no place: two equal strings are one value. A report placed in the
+  reporting function's own code moves to the call that led to it; one placed in the caller's code,
+  as inside a literal it passed, stays there.
+- `std.fmt.parse(format)` reads a format string once: its pieces, or its first problem
+  (`fmt.Error`, a `fmt.Problem` and the bytes it covers); `print` reports that problem.
 - `#[deprecated(.{ .note = "...", .use = new_fn })]` generates a `Safe` fix that rewrites calls,
   when `new_fn` is a drop-in replacement.
 - A library can attach help to failed interface constraints on its own types

@@ -19,6 +19,12 @@ pub const close: Item = Item::new(&["std", "fmt", "close"]);
 pub const holes: Item = Item::new(&["std", "fmt", "holes"]);
 /// `format` split at each `{}`: one piece per argument, then the text after the last.
 pub const pieces: Item = Item::new(&["std", "fmt", "pieces"]);
+/// What is wrong in a format string, whose only brace pair is `{}`.
+pub const Problem: Item = Item::new(&["std", "fmt", "Problem"]);
+/// A problem of a format string, and the bytes of the string it covers.
+pub const Error: Item = Item::new(&["std", "fmt", "Error"]);
+/// `format` split at each `{}`, or its first problem: every `{` is closed at once by `}`.
+pub const parse: Item = Item::new(&["std", "fmt", "parse"]);
 /// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`.
 pub const print: Item = Item::new(&["std", "fmt", "print"]);
 /// Room for the decimal digits of the widest integer.

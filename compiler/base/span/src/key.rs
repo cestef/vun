@@ -4,7 +4,7 @@
 use std::fmt;
 
 use vun_codec::{Decode, Encode};
-use vun_hash::Hash;
+use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 
 /// A package version, `major.minor.patch`, compared numerically.
@@ -63,5 +63,30 @@ impl FileRef {
     #[must_use]
     pub fn loose(path: &str) -> Self {
         Self { package: PackageId::Loose, path: Symbol::intern(path) }
+    }
+
+    /// The file at `relative`, a path from this file's directory with components joined by
+    /// [`Snapshot::PATH_SEPARATOR`], in the same package; `None` for an absolute path or one
+    /// leading out of the package.
+    #[must_use]
+    pub fn beside(&self, relative: &str) -> Option<Self> {
+        const HERE: &str = ".";
+        const UP: &str = "..";
+        let separator = Snapshot::PATH_SEPARATOR;
+        if relative.starts_with(separator) {
+            return None;
+        }
+        let mut parts: Vec<&str> = self.path.as_str().split(separator).collect();
+        parts.pop();
+        for part in relative.split(separator) {
+            match part {
+                "" | HERE => {}
+                UP => {
+                    parts.pop()?;
+                }
+                part => parts.push(part),
+            }
+        }
+        Some(Self { package: self.package, path: Symbol::intern(&parts.join(&separator.to_string())) })
     }
 }

@@ -1,0 +1,14 @@
+//! Compile-time code reports diagnostics with the compiler's model (spec 10, section 3): a format
+//! string read at compile time points its report inside the literal.
+
+..std.{ fmt };
+
+format := ($spec: Code(&[u8])) {
+    $if .err(bad) = fmt.parse($spec) {
+        $std.diag.error(.{
+            .at = .some(spec.within(bad.at)),
+            .msg = bad.reason.text(),
+            .fixes = &[.{ .msg = "write `{}`", .safety = .safe, .text = "{}" }],
+        });
+    }
+};

@@ -64,7 +64,7 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Writing Vun
 
-- `or` is a keyword; `$if` cannot bind a pattern; child namespaces are not in scope by bare name
+- `or` is a keyword; child namespaces are not in scope by bare name
   inside their parent; private fields are visible only inside their struct literal; kind
   attributes go on the type's literal; inside a `lang` namespace file its own names shadow
   `lang`'s; integer arithmetic is exact (`x * 2` for `u32` does not fit `u32`); no operator may

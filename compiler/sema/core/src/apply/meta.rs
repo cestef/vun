@@ -8,6 +8,8 @@ use vun_sema_ty::trap::Reason;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{TyKind, Value};
 
+use vun_hir::db::FileBytes;
+
 use crate::env::Env;
 use crate::layout::Shapes;
 
@@ -41,6 +43,19 @@ impl ApplyMeta for Meta {
                 .witness(interface, ty.as_type().ok_or(Unevaluated::Unsupported)?)
                 .map(Value::Type)
                 .ok_or_else(|| Unevaluated::trap(Reason::Argument)),
+            // A file of the package, beside the file evaluated in (spec 03, section 7).
+            (Self::embed, [path]) => {
+                let path = path.text().ok_or(Unevaluated::Unsupported)?;
+                let file = env
+                    .file
+                    .beside(&path)
+                    .ok_or_else(|| Unevaluated::trap(Reason::Unembedded(path.clone())))?;
+                let bytes = env
+                    .cx
+                    .get::<FileBytes>(&file)
+                    .ok_or_else(|| Unevaluated::trap(Reason::Unembedded(path)))?;
+                Ok(Value::bytes(&bytes))
+            }
             (Self::name_of, [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
             }
@@ -70,6 +85,9 @@ impl ApplyMeta for Meta {
                 Ok(Value::Array(items.iter().chain([item]).cloned().collect()))
             }
             (Self::span, [_, Value::Code(code)]) => Ok(Value::Origin(code.expr.expr.origin)),
+            (Self::within, [_, Value::Code(code), Value::Range(bytes)]) => {
+                Ok(Value::Origin(env.origin_within(code, bytes.as_ref())))
+            }
             (Self::source, [_, Value::Code(code)]) => {
                 let env = Env::quoted(env.cx, code).ok_or(Unevaluated::Absent)?;
                 Ok(Value::string(&env.source(code.expr.expr.id)))

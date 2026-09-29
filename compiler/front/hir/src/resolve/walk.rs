@@ -180,11 +180,13 @@ impl Visitor for Resolver<'_, '_> {
             }
             // A branch's declarations are its own, as a step's are: which branch is generated
             // is known only once the condition is.
+            // What a test binds is in scope in the branch it leads to.
             Staged::If { cond, then, otherwise, .. } => {
-                self.expr(hir, *cond);
-                for branch in [then, otherwise] {
-                    self.with_scope(Kind::Local, |this| visit::walk_list(this, hir, branch, entry));
-                }
+                self.with_scope(Kind::Local, |this| {
+                    this.cond(hir, cond);
+                    visit::walk_list(this, hir, then, entry);
+                });
+                self.with_scope(Kind::Local, |this| visit::walk_list(this, hir, otherwise, entry));
             }
         }
     }

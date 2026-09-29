@@ -65,7 +65,7 @@ pub fn walk_staged<V: Visitor + ?Sized, T>(
             walk_list(v, hir, body, entry);
         }
         Staged::If { cond, then, otherwise, .. } => {
-            v.expr(hir, *cond);
+            walk_cond(v, hir, cond);
             walk_list(v, hir, then, entry);
             walk_list(v, hir, otherwise, entry);
         }

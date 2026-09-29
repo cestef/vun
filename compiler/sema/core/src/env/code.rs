@@ -3,12 +3,17 @@
 
 use std::sync::Arc;
 
+use vun_hir::db::{FileRef, FileText};
 use vun_hir::tree::{ExprId, ExprKind};
+use vun_origin::{OriginId, OriginTable, Via};
 use vun_query::Cx;
+use vun_sema_int::{Extended, Integer, Interval};
 use vun_sema_ty::Value;
 use vun_sema_ty::call::{Code, Func, Instantiation, Staging};
 use vun_sema_ty::item::{ExprRef, Node};
 use vun_sema_ty::trap::Unevaluated;
+use vun_span::Span;
+use vun_syntax::lexer;
 
 use super::Env;
 use crate::callable::Parameters;
@@ -16,6 +21,30 @@ use crate::eval::Instantiate;
 use crate::typeck::Typed;
 
 impl<'a, 'db> Env<'a, 'db> {
+    /// Where the bytes `bytes` of the string literal the code `code` writes are written: a part
+    /// of the code's origin (spec 10, section 3). The code's own origin when it writes no string
+    /// literal, or when the bytes are empty or past it.
+    #[must_use]
+    pub fn origin_within(&self, code: &Code, bytes: Option<&Interval>) -> OriginId {
+        let origin = code.expr.expr.origin;
+        bytes.and_then(|b| self.literal_part(origin, &code.expr.file, b)).unwrap_or(origin)
+    }
+
+    fn literal_part(&self, origin: OriginId, file: &FileRef, bytes: &Interval) -> Option<OriginId> {
+        let origins = OriginTable::global();
+        let span = origins.source_span(origin);
+        let text = self.cx.get::<FileText>(file)?;
+        let located = lexer::located_string(span.range.of(&text))?;
+        let at = |e: &Extended| {
+            let i = e.finite().and_then(Integer::to_i128).and_then(|i| usize::try_from(i).ok())?;
+            located.get(i)
+        };
+        let (first, last) = (at(bytes.lo())?, at(bytes.hi())?);
+        let lo = span.range.lo + u32::try_from(first.1.start).ok()?;
+        let hi = span.range.lo + u32::try_from(last.1.end).ok()?;
+        Some(origins.derive(origin, Span::new(span.file, lo, hi), Via::Part))
+    }
+
     /// The code `expr`, written here: it keeps the call evaluated in and every binder bound, so
     /// its names mean what they mean here.
     #[must_use]

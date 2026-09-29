@@ -58,6 +58,9 @@ pub enum Reason {
     Argument,
     /// A frame asked of a function that does not suspend (`lang.meta.Frame`).
     NoFrame,
+    /// A file `lang.meta.embed` names that the package of the file naming it does not hold, or
+    /// a path leading out of it.
+    Unembedded(String),
     /// A trap site of the program was reached: `lang.panic.trap`.
     Trap,
     /// `lang.panic.fail` was reached, for its `lang.panic.Reason`.
@@ -128,6 +131,9 @@ impl Reason {
             Self::Argument => "argument outside the type of its parameter",
             Self::Trap => "a trap site was reached",
             Self::NoFrame => "the function does not suspend, so it makes no frame",
+            Self::Unembedded(path) => {
+                return Msg::new().text("the package holds no file ").code(path).text(" beside this one");
+            }
             Self::Reported { message, .. } => return Msg::new().text(message.clone()),
             Self::Failed(failure) => return failure.msg(),
         })

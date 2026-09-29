@@ -6,6 +6,7 @@ use vun_syntax::cst::{Fields, NodeId};
 use vun_syntax::lexer;
 
 use super::Lower;
+use super::pats::Mode;
 use crate::tree::{Arg, Expr, ExprId, ExprKind, List, Lit, Name};
 
 impl Lower<'_, '_> {
@@ -98,6 +99,14 @@ impl Lower<'_, '_> {
                 len: self.operand(&f, n, NodeField::Length),
                 elem: self.operand(&f, n, NodeField::Element),
             },
+            // `$if` as a value: its tests bind at compile time, as a staged `if`'s do.
+            NodeKind::Prefix
+                if self.token(n) == Some(TokenKind::Dollar)
+                    && let Some(control) =
+                        f.one(NodeField::Operand).filter(|&c| self.kind(c) == NodeKind::If) =>
+            {
+                ExprKind::Prefix { op: TokenKind::Dollar, operand: self.if_expr(control, Mode::STAGED) }
+            }
             NodeKind::Prefix => {
                 let operand = self.operand(&f, n, NodeField::Operand);
                 match self.token(n) {

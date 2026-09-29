@@ -4,6 +4,8 @@ use crate::common::Fixture;
 use vun_diag::errors;
 
 mod control;
+mod embed;
+mod reports;
 
 #[test]
 fn each_instantiation_of_a_type_function_is_its_own_type() {

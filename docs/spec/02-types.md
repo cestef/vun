@@ -31,11 +31,11 @@ P := Pair(u16);                            // same arguments, same type (memoize
 max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
 
 scratch := () -> u32 {
-    $if target.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
+    $if target.current.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
 };
 ```
 
-`target` is a compile-time value that the build passes to every package (spec 12). Conditional
+`target.current` is a compile-time value, the target the build passes to every package (spec 12). Conditional
 compilation is therefore an ordinary `$if`, never a file-name convention or a preprocessor.
 
 ## 2. Composite types

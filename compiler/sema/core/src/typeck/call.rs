@@ -141,10 +141,15 @@ impl Typer<'_, '_, '_> {
     pub(super) fn absorb(&mut self, call: ExprId, i: &Instantiation, reports: &DiagCtxt) {
         let origin = self.hir().exprs[call].origin;
         let origins = OriginTable::global();
-        let callee = origins.source_span(i.f.literal.expr.origin).file;
+        let callee = origins.source_span(i.f.literal.expr.origin);
         let mut placed = DiagCtxt::new();
         for d in reports.sorted(origins) {
-            let inside = d.primary.as_ref().is_some_and(|p| origins.source_span(p.origin).file == callee);
+            // A report placed in the callee's own code moves to the call; one placed in the
+            // caller's, as a part of an argument it wrote, stays there.
+            let inside = d.primary.as_ref().is_some_and(|p| {
+                let at = origins.source_span(p.origin);
+                at.file == callee.file && callee.range.contains(at.range)
+            });
             placed.report(if d.id == errors::COMPTIME_REPORTED && inside {
                 d.clone().moved(origin, Msg::new().text("reported here"))
             } else {

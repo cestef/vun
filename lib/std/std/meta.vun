@@ -1,7 +1,7 @@
 //! Reflection and code generation helpers over `lang.meta` (spec 03), including
 //! `collect(package, attr)`, which gathers declarations carrying an attribute (decision 42).
 
-..lang.meta.{ Field, Frame, TypeOf, align, fields, name_of, same, size };
+..lang.meta.{ Field, Frame, TypeOf, align, embed, fields, name_of, same, size };
 
 /// What a code value tells of itself (spec 03, section 4). A code value is passed by borrow:
 /// a parameter of type `Code(T)` itself would receive its argument as code.
@@ -10,12 +10,15 @@ Quoted := interface(($Self: type) -> type { struct {
     source: (c: &Self) -> &[u8] = _;
     /// Where the code is written.
     span: (c: &Self) -> lang.meta.Origin = _;
+    /// Where the bytes `bytes` of the string literal the code writes are written, inside it.
+    within: (c: &Self, $bytes: lang.Range) -> lang.meta.Origin = _;
 } });
 
 #[impl(Quoted(lang.meta.Code))]
 CodeQuoted := ($T: type) -> type { struct {
     source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
     span := (c: &Code(T)) -> lang.meta.Origin { lang.meta.span(T, c) };
+    within := (c: &Code(T), $bytes: lang.Range) -> lang.meta.Origin { lang.meta.within(T, c, bytes) };
 } };
 
 /// The name of the variant of its type `T` that `v` is, as declared.

@@ -1,5 +1,6 @@
 //! The query inputs of loaded packages (`vun_hir::db`): each package's description, with its
-//! dependencies resolved but not reported, and the text of its source files.
+//! dependencies resolved but not reported, the text of its source files and the bytes of every
+//! file it holds.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use vun_build::layout::SEPARATOR;
 use vun_diag::DiagCtxt;
 use vun_hash::{Snapshot, Taken};
 use vun_hir::db::{
-    DepData, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Parsed, Unloaded,
+    DepData, FileBytes, FileRef, FileText, Package as PackageInput, PackageData, PackageId, Parsed, Unloaded,
 };
 use vun_intern::Symbol;
 use vun_par::Parallel;
@@ -34,21 +35,24 @@ impl Package {
     }
 }
 
-/// A package's source files, by their path relative to its directory, components joined as in
-/// snapshots, with the text they were hashed with: `None` for one that is not UTF-8.
+/// A package's files, by their path relative to its directory, components joined as in
+/// snapshots, with the bytes they were hashed with.
 #[derive(Default)]
-pub(super) struct Sources(Vec<(String, Option<Arc<str>>)>);
+pub(super) struct Sources(Vec<(String, Arc<[u8]>)>);
 
 impl Sources {
     pub(super) fn of(taken: &Taken) -> Self {
-        let sources = taken.files().filter(|(path, _, _)| {
-            path.last().is_some_and(|f| Path::new(f).extension().is_some_and(|e| e == EXTENSION))
-        });
-        let sources = sources.map(|(path, _, bytes)| {
-            let text = std::str::from_utf8(bytes).ok().map(Arc::from);
-            (path.join(&Snapshot::PATH_SEPARATOR.to_string()), text)
-        });
-        Self(sources.collect())
+        let files = taken
+            .files()
+            .map(|(path, _, bytes)| (path.join(&Snapshot::PATH_SEPARATOR.to_string()), Arc::from(bytes)));
+        Self(files.collect())
+    }
+
+    /// The source files, each with its text: `None` for one that is not UTF-8.
+    fn texts(&self) -> impl Iterator<Item = (&String, Option<Arc<str>>)> {
+        let sources =
+            self.0.iter().filter(|(path, _)| Path::new(path).extension().is_some_and(|e| e == EXTENSION));
+        sources.map(|(path, bytes)| (path, std::str::from_utf8(bytes).ok().map(Arc::from)))
     }
 }
 
@@ -108,13 +112,17 @@ impl Session {
             deps,
             prelude,
             prelude_span: p.prelude_span,
-            files: p.sources.0.iter().map(|(path, _)| path.clone()).collect(),
+            files: p.sources.texts().map(|(path, _)| path.clone()).collect(),
         };
         // A library's inputs are the same in every project, so what reads them alone is shared.
         let sharing = if self.packages.library(package) { Sharing::Shared } else { Sharing::Own };
-        for (path, text) in &p.sources.0 {
+        for (path, text) in p.sources.texts() {
             let key = FileRef { package: id, path: Symbol::intern(path) };
-            self.db.set_as::<FileText>(&key, text.clone(), sharing);
+            self.db.set_as::<FileText>(&key, text, sharing);
+        }
+        for (path, bytes) in &p.sources.0 {
+            let key = FileRef { package: id, path: Symbol::intern(path) };
+            self.db.set_as::<FileBytes>(&key, Some(Arc::clone(bytes)), sharing);
         }
         self.db.set_as::<PackageInput>(&id, Arc::new(data), sharing);
         id

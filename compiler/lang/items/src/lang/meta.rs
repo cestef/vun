@@ -18,6 +18,8 @@ pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
 /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
 /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
 pub const witness: Item = Item::new(&["lang", "meta", "witness"]);
+/// The bytes of the file at `path`, from the directory of the file calling, in its package
+/// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
 /// the same arguments, one name.
@@ -73,3 +75,7 @@ pub const align: Item = Item::new(&["lang", "meta", "align"]);
 pub const source: Item = Item::new(&["lang", "meta", "source"]);
 /// Where the code `c` is written.
 pub const span: Item = Item::new(&["lang", "meta", "span"]);
+/// Where the bytes `bytes` of the string literal the code `c` writes are written: a part of its
+/// origin, which a report points inside the literal with (spec 10, section 3); the code's own
+/// origin when it writes no literal.
+pub const within: Item = Item::new(&["lang", "meta", "within"]);

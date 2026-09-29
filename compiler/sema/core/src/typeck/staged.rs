@@ -1,12 +1,12 @@
 //! `$for` and `$if` in a body (spec 03, section 1): a `$if` whose condition is known types the
-//! branch taken, among statements or as a value; a `$for` whose items are known types its body once per item, with the binder
+//! branch taken, among statements or as a value, a test's branch as a step with what it binds; a `$for` whose items are known types its body once per item, with the binder
 //! bound, each step's types kept apart ([`Step`]). Otherwise the entries are typed once, with
 //! nothing bound.
 
 use std::sync::Arc;
 
 use vun_diag::DiagCtxt;
-use vun_hir::tree::{ExprId, ExprKind, Hir, PatKind, Staged};
+use vun_hir::tree::{Cond, ExprId, ExprKind, Hir, PatKind, Staged};
 use vun_hir::visit::{walk_list, walk_staged};
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::Node;
@@ -19,12 +19,25 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     pub(super) fn unroll<T>(&mut self, hir: &Hir, staged: &Staged<T>, entry: &mut dyn FnMut(&mut Self, &T)) {
         match staged {
             Staged::If { cond, then, otherwise, .. } => {
-                let known = self.typed(*cond);
-                let env = self.evaluating();
-                let holds = env.eval(*cond).and_then(|c| env.holds(&c));
-                match self.ran(*cond, known, holds) {
-                    Ok(holds) => walk_list(self, hir, if holds { then } else { otherwise }, entry),
-                    Err(_) => self.undecided(|t| walk_staged(t, hir, staged, entry)),
+                // What a condition reads is typed; a test's pattern gives its binders the types of
+                // the parts they take.
+                let (at, known) = match cond {
+                    Cond::Expr(c) => (*c, self.typed(*c)),
+                    Cond::Test { pat, value } => {
+                        let known = self.typed(*value);
+                        self.test(*pat, known.map(|k| k.ty));
+                        (*value, known)
+                    }
+                };
+                let tested = self.evaluating().tested(cond);
+                match (self.ran(at, known, tested), cond) {
+                    (Ok(None), _) => walk_list(self, hir, otherwise, entry),
+                    (Ok(Some(_)), Cond::Expr(_)) => walk_list(self, hir, then, entry),
+                    // A test's branch is a step of its own, typed with what the test binds.
+                    (Ok(Some(bound)), Cond::Test { pat, .. }) => {
+                        self.stepped(Step { at: *pat, index: 0 }, &bound, |t| walk_list(t, hir, then, entry));
+                    }
+                    (Err(_), _) => self.undecided(|t| walk_staged(t, hir, staged, entry)),
                 }
             }
             Staged::For { pat, iter, body, .. } => {
@@ -51,14 +64,12 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                         .map(|b| Staging { binder: Node { id: b, origin: hir.binders[b].origin }, value })
                         .into_iter()
                         .collect();
-                    let env = self.env().clone().staging(&staged);
-                    let typed = self.step(env, |t| {
+                    self.stepped(Step { at: *pat, index }, &staged, |t| {
                         if let (Some(binder), Some(ty)) = (binder, ty) {
                             t.bind(binder, ty);
                         }
                         walk_list(t, hir, body, entry);
                     });
-                    self.finding().steps.insert(Step { at: *pat, index }, Arc::new(typed));
                 }
             }
         }
@@ -88,12 +99,32 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// condition not known here, the `if` is typed as a plain one.
     fn selected(&mut self, expr: ExprId, branch: ExprId) -> Option<Known> {
         let expected = self.expected(expr);
+        self.tests(branch);
         let selected = self.evaluating().select(branch);
         match self.reported(branch, selected) {
             Ok(Selected::Block(block)) => self.block_value(block, expected),
+            Ok(Selected::Tested { block, pat, bound }) => {
+                let mut value = None;
+                self.stepped(Step { at: pat, index: 0 }, &bound, |t| value = t.block_value(block, expected));
+                value
+            }
             Ok(Selected::Expr(otherwise)) => self.typed_as(otherwise, expected),
             Ok(Selected::Unit) => Some(Known { ty: TyKind::unit(), stage: Stage::Compile }),
             Err(_) => self.undecided(|t| t.typed_as(branch, expected)),
+        }
+    }
+
+    /// Types what the tests of the `if` chain `expr` read, their patterns giving their binders
+    /// the types of the parts they take, so that selecting a branch evaluates them.
+    fn tests(&mut self, mut expr: ExprId) {
+        let hir = self.hir();
+        while let ExprKind::If { cond, otherwise, .. } = &hir.exprs[expr].kind {
+            if let Cond::Test { pat, value } = cond {
+                let known = self.typed(*value);
+                self.test(*pat, known.map(|k| k.ty));
+            }
+            let Some(next) = otherwise else { return };
+            expr = *next;
         }
     }
 
@@ -104,6 +135,13 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let result = f(self);
         self.undecided -= 1;
         result
+    }
+
+    /// Types what `f` types as the step `step`, under the bindings `staged`, kept apart.
+    fn stepped(&mut self, step: Step, staged: &[Staging], f: impl FnOnce(&mut Self)) {
+        let env = self.env().clone().staging(staged);
+        let typed = self.step(env, f);
+        self.finding().steps.insert(step, Arc::new(typed));
     }
 
     /// Types what `f` types in `env`, apart from the rest of the body; reports stay with it.

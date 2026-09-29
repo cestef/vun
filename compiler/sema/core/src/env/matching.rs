@@ -37,7 +37,7 @@ impl Env<'_, '_> {
 
     /// Whether the pattern `pat` takes `value`, of the type typing found, `ty`, if it did; the
     /// binders it binds pushed on `bound`.
-    fn takes(
+    pub(super) fn takes(
         &self,
         pat: PatId,
         value: &Value,

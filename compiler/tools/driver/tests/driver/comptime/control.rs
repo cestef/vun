@@ -160,3 +160,30 @@ fill := ($c: Config) -> [2]u8 { mut t: [2]u8 = [0; 2]; if c.a = .some(h) { t[0] 
         [errors::COMPTIME_EXPORT, errors::NAMES_UNRESOLVED, errors::NAMES_UNRESOLVED]
     );
 }
+
+#[test]
+fn a_staged_test_binds_what_its_pattern_takes_in_the_branch_it_selects() {
+    let fixture = Fixture::new("comptime-tests");
+    let file = fixture.root.write(
+        "tests.vun",
+        "\
+Parsed := enum { good(u8), bad(u8) };
+read := ($x: u8) -> Parsed { if x > 9 { .bad(x) } else { .good(x) } };
+Big := ($x: u8) -> type {
+    $if .bad(n) = read(x) { Int(0..=n) } else { u8 }
+};
+total := ($x: u8) -> u16 {
+    mut t: u16 = 0;
+    $if .good(d) = read(x) { t = d + 1; } else { t = 100; }
+    t
+};
+both := () -> u32 { total(3) + total(20) };
+sum: Int(0..=both()) = 105;
+big: Big(20) = 21;
+small: Big(3) = 255;
+",
+    );
+    let reported: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
+    // `both()` is 4 + 100 and `Big(20)` is `Int(0..=20)`; `Big(3)` is `u8`, which 255 fits.
+    assert_eq!(reported, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT]);
+}

@@ -36,7 +36,10 @@ Among statements, `$for` and `$if` generate statements: each step of a `$for` is
 the binder bound to one item, typed and lowered on its own, so `a.$(f.name)` may have a different
 type in each step. A step, and each branch of a `$if`, is a scope of its own: what it declares is
 not in scope after it, since which branch is generated is known only once the condition is, and
-both branches may declare the same names. A `$for` has no value and is never a block's value.
+both branches may declare the same names. A `$if` may test a pattern, `$if .err(e) = parse(s)`, as
+`if` does: the test runs at compile time, and the branch it selects is typed and lowered as a step
+with the pattern's binders bound, at compile time, to the parts they take. A `$for` has no value
+and is never a block's value.
 `$if` used as a value, last in a block or in an expression, has the value of the branch it
 selects (spec 02, section 1). `$` on any other expression computes it at compile time;
 `$(if c { a } else { b })` computes the whole `if`.
@@ -235,7 +238,8 @@ generators that observe their own output, which is what makes impls and memoizat
   into read-only data, and pointers into it become static addresses.
 - **Determinism.** No clock, no randomness, no environment, no network, no processes. The only
   input is files of the current package, read with `std.meta.embed(path)`, and every file read is a
-  recorded dependency. Tasks that need I/O are build steps (spec 12).
+  recorded dependency. The path is taken from the directory of the file calling, and names a file
+  the package's `include` takes; any other traps. Tasks that need I/O are build steps (spec 12).
 - **Purity.** As a consequence, every compile-time call is a pure function of its arguments. Calls
   are memoized by content hash, which also defines type identity: `Pair(u16)` is one type.
 - **Mutation.** An exclusive borrow (`&mut x`, `&out x`) is a loan of the place, which `.*`

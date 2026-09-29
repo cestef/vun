@@ -27,7 +27,7 @@ mod tests;
 mod value;
 mod words;
 
-pub use value::{bytes, literal, scalar};
+pub use value::{bytes, literal, located, located_string, scalar};
 
 /// Escapes written as a backslash and one character, with the character each denotes.
 pub const SIMPLE_ESCAPES: [(char, char); 7] =

@@ -6,5 +6,5 @@ P := Pair(u16);
 max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
 
 scratch := () -> u32 {
-    $if target.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
+    $if target.current.cpu == .cortex_m4f { cortex_m.cycles() } else { 0 }
 };

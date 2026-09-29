@@ -5,20 +5,12 @@ use vun_syntax::cst::{Fields, NodeId};
 
 use super::Lower;
 use super::pats::Mode;
-use crate::tree::{Arm, Cond, ExprKind, ForHead, List, Param};
+use crate::tree::{Arm, Cond, Expr, ExprId, ExprKind, ForHead, List, Param};
 
 impl Lower<'_, '_> {
     pub(super) fn control(&mut self, f: &Fields, n: NodeId) -> ExprKind {
         match self.kind(n) {
-            NodeKind::If => {
-                let cond = match f.one(NodeField::Condition) {
-                    Some(c) => self.cond(c),
-                    None => Cond::Expr(self.error(n)),
-                };
-                let then = self.block_at(f, n, NodeField::Block);
-                let otherwise = f.one(NodeField::Otherwise).map(|o| self.expr(o));
-                ExprKind::If { cond, then, otherwise }
-            }
+            NodeKind::If => self.if_kind(f, n, Mode::PLAIN),
             NodeKind::For => {
                 let head = match f.one(NodeField::Head) {
                     None => ForHead::Forever,
@@ -28,7 +20,7 @@ impl Lower<'_, '_> {
                         let iter = self.operand(&hf, h, NodeField::Value);
                         ForHead::In { pat, iter }
                     }
-                    Some(h) => ForHead::While(self.cond(h)),
+                    Some(h) => ForHead::While(self.cond(h, Mode::PLAIN)),
                 };
                 let body = self.block_at(f, n, NodeField::Block);
                 ExprKind::For { head, body }
@@ -66,13 +58,37 @@ impl Lower<'_, '_> {
         }
     }
 
-    /// An `if` or `for` head: a condition, or a test `pattern = value`.
-    fn cond(&mut self, n: NodeId) -> Cond {
+    /// An `if` whose tests bind as `mode` says, its `else if`s alike: at compile time for a
+    /// `$if`'s.
+    fn if_kind(&mut self, f: &Fields, n: NodeId, mode: Mode) -> ExprKind {
+        let cond = match f.one(NodeField::Condition) {
+            Some(c) => self.cond(c, mode),
+            None => Cond::Expr(self.error(n)),
+        };
+        let then = self.block_at(f, n, NodeField::Block);
+        let otherwise = f.one(NodeField::Otherwise).map(|o| match self.kind(o) {
+            NodeKind::If => self.if_expr(o, mode),
+            _ => self.expr(o),
+        });
+        ExprKind::If { cond, then, otherwise }
+    }
+
+    /// The `if` at `n`, its tests binding as `mode` says.
+    pub(super) fn if_expr(&mut self, n: NodeId, mode: Mode) -> ExprId {
+        let f = self.fields(n);
+        let kind = self.if_kind(&f, n, mode);
+        let origin = self.origin(n);
+        self.hir.exprs.push(Expr { kind, origin })
+    }
+
+    /// An `if` or `for` head: a condition, or a test `pattern = value` whose binders are bound
+    /// as `mode` says: at compile time for a `$if`'s.
+    pub(super) fn cond(&mut self, n: NodeId, mode: Mode) -> Cond {
         if self.kind(n) != NodeKind::Test {
             return Cond::Expr(self.expr(n));
         }
         let f = self.fields(n);
-        let pat = self.pat_at(&f, n, NodeField::Pattern, Mode::PLAIN);
+        let pat = self.pat_at(&f, n, NodeField::Pattern, mode);
         let value = self.operand(&f, n, NodeField::Value);
         Cond::Test { pat, value }
     }

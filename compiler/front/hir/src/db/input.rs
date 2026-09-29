@@ -1,5 +1,5 @@
-//! What the driver sets once it has loaded a package graph: each package's description and the
-//! text of its files. Everything else is computed from these by queries.
+//! What the driver sets once it has loaded a package graph: each package's description, the
+//! text of its source files and the bytes of every file it holds. Everything else is computed from these by queries.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -64,6 +64,21 @@ impl Query for Package {
 
     fn compute(_: &Cx<'_>, _: &PackageId) -> Arc<PackageData> {
         Arc::default()
+    }
+}
+
+/// Input: the bytes of a file of a package, any file it holds, as `lang.meta.embed` reads them
+/// (spec 03, section 7); `None` for one it does not hold.
+pub struct FileBytes;
+
+impl Query for FileBytes {
+    const NAME: &'static str = "file_bytes";
+    const INPUT: bool = true;
+    type Key = FileRef;
+    type Value = Option<Arc<[u8]>>;
+
+    fn compute(_: &Cx<'_>, _: &FileRef) -> Option<Arc<[u8]>> {
+        None
     }
 }
 

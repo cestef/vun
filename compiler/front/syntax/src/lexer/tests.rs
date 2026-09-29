@@ -59,6 +59,14 @@ fn literal_values() {
 }
 
 #[test]
+fn each_byte_of_a_string_is_located_where_it_is_written() {
+    // An escape writes each byte it gives: `\n` two source bytes, `\u{e9}` six for two bytes.
+    let bytes = located(String, r#""a\n\u{e9}""#).unwrap();
+    assert_eq!(bytes, [(b'a', 1..2), (b'\n', 2..4), (0xc3, 4..10), (0xa9, 4..10)]);
+    assert_eq!(located(RawString, r#"\"x""#), Some(vec![(b'x', 2..3)]));
+}
+
+#[test]
 fn comments_are_trivia_and_docs_are_not() {
     assert_eq!(
         kinds("/// doc\n//! module\n// plain\n//// plain\nx"),

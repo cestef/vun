@@ -16,7 +16,7 @@ use vun_origin::{OriginId, OriginTable, Via};
 use vun_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use vun_syntax::tokens::Tokens;
 
-use crate::tree::{Entry, Hir, List, Name, Staged};
+use crate::tree::{Cond, Entry, Hir, List, Name, Staged};
 use pats::Mode;
 
 /// A parsed file, as lowering reads it.
@@ -228,7 +228,7 @@ impl<'a> Lower<'a, '_> {
                 let f = self.fields(control);
                 let head = f.one(NodeField::Head).filter(|&h| self.kind(h) == NodeKind::In)?;
                 let h = self.fields(head);
-                let pat = self.pat_at(&h, head, NodeField::Pattern, Mode { comptime: true, ..Mode::PLAIN });
+                let pat = self.pat_at(&h, head, NodeField::Pattern, Mode::STAGED);
                 let iter = self.operand(&h, head, NodeField::Value);
                 let body = self.block_entries(&f, one);
                 Some(Staged::For { pat, iter, body, origin })
@@ -254,7 +254,11 @@ impl<'a> Lower<'a, '_> {
         one: &mut dyn FnMut(&mut Self, NodeId) -> Option<T>,
     ) -> Staged<T> {
         let f = self.fields(n);
-        let cond = self.operand(&f, n, NodeField::Condition);
+        // A test binds what its pattern takes at compile time, as a `$for`'s binder is bound.
+        let cond = match f.one(NodeField::Condition) {
+            Some(c) => self.cond(c, Mode::STAGED),
+            None => Cond::Expr(self.error(n)),
+        };
         let then = self.block_entries(&f, one);
         let otherwise = match f.one(NodeField::Otherwise) {
             // `else if` inside a staged `if` is staged too.

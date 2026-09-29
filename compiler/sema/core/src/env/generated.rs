@@ -27,10 +27,10 @@ impl Env<'_, '_> {
             Entry::Staged(staged) => staged,
         };
         match staged {
-            Staged::If { cond, then, otherwise, .. } => {
-                let holds = self.holds(&self.eval(*cond)?)?;
-                self.list(if holds { then } else { otherwise }, out)
-            }
+            Staged::If { cond, then, otherwise, .. } => match self.tested(cond)? {
+                Some(bound) => self.clone().staging(&bound).list(then, out),
+                None => self.list(otherwise, out),
+            },
             Staged::For { pat, iter, body, .. } => {
                 let hir = &self.parsed.hir;
                 let items = self.eval(*iter)?.items().ok_or(Unevaluated::Unsupported)?;

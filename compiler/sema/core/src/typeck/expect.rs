@@ -9,6 +9,7 @@ use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_origin::OriginId;
+use vun_origin::OriginTable;
 use vun_sema_int::{Interval, Storage};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
@@ -65,11 +66,12 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
     pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
-        self.known_value(expr, None).ok()?.as_type()
+        let evaluated = self.known_value(expr, None);
+        self.reported(expr, evaluated).ok()?.as_type()
     }
 
     /// The value at compile time of `expr`, an annotation or a `$` argument, as a value of `ty`
-    /// where given, reporting a trap that fires. A form that evaluates only once typed is typed
+    /// where given; a trap that fires is the caller's to report, once, where it surfaces. A form that evaluates only once typed is typed
     /// then, at compile time: one typed by its context, such as `.square(5)` in
     /// `Int(0..=area(.square(5)))`, and a call leaving `$` arguments to inference, such as
     /// `TypeOf(x)`.
@@ -85,7 +87,16 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             }
             evaluated => evaluated,
         };
-        self.reported(expr, evaluated)
+        if let Err(why) = &evaluated {
+            self.unevaluated(expr, why);
+        }
+        evaluated
+    }
+
+    /// Traces an evaluation for `expr` that gave no value, where it is written and why.
+    fn unevaluated(&self, expr: ExprId, why: &Unevaluated) {
+        let at = OriginTable::global().source_span(self.hir().exprs[expr].origin);
+        vun_trace::tracing::trace!(?at, ?why, "unevaluated");
     }
 
     /// The environment every evaluation while typing runs in: with what typing found so far,
@@ -107,7 +118,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             Err(Unevaluated::Trapped(trap)) => {
                 self.diag.error(trap.report(self.hir().exprs[expr].origin));
             }
-            Err(why) => vun_trace::tracing::trace!(at = ?self.hir().exprs[expr].origin, ?why, "unevaluated"),
+            Err(why) => self.unevaluated(expr, why),
             Ok(_) => {}
         }
         evaluated

@@ -10,12 +10,14 @@ use crate::tree::{Binder, BinderId, Name, Pat, PatId, PatKind};
 #[derive(Clone, Copy)]
 pub(super) struct Mode {
     pub(super) mutable: bool,
-    /// Known at compile time: `$x`, or every binder of a `$for` pattern.
+    /// Known at compile time: `$x`, or every binder of a `$for` pattern or a `$if` test.
     pub(super) comptime: bool,
 }
 
 impl Mode {
     pub(super) const PLAIN: Self = Self { mutable: false, comptime: false };
+    /// The binders of a `$for` pattern and of a `$if` test.
+    pub(super) const STAGED: Self = Self { mutable: false, comptime: true };
 }
 
 impl Lower<'_, '_> {
