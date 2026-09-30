@@ -25,7 +25,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                     Cond::Expr(c) => (*c, self.typed(*c)),
                     Cond::Test { pat, value } => {
                         let known = self.typed(*value);
-                        self.test(*pat, known.map(|k| k.ty));
+                        self.test(*pat, self.matched(*value, known));
                         (*value, known)
                     }
                 };
@@ -121,7 +121,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         while let ExprKind::If { cond, otherwise, .. } = &hir.exprs[expr].kind {
             if let Cond::Test { pat, value } = cond {
                 let known = self.typed(*value);
-                self.test(*pat, known.map(|k| k.ty));
+                self.test(*pat, self.matched(*value, known));
             }
             let Some(next) = otherwise else { return };
             expr = *next;
@@ -153,8 +153,10 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let locals = self.locals.clone();
         f(self);
         let stepped = std::mem::replace(&mut self.locals, locals);
-        let binders =
-            stepped.into_iter().filter(|(b, k)| self.locals.get(b) != Some(k)).map(|(b, k)| (b, k.ty));
+        let binders = stepped
+            .into_iter()
+            .filter(|(b, k)| self.locals.get(b) != Some(k))
+            .filter_map(|(b, k)| Some((b, k.ok()?.ty)));
         let typed = std::mem::replace(&mut self.found, found).body(binders.collect(), DiagCtxt::new(), 0);
         self.step = outer;
         typed

@@ -67,6 +67,16 @@ impl Program {
         self.functions.iter().map(|reached| &reached.i)
     }
 
+    /// Every body typing checks for the program, each once: the instantiations reached, then
+    /// the generic body of each generic function among them, checked apart from its
+    /// instantiations.
+    #[must_use]
+    pub fn bodies(&self) -> Vec<Instantiation> {
+        let generic = self.instantiations().map(|i| Instantiation::new(i.f.clone(), Vec::new()));
+        let mut seen = std::collections::HashSet::new();
+        self.instantiations().cloned().chain(generic).filter(|i| seen.insert(i.clone())).collect()
+    }
+
     /// The calls that led to `i` from outside generic code, innermost first: from each generic
     /// instantiation to the statement that reached it (spec 10, section 3). A function is always
     /// reached from one found before it, so the walk ends.

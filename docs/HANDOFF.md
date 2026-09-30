@@ -21,7 +21,13 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: typing says why (359). Typing records the form where each silent gap starts
+Last landed: typing says why in generic bodies too (360). An unbound `$` parameter, and a
+requirement of an interface made for a constrained one (`W.Error`), have no value for the reason
+`Unevaluated::Unbound`, and a form giving up for it is left to the instantiations; reasons travel
+through locals bound without a type and through expected types a context cannot know; `W.Error`
+is typed and evaluated through the interface's requirements (`Env::required`); the verifier covers
+plain generic bodies (`Program::bodies`) and logs name places as `path:line:column`
+(`OriginId::located`). Before that, typing says why (359). Typing records the form where each silent gap starts
 with a typed reason (`Found::gave_up`, `GaveUp`), logged under `vun_sema=debug`; a body lowering
 stops in over one is reported at that form with the reason (`Unready::explained`, the error
 naming the form and why rather than a local), `vun debug dump types` marks each, and
@@ -80,10 +86,19 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 (spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 356 (an optional path, the nearest
 `build.vun` when none, for every command; only `vun test` follows it yet), 357 (test lenses,
 `test.ignore`, one stream for the tests' program, checks' trap messages), 358 (calls through
-borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are),
+359 (typing's typed reasons, generic functions' own type; its type part approved) and 360 (reasons
+in generic bodies, `W.Error` through the requirements). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
+
+- A generic body is typed only as far as its `$` values are not needed: a local of an
+  unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
+  returning `Result((), W.Error)`), stay untyped there and are checked per instantiation. Typing
+  them abstractly would need an opaque type for `T` and for a requirement's value (an associated
+  type), with every compile-time evaluation reading one deferring rather than trapping: a
+  language decision for the owner.
 
 - A pattern naming a value binds a new local of that name: `.ok(true)` binds `true` and matches
   everything (found by `style.unused` in `corpus/accept/programs/files.vun`, now `.ok(.true)`).

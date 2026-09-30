@@ -18,7 +18,7 @@ use vun_sema_ty::{Ty, TyKind, Value};
 use vun_span::Span;
 use vun_suggest::closest;
 
-use super::{Known, Stage, Typer};
+use super::{GaveUp, Known, Stage, Typer};
 use crate::env::Env;
 use crate::member::Members;
 use crate::visible::Visible;
@@ -101,8 +101,14 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
     pub(super) fn ty(&mut self, expr: ExprId) -> Option<Ty> {
+        self.annotation(expr).ok()
+    }
+
+    /// The type the annotation `expr` denotes, or why it has none: its value is not known here,
+    /// or is not a type, which the check of the file reports.
+    pub(super) fn annotation(&mut self, expr: ExprId) -> Result<Ty, GaveUp> {
         let evaluated = self.known_value(expr, None);
-        self.reported(expr, evaluated).ok()?.as_type()
+        self.reported(expr, evaluated).map_err(GaveUp::Unevaluated)?.as_type().ok_or(GaveUp::Reported)
     }
 
     /// The value at compile time of `expr`, an annotation or a `$` argument, as a value of `ty`
@@ -128,10 +134,11 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         evaluated
     }
 
-    /// Traces an evaluation for `expr` that gave no value, where it is written and why.
-    fn unevaluated(&self, expr: ExprId, why: &Unevaluated) {
-        let at = OriginTable::global().source_span(self.hir().exprs[expr].origin);
-        vun_trace::tracing::trace!(?at, ?why, "unevaluated");
+    /// Traces an evaluation for `expr` that gave no value, where it is written and why, and
+    /// counts one that read an unbound `$` parameter.
+    fn unevaluated(&mut self, expr: ExprId, why: &Unevaluated) {
+        self.unbound += usize::from(matches!(why, Unevaluated::Unbound));
+        vun_trace::tracing::trace!(at = %self.hir().exprs[expr].origin.located(), ?why, "unevaluated");
     }
 
     /// The environment every evaluation while typing runs in: with what typing found so far,

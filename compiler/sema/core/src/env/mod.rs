@@ -211,7 +211,7 @@ impl<'a, 'db> Env<'a, 'db> {
                     return Ok(Site::Decl(DeclRef::new(self.file.clone(), hir, decl)));
                 }
                 // A name a spread selects is the member of the namespace it spreads.
-                let path = hir.spread_of(b).ok_or(Unevaluated::Runtime)?;
+                let path = hir.spread_of(b).ok_or_else(|| self.unknown(b))?;
                 let Value::Namespace(ns) = self.eval(path)? else { return Err(Unevaluated::Unsupported) };
                 self.cx.get::<Declared>(&(ns, hir.binders[b].name)).ok_or(Unevaluated::Absent)
             }
@@ -254,6 +254,10 @@ impl<'a, 'db> Env<'a, 'db> {
                     // Then the type's impls (spec 01, section 4).
                     found @ (Found::Absent | Found::Unknown) => match self.method(ty, name) {
                         Some(method) => self.cx.get::<MemberValue>(&(method.owner, name)),
+                        // A parameter's members, and a frame's, are what its interface requires.
+                        None if let Some(required) = self.required(ty) => {
+                            self.cx.get::<MemberValue>(&(required, name))
+                        }
                         None if found == Found::Absent => Err(Unevaluated::Absent),
                         None => Err(Unevaluated::Unsupported),
                     },

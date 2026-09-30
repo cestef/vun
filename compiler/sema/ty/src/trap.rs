@@ -14,6 +14,9 @@ use crate::Value;
 pub enum Unevaluated {
     /// It depends on run-time values, such as locals and parameters.
     Runtime,
+    /// It reads a `$` parameter of a generic body, which only an instantiation binds: the body is
+    /// checked again in each (spec 02, section 3).
+    Unbound,
     /// It calls a function, which the interpreter evaluates.
     Interpreter,
     /// It depends on itself.
@@ -199,6 +202,7 @@ impl Unevaluated {
     pub fn why(&self) -> &'static str {
         match self {
             Self::Runtime => "it reads a value known only at run time",
+            Self::Unbound => "it reads a `$` parameter, which only an instantiation binds",
             Self::Interpreter => "no evaluator is installed",
             Self::Cycle => "it depends on itself",
             Self::Absent => "a name leads nowhere",

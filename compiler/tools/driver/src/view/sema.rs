@@ -21,15 +21,15 @@ use crate::Session;
 const SHOWN: usize = 48;
 
 impl Session {
-    /// What typing found in each function of `file`, plain, and in every instantiation the
-    /// program reaches, from any file: each expression's type and stage, the untyped ones marked,
+    /// What typing found in each function of `file`, plain, and in every body of the program,
+    /// from any file, each once: each expression's type and stage, the untyped ones marked,
     /// and each operator without the function it calls.
     pub(super) fn view_types(&mut self, file: FileId, out: &mut dyn Write) -> io::Result<()> {
         let key = self.file_ref(file);
         let program = self.db.get::<Programs>(&(key, Roots::Functions));
         let plain = self.functions(file).into_iter().map(Instantiation::plain);
-        let instantiations: Vec<Instantiation> = plain.chain(program.instantiations().cloned()).collect();
-        for i in instantiations {
+        let mut seen = std::collections::HashSet::new();
+        for i in plain.chain(program.bodies()).filter(|i| seen.insert(i.clone())) {
             let Some(typed) = self.db.get::<Typed>(&i) else { continue };
             let Some(parsed) = self.db.get::<Parsed>(&i.f.literal.file) else { continue };
             let hir = &parsed.hir;

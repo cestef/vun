@@ -132,12 +132,14 @@ impl Session {
         coverage
     }
 
-    /// Where typing gave up in each body the program of `file` reaches, reported at the first form
-    /// of each: typing gives every form of a body MIR builds a type, or reports why not.
+    /// Where typing gave up in each body of the program of `file`, reported at the first form of
+    /// each: typing gives every form of a body a type, or reports why not, or leaves it to the
+    /// instantiations of a generic body.
     pub fn gave_up(&mut self, file: FileId) -> Vec<Diagnostic> {
         let program = self.program(file);
         program
-            .instantiations()
+            .bodies()
+            .iter()
             .filter_map(|i| {
                 let typed = self.db.get::<Typed>(i)?;
                 let parsed = self.db.get::<Parsed>(&i.f.literal.file)?;

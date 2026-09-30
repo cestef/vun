@@ -51,11 +51,12 @@ impl Typer<'_, '_, '_> {
             // `if p = e`: `p` is matched against `e` as a `match` arm is.
             Cond::Test { pat, value } => {
                 let matched = self.typed(*value);
-                self.test(*pat, matched.map(|k| k.ty));
+                self.test(*pat, self.matched(*value, matched));
                 matched.map(|k| k.stage)
             }
         };
-        let then_value = self.narrowing(&facts.holds, |t| t.block_value(then, expected));
+        let then_expected = self.tail_expected(expr, then);
+        let then_value = self.narrowing(&facts.holds, |t| t.block_value(then, then_expected));
         let Some(otherwise) = otherwise else {
             return Some(Known { ty: TyKind::unit(), stage: Stage::Compile });
         };
@@ -64,7 +65,8 @@ impl Typer<'_, '_, '_> {
             Some(tail) => self.fits(tail, then_value, expected),
             None => then_value,
         };
-        let found = self.narrowing(&facts.fails, |t| t.typed_as(otherwise, expected));
+        let otherwise_expected = self.expected_of(expr, otherwise, Some);
+        let found = self.narrowing(&facts.fails, |t| t.typed_as(otherwise, otherwise_expected));
         let found = self.fits(otherwise, found, expected);
         let joined = self.join(otherwise, then?, found?)?;
         Some(Known { stage: joined.stage.max(head.unwrap_or(self.stage)), ..joined })
@@ -76,7 +78,7 @@ impl Typer<'_, '_, '_> {
         let (found, expected) = (found?, expected);
         match expected {
             Some(expected) if !expected.accepts(&found.ty) => {
-                let written = self.written.filter(|_| self.result == Some(expected));
+                let written = self.written.filter(|_| self.result == Some(Ok(expected)));
                 self.expect(self.hir().exprs[at].origin, found, expected, written);
                 None
             }

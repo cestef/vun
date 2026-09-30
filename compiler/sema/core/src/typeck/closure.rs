@@ -12,7 +12,7 @@ use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::{Closure, Signature, TyKind, Value};
 
-use super::{Known, Stage, Typer};
+use super::{GaveUp, Known, Stage, Typer};
 use crate::callable::Callable;
 use crate::eval::Instantiate;
 
@@ -44,14 +44,12 @@ impl Typer<'_, '_, '_> {
                     // where its annotation accepts that type: a compile-time `&[u8]` holds an
                     // array, whose borrow the annotation is.
                     let bound = bound.get(index).and_then(Option::as_ref).and_then(Value::ty);
-                    let ty = match (bound, self.ty(*ty)) {
-                        (Some(bound), Some(written)) if !written.accepts(&bound) => Some(written),
-                        (bound, written) => bound.or(written),
+                    let ty = match (bound, self.annotation(*ty)) {
+                        (Some(bound), Ok(written)) if !written.accepts(&bound) => Ok(written),
+                        (bound, written) => bound.map_or(written, Ok),
                     };
-                    if ty.is_some() {
-                        self.pattern(*pat, ty, None);
-                    }
-                    ty
+                    self.pattern(*pat, ty.clone(), None);
+                    ty.ok()
                 }
                 _ => None,
             };
@@ -79,21 +77,25 @@ impl Typer<'_, '_, '_> {
         let written = if frame.is_some() { None } else { returns };
         let (signature_result, result, yields) = if let Some(frame) = frame.map(|s| s.result) {
             let step = self.env().frame_step(frame);
-            (Some(frame), step.map(|(_, r)| r), step.map(|(y, _)| y))
+            (Some(frame), step.map(|(_, r)| r).ok_or(GaveUp::Form), step.map(|(y, _)| y))
         } else {
             let result = match returns {
-                Some(r) => self.ty(r),
-                None => Some(TyKind::unit()),
+                Some(r) => self.annotation(r),
+                None => Ok(TyKind::unit()),
             };
-            (result, result, None)
+            (result.clone().ok(), result, None)
         };
         let outer = (
-            replace(&mut self.result, result),
+            self.result.replace(result.clone()),
             replace(&mut self.written, written),
             take(&mut self.loops),
             replace(&mut self.yields, yields),
             replace(&mut self.framing, yields.is_some().then_some(literal)),
         );
+        let result = match hir.blocks[body].tail {
+            Some(tail) => self.expecting(tail, result),
+            None => result.ok(),
+        };
         let found = self.block_value(body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);

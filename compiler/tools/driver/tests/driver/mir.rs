@@ -51,8 +51,9 @@ fn every_function_a_corpus_program_reaches_is_concrete() {
     assert!(reached.iter().sum::<usize>() > 0, "no corpus program exports anything");
 }
 
-/// Typing's verifier on real inputs: every form of every body a corpus program reaches is typed,
-/// or typing reports why not; `vun debug dump types` marks a form it gave up on silently.
+/// Typing's verifier on real inputs: every form of every body a corpus program reaches, the plain
+/// bodies of its generic functions included, is typed, or typing reports why not or leaves it to
+/// the instantiations; `vun debug dump types` marks a form it gave up on.
 #[test]
 fn typing_gives_up_nowhere_a_corpus_program_reaches() {
     let paths = repo_root().join(ACCEPT).files_with(EXTENSION).unwrap();

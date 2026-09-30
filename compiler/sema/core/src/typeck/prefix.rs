@@ -12,7 +12,7 @@ use super::{Known, Typer};
 impl Typer<'_, '_, '_> {
     /// `&mode operand`.
     pub(super) fn borrow(&mut self, expr: ExprId, mode: Borrow, operand: ExprId) -> Option<Known> {
-        let pointee = self.expected(expr).and_then(|t| t.pointee());
+        let pointee = self.expected_of(expr, operand, |t| t.pointee());
         let mut known = self.typed_as(operand, pointee)?;
         // Of a type, such as `u8` or `[u8]`, `&` makes a borrow type (type syntax mirrors value
         // syntax, spec 01), unless a borrow of types is expected: `[f32]` is then the array
@@ -49,6 +49,7 @@ impl Typer<'_, '_, '_> {
         for &attr in attrs {
             self.typed(attr);
         }
-        self.typed_as(inner, self.expected(expr))
+        let expected = self.expected_of(expr, inner, Some);
+        self.typed_as(inner, expected)
     }
 }

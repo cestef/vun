@@ -175,7 +175,17 @@ impl TyKind {
     /// what its requirements say rather than any declared for it.
     #[must_use]
     pub fn is_required(&self) -> bool {
-        matches!(self, Self::Param(_) | Self::Frame(_))
+        self.interface().is_some()
+    }
+
+    /// The interface a parameter of a generic body or a coroutine's frame is known by.
+    #[must_use]
+    pub fn interface(&self) -> Option<&call::Func> {
+        match self {
+            Self::Param(param) => Some(&param.interface),
+            Self::Frame(frame) => Some(&frame.interface),
+            _ => None,
+        }
     }
 
     /// Whether the values of this type have members of their own, which the value declares: a

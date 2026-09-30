@@ -16,12 +16,18 @@ impl Typer<'_, '_, '_> {
     pub(super) fn name(&mut self, expr: ExprId) -> Option<Known> {
         self.mutable_static(expr);
         if let Some(Res::Binder(b)) = self.env().parsed.resolution.names[expr] {
-            if let Some(known) = self.locals.get(&b) {
-                return Some(Known { ty: self.narrowed.get(&b).copied().unwrap_or(known.ty), ..*known });
+            let local = self.locals.get(&b).cloned();
+            if let Some(Ok(known)) = local {
+                return Some(Known { ty: self.narrowed.get(&b).copied().unwrap_or(known.ty), ..known });
             }
             // A binder the environment binds, such as a `$for` binder: its value's type.
             if let Some(ty) = self.env().bound(b).and_then(|v| self.env().value_type(v).ok()) {
                 return Some(Known { ty, stage: Stage::Compile });
+            }
+            // A local bound without a type has none for the reason its binding has none.
+            if let Some(Err(why)) = local {
+                self.give_up(expr, why);
+                return None;
             }
         }
         let declared = self.env().resolve(expr).and_then(|site| self.env().site_type(site));
@@ -50,6 +56,8 @@ impl Typer<'_, '_, '_> {
                     let site = self.env().cx.get::<Declared>(&(ns.clone(), name))?;
                     return self.declared_at(expr, name, site);
                 }
+                // A parameter's members, and a frame's, are what its interface requires.
+                Ok(Value::Type(ty)) if ty.is_required() => return self.required_member(expr, ty, name),
                 Ok(Value::Type(ty)) => {
                     let members = self.env().cx.get::<Members>(&ty);
                     return match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {

@@ -42,7 +42,7 @@ impl Simplify for Unit {
             let mut f = f.clone();
             let started = std::time::Instant::now();
             f.tidy(bits);
-            tracing::debug!(origin = ?f.origin, insts = f.insts.len(), micros = started.elapsed().as_micros(), "tidied");
+            tracing::debug!(at = %f.origin.located(), insts = f.insts.len(), micros = started.elapsed().as_micros(), "tidied");
             f
         });
         self.functions = tidied.into_iter().collect();

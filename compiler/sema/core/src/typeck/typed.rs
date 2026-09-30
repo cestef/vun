@@ -55,7 +55,7 @@ pub struct Found {
     pub gave_up: BTreeMap<ExprId, GaveUp>,
 }
 
-/// Why typing gave a form no type, reporting nothing.
+/// Why typing gave a form no type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum GaveUp {
     /// The rule of the form's kind gave up, its parts typed.
@@ -64,6 +64,8 @@ pub enum GaveUp {
     Unevaluated(Unevaluated),
     /// It names a member of this type, whose members are not all known here.
     Members(Ty),
+    /// It depends on a form typing reported an error for.
+    Reported,
 }
 
 impl Found {

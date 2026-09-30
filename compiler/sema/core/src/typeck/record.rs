@@ -83,7 +83,7 @@ impl Typer<'_, '_, '_> {
             });
             return None;
         };
-        self.expected.insert(callee, expected);
+        self.expected.insert(callee, Ok(expected));
         self.call(expr, callee, args)
     }
 }

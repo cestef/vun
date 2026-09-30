@@ -178,10 +178,10 @@ impl TyKind {
     #[must_use]
     pub fn implements(&self, constructor: &Value) -> Option<Vec<Value>> {
         let Value::Fn(f) = constructor else { return None };
-        let (interface, written) = match self {
-            Self::Param(param) => (&param.interface, None),
-            Self::Frame(frame) => (&frame.interface, frame.written.as_ref()),
-            _ => return None,
+        let interface = self.interface()?;
+        let written = match self {
+            Self::Frame(frame) => frame.written.as_ref(),
+            _ => None,
         };
         let made = interface.within.as_deref().into_iter().chain(written);
         made.into_iter().find(|made| made.f == *f).map(|made| made.args.clone())

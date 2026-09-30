@@ -73,14 +73,18 @@ impl Typer<'_, '_, '_> {
     fn immutable(&self, expr: ExprId) -> Option<BinderId> {
         let ExprKind::Name(_) = self.hir().exprs[expr].kind else { return None };
         let Some(Res::Binder(binder)) = self.env().parsed.resolution.names[expr] else { return None };
-        (!self.hir().binders[binder].mutable && self.locals.contains_key(&binder)).then_some(binder)
+        (!self.hir().binders[binder].mutable && matches!(self.locals.get(&binder), Some(Ok(_))))
+            .then_some(binder)
     }
 
     /// Narrows each binding of `facts` from here on, within what it is already.
     pub(super) fn narrow(&mut self, facts: &Narrowed) {
         for (binder, range) in facts {
-            let current =
-                self.narrowed.get(binder).copied().or_else(|| self.locals.get(binder).map(|k| k.ty));
+            let current = self
+                .narrowed
+                .get(binder)
+                .copied()
+                .or_else(|| Some(self.locals.get(binder)?.as_ref().ok()?.ty));
             let Some(current) = current.and_then(|ty| ty.interval()) else { continue };
             if let Some(range) = current.meet(range) {
                 self.narrowed.insert(*binder, TyKind::int(&range));

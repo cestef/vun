@@ -142,7 +142,7 @@ impl Lint {
             .filter_map(|decl| {
                 let lint = Self::read(env, &decl, &configured);
                 if lint.is_none() {
-                    vun_trace::tracing::debug!(decl = ?decl.decl.origin, "a lint that does not read");
+                    vun_trace::tracing::debug!(at = %decl.decl.origin.located(), "a lint that does not read");
                 }
                 lint
             })

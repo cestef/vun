@@ -11,7 +11,7 @@ use vun_intern::Symbol;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Known, Stage, Typer};
+use super::{GaveUp, Known, Stage, Typer};
 use crate::eval::Call;
 use crate::member::{Found, MemberType, MemberValue, Members};
 
@@ -53,20 +53,26 @@ impl Typer<'_, '_, '_> {
             }
             ForHead::While(Cond::Test { pat, value }) => {
                 let matched = self.typed(*value);
-                self.test(*pat, matched.map(|k| k.ty));
+                self.test(*pat, self.matched(*value, matched));
                 ends
             }
             ForHead::In { pat, iter } => {
-                let iterated = self.typed(*iter).map(|k| k.ty);
-                let driven = iterated.and_then(|ty| self.iteration(ty));
-                if let Some((iteration, _)) = driven {
-                    self.finding().iterations.insert(*iter, iteration);
-                } else if let Some(ty) = iterated
-                    && self.iterated(ty).is_none()
-                {
-                    self.unimplemented(*iter, ITERATION.first().and_then(|r| r.function.parent()), ty);
-                }
-                self.pattern(*pat, driven.map(|(_, item)| item), None);
+                let iterated = self.typed(*iter);
+                let iterated = self.matched(*iter, iterated);
+                let driven = iterated.clone().map(|ty| (ty, self.iteration(ty)));
+                let item = match driven {
+                    Ok((_, Some((iteration, item)))) => {
+                        self.finding().iterations.insert(*iter, iteration);
+                        Ok(item)
+                    }
+                    Ok((ty, None)) if self.iterated(ty).is_none() => {
+                        self.unimplemented(*iter, ITERATION.first().and_then(|r| r.function.parent()), ty);
+                        Err(GaveUp::Reported)
+                    }
+                    Ok((_, None)) => Err(GaveUp::Form),
+                    Err(why) => Err(why),
+                };
+                self.pattern(*pat, item, None);
                 ends
             }
         };

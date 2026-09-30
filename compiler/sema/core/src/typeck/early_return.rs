@@ -14,8 +14,9 @@ impl Typer<'_, '_, '_> {
     /// `return value`: the value typed as the result, checked against it; it does not end.
     pub(super) fn returned(&mut self, value: Option<ExprId>) -> Option<Known> {
         if let Some(value) = value {
-            let found = self.typed_as(value, self.result);
-            if let (Some(found), Some(result)) = (found, self.result) {
+            let result = self.result.clone().and_then(|result| self.expecting(value, result));
+            let found = self.typed_as(value, result);
+            if let (Some(found), Some(result)) = (found, result) {
                 self.expect(self.hir().exprs[value].origin, found, result, self.written);
             }
         }
@@ -33,7 +34,7 @@ impl Typer<'_, '_, '_> {
         let branch = self.env().cx.get::<MemberType>(&(witness, function)).ok()?.ty.signature()?.result;
         self.finding().methods.insert(expr, (witness, function));
         let (value, stopped) = (self.payload(branch, go)?, self.payload(branch, stop)?);
-        if let Some(result) = self.result
+        if let Some(Ok(result)) = self.result
             && !result.accepts(&stopped)
         {
             let origin = self.hir().exprs[expr].origin;

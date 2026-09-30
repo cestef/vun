@@ -207,8 +207,11 @@ per second per stage and fails on regressions.
   up silently, with a typed reason: the rule of the form's kind, the type of what a name reaches
   having no value there, or a type whose members are not all known there. A body that is not
   concrete over such a form is reported at it, with the reason; `vun debug dump types` marks each
-  (decision 359). No body a corpus program reaches may hold one: plain bodies of generic
-  functions, typed with their `$` parameters unbound, are the only place typing gives up by design.
+  (decision 359). The reason travels to what depends on the form: a local bound without a type,
+  and a form typed by an expected type its context cannot know, give up for the same reason. A
+  form reading a `$` parameter the generic body leaves unbound is left to the instantiations
+  (`Unevaluated::Unbound`), and one an error typing reported explains is not silent; no body a
+  corpus program reaches, generic bodies included, may hold any other (decision 360).
 - **Layouts.** Every type with a run-time layout has a shape (query `Shapes`): its size and
   alignment, the offset of each part, how an enum tells its variants (an index, or a niche
   pattern), and its unused patterns (spec 05, section 6). `vun debug dump layout` prints them.

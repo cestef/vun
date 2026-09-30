@@ -36,7 +36,6 @@ use vun_sema::typeck::{Step, Typed, TypedBody};
 use vun_sema_ty::Ty;
 use vun_sema_ty::call::{Instantiation, Staging};
 use vun_sema_ty::trap::Unevaluated;
-use vun_span::{SourceFiles, SourceMap};
 
 use crate::Lowered;
 use crate::place::Place;
@@ -121,9 +120,7 @@ impl Query for Mir {
                 vun_trace::tracing::debug!(blocks = body.blocks.len(), locals = body.locals.len(), "built");
             }
             Err(unbuilt) => {
-                let (origins, sources) = (OriginTable::global(), SourceFiles::global());
-                let at = sources.locate(origins.source_span(unbuilt.at)).to_string();
-                vun_trace::tracing::debug!(%at, by = %unbuilt.by, "unbuilt");
+                vun_trace::tracing::debug!(at = %unbuilt.at.located(), by = %unbuilt.by, "unbuilt");
             }
         }
         built.map(Arc::new)

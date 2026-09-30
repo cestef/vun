@@ -8,61 +8,63 @@ use vun_hir::tree::{Arm, BinderId, Entry, ExprId, Joined, Name, PatId, PatKind};
 use vun_primitives::Primitive;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Known, Operation, Typer};
+use super::{GaveUp, Known, Operation, Typer};
 use crate::member::{Found, Members};
 
 impl Typer<'_, '_, '_> {
-    /// Checks `pat` against values of type `ty`, if known; `borrow`, when matching through a
-    /// borrow, is the borrow type its binders take.
-    pub(super) fn pattern(&mut self, pat: PatId, ty: Option<Ty>, borrow: Option<Primitive>) {
+    /// Checks `pat` against values of type `ty`, if known, or gives its binders why it is not;
+    /// `borrow`, when matching through a borrow, is the borrow type its binders take.
+    pub(super) fn pattern(&mut self, pat: PatId, ty: Result<Ty, GaveUp>, borrow: Option<Primitive>) {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         match &hir.pats[pat].kind {
             // A rest binds what its tuple pattern gives it, the items it stands for.
             PatKind::Bind(binder) | PatKind::Rest(Some(binder)) => self.bind_matched(*binder, ty, borrow),
             PatKind::At { binder, pat } => {
-                self.bind_matched(*binder, ty, borrow);
+                self.bind_matched(*binder, ty.clone(), borrow);
                 self.pattern(*pat, ty, borrow);
             }
             PatKind::Tuple(items) => {
                 let items_of = ty.and_then(|t| match &*t {
-                    TyKind::Tuple(parts) => Some(self.tuple_items(pat, t, items, parts)),
-                    _ => None,
+                    TyKind::Tuple(parts) => Ok(self.tuple_items(pat, t, items, parts)),
+                    _ => Err(GaveUp::Form),
                 });
                 for (i, item) in items.iter().enumerate() {
                     if let Entry::One(item) = item {
-                        self.pattern(
-                            *item,
-                            items_of.as_ref().and_then(|p| p.get(i).copied().flatten()),
-                            borrow,
-                        );
+                        // A pattern of more items than the tuple's is reported.
+                        let matched = items_of.as_ref().map_err(Clone::clone);
+                        let matched =
+                            matched.and_then(|p| p.get(i).copied().flatten().ok_or(GaveUp::Reported));
+                        self.pattern(*item, matched, borrow);
                     }
                 }
             }
             PatKind::Variant { name, args } => {
                 let payload = match (name, ty) {
-                    (Name::Plain(name), Some(ty)) => {
+                    (Name::Plain(name), Ok(ty)) => {
                         match self.env().cx.get::<Members>(&ty).map(|m| m.find(*name).into()) {
-                            Some(Lookup::Variant(payload)) => Some(payload),
+                            Some(Lookup::Variant(payload)) => Ok(payload),
                             Some(Lookup::Absent) => {
                                 self.no_member(origin, ty, *name);
-                                None
+                                Err(GaveUp::Reported)
                             }
-                            _ => None,
+                            _ => Err(GaveUp::Members(ty)),
                         }
                     }
-                    _ => None,
+                    (_, Err(why)) => Err(why),
+                    _ => Err(GaveUp::Form),
                 };
                 for (i, arg) in args.iter().flatten().enumerate() {
                     if let Entry::One(arg) = arg {
-                        let item = payload.as_ref().and_then(|p| p.get(i).copied().flatten());
+                        let item = payload.as_ref().map_err(Clone::clone);
+                        let item = item.and_then(|p| p.get(i).cloned().unwrap_or(Err(GaveUp::Reported)));
                         self.pattern(*arg, item, borrow);
                     }
                 }
             }
             PatKind::Or(alternatives) => {
                 for &alternative in alternatives {
-                    self.pattern(alternative, ty, borrow);
+                    self.pattern(alternative, ty.clone(), borrow);
                 }
                 self.alternatives(alternatives);
             }
@@ -73,12 +75,14 @@ impl Typer<'_, '_, '_> {
             // A value pattern matches when `value == x`; a range when `lo <= x` and `hi > x`, or
             // `hi >= x` inclusive: operators on the value matched (spec 02, section 4).
             PatKind::Value(value) => {
+                let ty = ty.ok();
                 self.against(*value, ty);
                 if let Some(ty) = ty {
                     self.tested(Operation::Test(pat), TokenKind::EqEq, *value, ty);
                 }
             }
             PatKind::Range { lo, hi, inclusive } => {
+                let ty = ty.ok();
                 self.against(*lo, ty);
                 if let Some(ty) = ty {
                     self.tested(Operation::Lower(pat), TokenKind::Le, *lo, ty);
@@ -91,35 +95,57 @@ impl Typer<'_, '_, '_> {
                     }
                 }
             }
-            PatKind::Struct { ty: written, fields } => {
-                let ty = written.and_then(|t| self.ty(t)).or(ty);
-                let members = ty.and_then(|t| self.env().cx.get::<Members>(&t));
-                for (i, field) in fields.iter().enumerate() {
-                    let Entry::One((name, field)) = field else { continue };
-                    let found = members.as_ref().and_then(|m| match name {
-                        Some(Name::Plain(name)) => {
-                            if let Found::Field(f) = m.find(*name) {
-                                f.ty.as_ref().ok().copied()
-                            } else {
-                                self.no_member(hir.pats[*field].origin, ty?, *name);
-                                None
-                            }
-                        }
-                        None => m.fields.get(i).and_then(|f| f.ty.as_ref().ok().copied()),
-                        Some(_) => None,
-                    });
-                    self.pattern(*field, found, borrow);
-                }
-            }
+            PatKind::Struct { ty: written, fields } => self.struct_pattern(*written, fields, ty, borrow),
             PatKind::Hole | PatKind::Rest(None) | PatKind::Error => {}
+        }
+    }
+
+    /// A struct pattern, of the type written or else `ty`: each field's pattern against that
+    /// field's type, named or by position.
+    fn struct_pattern(
+        &mut self,
+        written: Option<ExprId>,
+        fields: &[Entry<(Option<Name>, PatId)>],
+        ty: Result<Ty, GaveUp>,
+        borrow: Option<Primitive>,
+    ) {
+        let hir = self.hir();
+        let ty = written.and_then(|t| self.ty(t)).map_or(ty, Ok);
+        let members = ty.clone().and_then(|t| self.env().cx.get::<Members>(&t).ok_or(GaveUp::Members(t)));
+        for (i, field) in fields.iter().enumerate() {
+            let Entry::One((name, field)) = field else { continue };
+            let found = members.as_ref().map_err(Clone::clone).and_then(|m| match name {
+                Some(Name::Plain(name)) => {
+                    if let Found::Field(f) = m.find(*name) {
+                        f.ty.clone().map_err(GaveUp::Unevaluated)
+                    } else {
+                        self.no_member(hir.pats[*field].origin, ty.clone()?, *name);
+                        Err(GaveUp::Reported)
+                    }
+                }
+                None => m
+                    .fields
+                    .get(i)
+                    .map_or(Err(GaveUp::Reported), |f| f.ty.clone().map_err(GaveUp::Unevaluated)),
+                Some(_) => Err(GaveUp::Form),
+            });
+            self.pattern(*field, found, borrow);
         }
     }
 
     /// Gives `binder` the type of the values of `ty` it binds, or a borrow of them when matching
     /// through the borrow `borrow`.
-    fn bind_matched(&mut self, binder: BinderId, ty: Option<Ty>, borrow: Option<Primitive>) {
-        if let Some(ty) = ty {
-            self.bind(binder, borrow.map_or(ty, |b| TyKind::Primitive(b, vec![Value::Type(ty)]).intern()));
+    fn bind_matched(&mut self, binder: BinderId, ty: Result<Ty, GaveUp>, borrow: Option<Primitive>) {
+        match ty {
+            Ok(ty) => {
+                self.bind(
+                    binder,
+                    borrow.map_or(ty, |b| TyKind::Primitive(b, vec![Value::Type(ty)]).intern()),
+                );
+            }
+            Err(why) => {
+                self.locals.insert(binder, Err(why));
+            }
         }
     }
 
@@ -166,9 +192,9 @@ impl Typer<'_, '_, '_> {
     }
 
     /// `pat` tested against a value of type `matched`, looking through a borrow.
-    pub(super) fn test(&mut self, pat: PatId, matched: Option<Ty>) {
-        match matched.and_then(|t| t.borrow()) {
-            Some((borrow, inner)) => self.pattern(pat, Some(inner), Some(borrow)),
+    pub(super) fn test(&mut self, pat: PatId, matched: Result<Ty, GaveUp>) {
+        match matched.as_ref().ok().and_then(|t| t.borrow()) {
+            Some((borrow, inner)) => self.pattern(pat, Ok(inner), Some(borrow)),
             None => self.pattern(pat, matched, None),
         }
     }
@@ -188,19 +214,21 @@ impl Typer<'_, '_, '_> {
     /// condition, and its value where the match's own value is expected.
     pub(super) fn matching(&mut self, expr: ExprId, scrutinee: ExprId, arms: &[Entry<Arm>]) -> Option<Known> {
         let hir = self.hir();
-        let matched = self.typed(scrutinee).map(|k| k.ty);
+        let known = self.typed(scrutinee);
+        let (bound, matched) = (self.matched(scrutinee, known), known.map(|k| k.ty));
         let expected = self.expected(expr);
         let mut joined: Option<Option<Known>> = None;
         for arm in arms {
             let Entry::One(arm) = arm else { continue };
-            self.test(arm.pat, matched);
+            self.test(arm.pat, bound.clone());
             let mut holds = Vec::new();
             if let Some(guard) = arm.guard {
                 self.logic(&[guard]);
                 holds = self.facts(guard).holds;
             }
             let Some(value) = arm.value else { continue };
-            let found = self.narrowing(&holds, |t| t.typed_as(value, expected));
+            let arm_expected = self.expected_of(expr, value, Some);
+            let found = self.narrowing(&holds, |t| t.typed_as(value, arm_expected));
             let found = self.fits(value, found, expected);
             joined = Some(match (joined, found) {
                 (None, found) => found,
@@ -215,8 +243,8 @@ impl Typer<'_, '_, '_> {
 
 /// What a variant pattern's name is in the type matched.
 enum Lookup {
-    /// A variant, with its payload's types where known.
-    Variant(Vec<Option<Ty>>),
+    /// A variant, with its payload's types, or why each is not known.
+    Variant(Vec<Result<Ty, GaveUp>>),
     Absent,
     Other,
 }
@@ -224,7 +252,9 @@ enum Lookup {
 impl From<Found<'_>> for Lookup {
     fn from(found: Found<'_>) -> Self {
         match found {
-            Found::Variant(v) => Self::Variant(v.payload.iter().map(|p| p.as_ref().ok().copied()).collect()),
+            Found::Variant(v) => {
+                Self::Variant(v.payload.iter().map(|p| p.clone().map_err(GaveUp::Unevaluated)).collect())
+            }
             Found::Absent | Found::Field(_) | Found::Decl(_) | Found::Spread(_) => Self::Absent,
             Found::Unknown => Self::Other,
         }
@@ -238,7 +268,8 @@ impl Typer<'_, '_, '_> {
         let hir = self.hir();
         for joined in hir.joined(alternatives) {
             let Joined::Paired { first, other } = joined else { continue };
-            let (Some(expected), Some(found)) = (self.locals.get(&first), self.locals.get(&other)) else {
+            let (Some(Ok(expected)), Some(Ok(found))) = (self.locals.get(&first), self.locals.get(&other))
+            else {
                 continue;
             };
             if expected.ty != found.ty {

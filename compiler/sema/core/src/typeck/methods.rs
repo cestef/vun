@@ -5,11 +5,9 @@ use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
-use vun_sema_ty::call::Instance;
-use vun_sema_ty::{Ty, TyKind, Value};
+use vun_sema_ty::{Ty, TyKind};
 
 use super::{GaveUp, Known, Typer};
-use crate::eval::Call;
 use crate::member::{Found, MemberType, Members};
 use crate::witness::Method;
 
@@ -56,13 +54,7 @@ impl Typer<'_, '_, '_> {
     /// frame, which answers its interface's requirements itself (spec 06, section 1) and has the
     /// methods of its impls.
     pub(super) fn required_member(&mut self, expr: ExprId, ty: Ty, name: Symbol) -> Option<Known> {
-        let interface = match &*ty {
-            TyKind::Param(param) => &param.interface,
-            TyKind::Frame(frame) => &frame.interface,
-            _ => return None,
-        };
-        let call = Instance { f: interface.clone(), args: vec![Value::Type(ty)] };
-        let requirements = self.env().cx.get::<Call>(&call).ok()?.as_type()?;
+        let requirements = self.env().required(ty)?;
         let members = self.env().cx.get::<Members>(&requirements)?;
         match members.find(name) {
             Found::Decl(_) => {

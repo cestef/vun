@@ -164,8 +164,12 @@ log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
 };
 ```
 
-Inside a generic body, a value of type `W` may use only `Writer`'s members. The check runs per
-instantiation and is reported against the generic definition.
+Inside a generic body, a value of type `W` may use only `Writer`'s members, and so may `W`
+itself: `W.Error` names the requirement `Error`. Its value, as that of any requirement, and the
+value of a `$` parameter no constraint makes abstract, as `T` of `$T: type`, are known only in
+an instantiation: the generic body is typed as far as they are not needed, and the rest is
+checked per instantiation (decision 360). The check runs per instantiation and is reported
+against the generic definition.
 
 A function type `(T) -> U` is a plain function value: static and capture-free. Code taking a
 callback is generic over `lang.ops.Call` (the table `calls`), which function values and closures

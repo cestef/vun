@@ -109,12 +109,16 @@ impl Env<'_, '_> {
     /// the interface it implements, such as `resume`.
     #[must_use]
     pub fn frame_member(&self, frame: Ty, name: Symbol) -> Option<Ty> {
-        let TyKind::Frame(shaped) = &*frame else { return None };
-        let interface = &shaped.interface;
-        let requirements =
-            self.cx.get::<Call>(&Instance { f: interface.clone(), args: vec![Value::Type(frame)] });
-        let requirements = requirements.ok()?.as_type()?;
+        let requirements = self.required(frame).filter(|_| matches!(*frame, TyKind::Frame(_)))?;
         Some(self.cx.get::<MemberType>(&(requirements, name)).ok()?.ty)
+    }
+
+    /// The requirements of the interface `ty` is known by, made for `ty`: what a parameter of a
+    /// generic body, or a frame, has as members.
+    #[must_use]
+    pub fn required(&self, ty: Ty) -> Option<Ty> {
+        let call = Instance { f: ty.interface()?.clone(), args: vec![Value::Type(ty)] };
+        self.cx.get::<Call>(&call).ok()?.as_type()
     }
 
     /// What frames of type `frame` yield and return: the payloads of the variants `item` and

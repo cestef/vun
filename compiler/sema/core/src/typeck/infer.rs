@@ -61,7 +61,10 @@ impl Typer<'_, '_, '_> {
             }
             ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
             ExprKind::Return(value) => self.returned(*value),
-            ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
+            ExprKind::Block(block) => {
+                let expected = self.tail_expected(expr, *block);
+                self.block_value(*block, expected)
+            }
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
             ExprKind::Borrow { mode: Some(mode), operand } => self.borrow(expr, *mode, *operand),

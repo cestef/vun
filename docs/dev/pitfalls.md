@@ -71,8 +71,13 @@ Traps that cost a session before. Add one when it costs you time.
   reason with `Typer::give_up`, so the reason is kept and logged. Lowering reports a body stopped over
   such a form at the form, with the reason; `vun debug dump types <file>` marks each (`untyped,
   gave up on Call: ...`), and `mir::typing_gives_up_nowhere_a_corpus_program_reaches` fails on
-  any in a body a corpus program reaches. Plain bodies of generic functions, typed with their `$`
-  parameters unbound, give up on the locals those type; nothing builds them.
+  any silent one in a body a corpus program reaches, the plain bodies of generic functions
+  included. A reason must travel to what depends on the form: a binding site gives each binder
+  its type or why (`pattern` takes `Result<Ty, GaveUp>`, `Typer::matched` finds why a value has
+  none), and a rule passing its expected type to a part passes why it has none too
+  (`Typer::expected_of`, `expecting`); forgetting either turns a deferred or reported gap into a
+  silent `Form` one the verifier flags. In a plain generic body, `Unevaluated::Unbound` is the
+  expected reason: a value only an instantiation binds.
 - `VUN_LOG` shows only what is computed: queries reused from saved memos log nothing. Log a fresh
   run with `VUN_STORE=<empty dir>` and the `.vun/` beside the root file removed.
 - The parser's depth bound counts each operand being read and each link of a chain; past it the

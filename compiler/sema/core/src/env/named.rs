@@ -28,7 +28,7 @@ impl Env<'_, '_> {
             // the call evaluated in, such as `$Regs := struct { ... }`; only a declaration
             // binding the name alone holds the whole value.
             Some(Res::Binder(b)) if hir.binders[b].comptime && hir.member_decl(b).is_none() => {
-                self.eval(self.declared(b).ok_or(Unevaluated::Runtime)?)
+                self.eval(self.declared(b).ok_or_else(|| self.unknown(b))?)
             }
             // So does any local holding a value that exists at compile time only, such as
             // `arith := lang.float.soft.arith`.
@@ -38,6 +38,19 @@ impl Env<'_, '_> {
             }
             Some(Res::Binder(b)) if let Some(member) = self.made_member(b) => member,
             _ => self.value_of(self.resolve(expr)?),
+        }
+    }
+
+    /// Why the local `binder` has no value here: a `$` binder no declaration binds, a parameter
+    /// or a `$for` binder, has one only where an instantiation or a step binds it; any other
+    /// holds values known only at run time.
+    #[must_use]
+    pub fn unknown(&self, binder: BinderId) -> Unevaluated {
+        let hir = &self.parsed.hir;
+        if hir.binders[binder].comptime && hir.decl_of(binder).is_none() {
+            Unevaluated::Unbound
+        } else {
+            Unevaluated::Runtime
         }
     }
 

@@ -116,7 +116,7 @@ impl Env<'_, '_> {
                     self.staged().to_vec(),
                 );
                 let typed = self.cx.get::<TypedDecl>(&key).ok_or(Unevaluated::Unsupported)?;
-                typed.types.get(&value).map(|k| k.ty).ok_or(Unevaluated::Unsupported)
+                typed.types.get(&value).map(|k| k.ty).ok_or_else(|| typed.unevaluated(hir, value))
             }
             (None, None) => Err(Unevaluated::Unsupported),
         };

@@ -31,7 +31,8 @@ impl Typer<'_, '_, '_> {
                 .map(|ty| Known { ty, stage: self.stage });
         }
         self.vouched += 1;
-        let known = self.typed_as(operand, self.expected(expr));
+        let expected = self.expected_of(expr, operand, Some);
+        let known = self.typed_as(operand, expected);
         self.vouched -= 1;
         known
     }

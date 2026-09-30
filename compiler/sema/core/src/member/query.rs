@@ -66,13 +66,15 @@ impl Query for MemberValue {
         match env.parsed.hir.exprs[value].kind {
             // A requirement of the interface made for a type `Self`, its first argument: what the
             // witness of `Self` provides, as a default of the interface sees it (`Error` in
-            // `Writer.write_all`).
+            // `Writer.write_all`). For a `$` parameter of a generic body, only an instantiation
+            // binding it has a witness.
             ExprKind::Hole => {
                 let target = instance.as_ref().and_then(|i| i.args.first()).and_then(Value::as_type);
-                match target.and_then(|t| env.method(t, *name)) {
-                    Some(provided) if provided.owner != *ty => {
+                match target.map(|t| (t, env.method(t, *name))) {
+                    Some((_, Some(provided))) if provided.owner != *ty => {
                         cx.get::<MemberValue>(&(provided.owner, *name))
                     }
+                    Some((t, _)) if matches!(*t, TyKind::Param(_)) => Err(Unevaluated::Unbound),
                     _ => Err(Unevaluated::Provided),
                 }
             }

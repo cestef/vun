@@ -20,9 +20,11 @@
 use std::hash::{Hash, Hasher};
 
 mod codec;
+mod located;
 mod resolve;
 mod via;
 
+pub use located::Located;
 pub use resolve::Resolve;
 pub use via::Via;
 
