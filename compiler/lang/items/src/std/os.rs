@@ -47,7 +47,7 @@ pub const pause: Item = Item::new(&["std", "os", "pause"]);
 /// until then.
 pub const spawn: Item = Item::new(&["std", "os", "spawn"]);
 /// Waits for the thread of `thread` to end, then copies its context back to the `bytes` at
-/// `context` and gives back what it held.
+/// `context`, gives back what it held and tells how it ended.
 pub const join: Item = Item::new(&["std", "os", "join"]);
 /// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
 /// nanoseconds past them.

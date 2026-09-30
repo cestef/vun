@@ -166,7 +166,7 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> lang.never {
         std.trace.trapped(t, trap);
-        end(std.os.trapped)
+        if std.os.thread.trapped(t) { std.os.linux.kernel.thread.end() } else { end(std.os.trapped) }
     };
 
     /// The operations of the checks of unsafe code, for a program built with checks.

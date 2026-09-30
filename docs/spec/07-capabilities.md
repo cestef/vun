@@ -89,6 +89,12 @@ itself lays out each thread's block and sets the thread pointer (spec 08, sectio
   assignment out of range, a zero divisor, an unproven index, unwrapping `.none`, and
   `std.panic.fail(reason)`, whose compile-time `lang.panic.Reason` (`.message(text)` or
   `.assertion(source, origin)`) makes each distinct reason its own site. There is no unwinding.
+- **The execution context is the thread.** A trap in a thread a runtime spawned ends that thread
+  alone: the handler keeps the trap where the runtime keeps how the thread ended
+  (`std.os.thread.Ended`), then ends the thread, and `Thread.join` gives `.err(trap)` in place of
+  what the closure returned. A trap in the thread the program started in, or on a target without
+  threads, ends the program. Nothing runs on the way out: `defer` does not run, and what the thread
+  held stays held. At compile time a trap ends the evaluation of the call it is in: the same rule.
 - A trap calls `lang.panic.trap`, a typed link symbol that the program's runtime provides
   (spec 08). Every trap site passes a 32-bit **site id**, so a trap costs a call and a constant.
 - A program whose runtime declares the link symbol `lang.trace.symbols.table` gets the **table

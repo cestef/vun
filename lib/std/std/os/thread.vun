@@ -6,6 +6,10 @@
 //!
 //! A runtime starts a thread through `std.os.spawn`, with a function of this namespace and a copy
 //! of the thread's context it keeps until `std.os.join` copies it back.
+//!
+//! A trap ends the thread it happens in (spec 07, section 3): the runtime's handler keeps the trap
+//! where `join` reads how the thread ended, and ends that thread alone. A trap in the thread the
+//! program started in ends the program.
 
 /// What a runtime starts a thread at: a function given the address of the thread's context.
 Start := #[abi.c] (context: usize) -> ();
@@ -15,15 +19,40 @@ Start := #[abi.c] (context: usize) -> ();
 align: usize = 16;
 
 /// Where a runtime places a thread's pieces in memory it mapped for the thread, ending at `end`:
-/// its own record of `Record` at the top, then the copy of a context of `bytes` below it.
+/// its own record of `Record` at the top, how the thread ended below it, then the copy of a
+/// context of `bytes`.
 Placed := struct {
     record: usize,
+    ended: usize,
     context: usize,
 
     of := ($Record: type, end: usize, bytes: usize) -> Placed {
         record := down((end - lang.meta.size(Record)).wrap(usize));
-        .{ .record = record, .context = down((record - bytes).wrap(usize)) }
+        ended := down((record - lang.meta.size(Ended)).wrap(usize));
+        .{ .record = record, .ended = ended, .context = down((ended - bytes).wrap(usize)) }
     };
+
+    /// Writes how the thread ended before it begins: returned, until a trap says otherwise.
+    begin := unsafe (self: &Placed) { unsafe lang.mem.pointer_at(Ended, self.ended).write(.returned); };
+};
+
+/// How a thread ended, which its runtime keeps at `Placed.ended` and `std.os.join` gives back.
+Ended := enum {
+    returned,
+    trapped(lang.panic.Trap),
+};
+
+/// Where the calling thread's runtime keeps how it ended, which the runtime sets when the thread
+/// begins; 0 in the thread the program started in.
+ending: std.sync.Local(usize) = .init(0);
+
+/// Keeps the trap `t` as how the calling thread ended, and tells whether a runtime spawned the
+/// thread: a trap in the thread the program started in ends the program instead.
+trapped := (t: &lang.panic.Trap) -> bool {
+    at := ending.get();
+    if at == 0 { return false; }
+    unsafe lang.mem.pointer_at(Ended, at).write(.trapped(t.*));
+    true
 };
 
 /// `at` rounded down to `align`.
@@ -53,14 +82,17 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
         .ok(.{ ._f = f, ._handle = handle })
     };
 
-    /// Waits for the thread to end, and gives what its closure returned.
-    join := (self: Thread(R, F)) -> R {
+    /// Waits for the thread to end, and gives what its closure returned, or the trap that ended
+    /// it.
+    join := (self: Thread(R, F)) -> Result(R, lang.panic.Trap) {
         .{ ._f = f, ._handle = handle } := self;
         mut context := Context{ .f = std.ptr.to(F, f), .result = .none, .spawn = .{} };
-        unsafe std.os.join(handle, context.bytes(), lang.meta.size(Context));
-        match context.result {
-            .some(result) => result,
-            .none => lang.panic.fail(.message("a thread ended without returning")),
+        match unsafe std.os.join(handle, context.bytes(), lang.meta.size(Context)) {
+            .trapped(t) => .err(t),
+            .returned => match context.result {
+                .some(result) => .ok(result),
+                .none => lang.panic.fail(.message("a thread returned without its result")),
+            },
         }
     };
 

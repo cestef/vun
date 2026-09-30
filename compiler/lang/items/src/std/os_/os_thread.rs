@@ -12,8 +12,17 @@ pub const Start: Item = Item::new(&["std", "os", "thread", "Start"]);
 /// builds for.
 pub const align: Item = Item::new(&["std", "os", "thread", "align"]);
 /// Where a runtime places a thread's pieces in memory it mapped for the thread, ending at `end`:
-/// its own record of `Record` at the top, then the copy of a context of `bytes` below it.
+/// its own record of `Record` at the top, how the thread ended below it, then the copy of a
+/// context of `bytes`.
 pub const Placed: Item = Item::new(&["std", "os", "thread", "Placed"]);
+/// How a thread ended, which its runtime keeps at `Placed.ended` and `std.os.join` gives back.
+pub const Ended: Item = Item::new(&["std", "os", "thread", "Ended"]);
+/// Where the calling thread's runtime keeps how it ended, which the runtime sets when the thread
+/// begins; 0 in the thread the program started in.
+pub const ending: Item = Item::new(&["std", "os", "thread", "ending"]);
+/// Keeps the trap `t` as how the calling thread ended, and tells whether a runtime spawned the
+/// thread: a trap in the thread the program started in ends the program instead.
+pub const trapped: Item = Item::new(&["std", "os", "thread", "trapped"]);
 /// `at` rounded down to `align`.
 pub const down: Item = Item::new(&["std", "os", "thread", "down"]);
 /// A thread running a closure of type `F` that returns `R`: linear, joined once.

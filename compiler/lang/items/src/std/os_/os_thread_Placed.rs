@@ -7,5 +7,8 @@
 )]
 use crate::Item;
 pub const record: Item = Item::new(&["std", "os", "thread", "Placed", "record"]);
+pub const ended: Item = Item::new(&["std", "os", "thread", "Placed", "ended"]);
 pub const context: Item = Item::new(&["std", "os", "thread", "Placed", "context"]);
 pub const of: Item = Item::new(&["std", "os", "thread", "Placed", "of"]);
+/// Writes how the thread ended before it begins: returned, until a trap says otherwise.
+pub const begin: Item = Item::new(&["std", "os", "thread", "Placed", "begin"]);

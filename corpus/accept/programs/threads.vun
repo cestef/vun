@@ -1,19 +1,26 @@
 //! Threads summing halves of an array each, borrowed by both, joined for their sums (spec 08,
-//! section 2). A system running one thread sums both halves on it.
+//! section 2). A system running one thread sums both halves on it. A third thread reads past the
+//! array: the trap ends that thread alone, and joining it gives the trap (spec 07, section 3).
 
 start := std.os.start(main);
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     items: [8]u8 = [1, 2, 3, 4, 5, 6, 7, 8];
+    beyond := (sys.args().len() + 8).wrap(usize);
     mut low := [&items] () -> u32 { items[0] + items[1] + items[2] + items[3] };
     mut high := [&items] () -> u32 { items[4] + items[5] + items[6] + items[7] };
+    mut past := [&items, beyond] () -> u8 { items[beyond] };
     sum := match sys.spawn(&mut low) {
         .ok(first) => match sys.spawn(&mut high) {
-            .ok(second) => first.join() + second.join(),
-            .err(_) => first.join() + high(),
+            .ok(second) => first.join().expect("the first half trapped") + second.join().expect("the second half trapped"),
+            .err(_) => first.join().expect("the first half trapped") + high(),
         },
-        .err(.unsupported) => low() + high(),
+        .err(.unsupported) => return std.os.Exit.of((low() + high()).to(Int(0..=125))),
         .err(_) => return .code(1),
     };
-    std.os.Exit.of(sum.to(Int(0..=125)))
+    trapped := match sys.spawn(&mut past) {
+        .ok(t) => match t.join() { .ok(_) => false, .err(_) => true },
+        .err(_) => false,
+    };
+    if trapped { std.os.Exit.of(sum.to(Int(0..=125))) } else { .code(2) }
 };

@@ -6,8 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The C library's handle, which `pthread_create` writes first.
+/// The C library's handle, which `pthread_create` writes, perhaps once the thread began.
 pub const handle: Item = Item::new(&["std", "os", "libc", "Thread", "handle"]);
+pub const begun: Item = Item::new(&["std", "os", "libc", "Thread", "begun"]);
 pub const mapped: Item = Item::new(&["std", "os", "libc", "Thread", "mapped"]);
 pub const bytes: Item = Item::new(&["std", "os", "libc", "Thread", "bytes"]);
-pub const context: Item = Item::new(&["std", "os", "libc", "Thread", "context"]);

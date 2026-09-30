@@ -19,6 +19,10 @@ pub const start: Item = Item::new(
 pub const context: Item = Item::new(
     &["std", "os", "linux", "kernel", "thread", "Record", "context"],
 );
+/// Where how the thread ended is kept (`std.os.thread.Placed.ended`).
+pub const ended: Item = Item::new(
+    &["std", "os", "linux", "kernel", "thread", "Record", "ended"],
+);
 /// The thread's pointer, which it sets first (spec 07, section 2).
 pub const pointer: Item = Item::new(
     &["std", "os", "linux", "kernel", "thread", "Record", "pointer"],

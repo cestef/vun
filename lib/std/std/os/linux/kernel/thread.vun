@@ -27,6 +27,8 @@ Record := struct {
     mapped: usize,
     start: std.os.thread.Start,
     context: usize,
+    /// Where how the thread ended is kept (`std.os.thread.Placed.ended`).
+    ended: usize,
     /// The thread's pointer, which it sets first (spec 07, section 2).
     pointer: usize,
 };
@@ -121,13 +123,19 @@ clone := (request: Clone) -> isize {
     result.wrap(isize)
 };
 
-/// Where a new thread starts, on its own stack: sets its pointer, then runs the thread of
-/// `record`, then ends it.
+/// Where a new thread starts, on its own stack: sets its pointer and where it keeps how it
+/// ends, then runs the thread of `record`, then ends it.
 #[abi.c]
 begin := (record: usize) -> lang.never {
     held := unsafe lang.mem.pointer_at(Record, record).read();
     std.os.linux.kernel.tls.point(held.pointer);
+    std.os.thread.ending.set(held.ended);
     held.start(held.context);
+    end()
+};
+
+/// Ends the calling thread alone; the kernel then clears its id and wakes whoever joins it.
+end := () -> lang.never {
     std.os.linux.kernel.request(std.os.linux.kernel.numbers.exit, [0, 0, 0, 0, 0, 0]);
     unsafe lang.hint.unreachable()
 };
@@ -148,8 +156,10 @@ exports := struct {
                 .mapped = mapped,
                 .start = start,
                 .context = placed.context,
+                .ended = placed.ended,
                 .pointer = pointer,
             });
+            placed.begin();
             lang.mem.copy(u8, lang.mem.pointer_at(u8, placed.context), context, bytes);
             lang.mem.fill(u8, lang.mem.pointer_at(u8, stack), 0, frame);
             lang.mem.pointer_at(usize, (stack + entered).wrap(usize)).write(placed.record);
@@ -174,7 +184,7 @@ exports := struct {
     };
 
     #[link.export(std.os.symbols.join)]
-    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+    join := unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended {
         tid := unsafe lang.mem.pointer_at(u32, thread);
         mut running := unsafe lang.mem.atomic_load(u32, tid, .acquire);
         for running != 0 {
@@ -183,6 +193,8 @@ exports := struct {
         }
         held := unsafe lang.mem.pointer_at(Record, thread).read();
         unsafe lang.mem.copy(u8, context, lang.mem.pointer_at(u8, held.context), bytes);
+        ended := unsafe lang.mem.pointer_at(std.os.thread.Ended, held.ended).read();
         std.os.linux.kernel.unmap(held.mapped, mapped_bytes);
+        ended
     };
 };

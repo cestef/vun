@@ -73,9 +73,9 @@ pause: (span: std.time.Duration) -> Result((), Error) = _;
 spawn: unsafe (start: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, Error) = _;
 
 /// Waits for the thread of `thread` to end, then copies its context back to the `bytes` at
-/// `context` and gives back what it held.
+/// `context`, gives back what it held and tells how it ended.
 #[link.symbol(symbols.join)]
-join: unsafe (thread: usize, context: *u8, bytes: usize) = _;
+join: unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended = _;
 
 /// A span of time as POSIX systems take and give it (`struct timespec`): whole seconds, and the
 /// nanoseconds past them.

@@ -179,7 +179,7 @@ fn a_trap_in_inlined_code_names_each_function_it_is_inlined_into() {
     }
 }
 
-/// A trap in a closure a thread runs.
+/// A trap in a closure a thread runs, which ends that thread alone: joining it gives the trap.
 const THREADED: &str = "start := std.os.start(main);
 
 pick := (items: &[8]u8, at: usize) -> u8 { items[at] };
@@ -189,14 +189,14 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     n := (sys.args().len() + 8).wrap(usize);
     mut f := [&items, n] () -> u32 { pick(&items, n).to(u32) };
     match sys.spawn(&mut f) {
-        .ok(t) => if t.join() > 0 { .ok } else { .code(1) },
+        .ok(t) => match t.join() { .ok(_) => .code(1), .err(_) => .code(3) },
         .err(_) => .code(2),
     }
 };
 ";
 
 #[test]
-fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts_then_those_spawning_it() {
+fn a_trap_in_a_thread_ends_it_alone_naming_the_calls_up_to_where_it_starts_then_its_spawner() {
     if !cfg!(target_os = "linux") {
         return;
     }
@@ -207,7 +207,7 @@ fn a_trap_in_a_thread_names_the_calls_up_to_where_the_thread_starts_then_those_s
         let text = String::from_utf8(ran.stderr).unwrap();
         let lines: Vec<&str> = text.lines().collect();
         let at = format!("  at {file}:3:44");
-        assert_eq!(ran.status.code(), Some(101), "{backend}");
+        assert_eq!(ran.status.code(), Some(3), "{backend}: {text}");
         assert_eq!(
             lines[..4],
             ["trap", &at, "  in pick, inlined", "  in main.f, inlined"],

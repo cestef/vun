@@ -11,7 +11,8 @@ use crate::Item;
 pub const Context: Item = Item::new(&["std", "os", "thread", "Thread", "Context"]);
 /// Starts a thread running `f`.
 pub const spawn: Item = Item::new(&["std", "os", "thread", "Thread", "spawn"]);
-/// Waits for the thread to end, and gives what its closure returned.
+/// Waits for the thread to end, and gives what its closure returned, or the trap that ended
+/// it.
 pub const join: Item = Item::new(&["std", "os", "thread", "Thread", "join"]);
 /// Where the thread starts: calls the closure and puts what it returns in the context, the
 /// calls that spawned the thread kept here meanwhile.

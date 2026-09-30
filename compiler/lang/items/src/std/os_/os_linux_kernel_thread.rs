@@ -55,9 +55,11 @@ pub const frame: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "f
 /// frame pointer, which the calling thread keeps on the stack meanwhile; the new thread starts on
 /// a stack of its own and never gives it back.
 pub const clone: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "clone"]);
-/// Where a new thread starts, on its own stack: sets its pointer, then runs the thread of
-/// `record`, then ends it.
+/// Where a new thread starts, on its own stack: sets its pointer and where it keeps how it
+/// ends, then runs the thread of `record`, then ends it.
 pub const begin: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "begin"]);
+/// Ends the calling thread alone; the kernel then clears its id and wakes whoever joins it.
+pub const end: Item = Item::new(&["std", "os", "linux", "kernel", "thread", "end"]);
 /// The exports, which the runtime holds: `threads := std.os.linux.kernel.thread.exports`.
 pub const exports: Item = Item::new(
     &["std", "os", "linux", "kernel", "thread", "exports"],

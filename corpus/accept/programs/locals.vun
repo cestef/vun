@@ -15,7 +15,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     };
     add(30);
     theirs := match sys.spawn(&mut f) {
-        .ok(t) => t.join(),
+        .ok(t) => t.join().expect("the thread trapped"),
         .err(_) => 6,
     };
     if count.get() == 31 and theirs == 6 { .code(36) } else { .code(1) }

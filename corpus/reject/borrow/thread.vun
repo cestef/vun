@@ -8,7 +8,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     mut count := [&mut n] () -> u32 { n += 1; n };
     running := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) };
     count(); //~ borrow.conflict
-    running.join();
+    _ = running.join();
     forgotten := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) }; //~ std.lints.style.unused
     .ok //~ place.linear_leak
 };

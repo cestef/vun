@@ -76,15 +76,35 @@ sched_yield: unsafe () -> i32 = _;
 pthread_create: unsafe (thread: *usize, attributes: usize, start: std.os.thread.Start, context: usize) -> i32 = _;
 #[link.symbol("pthread_join"), abi.c]
 pthread_join: unsafe (thread: usize, result: usize) -> i32 = _;
+#[link.symbol("pthread_exit"), abi.c]
+pthread_exit: unsafe (result: usize) -> lang.never = _;
 
 /// What the runtime keeps of a thread, at the top of the memory mapped for its context.
 #[layout.c]
 Thread := struct {
-    /// The C library's handle, which `pthread_create` writes first.
+    /// The C library's handle, which `pthread_create` writes, perhaps once the thread began.
     handle: usize,
+    begun: Begun,
     mapped: usize,
     bytes: usize,
+};
+
+/// What a thread reads of its record when it begins, past the handle.
+#[layout.c]
+Begun := struct {
+    start: std.os.thread.Start,
     context: usize,
+    /// Where how the thread ended is kept (`std.os.thread.Placed.ended`).
+    ended: usize,
+};
+
+/// Where a thread starts, given the address of its record's `Begun`: sets where it keeps how it
+/// ends, then runs it.
+#[abi.c]
+begin := (at: usize) {
+    held := unsafe lang.mem.pointer_at(Begun, at).read();
+    std.os.thread.ending.set(held.ended);
+    held.start(held.context);
 };
 
 /// `protection` for `mmap` of memory read and written.
@@ -125,7 +145,7 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> lang.never {
         std.trace.trapped(t, trap);
-        end(std.os.trapped)
+        if std.os.thread.trapped(t) { unsafe pthread_exit(0) } else { end(std.os.trapped) }
     };
 
     /// The operations of the checks of unsafe code, for a program built with checks.
@@ -220,13 +240,15 @@ start := ($main: std.os.Main) -> type { struct {
         unsafe {
             lang.mem.pointer_at(Thread, placed.record).write(Thread{
                 .handle = 0,
+                .begun = .{ .start = thread, .context = placed.context, .ended = placed.ended },
                 .mapped = mapped,
                 .bytes = total,
-                .context = placed.context,
             });
             lang.mem.copy(u8, lang.mem.pointer_at(u8, placed.context), context, bytes);
+            placed.begin();
         }
-        failed := unsafe pthread_create(lang.mem.pointer_at(usize, placed.record), 0, thread, placed.context);
+        begun := (placed.record + lang.meta.size(usize)).wrap(usize);
+        failed := unsafe pthread_create(lang.mem.pointer_at(usize, placed.record), 0, begin, begun);
         if failed != 0 {
             unmap(mapped, total);
             return .err(system.error(failed));
@@ -235,12 +257,14 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     #[link.export(std.os.symbols.join)]
-    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+    join := unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended {
         held := unsafe lang.mem.pointer_at(Thread, thread).read();
-        unsafe {
+        ended := unsafe {
             pthread_join(held.handle, 0);
-            lang.mem.copy(u8, context, lang.mem.pointer_at(u8, held.context), bytes);
-        }
+            lang.mem.copy(u8, context, lang.mem.pointer_at(u8, held.begun.context), bytes);
+            lang.mem.pointer_at(std.os.thread.Ended, held.begun.ended).read()
+        };
         unmap(held.mapped, held.bytes);
+        ended
     };
 } };

@@ -38,8 +38,14 @@ pub const sched_yield: Item = Item::new(&["std", "os", "libc", "sched_yield"]);
 /// called alike.
 pub const pthread_create: Item = Item::new(&["std", "os", "libc", "pthread_create"]);
 pub const pthread_join: Item = Item::new(&["std", "os", "libc", "pthread_join"]);
+pub const pthread_exit: Item = Item::new(&["std", "os", "libc", "pthread_exit"]);
 /// What the runtime keeps of a thread, at the top of the memory mapped for its context.
 pub const Thread: Item = Item::new(&["std", "os", "libc", "Thread"]);
+/// What a thread reads of its record when it begins, past the handle.
+pub const Begun: Item = Item::new(&["std", "os", "libc", "Begun"]);
+/// Where a thread starts, given the address of its record's `Begun`: sets where it keeps how it
+/// ends, then runs it.
+pub const begin: Item = Item::new(&["std", "os", "libc", "begin"]);
 /// `protection` for `mmap` of memory read and written.
 pub const read_write: Item = Item::new(&["std", "os", "libc", "read_write"]);
 /// Private memory of `bytes` reserved, backed only where touched.

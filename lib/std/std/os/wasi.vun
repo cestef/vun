@@ -246,7 +246,7 @@ start := ($main: std.os.Main) -> type { struct {
 
     /// No thread was started to join.
     #[link.export(std.os.symbols.join)]
-    join := unsafe (thread: usize, context: *u8, bytes: usize) {
+    join := unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended {
         lang.panic.fail(.message("a module runs one thread, so none is joined"))
     };
 } };

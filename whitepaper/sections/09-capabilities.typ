@@ -73,7 +73,10 @@ runtime exports.
 Recoverable errors are `Result(T, E)` values; `e?` propagates them and `e.map_err(f)?` converts
 them explicitly. A _trap_ ends the current execution context. The trap sites are a failed `.to`, a
 compound assignment out of range, a division by a possibly zero divisor, an unproven index,
-unwrapping an absent optional, and `std.panic.fail(reason)`. There is no unwinding. A trap calls
+unwrapping an absent optional, and `std.panic.fail(reason)`. There is no unwinding. The execution
+context is the thread: a trap in a spawned thread ends that thread alone, and joining it yields
+the trap in place of the thread's result, while a trap in the initial thread ends the program. The
+rule is general, and it is also what isolates tests from one another (@sec-tooling). A trap calls
 `lang.panic.trap`, a typed link symbol provided by the program's runtime, and passes a 32-bit site
 identifier. The table mapping identifiers to origin chains and messages is emitted into a section
 that is not loaded, so on embedded targets a trap costs a call and a constant and still reports

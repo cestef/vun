@@ -101,7 +101,8 @@ what is left.
 **Threads.** `System.spawn(&mut f)` starts a thread running the closure `f` (any
 `lang.ops.Call((), R)`) and gives a `std.os.thread.Thread(R, F)`: linear, and tied to the borrow
 of `f`, so the closure and what it borrows stay, and are not reached otherwise, until `join`,
-which consumes the thread and gives what `f` returned; a thread never joined is
+which consumes the thread and gives what `f` returned, or `.err(trap)` when a trap ended the
+thread (spec 07, section 3); a thread never joined is
 `place.linear_leak`, a closure reached while its thread runs `borrow.conflict`. Values safe to
 share are safe across threads (spec 07, section 2), so threads borrow what the one starting them
 goes on reading. A runtime starts a thread through `std.os.symbols.{spawn, join}` with a
