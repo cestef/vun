@@ -166,6 +166,9 @@ link := struct {
     unavailable := diag.Diag{};
     unsupported := diag.Diag{};
     export_mismatch := diag.Diag{};
+    undefined := diag.Diag{};
+    duplicate := diag.Diag{};
+    malformed := diag.Diag{};
 };
 
 /// Calling conventions (spec 07, section 4).

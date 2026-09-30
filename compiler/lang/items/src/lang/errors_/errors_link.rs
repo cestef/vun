@@ -11,3 +11,6 @@ pub const unsupported: Item = Item::new(&["lang", "errors", "link", "unsupported
 pub const export_mismatch: Item = Item::new(
     &["lang", "errors", "link", "export_mismatch"],
 );
+pub const undefined: Item = Item::new(&["lang", "errors", "link", "undefined"]);
+pub const duplicate: Item = Item::new(&["lang", "errors", "link", "duplicate"]);
+pub const malformed: Item = Item::new(&["lang", "errors", "link", "malformed"]);

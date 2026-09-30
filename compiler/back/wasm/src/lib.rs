@@ -54,7 +54,7 @@ impl Backend for WasmBackend {
         if !FORMAT.is(request.target.object_format) {
             return Err(diag.error(Missing::Format(request.target.object_format).diagnostic(INFO.id)));
         }
-        let module = build::module(request.unit, request.lines)
+        let module = build::module(request.unit, request.lines, request.target.threads)
             .map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         if let Err(invalid) = module.verify() {
             panic!("the wasm backend made an invalid module: {invalid}");

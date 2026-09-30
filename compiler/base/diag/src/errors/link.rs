@@ -5,3 +5,6 @@ pub const LINK: DiagId = DiagId::new("lang.errors.link");
 pub const LINK_UNAVAILABLE: DiagId = DiagId::new("lang.errors.link.unavailable");
 pub const LINK_UNSUPPORTED: DiagId = DiagId::new("lang.errors.link.unsupported");
 pub const LINK_EXPORT_MISMATCH: DiagId = DiagId::new("lang.errors.link.export_mismatch");
+pub const LINK_UNDEFINED: DiagId = DiagId::new("lang.errors.link.undefined");
+pub const LINK_DUPLICATE: DiagId = DiagId::new("lang.errors.link.duplicate");
+pub const LINK_MALFORMED: DiagId = DiagId::new("lang.errors.link.malformed");

@@ -3,46 +3,15 @@
 
 use vun_bytes::Out;
 use vun_index::Idx;
+use vun_wasm::format::{FUNCREF, LINKING, MAGIC, MUTABLE, RELOC, VERSION, op};
+use vun_wasm::{External, Limits, PAGE, Section, Wasm};
 
-use super::code::{Body, END, I32_CONST};
-use super::link::{Reloc, RelocKind, Wasm, relocs};
-use super::{Def, ENV, Func, FuncType, Kind, Linker, Module, SymbolId, TypeId, ValType};
-
-const MAGIC: &[u8] = b"\0asm";
-const VERSION: u32 = 1;
-
-/// Section ids.
-const CUSTOM: u8 = 0;
-const TYPE: u8 = 1;
-const IMPORT: u8 = 2;
-const FUNCTION: u8 = 3;
-const CODE: u8 = 10;
-const DATA: u8 = 11;
-
-/// Import kinds.
-const FUNC_IMPORT: u8 = 0;
-const TABLE_IMPORT: u8 = 1;
-const MEMORY_IMPORT: u8 = 2;
-const GLOBAL_IMPORT: u8 = 3;
+use super::code::Body;
+use super::link::{Reloc, RelocKind, relocs};
+use super::{Def, ENV, Func, Kind, Linker, Module, SymbolId, TypeId, ValType};
 
 /// What the linker defines for every object's memory.
 const MEMORY: &[u8] = b"__linear_memory";
-
-const FUNC_TYPE: u8 = 0x60;
-const FUNCREF: u8 = 0x70;
-const MUTABLE: u8 = 1;
-const PAGE: u64 = 65536;
-
-impl ValType {
-    const fn code(self) -> u8 {
-        match self {
-            Self::I32 => 0x7f,
-            Self::I64 => 0x7e,
-            Self::F32 => 0x7d,
-            Self::F64 => 0x7c,
-        }
-    }
-}
 
 impl TypeId {
     pub(super) fn number(self) -> u32 {
@@ -58,17 +27,15 @@ struct Sections {
 
 impl Sections {
     /// Appends a section; gives its number.
-    fn add(&mut self, id: u8, payload: &Out) -> u32 {
-        self.out.subsection(id, payload);
+    fn add(&mut self, section: Section, payload: &Out) -> u32 {
+        self.out.section(section, payload);
         self.count += 1;
         self.count - 1
     }
 
-    fn custom(&mut self, name: &[u8], payload: &Out) {
-        let mut out = Out::default();
-        out.name(name);
-        out.bytes(&payload.0);
-        self.add(CUSTOM, &out);
+    fn custom(&mut self, name: &str, payload: &Out) {
+        self.out.custom(name, payload);
+        self.count += 1;
     }
 }
 
@@ -85,28 +52,25 @@ impl Module {
         sections.out.bytes(MAGIC);
         sections.out.u32(VERSION);
         let mut types = Out::default();
-        types.uleb(self.types.len() as u64);
-        for (_, ty) in self.types.iter() {
-            types.func_type(ty);
-        }
-        sections.add(TYPE, &types);
-        sections.add(IMPORT, &self.imports(placed.last().copied().unwrap_or(0)));
+        types.vector(self.types.iter(), |out, (_, ty)| out.func_type(ty));
+        sections.add(Section::Type, &types);
+        sections.add(Section::Import, &self.imports(placed.last().copied().unwrap_or(0)));
         let mut declared = Out::default();
         declared.uleb(self.funcs.len() as u64);
         for f in &self.funcs {
             declared.uleb(u64::from(f.ty.number()));
         }
-        sections.add(FUNCTION, &declared);
+        sections.add(Section::Function, &declared);
         let (code, code_relocs) = self.code(&functions, &placed);
-        let code_section = sections.add(CODE, &code);
+        let code_section = sections.add(Section::Code, &code);
         let (data, data_relocs) = self.data(&placed);
-        let data_section = (!self.segments.is_empty()).then(|| sections.add(DATA, &data));
-        sections.custom(b"linking", &self.linking(&functions));
+        let data_section = (!self.segments.is_empty()).then(|| sections.add(Section::Data, &data));
+        sections.custom(LINKING, &self.linking(&functions));
         if !code_relocs.is_empty() {
-            sections.custom(b"reloc.CODE", &relocs(code_section, &code_relocs));
+            sections.custom(&[RELOC, "CODE"].concat(), &relocs(code_section, &code_relocs));
         }
         if let Some(section) = data_section.filter(|_| !data_relocs.is_empty()) {
-            sections.custom(b"reloc.DATA", &relocs(section, &data_relocs));
+            sections.custom(&[RELOC, "DATA"].concat(), &relocs(section, &data_relocs));
         }
         sections.out.0
     }
@@ -134,29 +98,30 @@ impl Module {
             entries.push(out);
         };
         import(ENV.as_bytes(), MEMORY, &|out| {
-            out.u8(MEMORY_IMPORT);
-            out.u8(0);
-            out.uleb(memory.div_ceil(PAGE));
+            out.u8(External::Memory as u8);
+            out.limits(Limits {
+                min: u32::try_from(memory.div_ceil(PAGE)).expect("memory fits 4 GiB"),
+                max: None,
+            });
         });
         if self.linker(Linker::StackPointer).is_some() {
             import(ENV.as_bytes(), Linker::StackPointer.name().as_bytes(), &|out| {
-                out.u8(GLOBAL_IMPORT);
+                out.u8(External::Global as u8);
                 out.u8(ValType::I32.code());
                 out.u8(MUTABLE);
             });
         }
         if self.linker(Linker::Table).is_some() {
             import(ENV.as_bytes(), Linker::Table.name().as_bytes(), &|out| {
-                out.u8(TABLE_IMPORT);
+                out.u8(External::Table as u8);
                 out.u8(FUNCREF);
-                out.u8(0);
-                out.uleb(0);
+                out.limits(Limits { min: 0, max: None });
             });
         }
         for (_, sym) in self.symbols.iter() {
             if let Kind::Func { ty, def: Def::Imported { module } } = &sym.kind {
                 import(module.as_str().as_bytes(), sym.name.as_str().as_bytes(), &|out| {
-                    out.u8(FUNC_IMPORT);
+                    out.u8(External::Func as u8);
                     out.uleb(u64::from(ty.number()));
                 });
             }
@@ -201,7 +166,7 @@ impl Module {
         for op in &f.body {
             body.op(op);
         }
-        body.out.u8(END);
+        body.out.u8(op::END);
         (body.out, body.relocs)
     }
 
@@ -211,9 +176,7 @@ impl Module {
         out.uleb(self.segments.len() as u64);
         for (s, &at) in self.segments.iter().zip(placed) {
             out.u8(0);
-            out.u8(I32_CONST);
-            out.sleb(i64::try_from(at).expect("memory fits"));
-            out.u8(END);
+            out.active(i64::try_from(at).expect("memory fits"));
             out.uleb(s.bytes.len() as u64);
             let start = u32::try_from(out.here()).expect("data fits 4 GiB");
             for &(offset, sym, addend) in &s.relocs {
@@ -226,21 +189,5 @@ impl Module {
             out.bytes(&s.bytes);
         }
         (out, all)
-    }
-}
-
-trait Types {
-    fn func_type(&mut self, ty: &FuncType);
-}
-
-impl Types for Out {
-    fn func_type(&mut self, ty: &FuncType) {
-        self.u8(FUNC_TYPE);
-        for list in [&ty.params, &ty.results] {
-            self.uleb(list.len() as u64);
-            for t in list {
-                self.u8(t.code());
-            }
-        }
     }
 }

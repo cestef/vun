@@ -19,27 +19,13 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 
 use op::Op;
+pub use vun_wasm::{ENV, FuncType, ValType};
 
 index! {
     /// A function type, by its place in the type section.
     pub struct TypeId;
     /// A symbol, by its place in the symbol table relocations name.
     pub struct SymbolId;
-}
-
-/// A value type.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ValType {
-    I32,
-    I64,
-    F32,
-    F64,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FuncType {
-    pub params: Vec<ValType>,
-    pub results: Vec<ValType>,
 }
 
 /// A defined function: its type, the locals past its parameters, its body up to the `end`
@@ -65,9 +51,6 @@ pub enum Kind {
     /// What the linker defines for every object.
     Linker(Linker),
 }
-
-/// The import module of what another object or the linker defines.
-pub const ENV: &str = "env";
 
 /// What the linker defines for every object, imported from [`ENV`] under its name.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -121,6 +104,8 @@ pub struct Segment {
     pub bytes: Vec<u8>,
     pub align: u64,
     pub writable: bool,
+    /// The section a source places it in (`#[link.section]`), which names it for the linker.
+    pub section: Option<Symbol>,
     /// The addresses written into the bytes: at an offset, of what a symbol names plus an addend.
     pub relocs: Vec<(u32, SymbolId, i32)>,
 }

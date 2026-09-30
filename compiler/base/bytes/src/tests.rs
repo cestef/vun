@@ -26,3 +26,21 @@ fn a_string_table_starts_with_the_empty_string_and_names_each_by_its_start() {
     assert_eq!(strings.into_bytes(), b"\0ab\0\0");
     assert_eq!(Strings::default().into_bytes(), [0]);
 }
+
+#[test]
+fn padded_fields_are_rewritten_in_place() {
+    let mut out = Out::default();
+    out.u8(0xaa);
+    out.uleb_padded(0);
+    out.sleb_padded(0);
+    out.u32(0);
+    out.rewrite_uleb_padded(1, 3);
+    out.rewrite_sleb_padded(6, -2);
+    out.rewrite_u32(11, 0x0102_0304);
+    let mut expected = Out::default();
+    expected.u8(0xaa);
+    expected.uleb_padded(3);
+    expected.sleb_padded(-2);
+    expected.u32(0x0102_0304);
+    assert_eq!(out, expected);
+}

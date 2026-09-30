@@ -3,7 +3,8 @@
 //! (`Reads::Signed`) extends it first, and every result of one is masked.
 
 use vun_backend::{Lack, Missing};
-use vun_lir::{BinOp, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
+use vun_lir::{Address, BinOp, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
+use vun_target::Threads;
 
 use super::abi::{narrow, val};
 use super::func::Lower;
@@ -64,7 +65,10 @@ impl Lower<'_> {
             }
             InstKind::SlotAddr(slot) => self.slot_addr(slot),
             InstKind::Addr(address) => self.op(Op::Address(self.cx.symbol(address), 0)),
-            InstKind::ThreadAddr(_) => return Err(Missing::PerThread.at(at)),
+            InstKind::ThreadAddr(data) => match self.cx.threads {
+                Threads::One => self.op(Op::Address(self.cx.symbol(Address::Data(data)), 0)),
+                Threads::Many => return Err(Missing::PerThread.at(at)),
+            },
             InstKind::Copy { to, from, bytes } => {
                 self.get(to);
                 self.get(from);

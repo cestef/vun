@@ -1,11 +1,13 @@
 //! How a LIR signature is passed in wasm (spec 13, section 8.4): clang's wasm32 C convention,
 //! which Vun's follows too. Scalars are values; a record of one scalar is that scalar; another
 //! record is the address of a copy the caller makes; a result in memory is written through an
-//! address passed first; narrow integers are extended as their signature says.
+//! address passed first; narrow integers are extended as their signature says; variadic
+//! arguments are written into a buffer whose address is passed last (`varargs`).
 
 use vun_backend::Missing;
 use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
 
+use super::varargs::Varargs;
 use crate::module::{FuncType, ValType};
 
 /// How one LIR value of a signature's parameters is passed.
@@ -42,8 +44,10 @@ pub(super) struct One {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Passing {
-    /// For each parameter value of the LIR signature.
+    /// For each value of the LIR signature's fixed parameters.
     pub(super) parts: Vec<Part>,
+    /// How the variadic arguments are passed, if the signature has them.
+    pub(super) varargs: Option<Varargs>,
     pub(super) given: Given,
     pub(super) ty: FuncType,
 }
@@ -70,12 +74,11 @@ impl Passing {
         if signature.conv == Conv::Naked {
             return Err(Missing::Naked);
         }
-        // Clang passes variadic arguments in a buffer the caller fills, which calls do not build.
-        if signature.variadic.is_some() {
-            return Err(Missing::Variadic);
-        }
+        let fixed = signature.variadic.unwrap_or(signature.params.len());
+        let (params, variadic) = signature.params.split_at(fixed);
+        let varargs = signature.variadic.map(|_| Varargs::of(variadic)).transpose()?;
         let mut parts = Vec::new();
-        for p in &signature.params {
+        for p in params {
             match p {
                 &AbiType::Wide { limbs, .. } => {
                     parts.extend(std::iter::repeat_n(Part::Value(ValType::I64, None), usize::from(limbs)));
@@ -93,13 +96,15 @@ impl Passing {
             },
         };
         let through = (given == Given::Through).then_some(ValType::I32);
-        let params = through.into_iter().chain(parts.iter().map(|p| p.passed())).collect();
+        // The buffer of variadic arguments is passed after the fixed ones.
+        let buffer = varargs.as_ref().map(|_| ValType::I32);
+        let params = through.into_iter().chain(parts.iter().map(|p| p.passed())).chain(buffer).collect();
         let results = match given {
             Given::Value(ty, _) => vec![ty],
             Given::Scalar(one) => vec![one.held],
             Given::None | Given::Through => Vec::new(),
         };
-        Ok(Self { parts, given, ty: FuncType { params, results } })
+        Ok(Self { parts, varargs, given, ty: FuncType { params, results } })
     }
 
     fn part(p: &AbiType) -> Result<Part, Missing> {

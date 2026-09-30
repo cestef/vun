@@ -11,7 +11,7 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-gnu", "link-msvc", "link-external"]
+default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-wasm", "link-gnu", "link-msvc", "link-external"]
 backend-c = ["dep:vun-backend-c"]
 backend-native = ["dep:vun-backend-native"]
 backend-wasm = ["dep:vun-backend-wasm"]
@@ -23,6 +23,7 @@ link-wild = ["dep:vun-link-wild"]
 link-mold = ["dep:vun-link-mold"]
 link-ar = ["dep:vun-link-ar"]
 link-lld = ["dep:vun-link-lld"]
+link-wasm = ["dep:vun-link-wasm"]
 link-gnu = ["dep:vun-link-gnu"]
 link-msvc = ["dep:vun-link-msvc"]
 link-external = ["dep:vun-link-external"]
@@ -82,6 +83,7 @@ vun-link-wild = { workspace = true, optional = true }
 vun-link-mold = { workspace = true, optional = true }
 vun-link-ar = { workspace = true, optional = true }
 vun-link-lld = { workspace = true, optional = true }
+vun-link-wasm = { workspace = true, optional = true }
 vun-link-gnu = { workspace = true, optional = true }
 vun-link-msvc = { workspace = true, optional = true }
 vun-link-external = { workspace = true, optional = true }
@@ -96,6 +98,9 @@ vun-inline.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true
 criterion.workspace = true
+# An independent validator of the programs the wasm linker links.
+wasmparser.workspace = true
+vun-wasm.workspace = true
 
 [[bench]]
 name = "compile"

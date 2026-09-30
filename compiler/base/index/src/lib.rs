@@ -120,11 +120,12 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (I, &T)> {
+    #[must_use]
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (I, &T)> + DoubleEndedIterator {
         self.raw.iter().enumerate().map(|(i, v)| (I::new(i), v))
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (I, &mut T)> {
+    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (I, &mut T)> + DoubleEndedIterator {
         self.raw.iter_mut().enumerate().map(|(i, v)| (I::new(i), v))
     }
 }

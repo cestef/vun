@@ -17,6 +17,14 @@ pub enum Bound {
 }
 
 impl Bound {
+    /// The symbol a linker defines at this bound of the section named `section`, with or without
+    /// its leading `.`.
+    #[must_use]
+    pub fn of(self, section: &str) -> Symbol {
+        let name = section.trim_start_matches(SECTION);
+        Symbol::intern(&[PREFIX, name, SEPARATOR, self.suffix()].concat())
+    }
+
     const fn suffix(self) -> &'static str {
         match self {
             Self::Start => "start",
@@ -42,8 +50,7 @@ impl SectionPlacement {
     /// The symbol the linker defines at `bound` of this section.
     #[must_use]
     pub fn bound(&self, bound: Bound) -> Symbol {
-        let name = self.name.as_str().trim_start_matches(SECTION);
-        Symbol::intern(&[PREFIX, name, SEPARATOR, bound.suffix()].concat())
+        bound.of(self.name.as_str())
     }
 }
 

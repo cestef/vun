@@ -2,6 +2,7 @@
 //! linker rewrites, padded to a fixed width.
 
 use vun_bytes::{Out, PADDED};
+use vun_wasm::format::op::{END, I32_CONST};
 
 use super::link::{Reloc, RelocKind};
 use super::op::{Num, Op};
@@ -9,8 +10,6 @@ use super::{Kind, Linker, Module, SymbolId};
 
 /// The block type of blocks taking and giving nothing.
 const EMPTY: u8 = 0x40;
-pub(super) const END: u8 = 0x0b;
-pub(super) const I32_CONST: u8 = 0x41;
 
 /// A function body being encoded, with the relocations of its immediates.
 pub(super) struct Body<'m> {

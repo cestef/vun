@@ -7,6 +7,7 @@ mod control;
 mod func;
 mod inst;
 mod select;
+mod varargs;
 
 use vun_backend::{Lack, Lines, Missing};
 use vun_index::{Idx, IndexVec};
@@ -15,6 +16,7 @@ use vun_lir::analysis::Reached;
 use vun_lir::{Address, Callee, DataId, FuncId, ImportId, ImportKind, InstKind, Linkage, Unit};
 use vun_origin::OriginId;
 use vun_par::Parallel;
+use vun_target::Threads;
 
 use crate::module::{Binding, Def, ENV, Func, Kind, Linker, Module, Segment, Sym, SymbolId};
 use abi::Passing;
@@ -34,6 +36,9 @@ struct Cx<'a> {
     /// How each imported function is passed.
     imported: IndexVec<ImportId, Option<Passing>>,
     stack_pointer: SymbolId,
+    /// How many threads the target's programs run: with one, storage per thread is the
+    /// program's.
+    threads: Threads,
 }
 
 impl Cx<'_> {
@@ -54,7 +59,7 @@ impl Cx<'_> {
 ///
 /// # Errors
 /// Returns the first thing it holds that wasm cannot express.
-pub(super) fn module(unit: &Unit, lines: &dyn Lines) -> Result<Module, Lack> {
+pub(super) fn module(unit: &Unit, lines: &dyn Lines, threads: Threads) -> Result<Module, Lack> {
     let mut module = Module::default();
     let stack_pointer = module.linked(Linker::StackPointer);
     module.linked(Linker::Table);
@@ -99,16 +104,18 @@ pub(super) fn module(unit: &Unit, lines: &dyn Lines) -> Result<Module, Lack> {
     }
     let mut data = IndexVec::new();
     for (id, d) in unit.data.iter() {
-        if d.section.is_some() {
-            return Err(Missing::Section.at(d.origin));
-        }
-        let segment =
-            Segment { bytes: d.bytes.clone(), align: d.align, writable: d.writable, relocs: Vec::new() };
+        let segment = Segment {
+            bytes: d.bytes.clone(),
+            align: d.align,
+            writable: d.writable,
+            section: d.section,
+            relocs: Vec::new(),
+        };
         module.segments.push(segment);
         let (name, binding) = named(d.linkage, d.origin, &id.index());
         data.push(module.symbols.push(Sym { name, kind: Kind::Data(Some(id.index())), binding }));
     }
-    let mut cx = Cx { unit, module, funcs, imports, data, passings, imported, stack_pointer };
+    let mut cx = Cx { unit, module, funcs, imports, data, passings, imported, stack_pointer, threads };
     cx.relocate()?;
     cx.indirect()?;
     let bodies: Vec<(FuncId, &vun_lir::Function)> =

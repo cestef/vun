@@ -21,7 +21,13 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: literals identified by their instantiation (362) and property tests' gaps (363). A
+Last landed: the wasm target links in process (388). `vun-link-wasm` is `wasi.wasm32.p1`'s linker
+in place of `wasm-ld` (still `--linker lld`): strong over weak, COMDATs, unreached code and data
+left out, the stack first in memory, `__wasm_call_ctors` and the bounds of named sections, weak
+undefined functions as stubs that trap; `vun-wasm` holds the encoding and reads objects. The wasm
+backend places data in sections, gives storage per thread as the program's on one thread, and calls
+C variadic functions through clang's buffer. `tests/driver/wasm.rs` links the backend's objects with
+clang's and runs both linkers' programs, which agree. Before that: literals identified by their instantiation (362) and property tests' gaps (363). A
 function literal, closure or type literal in a body with `$` parameters and run-time ones is
 evaluated under the body's instantiation (`Func::within` and a nominal type's identity hold an
 `Instantiation`; a compile-time call is the one binding every parameter), so `() -> u16 { n + n }`
@@ -123,7 +129,7 @@ code, failing arguments as typed lines), 381 (a name in a pattern always binds;
 `suspicious.shadowing` reports one hiding a constant), 382 (`lang.int.least` and `greatest`,
 integers drawn by distance from 0 then side), 383 (generic bodies checked per instantiation,
 not typed abstractly), 384 (benchmarks, `vun bench`), 386 (simulations; shrinking keeps only
-smaller cases) and 387 (coverage, `--cover`, `vun fuzz`). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+smaller cases), 387 (coverage, `--cover`, `vun fuzz`) and 388 (the wasm linker). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -195,6 +201,17 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Where the system runs one thread (WASI), the first trap ends the run.
 
 ## Next steps, most useful first
+
+The owner asked for a website with a playground: `site/` (Vite, TypeScript; the landing, the
+spec reader and the brand's motion ported from `assets/motion`) is built but not committed, since
+`docs/dev/repository.md` calls `site/` the owner's. The playground comes next: the driver builds
+for `wasm32-wasip1` once `etcetera` is gated off WASI, `vun-bind` is a dev-dependency and
+`std::process::id` has a WASI fallback in `vun-fs` (a study built and ran `tour.vun` under
+wasmtime: 5.8 MB, 1.8 MB gzipped, 0.34 s); then an entry taking source text, the library served
+at `/lib` (`VUN_LIBRARY`) through a WASI shim with a memory file system, and the in-process wasm
+linker for the program. The wasm backend still refuses inline assembly (no `lang.arch.wasm32`
+table), naked functions and addresses past a function's start, and reports no frame sizes or
+debug information.
 
 The owner's queue, in order: the editor polish of item 0 (hover on
 a declaration's own name and on type annotations, stopping a run, views of the function at the

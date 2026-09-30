@@ -69,7 +69,9 @@ Where the code for each part lives. The workspace layout and its layering rules 
   list and adds the C compiler's `optimize` flags; refusals are `backend.unavailable`,
   `backend.unsupported`, `backend.unchosen`.
 - **Linkers** (`compiler/link`): `LinkPlan`, `LinkerInfo` with readiness; `gnu`, `mold` and
-  `wild` link (through the target's C compiler); `lld`, `msvc` and `external` are stubs.
+  `wild` link (through the target's C compiler); `lld` runs `wasm-ld` and `ld64.lld`; `wasm` links
+  WebAssembly objects in process (read with `vun-wasm`, `compiler/object/wasm`), WASI's linker;
+  `msvc` and `external` are stubs.
 - **Renderers** (`compiler/render`): diagnostics as short lines, annotated snippets, JSON; SARIF
   is a stub.
 - **Packages** (`compiler/pkg`): `vun-build` (manifests, locks, the store, `toolchain`: the

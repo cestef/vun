@@ -1,0 +1,22 @@
+[package]
+name = "vun-link-wasm"
+description = "The wasm linker: relocatable WebAssembly objects linked into a program in process."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-bytes.workspace = true
+vun-diag.workspace = true
+vun-fs.workspace = true
+vun-hash.workspace = true
+vun-intern.workspace = true
+vun-link.workspace = true
+vun-target.workspace = true
+vun-trace.workspace = true
+vun-wasm.workspace = true

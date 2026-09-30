@@ -73,6 +73,7 @@ vun-asm-arm64 = { path = "compiler/asm/arm64" }
 vun-asm-thumb = { path = "compiler/asm/thumb" }
 vun-object = { path = "compiler/object/core" }
 vun-elf = { path = "compiler/object/elf" }
+vun-wasm = { path = "compiler/object/wasm" }
 vun-dwarf = { path = "compiler/object/dwarf" }
 vun-backend-wasm = { path = "compiler/back/wasm" }
 vun-backend-c = { path = "compiler/back/c" }
@@ -90,6 +91,7 @@ vun-link-wild = { path = "compiler/link/wild" }
 vun-link-mold = { path = "compiler/link/mold" }
 vun-link-ar = { path = "compiler/link/ar" }
 vun-link-lld = { path = "compiler/link/lld" }
+vun-link-wasm = { path = "compiler/link/wasm" }
 vun-link-gnu = { path = "compiler/link/gnu" }
 vun-link-msvc = { path = "compiler/link/msvc" }
 vun-link-external = { path = "compiler/link/external" }
@@ -160,6 +162,8 @@ unreachable_pub = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
+# A call with side effects inside a debug assertion is lost in release builds.
+debug_assert_with_mut_call = "warn"
 
 [profile.dev]
 debug = 1

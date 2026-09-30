@@ -104,7 +104,7 @@ cargo xtask remote --host am3.wg -- cargo nextest run   # or VUN_REMOTE=am3.wg
 `vun-build/<workspace directory>` in the host's home and runs the words there over ssh, output
 shown as it comes; each `jj` workspace has its own mirror and `target/`. A host needs rustup (the
 toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and,
-to run cross targets, its own `~/.config/vun/tools.vun` (`am3.wg` has none: its cross tests skip). The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
+to run cross targets, its own `~/.config/vun/tools.vun` (`am3.wg` has none: its cross tests skip, WASI programs among them, so the wasm linker's runs are tried on `petal.wg`). Both hosts have `wasm-tools` (`wasm-tools print`, `wasm-tools objdump`) for reading modules. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
 x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
 cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its tools file
 has rows for `linux.arm64.kernel`, `linux.arm.kernel`, `bare.thumbv7em.eabihf` and `macos.arm64.darwin`). Known host differences: Fedora 44's libclang fails
@@ -159,6 +159,7 @@ toolchain, target and checks).
 | `vun_codegen=trace` | each instruction selected |
 | `vun_backend_wasm=debug,trace` | each wasm function lowered, each instruction's code |
 | `vun_link_lld=debug` | each `wasm-ld` run |
+| `vun_link_wasm=debug` | each wasm link in process |
 | `vun_lir_passes=debug` | each function's tidy (`trace`: each pass) |
 | `vun_query=debug` | each query computed and why, shared memos named |
 | `vun_query::changed=debug` | each persisted memo computed anew, with why it was asked and how it differs from the one held; cheap alone, so it does not hide a race (`Db::first_changed` names the first) |

@@ -26,7 +26,7 @@ knows about any backend; nothing above the linker adapter knows about any linker
  Artifacts             objects, assembly, C source, in-memory code
    |  Tool steps        assembler, C compiler, when a backend emits text
    v
- Linker (trait)        wild | mold | lld | GNU ld | MSVC link | none
+ Linker (trait)        wild | mold | lld | wasm | GNU ld | MSVC link | none
 ```
 
 ## 2. Speed is an architectural property
@@ -640,7 +640,7 @@ pub trait DiagSink {
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
 | native | fastest debug builds | x86_64, arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
-| wasm | WebAssembly without a C toolchain | wasm32 | the toolchain's own: relocatable objects `wasm-ld` links, section 8.4 |
+| wasm | WebAssembly without a C toolchain | wasm32 | the toolchain's own: relocatable objects its own linker links, section 8.4 |
 | external | anything | any | a process reading LIR text |
 
 **Choosing a backend.** A target lists the backends it builds with under each profile, most
@@ -989,9 +989,11 @@ as the `ld` of a directory beside the output that the compiler looks in first (`
 
 The toolchain's own backend for WebAssembly (`wasm32` targets, `wasi.wasm32.p1`), in one crate,
 `vun-backend-wasm`. It writes a relocatable object in the format of the WebAssembly tool
-conventions (a module with the `linking` and `reloc.*` custom sections), which `wasm-ld` links
-(the `lld` adapter, flavored by the target's object format), so its objects link with C compiled
-by clang for the same target.
+conventions (a module with the `linking` and `reloc.*` custom sections), which the toolchain's
+own wasm linker links in process (`vun-link-wasm`, the target's `linker`, below), so no C toolchain
+is needed; its objects link with C compiled by clang for the same target, and `wasm-ld` (`lld`,
+with `--linker lld`) links them alike. The encoding both write, and the objects the linker reads,
+are declared once in `vun-wasm` (`compiler/object/wasm`) (proposed, decision 388).
 
 - **Modules as data.** A module is a typed value (`Module`: types, imports, functions, data
   segments, symbols, relocations), written once into bytes; instructions are a typed set
@@ -1024,6 +1026,48 @@ by clang for the same target.
   it comes from, `#[link.library(name)]`, is its import module (`wasi_snapshot_preview1`), and
   the linker keeps it an import of the program; a symbol with no library is one another object
   defines.
+- **Variadic calls.** A call of a C function's variadic arguments writes them into a buffer in the
+  caller's frame, each at its alignment and at least a word's, and passes its address after the
+  fixed arguments: an integer narrower than a word is written as a word, an `f32` as an `f64`, a
+  record or anything passed in memory as the address of a copy. `f16` has no C convention on
+  wasm32 (clang refuses `_Float16`) and is refused (`Missing::Half`).
+- **Sections and storage per thread.** A datum placed in a section (`#[link.section]`) is a
+  segment named by it, which the linker places with the others of that name and gives bounds.
+  With one thread (`lang.target.Threads.one`, WASI), storage per thread is the program's and its
+  address a datum's; with many, it is refused (`Missing::PerThread`).
+- **Refused.** Inline assembly (wasm32 has no table of instructions yet), naked functions (which
+  exist only for it) and an address past the start of a function (a function's address is an
+  index of the table) are refused with the `Missing` naming each.
+
+**The wasm linker.** `vun-link-wasm` reads the objects in the tool conventions' format (the wasm
+backend's, clang's) and writes the program, as `wasm-ld` does:
+
+- **Symbols.** A named symbol has one definition: a strong one over a weak one, two strong ones
+  refused (`link.duplicate`); a COMDAT group is kept from the first object declaring it and
+  dropped from the others. An undefined function of a library stays an import of the program; one
+  no object defines and no library provides is refused (`link.undefined`), unless weak: calling
+  it traps (a stub per type, `undefined_weak`) and its address is null, as a weak datum's is. The
+  linker defines `__stack_pointer`, `__indirect_function_table`, `__wasm_call_ctors` (calling each
+  object's initialization functions by priority), `__data_end`, `__heap_base`, `__dso_handle`,
+  `__stack_low`, `__stack_high` and, for each section a source names, `__start_<name>` and
+  `__stop_<name>` (the tool conventions') and `__<name>_start` and `__<name>_end` (the link
+  plan's, `vun_link::Bound`).
+- **What is kept.** The entry, the functions objects export (under the name an object's export
+  gives one, else the symbol's) and the symbols objects keep (`NO_STRIP`) are the roots; a
+  function, segment or import nothing reaches from them through relocations is left out.
+- **Memory.** The stack comes first, 64 KiB growing down from its top, so overflowing it leaves
+  memory rather than writing over data; then `.rodata`, `.data`, the sections sources name, and
+  `.bss`, each segment at its alignment. Each section is one data segment, and one holding only
+  zeros is not written, memory starting as zeros. Memory is exported as `memory`.
+- **Relocations** are applied in place, as the objects padded their fields; a function whose
+  address a relocation takes gets a slot of the table from the second on, the first null.
+- **Names.** A `name` section names every function, for the traces of a runtime.
+- **Refused** (`link.malformed`): what is not a relocatable object of the conventions, and what
+  the linker does not link: tables, memories or globals an object defines, passive segments,
+  storage per thread of shared memory, and relocations other than of function, table, type,
+  global and table-number indices and of memory addresses (the PIC and TLS kinds). An object's
+  element and data-count sections, its view of the table, are read past, the table being made
+  from the relocations.
 
 ### 8.5 Calling conventions
 
@@ -1154,6 +1198,7 @@ in registers a call may overwrite, none saved.
 | wild | development links on Linux ELF; aiming at incremental linking; check linker-script support before firmware use |
 | mold | fast, mature ELF |
 | lld | ELF, COFF, Mach-O, wasm, linker scripts; default for embedded |
+| wasm | the toolchain's own, in process: WebAssembly objects of the tool conventions; WASI's (section 8.4) |
 | GNU ld | vendor toolchain compatibility |
 | none | objects or static libraries for foreign builds |
 
@@ -1239,7 +1284,7 @@ compiler/
            codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness  html
   lang/    grammar  items  primitives            Rust views generated from lib/lang
   isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
-  object/  core  elf  dwarf                      object files and debug information as data
+  object/  core  elf  dwarf  wasm                object files and debug information as data
   front/   desugar  syntax  hir
   sema/    int  float  ty  core  plan            types as values; `core` (`vun-sema`) checks and evaluates
   mid/     mir  passes  interp  sanitize
@@ -1247,7 +1292,7 @@ compiler/
   back/    api  codegen  regalloc  c  wasm  cranelift  qbe  llvm  external
   asm/     core  x86_64  arm64  thumb            assemblers over the isa tables
   native/  core  x86_64  arm64  thumb  backend   the native backend, an architecture per crate
-  link/    api  wild  mold  lld  gnu  msvc  ar  external
+  link/    api  wild  mold  lld  wasm  gnu  msvc  ar  external
   render/  short  annotate  ariadne  json  sarif
   pkg/     build  fetch  http                    manifests, locks, the store, fetching
   tools/   fmt  reduce  bind  clang  command  doc  driver  lsp  cli  generate  xtask

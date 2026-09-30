@@ -41,6 +41,7 @@ impl Registry {
             "link-mold" => vun_link_mold::MoldLinker,
             "link-ar" => vun_link_ar::ArLinker,
             "link-lld" => vun_link_lld::LldLinker,
+            "link-wasm" => vun_link_wasm::WasmLinker,
             "link-gnu" => vun_link_gnu::GnuLinker,
             "link-msvc" => vun_link_msvc::MsvcLinker,
             "link-external" => vun_link_external::ExternalLinker,

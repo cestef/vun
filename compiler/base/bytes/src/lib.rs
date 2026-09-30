@@ -105,6 +105,38 @@ impl Out {
         let length = u32::try_from(self.0.len() - at - 4).expect("sections fit 4 GiB");
         self.0[at..at + 4].copy_from_slice(&length.to_le_bytes());
     }
+
+    /// Rewrites the padded unsigned LEB128 at `at` as `v`, as a linker relocates one.
+    ///
+    /// # Panics
+    /// Panics if the bytes end before it does.
+    pub fn rewrite_uleb_padded(&mut self, at: usize, v: u32) {
+        let mut field = Self::default();
+        field.uleb_padded(v);
+        self.rewrite(at, &field.0);
+    }
+
+    /// Rewrites the padded signed LEB128 at `at` as `v`.
+    ///
+    /// # Panics
+    /// Panics if the bytes end before it does.
+    pub fn rewrite_sleb_padded(&mut self, at: usize, v: i32) {
+        let mut field = Self::default();
+        field.sleb_padded(v);
+        self.rewrite(at, &field.0);
+    }
+
+    /// Rewrites the little-endian 32 bits at `at` as `v`.
+    ///
+    /// # Panics
+    /// Panics if the bytes end before they do.
+    pub fn rewrite_u32(&mut self, at: usize, v: u32) {
+        self.rewrite(at, &v.to_le_bytes());
+    }
+
+    fn rewrite(&mut self, at: usize, field: &[u8]) {
+        self.0[at..at + field.len()].copy_from_slice(field);
+    }
 }
 
 /// A table of strings, each ended by a zero byte and named by where it starts, the first the empty

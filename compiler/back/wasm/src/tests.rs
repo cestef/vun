@@ -94,3 +94,16 @@ fn a_function_ending_without_its_result_is_rejected() {
     let m = module(binary(ValType::I32), Vec::new(), Vec::new());
     assert_eq!(m.verify(), Err(Invalid { func: 0, at: 0, why: Why::Underflow }));
 }
+
+#[test]
+fn an_object_written_reads_back_as_its_symbols_and_relocations() {
+    let sp = Module::default().linked(Linker::StackPointer);
+    let m = module(binary(ValType::I32), Vec::new(), vec![Op::GlobalGet(sp), Op::Drop, Op::I32Const(1)]);
+    let object = vun_wasm::Object::read(&m.write()).unwrap();
+    assert_eq!(object.funcs.len(), 1);
+    let names: Vec<_> = object.symbols.iter().map(|s| s.name.as_deref()).collect();
+    assert_eq!(names, [Some("__stack_pointer"), Some("__indirect_function_table"), Some("f")]);
+    let [reloc] = object.code.relocs.as_slice() else { panic!("one relocation: {:?}", object.code.relocs) };
+    assert_eq!(reloc.kind, vun_wasm::RelocKind::GlobalIndexLeb);
+    assert_eq!(reloc.index, 0);
+}

@@ -26,12 +26,17 @@ impl Lower<'_> {
             }
             Callee::Indirect(_, signature) => Cow::Owned(Passing::of(signature).map_err(|m| m.at(at))?),
         };
-        let (params, out) = args.split_at(passing.parts.len());
+        let variadic = passing.varargs.as_ref().map_or(0, |v| v.spills.len());
+        let (params, out) = args.split_at(passing.parts.len() + variadic);
+        let (params, rest) = params.split_at(passing.parts.len());
         if passing.through() {
             self.get(out[0]);
         }
         for (&arg, part) in params.iter().zip(&passing.parts) {
             self.pass(arg, *part).map_err(|m| m.at(at))?;
+        }
+        if let Some(varargs) = &passing.varargs {
+            self.spill(rest, varargs).map_err(|m| m.at(at))?;
         }
         match callee {
             Callee::Func(f) => self.op(Op::Call(self.cx.funcs[*f].expect("a called function is reached"))),

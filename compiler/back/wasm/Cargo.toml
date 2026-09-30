@@ -23,6 +23,7 @@ vun-origin.workspace = true
 vun-par.workspace = true
 vun-target.workspace = true
 vun-trace.workspace = true
+vun-wasm.workspace = true
 
 [dev-dependencies]
 # An independent validator of the modules written; never shipped.

@@ -2,24 +2,13 @@
 
 use std::fmt;
 
+use super::Module;
 use super::op::Op;
-use super::{Module, ValType};
 
 /// An instruction of `module`, shown in the text format.
 pub struct Text<'m> {
     pub module: &'m Module,
     pub op: &'m Op,
-}
-
-impl fmt::Display for ValType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::I32 => "i32",
-            Self::I64 => "i64",
-            Self::F32 => "f32",
-            Self::F64 => "f64",
-        })
-    }
 }
 
 impl fmt::Display for Text<'_> {

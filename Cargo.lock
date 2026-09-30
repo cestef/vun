@@ -1181,6 +1181,7 @@ dependencies = [
  "vun-par",
  "vun-target",
  "vun-trace",
+ "vun-wasm",
  "wasmparser",
 ]
 
@@ -1404,6 +1405,7 @@ dependencies = [
  "vun-link-lld",
  "vun-link-mold",
  "vun-link-msvc",
+ "vun-link-wasm",
  "vun-link-wild",
  "vun-lir",
  "vun-lir-passes",
@@ -1756,6 +1758,21 @@ version = "0.1.0"
 dependencies = [
  "vun-link",
  "vun-target",
+]
+
+[[package]]
+name = "vun-link-wasm"
+version = "0.1.0"
+dependencies = [
+ "vun-bytes",
+ "vun-diag",
+ "vun-fs",
+ "vun-hash",
+ "vun-intern",
+ "vun-link",
+ "vun-target",
+ "vun-trace",
+ "vun-wasm",
 ]
 
 [[package]]
@@ -2327,6 +2344,13 @@ name = "vun-variants"
 version = "0.1.0"
 dependencies = [
  "vun-derive-core",
+]
+
+[[package]]
+name = "vun-wasm"
+version = "0.1.0"
+dependencies = [
+ "vun-bytes",
 ]
 
 [[package]]
