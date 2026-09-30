@@ -32,6 +32,20 @@ impl Data<'_> {
             Form::Names => from(Tokens::new().string(&shape.name)),
             Form::Numbers => from(shape.case.path.clone().word("as").word("i64")),
             Form::Struct | Form::Untagged => shape.written(),
+            Form::Tagged if matches!(shape.case.fields, Fields::Unit) => {
+                from(Tokens::new().string(&shape.name))
+            }
+            Form::Tagged => {
+                let member = Tokens::new().string(&shape.name).op(",").braces(shape.written());
+                let object = Tokens::new()
+                    .data("Object")
+                    .op("::")
+                    .word("new")
+                    .parens(Tokens::new())
+                    .op(".")
+                    .word("with");
+                Tokens::new().value("Object").parens(object.parens(member))
+            }
         }
     }
 }

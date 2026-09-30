@@ -5,7 +5,9 @@
 //! - a struct of one unnamed field is that field, of several an array, of none `null`;
 //! - an enum of unit variants is a string naming the variant, or, marked `#[data(number)]`, its
 //!   discriminant; an enum marked `#[data(untagged)]` is its variant's value, read as the first
-//!   variant it fits.
+//!   variant it fits;
+//! - any other enum is tagged: a unit variant is a string naming it, another an object whose one
+//!   member, named by the variant, holds its value.
 //!
 //! Names are the item's own, cased by `#[data(case = camel)]` on the item (`snake` otherwise);
 //! `#[data(name = "...")]` names one field or variant on the wire.

@@ -49,6 +49,14 @@ enum Target {
 #[derive(Debug, PartialEq, ToData, FromData)]
 struct Pair(u8, String);
 
+#[derive(Debug, PartialEq, ToData, FromData)]
+enum Line {
+    Test { name: String, passed: bool },
+    Pair(u8, String),
+    One(u8),
+    Totals,
+}
+
 fn document(uri: &str) -> Document {
     Document { uri: uri.to_owned() }
 }
@@ -76,6 +84,19 @@ fn enums_are_names_numbers_or_their_variants_values() {
     round_trip(&Target::Many(vec![document("a")]), r#"[{"uri":"a"}]"#);
     round_trip(&Target::Nothing, "null");
     round_trip(&Pair(3, "x".to_owned()), r#"[3,"x"]"#);
+}
+
+#[test]
+fn enums_with_fields_are_tagged_by_their_variant() {
+    round_trip(&Line::Test { name: "a".to_owned(), passed: true }, r#"{"test":{"name":"a","passed":true}}"#);
+    round_trip(&Line::Pair(1, "x".to_owned()), r#"{"pair":[1,"x"]}"#);
+    round_trip(&Line::One(2), r#"{"one":2}"#);
+    round_trip(&Line::Totals, r#""totals""#);
+    let wrong = parse(r#"{"test":{"name":"a","passed":1}}"#).unwrap().read::<Line>().unwrap_err();
+    let path: Vec<Step> = wrong.path().collect();
+    assert_eq!((wrong.expected, path), (Expected::Bool, vec![Step::Member("test"), Step::Member("passed")]));
+    let two = parse(r#"{"one":2,"totals":null}"#).unwrap().read::<Line>().unwrap_err();
+    assert_eq!(two.expected, Expected::Form);
 }
 
 #[test]

@@ -50,6 +50,7 @@ impl Data<'_> {
                     .then(tests)
                     .err(Tokens::new().mismatch(Tokens::new().expected("Form")))
             }
+            Form::Tagged => self.tagged(),
             Form::Untagged => {
                 // Each variant is tried in order, in a closure so that its first failure ends it.
                 let tries = self.shapes.iter().fold(Tokens::new(), |tries, shape| {
@@ -81,6 +82,86 @@ impl Data<'_> {
             .result(Tokens::new().data("Mismatch"))
             .braces(body);
         self.item.implement(&Tokens::new().data("FromData"), method)
+    }
+
+    /// A tagged enum read: a string naming a unit variant, or an object whose one member names
+    /// another and holds its value.
+    fn tagged(&self) -> Tokens {
+        let value = || Tokens::new().word("value");
+        let unit = |shape: &&Shape<'_>| matches!(shape.case.fields, Fields::Unit);
+        let named = self.shapes.iter().filter(unit).fold(Tokens::new(), |arms, shape| {
+            let name = Tokens::new().string(&shape.name);
+            let some = Tokens::new().path(&["core", "option", "Option", "Some"]).parens(name);
+            arms.then(some).op("=>").word("return").ok(shape.case.path.clone()).op(",")
+        });
+        let other = Tokens::new().word("_").op("=>").braces(Tokens::new());
+        let by_name = Tokens::new()
+            .word("match")
+            .then(value())
+            .op(".")
+            .word("as_str")
+            .parens(Tokens::new())
+            .braces(named.then(other.clone()));
+        // A variant's value is read in a closure so that its first failure ends it.
+        let tagged = self.shapes.iter().filter(|s| !unit(s)).fold(Tokens::new(), |arms, shape| {
+            let attempt =
+                Tokens::new().op("||").op("->").result(Tokens::new().data("Mismatch")).braces(shape.read());
+            let step =
+                Tokens::new().data("Step").op("::").word("Member").parens(Tokens::new().string(&shape.name));
+            let within =
+                Tokens::new().op("|").word("m").op("|").word("m").op(".").word("within").parens(step);
+            arms.string(&shape.name)
+                .op("=>")
+                .word("return")
+                .parens(attempt)
+                .parens(Tokens::new())
+                .op(".")
+                .word("map_err")
+                .parens(within)
+                .op(",")
+        });
+        let one = Tokens::new()
+            .op("|")
+            .word("o")
+            .op("|")
+            .word("o")
+            .op(".")
+            .word("len")
+            .parens(Tokens::new())
+            .op("==")
+            .count(1);
+        let first = Tokens::new()
+            .op("|")
+            .word("o")
+            .op("|")
+            .word("o")
+            .op(".")
+            .word("iter")
+            .parens(Tokens::new())
+            .op(".")
+            .word("next")
+            .parens(Tokens::new());
+        let member = Tokens::new()
+            .path(&["core", "option", "Option", "Some"])
+            .parens(Tokens::new().parens(Tokens::new().word("name").op(",").word("value")));
+        let found = value()
+            .op(".")
+            .word("as_object")
+            .parens(Tokens::new())
+            .op(".")
+            .word("filter")
+            .parens(one)
+            .op(".")
+            .word("and_then")
+            .parens(first);
+        let members = Tokens::new()
+            .word("if")
+            .word("let")
+            .then(member)
+            .op("=")
+            .then(found)
+            .braces(Tokens::new().word("match").word("name").braces(tagged.then(other)));
+        by_name.then(members).err(Tokens::new().mismatch(Tokens::new().expected("Form")))
     }
 }
 

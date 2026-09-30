@@ -21,6 +21,9 @@ pub(crate) enum Form {
     Numbers,
     /// An enum, each variant its fields' form.
     Untagged,
+    /// An enum with fields: a unit variant a string naming it, any other an object whose one
+    /// member, named by the variant, holds its fields' form.
+    Tagged,
 }
 
 /// A case of the item, with the name of its variant and its members on the wire.
@@ -79,7 +82,7 @@ impl<'i> Data<'i> {
             (Body::Enum(_), true, false) => Form::Untagged,
             (Body::Enum(_), false, true) if units => Form::Numbers,
             (Body::Enum(_), false, false) if units => Form::Names,
-            (Body::Enum(_), false, false) => return Err(Unsupported("an enum with fields is `untagged`")),
+            (Body::Enum(_), false, false) => Form::Tagged,
             _ => return Err(Unsupported("`untagged` and `number` are for enums, `number` of unit variants")),
         };
         let shapes = item.cases().into_iter().map(|case| Shape::of(case, item, casing));
