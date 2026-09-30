@@ -100,7 +100,8 @@ impl Session {
             .extend(coded.artifacts.iter().filter(|a| a.kind == Emits::Object).map(|a| dir.join(a.file())));
         if coded.artifacts.iter().any(|a| matches!(a.kind, Emits::Assembly | Emits::Jit)) {
             let msg = Msg::new().text("building from assembly or code in memory is not supported yet");
-            return Err(self.diag.error(Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg)));
+            let help = Msg::new().text("build with a backend making objects, with ").code("--backend");
+            return Err(self.diag.error(Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg).help(help)));
         }
         // Frame sizes from the backend, else from what the tools building its artifacts report.
         let frames = match compiler.frame_sizes {
@@ -214,7 +215,12 @@ impl Session {
         let named = self.codegen.linker.unwrap_or_else(|| self.registry.linker_for(kind, target));
         let Some(linker) = self.registry.linker(named) else {
             let msg = Msg::new().text("no linker ").code(named.as_str()).text(" is in this toolchain");
-            return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg)));
+            let help = Msg::new()
+                .text("choose another with ")
+                .code("--linker")
+                .text(", or add its component: ")
+                .code("vun toolchain components");
+            return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg).help(help)));
         };
         if let Support::No(unsupported) = linker.info().supports(target, &plan) {
             let msg = Msg::new().text("linker ").code(named.as_str()).text(" does not link ");
@@ -224,7 +230,8 @@ impl Session {
                 Unsupported::Arch(arch) => msg.text("code for ").code(arch.as_str()),
                 Unsupported::Output(output) => msg.text("programs as ").code(output.name()),
             };
-            return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg)));
+            let help = Msg::new().text("choose a linker that does, with ").code("--linker");
+            return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg).help(help)));
         }
         let _timer = LINK.start();
         let stamp = cache::Stamp::of(&compiled.builds, linker.info().id, target, &plan);

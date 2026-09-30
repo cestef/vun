@@ -8,6 +8,7 @@ use vun_items::std::{
     build_Options as options, build_Placement as placement, build_Program as program, build_Region as region,
     build_Step as step, build_Tested as tested, build_Use as used,
 };
+use vun_sema::plan::Plan;
 use vun_sema::target::{Declared, Members, Read, Unread};
 use vun_sema_ty::Value;
 use vun_target::{Check, Detail, Output};
@@ -70,6 +71,16 @@ pub struct Placement {
     pub name: Symbol,
     pub region: Symbol,
     pub load: Option<Symbol>,
+}
+
+impl Action {
+    /// What each step of `plan` does.
+    ///
+    /// # Errors
+    /// Returns the step at which a value is not an action as `std.build` declares it, and why.
+    pub fn steps(plan: &Plan) -> Result<Vec<Self>, (usize, Unread)> {
+        plan.actions.iter().enumerate().map(|(at, a)| Self::read(a).map_err(|why| (at, why))).collect()
+    }
 }
 
 impl Read for Action {

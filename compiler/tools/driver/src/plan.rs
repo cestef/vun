@@ -41,7 +41,10 @@ impl Session {
                     .text(", which ")
                     .code(vun_items::std::build::Package.to_string())
                     .text(" requires");
-                Diagnostic::error(errors::PLAN_MISSING_BUILD, msg).at(at, None)
+                let help = Msg::new()
+                    .text("declare it: ")
+                    .code([required.as_str(), " := (b: &mut std.build.Build) {};"].concat());
+                Diagnostic::error(errors::PLAN_MISSING_BUILD, msg).at(at, None).help(help)
             }
             Err(Unplanned::Stopped { why: Unevaluated::Trapped(trap), at }) => trap.report(at),
             Err(Unplanned::Stopped { why, at }) => {

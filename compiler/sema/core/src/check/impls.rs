@@ -42,7 +42,9 @@ impl Checker<'_, '_, '_> {
         let msg = Msg::new().text("a second impl of ").code(contract.requirements.to_string());
         let d = Diagnostic::error(errors::IMPL_DUPLICATE, msg)
             .at(decl.attr, None)
-            .label(first.attr, Some(Msg::new().text("the first impl is here")));
+            .label(first.attr, Some(Msg::new().text("the first impl is here")))
+            .note("a type has one impl of an interface, so each call finds one method")
+            .help("remove one of the impls");
         self.diag.error(d);
     }
 }

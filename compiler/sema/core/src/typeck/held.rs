@@ -2,6 +2,7 @@
 //! 02, section 1), so a slice bound whole is reported here rather than found to have no layout.
 
 use vun_diag::{Diagnostic, Fix, Msg, Safety, errors};
+use vun_grammar::TokenKind;
 use vun_hir::tree::{Decl, ExprId};
 use vun_origin::OriginTable;
 use vun_sema_ty::Ty;
@@ -16,15 +17,19 @@ impl Typer<'_, '_, '_> {
         if ty.slice_items().is_none() || found.is_some_and(|k| k.stage == Stage::Compile) {
             return;
         }
-        let msg = Msg::new().text("a slice is reached through a borrow, not held: ").ty(ty.to_string());
+        let msg = Msg::new().text("a binding cannot hold the slice ").ty(ty.to_string());
+        let note =
+            "a slice's length is known only when the program runs, so it has no size a binding can hold";
+        let fix = self.borrowing(value);
         let d = Diagnostic::error(errors::TYPES_SLICE_VALUE, msg).at(self.hir().exprs[value].origin, None);
-        self.diag.error(d.fix(self.borrowing(value)));
+        self.diag.error(d.note(note).fix(fix));
     }
 
     /// The fix borrowing `value` where it is written.
     fn borrowing(&self, value: ExprId) -> Fix {
         let span = OriginTable::global().source_span(self.hir().exprs[value].origin);
         let at = Span::new(span.file, span.range.lo, span.range.lo);
-        Fix::replace(Msg::new().text("borrow it"), Safety::Safe, at, "&")
+        let amp = TokenKind::Amp.text().unwrap_or_default();
+        Fix::replace(Msg::new().text("borrow it: ").code(amp), Safety::Safe, at, amp).preferred()
     }
 }

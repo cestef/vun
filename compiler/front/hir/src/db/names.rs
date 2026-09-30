@@ -6,7 +6,7 @@ use std::collections::btree_map::Entry;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
-use vun_diag::{ChildKind, DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -149,7 +149,7 @@ impl Check<'_, '_> {
                 let mut d = Unfound::not_namespace(&text).at(origin, None);
                 if local || found.is_err_and(|e| e == Unfound::Root) {
                     let help = Msg::new().text("a spread path starts at the package or a dependency");
-                    d = d.child(ChildKind::Help, help);
+                    d = d.help(help);
                 }
                 Err(Some(self.checked.diag.error(d)))
             }
@@ -166,13 +166,16 @@ impl Check<'_, '_> {
                 let brought = self.checked.spreads.brought.entry(ns).or_default();
                 let d = if let Some(&b) = declared.iter().find(|&&b| hir.binders[b].name == name) {
                     let d = Diagnostic::error(errors::NAMES_DUPLICATE, msg.text(" and declared here"));
-                    d.at(s.origin, None).label(hir.binders[b].origin, Some("declared here".into()))
+                    let help = "rename the declaration, or list the names the spread brings after its path";
+                    d.at(s.origin, None).label(hir.binders[b].origin, Some("declared here".into())).help(help)
                 } else if let Entry::Vacant(slot) = brought.entry(name) {
                     slot.insert(target.clone());
                     continue;
                 } else {
+                    let help = "list the names each spread brings after its path";
                     Diagnostic::error(errors::NAMES_DUPLICATE, msg.text(" and by another spread"))
                         .at(s.origin, None)
+                        .help(help)
                 };
                 self.checked.diag.error(d);
             }
@@ -192,7 +195,7 @@ impl Check<'_, '_> {
             let public =
                 members.iter().map(|m| m.as_str()).filter(|m| Visibility::of(m) == Visibility::Public);
             let d = match closest(text, public) {
-                Some(near) => d.child(ChildKind::Help, Msg::did_you_mean(near)),
+                Some(near) => d.help(Msg::did_you_mean(near)),
                 None => d,
             };
             self.checked.diag.error(d.at(hir.binders[b].origin, None));
@@ -211,11 +214,18 @@ impl Check<'_, '_> {
             let name = hir.binders[b].name;
             if children.contains(&name) {
                 let dir = package.directory(&path).unwrap_or_default();
-                let msg =
-                    Msg::new().code(name.as_str()).text(" is declared here and also held in ").code(dir);
-                self.checked
-                    .diag
-                    .error(Diagnostic::error(errors::NAMES_DUPLICATE, msg).at(hir.binders[b].origin, None));
+                let msg = Msg::new()
+                    .code(name.as_str())
+                    .text(" is declared here, and ")
+                    .code(dir)
+                    .text(" holds a file or directory of that name");
+                let note =
+                    "a file's declarations and the files of its directory are members of one namespace";
+                let d = Diagnostic::error(errors::NAMES_DUPLICATE, msg)
+                    .at(hir.binders[b].origin, None)
+                    .note(note)
+                    .help("rename one of them");
+                self.checked.diag.error(d);
             }
         }
     }

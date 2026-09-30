@@ -5,17 +5,20 @@
 //! around the node silences it.
 
 mod defined;
+mod levels;
 mod literal;
+mod locals;
 mod nodes;
 mod tables;
 
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use vun_diag::{DiagCtxt, DiagId, Diagnostic, Fix, Msg, Severity};
+use vun_diag::{DiagCtxt, DiagId, DiagSource, Diagnostic, Fix, Msg, Safety, Severity};
 use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::{FileRef, Namespace, Package, PackageId};
 use vun_hir::tree::PatKind;
+use vun_intern::Symbol;
 use vun_items::{Item, lang, std as std_items};
 use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Query};
@@ -23,8 +26,10 @@ use vun_sema_ty::Value;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::Unevaluated;
+use vun_syntax::make::{Attributes, Expr};
 
-pub use defined::DefinedLints;
+pub use defined::{CheckedLints, DefinedLints};
+use levels::Configured;
 use nodes::{Kind, Node};
 use tables::{Level, field};
 
@@ -33,6 +38,9 @@ use crate::env::Env;
 use crate::eval::Call;
 use crate::reflect::Fact;
 use crate::visible::Home;
+
+/// The reason an attribute allowing a lint is made with, for its author to write.
+const REASON: &str = "why it is allowed";
 
 /// What the lints a file is checked with report of it; `None` for a file the driver did not read.
 pub struct Linted;
@@ -62,31 +70,59 @@ const GROUP_LEVEL: Item = std_items::lints_naming::level;
 const DECL: &[(Item, Fact<Node>)] = &[
     (lang::lint_Decl::name, |_, n| match &n.kind {
         Kind::Decl { name, .. } => Ok(Value::string(name.as_str())),
-        Kind::Call { .. } => Err(Unevaluated::Unsupported),
+        _ => Err(Unevaluated::Unsupported),
     }),
     (lang::lint_Decl::binds, |env, n| match &n.kind {
         Kind::Decl { binds, .. } => env.item(binds.item()),
-        Kind::Call { .. } => Err(Unevaluated::Unsupported),
+        _ => Err(Unevaluated::Unsupported),
     }),
     (lang::lint_Decl::origin, |_, n| Ok(Value::Origin(n.origin))),
+    (lang::lint_Decl::public, |env, n| match &n.kind {
+        Kind::Decl { public, .. } => env.decide(*public),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Decl::documented, |env, n| match &n.kind {
+        Kind::Decl { documented, .. } => env.decide(*documented),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+];
+const LOCAL: &[(Item, Fact<Node>)] = &[
+    (lang::lint_Local::name, |_, n| match &n.kind {
+        Kind::Local { name, .. } => Ok(Value::string(name.as_str())),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Local::origin, |_, n| Ok(Value::Origin(n.origin))),
+    (lang::lint_Local::used, |env, n| match &n.kind {
+        Kind::Local { used, .. } => env.decide(*used),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Local::param, |env, n| match &n.kind {
+        Kind::Local { param, .. } => env.decide(*param),
+        _ => Err(Unevaluated::Unsupported),
+    }),
 ];
 const CALL: &[(Item, Fact<Node>)] = &[
     (lang::lint_Call::callee, |_, n| match &n.kind {
         Kind::Call { callee } => Ok(callee.clone()),
-        Kind::Decl { .. } => Err(Unevaluated::Unsupported),
+        _ => Err(Unevaluated::Unsupported),
     }),
     (lang::lint_Call::origin, |_, n| Ok(Value::Origin(n.origin))),
 ];
 
 /// A lint a file is checked with.
 struct Lint {
-    /// Its reports' id: the lint's path, its package's name first, `std.lints.naming.case`.
+    /// Its path, its package's name first: `std.lints.naming.case`.
+    path: Vec<Symbol>,
+    /// Its reports' id: its path.
     id: DiagId,
+    /// The group configuring it.
+    group: Symbol,
     /// Its value, which `#[lint.allow(lint, ..)]` names.
     value: Value,
     level: Level,
     /// The checks it states, by kind of node; `None` for one left unchecked.
     decl: Option<Value>,
+    local: Option<Value>,
     call: Option<Value>,
 }
 
@@ -101,9 +137,10 @@ impl Lint {
         packages.sort();
         packages.dedup();
         let defined = packages.iter().flat_map(|p| cx.get::<DefinedLints>(p).as_ref().clone());
+        let configured = Configured::of(env);
         defined
             .filter_map(|decl| {
-                let lint = Self::read(env, &decl);
+                let lint = Self::read(env, &decl, &configured);
                 if lint.is_none() {
                     vun_trace::tracing::debug!(decl = ?decl.decl.origin, "a lint that does not read");
                 }
@@ -112,41 +149,48 @@ impl Lint {
             .collect()
     }
 
-    /// The lint the declaration `decl` defines, as it is seen from the file `env` reads.
-    fn read(env: &Env<'_, '_>, decl: &DeclRef) -> Option<Self> {
+    /// The lint the declaration `decl` defines, as it is seen from the file `env` reads, at the
+    /// level its package's build configures.
+    fn read(env: &Env<'_, '_>, decl: &DeclRef, configured: &Configured) -> Option<Self> {
         let value = env.cx.get::<DeclValue>(decl).ok()?;
-        let level = match field(&value, lang::lint_Lint::default)? {
+        let Value::Name(group) = *field(&value, lang::lint_Lint::group)? else { return None };
+        let members = env.item(std_items::lints).and_then(|lints| env.member(lints, group)).ok();
+        let default = match field(&value, lang::lint_Lint::default)? {
             Value::Variant { payload, .. } if !payload.is_empty() => Level::of(&payload[0])?,
-            _ => {
-                let Value::Name(group) = field(&value, lang::lint_Lint::group)? else { return None };
-                let group = env.member(env.item(std_items::lints).ok()?, *group).ok()?;
-                Level::of(&env.member(group, GROUP_LEVEL.symbol()).ok()?)?
-            }
+            _ => Level::of(&env.member(members.clone()?, GROUP_LEVEL.symbol()).ok()?)?,
         };
+        let level = configured.level(&value, members.as_ref(), default);
         let check = |at: Item, node: Item| {
             let check = field(&value, at)?.clone();
             let unchecked = call(env, lang::lint::unchecked, vec![env.item(node).ok()?]).ok();
             (Some(&check) != unchecked.as_ref()).then_some(check)
         };
+        let path = Self::path(env.cx, decl)?;
         Some(Self {
-            id: Self::id(env.cx, decl)?,
+            id: Self::id_of(&path),
+            path,
+            group,
             decl: check(lang::lint_Lint::decl, lang::lint::Decl),
+            local: check(lang::lint_Lint::local, lang::lint::Local),
             call: check(lang::lint_Lint::call, lang::lint::Call),
             value,
             level,
         })
     }
 
-    /// The path of the lint `decl` declares, its reports' id.
-    fn id(cx: &Cx<'_>, decl: &DeclRef) -> Option<DiagId> {
+    /// The id of the reports of the lint at `path`.
+    fn id_of(path: &[Symbol]) -> DiagId {
+        DiagId(Cow::Owned(path.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(PATH_SEPARATOR)))
+    }
+
+    /// The path of the lint `decl` declares.
+    fn path(cx: &Cx<'_>, decl: &DeclRef) -> Option<Vec<Symbol>> {
         let env = Env::of(cx, &decl.file)?;
         let Home::Namespace(Namespace { path, .. }) = env.home() else { return None };
         let hir = &env.parsed.hir;
         let PatKind::Bind(binder) = hir.pats[hir.decls[decl.decl.id].pat].kind else { return None };
         let package = cx.get::<Package>(&decl.file.package).name;
-        let names = package.iter().chain(&path).chain([&hir.binders[binder].name]);
-        let names: Vec<&str> = names.map(|s| s.as_str()).collect();
-        Some(DiagId(Cow::Owned(names.join(PATH_SEPARATOR))))
+        Some(package.iter().chain(&path).chain([&hir.binders[binder].name]).copied().collect())
     }
 
     /// Runs the lint on `nodes`, the nodes of the file `env` reads, reporting in `diag`.
@@ -154,9 +198,12 @@ impl Lint {
         vun_trace::tracing::debug!(lint = %self.id, level = ?self.level, decl = self.decl.is_some(), call = self.call.is_some(), "running");
         let Some(severity) = self.level.severity() else { return };
         let namespace = env.namespace();
-        for node in nodes.iter().filter(|n| !n.allowed.contains(&self.value)) {
+        // `forbid` is final: no attribute allows the lint.
+        let allowed = |n: &&Node| self.level != Level::Forbid && n.allowed.contains(&self.value);
+        for node in nodes.iter().filter(|n| !allowed(n)) {
             let (check, shape, facts) = match node.kind {
                 Kind::Decl { .. } => (&self.decl, lang::lint::Decl, DECL),
+                Kind::Local { .. } => (&self.local, lang::lint::Local, LOCAL),
                 Kind::Call { .. } => (&self.call, lang::lint::Call, CALL),
             };
             let Some(check) = check else { continue };
@@ -168,7 +215,7 @@ impl Lint {
             match call(env, lang::lint::reports, args) {
                 Ok(Value::Array(reports)) => {
                     for report in &reports {
-                        diag.report(self.diagnostic(report, node.origin, severity));
+                        diag.report(self.diagnostic(report, node, severity));
                     }
                 }
                 Err(Unevaluated::Trapped(trap)) => {
@@ -186,11 +233,12 @@ impl Lint {
         }
     }
 
-    /// The diagnostic `report`, a `lang.lint.Report`, of a node written at `origin`.
-    fn diagnostic(&self, report: &Value, origin: OriginId, severity: Severity) -> Diagnostic {
+    /// The diagnostic `report`, a `lang.lint.Report`, of `node`: what the lint says, with its
+    /// fixes, the level it reports at, and the fix allowing it on the declaration around.
+    fn diagnostic(&self, report: &Value, node: &Node, severity: Severity) -> Diagnostic {
         let at = match field(report, lang::lint_Report::at) {
             Some(Value::Origin(at)) => *at,
-            _ => origin,
+            _ => node.origin,
         };
         let text = |f: &Value, at: Item| field(f, at).and_then(Value::text);
         let msg = text(report, lang::lint_Report::msg).unwrap_or_default();
@@ -206,7 +254,20 @@ impl Lint {
                 }
             }
         }
-        d
+        d.source = DiagSource::Lint { group: Cow::Owned(self.group.as_str().to_owned()) };
+        let lint = Msg::new().path(self.path.iter().map(|s| s.as_str()));
+        let level = lint.clone().text(" reports at ").code(self.level.item().name());
+        d.note(level).fix(self.allowing(node.declared))
+    }
+
+    /// The fix allowing this lint on the declaration written at `declared`, with a reason to
+    /// give: `#[lang.lint.allow(std.lints.naming.case, "...")]`.
+    fn allowing(&self, declared: OriginId) -> Fix {
+        let path = Expr::Path(self.path.iter().map(|s| s.as_str().to_owned()).collect());
+        let allow = Expr::call(Expr::decl(lang::lint::allow), vec![path, Expr::String(REASON.to_owned())]);
+        let text = [Attributes(vec![allow]).source(), " ".to_owned()].concat();
+        let msg = Msg::new().text("allow it here, saying why");
+        Fix::insert(msg, Safety::Placeholder, OriginTable::global().source_span(declared), text)
     }
 }
 

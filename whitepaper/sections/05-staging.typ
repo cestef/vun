@@ -54,14 +54,15 @@ between (@fig-trap).
 #figure(
   ```term
   $ vun check trap.vun
-  error[comptime.trap]: compile-time evaluation failed: division by zero
+  error[comptime.trap]: computing this at compile time failed: division by zero
     ╭▸ trap.vun:2:10
     │
   1 │ half := ($n: u8) -> u8 { 10 / n };
-    │                          ────── it fires here
+    │                          ────── it fails here
   2 │ Small := Int(0..=half(0));
     │          ━━━━━━━━━━━━━━━━
     │
+    ├ help: test the divisor before dividing
     ╰ note: while evaluating this call at trap.vun:2:18
   ```,
   caption: [A trap during compile-time evaluation of a type. The fix suggested by the explanation

@@ -31,9 +31,8 @@ impl Checker<'_, '_, '_> {
             .text("give the value, or name what provides it with a ")
             .code("link")
             .text(" attribute");
-        let diagnostic = Diagnostic::error(errors::BINDING_HOLE_VALUE, msg)
-            .at(hir.exprs[value].origin, None)
-            .child(vun_diag::ChildKind::Help, help);
+        let diagnostic =
+            Diagnostic::error(errors::BINDING_HOLE_VALUE, msg).at(hir.exprs[value].origin, None).help(help);
         self.diag.error(diagnostic);
     }
 

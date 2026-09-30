@@ -13,3 +13,4 @@ pub const default: Item = Item::new(&["lang", "lint", "Lint", "default"]);
 pub const doc: Item = Item::new(&["lang", "lint", "Lint", "doc"]);
 pub const call: Item = Item::new(&["lang", "lint", "Lint", "call"]);
 pub const decl: Item = Item::new(&["lang", "lint", "Lint", "decl"]);
+pub const local: Item = Item::new(&["lang", "lint", "Lint", "local"]);

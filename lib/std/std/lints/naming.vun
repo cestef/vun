@@ -21,8 +21,10 @@ case := lang.lint.Lint{
         if .some(want) = Case.of(d.binds, name) {
             if !want.holds(name) {
                 // Renaming a declaration leaves its uses to rename: shown, never applied.
-                fix: lang.lint.Fix = .{ .msg = "rename it", .safety = .display_only, .text = want.written(name) };
-                cx.report(d.origin, want.expected(), &[fix]);
+                renamed := want.written(name);
+                msg := "rename it `" ++ renamed ++ "`, and its uses";
+                fix: lang.lint.Fix = .{ .msg = msg, .safety = .display_only, .text = renamed };
+                cx.report(d.origin, want.said(d.binds, name), &[fix]);
             }
         }
     },
@@ -133,12 +135,13 @@ Case := enum {
         out
     };
 
-    /// What a report of a name not in this case says.
-    expected := (self: Case) -> &[u8] {
-        match self {
-            .pascal => "a type is named in `PascalCase`",
-            .snake => "a value is named in `snake_case`",
-        }
+    /// What a report of `name`, binding what `binds` says, not in this case says.
+    said := (self: Case, binds: lang.lint.Binds, name: Spelling) -> &[u8] {
+        style := match self {
+            .pascal => "`PascalCase`",
+            .snake => "`snake_case`",
+        };
+        "the " ++ binds.noun() ++ " `" ++ name.text ++ "` should be named in " ++ style
     };
 };
 

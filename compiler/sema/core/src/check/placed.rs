@@ -71,9 +71,12 @@ impl Checker<'_, '_, '_> {
             if on.iter().any(|place| here.iter().any(|h| h.symbol() == *place)) {
                 continue;
             }
-            let msg =
-                Msg::new().text("this attribute applies only to ").code_list(on.iter().map(|p| p.as_str()));
-            self.diag.error(Diagnostic::error(errors::ATTR_MISPLACED, msg).at(hir.exprs[attr].origin, None));
+            let note = Msg::new().text("it applies only to ").code_choices(on.iter().map(|p| p.as_str()));
+            let d = Diagnostic::error(errors::ATTR_MISPLACED, "this attribute does not apply here")
+                .at(hir.exprs[attr].origin, None)
+                .note(note)
+                .help("move it to what it applies to, or remove it");
+            self.diag.error(d);
         }
     }
 

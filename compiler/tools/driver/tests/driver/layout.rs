@@ -35,7 +35,7 @@ Short := struct { enable: bool, mode: u3 };
     let mut expected = vec![errors::INT_DOES_NOT_FIT; 8];
     expected.push(errors::LAYOUT_BITS_WIDTH);
     assert_eq!(ids, expected);
-    assert_eq!(found[8].1, "the fields take 4 bits, not the 8 of `Int(0..=255)`");
+    assert_eq!(found[8].1, "the fields take 4 bits, and `Int(0..=255)` has 8");
 }
 
 #[test]

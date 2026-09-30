@@ -57,7 +57,13 @@ impl Session {
             }
             Err(why) => {
                 let msg = Msg::new().text("no target is chosen");
-                Err(self.diag.error(Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(&why)))
+                let help = Msg::new()
+                    .text("choose one with ")
+                    .code("--target")
+                    .text(", or name the machine's in the toolchain file");
+                Err(self
+                    .diag
+                    .error(Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(&why).help(help)))
             }
         };
         self.target = Some(target.clone());

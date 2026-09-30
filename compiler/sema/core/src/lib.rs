@@ -19,12 +19,14 @@ pub mod link;
 pub mod lint;
 pub mod member;
 mod persisted;
+pub mod plan;
 mod reflect;
 pub mod site;
 pub mod target;
 pub mod thread;
 pub mod trace;
 pub mod typeck;
+pub mod value;
 pub mod visible;
 pub mod witness;
 

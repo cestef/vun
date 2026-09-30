@@ -2,7 +2,7 @@
 //! exactly N bits, the tag of a `#[layout.tag(uN)]` enum numbers every variant,
 //! `#[layout.align(N)]` aligns to a power of two, and `#[layout.offset(N)]` keeps fields in order.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -68,12 +68,20 @@ impl Checker<'_, '_, '_> {
         if taken != width {
             let msg = Msg::new()
                 .text("the fields take ")
-                .num(i128::from(taken))
-                .text(" bits, not the ")
-                .num(i128::from(width))
-                .text(" of ")
-                .code(backing.to_string());
-            self.diag.error(Diagnostic::error(errors::LAYOUT_BITS_WIDTH, msg).at(laid.at, None));
+                .counted(i128::from(taken), "bit", "bits")
+                .text(", and ")
+                .ty(backing.to_string())
+                .text(" has ")
+                .num(i128::from(width));
+            let note =
+                "a bit-packed struct's fields fill its backing integer exactly, least significant first";
+            let help = if taken > width {
+                "use a wider backing integer, or narrow the fields"
+            } else {
+                "use a narrower backing integer, or add a `_` field for the bits left over"
+            };
+            let d = Diagnostic::error(errors::LAYOUT_BITS_WIDTH, msg).at(laid.at, None).note(note).help(help);
+            self.diag.error(d);
         }
     }
 
@@ -85,15 +93,20 @@ impl Checker<'_, '_, '_> {
         if holds.is_some_and(|count| count >= Integer::from(variants)) {
             return;
         }
+        let needed = usize::BITS - variants.saturating_sub(1).leading_zeros();
         let msg = Msg::new()
             .text("the tag type ")
-            .code(tag.to_string())
-            .text(" is not a ")
-            .code("uN")
-            .text(" type with a pattern for each of the ")
-            .num(u64::try_from(variants).unwrap_or(u64::MAX))
-            .text(" variants");
-        self.diag.error(Diagnostic::error(errors::LAYOUT_TAG, msg).at(laid.at, None));
+            .ty(tag.to_string())
+            .text(" cannot tell ")
+            .counted(i128::try_from(variants).unwrap_or(i128::MAX), "variant", "variants")
+            .text(" apart");
+        let help = Msg::new().text("use an unsigned integer of at least ").counted(
+            i128::from(needed.max(1)),
+            "bit",
+            "bits",
+        );
+        let note = "a tag is an unsigned integer with a pattern for each variant";
+        self.diag.error(Diagnostic::error(errors::LAYOUT_TAG, msg).at(laid.at, None).note(note).help(help));
     }
 
     /// `#[layout.offset(N)]`: a field lies at or past the end of the one before it, as the
@@ -131,7 +144,7 @@ impl Checker<'_, '_, '_> {
             _ => None,
         });
         let at_field = ns.and_then(|ns| laid.hir.field(ns, name)).map_or(laid.at, |f| f.origin);
-        let d = Diagnostic::error(errors::LAYOUT_OFFSET, msg).at(at_field, None).child(ChildKind::Note, why);
+        let d = Diagnostic::error(errors::LAYOUT_OFFSET, msg).at(at_field, None).note(why);
         self.diag.error(d);
     }
 
@@ -141,6 +154,10 @@ impl Checker<'_, '_, '_> {
             return;
         }
         let msg = Msg::new().text("the alignment ").code(n.to_string()).text(" is not a power of two");
-        self.diag.error(Diagnostic::error(errors::LAYOUT_ALIGN, msg).at(laid.at, None));
+        let mut d = Diagnostic::error(errors::LAYOUT_ALIGN, msg).at(laid.at, None);
+        if let Some(next) = n.to_u128().and_then(u128::checked_next_power_of_two) {
+            d = d.help(Msg::new().text("use a power of two, such as ").code(next.to_string()));
+        }
+        self.diag.error(d);
     }
 }

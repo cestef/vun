@@ -23,9 +23,18 @@ impl Level {
         (lang::lint_Level::expect, Self::Expect),
     ];
 
-    /// The level the variant `value` of `lang.lint.Level` is.
+    /// The level the variant `value` of `lang.lint.Level` is, or names where no type was
+    /// expected (`.warn` in a record whose type is inferred).
     pub(super) fn of(value: &Value) -> Option<Self> {
-        variant(value, &Self::ALL)
+        match value {
+            Value::Name(name) => Self::ALL.iter().find(|(item, _)| item.symbol() == *name).map(|&(_, l)| l),
+            _ => variant(value, &Self::ALL),
+        }
+    }
+
+    /// The variant of `lang.lint.Level` it is.
+    pub(super) fn item(self) -> Item {
+        Self::ALL.iter().find(|&&(_, level)| level == self).map_or(lang::lint_Level::allow, |&(item, _)| item)
     }
 
     /// How a report at this level is shown; `None` where it is not.

@@ -31,7 +31,8 @@ impl Session {
                     .text(", and backend ")
                     .code(backend)
                     .text(" reported no frame sizes");
-                Diagnostic::error(errors::STACK_UNREPORTED, msg).at(f.origin, None)
+                let help = Msg::new().text("build with a backend that reports them, with ").code("--backend");
+                Diagnostic::error(errors::STACK_UNREPORTED, msg).at(f.origin, None).help(help)
             } else {
                 match uses.of_function(id) {
                     Ok(bytes) if bytes <= bound => continue,
@@ -41,13 +42,15 @@ impl Session {
                             .num(bytes)
                             .text(" bytes of stack, over its bound of ")
                             .num(bound);
-                        Diagnostic::error(errors::STACK_EXCEEDED, msg).at(f.origin, None)
+                        let help = "raise the bound, or move large locals to the heap or to a static";
+                        Diagnostic::error(errors::STACK_EXCEEDED, msg).at(f.origin, None).help(help)
                     }
                     Err(why) => {
                         let msg = Msg::new().text("the stack this function may take has no bound");
                         Diagnostic::error(errors::STACK_UNBOUNDED, msg)
                             .at(f.origin, None)
                             .label(why.at(unit), Some(why.msg()))
+                            .help("bound it: remove the recursion or the call through a pointer the label shows")
                     }
                 }
             };

@@ -14,6 +14,7 @@ total := (xs: &[u32]) -> u64 {
     sum: u64 = 0;
     for x in xs {
         sum := x; //~ names.shadowed
+        if sum.* == 0 { break; }
     }
     sum
 };

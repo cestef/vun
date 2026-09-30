@@ -1,5 +1,5 @@
-//! Edits across documents: where a declaration is named and renaming it there, and the fixes of
-//! diagnostics as code actions.
+//! Edits across documents: where a declaration is named and renaming it there, and code actions:
+//! the fixes of diagnostics, and the views of the document.
 
 use std::collections::BTreeMap;
 
@@ -40,10 +40,21 @@ impl Answers<r::Rename> for Server<'_> {
 
 impl Answers<r::CodeAction> for Server<'_> {
     fn answer(&mut self, params: CodeActionParams) -> Result<Vec<CodeAction>, Failure> {
-        let asked = params.context.only.as_ref().is_none_or(|only| only.contains(&CodeActionKind::QuickFix));
-        if !asked {
-            return Ok(Vec::new());
+        let asked = |kind| params.context.only.as_ref().is_none_or(|only| only.contains(&kind));
+        let mut actions = Vec::new();
+        if asked(CodeActionKind::QuickFix) {
+            actions.extend(self.fixes(&params)?);
         }
+        if asked(CodeActionKind::Source) {
+            actions.extend(self.view_actions(&params.text_document)?);
+        }
+        Ok(actions)
+    }
+}
+
+impl Server<'_> {
+    /// The fixes of the diagnostics over the range `params` asks about.
+    fn fixes(&mut self, params: &CodeActionParams) -> Result<Vec<CodeAction>, Failure> {
         let file = self.document(&params.text_document)?.file;
         let reported = self.session.reported(file);
         let document = self.document(&params.text_document)?;
@@ -64,6 +75,7 @@ impl Answers<r::CodeAction> for Server<'_> {
                     diagnostics: Some(vec![shown.clone()]),
                     is_preferred: Some(fix.preferred),
                     edit: Some(self.workspace_edit(edits)),
+                    command: None,
                 });
             }
         }

@@ -81,7 +81,8 @@ impl fmt::Display for TyKind {
     }
 }
 
-/// Compile-time values as dumps show them: integers and types as written, variants by name.
+/// Compile-time values as dumps show them: integers, types and structs as written, variants by
+/// name.
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -108,7 +109,14 @@ impl fmt::Display for Value {
             }
             Self::Variant { name, .. } | Self::Name(name) => write!(f, ".{name}"),
             Self::Constructor { ty, name } => write!(f, "{ty}.{name}"),
-            Self::Struct { ty, .. } => write!(f, "{ty}{{ .. }}"),
+            Self::Struct { ty, fields } if fields.is_empty() => write!(f, "{ty}{{}}"),
+            Self::Struct { ty, fields } => {
+                write!(f, "{ty}{{ ")?;
+                for (i, (name, value)) in fields.iter().enumerate() {
+                    write!(f, "{}.{name} = {value}", if i > 0 { ", " } else { "" })?;
+                }
+                f.write_str(" }")
+            }
             Self::Primitive(p) => write!(f, "{}", p.item()),
             Self::Namespace(ns) => {
                 let names: Vec<_> = ns.path.iter().map(|n| n.as_str()).collect();

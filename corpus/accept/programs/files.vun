@@ -7,8 +7,8 @@ path := "files.vun.out";
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     match check(sys) {
-        .ok(true) => .ok,
-        .ok(false) => .code(1),
+        .ok(.true) => .ok,
+        .ok(.false) => .code(1),
         .err(_) => .code(2),
     }
 };

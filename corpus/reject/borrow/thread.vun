@@ -9,6 +9,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     running := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) };
     count(); //~ borrow.conflict
     running.join();
-    forgotten := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) };
+    forgotten := match sys.spawn(&mut count) { .ok(t) => t, .err(_) => return .code(1) }; //~ std.lints.style.unused
     .ok //~ place.linear_leak
 };

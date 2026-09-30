@@ -48,10 +48,13 @@ impl Typer<'_, '_, '_> {
             if let Some(p) = pat.filter(|p| matches!(hir.pats[*p].kind, PatKind::Rest(_)))
                 && index + 1 != params.len()
             {
-                let msg = Msg::new()
-                    .text("a pack gathers the arguments after the others, and this one is not last");
-                self.diag
-                    .error(Diagnostic::error(errors::TYPES_PACK_POSITION, msg).at(hir.pats[p].origin, None));
+                let msg = Msg::new().text("a pack parameter comes last");
+                let note = "a pack gathers the arguments left after the other parameters take theirs";
+                let d = Diagnostic::error(errors::TYPES_PACK_POSITION, msg)
+                    .at(hir.pats[p].origin, None)
+                    .note(note)
+                    .help("move it after the other parameters");
+                self.diag.error(d);
             }
             match (&mut types, ty.and_then(|ty| self.env().param_type(pat, ty).ok())) {
                 (Some(types), Some(ty)) => types.push(ty),

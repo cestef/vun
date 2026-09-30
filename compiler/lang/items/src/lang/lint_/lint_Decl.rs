@@ -9,3 +9,5 @@ use crate::Item;
 pub const name: Item = Item::new(&["lang", "lint", "Decl", "name"]);
 pub const binds: Item = Item::new(&["lang", "lint", "Decl", "binds"]);
 pub const origin: Item = Item::new(&["lang", "lint", "Decl", "origin"]);
+pub const public: Item = Item::new(&["lang", "lint", "Decl", "public"]);
+pub const documented: Item = Item::new(&["lang", "lint", "Decl", "documented"]);

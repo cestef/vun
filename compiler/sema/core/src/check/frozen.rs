@@ -29,10 +29,12 @@ impl Checker<'_, '_, '_> {
                 matches!(&*ty, TyKind::Nominal(Nominal { literal: l, .. }) if l.expr.id == literal.expr.id && l.file == literal.file)
             });
             if reflects && own {
-                let msg =
-                    Msg::new().text("this reflects on a type while its members are still being defined");
-                self.diag
-                    .error(Diagnostic::error(errors::META_FROZEN, msg).at(hir.exprs[callee].origin, None));
+                let msg = Msg::new().text("this reads the members of the type its body declares");
+                let d = Diagnostic::error(errors::META_FROZEN, msg)
+                    .at(hir.exprs[callee].origin, None)
+                    .note("a type's members are known only once its whole body is")
+                    .help("read them outside the type's body, such as in a function it declares");
+                self.diag.error(d);
             }
         }
     }

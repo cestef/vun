@@ -17,7 +17,7 @@ finished := (xs: &mut [4]u8) { first := &mut xs[0]; first.* = 1; xs[1] = 2; };
 fields := (p: &mut Point) { x := &mut p.x; p.y = 2; x.* = 1; };
 reborrowed := (xs: &mut [4]u8) { first := &mut xs[0]; again := &mut first.*; xs[1] = 2; again.* = 1; };
 read := (p: &mut Point) -> u8 { x := &mut p.x; y := p.x; x.* = 1; y };
-written := (p: &mut Point) { x := &p.x; p.x = 2; y := x.*; };
+written := (p: &mut Point) { x := &p.x; p.x = 2; _: u8 = x.*; };
 Buf := struct { n: u8, push := (self: &mut Buf, x: u8) { self.n = x; }; len := (self: &Buf) -> u8 { self.n }; };
 grow := (b: &mut Buf) { b.push(b.len()); };
 ",

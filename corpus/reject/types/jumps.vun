@@ -6,6 +6,7 @@ first := (xs: &[u8]) -> bool {
     for x in xs {
         found := if x.* == 0 { continue } else { x.* };
         flag: bool = found; //~ types.mismatch
+        if flag { break; }
     }
     early := match xs.len() { 0 => return false, n => n };
     early == 1
@@ -14,5 +15,6 @@ first := (xs: &[u8]) -> bool {
 last := (c: bool) -> u8 {
     value := if c { return 1 } else { 2 };
     ok: bool = value; //~ types.mismatch
+    if ok { return 0; }
     value
 };

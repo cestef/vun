@@ -1,4 +1,5 @@
 mod assist;
+mod command;
 mod edit;
 mod features;
 mod session;

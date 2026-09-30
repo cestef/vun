@@ -78,13 +78,28 @@ impl Parser<'_, '_, '_> {
 
     /// Reports what was expected where the current token stands.
     pub(super) fn report_expected_what(&mut self, expected: Expected) {
-        let (id, what) = match expected {
+        let (id, what, note) = match expected {
             Expected::Tokens(tokens) => return self.report_expected(&tokens.iter().collect::<Vec<_>>()),
-            Expected::Declaration => (errors::SYNTAX_EXPECTED_DECLARATION, "expected a declaration, found "),
-            Expected::Name => (errors::SYNTAX_EXPECTED_NAME, "expected a name, found "),
-            Expected::Expression => (errors::SYNTAX_EXPECTED_EXPRESSION, "expected an expression, found "),
+            Expected::Declaration => (
+                errors::SYNTAX_EXPECTED_DECLARATION,
+                "expected a declaration, found ",
+                Msg::new().text("a namespace holds declarations, each ").code("name := value;"),
+            ),
+            Expected::Name => (
+                errors::SYNTAX_EXPECTED_NAME,
+                "expected a name, found ",
+                Msg::new()
+                    .text("a name is letters, digits and ")
+                    .code("_")
+                    .text(", not starting with a digit"),
+            ),
+            Expected::Expression => (
+                errors::SYNTAX_EXPECTED_EXPRESSION,
+                "expected an expression, found ",
+                Msg::new().text("a value is needed here: a literal, a name, a call or a block"),
+            ),
         };
-        let mut d = Diagnostic::error(id, self.found(Msg::new().text(what)));
+        let mut d = Diagnostic::error(id, self.found(Msg::new().text(what))).note(note);
         if let Some(keyword) = self.nearby_keyword() {
             d = d.fix(self.escape(keyword));
         }

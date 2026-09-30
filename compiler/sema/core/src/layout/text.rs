@@ -1,11 +1,11 @@
-//! The layout text format, as `vun debug layout` prints it: a type's size and alignment, how an
+//! The layout text format, as `vun debug dump layout` prints it: a type's size and alignment, how an
 //! enum tells its variants, where each part is, and its unused patterns.
 
 use std::fmt;
 
 use vun_intern::Symbol;
 
-use super::{Niche, Parts, Shape, Tag};
+use super::{Layout, Niche, Offset, Parts, Shape, Tag};
 use crate::member::MemberTable;
 
 /// A shape as text, its parts named by the members of its type, when it has any.
@@ -59,16 +59,33 @@ impl Text<'_> {
     }
 }
 
+/// A size and an alignment: `size 8, align 4`.
+impl fmt::Display for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "size {}, align {}", self.size, self.align)
+    }
+}
+
+/// `at 4`, or `at bit 3` in a bit-packed struct.
+impl fmt::Display for Offset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bytes(n) => write!(f, "at {n}"),
+            Self::Bits(n) => write!(f, "at bit {n}"),
+        }
+    }
+}
+
 impl fmt::Display for Text<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let layout = &self.shape.layout;
-        write!(f, "size {}, align {}", layout.size, layout.align)?;
+        write!(f, "{layout}")?;
         match &self.shape.parts {
             Parts::Whole => {}
             Parts::Sequence(offsets) | Parts::Bits(offsets) => {
-                let unit = if matches!(self.shape.parts, Parts::Bits(_)) { "bit " } else { "" };
-                for (i, offset) in offsets.iter().enumerate() {
-                    write!(f, "\n  {} at {unit}{offset}", self.part(i))?;
+                for i in 0..offsets.len() {
+                    let offset = self.shape.offset(i).expect("each part has its offset");
+                    write!(f, "\n  {} {offset}", self.part(i))?;
                 }
             }
             Parts::Array { stride, len } => write!(f, "\n  {len} items {stride} bytes apart")?,

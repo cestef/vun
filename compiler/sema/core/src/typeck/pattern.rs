@@ -133,14 +133,23 @@ impl Typer<'_, '_, '_> {
         let rest = items.iter().position(is_rest);
         let written = items.len() - usize::from(rest.is_some());
         if written > parts.len() || (rest.is_none() && written != parts.len()) {
+            let count = |n: usize| i128::try_from(n).unwrap_or(i128::MAX);
             let msg = Msg::new()
                 .text("this pattern has ")
-                .num(u64::try_from(written).unwrap_or(u64::MAX))
-                .text(" items, and the tuple of type ")
+                .counted(count(written), "item", "items")
+                .text(", and the tuple of type ")
                 .ty(ty.to_string())
                 .text(" has ")
-                .num(u64::try_from(parts.len()).unwrap_or(u64::MAX));
-            self.diag.error(Diagnostic::error(errors::TYPES_MISMATCH, msg).at(hir.pats[pat].origin, None));
+                .num(count(parts.len()));
+            let help = if written > parts.len() {
+                Msg::new().text("remove the items the tuple does not have")
+            } else {
+                Msg::new()
+                    .text("match each item, or skip those left with ")
+                    .code(TokenKind::DotDot.text().unwrap_or_default())
+            };
+            let d = Diagnostic::error(errors::TYPES_MISMATCH, msg).at(hir.pats[pat].origin, None).help(help);
+            self.diag.error(d);
             return Vec::new();
         }
         let Some(rest) = rest else { return parts.iter().copied().map(Some).collect() };
@@ -240,8 +249,18 @@ impl Typer<'_, '_, '_> {
                     .text(" here but ")
                     .ty(expected.ty.to_string())
                     .text(" in the first alternative");
-                let d = Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg);
-                self.diag.error(d.at(hir.binders[other].origin, None));
+                let name = hir.binders[other].name;
+                let first_ty =
+                    Msg::new().code(name.as_str()).text(" is ").ty(expected.ty.to_string()).text(" here");
+                let help = Msg::new()
+                    .text("bind ")
+                    .code(name.as_str())
+                    .text(" to values of one type in every alternative");
+                let d = Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg)
+                    .at(hir.binders[other].origin, None)
+                    .label(hir.binders[first].origin, Some(first_ty))
+                    .help(help);
+                self.diag.error(d);
             }
         }
     }

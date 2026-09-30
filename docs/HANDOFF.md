@@ -54,6 +54,11 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 
 ## Known gaps in landed work
 
+- A pattern naming a value binds a new local of that name: `.ok(true)` binds `true` and matches
+  everything (found by `style.unused` in `corpus/accept/programs/files.vun`, now `.ok(.true)`).
+  Shadowing a prelude name is allowed, so nothing reports it; a pattern whose name resolves to a
+  value should compare with it, or be refused (a language decision for the owner).
+
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and
@@ -79,6 +84,21 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 - `~/.config/vun/toolchain.vun` needs a `linux.gnu.arm64` row (same compiler, sysroot and runner
   as `linux.arm64`) for glibc arm64 programs.
 
+## Settled direction: pre-evaluated output
+
+Discussed with the owner: no standalone "pre-compile, then compile from that" command.
+- *As a cache:* the saved query memos (beside a root file, and the shared library memos) already
+  keep what compiling computed, keyed by content. What is missing is below them, a code cache;
+  finishing it gives this for free.
+- *As residual source, now:* a view `vun debug dump expanded`, a row of `vun_driver::view::View`
+  (so editors offer it too): the program with each `$` form evaluated, `$for` and `$if` expanded,
+  generated types spelled out. A view only, never a build input: emitted text loses origin chains.
+- *As a distributable artifact, later:* prebuilt package entries in the shared store (the Nix
+  direction), keyed by content and target. Compile-time values read the target (`TargetOf`), so
+  entries are per target; only instantiations the package itself reaches can ship, generic code
+  ships as HIR and types; `embed`, the build plan and the toolchain version go into the key;
+  origins survive so diagnostics and debug info still point at source.
+
 ## Next steps, most useful first
 
 0. Editor integration (the owner's current focus; Zed, Helix, VS Code, Neovim). Helix and
@@ -94,6 +114,11 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
    toolchain file. Inline assembly: `for` over a witness made per use (`Env::witness`,
    `Typer::iteration`) is not checked for conformance; an instruction value whose table holds
    types (`[0]type`) has no run-time layout, which only a library's report now hides.
+   Richer server (349): views as `source` code actions (`vun.view`, shown by `window/showDocument`),
+   hovers with values and layouts, type-only inlays, a run lens (`vun.run`). Open: test lenses (no
+   `vun test` or `std.testing.runner` exists yet); a run cannot be stopped from the editor, nor
+   given input; views are of the whole file, not the function at the cursor;
+   per-editor polish (VS Code commands, Zed has no code lenses); untried in a real editor.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
@@ -103,13 +128,14 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.meta.attr`, `std.Dyn`,
    `testing.Bench`/`Sim` and `mem.copy`. Lints: level `expect` shows as `warn` and never reports
-   that a lint stayed silent; locals and parameters are not linted; the build's lint levels
-   (item 5) do not reach `Lint::read` yet; the grammar generator still reads a PascalCase table
+   that a lint stayed silent; the command line sets no levels yet, and dependencies' lints are
+   not capped at `warn` when building a dependent (the build's levels apply to its own
+   package); `#[lint.allow]` applies to declarations, not to locals; the grammar generator still reads a PascalCase table
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
    over `#[target.require]`. A trap in a `$` form inside a declaration's value is reported twice,
    by the form and by the value.
-5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters, lint levels.
+5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.

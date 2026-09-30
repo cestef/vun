@@ -2,7 +2,7 @@
 //! tracked, linear values move, and `defer` runs where its operand is still held.
 
 use crate::common::Fixture;
-use vun_diag::errors;
+use vun_diag::{DiagId, errors};
 
 #[test]
 fn place_states_follow_writes_and_borrows() {
@@ -74,7 +74,7 @@ File := #[kind.linear] struct { fd: u32 };
 open := () -> File { .{ .fd = 3 } };
 close := (f: File) { .{ .fd = _ } := f; };
 inner := () -> u32 { { f := open(); } 1 };
-looped := () { for i in 0..3 { f := open(); } };
+looped := () { for _ in 0..3 { f := open(); } };
 skipped := (flag: bool) { for { f := open(); if flag { continue; } close(f); break; } };
 handed := () -> File { g := { f := open(); f }; g };
 closed := () { { f := open(); close(f); } };
@@ -82,11 +82,9 @@ closed := () { { f := open(); close(f); } };
     );
     let found = fixture.reported(&file);
     let lines: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
-    // Each at the end of the block holding `f`: the inner block, the loop body, the `continue`.
-    assert_eq!(
-        lines,
-        [errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK, errors::PLACE_LINEAR_LEAK],
-        "{found:?}"
-    );
+    // Each at the end of the block holding `f`: the inner block, the loop body, the `continue`;
+    // the first two never name their `f` either.
+    let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::new("std.lints.style.unused"));
+    assert_eq!(lines, [leak.clone(), unused.clone(), leak.clone(), unused, leak], "{found:?}");
     assert!(found[0].1.contains("before its scope ends"), "{found:?}");
 }

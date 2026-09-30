@@ -121,4 +121,22 @@ impl Fix {
         let edit = Edit { span, text: text.into(), holes: Vec::new() };
         Self { msg: msg.into(), safety, edits: vec![edit], preferred: false }
     }
+
+    /// A fix of one edit inserting `text` at the start of `at`.
+    #[must_use]
+    pub fn insert(msg: impl Into<Msg>, safety: Safety, at: Span, text: impl Into<String>) -> Self {
+        Self::replace(msg, safety, Span::new(at.file, at.range.lo, at.range.lo), text)
+    }
+
+    /// A fix of one edit removing `span`.
+    #[must_use]
+    pub fn remove(msg: impl Into<Msg>, safety: Safety, span: Span) -> Self {
+        Self::replace(msg, safety, span, String::new())
+    }
+
+    /// This fix, the one to apply among the diagnostic's.
+    #[must_use]
+    pub fn preferred(self) -> Self {
+        Self { preferred: true, ..self }
+    }
 }

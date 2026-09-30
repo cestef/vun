@@ -54,6 +54,14 @@ pub enum Parts {
     Enum { tag: Tag, payloads: Vec<Vec<u64>> },
 }
 
+/// Where a part of a struct or a tuple is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Offset {
+    Bytes(u64),
+    /// In a `#[layout.bits(uN)]` struct, from its least significant bit.
+    Bits(u64),
+}
+
 /// How an enum's value tells which variant it is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Tag {
@@ -142,6 +150,16 @@ impl Niche {
 }
 
 impl Shape {
+    /// Where its part `i` is, if it is a struct or a tuple having one.
+    #[must_use]
+    pub fn offset(&self, i: usize) -> Option<Offset> {
+        match &self.parts {
+            Parts::Sequence(offsets) => offsets.get(i).copied().map(Offset::Bytes),
+            Parts::Bits(offsets) => offsets.get(i).copied().map(Offset::Bits),
+            Parts::Whole | Parts::Array { .. } | Parts::Enum { .. } => None,
+        }
+    }
+
     /// A value without parts.
     pub(crate) fn whole(layout: Layout) -> Self {
         Self { layout, parts: Parts::Whole }

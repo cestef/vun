@@ -9,7 +9,7 @@ always true, which is an error: bind with `:=` instead (spec 01, section 6).
 
 ```vun
 first := (pair: (u8, u8)) -> u8 {
-    if (a, b) = pair { a } else { 0 } //~ binding.irrefutable_test
+    if (a, _) = pair { a } else { 0 } //~ binding.irrefutable_test
 };
 ```
 

@@ -110,7 +110,7 @@ build := (b: &mut std.build.Build) {
   `std.build.Package`, and reads each action member by member through the generated handles of
   `std.build`'s declarations, never a name written as text. Records whose types each call infers are kept
   as `lang.meta.Any`. Checking a package's `build.vun` runs its plan, so a trap in `build` is an
-  error there; `vun debug plan build.vun` prints the actions, one literal per line.
+  error there; `vun debug dump plan build.vun` prints the actions, one literal per line.
 - `std.build.Build` records a plan of steps, which the driver carries out once `build` returns:
   `b.dep($name, params) -> Dep` names a dependency of `package.deps` (a `lang.meta.Name`, so
   `.stm32f4`) with the parameters its own `build.vun` declares; `b.program(options) -> Program`
@@ -317,6 +317,7 @@ implemented; nothing is listed that does not run.
 | `vun build <file>` (`b`) | build the program a root file exports; `--library shared` or `static` builds a library of its exports |
 | `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
 | `vun check <file>` (`c`) | analyze without generating code |
+| `vun fix <file> [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
 | `vun doc [<packages>...] [--library] [-o <dir>]` | the API documentation of packages: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
@@ -326,7 +327,7 @@ implemented; nothing is listed that does not run.
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
-| `vun debug tokens\|cst\|manifest\|plan\|hir\|types\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
+| `vun debug dump tokens\|cst\|manifest\|plan\|hir\|types\|values\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
 Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,

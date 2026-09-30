@@ -13,11 +13,15 @@ use vun_lsp_protocol::rpc::{ErrorCode, Message};
 use vun_lsp_protocol::{Notification, notifications as n};
 use vun_origin::Resolve;
 use vun_span::{SourceMap, Span};
+use vun_trace::Activity;
 
 use crate::failure::{Failure, Reason};
 use crate::methods::Hears;
 use crate::position::Lines;
 use crate::server::{Document, Server};
+
+/// Checking documents changed and publishing their diagnostics, as timed.
+const PUBLISH: Activity = Activity::stage("publish diagnostics");
 
 /// How diagnostics name where they come from.
 const SOURCE: &str = "vun";
@@ -93,6 +97,7 @@ impl Server<'_> {
 
     /// Checks each document changed since it was last, and publishes what that reports in it.
     pub(crate) fn publish(&mut self) {
+        let _timer = PUBLISH.start();
         for uri in std::mem::take(&mut self.changed) {
             let Some(document) = self.documents.get(&uri) else { continue };
             let reported = self.session.reported(document.file);

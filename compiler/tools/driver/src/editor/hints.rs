@@ -5,9 +5,8 @@
 use vun_hir::db::Parsed;
 use vun_hir::tree::{ExprKind, PatKind};
 use vun_origin::Resolve;
-use vun_sema::decl::DeclType;
 use vun_sema_ty::Ty;
-use vun_sema_ty::item::{DeclRef, ExprRef};
+use vun_sema_ty::item::DeclRef;
 use vun_span::{ByteRange, FileId};
 
 use crate::Session;
@@ -27,7 +26,7 @@ impl Session {
         let hir = &parsed.hir;
         let mut hints = Vec::new();
         for (id, decl) in hir.decls.iter() {
-            let (None, Some(value), PatKind::Bind(binder)) = (decl.ty, decl.value, &hir.pats[decl.pat].kind)
+            let (None, Some(value), PatKind::Bind(_)) = (decl.ty, decl.value, &hir.pats[decl.pat].kind)
             else {
                 continue;
             };
@@ -39,10 +38,7 @@ impl Session {
             if states || name.file != file || name.range.hi < range.lo || range.hi < name.range.hi {
                 continue;
             }
-            let known = match hir.member_decl(*binder) {
-                Some(_) => self.db.get::<DeclType>(&DeclRef::new(key.clone(), hir, id)).ok(),
-                None => self.known(&ExprRef::new(key.clone(), hir, value)),
-            };
+            let known = self.decl_known(&DeclRef::new(key.clone(), hir, id));
             hints.extend(known.map(|known| TypeHint { at: name.range.hi, ty: known.ty }));
         }
         hints.sort_by_key(|h| h.at);

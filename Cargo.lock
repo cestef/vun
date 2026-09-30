@@ -1377,6 +1377,7 @@ dependencies = [
  "vun-bind",
  "vun-build",
  "vun-command",
+ "vun-data",
  "vun-diag",
  "vun-doc",
  "vun-fetch",
@@ -1852,8 +1853,10 @@ dependencies = [
  "vun-lsp-protocol",
  "vun-origin",
  "vun-span",
+ "vun-term",
  "vun-trace",
  "vun-uri",
+ "vun-variants",
 ]
 
 [[package]]
@@ -2201,11 +2204,8 @@ name = "vun-sema-plan"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
- "vun-hir",
  "vun-intern",
  "vun-items",
- "vun-origin",
- "vun-query",
  "vun-sema",
  "vun-sema-ty",
  "vun-target",

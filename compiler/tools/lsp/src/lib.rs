@@ -2,10 +2,11 @@
 //! output, from one driver session and the query engine `vun check` computes with. What the
 //! editor holds of an open file is the file, saved or not; it is checked after each change, and
 //! the diagnostics are published per version; hover, definition, references and rename, code
-//! actions, signature help, inlay hints, completion, the outline, folds, formatting and semantic
-//! tokens are read from the same session.
+//! actions, signature help, inlay hints, completion, the outline, folds, formatting, semantic
+//! tokens and views of each representation of a file are read from the same session.
 
 mod assist;
+mod command;
 mod documents;
 mod edit;
 mod failure;

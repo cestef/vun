@@ -1,5 +1,5 @@
 //! Listings: what a function's code holds, instruction by instruction, with its offsets and
-//! bytes, as `vun debug code` prints it.
+//! bytes, as `vun debug dump code` prints it.
 
 use std::fmt;
 

@@ -44,12 +44,13 @@ impl From<Unbuilt> for Unready {
 impl std::fmt::Display for Unready {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unbuilt(Unbuilt { why: Why::Form, .. }) => f.write_str("a form MIR does not lower yet"),
-            Self::Unbuilt(Unbuilt { why: Why::Unevaluated(why), .. }) => {
-                write!(f, "a compile-time value MIR reads has none: {}", why.why())
+            Self::Unbuilt(Unbuilt { why: Why::Form, .. }) => {
+                f.write_str("this form is not supported in compiled code yet")
             }
-            Self::Unevaluated { why, .. } => write!(f, "a compile-time value has none: {}", why.why()),
-            Self::Untyped { .. } => f.write_str("a local has no type"),
+            Self::Unbuilt(Unbuilt { why: Why::Unevaluated(why), .. }) | Self::Unevaluated { why, .. } => {
+                write!(f, "a value this needs at compile time has none: {}", why.why())
+            }
+            Self::Untyped { .. } => f.write_str("the type of this value is unknown"),
         }
     }
 }

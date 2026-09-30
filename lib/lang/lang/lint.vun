@@ -33,14 +33,37 @@ Binds := enum {
     /// A field of a struct.
     field,
     /// A variant of an enum.
-    variant,
+    variant;
+
+    /// What a report calls a declaration binding this: `type`, `value`, `field`, `variant`.
+    noun := (self: Binds) -> &[u8] {
+        match self {
+            .type => "type",
+            .value => "value",
+            .field => "field",
+            .variant => "variant",
+        }
+    };
 };
 
-/// A declaration in the code checked: its name, what it binds, and where it is written.
+/// A declaration in the code checked, a member of a namespace or a type: its name, what it
+/// binds, where it is written, whether it is visible from any package, and whether a doc
+/// comment says what it is.
 Decl := struct {
     name: &[u8],
     binds: Binds,
     origin: lang.meta.Origin,
+    public: bool,
+    documented: bool,
+};
+
+/// A local binding or a parameter in the code checked: its name, where it is written, whether
+/// the code names it anywhere after, and whether it is a parameter.
+Local := struct {
+    name: &[u8],
+    origin: lang.meta.Origin,
+    used: bool,
+    param: bool,
 };
 
 /// The function a checked call calls.
@@ -99,6 +122,7 @@ Lint := struct {
     doc: &[u8] = "",
     call: Check(Call) = unchecked(Call),
     decl: Check(Decl) = unchecked(Decl),
+    local: Check(Local) = unchecked(Local),
 };
 
 /// What `check` reports of `node`, in the namespace `ns`: the call the compiler runs for each

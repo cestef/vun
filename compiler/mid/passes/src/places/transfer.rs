@@ -151,7 +151,7 @@ impl Analysis<'_> {
                 .text("consume it on every path to this exit or on none, so that the ")
                 .code("defer")
                 .text(" runs on all of them or is skipped on all");
-            self.advise(errors::PLACE_AMBIGUOUS_JOIN, origin, msg, Some(help));
+            self.advise(errors::PLACE_AMBIGUOUS_JOIN, origin, msg, help);
         }
         skip
     }
@@ -187,13 +187,20 @@ impl Analysis<'_> {
         match state {
             State::Init => {}
             State::Uninit => {
-                self.report(errors::PLACE_READ_UNINIT, origin, what().text(" is read before it is written"));
+                let help = Msg::new().text("give it a value where it is declared, or write it before this");
+                self.advise(
+                    errors::PLACE_READ_UNINIT,
+                    origin,
+                    what().text(" is read before it is written"),
+                    help,
+                );
             }
-            State::Ambiguous => self.report(
-                errors::PLACE_AMBIGUOUS_JOIN,
-                origin,
-                what().text(" is written on some paths here and not on others"),
-            ),
+            State::Ambiguous => {
+                let msg = what().text(" is written on some paths to here and not on others");
+                let help = Msg::new()
+                    .text("write it on every path to here, or give it a value where it is declared");
+                self.advise(errors::PLACE_AMBIGUOUS_JOIN, origin, msg, help);
+            }
         }
     }
 }

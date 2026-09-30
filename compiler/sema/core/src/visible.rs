@@ -3,7 +3,7 @@
 //! primitive `lang.visible`, and its argument a value of `lang.scope`, so both are read as data.
 
 use vun_codec::{Decode, Encode};
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::{FileRef, Namespace, Package, PackageId};
 use vun_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Name};
@@ -156,7 +156,9 @@ impl Env<'_, '_> {
     pub fn not_visible(&self, at: OriginId, name: Symbol, visible: &Visible) -> Diagnostic {
         let msg = Msg::new().code(name.as_str()).text(" is not visible here");
         let note = Msg::new().text("it is visible only inside ").append(self.scope_msg(visible));
-        Diagnostic::error(errors::NAMES_PRIVATE, msg).at(at, None).child(ChildKind::Note, note)
+        let help =
+            "reach it through what its home makes visible, or widen its visibility where it is declared";
+        Diagnostic::error(errors::NAMES_PRIVATE, msg).at(at, None).note(note).help(help)
     }
 
     /// Where `visible` reaches, for diagnostics: a namespace, a type, the package or the

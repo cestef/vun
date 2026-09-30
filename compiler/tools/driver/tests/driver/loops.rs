@@ -9,12 +9,12 @@ fn loop_items_and_values_are_typed() {
     let file = fixture.root.write(
         "loops.vun",
         "\
-count := (n: u8) { for i in 0..n { x: bool = i; } };
-each := (xs: &[u16]) { for x in xs { y: bool = x; } };
-array := (xs: [2]u8) { for x in xs { y: bool = x; } };
+count := (n: u8) { for i in 0..n { _: bool = i; } };
+each := (xs: &[u16]) { for x in xs { _: bool = x; } };
+array := (xs: [2]u8) { for x in xs { _: bool = x; } };
 value := () -> bool { for { break 3; } };
 labeled := () -> u8 { 'l: for { for { break 'l 300; } } };
-test := (o: ?u8) { mut c := o; for .some(v) = c { w: bool = v; c = .none; } };
+test := (o: ?u8) { mut c := o; for .some(v) = c { _: bool = v; c = .none; } };
 ",
     );
     let found = |ty: &str| (errors::TYPES_MISMATCH, format!("expected `bool`, found `{ty}`"));

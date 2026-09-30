@@ -8,7 +8,7 @@
 //! An operand holding what may not stand there goes on as a kind named there where that reads
 //! the token after supposing what it reads first, and is held in an `Error` otherwise.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_grammar::{KindSet, NodeKind, Positions, Read, TokenKind, TokenSet};
 
 use super::expected::Expected;
@@ -222,8 +222,10 @@ impl Parser<'_, '_, '_> {
     /// Reports `piece`, which may not stand where it was read, and holds it in an `Error`.
     pub(super) fn misplaced(&mut self, piece: u32) -> u32 {
         let first = self.tree.first_token(piece);
-        let msg = Msg::new().code(self.text(first).to_owned()).text(" cannot stand here");
-        self.report(self.tokens.span(first), Diagnostic::error(errors::SYNTAX_EXPECTED_TOKEN, msg));
+        let msg = Msg::new().text("unexpected ").code(self.text(first).to_owned());
+        let help = Msg::new().text("remove it, or write what comes before it");
+        let d = Diagnostic::error(errors::SYNTAX_EXPECTED_TOKEN, msg).help(help);
+        self.report(self.tokens.span(first), d);
         self.tree.spell(NodeKind::Error, []);
         self.tree.add(Anchor::Missing(first), [Piece::Child(piece)])
     }
@@ -236,7 +238,9 @@ impl Parser<'_, '_, '_> {
         let span = self.tokens.span(self.current());
         self.report(
             span,
-            Diagnostic::error(errors::SYNTAX_NESTING_TOO_DEEP, msg).child(ChildKind::Note, note),
+            Diagnostic::error(errors::SYNTAX_NESTING_TOO_DEEP, msg)
+                .note(note)
+                .help("bind part of it to a name first"),
         );
         let token = self.peek();
         if token == TokenKind::Eof || EXPRESSION_ENDS.contains(&token) || token.closes() {

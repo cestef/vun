@@ -45,6 +45,13 @@ impl Msg {
         self.part(MsgPart::Num(n.into()))
     }
 
+    /// `n` followed by the word counting it: `1 argument`, `2 arguments`.
+    #[must_use]
+    pub fn counted(self, n: impl Into<i128>, one: &'static str, many: &'static str) -> Self {
+        let n = n.into();
+        self.num(n).text(" ").text(if n == 1 { one } else { many })
+    }
+
     /// The help offering `near` for a misspelled name.
     #[must_use]
     pub fn did_you_mean(near: impl Into<String>) -> Self {
@@ -57,6 +64,20 @@ impl Msg {
         for (i, item) in items.into_iter().enumerate() {
             if i > 0 {
                 self = self.text(", ");
+            }
+            self = self.code(item);
+        }
+        self
+    }
+
+    /// Items rendered as code, as alternatives: `` `a`, `b` or `c` ``.
+    #[must_use]
+    pub fn code_choices<S: Into<String>>(mut self, items: impl IntoIterator<Item = S>) -> Self {
+        let items: Vec<S> = items.into_iter().collect();
+        let last = items.len().saturating_sub(1);
+        for (i, item) in items.into_iter().enumerate() {
+            if i > 0 {
+                self = self.text(if i == last { " or " } else { ", " });
             }
             self = self.code(item);
         }

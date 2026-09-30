@@ -120,11 +120,12 @@ impl Typer<'_, '_, '_> {
     pub(super) fn arity(&mut self, call: ExprId, counts: &[usize], receiver: usize, found: usize) {
         let Some(&all) = counts.first() else { return };
         let count = |n: usize| i128::try_from(n.saturating_sub(receiver)).unwrap_or(i128::MAX);
+        let (passed, taken) = (count(found), count(all));
         let mut msg = Msg::new()
             .text("this call passes ")
-            .num(count(found))
-            .text(" arguments, and the function takes ")
-            .num(count(all));
+            .counted(passed, "argument", "arguments")
+            .text(", and the function takes ")
+            .num(taken);
         if let Some(&fewer) = counts.get(1) {
             msg = msg
                 .text(", or ")
@@ -133,7 +134,14 @@ impl Typer<'_, '_, '_> {
                 .code("$")
                 .text(" arguments");
         }
-        self.diag.error(Diagnostic::error(errors::TYPES_ARITY, msg).at(self.hir().exprs[call].origin, None));
+        let help = if passed > taken {
+            "remove the arguments it does not take"
+        } else {
+            "pass the arguments it lacks"
+        };
+        let d =
+            Diagnostic::error(errors::TYPES_ARITY, msg).at(self.hir().exprs[call].origin, None).help(help);
+        self.diag.error(d);
     }
 
     /// What a call of `callee` runs, when known here: a method, or a function or primitive

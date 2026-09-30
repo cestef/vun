@@ -3,8 +3,10 @@
 
 use std::sync::Arc;
 
+use vun_desugar::{Borrow, MODE_SEPARATOR};
 use vun_desugar::{COMPOUND, Narrowing};
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
+use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_items::Item;
@@ -13,9 +15,12 @@ use vun_origin::OriginTable;
 use vun_sema_int::{Interval, Storage};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
+use vun_span::Span;
+use vun_suggest::closest;
 
 use super::{Known, Stage, Typer};
 use crate::env::Env;
+use crate::member::Members;
 use crate::visible::Visible;
 
 impl<'a, 'db> Typer<'_, 'a, 'db> {
@@ -54,14 +59,44 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                 .child(ChildKind::Help, help)
         } else {
             let msg = Msg::new().text("expected ").code(&written).text(", found ").ty(found.ty.to_string());
-            Diagnostic::error(errors::TYPES_MISMATCH, msg)
+            let d = Diagnostic::error(errors::TYPES_MISMATCH, msg);
+            match Self::conversion(at, found.ty, expected) {
+                Some(fix) => d.fix(fix),
+                None if because.is_some() => d.help("change the value, or the type it is expected to have"),
+                None => d,
+            }
         };
-        let mut d = d.at(at, None);
+        let mut d = d.at(at, Some(Msg::new().text("this is ").ty(found.ty.to_string())));
         if let Some(because) = because {
             let here = Msg::new().text("expected because of this type");
             d = d.label(self.hir().exprs[because].origin, Some(here));
         }
         self.diag.error(d);
+    }
+
+    /// The fix making the value written at `at`, of type `found`, one of `expected`, when a
+    /// borrow does: borrowing it, or reading through the borrow it is.
+    fn conversion(at: OriginId, found: Ty, expected: Ty) -> Option<Fix> {
+        let span = OriginTable::global().source_span(at);
+        if let Some((mode, _, borrowed)) = expected.borrowing()
+            && borrowed.accepts(&found)
+        {
+            let amp = TokenKind::Amp.text().unwrap_or_default();
+            let words = mode.to_string();
+            let prefix =
+                if words.is_empty() { amp.to_owned() } else { [amp, &words, MODE_SEPARATOR].concat() };
+            // Borrowing shared is what the type asks; a mode that changes the place may not be.
+            let safety = if mode == Borrow::plain() { Safety::Safe } else { Safety::Unsafe };
+            let msg = Msg::new().text("borrow it: ").code(prefix.clone());
+            return Some(Fix::insert(msg, safety, span, prefix).preferred());
+        }
+        let borrowed = found.borrowed()?;
+        expected.accepts(&borrowed).then(|| {
+            let deref = TokenKind::DotStar.text().unwrap_or_default();
+            let end = Span::new(span.file, span.range.hi, span.range.hi);
+            let msg = Msg::new().text("read the value it borrows: ").code(deref);
+            Fix::insert(msg, Safety::Unsafe, end, deref).preferred()
+        })
     }
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.
@@ -170,8 +205,16 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// the type of its left operand.
     pub(super) fn no_impl(&mut self, expr: ExprId, interface: Item, ty: Ty) {
         let msg = Msg::new().text("no impl of ").code(interface.to_string()).text(" for ").ty(ty.to_string());
-        self.diag
-            .error(Diagnostic::error(errors::TYPES_NO_IMPL, msg).at(self.hir().exprs[expr].origin, None));
+        let help = Msg::new()
+            .text("declare one: a struct of its methods, with the attribute ")
+            .code(vun_items::lang::r#impl.to_string())
+            .text(" naming ")
+            .code(interface.to_string())
+            .text(" of ")
+            .ty(ty.to_string());
+        let d =
+            Diagnostic::error(errors::TYPES_NO_IMPL, msg).at(self.hir().exprs[expr].origin, None).help(help);
+        self.diag.error(d);
     }
 
     /// Reports `ty`, of the operand `expr` of a form driven by `interface`, as having no impl of
@@ -195,6 +238,16 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// Reports `name`, used at `at`, as no member of `ty`.
     pub(super) fn no_member(&mut self, at: OriginId, ty: Ty, name: Symbol) {
         let msg = Msg::new().text("no member ").code(name.as_str()).text(" in ").ty(ty.to_string());
-        self.diag.error(Diagnostic::error(errors::TYPES_NO_MEMBER, msg).at(at, None));
+        let mut d = Diagnostic::error(errors::TYPES_NO_MEMBER, msg).at(at, None);
+        if let Some(members) = self.env().cx.get::<Members>(&ty.through_borrows()) {
+            let fields = members.fields.iter().map(|f| f.name);
+            let decls = members.decls.iter().map(|m| m.name);
+            let names: Vec<Symbol> =
+                fields.chain(decls).chain(members.variants.iter().map(|v| v.name)).collect();
+            if let Some(near) = closest(name.as_str(), names.iter().map(|n| n.as_str())) {
+                d = d.help(Msg::did_you_mean(near));
+            }
+        }
+        self.diag.error(d);
     }
 }

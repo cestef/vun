@@ -34,7 +34,6 @@ const SHARED_KEPT: Duration = Duration::from_hours(7 * 24);
 const PERSISTED: &[&[fn(&Db)]] = &[
     vun_hir::db::PERSISTED,
     vun_sema::PERSISTED,
-    vun_sema_plan::PERSISTED,
     vun_sanitize::PERSISTED,
     vun_mir::PERSISTED,
     vun_mir_passes::PERSISTED,

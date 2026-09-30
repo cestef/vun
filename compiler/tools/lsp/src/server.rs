@@ -5,15 +5,18 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
+use std::time::Instant;
 
 use vun_command::Outcome;
 use vun_data::ToData;
+use vun_data::Value;
 use vun_data::json::Json;
 use vun_driver::Session;
+use vun_lsp_protocol::Request;
 use vun_lsp_protocol::base::{PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
 use vun_span::FileId;
-use vun_trace::tracing;
+use vun_trace::{Activity, tracing};
 
 use crate::failure::{Failure, Reason};
 use crate::message::Incoming;
@@ -49,8 +52,10 @@ pub(crate) struct Server<'s> {
     pub(crate) state: State,
     /// The documents changed since their diagnostics were last published.
     pub(crate) changed: BTreeSet<Uri>,
-    /// Notifications to send once the messages waiting are handled.
+    /// Notifications and requests to send once the messages waiting are handled.
     pub(crate) outbox: Vec<Message>,
+    /// The requests the server sent, which number the next.
+    pub(crate) asked: i64,
 }
 
 impl<'s> Server<'s> {
@@ -62,6 +67,7 @@ impl<'s> Server<'s> {
             state: State::Starting,
             changed: BTreeSet::new(),
             outbox: Vec::new(),
+            asked: 0,
         }
     }
 
@@ -109,9 +115,7 @@ impl<'s> Server<'s> {
             Err(failure) => Some(Message::response(Id::Null, Err(failure.response()))),
             Ok(Incoming::Request { id, method, params }) => {
                 let result = match Method::named(&method) {
-                    Some(method) if method.kind == Kind::Request => {
-                        self.admit(method).and_then(|()| (method.handle)(self, &params))
-                    }
+                    Some(method) if method.kind == Kind::Request => self.handled(method, &params),
                     _ => Err(Failure::new(ErrorCode::MethodNotFound, Reason::Method)),
                 };
                 Some(Message::response(id, result.map_err(|f| f.response())))
@@ -119,13 +123,24 @@ impl<'s> Server<'s> {
             Ok(Incoming::Notification { method, params }) => {
                 // A notification the server has no row for is one it may ignore.
                 let method = Method::named(&method).filter(|m| m.kind == Kind::Notification)?;
-                if let Err(failure) = self.admit(method).and_then(|()| (method.handle)(self, &params)) {
+                if let Err(failure) = self.handled(method, &params) {
                     tracing::warn!(method = method.name, %failure, "notification not handled");
                 }
                 None
             }
             Ok(Incoming::Response) => None,
         }
+    }
+
+    /// `method` handled with `params`, where the lifecycle admits it: timed as a stage named by the
+    /// method, and logged with how long it took.
+    fn handled(&mut self, method: &Method, params: &Value<'_>) -> Result<Value<'static>, Failure> {
+        let started = Instant::now();
+        let timer = Activity::stage(method.name).start();
+        let handled = self.admit(method).and_then(|()| (method.handle)(self, params));
+        drop(timer);
+        tracing::debug!(method = method.name, took = ?started.elapsed(), "handled");
+        handled
     }
 
     /// Whether `method` is answered where the lifecycle is.
@@ -139,6 +154,12 @@ impl<'s> Server<'s> {
             }
             _ => Ok(()),
         }
+    }
+
+    /// Queues the request `R` of `params` to the client; its answer is not waited for.
+    pub(crate) fn ask<R: Request>(&mut self, params: &R::Params) {
+        self.asked += 1;
+        self.outbox.push(Message::request(Id::Number(self.asked), R::METHOD, params.to_data()));
     }
 
     /// The open document `document` names.

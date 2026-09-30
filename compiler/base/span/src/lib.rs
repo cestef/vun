@@ -75,6 +75,12 @@ impl ByteRange {
         self.hi - self.lo
     }
 
+    /// Whether the two share a byte; an empty range shares none.
+    #[must_use]
+    pub const fn overlaps(self, other: Self) -> bool {
+        self.lo < other.hi && other.lo < self.hi
+    }
+
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.lo == self.hi

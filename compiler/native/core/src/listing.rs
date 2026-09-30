@@ -1,4 +1,4 @@
-//! The listing of a unit's machine code (`vun debug code --backend native`): each function under
+//! The listing of a unit's machine code (`vun debug dump code --backend native`): each function under
 //! its name, its instructions with their offsets and bytes, and before the code of each LIR
 //! instruction the line of source it comes from, where that line changes.
 

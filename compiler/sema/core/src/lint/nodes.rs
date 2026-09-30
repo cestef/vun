@@ -1,7 +1,12 @@
 //! The nodes lints look at in a file: its declarations, the fields and variants of its types, and
 //! the calls in their values, each with the lints allowed around it.
 
-use vun_hir::tree::{DeclId, Entry, ExprId, ExprKind, FieldDef, Hir, Member, Name, NsId, PatKind, Variant};
+use std::collections::HashSet;
+
+use vun_hir::resolve::Res;
+use vun_hir::tree::{
+    BinderId, DeclId, Entry, ExprId, ExprKind, FieldDef, Hir, Member, Name, NsId, PatKind, Variant,
+};
 use vun_hir::visit::{self, Visitor};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -11,15 +16,21 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{TyKind, Value};
 
 use super::literal::Literal;
+use super::locals::Locals;
 use super::tables::Binds;
 use crate::callable::Callable;
 use crate::decl::DeclValue;
 use crate::env::Env;
+use crate::visible::Reach;
 
 /// A node of a kind lints look at.
 pub(super) enum Kind {
-    /// A declaration: its name and what it binds.
-    Decl { name: Symbol, binds: Binds },
+    /// A member of a namespace or a type: its name, what it binds, whether any package sees it,
+    /// and whether a doc comment says what it is.
+    Decl { name: Symbol, binds: Binds, public: bool, documented: bool },
+    /// A local binding or a parameter: its name, whether the code names it, and whether it is a
+    /// parameter.
+    Local { name: Symbol, used: bool, param: bool },
     /// A call, by the value of what it calls.
     Call { callee: Value },
 }
@@ -30,12 +41,25 @@ pub(super) struct Node {
     pub(super) kind: Kind,
     pub(super) origin: OriginId,
     pub(super) allowed: Vec<Value>,
+    /// The declaration, field or variant holding it, where an attribute allowing a lint goes.
+    pub(super) declared: OriginId,
 }
 
 impl Node {
     /// The nodes of the file `env` reads.
     pub(super) fn of(env: &Env<'_, '_>) -> Vec<Self> {
-        let mut walk = Walk { env, nodes: Vec::new(), allowed: Vec::new() };
+        let used = env.parsed.resolution.names.iter().filter_map(|(_, res)| match res {
+            Some(Res::Binder(b)) => Some(*b),
+            _ => None,
+        });
+        let mut walk = Walk {
+            env,
+            nodes: Vec::new(),
+            allowed: Vec::new(),
+            declared: None,
+            public: true,
+            used: used.collect(),
+        };
         if let Some(root) = env.parsed.hir.root {
             walk.namespace(root);
         }
@@ -48,6 +72,12 @@ struct Walk<'e, 'a, 'db> {
     nodes: Vec<Node>,
     /// The lints allowed by the declarations around the one walked.
     allowed: Vec<Value>,
+    /// The declaration or field walked.
+    declared: Option<OriginId>,
+    /// Whether the declarations around are seen from any package.
+    public: bool,
+    /// The binders the code names.
+    used: HashSet<BinderId>,
 }
 
 impl Walk<'_, '_, '_> {
@@ -67,50 +97,71 @@ impl Walk<'_, '_, '_> {
         }
     }
 
-    /// `f` run with the lints `attrs` allows added to those allowed around.
-    fn allowing(&mut self, attrs: &[ExprId], f: impl FnOnce(&mut Self)) {
-        let outer = self.allowed.len();
+    /// `f` run inside the declaration or field written at `declared`, with the lints its
+    /// attributes `attrs` allow added to those allowed around.
+    fn allowing(&mut self, declared: OriginId, attrs: &[ExprId], f: impl FnOnce(&mut Self)) {
+        let (outer, around) = (self.allowed.len(), self.declared.replace(declared));
         let allows = self.env.attributes(attrs, Primitive::Lint(Lint::allow));
         self.allowed.extend(allows.into_iter().filter_map(|args| args.into_iter().next()));
         f(self);
         self.allowed.truncate(outer);
+        self.declared = around;
     }
 
     fn push(&mut self, kind: Kind, origin: OriginId) {
-        self.nodes.push(Node { kind, origin, allowed: self.allowed.clone() });
+        let declared = self.declared.unwrap_or(origin);
+        self.nodes.push(Node { kind, origin, allowed: self.allowed.clone(), declared });
     }
 
     fn decl(&mut self, id: DeclId) {
         let d = &self.env.parsed.hir.decls[id];
-        let (pat, value) = (d.pat, d.value);
-        self.allowing(&d.attrs, |walk| {
+        let (pat, value, documented) = (d.pat, d.value, !d.doc.is_empty());
+        self.allowing(d.origin, &d.attrs, |walk| {
+            let around = walk.public;
             if let PatKind::Bind(b) = walk.hir().pats[pat].kind {
                 let binder = &walk.hir().binders[b];
                 let (name, origin) = (binder.name, binder.origin);
+                walk.public &= walk.seen(name, &walk.hir().decls[id].attrs);
                 if let Some(binds) = walk.binds(id) {
-                    walk.push(Kind::Decl { name, binds }, origin);
+                    walk.push(Kind::Decl { name, binds, public: walk.public, documented }, origin);
                 }
             }
             if let Some(value) = value {
                 walk.value(value);
             }
+            walk.public = around;
         });
     }
 
     /// A field: one holding a type binds a type.
     fn field(&mut self, f: &FieldDef) {
-        self.allowing(&f.attrs, |walk| {
+        self.allowing(f.origin, &f.attrs, |walk| {
             if let Name::Plain(name) = f.name {
                 let binds = if walk.types(f.ty) { Binds::Type } else { Binds::Field };
-                walk.push(Kind::Decl { name, binds }, f.origin);
+                let public = walk.public && walk.seen(name, &f.attrs);
+                walk.push(Kind::Decl { name, binds, public, documented: !f.doc.is_empty() }, f.origin);
             }
         });
     }
 
+    /// A variant, seen wherever its enum is.
     fn variant(&mut self, v: &Variant) {
         if let Name::Plain(name) = v.name {
-            self.push(Kind::Decl { name, binds: Binds::Variant }, v.origin);
+            let around = self.declared.replace(v.origin);
+            let kind = Kind::Decl {
+                name,
+                binds: Binds::Variant,
+                public: self.public,
+                documented: !v.doc.is_empty(),
+            };
+            self.push(kind, v.origin);
+            self.declared = around;
         }
+    }
+
+    /// Whether the member `name` with attributes `attrs` is seen from any package.
+    fn seen(&self, name: Symbol, attrs: &[ExprId]) -> bool {
+        self.env.visible(name, attrs, self.env.home()).0.reach == Reach::Public
     }
 
     /// A declaration's value: the members of a type it writes, or the calls it makes.
@@ -129,6 +180,13 @@ impl Walk<'_, '_, '_> {
                 calls.expr(self.hir(), expr);
                 for (callee, origin) in calls.found {
                     self.push(Kind::Call { callee }, origin);
+                }
+                let mut locals = Locals::default();
+                locals.expr(self.hir(), expr);
+                for (b, param) in locals.found() {
+                    let binder = &self.hir().binders[b];
+                    let (name, origin) = (binder.name, binder.origin);
+                    self.push(Kind::Local { name, used: self.used.contains(&b), param }, origin);
                 }
             }
         }

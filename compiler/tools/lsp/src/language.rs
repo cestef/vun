@@ -1,9 +1,11 @@
-//! What the server tells of a position: the type of the expression there, and where the name
-//! there is declared.
+//! What the server tells of a position: the type, value and layout of the expression there, and
+//! where the name there is declared.
 
+use std::fmt::Write;
 use std::path::Path;
 
 use vun_driver::editor::Target;
+use vun_grammar::TokenKind;
 use vun_lsp_protocol::base::{Location, MarkupContent, MarkupKind, Range, TextDocumentPositionParams, Uri};
 use vun_lsp_protocol::language::Hover;
 use vun_lsp_protocol::requests as r;
@@ -13,9 +15,11 @@ use crate::failure::Failure;
 use crate::methods::Answers;
 use crate::server::Server;
 
-/// The fence the type of a hover is shown in, as Markdown, and the language it names.
+/// The fence code is shown in, as Markdown, and the languages it names: Vun for what the source
+/// could write, plain text for a layout.
 const FENCE: &str = "```";
 const LANGUAGE: &str = "vun";
+const TEXT: &str = "text";
 
 impl Server<'_> {
     /// The file and byte offset `params` name.
@@ -39,7 +43,18 @@ impl Answers<r::Hover> for Server<'_> {
         let Some(hovered) = self.session.hovered(file, offset) else { return Ok(None) };
         let mut shown = Vec::new();
         if let Some(known) = hovered.known {
-            shown.push(format!("{FENCE}{LANGUAGE}\n{}\n{FENCE}\n{}", known.ty, known.stage.name()));
+            // `name: T = value`, as a declaration writes it.
+            let colon = TokenKind::Colon.text().unwrap_or_default();
+            let eq = TokenKind::Eq.text().unwrap_or_default();
+            let mut code = hovered.name.map(|n| format!("{n}{colon} ")).unwrap_or_default();
+            code.push_str(&known.ty.to_string());
+            if let Some(value) = &hovered.value {
+                let _ = write!(code, " {eq} {value}");
+            }
+            shown.push(format!("{FENCE}{LANGUAGE}\n{code}\n{FENCE}\n{}", known.stage.name()));
+        }
+        if let Some(laid) = &hovered.laid {
+            shown.push(format!("{FENCE}{TEXT}\n{}\n{FENCE}", laid.text()));
         }
         if !hovered.doc.is_empty() {
             shown.push(hovered.doc.join("\n"));

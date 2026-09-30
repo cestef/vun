@@ -6,4 +6,5 @@ pub mod lint_Decl;
 pub mod lint_Fix;
 pub mod lint_Level;
 pub mod lint_Lint;
+pub mod lint_Local;
 pub mod lint_Report;

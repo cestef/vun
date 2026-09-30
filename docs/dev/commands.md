@@ -87,7 +87,8 @@ without `node`, `TREE_SITTER_JS_RUNTIME=native` loads `grammar.js` with its buil
 
 ```sh
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] [--trace off|sites|calls] <file>
-cargo run -q -p vun-cli -- debug tokens|cst|manifest|plan|hir|types|mir|layout|program|lir|code|frames|coverage|compare <file>
+cargo run -q -p vun-cli -- debug dump tokens|cst|manifest|plan|hir|types|values|mir|layout|program|lir|code|frames <file>
+cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64 <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- toolchain components   # each component's status and what it handles
@@ -164,6 +165,9 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   /tmp/v.perf target/release/vun check f.vun`, then `perf report -i /tmp/v.perf --no-children
   --sort symbol --stdio -g none`. A benchmark alone: `target/release/deps/<bench>-<hash> --bench
   --profile-time 5 <filter>` under `perf record`. Bound every run with `timeout`.
+- The language server (`vun util lsp`) times each message as a stage named by its method, and
+  `publish diagnostics`; `VUN_LOG=vun_lsp=debug` logs each message handled with how long it
+  took, in the editor's server log.
 - `VUN_THREADS=1` gives exact, repeatable counts.
 - `VUN_STORE` points the store elsewhere, isolating a measurement from the shared memos.
   Sessions of another toolchain remove this one's shared files.

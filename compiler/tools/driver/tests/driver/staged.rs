@@ -40,10 +40,10 @@ copy := (c: Config) -> Config {
     out
 };
 words := (c: Config) {
-    $for f in std.meta.fields(Config) { x: u32 = c.$(f.name); }
+    $for f in std.meta.fields(Config) { _: u32 = c.$(f.name); }
 };
 taken := () {
-    $if 1 > 2 { a: bool = 3; } else { b: bool = 4; }
+    $if 1 > 2 { _: bool = 3; } else { _: bool = 4; }
 };
 ",
     );

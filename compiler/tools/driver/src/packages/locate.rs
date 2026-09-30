@@ -60,7 +60,12 @@ impl Session {
         } else {
             let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
             let msg = msg.text(" in this directory or above");
-            self.diag.error(Diagnostic::error(errors::PACKAGE_NO_PROJECT, msg));
+            let help = Msg::new()
+                .text("run this in a package, or create one: a ")
+                .code(MANIFEST)
+                .text(" declaring ")
+                .code(manifest::PACKAGE);
+            self.diag.error(Diagnostic::error(errors::PACKAGE_NO_PROJECT, msg).help(help));
         }
         Ok(found)
     }

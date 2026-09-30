@@ -56,6 +56,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                     about: "pass arguments to the program",
                 }]),
             CHECK,
+            fix::FIX,
             doc::DOC,
             explain::EXPLAIN,
             fmt::FMT,
@@ -192,6 +193,7 @@ mod cache;
 mod debug;
 mod doc;
 mod explain;
+mod fix;
 mod fmt;
 mod pkg;
 mod status;

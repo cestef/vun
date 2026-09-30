@@ -1,0 +1,39 @@
+//! The pages explaining diagnostics (spec 10, section 1): each error of `lang.errors` has a file
+//! of the library, and each lint a file is checked with by default its `doc`.
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+use vun_diag::{DiagId, errors};
+use vun_sema::lint::CheckedLints;
+
+use crate::Session;
+use crate::packages::LIBRARY;
+
+/// Where a page is.
+pub enum Page {
+    /// A file of the library.
+    File(PathBuf),
+    /// A lint's `doc`.
+    Text(String),
+}
+
+impl Session {
+    /// Every diagnostic that has a page, with it: the errors, then the lints of the packages a
+    /// loose file depends on.
+    pub fn pages(&mut self) -> Vec<(DiagId, Page)> {
+        let errors = errors::EXPLANATIONS
+            .iter()
+            .map(|(id, page)| (id.clone(), Page::File(Path::new(LIBRARY).join(page))));
+        let lints = self.lints();
+        let pages = lints.iter().filter_map(|(id, doc)| Some((id.clone(), Page::Text(doc.clone()?))));
+        errors.chain(pages).collect()
+    }
+
+    /// The lints a loose file is checked with, each with its `doc` if it has one.
+    pub fn lints(&mut self) -> Arc<Vec<(DiagId, Option<String>)>> {
+        let loose = self.loose();
+        let package = self.publish(loose);
+        self.db.get::<CheckedLints>(&package)
+    }
+}

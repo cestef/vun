@@ -1,7 +1,7 @@
 //! Names not declared in the file: spread into one of its namespaces, the package itself, its
 //! dependencies and its prelude.
 
-use vun_diag::{ChildKind, DiagCx, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_diag::{DiagCx, Diagnostic, ErrorGuaranteed, Fix, Msg, Safety, errors};
 use vun_intern::Symbol;
 use vun_suggest::closest;
 
@@ -43,7 +43,9 @@ impl Resolution {
             let msg = Msg::new().text("cannot find ").code(text).text(" in scope");
             let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(hir.exprs[expr].origin, None);
             if let Some(near) = closest(text, candidates.iter().copied()) {
-                d = d.child(ChildKind::Help, Msg::did_you_mean(near));
+                let span = cx.origins.source_span(hir.exprs[expr].origin);
+                let fix = Fix::replace(Msg::did_you_mean(near), Safety::Unsafe, span, near);
+                d = d.fix(fix.preferred());
             }
             cx.diag.error(d);
         }

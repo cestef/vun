@@ -31,7 +31,11 @@ impl Unfound {
     #[must_use]
     pub fn not_namespace(path: &str) -> Diagnostic {
         let msg = Msg::new().code(path).text(" is not a namespace of this package or a dependency");
-        Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg)
+        let note = Msg::new()
+            .text("a namespace is a file or a directory of a package, named from the package or a dependency its ")
+            .code("build.vun")
+            .text(" declares");
+        Diagnostic::error(errors::PACKAGE_MISSING_NAMESPACE, msg).note(note)
     }
 }
 

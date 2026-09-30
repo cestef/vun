@@ -20,7 +20,7 @@ use moved::Moved;
 use parts::Linear;
 use states::{State, States};
 use vun_codec::{Decode, Encode};
-use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
+use vun_diag::{DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};
@@ -147,7 +147,7 @@ impl<'b> Analysis<'b> {
                     .text("match or read through the borrow itself, without ")
                     .code(".*")
                     .text(", to bind by borrow");
-                self.advise(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg, Some(help));
+                self.advise(errors::PLACE_MOVE_OUT_OF_BORROW, origin, msg, help);
                 if let Some(local) = local {
                     self.derived(local);
                 }
@@ -246,7 +246,8 @@ impl<'b> Analysis<'b> {
             let name = self.body.locals[local].name.map_or("", Symbol::as_str);
             let msg =
                 Msg::new().code(name).text(" is not written on this path, and must be before returning");
-            self.report(errors::PLACE_OUT_UNWRITTEN, origin, msg);
+            let help = Msg::new().text("write ").code(name).text(" on every path before it returns");
+            self.advise(errors::PLACE_OUT_UNWRITTEN, origin, msg, help);
         }
     }
 
@@ -258,18 +259,10 @@ impl<'b> Analysis<'b> {
         states.set(local, &[], State::Uninit);
     }
 
-    fn report(&mut self, id: DiagId, origin: OriginId, msg: Msg) {
-        self.advise(id, origin, msg, None);
-    }
-
-    /// Reports, with `help` on what to do when given.
-    fn advise(&mut self, id: DiagId, origin: OriginId, msg: Msg, help: Option<Msg>) {
+    /// Reports, with `help` on what to do.
+    fn advise(&mut self, id: DiagId, origin: OriginId, msg: Msg, help: Msg) {
         if self.reporting && self.reported.insert((id.clone(), origin)) {
-            let mut d = Diagnostic::error(id, msg).at(origin, None);
-            if let Some(help) = help {
-                d = d.child(ChildKind::Help, help);
-            }
-            self.diag.error(d);
+            self.diag.error(Diagnostic::error(id, msg).at(origin, None).help(help));
         }
     }
 }

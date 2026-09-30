@@ -15,8 +15,13 @@ pub const define: Item = Item::new(&["lang", "lint", "define"]);
 pub const allow: Item = Item::new(&["lang", "lint", "allow"]);
 /// What a declaration binds, as compile-time evaluation knows it (spec 10, section 5).
 pub const Binds: Item = Item::new(&["lang", "lint", "Binds"]);
-/// A declaration in the code checked: its name, what it binds, and where it is written.
+/// A declaration in the code checked, a member of a namespace or a type: its name, what it
+/// binds, where it is written, whether it is visible from any package, and whether a doc
+/// comment says what it is.
 pub const Decl: Item = Item::new(&["lang", "lint", "Decl"]);
+/// A local binding or a parameter in the code checked: its name, where it is written, whether
+/// the code names it anywhere after, and whether it is a parameter.
+pub const Local: Item = Item::new(&["lang", "lint", "Local"]);
 /// The function a checked call calls.
 pub const Callee: Item = Item::new(&["lang", "lint", "Callee"]);
 /// Whether `callee` is `f`.

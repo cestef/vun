@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, Severity, errors};
+use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_link::{MemoryRegion, SectionPlacement};
 use vun_origin::OriginId;
 use vun_sema::target::Choice;
@@ -47,9 +47,11 @@ impl Session {
         let Some(plan) = self.plan(file) else {
             return Err(self.diag.failed().expect("a plan that did not run is reported"));
         };
-        let steps = plan.steps().map_err(|(step, why)| {
+        let steps = Action::steps(&plan).map_err(|(step, why)| {
             let msg = Msg::new()
-                .text(format!("step {} of the plan is not a ", step + 1))
+                .text("step ")
+                .num(i128::try_from(step + 1).unwrap_or(i128::MAX))
+                .text(" of the plan is not a ")
                 .code(vun_items::std::build::Action.to_string());
             self.diag.error(Diagnostic::error(errors::PLAN_UNREAD, msg).at(plan.at, None).caused_by(&why))
         })?;
@@ -67,13 +69,17 @@ impl Session {
                 Action::TestOn { .. } => Pending::Tests,
                 Action::Lints(_) => Pending::Lints,
             };
-            let msg = Msg::new().text(format!(
-                "step {} of the plan {}, which this toolchain does not do yet",
-                step + 1,
-                pending.what()
-            ));
-            self.diag
-                .report(Diagnostic::new(errors::PLAN_UNSUPPORTED, Severity::Warning, msg).at(plan.at, None));
+            let msg = Msg::new()
+                .text("step ")
+                .num(i128::try_from(step + 1).unwrap_or(i128::MAX))
+                .text(" of the plan ")
+                .text(pending.what())
+                .text(", which this toolchain does not do yet");
+            self.diag.report(
+                Diagnostic::warning(errors::PLAN_UNSUPPORTED, msg)
+                    .at(plan.at, None)
+                    .note("the other steps are carried out"),
+            );
         }
         Ok(built)
     }

@@ -25,6 +25,7 @@ const WARNING: Noun = Noun { one: "warning", many: "warnings" };
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Step {
     Check,
+    Fix,
     Build,
     Run,
 }
@@ -33,6 +34,7 @@ impl Step {
     const fn name(self) -> &'static str {
         match self {
             Self::Check => "check",
+            Self::Fix => "fix",
             Self::Build => "build",
             Self::Run => "run",
         }
@@ -63,6 +65,7 @@ impl Status for Started {
     fn verb(&self) -> Verb {
         match self.step {
             Step::Check => Verb::good("Checking"),
+            Step::Fix => Verb::good("Fixing"),
             Step::Build => Verb::good("Building"),
             Step::Run => Verb::good("Running"),
         }

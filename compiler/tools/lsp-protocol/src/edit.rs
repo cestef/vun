@@ -4,6 +4,7 @@
 use vun_data::{FromData, ToData};
 
 use crate::base::{Range, TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, Uri};
+use crate::command::Command;
 use crate::document::Diagnostic;
 
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
@@ -67,7 +68,8 @@ pub struct CodeActionContext {
     pub only: Option<Vec<CodeActionKind>>,
 }
 
-/// A change the client may apply: a diagnostic's fix.
+/// A change the client may apply, a diagnostic's fix, or a command it may have the server carry
+/// out.
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 #[data(case = camel)]
 pub struct CodeAction {
@@ -77,11 +79,15 @@ pub struct CodeAction {
     pub diagnostics: Option<Vec<Diagnostic>>,
     pub is_preferred: Option<bool>,
     pub edit: Option<WorkspaceEdit>,
+    pub command: Option<Command>,
 }
 
-/// What a code action does; the server offers fixes alone.
+/// What a code action does: fix a diagnostic, or act on the whole document, as showing a view of
+/// it does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub enum CodeActionKind {
     #[data(name = "quickfix")]
     QuickFix,
+    #[data(name = "source")]
+    Source,
 }

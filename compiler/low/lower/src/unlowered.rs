@@ -109,6 +109,42 @@ impl Why {
     }
 }
 
+impl Why {
+    /// What a report says of it, in the source's terms.
+    fn msg(&self) -> Msg {
+        let unsupported = |what: Msg| what.text(" is not supported in compiled code yet");
+        match self {
+            Self::Unready(unready) => Msg::new().text(unready.to_string()),
+            Self::NoLayout(ty) => Msg::new().ty(ty.to_string()).text(" has no size when the program runs"),
+            Self::Unsupported(form) => unsupported(Msg::new().text(form.what())),
+            Self::Primitive(p) => unsupported(Msg::new().code(p.item().to_string())),
+            Self::Untargeted => Msg::new().text("no target is chosen"),
+            Self::Address(bits) => Msg::new()
+                .text("the target's addresses are ")
+                .num(i128::from(*bits))
+                .text(" bits wide, which no integer type holds"),
+            Self::Recursive => Msg::new().text("this coroutine's frame would hold itself"),
+            Self::Unavailable(needed) => Msg::new()
+                .text("the instruction needs ")
+                .append(needed.msg())
+                .text(", which the target's processor lacks"),
+            Self::Reported(_) => Msg::new().text("library code reached here reports an error"),
+        }
+    }
+
+    /// What to do about it, when there is a way.
+    fn help(&self) -> Option<Msg> {
+        match self {
+            Self::NoLayout(_) | Self::Primitive(_) => {
+                Some(Msg::new().text("use it only at compile time, under ").code("$"))
+            }
+            Self::Untargeted => Some(Msg::new().text("choose a target with ").code("--target")),
+            Self::Recursive => Some(Msg::new().text("await the call through a pointer to its frame")),
+            _ => None,
+        }
+    }
+}
+
 impl Form {
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -131,11 +167,11 @@ impl Form {
             Self::Primitive => "this primitive at run time",
             Self::Conversion => "this conversion between types",
             Self::Constant => "this compile-time value at run time",
-            Self::Callee => "calls of this kind of value",
-            Self::Defer => "deferred statements consuming linear values",
+            Self::Callee => "a call of this kind of value",
+            Self::Defer => "a deferred statement consuming linear values",
             Self::Projection => "this part of this type",
-            Self::Frame => "coroutine frames",
-            Self::Quote => "code values at run time",
+            Self::Frame => "a coroutine frame",
+            Self::Quote => "a code value at run time",
             Self::Asm => "this binding of an assembly block",
         }
     }
@@ -172,10 +208,14 @@ impl Unlowered {
                 let msg = Msg::new().text("the instruction needs ").append(needed.msg());
                 Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
                     .at(self.at, None)
+                    .help(Msg::new().text("choose a target whose processor has it, with ").code("--target"))
             }
-            _ => {
-                let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());
-                Diagnostic::error(errors::BACKEND_UNLOWERED, msg).at(self.at, None)
+            why => {
+                let d = Diagnostic::error(errors::BACKEND_UNLOWERED, why.msg()).at(self.at, None);
+                match why.help() {
+                    Some(help) => d.help(help),
+                    None => d,
+                }
             }
         };
         let shown = d.primary.as_ref().map(|p| p.origin);

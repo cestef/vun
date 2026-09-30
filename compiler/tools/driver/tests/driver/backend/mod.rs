@@ -164,7 +164,7 @@ fn stack_bounds_hold_over_the_frames_each_backend_reports() {
     use vun_diag::errors;
     let source = "\
 #[link.export(\"fill\"), abi.c, stack.max(64)]
-fill := (seed: u8) -> u8 { buf: [256]u8 = [seed; 256]; copy := buf; seed };
+fill := (seed: u8) -> u8 { buf: [256]u8 = [seed; 256]; copy := buf; copy[0] };
 #[link.export(\"small\"), abi.c, stack.max(512)]
 small := (x: u8) -> u8 { x };
 count := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + count(n - 1)).sat(u32) } };

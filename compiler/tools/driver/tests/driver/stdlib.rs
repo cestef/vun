@@ -18,7 +18,7 @@ text := () -> &[u8] { \"ab\" };
 wanted := (s: &static [2]u8) -> u8 { s[0] };
 given := (s: &[2]u8) -> u8 { wanted(s) };
 tail := ($s: &[u8]) -> usize { mut n: usize = 1; s[n..].len() };
-counted := () { $for i in 0..tail(\"abc\") { x: bool = i; } };
+counted := () { $for i in 0..tail(\"abc\") { _: bool = i; } };
 ",
     );
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
@@ -90,9 +90,9 @@ wide := () -> u8 { at(12) };
 fine := () -> u8 { at(7) };
 Short := ($n: u8) -> type { [n - 10]u8 };
 short := ($n: u8) -> Short(n) { [0; n - 10] };
-three := () { x := short(3); };
+three := () { _ = short(3); };
 div := ($n: u8) -> [10 / n]u8 { [0; 10 / n] };
-zero := () { x := div(0); };
+zero := () { _ = div(0); };
 Seven := Short(3);
 seven: Seven = [];
 ",
@@ -142,7 +142,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     std.fmt.print(&mut out, \"{} args\\n\", sys.args().len());
     for arg in sys.args() {
         std.fmt.print(&mut out, \"{}\\n\", arg);
-        wrong: u8 = arg;
+        _: u8 = arg;
     }
     .ok
 };

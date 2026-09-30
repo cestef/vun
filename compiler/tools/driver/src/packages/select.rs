@@ -120,7 +120,8 @@ impl Session {
             };
             Msg::new().code(l.hash.to_string()).text(" required by ").append(by)
         };
-        let d = Diagnostic::error(errors::PACKAGE_VERSION_CONFLICT, msg.text(" is required with two hashes"));
+        let d = Diagnostic::error(errors::PACKAGE_VERSION_CONFLICT, msg.text(" is required with two hashes"))
+            .help("update the dependencies to agree on one, with `vun pkg update`");
         let mut d = d.child(ChildKind::Note, note(&held.locked)).child(ChildKind::Note, note(r));
         if let Some(span) = held.span {
             let label = Msg::new().text("also required with ").code(held.locked.hash.to_string());

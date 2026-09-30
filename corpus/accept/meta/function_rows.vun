@@ -27,9 +27,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit { .ok };
 
 Sized := struct { bits: ($n: u8) -> type };
 widths := Sized{ .bits = ($n: u8) -> type { Int(0..=n) } };
+three: widths.bits(3) = 3;
 
 #[test]
 through_fields := () {
-    small: widths.bits(3) = 3;
     $assert(runtime(.macos).os == .macos);
 };

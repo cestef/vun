@@ -26,6 +26,9 @@ pub struct PackageData {
     pub prelude_span: Option<Span>,
     /// Its files, relative to `dir`, sorted.
     pub files: Vec<String>,
+    /// The file among `files` declaring it, whose plan configures it (spec 12, section 2); `None`
+    /// for files outside any package.
+    pub manifest: Option<Symbol>,
 }
 
 /// A dependency: the name it is bound to, and its package.

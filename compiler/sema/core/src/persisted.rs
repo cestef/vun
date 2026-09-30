@@ -16,6 +16,7 @@ use crate::layout::{Exists, Shapes};
 use crate::link::Links;
 use crate::lint::{DefinedLints, Linted};
 use crate::member::{MemberType, MemberValue, Members};
+use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
 use crate::trace::TraceOf;
 use crate::typeck::{Reported, Typed};
@@ -29,6 +30,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Checked>,
     Db::persist::<Linted>,
     Db::persist::<DefinedLints>,
+    Db::persist::<Planned>,
     Db::persist::<DeclType>,
     Db::persist::<DeclValue>,
     Db::persist::<Declaration>,

@@ -78,7 +78,8 @@ wrapped: Wrapped = 45;
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned()),
             (
                 errors::COMPTIME_TRAP,
-                "compile-time evaluation failed: value outside the type it is narrowed to".to_owned()
+                "computing this at compile time failed: the value does not fit the type it is narrowed to"
+                    .to_owned()
             ),
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `Wrapped`".to_owned()),
         ]

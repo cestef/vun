@@ -4,6 +4,7 @@
 
 pub mod assist;
 pub mod base;
+pub mod command;
 pub mod document;
 pub mod edit;
 pub mod language;

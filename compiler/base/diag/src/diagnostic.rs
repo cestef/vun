@@ -65,7 +65,7 @@ impl TraceFrame {
     /// The frame of a call whose instantiation, the code it reaches, holds what is reported.
     #[must_use]
     pub fn instantiated(origin: OriginId) -> Self {
-        Self { msg: "in the instantiation this call reaches".into(), origin }
+        Self { msg: "reached through this call".into(), origin }
     }
 }
 
@@ -115,6 +115,11 @@ impl Diagnostic {
         Self::new(id, Severity::Error, message)
     }
 
+    #[must_use]
+    pub fn warning(id: DiagId, message: impl Into<Msg>) -> Self {
+        Self::new(id, Severity::Warning, message)
+    }
+
     /// A failure to read `path`.
     #[must_use]
     pub fn unreadable(path: &Path, error: &io::Error) -> Self {
@@ -154,6 +159,18 @@ impl Diagnostic {
     pub fn child(mut self, kind: ChildKind, msg: impl Into<Msg>) -> Self {
         self.children.push(Child { kind, msg: msg.into(), labels: Vec::new(), fixes: Vec::new() });
         self
+    }
+
+    /// Adds what to do about it.
+    #[must_use]
+    pub fn help(self, msg: impl Into<Msg>) -> Self {
+        self.child(ChildKind::Help, msg)
+    }
+
+    /// Adds the rule it breaks, or why it holds.
+    #[must_use]
+    pub fn note(self, msg: impl Into<Msg>) -> Self {
+        self.child(ChildKind::Note, msg)
     }
 
     /// One [`ChildKind::Cause`] for `error` and each of its sources in turn.

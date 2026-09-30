@@ -39,6 +39,8 @@ pub(crate) enum Reason {
     /// The document named is not a local file.
     NotLocal(NotFile),
     Rename(Unrenamed),
+    /// What a command shows could not be written.
+    Unwritten(std::io::Error),
 }
 
 impl Failure {
@@ -70,6 +72,7 @@ impl fmt::Display for Failure {
             Reason::Closed => f.write_str("the document is not open"),
             Reason::NotLocal(not) => write!(f, "the document is not a local file: {not}"),
             Reason::Rename(unrenamed) => write!(f, "cannot rename: {unrenamed}"),
+            Reason::Unwritten(error) => write!(f, "cannot write what the command shows: {error}"),
         }
     }
 }
@@ -82,6 +85,7 @@ impl std::error::Error for Failure {
             Reason::Message(e) | Reason::Params(e) => Some(e),
             Reason::NotLocal(e) => Some(e),
             Reason::Rename(e) => Some(e),
+            Reason::Unwritten(e) => Some(e),
             Reason::Nothing | Reason::Method | Reason::Uninitialized | Reason::ShutDown | Reason::Closed => {
                 None
             }

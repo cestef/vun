@@ -5,7 +5,7 @@ giving a type is named in `PascalCase`; every other binding, values, functions, 
 variants, in `snake_case`. A leading `_`, which marks a private name, is not part of the case.
 
 ```vun
-ring_buffer := struct { len: usize };    // reported: a type is named in `PascalCase`
+ring_buffer := struct { len: usize };    // reported: the type `ring_buffer` should be named in `PascalCase`
 RingBuffer := struct { len: usize };
 ```
 

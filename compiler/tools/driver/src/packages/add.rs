@@ -93,7 +93,11 @@ impl Session {
         let dep = manifest::Dep { name, source, kind, span: Span::new(file, 0, 0) };
         if let Some(existing) = project.deps.iter().find(|d| d.name == dep.name) {
             let msg = Msg::new().code(&dep.name).text(" is already a dependency");
-            self.report(Some(existing.span), Diagnostic::error(errors::PACKAGE_DUPLICATE_DEP, msg));
+            let help = Msg::new().text("update it with ").code("vun pkg update").text(" instead");
+            self.report(
+                Some(existing.span),
+                Diagnostic::error(errors::PACKAGE_DUPLICATE_DEP, msg).help(help),
+            );
             return Ok(None);
         }
         if let (Some(staged), Source::Archive { version, .. }) = (&unstored, &dep.source) {
@@ -119,12 +123,15 @@ impl Session {
         let Some(manifest) = manifest else {
             let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
             let msg = msg.text(" in ").code(source);
-            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg));
+            let help =
+                Msg::new().text("name the directory of a package, the one holding its ").code(MANIFEST);
+            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg).help(help));
             return None;
         };
         let Some(relative) = target.relative_to(dir) else {
             let msg = Msg::new().text("cannot reach ").code(source).text(" from the project");
-            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg));
+            let note = "a dependency by path is named relative to the project's directory";
+            self.diag.error(Diagnostic::error(errors::PACKAGE_MISSING_DEP, msg).note(note));
             return None;
         };
         let at = Place::Path(relative.to_string_lossy().into_owned());

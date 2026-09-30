@@ -20,7 +20,7 @@ fn names_are_unique_at_every_level() {
 fn dump_cst_prints_the_tree() {
     let dir = Scratch::new("dump");
     let path = dir.write("dump.vun", "x := 1;\n");
-    let argv = ["debug", "cst", path.to_str().unwrap()].map(str::to_owned);
+    let argv = ["debug", "dump", "cst", path.to_str().unwrap()].map(str::to_owned);
     let (mut session, mut out, mut err) = (Session::new(), Vec::new(), Vec::new());
     let outcome = PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut out, &mut err)).unwrap();
     assert_eq!(outcome, Outcome::Success);

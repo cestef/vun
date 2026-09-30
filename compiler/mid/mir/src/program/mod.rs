@@ -34,6 +34,8 @@ pub struct Program {
     pub exports: Vec<(usize, Symbol)>,
     /// The exported data, which no function makes: a vector table.
     pub data: Vec<ExportedDatum>,
+    /// The declarations of the root file exporting a function or data, in source order.
+    pub roots: Vec<DeclRef>,
     /// The declarations the linker provides that a body reaches.
     pub imports: Vec<DeclRef>,
     /// The functions reached whose bodies are not ready, and why.
@@ -108,11 +110,12 @@ impl UnevaluatedExport {
         let msg = Msg::new()
             .text("the value exported as ")
             .code(self.symbol.as_str())
-            .text(" has none at compile time: ")
+            .text(" cannot be computed at compile time: ")
             .text(self.why.why());
-        let d = Diagnostic::error(errors::COMPTIME_EXPORT, msg).at(self.decl.decl.origin, None);
+        let note = "an export is a function or data the program holds, so it is computed when compiling";
+        let d = Diagnostic::error(errors::COMPTIME_EXPORT, msg).at(self.decl.decl.origin, None).note(note);
         match self.why {
-            Unevaluated::Unbuilt(at) => d.label(at, Some(Msg::new().text("evaluation stopped here"))),
+            Unevaluated::Unbuilt(at) => d.label(at, Some(Msg::new().text("computing it stops here"))),
             _ => d,
         }
     }
@@ -145,7 +148,12 @@ impl Query for Programs {
             for decl in hir.member_decls(ns) {
                 let decl = DeclRef::new(root.clone(), hir, decl);
                 let ty = cx.get::<DeclType>(&decl).map(|known| known.ty);
+                let exported = |p: &Program| p.exports.len() + p.data.len();
+                let before = exported(&reach.program);
                 reach.export(&decl, cx.get::<DeclValue>(&decl), ty);
+                if exported(&reach.program) > before {
+                    reach.program.roots.push(decl);
+                }
             }
             if *roots == Roots::Functions {
                 // A closure is reached from the body that makes it, with its captures.

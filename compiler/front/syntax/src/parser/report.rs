@@ -1,6 +1,6 @@
 //! Parser diagnostics: one report per position, placed where the absent thing belongs.
 
-use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
+use vun_diag::{Diagnostic, Fix, Msg, Safety, errors};
 use vun_grammar::TokenKind;
 use vun_index::Idx;
 use vun_span::{ByteRange, Span};
@@ -26,7 +26,7 @@ impl Parser<'_, '_, '_> {
 
     pub(super) fn report_expected(&mut self, expected: &[TokenKind]) {
         let texts = expected.iter().map(|k| k.text().unwrap_or_default());
-        let msg = self.found(Msg::new().text("expected ").code_list(texts).text(", found "));
+        let msg = self.found(Msg::new().text("expected ").code_choices(texts).text(", found "));
         let mut d = Diagnostic::error(errors::SYNTAX_EXPECTED_TOKEN, msg);
         if let [only] = expected
             && let Some(text) = only.text()
@@ -76,7 +76,7 @@ impl Parser<'_, '_, '_> {
         let closer = close.text().unwrap_or_default();
         let help = Msg::new().text("expected ").code(closer).text(", found ");
         let d = Diagnostic::error(errors::SYNTAX_UNCLOSED_DELIMITER, msg)
-            .child(ChildKind::Help, self.found(help))
+            .help(self.found(help))
             .fix(self.insertion(closer));
         self.report(self.tokens.span(open), d);
     }
@@ -85,7 +85,7 @@ impl Parser<'_, '_, '_> {
         let op = self.text(self.current()).to_owned();
         let msg = Msg::new().code(op).text(" cannot follow an operator of the same precedence");
         let help = Msg::new().text("add parentheses, or join comparisons with ").code("and");
-        let d = Diagnostic::error(errors::SYNTAX_CHAINED_OPERATOR, msg).child(ChildKind::Help, help);
+        let d = Diagnostic::error(errors::SYNTAX_CHAINED_OPERATOR, msg).help(help);
         let span = self.tokens.span(self.current());
         self.report(span, d);
     }

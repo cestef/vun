@@ -16,7 +16,7 @@ fn bodies_are_typed_from_parameters_locals_and_results() {
 cube := (x: u8) -> u8 { x * x * x };
 add := (a: u8, b: u8) -> u8 { a + b };
 call := () -> u8 { add(1, 300) };
-local := () { y: u8 = 256; };
+local := () { _: u8 = 256; };
 empty := () -> u8 { };
 early := (x: u8) -> u8 { return x; };
 fits := (x: u8) -> Int(0..=510) { add(x, x) + x };

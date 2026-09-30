@@ -138,19 +138,36 @@ impl Reason {
     fn msg(&self) -> Msg {
         Msg::new().text(match self {
             Self::DivisionByZero => "division by zero",
-            Self::Shift => "shift past any width",
-            Self::Narrowing => "value outside the type it is narrowed to",
-            Self::Budget => "the call ran out of its step budget",
-            Self::Size => "a value too large for compile-time evaluation",
-            Self::Bounds => "index outside the items",
-            Self::Argument => "argument outside the type of its parameter",
-            Self::Trap => "a trap site was reached",
-            Self::NoFrame => "the function does not suspend, so it makes no frame",
+            Self::Shift => "a shift by more than the value's width",
+            Self::Narrowing => "the value does not fit the type it is narrowed to",
+            Self::Budget => "the computation took more steps than it may",
+            Self::Size => "the value is too large to compute at compile time",
+            Self::Bounds => "an index past the last item",
+            Self::Argument => "an argument outside the values its parameter takes",
+            Self::Trap => "the computation reached a trap",
+            Self::NoFrame => "the function does not suspend, so it has no frame",
             Self::Unembedded(path) => {
                 return Msg::new().text("the package holds no file ").code(path).text(" beside this one");
             }
             Self::Reported { message, .. } => return Msg::new().text(message.clone()),
             Self::Failed(failure) => return failure.msg(),
+        })
+    }
+
+    /// What to do about it, when this reason says.
+    fn help(&self) -> Option<&'static str> {
+        Some(match self {
+            Self::DivisionByZero => "test the divisor before dividing",
+            Self::Shift => "shift by less than the width of the value shifted",
+            Self::Narrowing => "narrow by wrapping or saturating, or narrow to a wider type",
+            Self::Budget => "look for a loop or a recursion that does not end",
+            Self::Size => "compute it when the program runs, without `$`",
+            Self::Bounds => "test the index against the length first",
+            Self::Argument => "pass a value the parameter's type holds",
+            Self::Trap => "follow the calls below to what reached it",
+            Self::NoFrame => "ask for the frame of a function that suspends",
+            Self::Unembedded(_) => "add the file to the package beside this one, or correct the path",
+            Self::Reported { .. } | Self::Failed(_) => return None,
         })
     }
 
@@ -192,8 +209,9 @@ impl Unevaluated {
         match self {
             Self::Trapped(trap) => Some(trap.report(origin)),
             Self::Unsupported | Self::Unbuilt(_) if surely => {
-                let msg = Msg::new().text("compile-time evaluation does not run this form yet");
-                Some(Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(origin, None))
+                let msg = Msg::new().text("this cannot be computed at compile time yet");
+                let help = Msg::new().text("compute it when the program runs, without ").code("$");
+                Some(Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(origin, None).help(help))
             }
             _ => None,
         }
@@ -232,7 +250,8 @@ impl Trap {
             Reason::Budget => (errors::COMPTIME_EXHAUSTED, true),
             _ => (errors::COMPTIME_TRAP, true),
         };
-        let msg = if failed { Msg::new().text("compile-time evaluation failed: ") } else { Msg::new() };
+        let msg =
+            if failed { Msg::new().text("computing this at compile time failed: ") } else { Msg::new() };
         // A report naming a place is shown there, the value that needed it labeled.
         let mut d = match self.reason.place() {
             Some(at) => Diagnostic::error(id, msg.append(self.reason.msg()))
@@ -244,7 +263,10 @@ impl Trap {
         // the primitive: not shown.
         let shown = !matches!(self.reason, Reason::Reported { .. }) && self.reason.place().is_none();
         if let Some(at) = self.at.filter(|&at| at != root && shown) {
-            d = d.label(at, Some(Msg::new().text("it fires here")));
+            d = d.label(at, Some(Msg::new().text("it fails here")));
+        }
+        if let Some(help) = self.reason.help() {
+            d = d.help(help);
         }
         d.trace = self
             .calls

@@ -86,7 +86,7 @@ pub enum Uncoded {
     Reported(ErrorGuaranteed),
 }
 
-/// Whether a backend lists what it generates, for `vun debug code`.
+/// Whether a backend lists what it generates, for `vun debug dump code`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Listed {
     No,

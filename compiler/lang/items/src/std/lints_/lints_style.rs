@@ -9,3 +9,7 @@ use crate::Item;
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 pub const level: Item = Item::new(&["std", "lints", "style", "level"]);
+/// A local binding the code never names: left over, or a mistake, another name read where it was
+/// meant. Parameters are not reported: they belong to the function's signature, which callers
+/// name and interfaces fix.
+pub const unused: Item = Item::new(&["std", "lints", "style", "unused"]);

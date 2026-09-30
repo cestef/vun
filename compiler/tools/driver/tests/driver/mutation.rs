@@ -17,7 +17,7 @@ twice := () -> u32 { mut n: u32 = 5; bump(&mut n); bump(&mut n); n };
 field := () -> u32 { mut s := S{ .a = 1, .b = 2 }; bump(&mut s.b); s.b };
 first := (s: &mut S) -> &mut u32 { &mut s.a };
 through := () -> u32 { mut s := S{ .a = 1, .b = 2 }; first(&mut s).* = 9; s.a };
-looped := () -> u32 { mut n: u32 = 0; for i in 0..4 { bump(&mut n); } n };
+looped := () -> u32 { mut n: u32 = 0; for _ in 0..4 { bump(&mut n); } n };
 four: Int(local()..=local()) = 4;
 seven: Int(twice()..=twice()) = 7;
 three: Int(field()..=field()) = 3;

@@ -10,24 +10,27 @@ impl Resolver<'_, '_> {
     /// Reports each name an alternative binds that the first does not, or lacks that it does.
     pub(super) fn alternatives(&mut self, hir: &Hir, alternatives: &[PatId]) {
         for joined in hir.joined(alternatives) {
-            let (msg, at) = match joined {
+            let (name, d) = match joined {
                 Joined::Paired { .. } => continue,
                 Joined::Extra { other } => {
                     let b = &hir.binders[other];
-                    (
-                        Msg::new().code(b.name.as_str()).text(" is not bound by the first alternative"),
-                        b.origin,
-                    )
+                    let msg = Msg::new()
+                        .code(b.name.as_str())
+                        .text(" is bound here but not by the first alternative");
+                    (b.name, Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg).at(b.origin, None))
                 }
                 Joined::Missing { first, alternative } => {
-                    let name = hir.binders[first].name;
-                    (
-                        Msg::new().text("this alternative does not bind ").code(name.as_str()),
-                        hir.pats[alternative].origin,
-                    )
+                    let b = &hir.binders[first];
+                    let msg = Msg::new().text("this alternative does not bind ").code(b.name.as_str());
+                    let d = Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg)
+                        .at(hir.pats[alternative].origin, None)
+                        .label(b.origin, Some(Msg::new().code(b.name.as_str()).text(" is bound here")));
+                    (b.name, d)
                 }
             };
-            self.cx.diag.error(Diagnostic::error(errors::BINDING_UNEQUAL_ALTERNATIVES, msg).at(at, None));
+            let help = Msg::new().text("bind ").code(name.as_str()).text(" in every alternative, or in none");
+            let note = "the code after the pattern reads the same names whichever alternative matched";
+            self.cx.diag.error(d.help(help).note(note));
         }
     }
 }

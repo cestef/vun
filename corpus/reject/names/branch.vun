@@ -2,6 +2,6 @@
 //! known only once the condition is (spec 03, section 1).
 
 pick := ($wide: bool) -> u32 {
-    $if wide { x: u32 = 7; } else { x: u32 = 3; }
+    $if wide { x: u32 = 7; } else { x: u32 = 3; } //~ std.lints.style.unused
     x //~ names.unresolved
 };

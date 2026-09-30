@@ -202,10 +202,10 @@ per second per stage and fails on regressions.
   generation reads each reached instantiation *concrete* (query `Concrete`): its compile-time
   values evaluated into constants that flow into the operands reading them, and every local
   typed. A function that is not concrete stops the program's code generation with the reason
-  (`vun debug program` lists them).
+  (`vun debug dump program` lists them).
 - **Layouts.** Every type with a run-time layout has a shape (query `Shapes`): its size and
   alignment, the offset of each part, how an enum tells its variants (an index, or a niche
-  pattern), and its unused patterns (spec 05, section 6). `vun debug layout` prints them.
+  pattern), and its unused patterns (spec 05, section 6). `vun debug dump layout` prints them.
 - **LIR** is what every backend has in common: SSA values of scalar and vector types, memory
   operations, calls, branches. Range types, enums and aggregates are lowered before it. A new backend
   translates LIR and nothing else. Values are scalars (`i8` to `i128`, `f16` to `f64`, `ptr`) in
@@ -232,7 +232,7 @@ per second per stage and fails on regressions.
   through an address passed after the parameters; under the C convention (`#[abi.c]`) such values
   are records passed by value, their scalars given for the backend's classification. A trap site
   calls `lang.panic.trap` with a `lang.panic.Trap` whose `site` indexes the unit's message table.
-- **Lowering** (`vun-lower`, query `Lowered`, `vun debug lir`) turns a program's concrete MIR into
+- **Lowering** (`vun-lower`, query `Lowered`, `vun debug dump lir`) turns a program's concrete MIR into
   LIR one function at a time: each is a query of its own (`FunctionLir`, keyed by the
   instantiation, whether it is a coroutine's `end`, and whether the checks of unsafe code apply
   in it; or by a constructor taken as a value), lowered and tidied with every id it holds a
@@ -672,7 +672,7 @@ representation before emitting:
 ### 8.2 The C backend
 
 The C backend writes a translation unit in strict C99 and never relies on behavior C leaves
-undefined. It builds C as data (`vun_backend_c::ast`) and prints it once; `vun debug code --backend
+undefined. It builds C as data (`vun_backend_c::ast`) and prints it once; `vun debug dump code --backend
 c` shows it, and `vun build` and `vun run` compile and link it.
 
 - **No header, no assumed type.** The file declares its own integers, `u8` to `u64` and `i8` to
@@ -739,7 +739,7 @@ where it links none by itself), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
 `.vun/build/<content hash>/` next to the root file, the hash of the artifacts, the C compiler
 and the profile, compiles each source with it through `vun-tool`, in parallel, with
-`-fstack-usage` where it has it (`vun debug frames` prints the sizes read back,
+`-fstack-usage` where it has it (`vun debug dump frames` prints the sizes read back,
 `Backend::frame_sizes`), and links with the target's linker. What the directory holds is kept:
 an object is made under another name and renamed once whole, so a build finding it compiles
 nothing; a link leaves a stamp named by the hash of the linker, the target and the plan, holding
@@ -871,7 +871,7 @@ The framework:
   snippets; an operation an architecture cannot do in a few instructions (128-bit division,
   `f16`) calls a helper written in Vun and compiled through the same pipeline.
 - **Output.** Functions are compiled in parallel into their own buffers; one thread assembles the
-  object, with relocations for calls, data and imports. `vun debug code --backend native` prints
+  object, with relocations for calls, data and imports. `vun debug dump code --backend native` prints
   each function's listing: its instructions with their offsets and bytes, under the line of
   source each LIR instruction comes from.
 
@@ -1286,7 +1286,7 @@ Rules:
   subcommands, actions) as data, and parses, validates, renders help and completion scripts, and
   reports usage errors as diagnostics with suggestions, from them. Options declared on a group
   or in a set apply to every command below it (`vun debug --diagnostics short cst f.vun` and `vun
-  debug cst f.vun --diagnostics short` are one request), and a program's `configure` step applies
+  debug dump cst f.vun --diagnostics short` are one request), and a program's `configure` step applies
   them before the command runs. `vun-driver` declares the `vun` tree; `xtask` and `generate`
   declare their own with the same crate, and each binary's `main` is `Program::main`.
 - Terminal output goes through `vun-term`: text is built from pieces naming their `Style`, one
@@ -1331,8 +1331,12 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   edits of ranges (incremental sync), applied in order to the document's text.
 - *Definition.* At a name, where it is declared: the binder of the file it resolves to, or the
   declaration an outer name, a member or a path reaches, as resolution and sema find them.
-- *Hover.* At an expression, the innermost one holding the position: its type and stage as
-  `vun debug types` prints them, and the doc comment of the declaration it names, if any.
+- *Hover.* At a declaration's own name, the declaration; elsewhere, the innermost expression
+  holding the position: `name: T = value`, its name when it is one, its type as `vun debug dump
+  types` prints it, and its value when compiling computes one other than a function or type
+  literal it writes (the value of the declaration it names, or else its own, `vun_sema::value::
+  ExprValue`, evaluated where it is written); its stage; the layout of the type it is, or else of
+  its type, as `vun debug dump layout` prints it; and the doc comment of the declaration.
 - *Outline.* The declarations of the file, read from the syntax tree alone, so that a file that
   does not check has one: each binding by what its value is (a function, a struct with its
   fields, an enum with its variants and the members of its namespace, a constant or a variable).
@@ -1356,12 +1360,23 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   another package. Edits name the version of each document the client holds.
 - *Code actions.* The fixes of the diagnostics over the range asked about, each a quick fix
   applying its edits, except those only shown and those whose edits are in an earlier text of
-  their file.
+  their file; and each view of the document (`vun_driver::view::View`, the representations `vun
+  debug` prints: those of any file, of a package's `build.vun`, of the program a root file
+  exports, as the file is one), a `source` action running the command `vun.view`.
+- *Commands.* `workspace/executeCommand` carries out the commands the server announces, one row
+  each. `vun.view` writes a view of a document beside it, in `.vun/views/<file>.<view>`, and asks
+  the client to show it (`window/showDocument`); what computing it reports is left to the
+  document's diagnostics. `vun.run` builds the program the document exports and runs it, without
+  input, its output written to `.vun/views/<file>.run` as it comes, then how it ended; what stops
+  the build is written there instead.
+- *Code lenses.* Over the name of each declaration of a root file exporting its program
+  (`vun_mir::Program::roots`), a lens running `vun.run`.
 - *Signature help.* In the arguments of a call, its callee's declaration as the source writes it
   (its name, parameters and result, from a function literal or else a function type), each
   parameter, the one the argument at the position fills, and its doc comment.
 - *Inlay hints.* After the name of each binding without a type, the type of its value, as hover
   shows it; none for a value that is a function, a struct or an enum, which says what it is.
+  Layouts are shown on hover only.
 - *Completion.* After `.`, the members of what is before it: a namespace's (all of them in the
   asking package, else the public), or the fields, declarations and variants of the struct or
   enum it is or has the type of, through a pointer. Elsewhere, the names in scope: the parameters

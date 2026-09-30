@@ -85,7 +85,10 @@ fn a_diagnostic_s_fix_is_a_code_action_over_its_range() {
         let params = CodeActionParams {
             text_document: TextDocumentIdentifier { uri: uri.clone() },
             range: line,
-            context: CodeActionContext { diagnostics: Vec::new(), only: None },
+            context: CodeActionContext {
+                diagnostics: Vec::new(),
+                only: Some(vec![CodeActionKind::QuickFix]),
+            },
         };
         let actions = client.request::<r::CodeAction>(&params).unwrap();
         let closing = actions

@@ -62,13 +62,15 @@ impl Session {
                 .map(|&(item, _)| (item, import.origin))
         });
         let Some((item, at)) = imported else { return Ok(()) };
-        let mut msg = Msg::new()
+        let msg = Msg::new()
             .text("the runtime of the program does not provide ")
             .code(item.to_string())
-            .text(", which its checks need:");
-        for check in checks.iter() {
-            msg = msg.text(" ").code(check.item().name());
-        }
-        Err(self.diag.error(Diagnostic::error(errors::CHECK_UNSUPPORTED, msg).at(at, None)))
+            .text(", which its checks need");
+        let checked = checks.iter().map(|check| check.item().name());
+        let note = Msg::new().text("the checks asked for are ").code_choices(checked);
+        let help = Msg::new().text("build without these checks, or for a target whose runtime provides it");
+        Err(self
+            .diag
+            .error(Diagnostic::error(errors::CHECK_UNSUPPORTED, msg).at(at, None).note(note).help(help)))
     }
 }

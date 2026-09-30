@@ -88,6 +88,18 @@ impl Expr {
     }
 }
 
+/// Attributes as written before what they apply to: `#[a, b]`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Attributes(pub Vec<Expr>);
+
+impl Attributes {
+    /// Their source.
+    #[must_use]
+    pub fn source(&self) -> String {
+        print::attributes(&self.0)
+    }
+}
+
 impl File {
     /// The source of this file.
     #[must_use]

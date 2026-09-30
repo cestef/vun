@@ -26,13 +26,14 @@ impl Checker<'_, '_, '_> {
                     .text("this export of ")
                     .code(export.symbol.as_str())
                     .text(" has type ")
-                    .code(found.ty.to_string())
+                    .ty(found.ty.to_string())
                     .text(", and the symbol is declared ")
-                    .code(declared.ty.to_string());
+                    .ty(declared.ty.to_string());
                 let label = Msg::new().text("declared here");
                 let d = Diagnostic::error(errors::LINK_EXPORT_MISMATCH, msg)
                     .at(export.attr, None)
-                    .label(symbol.decl.decl.origin, Some(label));
+                    .label(symbol.decl.decl.origin, Some(label))
+                    .help("give the export the type the symbol is declared with");
                 self.diag.error(d);
             }
         }

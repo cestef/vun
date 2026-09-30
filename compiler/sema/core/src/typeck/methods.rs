@@ -47,7 +47,8 @@ impl Typer<'_, '_, '_> {
         for origin in origins {
             d = d.label(origin, Some(Msg::new().text("declared here")));
         }
-        self.diag.error(d);
+        let note = "a call names the member, so the type may have only one of that name";
+        self.diag.error(d.note(note).help("rename all but one of them, or remove the impl it comes from"));
     }
 
     /// The member `name` of a value whose type is known by an interface: a constrained `$`

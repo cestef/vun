@@ -15,6 +15,7 @@ mod coroutines;
 mod doc;
 mod evaluator;
 mod fetch;
+mod fixes;
 mod forms;
 mod generics;
 mod impls;

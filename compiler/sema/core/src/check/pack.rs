@@ -26,14 +26,20 @@ impl Checker<'_, '_, '_> {
         let items = items.as_tuple().map(<[_]>::to_vec).unwrap_or_default();
         let promoted = items.iter().find(|p| Format::of(p).is_some_and(|f| f != Format::F64));
         let msg = if body {
-            Msg::new()
-                .text("a C function with a body cannot take variadic arguments, which Vun does not read")
+            Msg::new().text("a C function declared with a body cannot take variadic arguments")
         } else if let Some(ty) = promoted {
             let msg = Msg::new().text("C promotes a variadic ").ty(ty.to_string()).text(" to ");
             msg.code("f64").text(", which this item of the pack must be")
         } else {
             return;
         };
-        self.diag.error(Diagnostic::error(errors::ABI_VARIADIC, msg).at(key.decl.origin, None));
+        let help = if body {
+            "declare it without a body, as a function C provides, or take the arguments as a slice"
+        } else {
+            "declare the item as `f64`, which C passes"
+        };
+        let note = "C reads variadic arguments through `va_list`, which Vun does not provide";
+        let d = Diagnostic::error(errors::ABI_VARIADIC, msg).at(key.decl.origin, None).help(help);
+        self.diag.error(if body { d.note(note) } else { d });
     }
 }

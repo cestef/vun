@@ -1,4 +1,4 @@
-//! The listing of a module (`vun debug code --backend wasm`): each function under its name and
+//! The listing of a module (`vun debug dump code --backend wasm`): each function under its name and
 //! type, its instructions in the text format, indented by block, and before the code of each LIR
 //! instruction the line of source it comes from, where that line changes.
 

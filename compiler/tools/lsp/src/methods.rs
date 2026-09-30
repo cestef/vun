@@ -6,6 +6,7 @@
 use vun_data::{ToData, Value};
 use vun_grammar::TokenKind;
 use vun_lsp_protocol::assist::{CompletionOptions, SignatureHelpOptions};
+use vun_lsp_protocol::command::{CodeLensOptions, ExecuteCommandOptions};
 use vun_lsp_protocol::edit::CodeActionKind;
 use vun_lsp_protocol::language::SemanticTokensLegend;
 use vun_lsp_protocol::lifecycle::{
@@ -14,6 +15,7 @@ use vun_lsp_protocol::lifecycle::{
 };
 use vun_lsp_protocol::{Notification, Request, notifications as n, requests as r};
 
+use crate::command::Order;
 use crate::failure::Failure;
 use crate::server::Server;
 
@@ -59,6 +61,9 @@ pub(crate) enum Capability {
     SignatureHelp,
     InlayHints,
     Completion,
+    /// The commands of [`Order`], which code actions and lenses name.
+    Commands,
+    CodeLens,
 }
 
 impl Capability {
@@ -83,7 +88,7 @@ impl Capability {
             Self::References => capabilities.references_provider = Some(true),
             Self::Rename => capabilities.rename_provider = Some(true),
             Self::CodeActions => {
-                let kinds = vec![CodeActionKind::QuickFix];
+                let kinds = vec![CodeActionKind::QuickFix, CodeActionKind::Source];
                 capabilities.code_action_provider = Some(CodeActionOptions { code_action_kinds: kinds });
             }
             Self::SignatureHelp => {
@@ -96,6 +101,13 @@ impl Capability {
             Self::Completion => {
                 let trigger_characters = TokenKind::Dot.text().map(str::to_owned).into_iter().collect();
                 capabilities.completion_provider = Some(CompletionOptions { trigger_characters });
+            }
+            Self::CodeLens => {
+                capabilities.code_lens_provider = Some(CodeLensOptions { resolve_provider: false });
+            }
+            Self::Commands => {
+                let commands = Order::ALL.iter().map(|o| o.name()).collect();
+                capabilities.execute_command_provider = Some(ExecuteCommandOptions { commands });
             }
         }
     }
@@ -170,6 +182,8 @@ pub(crate) const METHODS: &[Method] = &[
     feature::<r::SignatureHelp>(Capability::SignatureHelp),
     feature::<r::InlayHint>(Capability::InlayHints),
     feature::<r::Completion>(Capability::Completion),
+    feature::<r::ExecuteCommand>(Capability::Commands),
+    feature::<r::CodeLens>(Capability::CodeLens),
 ];
 
 impl Method {

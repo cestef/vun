@@ -14,13 +14,13 @@ workspace = true
 vun-command.workspace = true
 vun-diag.workspace = true
 vun-driver.workspace = true
+vun-fs.workspace = true
 vun-grammar.workspace = true
 vun-data.workspace = true
 vun-lsp-protocol.workspace = true
 vun-origin.workspace = true
 vun-span.workspace = true
+vun-term.workspace = true
 vun-trace.workspace = true
 vun-uri.workspace = true
-
-[dev-dependencies]
-vun-fs.workspace = true
+vun-variants.workspace = true

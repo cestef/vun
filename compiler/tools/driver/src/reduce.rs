@@ -86,7 +86,8 @@ impl Session {
                 |kept| Msg::new().text(" does not fail as asked: ").append(kept.msg()),
             );
             let msg = Msg::new().code(path).append(asked);
-            self.diag.error(Diagnostic::error(errors::TOOL_NOTHING_TO_REDUCE, msg))
+            let help = "reduce a file that fails, or ask for the failure it shows";
+            self.diag.error(Diagnostic::error(errors::TOOL_NOTHING_TO_REDUCE, msg).help(help))
         })
     }
 

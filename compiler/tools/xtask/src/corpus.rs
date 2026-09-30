@@ -36,7 +36,7 @@ pub(crate) enum Verdict {
     /// Expected diagnostics from stages that do not exist yet.
     Pending(BTreeSet<At>),
     Fail(Mismatch),
-    /// Annotations naming ids that `lang.errors` does not declare.
+    /// Annotations naming ids that neither `lang.errors` nor a lint declares.
     Undeclared(BTreeSet<At>),
     Malformed(harness::Malformed),
     /// An example shown as a command transcript, which no file check covers.
@@ -150,12 +150,12 @@ impl Verdict {
                 Err(malformed) => return Ok(Self::Malformed(malformed)),
             },
         };
-        let undeclared: BTreeSet<At> = expected
-            .iter()
-            .map(|e| &e.at)
-            .filter(|at| !errors::ALL.contains(&DiagId::compiler(&at.id)))
-            .cloned()
-            .collect();
+        let lints = session.lints();
+        let declared = |id: &str| {
+            errors::ALL.contains(&DiagId::compiler(id)) || lints.iter().any(|(lint, _)| lint.0 == id)
+        };
+        let undeclared: BTreeSet<At> =
+            expected.iter().map(|e| &e.at).filter(|at| !declared(&at.id)).cloned().collect();
         if !undeclared.is_empty() {
             return Ok(Self::Undeclared(undeclared));
         }

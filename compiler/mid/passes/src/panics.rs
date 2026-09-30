@@ -86,18 +86,22 @@ impl Check<'_, '_, '_, '_> {
         }
         match rvalue {
             Rvalue::Call { callee, args } if self.may_trap(callee, args) => {
-                self.report(
-                    origin,
-                    Msg::new().text("this call may trap: the function called is not ").code("#[panic.never]"),
-                );
+                let msg = Msg::new()
+                    .text("this call may trap: the function it calls is not ")
+                    .code("#[panic.never]");
+                let help = Msg::new()
+                    .text("call a function marked ")
+                    .code("#[panic.never]")
+                    .text(", or one returning its failure as a value");
+                self.report(origin, msg, help);
             }
             Rvalue::Narrow { operand, ty, narrowing: Narrowing::To } => {
                 let fits = self.interval(operand).zip(ty.interval()).is_some_and(|(v, t)| t.contains(&v));
                 if !fits {
-                    self.report(
-                        origin,
-                        Msg::new().text("this narrows a value that may not fit, which traps"),
-                    );
+                    let msg = Msg::new().text("this narrowing traps when the value does not fit");
+                    let help = Msg::new()
+                        .text("narrow by wrapping or saturating, which never trap, or test the range first");
+                    self.report(origin, msg, help);
                 }
             }
             Rvalue::Ref { place, .. }
@@ -167,7 +171,10 @@ impl Check<'_, '_, '_, '_> {
             let proven =
                 bounds.zip(index).is_some_and(|(len, i)| within(len).is_some_and(|b| b.contains(&i)));
             if !proven {
-                self.report(origin, Msg::new().text("this index is not proven within bounds, which traps"));
+                let msg = Msg::new().text("this index may be out of bounds, which traps");
+                let help =
+                    Msg::new().text("test the index against the length first, or iterate over the items");
+                self.report(origin, msg, help);
             }
         }
     }
@@ -181,8 +188,12 @@ impl Check<'_, '_, '_, '_> {
         }
     }
 
-    fn report(&mut self, origin: OriginId, msg: Msg) {
-        let d = Diagnostic::error(errors::PANIC_NEVER_VIOLATED, msg).at(origin, None);
+    fn report(&mut self, origin: OriginId, msg: Msg, help: Msg) {
+        let note = Msg::new()
+            .text("the function holding it is ")
+            .code("#[panic.never]")
+            .text(", so nothing in it may trap");
+        let d = Diagnostic::error(errors::PANIC_NEVER_VIOLATED, msg).at(origin, None).note(note).help(help);
         self.diag.error(d);
     }
 }

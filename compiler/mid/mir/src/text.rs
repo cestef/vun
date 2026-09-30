@@ -97,7 +97,7 @@ impl fmt::Display for Rvalue {
 }
 
 /// A body as text; with a locator, each line ends with the source position of its origin, as
-/// `vun debug mir` prints it (spec 10, section 1).
+/// `vun debug dump mir` prints it (spec 10, section 1).
 pub struct Text<'b> {
     body: &'b Body,
     locate: Option<&'b dyn Fn(OriginId) -> LineCol>,

@@ -1,6 +1,7 @@
 //! Lints (spec 10, section 4): a package's own lints and the standard ones run on each file it
 //! holds, each report at its lint's level, unless `#[lint.allow]` silences it.
 
+use vun_build::layout::MANIFEST;
 use vun_diag::{DiagId, Severity};
 
 use crate::common::Fixture;
@@ -66,4 +67,30 @@ timer := struct { start := (self: &timer) {}; };
     // `ring_buffer` and `Len`, `WriteAll`, `make_pair`, `Red` and `timer`, a type since its
     // method receives it.
     assert_eq!(reported, vec![(CASE, Severity::Error); 6]);
+}
+
+#[test]
+fn a_build_sets_the_levels_of_lints_and_groups() {
+    let fx = Fixture::new("lints-levels");
+    fx.root.write(
+        MANIFEST,
+        "\
+package := .{ .name = \"app\", .id = 1, .version = \"0.1.0\", .edition = 2026, .include = .{ \"build.vun\", \"app.vun\" } };
+build := (b: &mut std.build.Build) {
+    b.lints(.{ .{ std.lints.naming, .warn }, .{ std.lints.style.unused, .deny }, .{ std.lints.style, .allow } });
+};
+",
+    );
+    let path = fx.root.write("app.vun", "WriteAll := () -> u8 { x := 1; 0 };\n");
+    let mut session = fx.session();
+    let file = session.load(&path).unwrap();
+    session.check(file);
+    let reported: Vec<_> =
+        session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect();
+    // The group `naming` lowered to `warn`; `unused` denied, the pair naming it winning over its
+    // group's.
+    assert_eq!(
+        reported,
+        [(CASE, Severity::Warning), (DiagId::new("std.lints.style.unused"), Severity::Error)]
+    );
 }

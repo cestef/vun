@@ -9,3 +9,6 @@ use crate::Item;
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 pub const level: Item = Item::new(&["std", "lints", "layout", "level"]);
+/// A declaration any package sees says what it is in a doc comment. Allowed unless a build asks
+/// for it, as libraries publishing an interface do.
+pub const pub_doc: Item = Item::new(&["std", "lints", "layout", "pub_doc"]);

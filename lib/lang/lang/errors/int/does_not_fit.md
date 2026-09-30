@@ -41,7 +41,7 @@ norm1 := (p: Point) -> u32 {
 
 count := (xs: &[u8]) -> u16 {
     mut n: u16 = 0;
-    for x in xs { n +|= 1; }
+    for _ in xs { n +|= 1; }
     n
 };
 ```

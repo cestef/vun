@@ -1,5 +1,5 @@
 // The origin chain: an entity of each stage points back to what it was made from, down to the span
-// of source text. The lines are what `vun debug tokens|hir|mir|lir|code` print for `a + b` in
+// of source text. The lines are what `vun debug dump tokens|hir|mir|lir|code` print for `a + b` in
 // `corpus/accept/programs/tour.vun` on x86-64, the MIR line shortened to its operands.
 
 #import "diagram.typ": node, pipeline, span

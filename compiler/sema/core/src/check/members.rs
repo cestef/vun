@@ -1,7 +1,7 @@
 //! Members of namespaces (spec 01, section 7): a path naming a member its namespace lacks is
 //! reported wherever it is written, in a body, a signature or a type, typed or not.
 
-use vun_diag::{ChildKind, Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::db::Exports;
 use vun_hir::tree::{ExprId, ExprKind, Hir, Name};
 use vun_sema_ty::Value;
@@ -29,7 +29,7 @@ impl Checker<'_, '_, '_> {
         let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(hir.exprs[expr].origin, None);
         let exports = cx.get::<Exports>(&ns);
         if let Some(near) = closest(name.as_str(), exports.iter().map(|s| s.as_str())) {
-            d = d.child(ChildKind::Help, Msg::did_you_mean(near));
+            d = d.help(Msg::did_you_mean(near));
         }
         self.diag.error(d);
     }

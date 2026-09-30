@@ -32,6 +32,7 @@ vun-sema-plan.workspace = true
 vun-sema-ty.workspace = true
 vun-fetch.workspace = true
 vun-uri.workspace = true
+vun-data.workspace = true
 vun-bind.workspace = true
 vun-fs.workspace = true
 vun-par.workspace = true

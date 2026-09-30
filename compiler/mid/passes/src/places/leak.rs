@@ -27,7 +27,7 @@ impl Analysis<'_> {
             .text("pass it to what consumes it, such as a close or a free, or ")
             .code("defer")
             .text(" that call where the value is made");
-        self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, Some(help));
+        self.advise(errors::PLACE_LINEAR_LEAK, origin, msg, help);
     }
 }
 

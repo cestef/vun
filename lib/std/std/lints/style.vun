@@ -3,3 +3,19 @@
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 level: lang.lint.Level = .warn;
+
+/// A local binding the code never names: left over, or a mistake, another name read where it was
+/// meant. Parameters are not reported: they belong to the function's signature, which callers
+/// name and interfaces fix.
+#[lint.define]
+unused := lang.lint.Lint{
+    .group = .style,
+    .doc = std.meta.embed("style/unused.md"),
+    .local = (cx: &mut lang.lint.Cx, l: lang.lint.Local) {
+        if !l.used and !l.param {
+            // Discarding a value may end it earlier than its binding would: shown, applied on request.
+            fix: lang.lint.Fix = .{ .msg = "discard it with `_`", .safety = .\unsafe, .text = "_" };
+            cx.report(l.origin, "the local `" ++ l.name ++ "` is never used", &[fix]);
+        }
+    },
+};

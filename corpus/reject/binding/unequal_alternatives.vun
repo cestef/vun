@@ -5,14 +5,14 @@ Reading := enum { small(u8), large(u32), pair(u8, u8), none };
 
 value := (r: Reading) -> u32 {
     match r {
-        .small(a) | .large(b) => 0, //~ binding.unequal_alternatives
-        .pair(x, _) | .none => 0, //~ binding.unequal_alternatives
+        .small(a) | .large(b) => a, //~ binding.unequal_alternatives
+        .pair(x, _) | .none => x, //~ binding.unequal_alternatives
     }
 };
 
 width := (r: Reading) -> u32 {
     match r {
-        .small(n) | .large(n) => 0, //~ binding.unequal_alternatives
+        .small(n) | .large(n) => n, //~ binding.unequal_alternatives
         _ => 0,
     }
 };

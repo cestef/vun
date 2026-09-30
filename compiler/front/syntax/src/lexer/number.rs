@@ -1,8 +1,8 @@
 //! Integer and float literals.
 
-use vun_diag::{Msg, errors};
 use vun_grammar::TokenKind;
 
+use super::report::Malformed;
 use super::{Lexer, RADIX_PREFIXES, is_ident_continue};
 
 impl Lexer<'_, '_, '_> {
@@ -13,11 +13,15 @@ impl Lexer<'_, '_, '_> {
             _ => None,
         };
         let mut kind = TokenKind::Int;
-        let mut well_formed = true;
-        if let Some(&(_, radix)) = prefix {
+        let mut radix = 10;
+        let mut malformed = None;
+        if let Some(&(_, base)) = prefix {
             self.bump();
             self.bump();
-            well_formed = self.eat_digits(radix) > 0;
+            radix = base;
+            if self.eat_digits(radix) == 0 {
+                malformed = Some(Malformed::Bare);
+            }
         } else {
             self.eat_digits(10);
             if !self.after_dot && self.fraction_follows() {
@@ -34,14 +38,13 @@ impl Lexer<'_, '_, '_> {
                 kind = TokenKind::Float;
             }
         }
-        // Letters or digits glued to a literal make it malformed: `0b102`, `12ab`, `0x`.
+        // Letters or digits glued to a literal make it malformed: `0b102`, `12ab`.
         if self.peek().is_some_and(is_ident_continue) {
+            malformed = Some(Malformed::Glued { at: self.pos, radix });
             self.eat_while(is_ident_continue);
-            well_formed = false;
         }
-        if !well_formed {
-            let msg = Msg::new().text("malformed number literal ").code(&self.text[lo..self.pos]);
-            self.error(lo, errors::SYNTAX_MALFORMED_NUMBER, msg);
+        if let Some(malformed) = malformed {
+            self.malformed(lo, malformed);
         }
         kind
     }

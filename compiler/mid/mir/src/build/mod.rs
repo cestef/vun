@@ -48,7 +48,7 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unbuilt {
     pub at: OriginId,
-    /// The check of the builder that stopped, which `vun debug mir` names.
+    /// The check of the builder that stopped, which `vun debug dump mir` names.
     pub by: Check,
     pub why: Why,
 }

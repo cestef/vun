@@ -21,6 +21,12 @@ pub(super) fn file(file: &File) -> String {
     w.out
 }
 
+pub(super) fn attributes(attrs: &[Expr]) -> String {
+    let mut w = Writer::default();
+    w.attributes(attrs, "");
+    w.out
+}
+
 impl Writer {
     fn item(&mut self, item: &Item) {
         for line in &item.doc {

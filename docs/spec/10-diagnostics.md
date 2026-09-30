@@ -56,7 +56,7 @@ pub enum Via {
   user code. Diagnostics show this as a trace; go-to-definition follows it.
 - The C backend emits `#line` directives from origins; native backends emit DWARF line tables and
   an entry per function, naming it and the line declaring it, from them; runtime trap site ids index into a table of origins (spec 07).
-- Every IR dump (`vun debug mir`, `vun debug lir`) prints origins, so any line of IR can be traced
+- Every IR dump (`vun debug dump mir`, `vun debug dump lir`) prints origins, so any line of IR can be traced
   to source.
 - Losing an origin is a compiler bug; IR verifiers check that every entity has one.
 
@@ -105,6 +105,27 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   the page offline, suggesting the closest id for a misspelled one; the LSP links to the page.
 - **Messages are written inline**, in English, with structured arguments. Translation is left
   possible but not built (research notes, section 5: rustc removed its translation files in 2026).
+
+### Writing a diagnostic
+
+- *The message says what is wrong, in the source's terms*: the name, the type, the value or the
+  form as written, never a stage or a structure of the compiler (MIR, LIR, lowering, an
+  instantiation, a witness). What the toolchain does not do yet is said as such, naming the form
+  (`` `asm` blocks with outputs are not supported yet ``), with a way around it when there is one.
+- *Its shape*: lowercase, no final period, one clause; names and code as `code` parts, types as
+  `ty` parts, numbers as `num` parts, never formatted into text.
+- *The primary label* marks the exact span, and says what is there when the message does not
+  (`` this is `u16` ``); *secondary labels* show the other places the mistake involves (`first
+  declared here`, `the borrow is used later here`).
+- *Every error and warning says what to do*: a help, in the imperative, naming the change (`` add
+  `;` ``, `` borrow it with `&` ``); a name that resolves nowhere offers the closest one
+  (`vun-suggest`). When the change is determined, a fix carries it, the fix's message being the
+  help, and its safety stated honestly:
+  `Safe` when the program keeps its meaning and the fix leaves no error of its own, `Unsafe`
+  when it may change behavior, `Placeholder` with holes to fill, `DisplayOnly` otherwise. The
+  fix `vun fix` applies is the preferred one.
+- *A note* states the rule broken, or why it holds, in a sentence.
+- *One mistake, one error*: what follows from an error already reported is not reported again.
 
 ### Rendering
 
@@ -223,9 +244,16 @@ raw_mmio := lang.lint.Lint{
 ```
 
 - A lint states a check for each kind of node it looks at, `.decl` (`lang.lint.Decl`: a
-  declaration's name, what it binds, where it is written) and `.call` (`lang.lint.Call`: the value
-  of what it calls, where it is written); a check left at its default (`lang.lint.unchecked`) is
-  not run. The compiler walks each file once and runs every check on every node of its kind.
+  declaration's name, what it binds, where it is written, whether it is public and documented),
+  `.local` (`lang.lint.Local`: a local binding or parameter of a function literal, whether it is
+  a parameter and whether any name reads it) and `.call` (`lang.lint.Call`: the value of what it
+  calls, where it is written); a check left at its default (`lang.lint.unchecked`) is not run. The
+  compiler walks each file once and runs every check on every node of its kind. A function type's
+  parameters are no locals, and the binders of an or-pattern's alternatives after the first are
+  the first's (or names nothing can read), so each local is one node.
+- Every lint report notes the level it reports at and proposes, as a placeholder fix, the
+  attribute allowing it on the declaration around (`#[lang.lint.allow(lint, "why it is allowed")]`),
+  whose reason its author writes.
 - Lints run in the compile-time evaluator: deterministic, sandboxed, cached by the query engine.
   A check reports by appending to its `Cx`, a plain `lang` struct, so running it is a pure call
   (`lang.lint.reports`) whose value is what it reported; a report's id is the lint's path
@@ -315,18 +343,30 @@ Case is decided by what a binding is, which compile-time evaluation knows exactl
 - `layout.pub_doc` (restriction): public declarations have doc comments.
 - `layout.private_leak`: a public signature mentions a private type.
 
+### Style (`std.lints.style.*`)
+
+- `style.unused`: a local binding no name reads is reported, with a fix binding `_` in its place,
+  applied on request only (`vun fix --unsafe`), since a discarded value ends where it is made.
+  Parameters are not reported: they belong to the function's signature, which callers name and
+  interfaces fix.
+
 ### Formatting
 
 `vun fmt` has no configuration. Output is stable within an edition.
 
 ## 6. Tools
 
-**`vun fix`** applies fixes:
-- `Safe` fixes by default, `--unsafe` for more, `--id` or `--group` to select;
-- rejects overlapping edits, re-checks, and repeats to a fixed point (at most four rounds);
-- rolls back any file whose fix introduces a new error;
-- refuses a dirty working copy (jj or git) unless `--allow-dirty`;
-- `vun fix --edition` migrates to a new edition.
+**`vun fix <file>`** applies the fixes checking a file proposes, to the files of its package
+(`vun_driver::fix`):
+- `Safe` fixes by default, `--unsafe` for those that may change behavior as well; per diagnostic,
+  its preferred fix of that safety, or else its first;
+- takes no edit overlapping one taken before in the round, checks again, and repeats to a fixed
+  point, at most four rounds;
+- gives a file whose fixes add errors its text of before the round, and stops;
+- then reports what is left, as `vun check` does.
+
+Planned: `--id` or `--group` to select; refusing a dirty working copy (jj or git) unless
+`--allow-dirty`; `vun fix --edition` migrating to a new edition.
 
 **LSP mapping.** Primary label to `range`; id to `code`; explain page to `codeDescription.href`;
 source to `source`; secondary labels and children to `relatedInformation`; unused and deprecated to
@@ -344,8 +384,8 @@ edits); a "suppress with reason" action inserts `#[lint.allow(...)]`.
   parse, and may report only unresolved names, which the harness lists as what each waits for; a
   planned file that checks clean fails until it moves to the accepted corpus.
 - **Snapshots** of the terminal rendering at fixed width without color, and of the JSON.
-- **Fix tests.** For every `Safe` fix in the corpus: the fixed file compiles, the diagnostic is gone,
-  and applying fixes again changes nothing.
+- **Fix tests.** Every fix of the rejected corpus, `Unsafe` ones included, applied to a copy of
+  its file: the fixed file has no more errors than before, and fixing it again changes nothing.
 - **Explain pages** are compiled.
 - **Cascade budget.** Fuzzing injects syntax errors and fails if one error produces more than a set
   number of diagnostics.

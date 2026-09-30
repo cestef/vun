@@ -283,9 +283,9 @@ generators that observe their own output, which is what makes impls and memoizat
   `comptime.exhausted`, with a full "while evaluating" trace. Compile-time calls run on the
   evaluator's own stack, never the host's.
 - **Size.** A compile-time value is bounded apart from its budget: a shift that makes an integer
-  need more than 2^24 bits traps (`shift past any width`), and an array of more than 2^20 items,
-  by repetition or as the integers a `$for` steps through, traps (`a value too large for
-  compile-time evaluation`).
+  need more than 2^24 bits traps (`a shift by more than the value's width`), and an array of more than 2^20 items,
+  by repetition or as the integers a `$for` steps through, traps (`the value is too large to
+  compute at compile time`).
 - **Traceability.** Every generated declaration, expression and name carries an origin chain: the
   quote or template span, then each generator call site up to user code (spec 10). Errors in
   generated code point at both the generated construct and the code that generated it, and

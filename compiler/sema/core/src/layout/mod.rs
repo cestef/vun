@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 pub use exists::Exists;
 pub use frame::{Framer, Framers};
-pub use shape::{Layout, Niche, Parts, Shape, Tag};
+pub use shape::{Layout, Niche, Offset, Parts, Shape, Tag};
 pub use text::Text;
 use vun_codec::{Decode, Encode};
 use vun_desugar::Borrow;

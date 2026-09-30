@@ -88,7 +88,7 @@ impl<'p, Cx> Selected<'p, Cx> {
         self.sections().into_iter().flat_map(|(_, params)| params)
     }
 
-    /// The command line selecting these commands: `vun debug cst`.
+    /// The command line selecting these commands: `vun debug dump cst`.
     #[must_use]
     pub fn invocation(&self) -> String {
         self.iter().map(|c| c.name).collect::<Vec<_>>().join(" ")

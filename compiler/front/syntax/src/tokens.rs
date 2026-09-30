@@ -115,7 +115,7 @@ impl Tokens {
         })
     }
 
-    /// A line per lexeme, for `vun debug tokens` and snapshots.
+    /// A line per lexeme, for `vun debug dump tokens` and snapshots.
     #[must_use]
     pub fn dump<'a>(&'a self, source: &'a str) -> Dump<'a> {
         Dump { tokens: self, source }

@@ -182,7 +182,9 @@ impl Session {
             && let Some(span) = manifest.by_path().next()
         {
             let msg = Msg::new().text("a stored package names its dependencies by hash, not by path");
-            self.report(Some(span), Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg));
+            let note =
+                "the store holds packages by content, and a path outside it changes nothing of that content";
+            self.report(Some(span), Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg).note(note));
             return None;
         }
         let taken = Snapshot::take(dir, &manifest.include)
@@ -273,7 +275,7 @@ impl Session {
         Some(value)
     }
 
-    fn loose(&mut self) -> PackageKey {
+    pub(crate) fn loose(&mut self) -> PackageKey {
         if !self.packages.list.contains_key(&PackageKey::Loose) {
             let prelude = vec![DEFAULT_PRELUDE.to_owned()];
             let package = Package {

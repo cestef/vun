@@ -1,6 +1,5 @@
 //! Comments, words and punctuation.
 
-use vun_diag::{Msg, errors};
 use vun_grammar::TokenKind;
 
 use super::{DOC_COMMENT, ESCAPE, Lexer, MODULE_DOC_COMMENT, is_ident_continue, is_ident_start};
@@ -39,8 +38,7 @@ impl Lexer<'_, '_, '_> {
         while self.pos < self.text.len() && !self.starts_token() {
             self.bump();
         }
-        let msg = Msg::new().text("not a valid token: ").code(&self.text[lo..self.pos]);
-        self.error(lo, errors::SYNTAX_UNKNOWN_CHARACTER, msg);
+        self.unknown(lo);
         TokenKind::Error
     }
 

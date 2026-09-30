@@ -36,7 +36,7 @@ fn a_call_being_written_shows_its_callee_s_signature_and_the_argument_filled() {
 
 #[test]
 fn bindings_written_without_a_type_show_the_type_of_their_value() {
-    use vun_lsp_protocol::assist::InlayHintParams;
+    use vun_lsp_protocol::assist::{InlayHintKind, InlayHintParams};
     use vun_lsp_protocol::base::{Position, Range, TextDocumentIdentifier};
 
     served("lsp-inlay-hints", |client, uri| {
@@ -45,9 +45,9 @@ fn bindings_written_without_a_type_show_the_type_of_their_value() {
         let params =
             InlayHintParams { text_document: TextDocumentIdentifier { uri: uri.clone() }, range: whole };
         let hints = client.request::<r::InlayHint>(&params).unwrap().unwrap_or_default();
-        let at: Vec<_> = hints.iter().map(|h| (h.position.line, h.position.character)).collect();
+        let types = hints.iter().filter(|h| h.kind == Some(InlayHintKind::Type));
+        let at: Vec<_> = types.map(|h| (h.position.line, h.position.character)).collect();
         assert_eq!(at, [(1, 5), (4, 1)], "{hints:?}");
-        assert!(hints.iter().all(|h| h.label.starts_with(": ")));
     });
 }
 

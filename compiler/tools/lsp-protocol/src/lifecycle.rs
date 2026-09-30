@@ -79,6 +79,8 @@ pub struct ServerCapabilities {
     pub signature_help_provider: Option<crate::assist::SignatureHelpOptions>,
     pub inlay_hint_provider: Option<bool>,
     pub completion_provider: Option<crate::assist::CompletionOptions>,
+    pub code_lens_provider: Option<crate::command::CodeLensOptions>,
+    pub execute_command_provider: Option<crate::command::ExecuteCommandOptions>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]

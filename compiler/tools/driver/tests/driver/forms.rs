@@ -15,7 +15,7 @@ Point := struct { x: u8, y: u16 };
 channel := (t: &take Linear) -> bool { t.channel };
 borrow := (x: u8) -> bool { &x };
 region := (x: u8) -> bool { unsafe { x } };
-fields := (p: Point) -> bool { .{ .x = a, .y = b } := p; b };
+fields := (p: Point) -> bool { .{ .x = _, .y = b } := p; b };
 arm := (c: bool, x: u8, y: u16) -> u8 { if c { x } else { y } };
 ",
     );
@@ -42,7 +42,7 @@ read := (x: &u8) -> u8 { x.* };
 seven := () -> u8 { read(&7) };
 narrow: Int(7..=7) = 7;
 place := () -> u8 { read(&narrow) };
-empty := () { e := .{}; unit: () = e; wrong: u8 = e; };
+empty := () { e := .{}; _: () = e; _: u8 = e; };
 ",
     );
     // `&7` borrows a `u8` holding 7; `narrow` keeps its own type, which `&u8` does not accept.

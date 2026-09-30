@@ -37,7 +37,7 @@ pub enum Emits {
     Header,
     /// Code in memory.
     Jit,
-    /// The code as text for people, with where each part comes from (`vun debug code`).
+    /// The code as text for people, with where each part comes from (`vun debug dump code`).
     Listing,
 }
 

@@ -38,16 +38,17 @@ impl Checker<'_, '_, '_> {
             }
         });
         if fields.is_empty() {
-            let msg = Msg::new()
-                .text("a ")
-                .code("#[layout.c]")
-                .text(" struct has no fields, and C has no empty struct");
-            self.diag.error(Diagnostic::error(errors::LAYOUT_NOT_C, msg).at(hir.exprs[value].origin, None));
+            let msg = Msg::new().text("a ").code("#[layout.c]").text(" struct needs a field");
+            let d = Diagnostic::error(errors::LAYOUT_NOT_C, msg)
+                .at(hir.exprs[value].origin, None)
+                .note("C has no empty struct")
+                .help(Msg::new().text("add a field, or lay the struct out without ").code("#[layout.c]"));
+            self.diag.error(d);
         }
         for (annotation, origin) in fields {
             let Ok(ty) = self.env.ty(annotation) else { continue };
             if self.c_type(ty) == Some(false) {
-                let msg = Msg::new().text("C cannot represent ").code(ty.to_string()).text(" as a field");
+                let msg = Msg::new().text("C cannot represent a field of type ").ty(ty.to_string());
                 let help = Msg::new()
                     .text("use a full-width integer, ")
                     .code("bool")
@@ -56,9 +57,7 @@ impl Checker<'_, '_, '_> {
                     .text(" function, an array of these or another ")
                     .code("#[layout.c]")
                     .text(" struct");
-                let d = Diagnostic::error(errors::LAYOUT_NOT_C, msg)
-                    .at(origin, None)
-                    .child(vun_diag::ChildKind::Help, help);
+                let d = Diagnostic::error(errors::LAYOUT_NOT_C, msg).at(origin, None).help(help);
                 self.diag.error(d);
             }
         }

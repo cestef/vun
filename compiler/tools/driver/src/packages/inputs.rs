@@ -5,7 +5,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use vun_build::layout::SEPARATOR;
+use vun_build::layout::{MANIFEST, SEPARATOR};
 use vun_diag::DiagCtxt;
 use vun_hash::{Snapshot, Taken};
 use vun_hir::db::{
@@ -115,6 +115,12 @@ impl Session {
             prelude,
             prelude_span: p.prelude_span,
             files: p.sources.texts().map(|(path, _)| path.clone()).collect(),
+            manifest: p
+                .sources
+                .texts()
+                .map(|(path, _)| path)
+                .find(|&path| path == MANIFEST)
+                .map(|path| Symbol::intern(path)),
         };
         // A library's inputs are the same in every project, so what reads them alone is shared.
         let sharing = if self.packages.library(package) { Sharing::Shared } else { Sharing::Own };

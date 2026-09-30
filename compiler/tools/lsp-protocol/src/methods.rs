@@ -3,7 +3,7 @@
 
 use vun_data::{FromData, ToData, Value};
 
-use crate::{assist, base, document, edit, language, lifecycle};
+use crate::{assist, base, command, document, edit, language, lifecycle};
 
 /// A method answered by a response.
 pub trait Request {
@@ -34,7 +34,7 @@ macro_rules! methods {
 
 /// The requests, by the types naming them.
 pub mod requests {
-    use super::{Request, Value, assist, base, edit, language, lifecycle};
+    use super::{Request, Value, assist, base, command, edit, language, lifecycle};
 
     methods!(Request {
         Initialize = "initialize": lifecycle::InitializeParams => lifecycle::InitializeResult;
@@ -51,6 +51,10 @@ pub mod requests {
         SignatureHelp = "textDocument/signatureHelp": base::TextDocumentPositionParams => Option<assist::SignatureHelp>;
         InlayHint = "textDocument/inlayHint": assist::InlayHintParams => Option<Vec<assist::InlayHint>>;
         Completion = "textDocument/completion": base::TextDocumentPositionParams => Vec<assist::CompletionItem>;
+        CodeLens = "textDocument/codeLens": command::CodeLensParams => Vec<command::CodeLens>;
+        ExecuteCommand = "workspace/executeCommand": command::ExecuteCommandParams => Option<Value<'static>>;
+        /// Sent by the server.
+        ShowDocument = "window/showDocument": command::ShowDocumentParams => command::ShowDocumentResult;
     });
 }
 
