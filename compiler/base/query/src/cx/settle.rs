@@ -59,14 +59,16 @@ impl Settle<'_> {
     const WIDE: usize = 16;
 
     /// What `reads` found together, each with the fingerprint it was read with: the least known
-    /// of them.
+    /// of them. Only the outermost reads are spread over threads: those of the memos they reach
+    /// are looked at by the thread that reached them, which the others are busy beside, so that
+    /// no call waits on threads for work smaller than waking them.
     fn all(&self, reads: &[Dep], path: &mut Path) -> Found {
         let found =
             |dep: &Dep, path: &mut Path| match self.db.any_table(dep.table).settled(self, dep.slot, path) {
                 (Found::Holds, fingerprint) if fingerprint != Some(dep.fingerprint) => Found::Fails,
                 (found, _) => found,
             };
-        if reads.len() < Self::WIDE {
+        if reads.len() < Self::WIDE || !path.is_empty() {
             let mut all = Found::Holds;
             for dep in reads {
                 all = all.min(found(dep, path));

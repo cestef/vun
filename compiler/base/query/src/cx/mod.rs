@@ -216,7 +216,7 @@ impl<'db> Cx<'db> {
         let equal =
             replaced.filter(|memo| memo.fingerprint == fingerprint && memo.deps.get(self.db) == Some(reads));
         if let Some(memo) = equal {
-            return memo.novelty;
+            return memo.novelty.get();
         }
         if table.persisted.load(Ordering::Relaxed) {
             tracing::trace!(query = Q::NAME, replaced = replaced.is_some(), "a memo changed");

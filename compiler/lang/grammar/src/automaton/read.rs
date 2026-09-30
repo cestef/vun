@@ -10,12 +10,23 @@ use super::{KindSet, TokenSet};
 pub enum Read {
     /// A token of one of these kinds.
     Token(TokenSet),
-    /// A name, or a keyword, spelled as one of these words; `tokens` are the kinds they lex as.
-    Word {
-        words: &'static [&'static str],
-        tokens: TokenSet,
-    },
+    Word(Word),
     Child(Child),
+}
+
+/// A name, or a keyword, spelled as one of `words`; `tokens` are the kinds they lex as.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Word {
+    pub words: &'static [&'static str],
+    pub tokens: TokenSet,
+}
+
+impl Word {
+    /// Whether a token of kind `token` spelled `text` is one of the words.
+    #[must_use]
+    pub fn spelled(&self, token: TokenKind, text: &str) -> bool {
+        self.tokens.contains(token) && self.words.contains(&text)
+    }
 }
 
 /// A child a position reads.
@@ -44,7 +55,7 @@ pub(super) enum Restriction {
 impl Read {
     pub(super) fn word(words: &'static [&'static str]) -> Self {
         let lexed = |w: &&str| TokenKind::keyword(w).unwrap_or(TokenKind::Ident);
-        Self::Word { words, tokens: TokenSet::of(&words.iter().map(lexed).collect::<Vec<_>>()) }
+        Self::Word(Word { words, tokens: TokenSet::of(&words.iter().map(lexed).collect::<Vec<_>>()) })
     }
 
     /// The child in `field` of a node of `kind`, restricted so.

@@ -94,3 +94,8 @@ vun-isa-x86_64.workspace = true
 vun-inline.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "compile"
+harness = false

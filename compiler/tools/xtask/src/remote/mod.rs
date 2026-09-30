@@ -1,7 +1,10 @@
 //! `cargo xtask remote`: runs a command on another machine, over the working copy as it is here.
 //! The repository is mirrored to `vun-build/<its directory's name>` in the host's home, one
 //! mirror per `jj` workspace, each building into its own `target/`; the command then runs there,
-//! its output shown as it is written.
+//! its output shown as it is written. With `--reserve` it runs on the host's fastest cores, the
+//! host's services kept off them meanwhile ([`Reservation`]).
+
+pub(crate) mod reserve;
 
 use std::io;
 use std::path::Path;
@@ -12,12 +15,16 @@ use vun_diag::{DiagCtxt, DiagId, Diagnostic, Msg};
 use vun_harness::repo_root;
 use vun_intern::Symbol;
 use vun_term::{Record, Status, Style, Text, Verb};
-use vun_tool::{Arg, Failure, Invocation, Streams, Tool};
+use vun_tool::{Arg, Failure, Invocation, Output, Streams, Tool};
 
+use self::reserve::Reservation;
 use crate::task::{Program, WORDS};
 
 pub(crate) const HOST: Param =
     Param::option("host").env("VUN_REMOTE").about("the machine to run on, as ssh names it");
+
+pub(crate) const RESERVE: Param = Param::flag("reserve")
+    .about("run on the host's fastest cores, its services confined to the others meanwhile");
 
 /// Where mirrors live in the host's home.
 const MIRRORS: &str = "vun-build";
@@ -46,7 +53,14 @@ pub(crate) fn run(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -> io
     let mirror = Mirror { host, dir: Path::new(MIRRORS).join(root.file_name().unwrap_or_default()) };
     let result = mirror.sync(&root).and_then(|()| {
         shell.status(&Synced { host });
-        mirror.run(args.values(&WORDS))
+        let reservation = args.flag(&RESERVE).then(|| Reservation::make(host)).transpose()?;
+        if let Some(reservation) = &reservation {
+            shell.status(reservation);
+        }
+        let ran = mirror.run(reservation.as_ref(), args.values(&WORDS));
+        // Given back whether the run succeeded or not.
+        let released = reservation.map_or(Ok(()), Reservation::release);
+        ran.and(released)
     });
     Ok(match result {
         Ok(()) => Outcome::Success,
@@ -75,29 +89,38 @@ impl Mirror<'_> {
         args.push(Arg::Path(root.join("")));
         args.push(Arg::Text(Symbol::intern(&format!("{}:{}/", self.host, self.dir.display()))));
         let msg = Msg::new().text("cannot mirror the working copy to ").code(self.host);
-        Self::call(Program::Rsync, args, Streams::Captured, Diagnostic::error(UNSYNCED, msg))
+        Self::call(Program::Rsync, args, Streams::Captured, Diagnostic::error(UNSYNCED, msg)).map(drop)
     }
 
-    /// Runs `words` in the mirror, their output shown as it comes.
-    fn run<'w>(&self, words: impl Iterator<Item = &'w str>) -> Result<(), Box<Diagnostic>> {
+    /// Runs `words` in the mirror, on the cores reserved if any, their output shown as it comes.
+    fn run<'w>(
+        &self,
+        reserved: Option<&Reservation>,
+        words: impl Iterator<Item = &'w str>,
+    ) -> Result<(), Box<Diagnostic>> {
         let mut args = vec![Arg::Text(Symbol::intern(self.host))];
+        if let Some(reservation) = reserved {
+            args.extend(reservation.pinning());
+            args.push(Arg::from(THEN));
+        }
         args.extend(PRELUDE.into_iter().map(Arg::from));
         args.extend([Arg::Path(self.dir.clone()), Arg::from(THEN)]);
         args.extend(words.map(|w| Arg::Text(Symbol::intern(w))));
         let msg = Msg::new().text("the command failed on ").code(self.host);
-        Self::call(Program::Ssh, args, Streams::Inherited, Diagnostic::error(FAILED, msg))
+        Self::call(Program::Ssh, args, Streams::Inherited, Diagnostic::error(FAILED, msg)).map(drop)
     }
 
-    /// Runs `program` with `args`; `failed` reports it failing, caused by how.
+    /// Runs `program` with `args`, returning what it wrote; `failed` reports it failing, caused
+    /// by how.
     fn call(
         program: Program,
         args: Vec<Arg>,
         streams: Streams,
         failed: Diagnostic,
-    ) -> Result<(), Box<Diagnostic>> {
+    ) -> Result<Output, Box<Diagnostic>> {
         let failure = match program.find()?.run(&Invocation { args, streams, ..Invocation::default() }) {
             Ok(out) => match out.failure() {
-                None => return Ok(()),
+                None => return Ok(out),
                 Some(failure) => failure,
             },
             Err(e) => Failure::Start(e),

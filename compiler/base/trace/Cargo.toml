@@ -11,7 +11,9 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
-vun-par.workspace = true
+papaya.workspace = true
+foldhash.workspace = true
 vun-term.workspace = true
 vun-data.workspace = true
 tracing.workspace = true
+boxcar.workspace = true

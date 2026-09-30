@@ -10,6 +10,7 @@ use std::io;
 use std::path::{Component, Path};
 
 use vun_fs::{Mode, Modes, Refusal, Tree};
+use vun_par::Parallel;
 
 use super::{Algorithm, Hash};
 
@@ -95,23 +96,25 @@ impl Snapshot {
     /// Returns an error if an entry leaves `dir` ([`Refusal::Outside`]), a file cannot be read,
     /// a symbolic link is met ([`Refusal::Link`]) or a name is not Unicode ([`Refusal::Name`]).
     pub fn take(dir: &Path, include: &[String]) -> io::Result<Taken> {
-        let mut read = BTreeMap::new();
+        let mut found = Vec::new();
         for entry in include {
             let components = Self::components(entry).ok_or_else(|| Refusal::Outside(entry.clone()))?;
             let root = components.iter().fold(dir.to_path_buf(), |path, c| path.join(c));
-            let found = match root.files() {
-                Err(e) if e.kind() == io::ErrorKind::NotFound && root.symlink_metadata().is_err() => continue,
-                found => found?,
-            };
-            for file in found {
-                let relative = file.strip_prefix(dir).unwrap_or(&file);
-                let name = |c: Component<'_>| c.as_os_str().to_str().map(str::to_owned);
-                let path = relative.components().map(name).collect::<Option<Vec<_>>>();
-                let path = path.ok_or_else(|| Refusal::Name(file.clone()))?;
-                let bytes = std::fs::read(&file)?;
-                read.insert(path, (Entry { hash: Hash::of(&bytes), mode: file.mode() }, bytes));
+            match root.files() {
+                Err(e) if e.kind() == io::ErrorKind::NotFound && root.symlink_metadata().is_err() => {}
+                files => found.extend(files?),
             }
         }
+        // Read and hashed over threads: a package's files are many and independent.
+        let read = found.par_map(|file| {
+            let relative = file.strip_prefix(dir).unwrap_or(file);
+            let name = |c: Component<'_>| c.as_os_str().to_str().map(str::to_owned);
+            let path = relative.components().map(name).collect::<Option<Vec<_>>>();
+            let path = path.ok_or_else(|| Refusal::Name(file.clone()))?;
+            let bytes = std::fs::read(file)?;
+            Ok((path, (Entry { hash: Hash::of(&bytes), mode: file.mode() }, bytes)))
+        });
+        let read: BTreeMap<_, _> = read.into_iter().collect::<io::Result<_>>()?;
         let files = read.iter().map(|(path, &(entry, _))| (path.clone(), entry)).collect();
         let contents = read.into_values().map(|(_, bytes)| bytes).collect();
         Ok(Taken { snapshot: Self { files }, contents })

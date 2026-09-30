@@ -54,7 +54,7 @@ impl Parser<'_, '_, '_> {
     /// What the positions a reading of `c` took take for each child it read, in order: from the
     /// positions it ends at, back through those leading to them.
     fn path_specs(&self, r: &Reading, c: Candidate, outer: Option<&Spec>) -> Vec<Spec> {
-        let automaton = c.automaton();
+        let automaton = c.automaton;
         let (mut specs, mut after) = (Vec::new(), None::<Positions>);
         for (at, child) in r.path(c.kind) {
             let here = match after {
@@ -63,7 +63,7 @@ impl Parser<'_, '_, '_> {
             };
             let here = if here.is_empty() { at } else { here };
             if child {
-                specs.push(self.taking_at(r, c.kind, here, outer).expect("a child step stands at children"));
+                specs.push(self.taking_at(r, c, here, outer).expect("a child step stands at children"));
             }
             after = Some(here);
         }

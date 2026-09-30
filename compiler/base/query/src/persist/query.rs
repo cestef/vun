@@ -27,7 +27,7 @@ pub(crate) trait Persisted: Send + Sync {
     fn table(&self, db: &Db) -> TableId;
 
     /// Attaches the query at `at` in `store`, the saved memos loaded, to the query's table.
-    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking);
+    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking<'_>);
 
     /// Each slot's place in the file saved, by slot: the position a key has in the files loaded
     /// when the file saved `keeps` it, the next one after those kept otherwise; none for a slot
@@ -45,16 +45,18 @@ pub(crate) trait Persisted: Send + Sync {
 /// its memo and reads of it are saved relative to.
 #[derive(Clone, Copy)]
 pub(crate) struct Number {
-    at: u32,
+    pub(crate) at: u32,
     base: Option<Fingerprint>,
 }
+
+/// Each persisted table's keys' places in the file saved, by slot; none for a key it leaves out.
+pub(crate) type Numbers = Map<TableId, Vec<Option<Number>>>;
 
 /// Where each persisted table's keys go in the file saved.
 pub(crate) struct Layout {
     /// Each table's query's position among the queries.
     pub(super) positions: Map<TableId, u32>,
-    /// Each table's keys, by slot; none for a key the file leaves out.
-    pub(super) numbers: Map<TableId, Vec<Option<Number>>>,
+    pub(super) numbers: Numbers,
     /// The revision saved, and the fingerprint of the inputs shared as far as each level in it,
     /// which a memo of that level holding in it is saved as holding under.
     pub(super) revision: Revision,
@@ -117,7 +119,7 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         db.table::<Q>().id
     }
 
-    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking) {
+    fn attach(&self, db: &Db, store: &Arc<Store>, at: usize, taking: Taking<'_>) {
         let value = self.values.as_ref().map(|values| values.read);
         db.table::<Q>().attach(Attached::new(Arc::clone(store), at, Context::read_blob, value), taking);
     }

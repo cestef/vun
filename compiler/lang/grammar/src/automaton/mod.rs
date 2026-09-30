@@ -2,17 +2,16 @@
 //! its children, each a position (Glushkov's construction). A set of positions is where a reading
 //! of the production may stand; what may come next are the positions following them.
 
-use std::sync::LazyLock;
-
 use crate::{NodeKind, NodeTerm};
 
+mod derived;
 mod first;
 mod lead;
 mod read;
 mod sets;
 
 use read::Restriction;
-pub use read::{Child, Read};
+pub use read::{Child, Read, Word};
 pub use sets::{KindSet, TokenSet};
 
 /// Positions of one production, as bits.
@@ -43,13 +42,18 @@ impl Positions {
     }
 
     #[must_use]
+    pub const fn without(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+
+    #[must_use]
     pub const fn intersects(self, other: Self) -> bool {
         self.0 & other.0 != 0
     }
 
     /// The positions, ascending.
     pub fn iter(self) -> impl Iterator<Item = usize> {
-        (0..u64::BITS as usize).filter(move |&p| self.contains(p))
+        sets::bits(u128::from(self.0))
     }
 
     #[must_use]
@@ -73,6 +77,8 @@ pub struct Automaton {
     pub nullable: bool,
     /// The positions whose token anchors the node: token and word terms under no repetition.
     pub anchors: Positions,
+    /// The first positions reading an operand: where a reading continues one read before it.
+    pub leading: Positions,
 }
 
 /// What a term contributes: where it may start and end, and whether it may be empty.
@@ -86,6 +92,8 @@ struct Part {
 const EMPTY: Part = Part { first: Positions::EMPTY, last: Positions::EMPTY, nullable: true };
 
 impl Automaton {
+    /// The automaton of `terms`, the production of `kind`, without its `leading` positions,
+    /// which need to know what an operand is.
     fn of(kind: NodeKind, terms: &[NodeTerm]) -> Self {
         let mut automaton = Self {
             reads: Vec::new(),
@@ -94,6 +102,7 @@ impl Automaton {
             last: Positions::EMPTY,
             nullable: true,
             anchors: Positions::EMPTY,
+            leading: Positions::EMPTY,
         };
         let whole = automaton.sequence(kind, terms, false);
         assert!(automaton.reads.len() <= u64::BITS as usize, "a production has at most 64 terms");
@@ -220,11 +229,6 @@ impl Automaton {
     }
 }
 
-/// The automaton of each kind with a production, by the kind's index.
-static AUTOMATA: LazyLock<Vec<Option<Automaton>>> = LazyLock::new(|| {
-    NodeKind::ALL.iter().map(|&k| k.production().map(|terms| Automaton::of(k, terms))).collect()
-});
-
 impl NodeKind {
     /// Its index among [`NodeKind::ALL`].
     #[must_use]
@@ -235,7 +239,7 @@ impl NodeKind {
     /// This kind's production as an automaton; `None` for a kind declared without one.
     #[must_use]
     pub fn automaton(self) -> Option<&'static Automaton> {
-        AUTOMATA[self.index()].as_ref()
+        derived::DERIVED.automata[self.index()].as_ref()
     }
 }
 

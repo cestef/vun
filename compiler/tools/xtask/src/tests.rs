@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::corpus::Corpus;
 use crate::layers::{Breach, Placed, Ranks};
 use crate::lines::{self, Oversized};
+use crate::remote::reserve::Reservation;
 
 #[test]
 fn corpus_has_no_failures() {
@@ -79,4 +80,13 @@ fn only_the_tasks_declaring_words_pass_them_on() {
     use crate::task;
     assert!(task::PUSH.passes_words());
     assert!(task::CHECK.needs.iter().all(|t| !t.passes_words()));
+}
+
+#[test]
+fn core_capacities_read_by_core_number() {
+    let listing =
+        "/sys/devices/system/cpu/cpu10/cpu_capacity:1024\n/sys/devices/system/cpu/cpu2/cpu_capacity:694\n";
+    assert_eq!(Reservation::capacities(listing), Some(vec![(10, 1024), (2, 694)]));
+    assert_eq!(Reservation::capacities(""), None, "no core, nothing to reserve");
+    assert_eq!(Reservation::capacities("/sys/devices/system/cpu/cpu2/cpu_capacity:fast"), None);
 }

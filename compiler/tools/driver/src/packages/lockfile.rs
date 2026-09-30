@@ -12,8 +12,16 @@ use vun_span::{ByteRange, SourceMap, Span};
 use vun_hash::Hash;
 use vun_intern::Symbol;
 
+use vun_trace::Activity;
+
 use super::{Fetched, PackageKey, Selection};
 use crate::Session;
+
+/// Finding the project around the root file, fetching what it depends on, and writing its
+/// lockfile, as timed.
+const LOCATE: Activity = Activity::stage("locate");
+const FETCH: Activity = Activity::stage("fetch");
+const LOCK: Activity = Activity::stage("lock");
 
 impl Session {
     /// Writes the lockfile of the project in `dir` when its selection differs from it, registers
@@ -47,11 +55,17 @@ impl Session {
     /// building: fetches the dependencies the store lacks and records the selection in the
     /// lockfile. Returns what each fetch did; nothing for a file outside a project.
     pub fn prepare(&mut self, path: &Path) -> Vec<(Symbol, Hash, Fetched)> {
-        let Some((dir, project)) = path.parent().and_then(|dir| self.package_around(dir)) else {
-            return Vec::new();
+        let found = {
+            let _timer = LOCATE.start();
+            path.parent().and_then(|dir| self.package_around(dir))
         };
-        let fetched = self.fetch(project);
+        let Some((dir, project)) = found else { return Vec::new() };
+        let fetched = {
+            let _timer = FETCH.start();
+            self.fetch(project)
+        };
         if !self.failed() {
+            let _timer = LOCK.start();
             self.write_lock(&dir, project);
         }
         fetched

@@ -14,7 +14,7 @@ use vun_hir::db::{
 use vun_intern::Symbol;
 use vun_par::Parallel;
 use vun_query::Sharing;
-use vun_span::EXTENSION;
+use vun_span::{EXTENSION, FileId};
 
 use super::deps::Unfetched;
 use super::{Package, PackageKey, Packages};
@@ -57,13 +57,15 @@ impl Sources {
 }
 
 impl Session {
-    /// Parses every file of every package published, in parallel, when no saved memos were
-    /// loaded: a first compile reads most of them, and one at a time as names reach them
-    /// otherwise. With memos loaded, only the files a check reaches are parsed.
-    pub(crate) fn parse_ahead(&self) {
+    /// Parses every file of the package of `file` and those it depends on, in parallel, when no
+    /// saved memos were loaded: a first compile reads most of them, and one at a time as names
+    /// reach them otherwise. With memos loaded, only the files a check reaches are parsed.
+    pub(crate) fn parse_ahead(&mut self, file: FileId) {
         if self.db.restored() {
             return;
         }
+        let package = self.package_of(file);
+        self.publish(package);
         let files: Vec<FileRef> = self
             .packages
             .published

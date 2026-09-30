@@ -8,7 +8,7 @@ use vun_hash::Hash;
 
 use super::saved::{Build, Growth, Loaded, Named, Saved, Unloaded};
 use super::store::{Layers, Store, StoredQuery};
-use super::{LOAD, Persisted};
+use super::{LOAD, Numbers, Persisted};
 use crate::db::Db;
 
 impl Db {
@@ -48,7 +48,7 @@ impl Db {
         &self,
         base: Vec<u8>,
         own: Option<Vec<u8>>,
-        taking: Taking,
+        taking: Taking<'_>,
     ) -> Result<usize, Unloaded> {
         let _timer = LOAD.start();
         let base = File::read(base)?;
@@ -91,7 +91,7 @@ impl Db {
         growth: Option<Growth>,
         queries: Vec<(String, Layers)>,
         base: Option<Hash>,
-        taking: Taking,
+        taking: Taking<'_>,
     ) -> Result<usize, Unloaded> {
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let by_name: std::collections::HashMap<_, _> = persisted.iter().map(|p| (p.name(), p)).collect();
@@ -108,13 +108,13 @@ impl Db {
 }
 
 /// Which saved memos the keys a database holds already take.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Taking {
-    /// Those of keys holding none.
+#[derive(Clone, Copy)]
+pub(crate) enum Taking<'a> {
+    /// Those of keys holding none, each found by its value.
     Missing,
-    /// Those of keys holding a memo computed in this process too, as the memos saved were
-    /// written from them: they stand for them, as verified as they are.
-    Written,
+    /// None: the memos saved were written from those the keys hold, at the places `Numbers`
+    /// gave them, so the keys take those places and their memos count as saved.
+    Written(&'a Numbers),
 }
 
 /// A saved file, its header and body read.

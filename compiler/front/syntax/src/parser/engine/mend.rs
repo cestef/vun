@@ -14,7 +14,6 @@ use vun_grammar::{KindSet, NodeKind, Positions, Read, TokenKind, TokenSet};
 use super::expected::Expected;
 use super::frame::{Candidate, Content, Frame, Operand, Reading};
 use super::spec::Spec;
-use super::start::BY_RANK;
 use super::tree::Piece;
 use crate::cst::Anchor;
 use crate::parser::{MAX_NESTING, Parser};
@@ -61,10 +60,10 @@ impl Parser<'_, '_, '_> {
     /// reads that the current token may be read after, those of the first reading a child or
     /// not alike; and whether they read a child. `None` where none may be supposed.
     fn supposing(&self, r: &Reading, outer: Option<&Spec>) -> Option<(bool, Vec<Positions>)> {
-        let after = |c: Candidate, q: usize| self.reads_next(r, c.kind, Some(Positions::single(q)), outer);
+        let after = |c: Candidate, q: usize| self.reads_next(r, c, Some(Positions::single(q)), outer);
         let supposing: Vec<Positions> =
             r.candidates.iter().map(|&c| c.next().filter(|q| after(c, q))).collect();
-        let child = |c: Candidate, q: usize| matches!(c.automaton().reads[q], Read::Child(_));
+        let child = |c: Candidate, q: usize| matches!(c.automaton.reads[q], Read::Child(_));
         let first =
             r.candidates.iter().zip(&supposing).find_map(|(&c, at)| Some(child(c, at.iter().next()?)))?;
         let shaped = r.candidates.iter().zip(supposing).map(|(&c, at)| at.filter(|q| child(c, q) == first));
@@ -74,9 +73,9 @@ impl Parser<'_, '_, '_> {
     /// Completes `r` along the shortest way to its end, up to a position reading the current
     /// token, reporting the first thing absent on it.
     fn complete_way(&mut self, r: &mut Reading) -> bool {
-        let ways = r.candidates.iter().filter_map(|&c| Some((c, c.automaton().way_out(c.at)?)));
+        let ways = r.candidates.iter().filter_map(|&c| Some((c, c.automaton.way_out(c.at)?)));
         let Some((c, way)) = ways.min_by_key(|(_, way)| way.len()) else { return false };
-        let reads = &c.automaton().reads;
+        let reads = &c.automaton.reads;
         let closer = self.group(r);
         match (way.first().map(|&q| &reads[q]), closer) {
             (Some(Read::Token(set)), Some((open, close))) if set.contains(close) => {
@@ -87,7 +86,7 @@ impl Parser<'_, '_, '_> {
         r.candidates = vec![c];
         let outer = self.outer(self.stack.len()).copied();
         for q in way {
-            if self.reads_next(r, c.kind, r.candidates[0].at, outer.as_ref()) {
+            if self.reads_next(r, c, r.candidates[0].at, outer.as_ref()) {
                 break;
             }
             r.move_to([Positions::single(q)]);
@@ -100,7 +99,7 @@ impl Parser<'_, '_, '_> {
     /// or a token, its anchor where it anchors it.
     fn absent(&mut self, r: &mut Reading, child: bool) {
         let token = self.current();
-        let anchors = r.candidates.iter().any(|c| c.at.unwrap_or_default().intersects(c.automaton().anchors));
+        let anchors = r.candidates.iter().any(|c| c.at.unwrap_or_default().intersects(c.automaton.anchors));
         if child {
             r.pieces.push(Piece::Child(self.tree.leaf(NodeKind::Error, Anchor::Missing(token))));
         } else if anchors && r.anchor.is_none() {
@@ -138,11 +137,11 @@ impl Parser<'_, '_, '_> {
                 let outer = self.outer(i);
                 let at = |c: Candidate| self.holding(below, c, content, outer);
                 let reads = |c: Candidate| {
-                    let next = c.automaton().next(Some(at(c)));
+                    let next = c.automaton.next(Some(at(c)));
                     if grouped {
-                        next.iter().any(|p| self.reads_token(&c.automaton().reads[p], 0))
+                        next.iter().any(|p| self.reads_token(&c.automaton.reads[p], 0))
                     } else {
-                        self.reads_next(below, c.kind, Some(at(c)), outer)
+                        self.reads_next(below, c, Some(at(c)), outer)
                     }
                 };
                 if below.candidates.iter().any(|&c| reads(c)) {
@@ -190,8 +189,11 @@ impl Parser<'_, '_, '_> {
             r.move_to([self.leading(kind, Content::Node(piece))]);
             r
         };
-        let named: Vec<Reading> =
-            BY_RANK.iter().filter(|&&k| o.spec.named.contains(k)).map(|&k| continuing(k)).collect();
+        let named: Vec<Reading> = NodeKind::by_rank()
+            .iter()
+            .filter(|&&k| o.spec.named.contains(k))
+            .map(|&k| continuing(k))
+            .collect();
         let named: Vec<&Reading> = named.iter().filter(|r| !r.candidates.is_empty()).collect();
         let tokens = named.iter().fold(TokenSet::EMPTY, |set, r| match self.expected(r, Some(&o.spec)) {
             Expected::Tokens(tokens) => set.union(tokens),

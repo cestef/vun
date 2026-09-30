@@ -127,8 +127,9 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   persisted or of the project's inputs excluding a memo). They are saved whole into a file of
   the store's `memos` directory (a directory the tests of one build share, for them), in a
   directory named by the toolchain and one named by the target chosen and the checks, the file
-  named by the hash of its body; a session that computed shared memos the file it loaded lacked
-  writes a new one when it ends. A memo counts as computed only when no memo loaded equals it
+  named by the hash of its body, and written once: by a session that loaded no shared file, when
+  it ends. A session that loaded one saves the shared memos it lacks with its own memos, layered
+  over it. A memo counts as computed only when no memo loaded equals it
   (`Novelty`): one read again for its value, as a traced query's, is not new. Files older than
   a week but the newest are removed, and those of other toolchains. Loaded memos are verified
   before use, so a shared file never makes a result wrong, only a build faster: `lang` and `std`
@@ -140,7 +141,8 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   lacks, and the memos of its keys computed again (`replaced`); it extends itself as a file alone
   does, and is written whole over the shared file once it outgrows its size. A session with no
   file of its own loads the newest shared file; one that loaded nothing takes the shared memos it
-  saves as the file its own are layered over (`Taking::Written`), so a first build is layered too.
+  saves as the file its own are layered over (`Taking::Written`: each key takes the place the save
+  gave it, nothing read back), so a first build is layered too.
   A project file whose shared file is gone is dropped, its memos computed again.
 
 **Parallelism.**
@@ -1271,7 +1273,10 @@ Rules:
   thread. `VUN_TIMINGS=1` or `--timings` reports the table at exit, the most own time first,
   with how work spread over threads (calls spread, run alone or nested in a worker, helpers
   asked and lent, wall and busy time); when off, timing an activity costs one relaxed load.
-  Waiting for another thread's memo is an activity of its own. `VUN_THREADS=n` sets the threads
+  Waiting for another thread's memo is an activity of its own. The report gives each
+  activity's longest run too, and `VUN_TIMELINE=<file>` or `--timeline <file>` writes every run,
+  on every thread, as a timeline Perfetto opens (Trace Event Format): what overlapped, what a
+  thread waited on, and the longest chain of work. `VUN_THREADS=n` sets the threads
   a call runs on. `VUN_MEMOS=1` or `--memos` reports what each query did with its memos:
   restored, keys and values read, found to hold in order or ahead, and each computation by why
   it ran; counts, the same every run on one thread.

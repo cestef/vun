@@ -2,7 +2,7 @@
 //! last known current in, which any thread verifying it records.
 
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use vun_codec::{Blob, Context, Malformed};
 use vun_trace::{Activity, tracing};
@@ -13,9 +13,6 @@ use super::persist::SavedDep;
 use super::table::{Slot, TableId};
 use super::tally::Event;
 use super::{Query, Revision};
-
-/// Reading saved values, as timed.
-const READ: Activity = Activity::stage("read values");
 
 pub(crate) struct Memo<Q: Query> {
     /// Unset for a memo loaded without its value, or whose saved value is not read yet.
@@ -30,7 +27,7 @@ pub(crate) struct Memo<Q: Query> {
     pub(crate) source: Source,
     /// How far the inputs it reads, through all it read, are shared.
     pub(crate) durability: Durability,
-    pub(crate) novelty: Novelty,
+    pub(crate) novelty: Novel,
 }
 
 /// Whether a memo is new to the saved memos loaded.
@@ -40,6 +37,23 @@ pub(crate) enum Novelty {
     Saved,
     /// Computed, with none loaded equal to it.
     New,
+}
+
+/// A memo's [`Novelty`], which becomes [`Novelty::Saved`] once memos written from it are loaded.
+pub(crate) struct Novel(AtomicBool);
+
+impl Novel {
+    pub(crate) fn new(novelty: Novelty) -> Self {
+        Self(AtomicBool::new(novelty == Novelty::New))
+    }
+
+    pub(crate) fn get(&self) -> Novelty {
+        if self.0.load(Ordering::Relaxed) { Novelty::New } else { Novelty::Saved }
+    }
+
+    pub(crate) fn saved(&self) {
+        self.0.store(false, Ordering::Relaxed);
+    }
 }
 
 /// Where a memo's value comes from.
@@ -108,7 +122,7 @@ impl<Q: Query> Memo<Q> {
             verified,
             source,
             durability: Durability::at(level),
-            novelty: Novelty::New,
+            novelty: Novel::new(Novelty::New),
         }
     }
 
@@ -130,7 +144,7 @@ impl<Q: Query> Memo<Q> {
             verified,
             source: Source::Computed,
             durability,
-            novelty,
+            novelty: Novel::new(novelty),
         }
     }
 
@@ -154,7 +168,7 @@ impl<Q: Query> Memo<Q> {
             verified,
             source: Source::Computed,
             durability,
-            novelty: Novelty::Saved,
+            novelty: Novel::new(Novelty::Saved),
         }
     }
 
@@ -165,7 +179,7 @@ impl<Q: Query> Memo<Q> {
 
     /// Whether it was computed in this process, and no memo loaded is equal to it.
     pub(crate) fn fresh(&self) -> bool {
-        self.novelty == Novelty::New && !self.is_input()
+        self.novelty.get() == Novelty::New && !self.is_input()
     }
 
     /// Whether it holds in `revision` without looking at what it read.
@@ -180,7 +194,7 @@ impl<Q: Query> Memo<Q> {
             return Some(value);
         }
         let saved = self.saved.as_ref()?;
-        let _timer = READ.start();
+        let _timer = Activity::read(Q::NAME).start();
         db.table::<Q>().counts.add(Event::ValueRead);
         match (saved.read)(&db.store.get()?.stream, saved.at) {
             Ok(value) => Some(self.value.get_or_init(|| value)),

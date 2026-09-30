@@ -17,16 +17,21 @@ pub(crate) type Included = HashSet<(TableId, Slot)>;
 impl Db {
     /// The memos of persisted queries whose every read leads to shared inputs alone, with those
     /// inputs, saved whole; `None` when this process computed none of them since they were last
-    /// saved, so that the ones loaded or saved are what a save would write. A database that
-    /// loaded no memos takes these as the shared memos it is layered over, so that the memos it
-    /// saves next hold its own alone.
+    /// saved, so that the ones loaded or saved are what a save would write, and when it loaded a
+    /// shared file, which is written once: the shared memos that file lacks are saved with the
+    /// database's own, layered over it ([`Db::save`]). A database that loaded no memos takes
+    /// these as the shared memos it is layered over, so that the memos it saves next hold its own
+    /// alone.
     ///
     /// # Panics
     /// If the registry was poisoned by a panicking query.
     #[must_use]
     pub fn save_shared(&self) -> Option<Vec<u8>> {
-        // Nothing computed: what was loaded is what a save would write.
-        if !self.unshared.swap(false, Ordering::Relaxed) {
+        // Nothing computed, what was loaded is what a save would write; a shared file loaded is
+        // never written again.
+        if !self.unshared.swap(false, Ordering::Relaxed)
+            || self.store.get().is_some_and(|store| store.base.is_some())
+        {
             return None;
         }
         let persisted = self.persisted.read().expect("persisted queries").clone();
@@ -44,9 +49,9 @@ impl Db {
         }
         let included: Included =
             sharing.known.into_iter().filter(|&(_, shared)| shared).map(|(k, _)| k).collect();
-        let bytes = self.save_keys(Some(&included));
+        let (bytes, numbers) = self.save_keys(Some(&included));
         if !self.restored()
-            && let Err(unloaded) = self.layer(bytes.clone(), None, Taking::Written)
+            && let Err(unloaded) = self.layer(bytes.clone(), None, Taking::Written(&numbers))
         {
             tracing::debug!(%unloaded, "the shared memos saved are not layered under");
         }

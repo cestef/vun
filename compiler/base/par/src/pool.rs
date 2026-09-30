@@ -23,7 +23,12 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, Condvar, Mutex, MutexGuard, OnceLock, PoisonError};
 use std::thread::{self, ThreadId};
 
+use vun_trace::Activity;
+
 use crate::{STACK, Working};
+
+/// A caller waiting, its own share done, for the workers that joined its call, as timed.
+const WAIT: Activity = Activity::stage("wait for workers");
 
 /// A panic's payload, carried from the thread it happened on to the caller.
 type Panic = Box<dyn Any + Send>;
@@ -140,7 +145,9 @@ impl Pool {
             self.opened.notify_all();
         }
         work();
+        let waiting = WAIT.start();
         let (joined, panic) = lent.finish();
+        drop(waiting);
         if let Some(panic) = panic {
             panic::resume_unwind(panic);
         }

@@ -15,3 +15,4 @@ foldhash.workspace = true
 papaya.workspace = true
 vun-data.workspace = true
 vun-term.workspace = true
+vun-trace.workspace = true

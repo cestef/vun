@@ -63,11 +63,11 @@ impl Parser<'_, '_, '_> {
         let mut expected = Expected::Tokens(TokenSet::EMPTY);
         for &c in &r.candidates {
             for p in c.next().iter() {
-                let here = match &c.automaton().reads[p] {
+                let here = match &c.automaton.reads[p] {
                     Read::Token(set) => Expected::Tokens(*set),
-                    Read::Word { .. } => continue,
+                    Read::Word(_) => continue,
                     Read::Child(_) => {
-                        self.taking(r, c.kind, p, outer).map_or(Expected::Expression, |s| Expected::child(&s))
+                        self.taking(r, c, p, outer).map_or(Expected::Expression, |s| Expected::child(&s))
                     }
                 };
                 expected = expected.or(here);

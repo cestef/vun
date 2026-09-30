@@ -1,44 +1,12 @@
 //! Where a node starts: what a position takes, the kinds that may start there at a token, and
 //! the forms continuing an operand read before them.
 
-use std::sync::LazyLock;
+use vun_grammar::{KindSet, Level, NodeKind, Positions, Read, TokenKind};
 
-use vun_grammar::{KindSet, Level, NodeKind, Positions, Read, TRANSPARENT, TokenKind};
-
-use super::frame::{Content, Operand, Reading};
+use super::frame::{Candidate, Content, Operand, Reading};
 use super::spec::Spec;
 use crate::cst::Anchor;
 use crate::parser::Parser;
-
-/// The kinds with productions, preferred first.
-pub(super) static BY_RANK: LazyLock<Vec<NodeKind>> = LazyLock::new(|| {
-    let mut kinds: Vec<NodeKind> =
-        NodeKind::ALL.iter().copied().filter(|k| k.automaton().is_some()).collect();
-    kinds.sort_by_key(|k| k.rank());
-    kinds
-});
-
-/// The kinds continuing an operand, preferred first.
-static CONTINUING: LazyLock<Vec<NodeKind>> =
-    LazyLock::new(|| BY_RANK.iter().copied().filter(|k| k.continues()).collect());
-
-/// The kinds that may start alone with each token, by the token's index.
-static STARTING: LazyLock<Vec<KindSet>> = LazyLock::new(|| {
-    let starting = |&token: &TokenKind| {
-        let kinds = NodeKind::ALL.iter().filter(|k| k.starts_alone().contains(token));
-        kinds.fold(KindSet::EMPTY, |set, &k| set.with(k))
-    };
-    TokenKind::ALL.iter().map(starting).collect()
-});
-
-/// The transparent kinds written so with each token, by the token's index.
-static TRANSPARENT_WITH: LazyLock<Vec<KindSet>> = LazyLock::new(|| {
-    let with = |&token: &TokenKind| {
-        let rows = TRANSPARENT.iter().filter(|row| row.tokens.contains(&token));
-        rows.fold(KindSet::EMPTY, |set, row| set.with(row.kind))
-    };
-    TokenKind::ALL.iter().map(with).collect()
-});
 
 impl Parser<'_, '_, '_> {
     /// Whether `read` reads the token `ahead` of the current one: a token of its kinds, or a name
@@ -46,24 +14,9 @@ impl Parser<'_, '_, '_> {
     pub(super) fn reads_token(&self, read: &Read, ahead: usize) -> bool {
         match read {
             Read::Token(set) => set.contains(self.nth(ahead)),
-            Read::Word { words, tokens } => {
-                tokens.contains(self.nth(ahead)) && words.contains(&self.text(self.current_plus(ahead)))
-            }
+            Read::Word(word) => word.spelled(self.nth(ahead), self.text(self.current_plus(ahead))),
             Read::Child(_) => false,
         }
-    }
-
-    /// Whether a node of `kind` may start at the token `ahead` with no operand before it: its
-    /// production reads the token first, or a first child that is no operand starts with it.
-    fn starts_here(&self, kind: NodeKind, ahead: usize) -> bool {
-        let Some(automaton) = kind.automaton() else { return false };
-        let firsts = automaton.first.filter(|p| !automaton.leading().contains(p));
-        firsts.iter().any(|p| match &automaton.reads[p] {
-            Read::Child(child) => {
-                child.kinds.is_some_and(|kinds| kinds.iter().any(|k| self.starts_here(k, ahead)))
-            }
-            read => self.reads_token(read, ahead),
-        })
     }
 
     /// The kinds a node read where `spec` says may be, starting at the token `ahead`: those
@@ -73,11 +26,14 @@ impl Parser<'_, '_, '_> {
         if spec.starting.is_some_and(|s| !s.contains(token)) {
             return KindSet::EMPTY;
         }
-        let starting = |set: KindSet| {
-            let set = set.intersection(STARTING[token as usize]);
-            set.iter().filter(|&k| self.starts_here(k, ahead)).fold(KindSet::EMPTY, KindSet::with)
-        };
-        starting(spec.reachable().union(spec.standing_for().intersection(TRANSPARENT_WITH[token as usize])))
+        let set = spec.reachable().union(spec.standing_for().intersection(token.transparent()));
+        let by_token = set.intersection(token.opening());
+        let worded = set.intersection(token.worded()).without(by_token);
+        if worded.is_empty() {
+            return by_token;
+        }
+        let text = self.text(self.current_plus(ahead));
+        worded.iter().filter(|k| k.opens_with(token, text)).fold(by_token, KindSet::with)
     }
 
     /// Whether a child where `spec` says may start at the token `ahead`; a token the lexer
@@ -86,16 +42,16 @@ impl Parser<'_, '_, '_> {
         (self.nth(ahead) == TokenKind::Error && spec.takes_operands()) || !self.alone(spec, ahead).is_empty()
     }
 
-    /// What position `p` of a reading of `kind` takes: its child at its level, and for the last
+    /// What position `p` of the candidate `c` of a reading takes: its child at its level, and for the last
     /// child of a transparent node, what the operand holding the node takes, `outer`, too.
     pub(super) fn taking(
         &self,
         reading: &Reading,
-        kind: NodeKind,
+        c: Candidate,
         p: usize,
         outer: Option<&Spec>,
     ) -> Option<Spec> {
-        let automaton = kind.automaton()?;
+        let (kind, automaton) = (c.kind, c.automaton);
         let Read::Child(child) = &automaton.reads[p] else { return None };
         let edge = automaton.last.contains(p);
         let level = if edge { self.edge_level(kind, reading.anchor) } else { Level::LOWEST };
@@ -110,15 +66,15 @@ impl Parser<'_, '_, '_> {
         }
     }
 
-    /// What the positions `at` of a reading of `kind` take, merged.
+    /// What the positions `at` of the candidate `c` of a reading take, merged.
     pub(super) fn taking_at(
         &self,
         reading: &Reading,
-        kind: NodeKind,
+        c: Candidate,
         at: Positions,
         outer: Option<&Spec>,
     ) -> Option<Spec> {
-        at.iter().filter_map(|p| self.taking(reading, kind, p, outer)).reduce(Spec::union)
+        at.iter().filter_map(|p| self.taking(reading, c, p, outer)).reduce(Spec::union)
     }
 
     /// How tightly a node of `kind` anchored at `anchor` holds the child at its end: as its level
@@ -134,7 +90,7 @@ impl Parser<'_, '_, '_> {
     /// Whether a node of `kind` anchored at `anchor` is transparent.
     pub(super) fn transparent(&self, kind: NodeKind, anchor: Option<Anchor>) -> bool {
         let Some(Anchor::Token(t)) = anchor else { return false };
-        TRANSPARENT_WITH[self.kind(t) as usize].contains(kind)
+        self.kind(t).transparent().contains(kind)
     }
 
     /// The level of a form of `kind` continuing at the current token: the operator's for the
@@ -152,7 +108,7 @@ impl Parser<'_, '_, '_> {
         }
         let reachable = o.spec.reachable();
         let mut best = (0, KindSet::EMPTY);
-        for &kind in CONTINUING.iter() {
+        for &kind in NodeKind::continuing_by_rank() {
             if !reachable.contains(kind) || self.level(kind).is_some_and(|l| l < o.spec.level) {
                 continue;
             }
@@ -176,7 +132,7 @@ impl Parser<'_, '_, '_> {
             Read::Child(child) => self.held(content, &Spec::child(child, Level::LOWEST)),
             _ => false,
         };
-        automaton.leading().filter(holds)
+        automaton.leading.filter(holds)
     }
 
     /// Whether `content` may stand where `spec` says: a node as one of the kinds it spells, the

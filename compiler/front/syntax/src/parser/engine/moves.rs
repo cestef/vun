@@ -16,10 +16,9 @@ impl Parser<'_, '_, '_> {
     pub(super) fn read_token(&mut self) {
         let Some(Frame::Reading(mut r)) = self.stack.pop() else { unreachable!("a reading reads") };
         let outer = self.outer(self.stack.len()).copied();
-        let tokens = |c: Candidate| c.next().filter(|p| self.reads_token(&c.automaton().reads[p], 0));
+        let tokens = |c: Candidate| c.next().filter(|p| self.reads_token(&c.automaton.reads[p], 0));
         let children = |c: Candidate| {
-            let starts =
-                |p: usize| self.taking(&r, c.kind, p, outer.as_ref()).is_some_and(|s| self.starts(&s, 0));
+            let starts = |p: usize| self.taking(&r, c, p, outer.as_ref()).is_some_and(|s| self.starts(&s, 0));
             c.next().filter(starts)
         };
         let reads_token = r.candidates.iter().any(|&c| !tokens(c).is_empty());
@@ -27,7 +26,7 @@ impl Parser<'_, '_, '_> {
         // Where both may, the token, where what follows it may be read after it.
         let after = |c: Candidate| {
             let at = tokens(c);
-            let automaton = c.automaton();
+            let automaton = c.automaton;
             !at.is_empty()
                 && (automaton.accepts(Some(at))
                     || automaton.first_of(automaton.next(Some(at))).contains(self.nth(1)))
@@ -36,7 +35,7 @@ impl Parser<'_, '_, '_> {
         if token {
             let keep = |c: Candidate| if reads_child && !after(c) { Positions::EMPTY } else { tokens(c) };
             let moves: Vec<Positions> = r.candidates.iter().map(|&c| keep(c)).collect();
-            let anchors = r.candidates.iter().zip(&moves).any(|(c, at)| at.intersects(c.automaton().anchors));
+            let anchors = r.candidates.iter().zip(&moves).any(|(c, at)| at.intersects(c.automaton.anchors));
             r.move_to(moves);
             self.take(&mut r, anchors);
             r.moved(false);
@@ -47,7 +46,7 @@ impl Parser<'_, '_, '_> {
             let specs = r
                 .candidates
                 .iter()
-                .filter_map(|c| self.taking_at(&r, c.kind, c.at.unwrap_or_default(), outer.as_ref()));
+                .filter_map(|&c| self.taking_at(&r, c, c.at.unwrap_or_default(), outer.as_ref()));
             let spec = specs.reduce(Spec::union).expect("a child move has positions");
             self.stack.push(Frame::Reading(r));
             self.open(spec);

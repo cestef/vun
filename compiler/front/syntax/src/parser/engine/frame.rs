@@ -4,7 +4,6 @@
 use vun_grammar::{Automaton, KindSet, Level, NodeKind, Positions};
 
 use super::spec::Spec;
-use super::start::BY_RANK;
 use super::tree::Piece;
 use crate::cst::Anchor;
 
@@ -13,25 +12,22 @@ pub(in crate::parser) enum Frame {
     Operand(Operand),
 }
 
-/// A kind a node being read may be, and the positions of its production it stands at; `None`
+/// A kind a node being read may be, its production, and the positions of it it stands at; `None`
 /// before the first.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Candidate {
     pub(super) kind: NodeKind,
+    pub(super) automaton: &'static Automaton,
     pub(super) at: Option<Positions>,
 }
 
 impl Candidate {
-    pub(super) fn automaton(self) -> &'static Automaton {
-        self.kind.automaton().expect("candidates have productions")
-    }
-
     pub(super) fn next(self) -> Positions {
-        self.automaton().next(self.at)
+        self.automaton.next(self.at)
     }
 
     pub(super) fn accepts(self) -> bool {
-        self.automaton().accepts(self.at)
+        self.automaton.accepts(self.at)
     }
 }
 
@@ -61,11 +57,11 @@ struct Step {
 impl Reading {
     /// A reading of one of `kinds`, preferred first, before its first token.
     pub(super) fn new(kinds: KindSet) -> Self {
-        let candidates: Vec<Candidate> = BY_RANK
+        let mut candidates: Vec<Candidate> = kinds
             .iter()
-            .filter(|&&k| kinds.contains(k))
-            .map(|&kind| Candidate { kind, at: None })
+            .filter_map(|kind| Some(Candidate { kind, automaton: kind.automaton()?, at: None }))
             .collect();
+        candidates.sort_unstable_by_key(|c| c.kind.preference());
         let (trail, steps, pieces) = (Vec::new(), Vec::new(), Vec::new());
         Self { candidates, anchor: None, pieces, trail, steps, wrong: false, supposed: None }
     }
@@ -78,13 +74,16 @@ impl Reading {
 
     /// Moves each candidate to the positions `at` gives it, in order; those given none drop.
     pub(super) fn move_to(&mut self, at: impl IntoIterator<Item = Positions>) {
-        let moved = self.candidates.iter().zip(at).map(|(&c, at)| Candidate { at: Some(at), ..c });
-        self.candidates = moved.filter(|c| c.at.is_some_and(|at| !at.is_empty())).collect();
+        let mut at = at.into_iter();
+        self.candidates.retain_mut(|c| {
+            c.at = at.next().filter(|at| !at.is_empty());
+            c.at.is_some()
+        });
     }
 
     /// The kinds of the candidates that may end, standing where `at` says.
     pub(super) fn ending(&self, at: impl Fn(Candidate) -> Option<Positions>) -> KindSet {
-        let ending = self.candidates.iter().filter(|&&c| c.automaton().accepts(at(c)));
+        let ending = self.candidates.iter().filter(|&&c| c.automaton.accepts(at(c)));
         ending.fold(KindSet::EMPTY, |set, c| set.with(c.kind))
     }
 

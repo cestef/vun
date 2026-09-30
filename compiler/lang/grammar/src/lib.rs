@@ -13,7 +13,7 @@ mod choice;
 mod level;
 mod production;
 
-pub use automaton::{Automaton, Child, KindSet, Positions, Read, TokenSet};
+pub use automaton::{Automaton, Child, KindSet, Positions, Read, TokenSet, Word};
 pub use generated::*;
 pub use level::{Infix, Level};
 pub use production::Element;

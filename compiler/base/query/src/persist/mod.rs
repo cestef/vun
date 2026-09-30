@@ -24,7 +24,7 @@ use vun_trace::{Activity, tracing};
 pub use self::census::{Census, Counted};
 pub(crate) use self::load::Taking;
 pub(crate) use self::query::Persisted;
-use self::query::{Layout, Persisting};
+use self::query::{Layout, Numbers, Persisting};
 use self::saved::{Body, Build, FORMAT, Named, SavedQuery};
 pub use self::saved::{Layering, Unloaded};
 pub(crate) use self::saved::{Saved, SavedDep};
@@ -80,13 +80,13 @@ impl Db {
     /// If the registry was poisoned by a panicking query.
     #[must_use]
     pub fn save(&self) -> Vec<u8> {
-        self.save_keys(None)
+        self.save_keys(None).0
     }
 
     /// The memos of every key of `include`, or of every key, as [`Db::save`] says; a file holding
     /// some keys alone is written whole, alone, and named by the hash of its body, so that files
-    /// can be layered over it.
-    fn save_keys(&self, include: Option<&shared::Included>) -> Vec<u8> {
+    /// can be layered over it. The places the keys were given come with it.
+    fn save_keys(&self, include: Option<&shared::Included>) -> (Vec<u8>, Numbers) {
         let _timer = SAVE.start();
         let persisted = self.persisted.read().expect("persisted queries").clone();
         let store = self.store.get().map(Arc::as_ref);
@@ -126,7 +126,8 @@ impl Db {
             layered = base.is_some(),
             "memos saved"
         );
-        Saved { format: FORMAT, build: Build::identity(), compacted, id, base, body }.encoded()
+        let saved = Saved { format: FORMAT, build: Build::identity(), compacted, id, base, body };
+        (saved.encoded(), layout.numbers)
     }
 
     /// Whether saved memos were loaded.

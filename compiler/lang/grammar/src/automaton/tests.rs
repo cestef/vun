@@ -5,9 +5,9 @@ fn forms_beginning_with_an_operand_continue_one() {
     assert!(NodeKind::Call.continues() && NodeKind::Infix.continues() && NodeKind::Binding.continues());
     assert!(!NodeKind::Paren.continues() && !NodeKind::Prefix.continues());
     // `mut x := 1` starts alone with the `mut` its first child reads.
-    assert!(NodeKind::Binding.starts_alone().contains(TokenKind::Mut));
-    assert!(!NodeKind::Binding.starts_alone().contains(TokenKind::Ident));
-    assert!(NodeKind::Paren.starts_alone().contains(TokenKind::LParen));
+    assert!(TokenKind::Mut.opening().contains(NodeKind::Binding));
+    assert!(!TokenKind::Ident.opening().contains(NodeKind::Binding));
+    assert!(TokenKind::LParen.opening().contains(NodeKind::Paren));
 }
 
 #[test]

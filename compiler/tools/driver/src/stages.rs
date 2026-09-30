@@ -53,7 +53,7 @@ pub const STAGES: &[Stage] = &[
         reports: &[errors::SYNTAX],
         input: Input::Source,
         run: Some(|session, file| {
-            session.parse_ahead();
+            session.parse_ahead(file);
             drop(session.parsed(file));
         }),
     },

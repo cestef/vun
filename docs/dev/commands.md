@@ -75,6 +75,11 @@ has rows for `linux.arm64`, `linux.arm`, `bare.cortex_m4f` and `macos.arm64`). K
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
 own target there is `linux.arm64`.
+`--reserve` runs the words on the host's fastest cores, those of the highest `cpu_capacity`
+(`am3.wg`'s 0 and 7 to 10), with the host's services (`system.slice`) confined to the others and
+given them back after, by `systemctl set-property --runtime` (a reboot undoes it too); it needs
+passwordless `sudo` on the host and refuses a host whose cores are all alike. Use it for
+benchmarks and timings.
 `cargo xtask tree-sitter` needs the `tree-sitter` CLI (`cargo binstall tree-sitter-cli`); on a host
 without `node`, `TREE_SITTER_JS_RUNTIME=native` loads `grammar.js` with its built-in QuickJS.
 
@@ -137,9 +142,32 @@ GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence 
 
 ## Measuring speed
 
-- `--timings` (or `VUN_TIMINGS=1`) reports each stage and query's own and total time, with how
-  work spread over threads; `--memos` (or `VUN_MEMOS=1`) what each query did with its memos.
+```sh
+cargo bench -p vun-syntax --bench syntax -- --save-baseline main   # lex and parse lib/ and the corpus
+cargo bench -p vun-driver --bench compile -- --baseline main       # compared against a baseline
+vun check --timings --timeline /tmp/t.json file.vun                # open t.json in ui.perfetto.dev
+```
+
+- Benchmarks (criterion, `benches/` of `vun-syntax` and `vun-driver`): `syntax/{lex,parse}` over
+  every source; `cold/{check,code}/<program>` from nothing, `saved/check/<program>` from the memos
+  an earlier run saved, `edit/check/<program>` after appending a declaration in one process, for
+  `hello`, `tour` and `threads`. Run them on a remote (`cargo xtask remote --host am3.wg -- cargo
+  bench ...`); `--save-baseline <name>` before a change, `--baseline <name>` after. A filter
+  after `--` runs some (`-- cold/check`). `cargo bench` builds with the release profile.
+- `--timings` (or `VUN_TIMINGS=1`) reports each stage and query's own and total time and its
+  longest run, with how work spread over threads; `--memos` (or `VUN_MEMOS=1`) what each query
+  did with its memos.
+- `--timeline <file>` (or `VUN_TIMELINE=<file>`) writes every run of each stage and query on each
+  thread, for Perfetto or `chrome://tracing`: which runs overlapped, how busy the workers were,
+  what the main thread waited on. Gaps on the main thread are untimed work: time it as a stage.
+- A profile of a run, on a remote with `perf`: `perf record -F 4999 -g --call-graph=fp -o
+  /tmp/v.perf target/release/vun check f.vun`, then `perf report -i /tmp/v.perf --no-children
+  --sort symbol --stdio -g none`. A benchmark alone: `target/release/deps/<bench>-<hash> --bench
+  --profile-time 5 <filter>` under `perf record`. Bound every run with `timeout`.
 - `VUN_THREADS=1` gives exact, repeatable counts.
 - `VUN_STORE` points the store elsewhere, isolating a measurement from the shared memos.
   Sessions of another toolchain remove this one's shared files.
 - The CPU clock varies (a laptop on battery): compare A/B runs made together, never across time.
+  `am3.wg` runs other services on mixed cores: runs spread over threads show outliers of tens of
+  milliseconds there when a worker is preempted; measure with `cargo xtask remote --reserve`,
+  compare medians, or `VUN_THREADS=1`.

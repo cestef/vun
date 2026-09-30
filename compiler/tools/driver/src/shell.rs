@@ -20,6 +20,16 @@ impl vun_command::Context for Session {
             shell.status(&report);
             shell.status(&vun_par::Usage::now());
         }
+        match vun_trace::Timeline::write() {
+            Some(Ok(timeline)) => shell.status(&timeline),
+            Some(Err(error)) => {
+                let path =
+                    vun_trace::Timeline::path().expect("a timeline is written where one was asked for");
+                self.diag.error(vun_diag::Diagnostic::unwritable(path, &error));
+                self.emit(shell);
+            }
+            None => {}
+        }
         if self.tally {
             shell.status(&self.db.tally());
         }

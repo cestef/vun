@@ -1,17 +1,21 @@
-//! Productions beginning with an operand, which continue one read before them, and the tokens
-//! the others start with alone.
+//! Productions beginning with an operand, which continue one read before them, the tokens the
+//! others start with alone, and the kinds by preference.
 
-use std::sync::LazyLock;
+use crate::{NodeField, NodeKind, TokenKind};
 
-use crate::{NodeField, NodeKind};
-
-use super::{Automaton, Child, KindSet, Positions, Read, TokenSet};
+use super::derived::DERIVED;
+use super::{Child, KindSet};
 
 impl Child {
     /// Whether this child may be an operand: any, or one of the kinds it names.
     #[must_use]
     pub fn takes_operands(&self) -> bool {
-        self.kinds.is_none_or(|kinds| !kinds.intersection(NodeKind::operands()).is_empty())
+        self.takes_operands_among(NodeKind::operands())
+    }
+
+    /// Whether this child may be one of `operands`.
+    pub(super) fn takes_operands_among(&self, operands: KindSet) -> bool {
+        self.kinds.is_none_or(|kinds| !kinds.intersection(operands).is_empty())
     }
 
     /// Whether the kinds this child names may be those of nodes transparent ones end with.
@@ -32,29 +36,12 @@ impl Child {
     }
 }
 
-impl Automaton {
-    /// The first positions reading an operand: where a reading continues one read before it.
-    #[must_use]
-    pub fn leading(&self) -> Positions {
-        self.first.filter(|p| matches!(&self.reads[p], Read::Child(c) if c.takes_operands()))
-    }
-}
-
-/// For each field, the parts that may lead to what it admits: those it admits, and those the
-/// leading operand of one of them may be, and so on (`n := p` leads to `n := p = v` in a head).
-static LEADING: LazyLock<Vec<KindSet>> = LazyLock::new(|| {
-    let admitted = |field: &NodeField| {
-        let rows = crate::ADMITS.iter().filter(|row| row.fields.contains(field));
-        rows.fold(KindSet::EMPTY, |set, row| set.union(KindSet::of(row.kinds))).leading()
-    };
-    NodeField::ALL.iter().map(admitted).collect()
-});
-
 impl NodeField {
-    /// The parts that may lead to one this field admits, those included.
+    /// The parts that may lead to one this field admits, those included (`n := p` leads to
+    /// `n := p = v` in a head).
     #[must_use]
     pub fn leading(self) -> KindSet {
-        LEADING[self as usize]
+        DERIVED.field_leading[self as usize]
     }
 }
 
@@ -62,14 +49,45 @@ impl NodeKind {
     /// Whether a node of this kind may continue an operand read before it.
     #[must_use]
     pub fn continues(self) -> bool {
-        self.automaton().is_some_and(|a| !a.leading().is_empty())
+        DERIVED.continuing.contains(self)
     }
 
-    /// The tokens a node of this kind may start with where no operand was read before it: those
-    /// of its first tokens and of first children that are no operands (`mut` in `mut x := 1`).
+    /// The kinds whose nodes may continue an operand read before them.
     #[must_use]
-    pub fn starts_alone(self) -> TokenSet {
-        self.automaton().map_or(TokenSet::EMPTY, |a| a.first_of(a.first.filter(|p| !a.leading().contains(p))))
+    pub fn continuing() -> KindSet {
+        DERIVED.continuing
+    }
+
+    /// The kinds with productions, preferred first.
+    #[must_use]
+    pub fn by_rank() -> &'static [Self] {
+        &DERIVED.by_rank
+    }
+
+    /// Those continuing an operand, preferred first.
+    #[must_use]
+    pub fn continuing_by_rank() -> &'static [Self] {
+        &DERIVED.continuing_by_rank
+    }
+
+    /// Where this kind stands among [`NodeKind::by_rank`]; past them all without a production.
+    #[must_use]
+    pub fn preference(self) -> usize {
+        DERIVED.ranked[self.index()]
+    }
+
+    /// The kinds that are transparent where written with some token.
+    #[must_use]
+    pub fn transparent() -> KindSet {
+        DERIVED.transparent
+    }
+}
+
+impl TokenKind {
+    /// The transparent kinds written so with this token.
+    #[must_use]
+    pub fn transparent(self) -> KindSet {
+        DERIVED.transparent_with[self as usize]
     }
 }
 
@@ -77,22 +95,6 @@ impl KindSet {
     /// These kinds, and the parts that may lead to one of them, and so on.
     #[must_use]
     pub fn leading(self) -> Self {
-        let mut set = self;
-        loop {
-            let wider = set.iter().fold(set, |all, k| all.union(leads(k)));
-            if wider == set {
-                return set;
-            }
-            set = wider;
-        }
+        self.iter().fold(self, |set, k| set.union(DERIVED.leads_to[k.index()]))
     }
-}
-
-/// The kinds the leading operand of `kind` may be, besides operands.
-fn leads(kind: NodeKind) -> KindSet {
-    let Some(automaton) = kind.automaton() else { return KindSet::EMPTY };
-    automaton.leading().iter().fold(KindSet::EMPTY, |set, p| match &automaton.reads[p] {
-        Read::Child(child) => set.union(child.admitted).union(child.kinds.unwrap_or(KindSet::EMPTY)),
-        _ => set,
-    })
 }

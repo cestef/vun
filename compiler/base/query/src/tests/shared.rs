@@ -156,3 +156,28 @@ fn a_database_that_loaded_nothing_saves_over_the_shared_memos_it_saved() {
     assert_eq!(second.get::<Joined>(&both), 15);
     assert_eq!((LENGTHS.count(), JOINED.count()), (lengths, joined));
 }
+
+#[test]
+fn shared_memos_a_shared_file_loaded_lacks_are_saved_with_the_own() {
+    let first = project("main one");
+    first.get::<Length>(&"lib".into());
+    let shared = first.save_shared().expect("a shared memo was computed");
+    let with_extra = || {
+        let db = project("main one");
+        db.share::<Text>(&"extra".into(), "more".into());
+        db
+    };
+
+    let second = with_extra();
+    second.load_over(shared.clone(), None).unwrap();
+    assert_eq!(second.get::<Length>(&"extra".into()), 4);
+    assert_eq!(second.save_shared(), None, "the shared file loaded is written once");
+    let own = second.save();
+    assert_eq!(Layering::of(&own).unwrap().base, Layering::of(&shared).unwrap().id);
+
+    let third = with_extra();
+    third.load_over(shared, Some(own)).unwrap();
+    let lengths = LENGTHS.count();
+    assert_eq!(third.get::<Length>(&"extra".into()), 4);
+    assert_eq!(LENGTHS.count(), lengths, "the shared memo saved with the own holds");
+}

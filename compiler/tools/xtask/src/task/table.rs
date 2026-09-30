@@ -51,7 +51,7 @@ pub(crate) const REMOTE: Task = Task::new(
     "mirror the working copy to a host and run the words given there",
     Work::Run(crate::remote::run),
 )
-.params(&[crate::remote::HOST, WORDS]);
+.params(&[crate::remote::HOST, crate::remote::RESERVE, WORDS]);
 
 /// The tasks `cargo xtask` offers as commands; the others are reached through them.
 macro_rules! commands {

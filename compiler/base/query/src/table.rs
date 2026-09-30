@@ -135,27 +135,28 @@ impl<Q: Query> Table<Q> {
 
     /// Attaches the query's part of the saved memos loaded: keys asked for already are linked to
     /// theirs, and given their memos as `taking` says.
-    pub(crate) fn attach(&self, attached: Attached<Q>, taking: Taking) {
+    pub(crate) fn attach(&self, attached: Attached<Q>, taking: Taking<'_>) {
         if self.attached.set(attached).is_err() {
             return;
         }
         let attached = self.attached.get().expect("set above");
+        let written = match taking {
+            Taking::Missing => None,
+            Taking::Written(numbers) => Some(numbers.get(&self.id).map_or(&[][..], Vec::as_slice)),
+        };
         for (slot, entry) in self.entries() {
-            let Some(at) = entry.key.get().and_then(|key| attached.find(key)) else { continue };
+            let at = match written {
+                None => entry.key.get().and_then(|key| attached.find(key)),
+                Some(numbers) => numbers.get(slot.index()).copied().flatten().map(|number| number.at),
+            };
+            let Some(at) = at else { continue };
             entry.at.get_or_init(|| at);
             if let Some(cell) = attached.slot(at) {
                 cell.get_or_init(|| slot);
             }
-            let held = entry.memo.load_full();
-            match held.as_deref() {
+            match entry.memo.load().as_deref() {
                 None => entry.memo.store(attached.memo(at).map(Arc::new)),
-                Some(memo) if taking == Taking::Written && memo.fresh() => {
-                    let Some(saved) = attached.memo(at) else { continue };
-                    if let Some(revision) = memo.verified.get() {
-                        saved.verified.set(revision);
-                    }
-                    entry.memo.store(Some(Arc::new(saved)));
-                }
+                Some(memo) if written.is_some() => memo.novelty.saved(),
                 Some(_) => {}
             }
         }

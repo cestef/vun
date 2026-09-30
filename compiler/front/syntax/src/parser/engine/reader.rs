@@ -33,7 +33,7 @@ impl Parser<'_, '_, '_> {
                     let outer = self.outer(i);
                     let at =
                         |c: Candidate| if i == top { c.at } else { Some(self.holding(r, c, content, outer)) };
-                    let reads = r.candidates.iter().any(|&c| self.reads_next(r, c.kind, at(c), outer));
+                    let reads = r.candidates.iter().any(|&c| self.reads_next(r, c, at(c), outer));
                     if reads {
                         reader = Some(i);
                     }
@@ -99,7 +99,7 @@ impl Parser<'_, '_, '_> {
         content: Content,
         outer: Option<&Spec>,
     ) -> Positions {
-        let holds = |p: usize| self.taking(r, c.kind, p, outer).is_some_and(|spec| self.held(content, &spec));
+        let holds = |p: usize| self.taking(r, c, p, outer).is_some_and(|spec| self.held(content, &spec));
         c.at.unwrap_or_default().filter(holds)
     }
 
@@ -112,18 +112,17 @@ impl Parser<'_, '_, '_> {
         r.candidates.iter().any(|&c| !self.holding(r, c, content, outer).is_empty())
     }
 
-    /// Whether a reading of `kind` standing at `at` reads the current token next, as a token or
+    /// Whether the candidate `c` of a reading, standing at `at`, reads the current token next, as a token or
     /// as a child starting with it.
     pub(super) fn reads_next(
         &self,
         r: &Reading,
-        kind: vun_grammar::NodeKind,
+        c: Candidate,
         at: Option<Positions>,
         outer: Option<&Spec>,
     ) -> bool {
-        let Some(automaton) = kind.automaton() else { return false };
-        automaton.next(at).iter().any(|p| match &automaton.reads[p] {
-            Read::Child(_) => self.taking(r, kind, p, outer).is_some_and(|spec| self.starts(&spec, 0)),
+        c.automaton.next(at).iter().any(|p| match &c.automaton.reads[p] {
+            Read::Child(_) => self.taking(r, c, p, outer).is_some_and(|spec| self.starts(&spec, 0)),
             read => self.reads_token(read, 0),
         })
     }

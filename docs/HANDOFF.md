@@ -7,87 +7,33 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 668 tests pass; clippy,
-`cargo gen --check`, `lines` and `layers` are clean; the corpus has 309 passing programs and 3
-planned, and LIR lowers every function the corpus reaches.
+Everything is committed in the main chain; no `jj` workspace holds work. 671 tests pass; clippy,
+`lines` and `layers` are clean; the corpus has 309 passing programs and 3 planned, and LIR
+lowers every function the corpus reaches.
 
-Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
-its checks, LIR with legalization, the C and wasm backends, the native backend for x86-64, arm64
-and Thumb-2, ELF and Mach-O objects, the `gnu`, `mold` and `wild` linkers, the toolchain file,
-static Linux runtimes calling the kernel (threads, storage per thread, files, clocks),
-backtraces. Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through
-`qemu`) and wasi.wasm32.
+Built: the front end (a parser reading the productions of `nodes.vun`), packages and the store,
+the persisted parallel query engine, sema, MIR and its checks, LIR with legalization, the C and
+wasm backends, the native backend for x86-64, arm64 and Thumb-2, ELF and Mach-O objects, the
+`gnu`, `mold` and `wild` linkers, the toolchain file, static Linux runtimes calling the kernel
+(threads, storage per thread, files, clocks), backtraces, lints (`lang.lint.Lint`,
+`std.lints.naming.case`), inline assembly as calls of `lang.arch` declarations, editor packages
+generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the language server.
+Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
+wasi.wasm32.
 
-Brand kits (342, see [`dev/assets.md`](dev/assets.md)): the clip kit (typed segments played as
-a clip in three sizes or as a talk's slides, captions and a progress bar, sessions recorded with
-`pnpm record` through `--format styled`), the short sting and the sound mark (`pnpm sound`), the
-lower third, emoji and sticker cards, the diagram kit, release cards and scene, the OBS overlays
-and scene collection (`pnpm obs`); `cargo xtask typeset` writes several formats per document and
-every card, and `cargo xtask layers` writes `layers.toml` from `RANKS`. Open: removing outputs of
-variants no longer declared, as `cargo gen` does; code in the tall and square clips is small at 80
-columns; the overlays are not yet tried in OBS itself.
+Last landed: the performance pass (348). Criterion benchmarks (`cargo bench -p
+vun-syntax|vun-driver`, baselines `before` and `pinned` saved on `am3.wg`), `--timeline <file>`
+for Perfetto, longest runs and waits in `--timings`, `cargo xtask remote --reserve` for stable
+measurements (`dev/commands.md`, "Measuring speed"). On `am3.wg`: cold check 0.41 s to 0.16 s
+for `tour`, check from saved memos −20%, a build after an edit instantiating library generics
+149 ms to 66 ms, parsing 7 times faster. A shared memo file is now written once per toolchain,
+target and checks, by the first session finding none. Before that (344 to 347): a
+`lang.diag.error` reached at run time refuses the program at its call, impls checked where their
+witness is made, spread members of type bodies, editor queries last-wins.
 
-Last landed (344 to 346): a `lang.diag.error` reached at run time refuses the program at the call
-that led to it (a program's functions record the statement that reached each, `Reached`; a
-lowering failure carries the calls through generic instantiations as frames, and a library's
-report comes before other failures), so an instruction called outside a block is refused at the
-call and `lang.arch.outside` is gone; impls whose witness a constructor or `_` makes are checked
-where used (`witness::Conformance`, shared with the file check; the owner's choice); spread
-members of a `struct` body are members of its type (`Found::Spread`, one spread reading in
-`vun_hir::tree::Spread::{target, names}` for namespaces and types), which fixed
-`lang.arch.x86_64.names.mov` typing as nothing. Before that (338, 339): lints run. A `lang.lint.Lint` states a check per kind of node (`.decl`,
-`.call`); the `Linted` query, part of `Checked`, runs each lint a file's package and its
-dependencies define on each node through `lang.lint.reports`, a pure compile-time call, unless a
-`#[lint.allow(lint, "reason")]` around it silences it. `std.lints.naming.case` (deny) holds every
-file to spec 10 section 5, the owner's rule: witnesses and other structs of declarations alone are
-namespaces in `snake_case` (`int_narrow`), unless a method receives the struct; integer width
-names (`u24`) are exempt. `lib/`, the corpus and the tests were renamed; `vun tool bind` names
-bindings by the same rule through `vun_syntax::case::Case`, which the generators share. Before
-that (340, 341): the parser reads the productions of `nodes.vun` (an automaton per
-production, readings keeping every kind a node may be, one rule for who reads a token, kinds
-chosen when the tree is written, recovery supposing, completing or skipping and quiet after a
-report; spec 13, section 5), and the hand parser is gone. With it the grammar lost its edge cases:
-`.ending` folds into `.of`, annotations are transparent, `skipped` leaves, a `staged` kind for
-`$for`/`$if` entries, files and `struct` bodies hold declarations only, borrow words only after
-`&`. The checks' shadow is reserved span by span as memory is described, so checked programs run
-on arm64 Linux, whose stacks sit above 2^47 (341). Before that (335 to 337): `lang.meta.embed` over the files a package includes (`FileBytes`);
-`$if` tests a pattern, its branch a step with the binders bound (the owner's choice);
-`std.fmt.parse` reads a format once into pieces or a typed `fmt.Error`, and `lang.meta.within`
-points a report at bytes inside the literal a `Code` argument wrote. Before that (331 to 334): vectors, `lang.simd.Vector(n, T)` laid out as its lanes, with
-`lanes`, `of`, `Lane` and `chunks` in `lang.simd` and `std.simd` giving `splat`, `load`, `store`,
-`shuffle`, `reduce_add(.pairwise(w))` and lane-wise operators typed through
-`lang.meta.witness(I, T)`; they run as their lanes, no backend emits vector instructions yet.
-`$for` in array and tuple literals; `wrap` into any finite range; compile-time evaluation while
-typing reads all that typing found (shared `Arc<Found>`), so `TypeOf(x)` of a run-time `x`
-types as an annotation and a `$` argument. Before that, the parser reads `precedence`, `preferred`, `parts`, `admits` and `holds` (323):
-operands at a `Level`, continuations from the productions, a group's kind as the first preferred
-kind its children spell; every other source parses to the same tree as before. Before that it
-came to read `unterminated`, `transparent` (rows naming their tokens), `labeled_bodies`,
-`operand_contexts` and `member_names` (323), and the fuzzer's finds were fixed.
-Before that, editor integration, third batch (323): the generator reads what it interprets of the
-grammar by type (`#[derive(FromLiteral)]`, `vun-literal-derive`) into one resolved model
-(`vun-generate`'s `grammar/model/`), which the Rust productions, the Sublime syntax, the
-tree-sitter grammar, the queries and the editor packages all write from; productions name tables
-by paths (`grammar.infix`, through `grammar := lang.syntax.grammar`); editor facts live in
-`lang/syntax/editors.vun`; `operand_contexts` says where a bound, a memory operand and a label are
-operands at any depth, `labeled_bodies` what a label names. Every source (199) agrees with
-tree-sitter. Second batch (319 to 321): productions for every node kind (`nodes.vun`), checked by
-the CST verifier; the tables editors and the parser share; the tree-sitter grammar
-(`editors/tree-sitter`, `vun-tree-sitter`), its queries and the Helix, Neovim, Zed and VS Code
-packages, generated by `cargo gen`; `cargo xtask tree-sitter` settles the conflicts
-(`conflicts.json`), builds the parser (`src/`, ignored) and compares its trees with the
-compiler's; `vun-json` became `vun-data`. First batch (316 to 318): `#[derive(ToData, FromData)]`
-(`vun-data-derive` on `vun-derive-core`, shared with the codec derive) and `#[derive(Variants)]`;
-`vun-uri` (RFC 3986 and 8089, fuzz target `uri`), with manifest `.urls`/`.index`, `vun-fetch`,
-`vun-http` redirects and index paths typed through it; `vun-lsp-protocol` (typed LSP values,
-methods as types) and the server rebuilt on it, adding incremental sync, the outline, folds,
-formatting and semantic tokens (driver side in `vun-driver`'s `editor/`). Before that:
-`std.fmt.print` takes its arguments as a pack (315); docs split into `HANDOFF.md`
-(state only) and `docs/dev/` (conventions, commands, crates, pitfalls); README rewritten with a
-code card (`assets/`), MIT OR Apache-2.0 licensing, `CONTRIBUTING.md`; `design/` removed. Before
-that: the `vun-sema` split into the `sema` group (`int`, `float`, `ty`, `core`, `plan`;
-primitives in `vun-primitives`), Mach-O arm64 thread-local variables (314), a thread's backtrace
-naming the calls that spawned it (313).
+Brand kits (342, [`dev/assets.md`](dev/assets.md)) open points: removing outputs of variants no
+longer declared, as `cargo gen` does; code in the tall and square clips is small at 80 columns;
+the OBS overlays are not yet tried in OBS itself.
 
 ## Decisions waiting for the owner
 
@@ -115,9 +61,18 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 - Backtraces: no call line per frame (native marks each call's origin; C cannot say where a
   call returns); no macOS (compact unwind, PAC). WASI reports the site only.
 - Mach-O arm64 thread-locals are checked by linking with `ld64.lld`, never run on a Mac.
-- A new project still writes a whole new shared memo file (~450 ms dev, after the build): memos
-  whose keys name the project's functions but read shared inputs alone count as shared.
 - Truly cold (empty store), threads wait ~1.1 s on the same `std` claims, once per toolchain.
+- A cold run saves the shared file through one writer (~37 ms for 4.3 MB on `am3.wg`): values
+  encoded, then copied into each enclosing blob (memo, query, body, file) and hashed whole.
+- A shared file stays as its first writer left it: a toolchain's later projects compute again the
+  library instances it lacks (a few ms each), and keep them in their own files.
+- Warm builds emit every function again (`emit`, ~5 ms on `am3.wg` for `tour`): no code is cached
+  per function by its LIR.
+- A build after an edit that instantiates library generics parses those library files again
+  (~18 ms for 31 files of `tour`): parse trees are traced, not saved.
+- `vun-par` callers wait on uneven items (`wait for workers`, longest runs of 2 to 25 ms on
+  `am3.wg`). Parse is ~11 MiB/s, the lexer ~145: its profile is flat now (the per-token decision
+  over the frames and the specs positions take, rebuilt at each check).
 
 ## For the owner
 
@@ -126,45 +81,19 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 
 ## Next steps, most useful first
 
-0. Editor integration (the owner's current focus; editors: Zed, Helix, VS Code, Neovim). The
-   parser reads the productions (340) and every source agrees with tree-sitter. In order:
-   (a) inline assembly as ordinary Vun (decision 343, spec 07 section 6). Landed:
-   a block is `unsafe lang.arch.asm({ ..lang.arch.x86_64.names; mov(rdi, rsp); ... })`, the
-   block passed as code (`$code: Code(())`), the spread inside it; `in(e).at(rdi)` pins a
-   register (`Operand.at`); `Sized.types` select widths (`ldr(u8, ...)`, `vcvt(i32, f32, ...)`),
-   an entry listing none by no type or the one type of its width; register enums say what they
-   name as an attribute (`#[Registers{ ... }]`, `#[Choice.barrier]`, read by type from
-   `Attributes::values` and the literal reader's `Decl::attrs`); `lang.arch.<a>.names` spreads
-   what blocks use; the old block syntax is gone from the grammar, the engine (`Line`, operand
-   contexts) and the generators (tree-sitter scanner, sublime flow words). A block in a generic
-   body whose calls are untyped there is read where it is instantiated. The kernel's `call` is
-   `request` (a file's names are found before a block's spread). `vun_items` writes the modules
-   of a namespace's descendants in `<ns>_/` directories; the isa `Op` derives `Variants`.
-   Checked: fmt, clippy, gen --check, lines, corpus, full nextest and `VUN_QUERY_CHECK=1` driver
-   tests on am3, the asm driver tests on petal (x86), tree-sitter (204 of 204 agree), the parse
-   fuzzer (3 minutes).
-   The open points of (a) landed (344 to 346). Open still: `for` over a witness made per use
-   (`Env::witness`, `Typer::iteration`) is not checked for conformance, having no use site at
-   hand; an instruction value whose table holds types (`[0]type`) has no run-time layout, which
-   only a library's report now hides.
-   (b) `cestef/tree-sitter-vun` is published (private, the owner's choice, until the language is
-   public; `../tree-sitter-vun`, a `jj` clone), pinned in `editors/tree-sitter/release.json`.
-   (c) Tried (347): Helix 25.07 (installed in the owner's config: grammar, queries symlinked to
-   `editors/helix`, `vun` in `~/.local/bin` built on `petal.wg` at this checkout's path so its
-   library path holds) and Neovim 0.11.6 (scratch config, nvim-treesitter `master`, whose `main`
-   needs 0.12; `prefer_git`, the tarball of a private repository failing) highlight and run the
-   server: diagnostics, hover, definition, references, symbols, signature help, inlay hints,
-   completion, semantic tokens, folds, formatting. VSCodium has the extension installed
-   (`vun.vun`, a VSIX from `npx @vscode/vsce package`), its TextMate grammar checked with
-   `vscode-textmate`; Zed's extension builds for `wasm32-wasip2`. Open: the owner looks at
-   VSCodium and installs Zed's dev extension (`zed: install dev extension` on `editors/zed`),
-   whether Zed lets the last pattern win is unverified; hover shows nothing on a declaration's
-   own name or on a type annotation (`u64`, which typing leaves out); the TextMate grammar scopes
-   `in(` as the loop keyword and types not at all.
-   Gap: a doc comment on a record's field (`.{ /// d\n .x = 1 }`) reads as a doc of an assignment
-   in tree-sitter, which cannot tell a `doc`'s list apart (`editors.vun` uses `//` inside records
-   for now); `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file
-   and the toolchain file.
+0. Editor integration (the owner's current focus; Zed, Helix, VS Code, Neovim). Helix and
+   Neovim highlight and run the server (347); VSCodium has the extension installed; Zed's
+   extension builds for `wasm32-wasip2`; `cestef/tree-sitter-vun` is published (private until the
+   language is public), pinned in `editors/tree-sitter/release.json`. Open: the owner looks at
+   VSCodium and installs Zed's dev extension (`zed: install dev extension` on `editors/zed`);
+   whether Zed lets the last pattern win is unverified; hover shows nothing on a declaration's own
+   name or on a type annotation (`u64`, which typing leaves out); the TextMate grammar scopes
+   `in(` as the loop keyword and types not at all; a doc comment on a record's field reads as a
+   doc of an assignment in tree-sitter (`editors.vun` uses `//` inside records for now);
+   `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file and the
+   toolchain file. Inline assembly: `for` over a witness made per use (`Env::witness`,
+   `Typer::iteration`) is not checked for conformance; an instruction value whose table holds
+   types (`[0]type`) has no run-time layout, which only a library's report now hides.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no

@@ -25,3 +25,8 @@ vun-trace.workspace = true
 [dev-dependencies]
 vun-fs.workspace = true
 vun-harness.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "syntax"
+harness = false

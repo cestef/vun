@@ -1,13 +1,7 @@
 //! What a position takes as its child: the one thing the reader consults to read a child, and to
 //! tell whether what it read may stand there.
 
-use std::sync::LazyLock;
-
-use vun_grammar::{Child, KindSet, Level, NodeKind, TRANSPARENT, TokenSet};
-
-/// The kinds of `transparent`.
-static TRANSPARENT_KINDS: LazyLock<KindSet> =
-    LazyLock::new(|| KindSet::of(&TRANSPARENT.iter().map(|row| row.kind).collect::<Vec<_>>()));
+use vun_grammar::{Child, KindSet, Level, NodeKind, TokenSet};
 
 /// What one or more positions take as their child, merged.
 #[derive(Clone, Copy, Debug)]
@@ -89,7 +83,7 @@ impl Spec {
     /// parts admitted, what leads to them, and where it is free or a named kind continues an
     /// operand, any operand.
     pub(super) fn reachable(&self) -> KindSet {
-        let continuing = self.named.iter().any(NodeKind::continues);
+        let continuing = !self.named.intersection(NodeKind::continuing()).is_empty();
         let named = if continuing { self.named.leading() } else { self.named };
         let parts = named.union(self.leading);
         if self.free || continuing { parts.union(NodeKind::operands()) } else { parts }
@@ -97,6 +91,6 @@ impl Spec {
 
     /// The transparent kinds that may stand for a kind named, where nothing else reaches them.
     pub(super) fn standing_for(&self) -> KindSet {
-        if self.through { TRANSPARENT_KINDS.without(self.reachable()) } else { KindSet::EMPTY }
+        if self.through { NodeKind::transparent().without(self.reachable()) } else { KindSet::EMPTY }
     }
 }

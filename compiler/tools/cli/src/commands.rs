@@ -87,6 +87,7 @@ pub(crate) const COMPILE: OptionSet = OptionSet {
         codegen::RELEASE,
         formats::DIAGNOSTICS,
         TIMINGS,
+        TIMELINE,
         MEMOS,
     ],
 };
@@ -97,6 +98,10 @@ const ARGS: Param = Param::positional("args").arity(Arity::Many).about("argument
 /// Reports at exit where the time went, as `VUN_TIMINGS=1` does.
 const TIMINGS: Param = Param::flag("timings")
     .about("report the time of each stage and query, and how work spread over threads, at exit");
+/// Writes every run of each stage and query at exit, for Perfetto, as `VUN_TIMELINE` does.
+const TIMELINE: Param = Param::option("timeline")
+    .about("write every run of each stage and query, on every thread, to a file Perfetto opens, at exit")
+    .values(Values::Path(PathKind::File));
 /// Reports at exit what the queries did with their memos, as `VUN_MEMOS=1` does.
 const MEMOS: Param = Param::flag("memos").about("report what each query did with its memos at exit");
 
@@ -104,6 +109,9 @@ const MEMOS: Param = Param::flag("memos").about("report what each query did with
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
     if args.flag(&TIMINGS) {
         vun_trace::Timings::enable();
+    }
+    if let Some(path) = args.value(&TIMELINE) {
+        vun_trace::Timeline::record_to(Path::new(path));
     }
     session.tally |= args.flag(&MEMOS);
     formats::configure(session, args)?;

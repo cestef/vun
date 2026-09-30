@@ -146,6 +146,8 @@ yaxpeax-arm = { version = "0.5", default-features = false, features = ["std", "f
 yaxpeax-arch = { version = "0.3", default-features = false }
 # Tests only: an independent parser validating the modules of the wasm backend.
 wasmparser = { version = "0.259", default-features = false, features = ["std", "validate", "features"] }
+# Benchmarks only: statistics over repeated runs, baselines saved and compared (`cargo bench`).
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 # libclang loaded at run time, never linked (decision 131); `clang_9_0` is the oldest accepted.
 clang-sys = { version = "1.8", default-features = false, features = ["runtime", "clang_9_0"] }
 
