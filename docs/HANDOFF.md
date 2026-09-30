@@ -99,7 +99,60 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
   ships as HIR and types; `embed`, the build plan and the toolchain version go into the key;
   origins survive so diagnostics and debug info still point at source.
 
+## Proposed direction: running tests (confirm with the owner first)
+
+The owner turned down three designs as hacky: a process per test, a trap handler that jumps
+back (setjmp and longjmp), and running tests only at compile time. The direction below adds no
+test machinery. Test isolation falls out of one general rule the spec already implies. Present it
+to the owner, write it as a proposed decision, then build it in this order.
+
+1. **A trap ends its thread, and joining reports it.** Spec 07, section 3 already says a trap
+   "ends the current execution context" and never defines the context. Define it as the thread
+   (a task where `std.task` schedules tasks). A trap ends that thread alone, and
+   `std.os.thread.Thread.join` gives how it ended: returned with the value, or trapped with the
+   `lang.panic.Trap` (its site id, which the trace table maps to a message and origin). A trap in
+   the thread the program started in ends the program, as now. There is still no unwinding:
+   `defer` does not run, and what the thread held stays held, which the checks of unsafe code can
+   report. The handler each runtime exports (`lang.panic.symbols.trap`: `std.os.libc`,
+   `std.os.linux.kernel`, `std.os.wasi`) writes the backtrace as now. In a spawned thread it then
+   stores the trap in the thread's record (`std.os.thread.Placed.record`, which the runtime
+   already keeps and `join` copies back) and exits the thread alone: `pthread_exit`, the Linux
+   `exit` syscall rather than `exit_group` (the joiner's futex on the child tid wakes as now), or
+   WASI's thread exit. Where there is one execution context (bare targets without `std.task`),
+   the program ends. At compile time a trap already ends the call being evaluated: it is the same
+   rule. The rule is general, not for tests: supervisors, servers and `std.task.Pool` gain it too.
+2. **`std.testing.runner(pkg)` is library code (spec 11, section 1).** Its tests are
+   `std.meta.collect(pkg, std.testing.test)` (decision 353); each test's value is
+   `c.ns.$(c.decl.name)`. The runner is an ordinary program: it runs each test on its own thread,
+   several at once, joins them and writes one JSON line per test (name, origin, returned or
+   trapped with the site's message), then a summary, and exits with a failure status when any
+   test trapped. Unit tests, those with no parameters, come first. The other kinds of spec 11
+   (property, fuzz, `Bench`, `Sim`) are chosen by the test's parameter types, read through
+   `lang.meta`. `#[test.ignore(...)]` and `#[test.fuel(n)]` are read with `std.meta.attr`. A
+   filter (test names) comes in as program arguments.
+3. **`vun test [file]`** builds a program whose entry is the runner over the package of `file`,
+   or over the file's own namespace for a loose file. Open: how that root is named without
+   writing source text. Two candidates: the plan's `std.build.Options.output` gains `.tests`
+   (the program built from the package's root, with the runner as its entry), or the driver adds
+   a generated root through `vun_syntax::make`, typed and never a string,
+   `start := std.testing.program(<package>);`, beside `std.os.start`. The same JSON stream is
+   what every mode writes (spec 11, section 3): native first; qemu and the interpreter later.
+4. **Editors.** `lang.meta.Decl` gains `origin` (where the member is declared). The driver lists
+   a file's tests by evaluating the same `collect` through the query engine (`Session::tests`),
+   so the server's test lenses (`vun.test`, beside `vun.run`) come from the library's own
+   definition of a test, never from matching `#[test]` in the text. Results come back from the
+   JSON lines and show as the lenses' titles and as diagnostics at the trap's origin.
+
+Known trap on the way: a function evaluated while a `$if` step is typed cannot pass one of its
+run-time locals to a `$` parameter (see item 4 of the next steps). The runner should read
+attributes through `$` descriptors, as `std.meta.attr` does.
+
 ## Next steps, most useful first
+
+The owner's queue, in order: the test runner above, then the editor polish of item 0 (hover on
+a declaration's own name and on type annotations, stopping a run, views of the function at the
+cursor, VS Code commands), then the rest of lint levels in item 4 (command-line levels,
+dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
 
 0. Editor integration (the owner's current focus; Zed, Helix, VS Code, Neovim). Helix and
    Neovim highlight and run the server (347); VSCodium has the extension installed; Zed's
