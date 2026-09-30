@@ -51,7 +51,8 @@ jj git push --tag 0.1.0
 ```
 
 `.github/workflows/release.yml` runs the checks, builds `vun` in the `dist` profile on each
-machine, packs it with the library (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`
+machine (Linux with `cargo zigbuild` against glibc 2.28, dynamically linked so that `vun ffi bind`
+can load libclang), packs it with the library (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`
 and the hash of its tree beside it), writes `release.json` (`cargo xtask release <dir> --tag
 <tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand.
 The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs

@@ -34,22 +34,34 @@ jobs:
     strategy:
       matrix:
         include:
+          # Linux against glibc 2.28, as old as distributions still in use run, through zig's
+          # linker; dynamically linked, so `vun ffi bind` can load libclang.
           - runner: ubuntu-24.04
-            target: x86_64-unknown-linux-musl
+            target: x86_64-unknown-linux-gnu
+            build: zigbuild
+            glibc: ".2.28"
           - runner: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-musl
+            target: aarch64-unknown-linux-gnu
+            build: zigbuild
+            glibc: ".2.28"
           - runner: macos-15
             target: aarch64-apple-darwin
+            build: build
+            glibc: ""
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
-      - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - if: matrix.build == 'zigbuild'
+        uses: mlugg/setup-zig@v2
+      - if: matrix.build == 'zigbuild'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
       - run: rustup target add ${{ matrix.target }}
-      - run: cargo build --profile dist --package vun-cli --target ${{ matrix.target }}
+      - run: cargo ${{ matrix.build }} --profile dist --package vun-cli --target ${{ matrix.target }}${{ matrix.glibc }}
       - run: cargo xtask package target/${{ matrix.target }}/dist/vun dist
       - uses: actions/upload-artifact@v4
         with:
