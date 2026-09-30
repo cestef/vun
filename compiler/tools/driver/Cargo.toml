@@ -34,7 +34,6 @@ vun-sema-ty.workspace = true
 vun-fetch.workspace = true
 vun-uri.workspace = true
 vun-data.workspace = true
-vun-bind.workspace = true
 vun-fs.workspace = true
 vun-par.workspace = true
 vun-suggest.workspace = true
@@ -96,6 +95,7 @@ vun-isa-x86_64.workspace = true
 # What a block's instructions need of a processor.
 vun-inline.workspace = true
 vun-harness.workspace = true
+vun-bind.workspace = true
 vun-hash.workspace = true
 criterion.workspace = true
 # An independent validator of the programs the wasm linker links.

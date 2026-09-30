@@ -29,7 +29,8 @@ fn until(bytes: &[u8], from: usize, stops: &[u8]) -> usize {
 impl Parts {
     pub(crate) fn parse(text: &str) -> Result<Self, Invalid> {
         let bytes = text.as_bytes();
-        if bytes.len() > MAX_LEN {
+        // Offsets are `u32`s: on a 32-bit machine every text fits.
+        if u32::try_from(bytes.len()).is_err() {
             return Err(Invalid::new(Why::Length, MAX_LEN));
         }
         let mut parts = Self::default();

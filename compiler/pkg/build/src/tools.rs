@@ -24,6 +24,7 @@ use vun_span::Span;
 use vun_syntax::literal::{Decl, Literal};
 use vun_target::{BuildsFor, TargetSpec};
 
+use crate::dirs::Dirs;
 use crate::manifest::record::{Fields, Record};
 
 /// What the machine runs for each target it names.
@@ -77,12 +78,8 @@ impl Tools {
     /// configuration directory (XDG on Unix, including macOS; the known folder on Windows).
     #[must_use]
     pub fn path() -> Option<PathBuf> {
-        use etcetera::BaseStrategy;
         let named = std::env::var_os(Self::ENV).map(PathBuf::from);
-        named.or_else(|| {
-            let base = etcetera::choose_base_strategy().ok()?;
-            Some(base.config_dir().join(Self::CONFIG).join(Self::FILE))
-        })
+        named.or_else(|| Some(Dirs::user()?.config.join(Self::CONFIG).join(Self::FILE)))
     }
 
     /// Reads the tools from the declarations of their file; one without the declaration holds

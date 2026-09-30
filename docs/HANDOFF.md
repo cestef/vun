@@ -21,7 +21,12 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: the wasm target links in process (388). `vun-link-wasm` is `wasi.wasm32.p1`'s linker
+Last landed: the compiler runs under WASI (389), and the playground runs it in the browser.
+`vun` builds for `wasm32-wasip1` (16 MB, 2.6 MB with brotli): the user's directories are
+`vun_build::dirs::Dirs` (none there), a process is `vun_fs::PROCESS` (random there), and the CLI
+leaves out `vun ffi` and mimalloc there. `site/play.html` runs `vun build` in a worker through
+`@bjorn3/browser_wasi_shim`, then the program; hello builds in about 1.8 s in Chromium. Before
+that: the wasm target links in process (388). `vun-link-wasm` is `wasi.wasm32.p1`'s linker
 in place of `wasm-ld` (still `--linker lld`): strong over weak, COMDATs, unreached code and data
 left out, the stack first in memory, `__wasm_call_ctors` and the bounds of named sections, weak
 undefined functions as stubs that trap; `vun-wasm` holds the encoding and reads objects. The wasm
@@ -202,14 +207,12 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 
 ## Next steps, most useful first
 
-The owner asked for a website with a playground: `site/` (Vite, TypeScript; the landing, the
-spec reader and the brand's motion ported from `assets/motion`) is built but not committed, since
-`docs/dev/repository.md` calls `site/` the owner's. The playground comes next: the driver builds
-for `wasm32-wasip1` once `etcetera` is gated off WASI, `vun-bind` is a dev-dependency and
-`std::process::id` has a WASI fallback in `vun-fs` (a study built and ran `tour.vun` under
-wasmtime: 5.8 MB, 1.8 MB gzipped, 0.34 s); then an entry taking source text, the library served
-at `/lib` (`VUN_LIBRARY`) through a WASI shim with a memory file system, and the in-process wasm
-linker for the program. The wasm backend still refuses inline assembly (no `lang.arch.wasm32`
+The website: `site/` (Vite, TypeScript) holds the landing page (the hero, the brand's motion
+ported from `assets/motion`, the install command) and the playground; the spec reader was
+removed at the owner's request. It is not committed while `docs/dev/repository.md` calls `site/`
+the owner's, and nothing deploys it yet. Open in the playground: a program that never ends runs
+until stopped (the stop button ends the worker), and threads, which WASI lacks, are not
+offered. The wasm backend still refuses inline assembly (no `lang.arch.wasm32`
 table), naked functions and addresses past a function's start, and reports no frame sizes or
 debug information.
 

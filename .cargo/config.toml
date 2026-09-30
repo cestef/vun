@@ -2,3 +2,8 @@
 xtask = "run --quiet --package vun-xtask --"
 # The generator is built apart from the compiler (decision 132).
 gen = "run --quiet --package vun-generate --"
+
+# The compiler built for WASI (the playground runs it) spawns no thread there: the pool's work
+# runs on the main thread, which gets the stack a native one has.
+[target.wasm32-wasip1]
+rustflags = ["-C", "link-arg=-zstack-size=8388608"]

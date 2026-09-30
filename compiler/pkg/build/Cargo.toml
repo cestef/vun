@@ -14,7 +14,6 @@ workspace = true
 [dependencies]
 vun-uri.workspace = true
 vun-fetch.workspace = true
-etcetera.workspace = true
 ring.workspace = true
 vun-hash.workspace = true
 vun-data.workspace = true
@@ -29,6 +28,10 @@ vun-syntax.workspace = true
 vun-grammar.workspace = true
 vun-span.workspace = true
 vun-origin.workspace = true
+
+# WASI has no home, and `etcetera` does not build there.
+[target.'cfg(not(target_os = "wasi"))'.dependencies]
+etcetera.workspace = true
 
 [dev-dependencies]
 vun-harness.workspace = true

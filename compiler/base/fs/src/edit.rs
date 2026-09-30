@@ -6,6 +6,8 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use crate::PROCESS;
+
 /// Changes on paths.
 pub trait Edit {
     /// Writes `contents` as this file, creating its parent directories. The file is written beside
@@ -70,7 +72,7 @@ impl Part for Path {
     fn part(&self) -> PathBuf {
         let mut name = OsString::from(".");
         name.push(self.file_name().unwrap_or_default());
-        name.push(format!(".{}.{}.{PART}", std::process::id(), PARTS.fetch_add(1, Ordering::Relaxed)));
+        name.push(format!(".{}.{}.{PART}", *PROCESS, PARTS.fetch_add(1, Ordering::Relaxed)));
         self.with_file_name(name)
     }
 }
@@ -146,7 +148,8 @@ impl Edit for Path {
         #[cfg(unix)]
         let linked = std::os::unix::fs::symlink(target, &part);
         #[cfg(not(unix))]
-        let linked = Err(io::Error::from(io::ErrorKind::Unsupported));
+        let linked =
+            Err(io::Error::new(io::ErrorKind::Unsupported, format!("no link to {}", target.display())));
         linked.and_then(|()| fs::rename(&part, self)).inspect_err(|_| {
             let _ = fs::remove_file(&part);
         })

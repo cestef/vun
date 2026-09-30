@@ -4,6 +4,7 @@
 
 mod edit;
 mod mode;
+mod process;
 mod refusal;
 mod relative;
 mod scratch;
@@ -11,6 +12,7 @@ mod walk;
 
 pub use edit::{Edit, Part};
 pub use mode::{Mode, Modes};
+pub use process::PROCESS;
 pub use refusal::Refusal;
 pub use relative::Relative;
 pub use scratch::Scratch;

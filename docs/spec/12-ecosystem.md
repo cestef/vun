@@ -299,6 +299,14 @@ its library in `lib/`: the packages `lang`, `std`, `targets` and `boards`, and t
 variable `VUN_LIBRARY` names, else `lib/` beside its own `bin/` when that holds every default
 dependency, else the checkout it was built from, which is how development builds run.
 
+**A toolchain under WASI.** `vun` also builds for `wasm32-wasip1`, where a program has no home,
+starts no process and no thread, and loads no library. There it is a user without a home: the
+store is kept in the working directory and the tools file is only the one `VUN_TOOLS` names;
+`vun ffi`, which loads libclang, is left out; the work spread over threads elsewhere runs on the
+one thread; the library is the one `VUN_LIBRARY` names. The playground runs it in a browser, the
+library in a file system held in memory, building for `wasi.wasm32.p1`, whose linker runs in
+process (spec 13, section 8.4).
+
 **Installing and pinning.** Toolchains are installed side by side, one directory per version,
 from the releases of the project's repository, each tagged with its version as it is (`0.4.2`),
 or from the base `VUN_RELEASES` names (a mirror, or a directory as a `file:` URI), laid out as a

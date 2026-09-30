@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 
 use vun_hash::Hash;
 
+use crate::dirs::Dirs;
+
 pub use collect::{Collected, Listed, Unparsed};
 pub use staging::Staging;
 
@@ -71,12 +73,11 @@ impl Store {
     /// [`vun_fs::WORK`], never in a directory other users can write.
     #[must_use]
     pub fn user() -> Self {
-        use etcetera::BaseStrategy;
         let named = std::env::var_os(Self::ENV).map(PathBuf::from);
         let cache = || {
-            etcetera::choose_base_strategy().map_or_else(
-                |_| std::env::current_dir().unwrap_or_default().join(vun_fs::WORK).join(Self::DIR),
-                |b| b.cache_dir().join(Self::CACHE).join(Self::DIR),
+            Dirs::user().map_or_else(
+                || std::env::current_dir().unwrap_or_default().join(vun_fs::WORK).join(Self::DIR),
+                |dirs| dirs.cache.join(Self::CACHE).join(Self::DIR),
             )
         };
         Self::at(&named.unwrap_or_else(cache))

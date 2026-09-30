@@ -1,5 +1,6 @@
 //! The build graph: evaluation of build.vun, steps, caching.
 
+mod dirs;
 pub mod index;
 pub mod layout;
 pub mod lock;

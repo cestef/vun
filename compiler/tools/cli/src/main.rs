@@ -9,6 +9,7 @@ use vun_driver::{Persistence, Session};
 
 /// The compiler allocates many small, short-lived values from many threads, where mimalloc is
 /// faster than the system allocator.
+#[cfg(not(target_os = "wasi"))]
 #[global_allocator]
 static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

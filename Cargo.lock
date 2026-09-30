@@ -1432,6 +1432,8 @@ dependencies = [
  "vun-trace",
  "vun-uri",
  "vun-variants",
+ "vun-wasm",
+ "wasmparser",
 ]
 
 [[package]]

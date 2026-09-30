@@ -94,6 +94,22 @@ key: `openssl pkeyutl -sign -rawin -inkey key.pem -in release.json -out release.
 - The server can be driven without an editor: a JSON-RPC client over `vun util lsp`'s stdio
   (`initialize`, `didOpen`, then the requests) answers what an editor would be shown.
 
+## The site and its playground
+
+`site/` is a Vite project (pnpm): the landing page and the playground, which runs the compiler
+built for WASI in the browser. Build the compiler first, on a remote, and copy it back:
+
+```sh
+cargo xtask remote --host am3.wg -- cargo build -p vun-cli --target wasm32-wasip1 --profile dist
+rsync am3.wg:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
+cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
+```
+
+The site's plugin serves that file as `play/vun.wasm` and `lib/` as `play/library.json`. The
+same compiler runs under wasmtime: `wasmtime run --dir .::/play --dir lib::/lib --env
+VUN_LIBRARY=/lib vun.wasm build /play/main.vun --target wasi.wasm32.p1`. It is 16 MB, 2.6 MB
+with brotli.
+
 ## Remote machines
 
 ```sh

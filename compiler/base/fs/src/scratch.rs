@@ -4,7 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use super::Edit;
+use super::{Edit, PROCESS};
 
 /// A directory for one test, emptied when created and removed when dropped.
 pub struct Scratch {
@@ -29,7 +29,7 @@ impl Scratch {
     pub fn create(name: &str) -> io::Result<Self> {
         static CREATED: AtomicU64 = AtomicU64::new(0);
         let call = CREATED.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("vun-{}-{call}-{name}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("vun-{}-{call}-{name}", *PROCESS));
         dir.fresh()?;
         Ok(Self { dir })
     }

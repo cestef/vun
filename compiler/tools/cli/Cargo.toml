@@ -17,9 +17,7 @@ workspace = true
 [dependencies]
 vun-sema-ty.workspace = true
 vun-backend.workspace = true
-vun-bind.workspace = true
 vun-build.workspace = true
-vun-clang.workspace = true
 vun-command.workspace = true
 vun-diag.workspace = true
 vun-doc.workspace = true
@@ -44,4 +42,10 @@ vun-suggest.workspace = true
 vun-target.workspace = true
 vun-term.workspace = true
 vun-trace.workspace = true
+
+# What a compiler running under WASI has no use for or cannot load: libclang, and an allocator
+# for many threads.
+[target.'cfg(not(target_os = "wasi"))'.dependencies]
+vun-bind.workspace = true
+vun-clang.workspace = true
 mimalloc.workspace = true

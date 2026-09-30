@@ -29,7 +29,7 @@ impl Store {
         let held = self.lock()?;
         held.lock_shared()?;
         let dir = self.root.join(Self::STAGING).join(hash.algorithm().name()).join(hash.digest());
-        let dir = dir.join(std::process::id().to_string());
+        let dir = dir.join(vun_fs::PROCESS.to_string());
         dir.fresh()?;
         Ok(Staging { dir, _held: held })
     }

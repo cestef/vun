@@ -9,6 +9,8 @@ use vun_fs::{Edit, Tree};
 use vun_hash::{Hash, Snapshot};
 use vun_span::Version;
 
+use crate::dirs::Dirs;
+
 /// The toolchain's name: its executable's, its directory's in the user's, its archives'.
 pub const NAME: &str = "vun";
 /// What a toolchain's tree holds, as snapshots name it: what a release archive holds and the
@@ -40,10 +42,9 @@ impl Toolchains {
     /// default linked as `~/.local/bin/vun`; `None` for a user without a home.
     #[must_use]
     pub fn user() -> Option<Self> {
-        use etcetera::BaseStrategy;
-        let base = etcetera::choose_base_strategy().ok()?;
-        let link = Self::BINARIES.iter().fold(base.home_dir().to_path_buf(), |dir, d| dir.join(d));
-        Some(Self::at(&base.data_dir().join(NAME).join(Self::DIR), &link.join(Self::executable())))
+        let dirs = Dirs::user()?;
+        let link = Self::BINARIES.iter().fold(dirs.home, |dir, d| dir.join(d));
+        Some(Self::at(&dirs.data.join(NAME).join(Self::DIR), &link.join(Self::executable())))
     }
 
     /// The directory of the toolchain of `version`.
