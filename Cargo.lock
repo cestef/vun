@@ -2077,6 +2077,7 @@ dependencies = [
  "papaya",
  "vun-codec",
  "vun-data",
+ "vun-fs",
  "vun-hash",
  "vun-par",
  "vun-term",
