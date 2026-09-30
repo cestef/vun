@@ -98,7 +98,7 @@ impl Query for Kinds {
             },
             // A constrained `$` parameter is unknown until an instantiation binds it, so checks
             // built on it stay silent.
-            TyKind::Primitive(..) | TyKind::Param(_) => Kind::COPY_FREE,
+            TyKind::Primitive(..) | TyKind::Param(_) | TyKind::Generic(_) => Kind::COPY_FREE,
             TyKind::Tuple(items) => Kind::of_parts(items.iter().map(of)),
             TyKind::Record(fields) => Kind::of_parts(fields.iter().map(|(_, t)| of(t))),
             TyKind::Closure(Closure { captures, .. }) => Kind::of_parts(captures.iter().map(|(_, t)| of(t))),

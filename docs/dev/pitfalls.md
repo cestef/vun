@@ -64,11 +64,17 @@ Traps that cost a session before. Add one when it costs you time.
   never through the bare `Typer::env()`: without what typing found, a call whose `$` arguments
   are inferred (`TypeOf(x)`) or a form typed by its context has no value, and the call stays
   silently untyped. `VUN_LOG=vun_sema::typeck=trace` shows each evaluation that gave no value.
-- A `None` from a typing function with no report is a silent give-up: the body builds, and only
-  lowering finds the untyped local, reported where it is as "typing found no type for this and
-  reported no error". `vun debug dump mir <file>` shows such locals as `?` with their place;
-  reduce the program to that form (a copy outside `std` works: a library's own errors are shown
-  only as a program reaches them) and find which rule returned `None`.
+- A `None` from a typing function with no report is a silent give-up. `Typer::expr` records the
+  form where it starts (`Found::gave_up`, why as a `GaveUp`): a form left untyped with nothing
+  under it reported or given up on. Where a lookup giving the form's own type returns an
+  `Unevaluated`, pass it through `Typer::known` rather than `.ok()`, and record any other known
+  reason with `Typer::give_up`, so the reason is kept and logged. Lowering reports a body stopped over
+  such a form at the form, with the reason; `vun debug dump types <file>` marks each (`untyped,
+  gave up on Call: ...`), and `mir::typing_gives_up_nowhere_a_corpus_program_reaches` fails on
+  any in a body a corpus program reaches. Plain bodies of generic functions, typed with their `$`
+  parameters unbound, give up on the locals those type; nothing builds them.
+- `VUN_LOG` shows only what is computed: queries reused from saved memos log nothing. Log a fresh
+  run with `VUN_STORE=<empty dir>` and the `.vun/` beside the root file removed.
 - The parser's depth bound counts each operand being read and each link of a chain; past it the
   rest of the expression is one `Error` node, so later stages never recurse deeper than about
   twice `MAX_NESTING`.

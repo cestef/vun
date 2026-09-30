@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::AddAssign;
 
+use vun_diag::Diagnostic;
 use vun_hir::db::{FileRef, Parsed};
 use vun_hir::tree::ExprKind;
 use vun_lower::{EachLowered, Unlowered, Why};
@@ -129,6 +130,20 @@ impl Session {
             }
         }
         coverage
+    }
+
+    /// Where typing gave up in each body the program of `file` reaches, reported at the first form
+    /// of each: typing gives every form of a body MIR builds a type, or reports why not.
+    pub fn gave_up(&mut self, file: FileId) -> Vec<Diagnostic> {
+        let program = self.program(file);
+        program
+            .instantiations()
+            .filter_map(|i| {
+                let typed = self.db.get::<Typed>(i)?;
+                let parsed = self.db.get::<Parsed>(&i.f.literal.file)?;
+                typed.gave_up_under(&parsed.hir, i.f.literal.expr.origin)
+            })
+            .collect()
     }
 
     /// The kind of the form at `at`: an operator by its text, another expression by its kind,

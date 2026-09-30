@@ -211,8 +211,8 @@ impl Unlowered {
                 let trap = Trap { reason: reason.clone(), at: Some(self.at), calls: Vec::new() };
                 trap.report(self.calls.last().copied().unwrap_or(self.at))
             }
-            // What typing reported, where it did, rather than what it left unknown.
-            Why::Unready(Unready::Untyped { reported: Some(reported), .. }) => (**reported).clone(),
+            // What typing says, where it applies, rather than what it left unknown.
+            Why::Unready(Unready::Untyped { said: Some(said), .. }) => (**said).clone(),
             Why::Unavailable(needed) => {
                 let msg = Msg::new().text("the instruction needs ").append(needed.msg());
                 Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))

@@ -1,6 +1,6 @@
 //! The type of each form typed so far. Any other form has its parts typed and no type itself.
 
-use vun_desugar::PREFIX_OPERATORS;
+use vun_desugar::{PREFIX_OPERATORS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use vun_hir::visit;
@@ -28,6 +28,8 @@ impl Typer<'_, '_, '_> {
                 compile(TyKind::int(&Interval::singleton(Integer::from(i128::from(u32::from(*c))))))
             }
             ExprKind::Name(_) => self.name(expr),
+            // `_` holds what its context gives it.
+            ExprKind::Hole => Some(Known { ty: self.expected(expr)?, stage: self.stage }),
             ExprKind::Member { object, name } => match (self.env().name(name), self.env().position(name)) {
                 (Some(name), _) => self.member(expr, *object, name),
                 (None, Some(at)) => self.position(expr, *object, at),
@@ -52,16 +54,13 @@ impl Typer<'_, '_, '_> {
                 visit::walk_expr(self, hir, expr);
                 compile(TyKind::of_types())
             }
-            ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
-            ExprKind::Return(value) => {
-                if let Some(value) = value {
-                    let found = self.typed_as(*value, self.result);
-                    if let (Some(found), Some(result)) = (found, self.result) {
-                        self.expect(hir.exprs[*value].origin, found, result, self.written);
-                    }
-                }
-                self.never()
+            // A type written with a prefix, such as `*u8` or `?T`, likewise.
+            ExprKind::Prefix { op, .. } if TYPE_PREFIXES.iter().any(|row| row.token == *op) => {
+                visit::walk_expr(self, hir, expr);
+                compile(TyKind::of_types())
             }
+            ExprKind::Match { scrutinee, arms } => self.matching(expr, *scrutinee, arms),
+            ExprKind::Return(value) => self.returned(*value),
             ExprKind::Block(block) => self.block_value(*block, self.expected(expr)),
             ExprKind::Prefix { op: TokenKind::Dollar, operand, .. } => self.comptime(expr, *operand),
             ExprKind::Prefix { op: TokenKind::Bang, operand, .. } => self.logic(&[*operand]),
@@ -86,6 +85,11 @@ impl Typer<'_, '_, '_> {
                 self.never()
             }
             ExprKind::Continue { .. } => self.never(),
+            // `defer e` runs `e` at the exits of its block; where it is written, it is `()`.
+            ExprKind::Defer(statement) => {
+                self.typed(*statement);
+                compile(TyKind::unit())
+            }
             ExprKind::Prefix { op, operand, .. } if PREFIX_OPERATORS.iter().any(|row| row.token == *op) => {
                 self.prefix(expr, *op, *operand)
             }
@@ -99,7 +103,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::Call { callee, args } => self.call(expr, *callee, args),
             // A function literal is a value; its body is typed on its own.
             ExprKind::Closure { captures, func } => self.closure(captures, *func),
-            ExprKind::Fn { .. } => compile(self.env().literal_signature(expr, &[]).ok()?.ty()),
+            ExprKind::Fn { .. } => self.literal(expr),
             ExprKind::Yield(value) => self.yielded(*value),
             ExprKind::FnType { .. } | ExprKind::Struct(_) | ExprKind::Enum { .. } => {
                 compile(TyKind::of_types())

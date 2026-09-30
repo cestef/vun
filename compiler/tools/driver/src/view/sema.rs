@@ -44,7 +44,10 @@ impl Session {
                 let source = source.replace('\n', " ");
                 let known = match typed.types.get(&e) {
                     Some(k) => format!("{} ({})", k.ty, k.stage.name()),
-                    None => "untyped".to_owned(),
+                    None => match typed.gave_up.get(&e) {
+                        Some(why) => format!("untyped, gave up on {}: {}", expr.kind.name(), why.msg()),
+                        None => "untyped".to_owned(),
+                    },
                 };
                 let operator = matches!(expr.kind, ExprKind::Infix { .. } | ExprKind::Prefix { .. })
                     && !typed.operators.contains_key(&Operation::Expr(e));

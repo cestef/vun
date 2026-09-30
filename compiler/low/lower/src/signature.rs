@@ -147,7 +147,7 @@ impl Types<'_, '_> {
                 let members = self.cx.get::<Members>(&ty)?;
                 members.fields.iter().map(|f| f.ty.as_ref().ok().copied()).collect()
             }
-            TyKind::Primitive(..) | TyKind::Frame(_) | TyKind::Param(_) => None,
+            TyKind::Primitive(..) | TyKind::Frame(_) | TyKind::Param(_) | TyKind::Generic(_) => None,
         }
     }
 }

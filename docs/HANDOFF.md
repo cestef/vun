@@ -7,8 +7,8 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 681 tests pass; clippy,
-`lines` and `layers` are clean; the corpus has 311 passing programs and 2 planned, and LIR
+Everything is committed in the main chain; no `jj` workspace holds work. 683 tests pass; clippy,
+`lines` and `layers` are clean; the corpus has 312 passing programs and 2 planned, and LIR
 lowers every function the corpus reaches.
 
 Built: the front end (a parser reading the productions of `nodes.vun`), packages and the store,
@@ -21,7 +21,16 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: calls and `$` arguments (358). `h()` calls what a borrow `h` holds; a `$`
+Last landed: typing says why (359). Typing records the form where each silent gap starts
+with a typed reason (`Found::gave_up`, `GaveUp`), logged under `vun_sema=debug`; a body lowering
+stops in over one is reported at that form with the reason (`Unready::explained`, the error
+naming the form and why rather than a local), `vun debug dump types` marks each, and
+`mir::typing_gives_up_nowhere_a_corpus_program_reaches` is typing's verifier on real inputs.
+The gaps it found were closed as rules: a function with `$` parameters named as a value is of
+its own type (`TyKind::Generic`, accepted where a function type is), a name whose declaration has
+no type here takes its value's (`closed` in `std.fmt.Writer`), any type-valued expression names
+its type's members (`Thread(R, F).spawn`), `*T` and `?T` are types, `defer e` is `()`, `_` takes
+its context's type, and a `lang.Range` value is typed. Before that, calls and `$` arguments (358). `h()` calls what a borrow `h` holds; a `$`
 parameter implements its constraint, so `R` of `$F: Call((), R)` is inferred in a generic body;
 `()` where a type is expected is the unit type however it is reached; a body with an untyped
 local is reported at the local, with typing's own error, or as a compiler bug naming `vun debug

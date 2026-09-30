@@ -203,6 +203,12 @@ per second per stage and fails on regressions.
   values evaluated into constants that flow into the operands reading them, and every local
   typed. A function that is not concrete stops the program's code generation with the reason
   (`vun debug dump program` lists them).
+- **Typing says why.** Typing gives every form a type, reports why not, or records where it gave
+  up silently, with a typed reason: the rule of the form's kind, the type of what a name reaches
+  having no value there, or a type whose members are not all known there. A body that is not
+  concrete over such a form is reported at it, with the reason; `vun debug dump types` marks each
+  (decision 359). No body a corpus program reaches may hold one: plain bodies of generic
+  functions, typed with their `$` parameters unbound, are the only place typing gives up by design.
 - **Layouts.** Every type with a run-time layout has a shape (query `Shapes`): its size and
   alignment, the offset of each part, how an enum tells its variants (an index, or a niche
   pattern), and its unused patterns (spec 05, section 6). `vun debug dump layout` prints them.

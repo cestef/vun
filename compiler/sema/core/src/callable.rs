@@ -11,9 +11,11 @@ use vun_primitives::Primitive;
 use vun_primitives::meta::Meta;
 use vun_query::Cx;
 use vun_sema_ty::call::{Func, Instantiation};
-use vun_sema_ty::{Ty, Value};
+use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::env::Env;
+use crate::eval::Signed;
 
 /// A function a call runs.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -27,6 +29,19 @@ pub enum Callable {
 pub struct Written<'a, 'db> {
     pub env: Env<'a, 'db>,
     pub expr: ExprId,
+}
+
+impl Env<'_, '_> {
+    /// The type of `value`, a function's included.
+    ///
+    /// # Errors
+    /// Returns why its type is not known here.
+    pub fn value_type(&self, value: &Value) -> Result<Ty, Unevaluated> {
+        match value.ty() {
+            Some(ty) => Ok(ty),
+            None => Callable::of(value.clone()).ok_or(Unevaluated::Unsupported)?.ty(self),
+        }
+    }
 }
 
 impl Callable {
@@ -80,6 +95,25 @@ impl Callable {
     #[must_use]
     pub fn comptime(&self, env: &Env<'_, '_>) -> Option<Vec<bool>> {
         self.written(env)?.comptime()
+    }
+
+    /// Its type: its signature's, or its own when it has `$` parameters.
+    ///
+    /// # Errors
+    /// Returns why its signature is not known here, when it has none of its own.
+    pub fn ty(&self, env: &Env<'_, '_>) -> Result<Ty, Unevaluated> {
+        let signature = match self {
+            Self::Fn(f) => env.cx.get::<Signed>(&Instantiation::new(f.clone(), Vec::new())),
+            Self::Primitive(p) => env.primitive_signature(*p, &[]),
+        };
+        signature.map(|s| s.ty()).or_else(|why| self.generic(env).ok_or(why))
+    }
+
+    /// Its type when it has `$` parameters: itself, having no signature apart from the `$`
+    /// arguments of a call ([`TyKind::Generic`]).
+    #[must_use]
+    pub fn generic(&self, env: &Env<'_, '_>) -> Option<Ty> {
+        self.comptime(env)?.contains(&true).then(|| TyKind::Generic(Box::new(self.value())).intern())
     }
 
     /// Whether a call of it is known when compiling, whatever runs: a primitive whose parameters

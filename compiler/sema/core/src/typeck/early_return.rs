@@ -1,4 +1,4 @@
-//! `e?` (appendix B): `match lang.ops.Try.branch(e) { .go(v) => v, .stop(r) => return r }`,
+//! `return e`, whose value the function's result type accepts, and `e?` (appendix B): `match lang.ops.Try.branch(e) { .go(v) => v, .stop(r) => return r }`,
 //! through the table `early_return`. Its value has the type `go` carries, and what `stop` carries
 //! must be accepted by the function's result type.
 
@@ -11,6 +11,17 @@ use super::{Known, Typer};
 use crate::member::{Found, MemberType, Members};
 
 impl Typer<'_, '_, '_> {
+    /// `return value`: the value typed as the result, checked against it; it does not end.
+    pub(super) fn returned(&mut self, value: Option<ExprId>) -> Option<Known> {
+        if let Some(value) = value {
+            let found = self.typed_as(value, self.result);
+            if let (Some(found), Some(result)) = (found, self.result) {
+                self.expect(self.hir().exprs[value].origin, found, result, self.written);
+            }
+        }
+        self.never()
+    }
+
     pub(super) fn early_return(&mut self, expr: ExprId, operand: ExprId) -> Option<Known> {
         let known = self.typed(operand)?;
         let &EarlyReturnRow { function, go, stop } = EARLY_RETURN.first()?;

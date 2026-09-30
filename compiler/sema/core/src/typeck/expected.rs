@@ -7,7 +7,7 @@ use vun_intern::Symbol;
 use vun_sema_ty::item::Declared;
 use vun_sema_ty::{Signature, TyKind, Value};
 
-use super::{Known, Stage, Typer};
+use super::{GaveUp, Known, Stage, Typer};
 use crate::member::{Found, MemberType, Members};
 
 impl Typer<'_, '_, '_> {
@@ -28,14 +28,17 @@ impl Typer<'_, '_, '_> {
                 }
                 Found::Decl(decl) => {
                     self.check_visible(expr, name, &decl.visible);
-                    self.env().cx.get::<MemberType>(&(expected, name)).ok()
+                    self.known(expr, self.env().cx.get::<MemberType>(&(expected, name)))
                 }
                 Found::Spread(site) => self.declared_at(expr, name, site.clone()),
                 Found::Absent | Found::Field(_) => {
                     self.no_member(origin, expected, name);
                     None
                 }
-                Found::Unknown => None,
+                Found::Unknown => {
+                    self.give_up(expr, GaveUp::Members(expected));
+                    None
+                }
             },
             TyKind::Primitive(p, _) => {
                 let Ok(Value::Namespace(ns)) = self.env().item(p.namespace()) else { return None };
@@ -43,13 +46,14 @@ impl Typer<'_, '_, '_> {
                     self.no_member(origin, expected, name);
                     return None;
                 };
-                self.env().site_type(site).ok()
+                self.known(expr, self.env().site_type(site))
             }
             TyKind::Tuple(_)
             | TyKind::Record(_)
             | TyKind::Closure(_)
             | TyKind::Frame(_)
-            | TyKind::Param(_) => None,
+            | TyKind::Param(_)
+            | TyKind::Generic(_) => None,
         }
     }
 }

@@ -15,6 +15,7 @@ mod early_return;
 mod exhaust;
 mod expect;
 mod expected;
+mod gave_up;
 mod held;
 mod infer;
 mod loops;
@@ -27,7 +28,7 @@ mod operator;
 pub use loops::Iteration;
 pub use operator::{Operation, Operator};
 pub use reported::Reported;
-pub use typed::{Found, Step, Typed, TypedBody};
+pub use typed::{Found, GaveUp, Step, Typed, TypedBody};
 mod pattern;
 mod prefix;
 mod range;
@@ -49,6 +50,7 @@ use vun_hash::Map;
 use vun_hir::tree::{BinderId, BlockId, DeclId, ExprId, Hir, NsId, Staged};
 use vun_hir::visit::Visitor;
 use vun_sema_ty::Ty;
+use vun_sema_ty::trap::Unevaluated;
 
 use crate::env::Env;
 
@@ -111,6 +113,9 @@ pub struct Typer<'e, 'a, 'db> {
     /// enclose the expression typed: code that does not run on its own, whose `$e` is typed but
     /// not run.
     undecided: usize,
+    /// How many times typing gave up, reporting nothing: a form is where a gap starts when none
+    /// under it did.
+    gave_ups: usize,
     pub diag: DiagCtxt,
 }
 
@@ -132,6 +137,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             framing: None,
             vouched: 0,
             undecided: 0,
+            gave_ups: 0,
             diag: DiagCtxt::new(),
         }
     }
@@ -180,6 +186,19 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
         self.typed(expr)
     }
 
+    /// The type of `expr` as `found` says, or none, recording why.
+    fn known(&mut self, expr: ExprId, found: Result<Known, Unevaluated>) -> Option<Known> {
+        found.map_err(|why| self.give_up(expr, GaveUp::Unevaluated(why))).ok()
+    }
+
+    /// Records that typing gave `expr` no type, reporting nothing, and why.
+    fn give_up(&mut self, expr: ExprId, why: GaveUp) {
+        let form = self.hir().exprs[expr].kind.name();
+        vun_trace::tracing::debug!(form, why = %why.msg(), "typing gave up");
+        self.gave_ups += 1;
+        self.finding().gave_up.insert(expr, why);
+    }
+
     /// The type the context of `expr` expects, if it says.
     fn expected(&self, expr: ExprId) -> Option<Ty> {
         self.expected.get(&expr).copied()
@@ -212,9 +231,20 @@ impl Visitor for Typer<'_, '_, '_> {
         self.pattern(d.pat, ty, None);
     }
 
+    /// A form left untyped though nothing under it was reported or gave up is where its rule
+    /// gave up, and is recorded as such.
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        if let Some(known) = self.infer(hir, expr) {
-            self.finding().types.insert(expr, known);
+        let before = (self.diag.error_count(), self.gave_ups);
+        match self.infer(hir, expr) {
+            Some(known) => {
+                let found = self.finding();
+                found.types.insert(expr, known);
+                found.gave_up.remove(&expr);
+            }
+            None if (self.diag.error_count(), self.gave_ups) == before => {
+                self.give_up(expr, GaveUp::Form);
+            }
+            None => {}
         }
     }
 }

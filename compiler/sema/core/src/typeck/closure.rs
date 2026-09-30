@@ -12,10 +12,22 @@ use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::{Closure, Signature, TyKind, Value};
 
-use super::{Known, Typer};
+use super::{Known, Stage, Typer};
+use crate::callable::Callable;
 use crate::eval::Instantiate;
 
 impl Typer<'_, '_, '_> {
+    /// The function literal `expr` as a value: of its signature's type, or of its own when it has
+    /// `$` parameters.
+    pub(super) fn literal(&mut self, expr: ExprId) -> Option<Known> {
+        let signature = self.env().literal_signature(expr, &[]).map(|s| s.ty());
+        let ty = signature.or_else(|why| {
+            let f = self.evaluating().eval(expr).ok().and_then(Callable::of);
+            f.and_then(|f| f.generic(self.env())).ok_or(why)
+        });
+        self.known(expr, ty.map(|ty| Known { ty, stage: Stage::Compile }))
+    }
+
     /// Types the function literal `literal`'s parameters and body, `bound` giving the value of
     /// each `$` parameter an instantiation binds, and gives its signature when every type is
     /// known. A `return` or a loop inside belongs to the function; a coroutine function's body

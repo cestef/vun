@@ -11,6 +11,7 @@ use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::call::{Instantiation, Staging};
+use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
 
 use super::{Iteration, Known, Operation, Operator, Stage, Typer};
@@ -49,6 +50,20 @@ pub struct Found {
     pub staged: Vec<Staging>,
     /// Each block of instructions, checked against its architecture's table.
     pub asm: BTreeMap<ExprId, Block>,
+    /// The forms typing gave no type though it typed their parts and reported nothing, where a
+    /// silent gap starts, with why.
+    pub gave_up: BTreeMap<ExprId, GaveUp>,
+}
+
+/// Why typing gave a form no type, reporting nothing.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum GaveUp {
+    /// The rule of the form's kind gave up, its parts typed.
+    Form,
+    /// The type of what it names has no value here.
+    Unevaluated(Unevaluated),
+    /// It names a member of this type, whose members are not all known here.
+    Members(Ty),
 }
 
 impl Found {

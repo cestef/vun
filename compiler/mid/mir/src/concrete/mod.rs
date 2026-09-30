@@ -35,6 +35,16 @@ impl Query for Concrete {
     type Value = Result<Arc<Body>, Unready>;
 
     fn compute(cx: &Cx<'_>, i: &Instantiation) -> Self::Value {
+        Self::ready(cx, i).map_err(|unready| unready.explained(cx, i))
+    }
+
+    fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
+        Err(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Cycle })
+    }
+}
+
+impl Concrete {
+    fn ready(cx: &Cx<'_>, i: &Instantiation) -> Result<Arc<Body>, Unready> {
         let mut body = Body::clone(&*cx.get::<Mir>(i)?);
         // Only a call site expanding the body builds the code it splices.
         let splice =
@@ -48,17 +58,9 @@ impl Query for Concrete {
         body.evaluate(&env)?;
         body.propagate(&env, &i.args);
         body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
-        if let Err(Unready::Untyped { at, .. }) = body.typed() {
-            let typed = cx.get::<Typed>(i);
-            let reported = typed.and_then(|t| t.diag.first_error().cloned()).map(Box::new);
-            return Err(Unready::Untyped { at, reported });
-        }
+        body.typed()?;
         body.verified();
         Ok(Arc::new(body))
-    }
-
-    fn cycle(_: &Cx<'_>, i: &Instantiation, _: &Cycle) -> Self::Value {
-        Err(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Cycle })
     }
 }
 
@@ -255,7 +257,7 @@ impl Body {
     /// Whether every local has a type.
     fn typed(&self) -> Result<(), Unready> {
         match self.locals.iter().find(|(_, l)| l.ty.is_none()) {
-            Some((_, local)) => Err(Unready::Untyped { at: local.origin, reported: None }),
+            Some((_, local)) => Err(Unready::Untyped { at: local.origin, said: None }),
             None => Ok(()),
         }
     }

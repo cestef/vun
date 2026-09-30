@@ -31,6 +31,8 @@ impl Query for Exists {
             TyKind::Record(fields) => Self::all(cx, fields.iter().map(|(_, t)| t)),
             TyKind::Closure(Closure { captures, .. }) => Self::all(cx, captures.iter().map(|(_, t)| t)),
             TyKind::Frame(_) => true,
+            // A function with `$` parameters exists at compile time only.
+            TyKind::Generic(_) => false,
             TyKind::Nominal(_) => cx.get::<Members>(ty).is_none_or(|members| {
                 let fields = members.fields.iter().filter_map(|f| f.ty.as_ref().ok());
                 let payloads =

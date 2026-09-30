@@ -2,7 +2,7 @@
 //! value is checked against the place's type.
 
 use vun_desugar::COMPOUND;
-use vun_hir::tree::{BlockId, Stmt};
+use vun_hir::tree::{BlockId, ExprKind, Stmt};
 use vun_hir::visit::{self, Visitor};
 use vun_sema_ty::{Ty, TyKind};
 
@@ -45,6 +45,10 @@ impl Typer<'_, '_, '_> {
             Stmt::Assign { op, place, value, .. } => {
                 if let Some(row) = COMPOUND.iter().find(|row| row.token == *op) {
                     self.compound(*place, row.op, *value);
+                } else if matches!(hir.exprs[*place].kind, ExprKind::Hole) {
+                    // `_ = e` discards `e`: the hole holds what it is given.
+                    let found = self.typed(*value);
+                    self.typed_as(*place, found.map(|k| k.ty));
                 } else {
                     let place_known = self.typed(*place);
                     let found = self.typed_as(*value, place_known.map(|k| k.ty));

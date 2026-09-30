@@ -7,6 +7,7 @@ use vun_intern::Symbol;
 use vun_items::Item;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
+use vun_primitives::lang::Lang;
 use vun_primitives::meta::Meta;
 use vun_sema_float::{Binary, Format};
 use vun_sema_int::{Extended, Integer, Interval};
@@ -155,6 +156,7 @@ impl Value {
             Self::Int(n) => Some(TyKind::int(&Interval::singleton(n.clone()))),
             Self::Float(x) => Some(Format::ty(x.format)),
             Self::Struct { ty, .. } | Self::Variant { ty, .. } => Some(*ty),
+            Self::Range(_) => Some(TyKind::primitive(Primitive::Lang(Lang::Range))),
             Self::Name(_) => Some(TyKind::primitive(Primitive::Meta(Meta::Name))),
             Self::Any { .. } => Some(TyKind::primitive(Primitive::Meta(Meta::Any))),
             Self::Tuple(items) => {

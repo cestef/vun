@@ -8,7 +8,7 @@ use vun_origin::OriginId;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Known, Typer};
+use super::{GaveUp, Known, Typer};
 use crate::eval::Call;
 use crate::member::{Found, MemberType, Members};
 use crate::witness::Method;
@@ -67,15 +67,18 @@ impl Typer<'_, '_, '_> {
         match members.find(name) {
             Found::Decl(_) => {
                 self.finding().methods.insert(expr, (requirements, name));
-                self.env().cx.get::<MemberType>(&(requirements, name)).ok()
+                self.known(expr, self.env().cx.get::<MemberType>(&(requirements, name)))
             }
-            Found::Unknown => None,
+            Found::Unknown => {
+                self.give_up(expr, GaveUp::Members(requirements));
+                None
+            }
             // A frame has the methods of its impls too, as any value.
             _ if matches!(&*ty, TyKind::Frame(_))
                 && let Some(owner) = self.method(expr, ty, name) =>
             {
                 self.finding().methods.insert(expr, (owner, name));
-                self.env().cx.get::<MemberType>(&(owner, name)).ok()
+                self.known(expr, self.env().cx.get::<MemberType>(&(owner, name)))
             }
             _ => {
                 self.no_member(self.hir().exprs[expr].origin, ty, name);

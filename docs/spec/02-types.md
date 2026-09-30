@@ -175,6 +175,12 @@ both implement, so it takes either with static dispatch:
 function or closure passed, and inside a generic body, where the type found is a `$` parameter,
 the arguments of the constraint that parameter is declared with.
 
+A function with `$` parameters has no function type: its signature depends on the `$` arguments
+of a call. Named as a value, it is of its own type, whose only value it is, and that type exists
+at compile time only; calling it instantiates it (decision 359). It is accepted where a function
+type is expected, as an impl's `lt := lang.int.less` meets `lt: (a: &Self, b: &Self) -> bool`:
+the call instantiating it is checked, as a generic body is.
+
 ### Deriving
 
 Because an impl is any expression producing a struct, deriving is calling a function:

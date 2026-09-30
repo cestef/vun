@@ -20,10 +20,12 @@ impl TyKind {
     /// where a `lang.Range` is expected, a borrow of an array where a borrow of a slice of its
     /// items is (spec 02), code of an accepted value, a type made with `never` where the same
     /// constructor is expected, or the type itself. An empty type such as `never` is accepted
-    /// anywhere: it has no value to be wrong, so a trap or a `return` fits any arm.
+    /// anywhere: it has no value to be wrong, so a trap or a `return` fits any arm. A function
+    /// with `$` parameters is accepted where a function type is: the call instantiating it
+    /// decides, as a generic body is checked per instantiation.
     #[must_use]
     pub fn accepts(&self, found: &Self) -> bool {
-        if found.is_empty() {
+        if found.is_empty() || matches!(found, Self::Generic(_)) && self.signature().is_some() {
             return true;
         }
         if let (Some(expected), Some(found)) = (self.interval(), found.interval()) {

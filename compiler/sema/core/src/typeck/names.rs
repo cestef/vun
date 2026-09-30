@@ -7,7 +7,7 @@ use vun_intern::Symbol;
 use vun_sema_ty::item::{Declared, Site};
 use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
-use super::{Known, Stage, Typer};
+use super::{GaveUp, Known, Stage, Typer};
 use crate::env::Env;
 use crate::member::{Found, MemberType, Members};
 
@@ -20,19 +20,29 @@ impl Typer<'_, '_, '_> {
                 return Some(Known { ty: self.narrowed.get(&b).copied().unwrap_or(known.ty), ..*known });
             }
             // A binder the environment binds, such as a `$for` binder: its value's type.
-            if let Some(ty) = self.env().bound(b).and_then(Value::ty) {
+            if let Some(ty) = self.env().bound(b).and_then(|v| self.env().value_type(v).ok()) {
                 return Some(Known { ty, stage: Stage::Compile });
             }
         }
-        self.env().site_type(self.env().resolve(expr).ok()?).ok()
+        let declared = self.env().resolve(expr).and_then(|site| self.env().site_type(site));
+        // A declaration whose type is not known apart from its value, such as a requirement an
+        // impl provides, has its value's type.
+        let valued = declared.or_else(|why| {
+            let ty =
+                self.evaluating().eval(expr).ok().and_then(|v| self.env().value_type(&v).ok()).ok_or(why)?;
+            Ok(Known { ty, stage: Stage::Compile })
+        });
+        self.known(expr, valued)
     }
 
     /// A member of a namespace, of a type's namespace, or of a value: a field, or a declaration of
     /// its type, called as a method.
     pub(super) fn member(&mut self, expr: ExprId, object: ExprId, name: Symbol) -> Option<Known> {
         let known = self.typed(object);
-        // Only a path names a namespace or a type, so nothing else is evaluated here.
-        if matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
+        // A path, or any other expression whose value is a type, such as `Pair(u8)`, names a
+        // namespace or a type; nothing else is evaluated here.
+        let path = matches!(self.hir().exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. });
+        if path || known.is_some_and(|k| k.ty == TyKind::of_types()) {
             match self.evaluating().eval(object) {
                 // A member missing from a namespace is reported by the check of the file, which
                 // reads every path, typed or not.
@@ -45,7 +55,7 @@ impl Typer<'_, '_, '_> {
                     return match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
                         Found::Decl(decl) => {
                             self.check_visible(expr, name, &decl.visible);
-                            self.env().cx.get::<MemberType>(&(ty, name)).ok()
+                            self.known(expr, self.env().cx.get::<MemberType>(&(ty, name)))
                         }
                         Found::Variant(v) if v.payload.is_empty() => {
                             Some(Known { ty, stage: Stage::Compile })
@@ -66,9 +76,10 @@ impl Typer<'_, '_, '_> {
                                 if !matches!(found, Found::Unknown) || !Self::declares(ty) {
                                     self.no_member(self.hir().exprs[expr].origin, ty, name);
                                 }
+                                self.give_up(expr, GaveUp::Members(ty));
                                 return None;
                             };
-                            self.env().cx.get::<MemberType>(&(owner, name)).ok()
+                            self.known(expr, self.env().cx.get::<MemberType>(&(owner, name)))
                         }
                     };
                 }
@@ -91,7 +102,8 @@ impl Typer<'_, '_, '_> {
         match members.as_deref().map_or(unknown, |m| m.find(name)) {
             Found::Field(field) => {
                 self.check_visible(expr, name, &field.visible);
-                Some(Known { ty: *field.ty.as_ref().ok()?, stage: known.stage })
+                let ty = field.ty.clone();
+                self.known(expr, ty.map(|ty| Known { ty, stage: known.stage }))
             }
             Found::Decl(decl) => {
                 self.check_visible(expr, name, &decl.visible);
@@ -103,7 +115,7 @@ impl Typer<'_, '_, '_> {
                     self.collision(expr, name, origins.collect());
                 }
                 self.finding().methods.insert(expr, (known.ty, name));
-                self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
+                self.known(expr, self.env().cx.get::<MemberType>(&(known.ty, name)))
             }
             Found::Spread(site) => {
                 self.finding().methods.insert(expr, (known.ty, name));
@@ -116,10 +128,11 @@ impl Typer<'_, '_, '_> {
                     if !matches!(found, Found::Unknown) {
                         self.no_member(self.hir().exprs[expr].origin, known.ty, name);
                     }
+                    self.give_up(expr, GaveUp::Members(known.ty));
                     return None;
                 };
                 self.finding().methods.insert(expr, (owner, name));
-                self.env().cx.get::<MemberType>(&(owner, name)).ok()
+                self.known(expr, self.env().cx.get::<MemberType>(&(owner, name)))
             }
         }
     }
@@ -133,7 +146,7 @@ impl Typer<'_, '_, '_> {
         {
             self.check_visible(expr, name, &visible);
         }
-        self.env().site_type(site).ok()
+        self.known(expr, self.env().site_type(site))
     }
 
     /// Whether members of `ty` may be declared where they are not known here: a nominal type, a

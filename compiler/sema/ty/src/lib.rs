@@ -71,6 +71,10 @@ pub enum TyKind {
     /// instantiation binds it: its members are the interface's requirements for it (spec 02,
     /// section 3).
     Param(Param),
+    /// A function with `$` parameters named as a value, which is its only value: it has no
+    /// signature apart from the `$` arguments of a call, which instantiates it, so it exists at
+    /// compile time only (spec 02, section 3).
+    Generic(Box<Value>),
 }
 
 /// A constrained `$` parameter of a function literal, by its name.

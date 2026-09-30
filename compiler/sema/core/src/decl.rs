@@ -14,10 +14,11 @@ use vun_primitives::check::Check;
 use vun_primitives::trace::Trace;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::call::{Instance, Staging};
-use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::item::{DeclRef, Site};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{TyKind, Value};
 
+use crate::callable::Callable;
 use crate::env::Env;
 use crate::target::TargetConstant;
 use crate::target::TargetOf;
@@ -101,13 +102,13 @@ impl Env<'_, '_> {
         let decl = &hir.decls[decl_id];
         let PatKind::Bind(binder) = hir.pats[decl.pat].kind else { return Err(Unevaluated::Unsupported) };
         let stage = if hir.binders[binder].mutable { Stage::Run } else { Stage::Compile };
+        let site = Site::Decl(DeclRef::new(self.file.clone(), hir, decl_id));
         let ty = match (decl.ty, decl.value) {
             // A declaration's markers mark the function type it is annotated with, as in
             // `#[abi.c] puts: unsafe (s: *u8) -> i32 = _`.
-            (Some(annotation), _) => {
-                let ty = Value::Type(self.ty(annotation)?);
-                self.marked_by(ty, &decl.attrs).as_type().ok_or(Unevaluated::Unsupported)?
-            }
+            (Some(annotation), _) => self.ty(annotation).and_then(|ty| {
+                self.marked_by(Value::Type(ty), &decl.attrs).as_type().ok_or(Unevaluated::Unsupported)
+            }),
             (None, Some(value)) => {
                 let key = (
                     DeclRef::new(self.file.clone(), hir, decl_id),
@@ -115,10 +116,15 @@ impl Env<'_, '_> {
                     self.staged().to_vec(),
                 );
                 let typed = self.cx.get::<TypedDecl>(&key).ok_or(Unevaluated::Unsupported)?;
-                typed.types.get(&value).ok_or(Unevaluated::Unsupported)?.ty
+                typed.types.get(&value).map(|k| k.ty).ok_or(Unevaluated::Unsupported)
             }
-            (None, None) => return Err(Unevaluated::Unsupported),
+            (None, None) => Err(Unevaluated::Unsupported),
         };
+        // A function with `$` parameters, whose annotation names them, is of its own type.
+        let ty = ty.or_else(|why| {
+            let f = self.value_of(site).ok().and_then(Callable::of);
+            f.and_then(|f| f.generic(self)).ok_or(why)
+        })?;
         Ok(Known { ty, stage })
     }
 }
