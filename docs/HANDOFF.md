@@ -122,8 +122,8 @@ records in reflection's shape, floats in JSON), 380 (what a program reaches chec
 code, failing arguments as typed lines), 381 (a name in a pattern always binds;
 `suspicious.shadowing` reports one hiding a constant), 382 (`lang.int.least` and `greatest`,
 integers drawn by distance from 0 then side), 383 (generic bodies checked per instantiation,
-not typed abstractly), 384 (benchmarks, `vun bench`) and 386 (simulations; shrinking keeps only
-smaller cases). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+not typed abstractly), 384 (benchmarks, `vun bench`), 386 (simulations; shrinking keeps only
+smaller cases) and 387 (coverage, `--cover`, `vun fuzz`). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -173,8 +173,10 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Properties: only shared borrows are lent (`&T`, `&[T]`), and a slice holds at most
   `std.testing.property.longest` (32) items.
-- Fuzz targets (`&[u8]`) run as properties under `vun test`; the coverage-guided fuzzer (`vun
-  fuzz`) and the corpus in `fuzz/<test path>/` do not exist.
+- `vun fuzz` (decision 387) keeps its streams in memory only: no corpus in `fuzz/<test path>/`
+  yet (the runner would need a way to read files the driver lists, or the driver to hand them
+  over), and no traced comparisons, so a test of a byte among a long stream (a fuzz target's
+  `&[u8]` of up to 32) is found as slowly as mutation reaches it. `vun cover` does not exist.
 - Simulations (decision 386) have a virtual clock and a seeded scheduler over a tuple of tasks;
   not yet a simulated network or disk, nor choices drawn by the tasks themselves (a task would
   need the `Sim` its test holds mutably while `run` does).

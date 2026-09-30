@@ -7,6 +7,7 @@
 pub mod checks;
 pub mod codegen;
 pub mod compare;
+pub mod cover;
 pub mod coverage;
 mod doc;
 pub mod editor;

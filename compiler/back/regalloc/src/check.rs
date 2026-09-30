@@ -110,8 +110,12 @@ impl Allocation {
                     there.0.insert(at, param);
                 }
                 for v in live.into[to].iter() {
-                    let at =
-                        self.at(v, entered).ok_or(Wrong { point: last, value: v, why: Why::Placeless })?;
+                    // A value made again where it is read may have no place on the way.
+                    let at = match self.at(v, entered) {
+                        Some(at) => at,
+                        None if d.remade(v).is_some() => continue,
+                        None => return Err(Wrong { point: last, value: v, why: Why::Placeless }),
+                    };
                     there.expect(d, at, v, last)?;
                 }
                 let merged = match &entries[to] {

@@ -9,6 +9,7 @@ pub mod attributes;
 pub mod callable;
 pub mod check;
 pub mod checks;
+pub mod cover;
 pub mod decl;
 pub mod env;
 pub mod eval;

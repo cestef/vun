@@ -1,0 +1,96 @@
+//! Coverage-guided fuzzing (spec 11, section 2): `vun fuzz` builds the tests covered (spec 11,
+//! section 6) and runs each property, fuzz target and simulation over as many cases as `--fuzz`
+//! asks. A case replays the choices of a stream kept, mutated, then draws; or draws new ones. It
+//! is kept in turn when it set a flag of `lang.cover.map` no case before set, so the streams kept
+//! reach ever more of the code. A case that traps is shrunk and reported as a property's is.
+
+/// How many streams of choices fuzzing a test keeps.
+kept: usize = 64;
+
+/// What fuzzing a test did when no case trapped: how many cases ran, how many streams it kept,
+/// and how many flags of the map they set.
+Fuzzed := struct {
+    runs: u64,
+    kept: usize,
+    flags: usize,
+};
+
+#[impl(std.fmt.json.Json(Fuzzed))]
+fuzzed_json := std.fmt.json.derive(Fuzzed);
+
+/// A stream of choices kept: those a case took.
+Stream := struct {
+    taken: [std.testing.property.room]u64,
+    len: usize,
+
+    /// Choices replaying this stream mutated by `g`, then drawing from it: a choice set to a
+    /// value drawn (half the time), to 0, to the next value or to its half, or the stream cut
+    /// short there.
+    mutated := (self: &Stream, g: &mut u64) -> std.testing.Choices {
+        mut taken := self.taken;
+        mut len := self.len;
+        if len > 0 {
+            at := (std.testing.property.next(g) % len.to(u64)).to(usize);
+            match std.testing.property.next(g) % 8 {
+                0 => { taken[at] = 0; },
+                1 => { taken[at] +%= 1; },
+                2 => { taken[at] = taken[at] / 2; },
+                3 => { len = at; },
+                _ => { taken[at] = std.testing.property.next(g); },
+            }
+        }
+        .{ .state = std.testing.property.next(g), .random = true, .replay = taken, .replayed = len, .taken = [0; std.testing.property.room], .len = 0 }
+    };
+};
+
+/// Fuzzes the test `f`, a property, over `runs` cases from `seed`, each on a thread of its own:
+/// what it did, or the first case that trapped, shrunk, with the case it was. Only the smallest
+/// case reports its trap, run once more.
+fuzz := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, runs: u64) -> Result(Fuzzed, (std.testing.property.Failing, usize)) {
+    mut g := seed;
+    mut streams: [kept]Stream = [.{ .taken = [0; std.testing.property.room], .len = 0 }; kept];
+    mut count: usize = 0;
+    mut seen: [lang.cover.size]u8 = [0; lang.cover.size];
+    mut flags: usize = 0;
+    for run in 0..runs {
+        // A new stream one case in four, and until one is kept.
+        mut c := if count == 0 or std.testing.property.next(&mut g) % 4 == 0 {
+            std.testing.Choices.seeded(std.testing.property.next(&mut g))
+        } else {
+            streams[(std.testing.property.next(&mut g) % count.to(u64)).to(usize)].mutated(&mut g)
+        };
+        clear();
+        if .some(trap) = std.testing.property.attempt(F, f, sys, &mut c, true) {
+            failing: std.testing.property.Failing = .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 };
+            smallest := std.testing.property.shrink.smallest(F, f, sys, failing);
+            mut replayed := std.testing.Choices.replaying(&smallest.taken, smallest.len);
+            _ = std.testing.property.attempt(F, f, sys, &mut replayed, false);
+            return .err((smallest, run.sat(usize)));
+        }
+        found := unseen(&mut seen);
+        if found > 0 {
+            flags += found;
+            slot := if count < kept { count } else { (std.testing.property.next(&mut g) % kept.to(u64)).to(usize) };
+            streams[slot] = .{ .taken = c.taken, .len = c.len };
+            if count < kept { count += 1; }
+        }
+    }
+    .ok(.{ .runs = runs, .kept = count, .flags = flags })
+};
+
+/// Clears the flags of `lang.cover.map`.
+clear := () {
+    unsafe { lang.mem.fill(u8, lang.mem.items_pointer(u8, &lang.cover.map[0..lang.cover.size]), 0, lang.cover.size); }
+};
+
+/// How many flags of `lang.cover.map` are set that `seen` does not hold, which it then holds.
+unseen := (seen: &mut [lang.cover.size]u8) -> usize {
+    mut found: usize = 0;
+    for i in 0..lang.cover.size {
+        if unsafe lang.cover.map[i] != 0 and seen[i] == 0 {
+            seen[i] = 1;
+            found += 1;
+        }
+    }
+    found
+};

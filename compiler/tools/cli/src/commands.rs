@@ -12,7 +12,7 @@ use status::{Conclude, Report, Started, Step};
 
 use vun_build::layout::MANIFEST;
 use vun_driver::subject::Subject;
-use vun_driver::{Session, VERSION, checks, codegen, formats, trace};
+use vun_driver::{Session, VERSION, checks, codegen, cover, formats, trace};
 
 pub(crate) const PROGRAM: Program<Session> = Program {
     version: VERSION,
@@ -67,6 +67,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             fmt::FMT,
             test::TEST,
             test::BENCH,
+            test::FUZZ,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
             Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),
@@ -104,6 +105,7 @@ pub(crate) const COMPILE: OptionSet = OptionSet {
     params: &[
         vun_driver::target::TARGET,
         checks::CHECKS,
+        cover::COVER,
         trace::TRACE,
         codegen::RELEASE,
         formats::DIAGNOSTICS,
@@ -143,6 +145,7 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     formats::configure(session, args)?;
     codegen::configure(session, args);
     checks::configure(session, args)?;
+    cover::configure(session, args);
     trace::configure(session, args);
     vun_driver::target::configure(session, args)
 }

@@ -7,20 +7,29 @@ seed_option := "--seed";
 cases_option := "--cases";
 /// The option running the benchmarks alone, measured.
 bench_option := "--bench";
+/// The option fuzzing the properties alone, over as many cases as `--cases` asks.
+fuzz_option := "--fuzz";
 
 /// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
 /// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
-/// benchmarks alone, measured, and the other arguments name the tests to run, every one if none
-/// does.
+/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, and the other arguments name
+/// the tests to run, every one if none does.
 Options := struct {
     args: std.os.Args,
     seed: ?u64,
     cases: usize,
     bench: bool,
+    fuzz: bool,
 
     /// The options `args` ask for; `.none` when an option has no number after it.
     of := (args: std.os.Args) -> ?Options {
-        mut options := Options{ .args = args, .seed = .none, .cases = std.testing.property.cases, .bench = false };
+        mut options := Options{
+            .args = args,
+            .seed = .none,
+            .cases = std.testing.property.cases,
+            .bench = false,
+            .fuzz = false,
+        };
         // The option the next argument is the number of.
         mut after: ?&[u8] = .none;
         for i in 1..args.len() {
@@ -38,6 +47,8 @@ Options := struct {
                         after = .some(arg);
                     } else if arg == bench_option {
                         options.bench = true;
+                    } else if arg == fuzz_option {
+                        options.fuzz = true;
                     },
                 }
             }
@@ -51,6 +62,18 @@ Options := struct {
     /// Whether `arg` is an option, which the number after it goes with.
     option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option };
 
+    /// Whether a test of `kind` runs: the benchmarks alone when measured, the properties alone
+    /// when fuzzed, else every test.
+    runs := (self: &Options, kind: std.testing.Kind) -> bool {
+        if self.bench {
+            kind == .benchmark
+        } else if self.fuzz {
+            kind == .property
+        } else {
+            true
+        }
+    };
+
     /// Whether the test `name` is run: every test when the arguments name none, else those they
     /// name.
     chosen := (self: &Options, name: &[u8]) -> bool {
@@ -62,7 +85,7 @@ Options := struct {
                     after = false;
                 } else if Options.option(arg) {
                     after = true;
-                } else if arg == bench_option {
+                } else if arg == bench_option or arg == fuzz_option {
                 } else if arg == name {
                     return true;
                 } else {

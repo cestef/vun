@@ -15,3 +15,5 @@ pub const trapped: Item = Item::new(&["std", "testing", "Outcome", "trapped"]);
 pub const falsified: Item = Item::new(&["std", "testing", "Outcome", "falsified"]);
 /// A benchmark ran measured: how many times its body ran, and how long that took.
 pub const measured: Item = Item::new(&["std", "testing", "Outcome", "measured"]);
+/// A property was fuzzed and no case trapped: how many ran, and what they covered.
+pub const fuzzed: Item = Item::new(&["std", "testing", "Outcome", "fuzzed"]);

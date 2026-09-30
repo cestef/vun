@@ -7,6 +7,7 @@ use vun_sema_ty::item::Declared;
 use crate::asm::ArchTable;
 use crate::check::Checked;
 use crate::checks::ChecksOf;
+use crate::cover::CoverageOf;
 use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
 use crate::env::{ItemSite, PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
 use crate::eval::{Call, MeteredCall, Signed};
@@ -26,6 +27,7 @@ use crate::witness::{Conformance, Impls, Requirement, Witnesses};
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<TargetOf>,
     Db::trace::<ChecksOf>,
+    Db::trace::<CoverageOf>,
     Db::trace::<TraceOf>,
     Db::persist::<Chosen>,
     Db::persist::<Checked>,

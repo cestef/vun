@@ -15,8 +15,29 @@ pub const SEED: Param = Param::option("seed")
 pub const CASES: Param = Param::option("cases")
     .about("how many cases of each property to run; 100 if not given")
     .values(Values::Count);
-/// The runner's option asking for the benchmarks alone, measured: what `vun bench` passes.
+/// `--cases` as `vun fuzz` reads it, fuzzing longer.
+pub const FUZZED: Param = Param::option("cases")
+    .about("how many cases of each property to fuzz; 10000 if not given")
+    .values(Values::Count);
+/// The runner's options asking for the benchmarks alone, measured, and for the properties alone,
+/// fuzzed: what `vun bench` and `vun fuzz` pass.
 const BENCH: Param = Param::flag("bench");
+const FUZZ: Param = Param::flag("fuzz");
+
+/// How many cases `vun fuzz` runs of each property unless `--cases` asks for another count.
+const FUZZED_CASES: u64 = 10_000;
+
+/// What a run of the tests' program does with them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Mode {
+    /// Runs every test.
+    #[default]
+    Test,
+    /// Measures the benchmarks alone.
+    Bench,
+    /// Fuzzes the properties alone, in a program built covered.
+    Fuzz,
+}
 
 /// How a run of the tests' program is asked for besides the tests it names: the options
 /// `std.testing.Options` reads from the program's arguments.
@@ -24,22 +45,28 @@ const BENCH: Param = Param::flag("bench");
 pub struct Options {
     pub seed: Option<u64>,
     pub cases: Option<u64>,
-    /// Whether the benchmarks run alone, measured.
-    pub bench: bool,
+    pub mode: Mode,
 }
 
 impl Options {
-    /// The options a command line gives, the benchmarks measured alone when `bench`.
+    /// The options a command line gives for a run in `mode`.
     #[must_use]
-    pub fn of(args: &Args, bench: bool) -> Self {
-        Self { seed: args.count(&SEED), cases: args.count(&CASES), bench }
+    pub fn of(args: &Args, mode: Mode) -> Self {
+        let cases = args.count(&CASES).or((mode == Mode::Fuzz).then_some(FUZZED_CASES));
+        Self { seed: args.count(&SEED), cases, mode }
     }
 
-    /// Its arguments to the tests' program: each option given, as written, and its number.
+    /// Its arguments to the tests' program: each option given, as written, and its number, then
+    /// the mode's flag.
     fn args(self) -> impl Iterator<Item = String> {
         let given = [(SEED, self.seed), (CASES, self.cases)].into_iter();
         let numbers = given.filter_map(|(param, n)| Some([param.long_form(), n?.to_string()])).flatten();
-        numbers.chain(self.bench.then(|| BENCH.long_form()))
+        let flag = match self.mode {
+            Mode::Test => None,
+            Mode::Bench => Some(BENCH),
+            Mode::Fuzz => Some(FUZZ),
+        };
+        numbers.chain(flag.map(|flag| flag.long_form()))
     }
 }
 
@@ -74,6 +101,7 @@ pub enum Outcome {
     Trapped(Trapped),
     Falsified(Falsified),
     Measured(Measured),
+    Fuzzed(Fuzzed),
 }
 
 impl Outcome {
@@ -82,7 +110,7 @@ impl Outcome {
     pub fn trap(&self) -> Option<&Trapped> {
         match self {
             Self::Trapped(trapped) | Self::Falsified(Falsified { trapped, .. }) => Some(trapped),
-            Self::Passed | Self::Ignored(_) | Self::Measured(_) => None,
+            Self::Passed | Self::Ignored(_) | Self::Measured(_) | Self::Fuzzed(_) => None,
         }
     }
 }
@@ -116,6 +144,15 @@ impl Measured {
     }
 }
 
+/// What fuzzing a property did when no case trapped (`std.testing.fuzz.Fuzzed`): how many cases
+/// ran, how many streams of choices it kept, and how many coverage flags they set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Fuzzed {
+    pub runs: u64,
+    pub kept: usize,
+    pub flags: usize,
+}
+
 /// A test that is not run, and why (`std.testing.Ignored`).
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Ignored {
@@ -144,7 +181,7 @@ pub struct Place {
     pub column: u32,
 }
 
-/// How many tests passed, trapped, were falsified, were not run and were measured.
+/// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Totals {
     pub passed: usize,
@@ -152,6 +189,7 @@ pub struct Totals {
     pub falsified: usize,
     pub ignored: usize,
     pub measured: usize,
+    pub fuzzed: usize,
 }
 
 /// An argument as a failing case's report shows it: `x = 200`, its value as JSON.

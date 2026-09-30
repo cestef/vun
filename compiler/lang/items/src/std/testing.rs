@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.testing.bench`.
 pub const bench: Item = Item::new(&["std", "testing", "bench"]);
+/// The namespace `std.testing.fuzz`.
+pub const fuzz: Item = Item::new(&["std", "testing", "fuzz"]);
 /// The namespace `std.testing.options`.
 pub const options: Item = Item::new(&["std", "testing", "options"]);
 /// The namespace `std.testing.property`.
@@ -74,9 +76,15 @@ pub const run: Item = Item::new(&["std", "testing", "run"]);
 /// measured as `options` ask, a property over the cases they ask for, whose arguments are
 /// generated, the smallest failing one's written to `out`.
 pub const tested: Item = Item::new(&["std", "testing", "tested"]);
-/// What became of the property test `f`, named `name`, over the cases `options` ask for: the
-/// smallest failing case's arguments are written to `out`.
+/// What became of the property test `f`, named `name`, over the cases `options` ask for, or
+/// fuzzed over as many: the smallest failing case's arguments are written to `out`.
 pub const checked: Item = Item::new(&["std", "testing", "checked"]);
+/// What kind of test a test is, by its parameters (spec 11, section 1): a property takes
+/// arguments generated from choices, a fuzz target's and a simulation's included.
+pub const Kind: Item = Item::new(&["std", "testing", "Kind"]);
+pub const kind_eq: Item = Item::new(&["std", "testing", "kind_eq"]);
+/// The kind of the test `f`.
+pub const kind: Item = Item::new(&["std", "testing", "kind"]);
 /// Whether the one parameter of `f` is a `T`.
 pub const takes: Item = Item::new(&["std", "testing", "takes"]);
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.

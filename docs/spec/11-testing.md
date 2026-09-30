@@ -57,7 +57,7 @@ election := (s: &mut testing.Sim) {
 | values of ordinary types | property test | `vun test` (seeded cases), `vun fuzz` (coverage-guided) |
 | `&[u8]` | fuzz target | same |
 | `&mut testing.Bench` | benchmark | `vun bench` |
-| `&mut testing.Sim` | simulation | `vun test` (seeded cases, as a property's) |
+| `&mut testing.Sim` | simulation | `vun test` (seeded cases, as a property's), `vun fuzz` |
 
 Attributes: `#[test.gen(g)]` on a parameter of a property generates its argument with `g`,
 `(c: &mut testing.Choices) -> T`, rather than from its type; `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout,
@@ -99,11 +99,19 @@ and recorded), so:
   cases from `n` instead, replaying a reported failure, and `--cases n` runs `n` cases of each
   (`std.testing.Options`, read from the runner's arguments; decision 363).
 
-A fuzz target (`&[u8]`) runs under `vun test` as the property it is. Not yet: the same test run
-under a coverage-guided fuzzer, sharing one corpus with the seeded runs.
+A fuzz target (`&[u8]`) runs under `vun test` as the property it is. `vun fuzz [path] [names]`
+fuzzes the properties alone, fuzz targets and simulations included, guided by coverage: it builds
+the tests' program covered (section 6) and runs each over `--cases` cases (10000 unless given,
+the runner's `--fuzz`, `std.testing.fuzz`). A case replays the choices of a stream kept, one
+choice mutated (a value drawn, 0, the next value, its half, or the stream cut there), then draws;
+or draws a new stream. It is kept, up to 64 streams, when it set a flag of `lang.cover.map` no
+case before set, so the streams reach ever more of the code; a failing case is shrunk and
+reported as a property's, and one passing reports how many cases ran, streams it kept and flags
+they set (`fuzzed`). Three nested tests of a byte each, which random cases pass once in 2^24, fall
+in about 8000 cases.
 
-Corpus and crash inputs live in `fuzz/<test path>/`, are committed, and replay as regressions on
-every `vun test`.
+Not yet: corpus and crash inputs in `fuzz/<test path>/`, committed and replayed as regressions on
+every `vun test`, and comparisons traced to guide mutations to the values code tests for.
 
 ## 3. Execution modes
 
@@ -174,7 +182,11 @@ themselves.
 - **Doctests**: code blocks in doc comments compile and run in the interpreter.
 - **Rejection tests**: files in `tests/reject/` annotated with expected diagnostics (spec 10,
   section 7).
-- **Coverage**: `vun cover` uses MIR region counters, identical on every backend; output is lcov.
+- **Coverage**: `--cover` builds a program that marks each block it runs: MIR sets the block's flag
+  in `lang.cover.map` (`lang.cover.size` flags, a block's number the hash of its function's
+  instantiation and its position) as the block starts, identical on every backend; naked
+  functions hold their assembly alone and are not marked. `vun fuzz` reads the flags. Not yet:
+  `vun cover`, counting per region and writing lcov.
 - **Mutation testing** (later): `vun mutate` mutates MIR and reruns tests in the interpreter,
   without rebuilding.
 - **C dependencies** can be built with sanitizers by the build step that compiles them.

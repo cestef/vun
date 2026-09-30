@@ -21,7 +21,10 @@ impl<A: Isel> Described<'_, '_, A> {
         if cfg!(debug_assertions)
             && let Err(wrong) = plan.check(cx.f, &described)
         {
-            panic!("the register allocator planned {wrong} in\n{plan}");
+            panic!(
+                "the register allocator planned {wrong} in the function at {}\n{plan}",
+                cx.f.origin.located()
+            );
         }
         plan
     }

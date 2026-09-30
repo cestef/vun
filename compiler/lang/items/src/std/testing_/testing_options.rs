@@ -12,8 +12,10 @@ pub const seed_option: Item = Item::new(&["std", "testing", "options", "seed_opt
 pub const cases_option: Item = Item::new(&["std", "testing", "options", "cases_option"]);
 /// The option running the benchmarks alone, measured.
 pub const bench_option: Item = Item::new(&["std", "testing", "options", "bench_option"]);
+/// The option fuzzing the properties alone, over as many cases as `--cases` asks.
+pub const fuzz_option: Item = Item::new(&["std", "testing", "options", "fuzz_option"]);
 /// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
 /// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
-/// benchmarks alone, measured, and the other arguments name the tests to run, every one if none
-/// does.
+/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, and the other arguments name
+/// the tests to run, every one if none does.
 pub const Options: Item = Item::new(&["std", "testing", "options", "Options"]);

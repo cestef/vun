@@ -2,7 +2,7 @@
 //! benchmarks alone run, each until its loop has taken `std.testing.bench.least`.
 
 use vun_build::layout::MANIFEST;
-use vun_driver::testing::{Measured, Options, Outcome};
+use vun_driver::testing::{Measured, Mode, Options, Outcome};
 use vun_term::Shell;
 
 use crate::common::Fixture;
@@ -51,7 +51,7 @@ fn a_benchmark_runs_once_as_a_test_and_alone_when_measured() {
     };
     let tested = outcomes(Options::default());
     assert_eq!(tested, [("sums".to_owned(), Outcome::Passed), ("adds".to_owned(), Outcome::Passed)]);
-    let measured = outcomes(Options { bench: true, ..Options::default() });
+    let measured = outcomes(Options { mode: Mode::Bench, ..Options::default() });
     let [(name, Outcome::Measured(Measured { iterations, nanos }))] = measured.as_slice() else {
         panic!("{measured:#?}")
     };

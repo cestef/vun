@@ -97,7 +97,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             ran("indexes", trapped(&index)),
             ran("last", Outcome::Passed),
             ran("skipped", Outcome::Ignored(Ignored { reason: "not yet".to_owned() })),
-            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1, measured: 0 }),
+            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1, measured: 0, fuzzed: 0 }),
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
@@ -201,7 +201,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         });
         assert_eq!(
             totals,
-            Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0, measured: 0 }),
+            Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0, measured: 0, fuzzed: 0 }),
             "{backend}"
         );
         // The smallest failing arguments, each a line before its test's.
@@ -234,12 +234,12 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             let reported = run.report(&mut Shell::plain(&mut out, &mut err)).unwrap();
             reported.tests.into_iter().map(|tested| tested.ran.outcome).collect::<Vec<_>>()
         };
-        let seeded = outcomes(&["bounded"], Options { seed: Some(7), cases: None, bench: false });
+        let seeded = outcomes(&["bounded"], Options { seed: Some(7), ..Options::default() });
         assert!(
             matches!(seeded.as_slice(), [Outcome::Falsified(f)] if f.seed == 7),
             "{backend}: {seeded:#?}"
         );
-        let none = outcomes(&[], Options { seed: None, cases: Some(0), bench: false });
+        let none = outcomes(&[], Options { cases: Some(0), ..Options::default() });
         assert!(none.len() == 9 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
     }
 }

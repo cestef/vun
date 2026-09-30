@@ -52,6 +52,8 @@ Outcome := enum {
     falsified(Falsified),
     /// A benchmark ran measured: how many times its body ran, and how long that took.
     measured(std.testing.bench.Measured),
+    /// A property was fuzzed and no case trapped: how many ran, and what they covered.
+    fuzzed(std.testing.fuzz.Fuzzed),
 };
 
 /// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
@@ -77,6 +79,7 @@ Totals := struct {
     falsified: usize,
     ignored: usize,
     measured: usize,
+    fuzzed: usize,
 
     /// Counts `outcome`.
     count := (self: &mut Totals, outcome: &Outcome) {
@@ -86,6 +89,7 @@ Totals := struct {
             .falsified(_) => { self.falsified += 1; },
             .ignored(_) => { self.ignored += 1; },
             .measured(_) => { self.measured += 1; },
+            .fuzzed(_) => { self.fuzzed += 1; },
         }
     };
 };
@@ -154,9 +158,9 @@ runner := ($ns: lang.meta.Namespace) -> type {
 /// each to the standard output, then the totals. A test marked `test.ignore` is not run.
 run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) -> Result(Totals, std.os.Error) {
     mut out := sys.stdout();
-    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0, .measured = 0 };
+    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0, .measured = 0, .fuzzed = 0 };
     $for c in std.meta.collect(ns, test) {
-        if options.chosen(c.decl.name) and ($takes(c.ns.$(c.decl.name), &mut Bench) or !options.bench) {
+        if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
                 .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
@@ -173,7 +177,7 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
 /// measured as `options` ask, a property over the cases they ask for, whose arguments are
 /// generated, the smallest failing one's written to `out`.
 tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Options, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
-    $if lang.meta.params(F, f).len() == 0 {
+    $if kind(F, f) == .unit {
         // On a thread of its own; where the system runs one thread, on the calling one, and a
         // trap ends the run.
         mut g := f;
@@ -188,7 +192,7 @@ tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opti
             },
         })
     } else {
-        $if takes(F, f, &mut Bench) {
+        $if kind(F, f) == .benchmark {
             .ok(std.testing.bench.outcome(F, f, sys, options.bench))
         } else {
             checked(F, f, name, sys, options, out)
@@ -196,20 +200,43 @@ tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opti
     }
 };
 
-/// What became of the property test `f`, named `name`, over the cases `options` ask for: the
-/// smallest failing case's arguments are written to `out`.
+/// What became of the property test `f`, named `name`, over the cases `options` ask for, or
+/// fuzzed over as many: the smallest failing case's arguments are written to `out`.
 checked := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Options, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
     seed := match options.seed {
         .some(seed) => seed,
         .none => seed_of(name),
     };
-    .ok(match std.testing.property.check(F, f, sys, seed, options.cases) {
+    found: ?(std.testing.property.Failing, usize) = if options.fuzz {
+        match std.testing.fuzz.fuzz(F, f, sys, seed, options.cases.to(u64)) {
+            .ok(fuzzed) => return .ok(Outcome.fuzzed(fuzzed)),
+            .err(failing) => .some(failing),
+        }
+    } else {
+        std.testing.property.check(F, f, sys, seed, options.cases)
+    };
+    .ok(match found {
         .none => Outcome.passed,
         .some((failing, case)) => {
             std.testing.property.write(F, f, out, &failing)?;
             Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
         },
     })
+};
+
+/// What kind of test a test is, by its parameters (spec 11, section 1): a property takes
+/// arguments generated from choices, a fuzz target's and a simulation's included.
+Kind := enum { unit, benchmark, property };
+#[impl(lang.ops.Eq(Kind))]
+kind_eq := std.cmp.derive_eq(Kind);
+
+/// The kind of the test `f`.
+kind := ($F: type, $f: F) -> Kind {
+    $if lang.meta.params(F, f).len() == 0 {
+        .unit
+    } else {
+        $if takes(F, f, &mut Bench) { .benchmark } else { .property }
+    }
 };
 
 /// Whether the one parameter of `f` is a `T`.

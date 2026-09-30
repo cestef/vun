@@ -1,7 +1,8 @@
 //! `vun test [path] [names]... [--seed n] [--cases n]`: builds the program running the tests of a
 //! namespace, runs it and reports each test as it ends (spec 11). The path is a file, a directory
 //! or a package's directory; with none, the package around the current directory. `vun bench`
-//! runs the benchmarks alone, measured, through the same program.
+//! runs the benchmarks alone, measured, through the same program, and `vun fuzz` the properties
+//! alone, fuzzed, through it built covered.
 
 use std::io;
 use std::path::Path;
@@ -10,6 +11,8 @@ use std::time::Instant;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param};
 use vun_driver::Session;
 use vun_driver::subject::Subject;
+use vun_driver::testing::Mode;
+use vun_sema::cover::Coverage;
 use vun_term::Shell;
 
 use super::status::{Conclude, Started, Step};
@@ -52,22 +55,44 @@ pub(super) const BENCH: Command<Session> =
             Example { line: "main.vun memcpy_4k", about: "measure one benchmark of a file" },
         ]);
 
+pub(super) const FUZZ: Command<Session> =
+    Command::run("fuzz", "fuzz the properties of a namespace, guided by what their cases cover", fuzz)
+        .params(&[
+            PATH,
+            NAMES,
+            vun_driver::testing::SEED,
+            vun_driver::testing::FUZZED,
+            vun_driver::codegen::BACKEND,
+            vun_driver::codegen::LINKER,
+            vun_driver::program::OUTPUT,
+        ])
+        .sets(&[COMPILE])
+        .examples(&[
+            Example { line: "", about: "fuzz the properties of the package around this directory" },
+            Example { line: "main.vun decode_raw --cases 1000000", about: "fuzz one property longer" },
+        ]);
+
 fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    tests(session, args, shell, false)
+    tests(session, args, shell, Mode::Test)
 }
 
 fn bench(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    tests(session, args, shell, true)
+    tests(session, args, shell, Mode::Bench)
 }
 
-/// Builds the tests' program of each package the path names and runs it: the tests the arguments
-/// name, or the benchmarks alone, measured, when `bench`.
-fn tests(session: &mut Session, args: &Args, shell: &mut Shell<'_>, bench: bool) -> io::Result<Outcome> {
+fn fuzz(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    session.cover(Coverage::Blocks);
+    tests(session, args, shell, Mode::Fuzz)
+}
+
+/// Builds the tests' program of each package the path names and runs it in `mode`: the tests
+/// the arguments name, the benchmarks alone, measured, or the properties alone, fuzzed.
+fn tests(session: &mut Session, args: &Args, shell: &mut Shell<'_>, mode: Mode) -> io::Result<Outcome> {
     let path = args.value(&PATH).map(Path::new);
     let Some(subject) = session.subject(path)? else { return Ok(session.outcome()) };
     let mut passed = true;
     for (root, within) in subject.tested() {
-        let Some(reported) = tested(session, args, shell, bench, &root, within.as_deref())? else {
+        let Some(reported) = tested(session, args, shell, mode, &root, within.as_deref())? else {
             return Ok(session.outcome());
         };
         passed &= reported;
@@ -81,7 +106,7 @@ fn tested(
     session: &mut Session,
     args: &Args,
     shell: &mut Shell<'_>,
-    bench: bool,
+    mode: Mode,
     root: &Path,
     within: Option<&Path>,
 ) -> io::Result<Option<bool>> {
@@ -96,7 +121,7 @@ fn tested(
     session.conclude(shell, subject, started);
     let Some(program) = program else { return Ok(None) };
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
-    let options = vun_driver::testing::Options::of(args, bench);
+    let options = vun_driver::testing::Options::of(args, mode);
     let reported = session.run_tests(&program, args.values(&NAMES), options)?.report(shell)?;
     Ok(Some(reported.passed))
 }

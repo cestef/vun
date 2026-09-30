@@ -143,6 +143,7 @@ impl Server<'_> {
             Outcome::Trapped(_) => "trapped",
             Outcome::Falsified(_) => "falsified",
             Outcome::Measured(_) => "measured",
+            Outcome::Fuzzed(_) => "fuzzed",
         }
     }
 }

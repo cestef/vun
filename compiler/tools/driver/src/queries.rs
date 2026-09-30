@@ -140,11 +140,11 @@ impl Session {
     }
 
     /// The directory of the shared files for the running toolchain, in a directory of its own,
-    /// the target chosen and the checks, if the session shares memos.
+    /// the target chosen, the checks and the coverage, if the session shares memos.
     fn shared_dir(&self) -> Option<PathBuf> {
         let dir = self.shared.as_ref()?.join(Self::toolchain()?.finish_hash().digest());
         let mut hasher = Hasher::default();
-        (Stable::of(&self.choice), Stable::of(&self.checks())).hash(&mut hasher);
+        (Stable::of(&self.choice), Stable::of(&self.checks()), Stable::of(&self.covered())).hash(&mut hasher);
         Some(dir.join(hasher.finish_hash().digest()))
     }
 

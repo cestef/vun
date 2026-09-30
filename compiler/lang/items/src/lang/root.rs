@@ -16,6 +16,8 @@ pub const bounds: Item = Item::new(&["lang", "bounds"]);
 pub const check: Item = Item::new(&["lang", "check"]);
 /// The namespace `lang.comptime`.
 pub const comptime: Item = Item::new(&["lang", "comptime"]);
+/// The namespace `lang.cover`.
+pub const cover: Item = Item::new(&["lang", "cover"]);
 /// The namespace `lang.diag`.
 pub const diag: Item = Item::new(&["lang", "diag"]);
 /// The namespace `lang.errors`.

@@ -133,6 +133,7 @@ cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, as std.testing.runner runs them
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- bench [--release] [path] [names]...   # the benchmarks alone, measured
+cargo run -q -p vun-cli -- fuzz [path] [names]... [--cases n]   # the properties alone, fuzzed, built --cover
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- toolchain show        # version, library and why there, each component's status

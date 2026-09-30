@@ -15,6 +15,7 @@ pub mod bool_eq;
 pub mod bounds;
 pub mod check;
 pub mod comptime;
+pub mod cover;
 pub mod diag;
 pub mod errors;
 pub mod float;
