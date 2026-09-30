@@ -1,7 +1,7 @@
 //! Calling what implements `lang.ops.Call` (spec 02, section 4): through borrows of a function
 //! or a closure, and inside a generic function, whose `$F: lang.ops.Call((), R)` is inferred from
-//! the constraint its own parameter was declared with; `()` passed where a type is expected is
-//! the unit type.
+//! the constraint its own parameter was declared with, or from a struct's impl; `()` passed where
+//! a type is expected is the unit type.
 
 /// A function value and a closure, each called through a borrow.
 through := (n: u8) -> u16 {
@@ -27,4 +27,20 @@ counted := () -> u8 {
     inferred(&mut bump);
     written(&mut bump);
     n
+};
+
+/// A struct calls through its impl of `lang.ops.Call`, from which `R` is inferred as from a
+/// function's signature.
+Counter := struct { n: u8 };
+
+#[impl(lang.ops.Call((), u8)(Counter))]
+counter_call := struct {
+    call := (self: &mut Counter, args: ()) -> u8 { self.n +|= 1; self.n };
+};
+
+/// Both calls of `twice`, counted by the struct.
+counted_twice := () -> u8 {
+    mut c := Counter{ .n = 0 };
+    (_, second) := twice(&mut c);
+    second
 };

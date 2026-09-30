@@ -73,6 +73,15 @@ pub struct Contract {
     pub requirements: Ty,
 }
 
+impl Contract {
+    /// The call making its interface: `lang.ops.Call((), ())` for `#[impl(lang.ops.Call((),
+    /// ())(Case))]`.
+    #[must_use]
+    pub fn made(&self) -> Option<Instance> {
+        self.interface.within.as_deref()?.call()
+    }
+}
+
 impl ImplDecl {
     /// Whether this impl and `other` register a witness for a common pair `(I, T)`.
     #[must_use]
@@ -91,12 +100,17 @@ impl ImplDecl {
 
 impl Env<'_, '_> {
     /// The arguments of the interface `constructor` makes that `ty` implements: a frame's
-    /// declared interface, or, for the interface calls go through (the table `calls`), the
-    /// parameters and result of a function or closure.
+    /// declared interface, an impl's for `ty`, or, for the interface calls go through (the table
+    /// `calls`), the parameters and result of a function or closure.
     #[must_use]
     pub fn implemented(&self, ty: Ty, constructor: &Value) -> Option<Vec<Value>> {
         if let Some(args) = ty.implements(constructor) {
             return Some(args);
+        }
+        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
+        let made = witnesses.iter().filter_map(|w| w.decl.contract.as_ref()?.made());
+        if let Some(made) = made.into_iter().find(|made| Value::Fn(made.f.clone()) == *constructor) {
+            return Some(made.args);
         }
         let interface = CALLS.first()?.parent()?;
         if self.item(interface).ok()? != *constructor {
