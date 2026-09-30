@@ -45,6 +45,8 @@ pub enum Values {
     /// One of the names a table too large to list gives, such as the error ids: checked and
     /// completed as a choice, and described rather than listed.
     Catalog(Catalog),
+    /// A whole number, such as a count or a seed.
+    Count,
 }
 
 /// A table of names described by what they are and where they are declared.
@@ -160,7 +162,7 @@ impl Param {
     pub fn choices(&self) -> Option<Vec<&'static str>> {
         match self.values {
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => Some(names()),
-            Values::Text | Values::Path(_) => None,
+            Values::Text | Values::Path(_) | Values::Count => None,
         }
     }
 }
@@ -213,6 +215,12 @@ impl Args {
     #[must_use]
     pub fn flag(&self, param: &Param) -> bool {
         self.flags.contains(&param.name)
+    }
+
+    /// The number a count parameter is given; parsing checked that it is one.
+    #[must_use]
+    pub fn count(&self, param: &Param) -> Option<u64> {
+        self.value(param)?.parse().ok()
     }
 
     /// The entry of `table` a choice parameter names; parsing checked that one does.

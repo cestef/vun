@@ -47,20 +47,25 @@ pub const place_json: Item = Item::new(&["std", "testing", "place_json"]);
 pub const failed: Item = Item::new(&["std", "testing", "failed"]);
 /// The exports of the program running the tests of `ns`.
 pub const runner: Item = Item::new(&["std", "testing", "runner"]);
-/// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those the
-/// program's arguments name, and writes a line for each to the standard output, then the totals.
-/// A test marked `test.ignore` is not run.
+/// The option drawing every property's cases from the seed that follows it.
+pub const seed_option: Item = Item::new(&["std", "testing", "seed_option"]);
+/// The option running as many cases of each property as the number that follows it.
+pub const cases_option: Item = Item::new(&["std", "testing", "cases_option"]);
+/// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
+/// from `n` rather than from its name, `--cases n` runs `n` cases of each, and the other
+/// arguments name the tests to run, every one if none does.
+pub const Options: Item = Item::new(&["std", "testing", "Options"]);
+/// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those
+/// `options` name, and writes a line for each to the standard output, then the totals. A test
+/// marked `test.ignore` is not run.
 pub const run: Item = Item::new(&["std", "testing", "run"]);
-/// What became of the test `f`, named `name`: a unit test runs once, a property over cases whose
-/// arguments are generated, the smallest failing one's written to `out`.
+/// What became of the test `f`, named `name`: a unit test runs once, a property over the cases
+/// `options` ask for, whose arguments are generated, the smallest failing one's written to `out`.
 pub const tested: Item = Item::new(&["std", "testing", "tested"]);
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.
 pub const trapped: Item = Item::new(&["std", "testing", "trapped"]);
 /// The seed the cases of the property test `name` are drawn from: the FNV-1a hash of its name,
 /// so every run draws the same cases.
 pub const seed_of: Item = Item::new(&["std", "testing", "seed_of"]);
-/// Whether the test `name` is run: every test when the arguments past the program's name name
-/// none, else those they name.
-pub const chosen: Item = Item::new(&["std", "testing", "chosen"]);
 /// Writes `line` and a line break.
 pub const write: Item = Item::new(&["std", "testing", "write"]);

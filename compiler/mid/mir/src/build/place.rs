@@ -174,7 +174,8 @@ impl Builder<'_, '_, '_> {
         local
     }
 
-    /// A temporary holding the value of `expr`.
+    /// A temporary holding the value of `expr`, of the type typing found for it: a constant
+    /// borrowed, such as a string literal, is held as the borrow it is typed as.
     fn held(&mut self, expr: ExprId, origin: OriginId) -> Result<Place, Unbuilt> {
         let value = self.operand(expr)?;
         // A temporary holding the value already is its place.
@@ -184,7 +185,8 @@ impl Builder<'_, '_, '_> {
         {
             return Ok(place.clone());
         }
-        Ok(Place::of(self.temp_local(Rvalue::Use(value), origin)))
+        let ty = self.type_of(expr);
+        Ok(Place::of(self.typed_local(Rvalue::Use(value), ty, origin)))
     }
 
     /// The value of the name `expr`: a local read where it is written, a `$` binder's value, a

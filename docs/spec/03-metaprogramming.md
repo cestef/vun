@@ -193,9 +193,11 @@ std.meta.TypeOf(p.x + 1)      // the type of an expression, typed and never run
 std.meta.Frame(blink)         // the frame type of a coroutine function (spec 06)
 ```
 
-**One shape.** Every value of a `struct` or `enum` type is one variant of its type and the parts
-that variant holds; a struct is one variant, named by nothing, whose parts are its fields, and an
-enum variant's parts are its payload's items, named by position. `lang.meta.variants(T)` gives
+**One shape.** Every value of a `struct`, `enum`, tuple or record type is one variant of its type
+and the parts that variant holds; a struct is one variant, named by nothing, whose parts are its
+fields, as a record is, a tuple one whose parts are its items, named by position, and an enum
+variant's parts are its payload's items, named by position (decision 363).
+`lang.meta.items(T)` gives a tuple's item types, and none for another type. `lang.meta.variants(T)` gives
 each variant with its parts (`name`, `index`, `type`), `lang.meta.variant(T, v)` the position of
 the variant `v` is (0 for a struct), and `lang.meta.part(T, v, $variant, $index)` a borrow of that
 part, `.none` when `v` is another variant, of type `lang.meta.Part(T, variant, index)`. A derive
@@ -221,7 +223,9 @@ the frames of a function without writing a call; for a function that does not su
 
 **Functions and values.** `lang.meta.params(F, f)` describes each parameter of the function `f`
 of type `F` as a `lang.meta.Field` (its name, position, the type `F` gives it and the values of
-the attributes written on it), so code can generate a call's arguments. `lang.meta.make(T,
+the attributes written on it), so code can generate a call's arguments. An attribute's value is
+typed before it is evaluated, as any value is, so one calling with inferred `$` arguments has a
+value (`#[test.gen(digit)]`). `lang.meta.make(T,
 variant, parts)` is the value of `T` that is its variant `variant` holding the tuple `parts`, of
 type `lang.meta.Parts(T, variant)`: the inverse of `part`, at compile time and at run time.
 `lang.meta.implements(I, T)` tells whether `witness(I, T)` gives an impl, so a `$if` chooses

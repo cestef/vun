@@ -63,22 +63,28 @@ impl Builder<'_, '_, '_> {
     }
 
     /// `lang.meta.make(T, variant, parts)`: the variant of `T` at `variant` holding the items of
-    /// the tuple `parts`, a struct's fields in declaration order.
+    /// the tuple `parts`, a struct's fields in declaration order, a record's by name, a tuple's
+    /// items in order.
     pub(super) fn made(&mut self, args: &[Entry<Arg>], origin: OriginId) -> Result<Operand, Unbuilt> {
         let unbuilt = move || Unbuilt::at(origin);
         let [Entry::One(ty), Entry::One(variant), Entry::One(parts)] = args else { return Err(unbuilt()) };
         let ty = self.env().ty(ty.value).map_err(|why| Unbuilt::unevaluated(origin, why))?;
         let at = self.env().eval(variant.value).map_err(|why| Unbuilt::unevaluated(origin, why))?;
-        let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
         let (kind, count) = match &*ty {
-            TyKind::Nominal(n) if n.kind == NominalKind::Struct => {
-                let names: Vec<Symbol> = members.fields.iter().map(|f| f.name).collect();
-                let count = names.len();
-                (Aggregate::Struct { ty, fields: names }, count)
+            TyKind::Tuple(items) => (Aggregate::Tuple, items.len()),
+            TyKind::Record(fields) => {
+                let names: Vec<Symbol> = fields.iter().map(|&(name, _)| name).collect();
+                (Aggregate::Struct { ty, fields: names }, fields.len())
             }
             _ => {
-                let v = members.variants.get(at.as_usize().ok_or_else(unbuilt)?).ok_or_else(unbuilt)?;
-                (Aggregate::Variant { ty, name: v.name }, v.payload.len())
+                let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
+                if matches!(&*ty, TyKind::Nominal(n) if n.kind == NominalKind::Struct) {
+                    let names: Vec<Symbol> = members.fields.iter().map(|f| f.name).collect();
+                    (Aggregate::Struct { ty, fields: names }, members.fields.len())
+                } else {
+                    let v = members.variants.get(at.as_usize().ok_or_else(unbuilt)?).ok_or_else(unbuilt)?;
+                    (Aggregate::Variant { ty, name: v.name }, v.payload.len())
+                }
             }
         };
         let tuple = self.operand(parts.value)?;

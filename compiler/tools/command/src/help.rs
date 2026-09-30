@@ -100,7 +100,7 @@ impl Param {
         let values = match self.values {
             Values::Choice(names) => Some(format!("[values: {}]", names().join(", "))),
             Values::Catalog(catalog) => Some(format!("[values: {}]", catalog.described())),
-            Values::Text | Values::Path(_) => None,
+            Values::Text | Values::Path(_) | Values::Count => None,
         };
         let env = self.env.map(|name| format!("[env: {name}]"));
         let extras: Vec<String> = [values, env].into_iter().flatten().collect();

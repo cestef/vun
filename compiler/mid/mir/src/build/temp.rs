@@ -17,11 +17,16 @@ impl Builder<'_, '_, '_> {
 
     /// `value` in a new temporary of type `ty`, what typing found for it, where known.
     pub(super) fn typed_temp(&mut self, value: Rvalue, ty: Option<Ty>, origin: OriginId) -> Operand {
+        Operand::Place(Place::of(self.typed_local(value, ty, origin)))
+    }
+
+    /// A new temporary local holding `value`, of type `ty` where known.
+    pub(super) fn typed_local(&mut self, value: Rvalue, ty: Option<Ty>, origin: OriginId) -> Local {
         let local = self.temp_local(value, origin);
         if ty.is_some() {
             self.locals[local].ty = ty;
         }
-        Operand::Place(Place::of(local))
+        local
     }
 
     /// A new temporary local holding `value`.

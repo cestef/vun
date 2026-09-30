@@ -167,6 +167,7 @@ impl Param {
             Values::Catalog(Catalog { what, declared_in, .. }) => {
                 Msg::new().text("choose ").text(what).text(", as ").code(declared_in).text(" declares them")
             }
+            Values::Count => Msg::new().text("write a whole number, such as ").code("100"),
             _ => Msg::new().text("choose one of ").code_list(names.iter().copied()),
         };
         let help = closest(value, names.iter().copied()).map_or_else(all, Msg::did_you_mean);

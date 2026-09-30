@@ -1,6 +1,6 @@
-//! `vun test [path] [names]...`: builds the program running the tests of a namespace, runs it and
-//! reports each test as it ends (spec 11). The path is a file, a directory or a package's
-//! directory; with none, the package around the current directory.
+//! `vun test [path] [names]... [--seed n] [--cases n]`: builds the program running the tests of a
+//! namespace, runs it and reports each test as it ends (spec 11). The path is a file, a directory
+//! or a package's directory; with none, the package around the current directory.
 
 use std::io;
 use std::path::Path;
@@ -25,6 +25,8 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
     .params(&[
         PATH,
         NAMES,
+        vun_driver::testing::SEED,
+        vun_driver::testing::CASES,
         vun_driver::codegen::BACKEND,
         vun_driver::codegen::LINKER,
         vun_driver::program::OUTPUT,
@@ -34,6 +36,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
         Example { line: "", about: "run the tests of the package around this directory" },
         Example { line: "net/", about: "run the tests of a directory and the namespaces in it" },
         Example { line: "main.vun crc_vector", about: "run one test of a file" },
+        Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
     ]);
 
 fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
@@ -50,6 +53,7 @@ fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     session.conclude(shell, subject, started);
     let Some(program) = program else { return Ok(session.outcome()) };
     shell.status(&Started { step: Step::Run, subject: program.display().to_string() });
-    let reported = session.run_tests(&program, args.values(&NAMES))?.report(shell)?;
+    let options = vun_driver::testing::Options::of(args);
+    let reported = session.run_tests(&program, args.values(&NAMES), options)?.report(shell)?;
     Ok(if reported.passed { Outcome::Success } else { Outcome::Failure })
 }

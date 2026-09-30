@@ -4,7 +4,7 @@
 use vun_diag::Diagnostic;
 
 use super::{LONG, OPTIONS_END, SHORT};
-use crate::{Args, Arity, GLOBAL, Param, ParamKind, Program};
+use crate::{Args, Arity, GLOBAL, Param, ParamKind, Program, Values};
 
 /// Separates a long option from its value in one argument.
 const VALUE_SEPARATOR: char = '=';
@@ -62,12 +62,16 @@ impl Args {
         Ok(())
     }
 
-    /// Records `value` for `param`, checking it against the parameter's choices. A parameter
+    /// Records `value` for `param`, checking it against the parameter's values. A parameter
     /// taking one value keeps the last given.
     pub(super) fn give(&mut self, param: &Param, value: &str) -> Result<(), Box<Diagnostic>> {
-        if let Some(names) = param.choices()
-            && !names.contains(&value)
-        {
+        let names = param.choices().unwrap_or_default();
+        let valid = match param.values {
+            Values::Choice(_) | Values::Catalog(_) => names.contains(&value),
+            Values::Count => value.parse::<u64>().is_ok(),
+            Values::Text | Values::Path(_) => true,
+        };
+        if !valid {
             return Err(param.invalid_value(value, &names));
         }
         if matches!(param.kind, ParamKind::Option(Arity::One | Arity::Optional)) {

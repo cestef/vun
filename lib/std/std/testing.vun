@@ -10,6 +10,9 @@
 test := struct {
     /// Skips the test, saying why: `#[test.ignore("needs a network")]`.
     ignore := (reason: &[u8]) -> Ignored { .{ .reason = reason } };
+    /// Generates a property's parameter with `with` rather than from its type, making what a
+    /// case holds for it: `(#[test.gen(small)] n: u8)`.
+    gen := ($T: type, with: (c: &mut Choices) -> T) -> std.testing.property.Generated(T) { .{ .with = with } };
 };
 
 /// How a type's values are generated for property tests its own way (spec 11, section 2).
@@ -113,7 +116,11 @@ failed: std.os.Status = 1;
 runner := ($ns: lang.meta.Namespace) -> type {
     std.os.start(struct {
         main := (sys: &mut std.os.System) -> std.os.Exit {
-            match run(ns, sys) {
+            options := match Options.of(sys.args()) {
+                .some(options) => options,
+                .none => return .code(failed),
+            };
+            match run(ns, sys, &options) {
                 .ok(totals) => if totals.trapped == 0 and totals.falsified == 0 { .ok } else { .code(failed) },
                 .err(_) => .code(failed),
             }
@@ -121,18 +128,81 @@ runner := ($ns: lang.meta.Namespace) -> type {
     }.main)
 };
 
-/// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those the
-/// program's arguments name, and writes a line for each to the standard output, then the totals.
-/// A test marked `test.ignore` is not run.
-run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std.os.Error) {
-    args := sys.args();
+/// The option drawing every property's cases from the seed that follows it.
+seed_option := "--seed";
+/// The option running as many cases of each property as the number that follows it.
+cases_option := "--cases";
+
+/// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
+/// from `n` rather than from its name, `--cases n` runs `n` cases of each, and the other
+/// arguments name the tests to run, every one if none does.
+Options := struct {
+    args: std.os.Args,
+    seed: ?u64,
+    cases: usize,
+
+    /// The options `args` ask for; `.none` when an option has no number after it.
+    of := (args: std.os.Args) -> ?Options {
+        mut options := Options{ .args = args, .seed = .none, .cases = std.testing.property.cases };
+        // The option the next argument is the number of.
+        mut after: ?&[u8] = .none;
+        for i in 1..args.len() {
+            if .some(arg) = args.get(i) {
+                match after {
+                    .some(given) => {
+                        n := match u64.parse(arg) {
+                            .some(number) => number,
+                            .none => return .none,
+                        };
+                        if given == seed_option { options.seed = .some(n); } else { options.cases = n.sat(usize); }
+                        after = .none;
+                    },
+                    .none => if Options.option(arg) { after = .some(arg); },
+                }
+            }
+        }
+        match after {
+            .some(_) => .none,
+            .none => .some(options),
+        }
+    };
+
+    /// Whether `arg` is an option, which the number after it goes with.
+    option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option };
+
+    /// Whether the test `name` is run: every test when the arguments name none, else those they
+    /// name.
+    chosen := (self: &Options, name: &[u8]) -> bool {
+        mut after := false;
+        mut named := false;
+        for i in 1..self.args.len() {
+            if .some(arg) = self.args.get(i) {
+                if after {
+                    after = false;
+                } else if Options.option(arg) {
+                    after = true;
+                } else if arg == name {
+                    return true;
+                } else {
+                    named = true;
+                }
+            }
+        }
+        !named
+    };
+};
+
+/// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those
+/// `options` name, and writes a line for each to the standard output, then the totals. A test
+/// marked `test.ignore` is not run.
+run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) -> Result(Totals, std.os.Error) {
     mut out := sys.stdout();
     mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0 };
     $for c in std.meta.collect(ns, test) {
-        if chosen(args, c.decl.name) {
+        if options.chosen(c.decl.name) {
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
-                .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, &mut out)?,
+                .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
             };
             totals.count(&outcome);
             write(&mut out, &Line.test(.{ .name = c.decl.name, .outcome = outcome }))?;
@@ -142,9 +212,9 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std
     .ok(totals)
 };
 
-/// What became of the test `f`, named `name`: a unit test runs once, a property over cases whose
-/// arguments are generated, the smallest failing one's written to `out`.
-tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
+/// What became of the test `f`, named `name`: a unit test runs once, a property over the cases
+/// `options` ask for, whose arguments are generated, the smallest failing one's written to `out`.
+tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Options, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
     $if lang.meta.params(F, f).len() == 0 {
         // On a thread of its own; where the system runs one thread, on the calling one, and a
         // trap ends the run.
@@ -160,8 +230,11 @@ tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, out: &mut std.
             },
         })
     } else {
-        seed := seed_of(name);
-        .ok(match std.testing.property.check(F, f, sys, seed) {
+        seed := match options.seed {
+            .some(seed) => seed,
+            .none => seed_of(name),
+        };
+        .ok(match std.testing.property.check(F, f, sys, seed, options.cases) {
             .none => Outcome.passed,
             .some((failing, case)) => {
                 std.testing.property.write(F, f, out, &failing)?;
@@ -185,18 +258,6 @@ seed_of := (name: &[u8]) -> u64 {
         h *%= 0x0100_0000_01B3;
     }
     h
-};
-
-/// Whether the test `name` is run: every test when the arguments past the program's name name
-/// none, else those they name.
-chosen := (args: std.os.Args, name: &[u8]) -> bool {
-    if args.len() <= 1 { return true; }
-    for i in 1..args.len() {
-        if .some(arg) = args.get(i) {
-            if arg == name { return true; }
-        }
-    }
-    false
 };
 
 /// Writes `line` and a line break.

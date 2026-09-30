@@ -121,7 +121,7 @@ part: ($T: type, v: &T, $variant: usize, $index: usize) -> ?&Part(T, variant, in
 Parts: ($T: type, $variant: usize) -> type = _;
 /// The value of `T` that is its variant `variant` holding `parts`: what `part` takes apart.
 make: ($T: type, $variant: usize, parts: Parts(T, variant)) -> T = _;
-/// The item types of the tuple type `T`, in order.
+/// The item types of the tuple type `T`, in order; none for another type.
 items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.

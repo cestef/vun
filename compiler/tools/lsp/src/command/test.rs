@@ -3,7 +3,7 @@
 //! beside the document as it comes.
 
 use vun_data::{FromData, ToData};
-use vun_driver::testing::{Outcome, Place, Ran, Said, Trapped};
+use vun_driver::testing::{Options, Outcome, Place, Ran, Said, Trapped};
 use vun_driver::view::View;
 use vun_lsp_protocol::base::{Position, PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::command::CodeLens;
@@ -67,7 +67,10 @@ impl Server<'_> {
             return self.show(&path);
         };
         drop(std::mem::take(&mut self.session.diag));
-        let run = self.session.run_tests(&program, [&tested.name]).map_err(Failure::unwritten)?;
+        let run = self
+            .session
+            .run_tests(&program, [&tested.name], Options::default())
+            .map_err(Failure::unwritten)?;
         let mut errors = output.try_clone().map_err(Failure::unwritten)?;
         let (events, uri) = (self.events.clone(), tested.text_document.uri.clone());
         std::thread::spawn(move || match run.report(&mut Shell::plain(&mut output, &mut errors)) {

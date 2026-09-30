@@ -12,6 +12,7 @@ pub mod fmt_json_Parts;
 pub mod fmt_json_array_json;
 pub mod fmt_json_bool_json;
 pub mod fmt_json_derive;
+pub mod fmt_json_float_json;
 pub mod fmt_json_int_json;
 pub mod fmt_json_option_json;
 pub mod fmt_json_slice_json;

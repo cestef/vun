@@ -6,7 +6,37 @@ mod report;
 
 pub use report::{Reported, Run};
 
+use vun_command::{Args, Param, Values};
 use vun_data::{FromData, ToData};
+
+pub const SEED: Param = Param::option("seed")
+    .about("draw the cases of every property from this seed, as a falsified one reports it")
+    .values(Values::Count);
+pub const CASES: Param = Param::option("cases")
+    .about("how many cases of each property to run; 100 if not given")
+    .values(Values::Count);
+
+/// How a run of the tests' program is asked for besides the tests it names: the options
+/// `std.testing.Options` reads from the program's arguments.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Options {
+    pub seed: Option<u64>,
+    pub cases: Option<u64>,
+}
+
+impl Options {
+    /// The options a command line gives.
+    #[must_use]
+    pub fn of(args: &Args) -> Self {
+        Self { seed: args.count(&SEED), cases: args.count(&CASES) }
+    }
+
+    /// Its arguments to the tests' program: each option given, as written, and its number.
+    fn args(self) -> impl Iterator<Item = String> {
+        let given = [(SEED, self.seed), (CASES, self.cases)].into_iter();
+        given.filter_map(|(param, n)| Some([param.long_form(), n?.to_string()])).flatten()
+    }
+}
 
 /// A line the runner writes (`std.testing.Line`): a test run, then the totals.
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]

@@ -54,6 +54,7 @@ impl Param {
     fn nu_shape(&self, command: &str, completers: &mut Vec<Completer>) -> String {
         match self.values {
             Values::Text => "string".to_owned(),
+            Values::Count => "int".to_owned(),
             Values::Path(_) => "path".to_owned(),
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => {
                 let completer = format!("nu-complete {command} {}", self.name);

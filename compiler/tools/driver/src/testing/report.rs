@@ -9,7 +9,7 @@ use std::process::Child;
 use vun_data::{Object, ToData};
 use vun_term::{Document, Noun, Record, Shell, Status, Style, Text, Verb};
 
-use super::{Falsified, Line, Outcome, Ran, Totals};
+use super::{Falsified, Line, Options, Outcome, Ran, Totals};
 use crate::Session;
 
 const PASSED: Noun = Noun { one: "passed", many: "passed" };
@@ -26,7 +26,8 @@ pub struct Run {
 }
 
 impl Session {
-    /// Starts `program`, the tests' program, running the tests `names`, every one if none.
+    /// Starts `program`, the tests' program, running the tests `names`, every one if none, as
+    /// `options` ask.
     ///
     /// # Errors
     /// Fails when the program cannot be started.
@@ -34,9 +35,12 @@ impl Session {
         &self,
         program: &Path,
         names: impl IntoIterator<Item = S>,
+        options: Options,
     ) -> io::Result<Run> {
         let (reader, writer) = io::pipe()?;
-        let child = self.command(program).args(names).stdout(writer.try_clone()?).stderr(writer).spawn()?;
+        let mut command = self.command(program);
+        command.args(names).args(options.args());
+        let child = command.stdout(writer.try_clone()?).stderr(writer).spawn()?;
         Ok(Run { program: program.to_path_buf(), child, lines: BufReader::new(reader) })
     }
 }

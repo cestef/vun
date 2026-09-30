@@ -96,6 +96,7 @@ cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] [--t
 cargo run -q -p vun-cli -- debug dump tokens|cst|manifest|plan|hir|types|values|mir|layout|program|lir|code|frames <file>
 cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, as std.testing.runner runs them
+cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64 <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- toolchain components   # each component's status and what it handles

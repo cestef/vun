@@ -24,7 +24,7 @@ impl ApplyMeta for Meta {
         match (self, args) {
             (Self::items, [ty]) => match &*ty.as_type().ok_or(Unevaluated::Unsupported)? {
                 TyKind::Tuple(items) => Ok(Value::Array(items.iter().map(|&t| Value::Type(t)).collect())),
-                _ => Err(Unevaluated::Unsupported),
+                _ => Ok(Value::Array(Vec::new())),
             },
             // Reflection (spec 03, section 6).
             (Self::variants, [ty]) => env.variants(ty.as_type().ok_or(Unevaluated::Unsupported)?),

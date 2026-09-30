@@ -1,8 +1,8 @@
 //! Values made from parts, as reflection gives them: the variant of a type holding a tuple of its
-//! parts, what `lang.meta.part` takes apart.
+//! parts, what `lang.meta.part` takes apart; a tuple is made of its items.
 
 use vun_sema_ty::trap::{Reason, Unevaluated};
-use vun_sema_ty::{NominalKind, Ty, TyKind, Value};
+use vun_sema_ty::{Nominal, NominalKind, Ty, TyKind, Value};
 
 use super::Variant;
 use crate::env::Env;
@@ -21,10 +21,11 @@ impl Env<'_, '_> {
         let Value::Tuple(items) = parts else { return Err(Unevaluated::Unsupported) };
         let variant = self.variant_at(ty, variant)?;
         Ok(match &*ty {
-            TyKind::Nominal(n) if n.kind == NominalKind::Struct => {
+            TyKind::Nominal(Nominal { kind: NominalKind::Struct, .. }) | TyKind::Record(_) => {
                 let names = variant.parts.iter().map(|p| p.name);
                 Value::Struct { ty, fields: names.zip(items.iter().cloned()).collect() }
             }
+            TyKind::Tuple(_) => Value::Tuple(items.clone()),
             _ => Value::Variant { ty, name: variant.name, payload: items.clone() },
         })
     }

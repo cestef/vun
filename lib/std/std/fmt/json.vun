@@ -1,16 +1,17 @@
 //! JSON (RFC 8259) written from typed values, each type writing itself through `Json`: an integer
-//! is a number, a `bool` `true` or `false`, bytes a string, another sequence an array and an
-//! option its value or `null`. `derive(T)` writes a struct as an object of its fields and an
-//! enum's value as its variant's name, or, where the variant holds parts, as an object naming it;
-//! a struct or an enum without a `Json` of its own is written as `derive(T)` writes it.
+//! is a number, a float a string of its exact hexadecimal form, a `bool` `true` or `false`, bytes
+//! a string, another sequence an array and an option its value or `null`. `derive(T)` writes a
+//! struct or a record as an object of its fields, a tuple as an array of its items, and an enum's
+//! value as its variant's name, or, where the variant holds parts, as an object naming it; a type
+//! of these without a `Json` of its own is written as `derive(T)` writes it.
 
 /// How a value is written as JSON.
 Json := interface(($Self: type) -> type { struct {
     json: ($W: std.fmt.Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
 } });
 
-/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct or an enum without one, as
-/// `derive(T)` writes it.
+/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct, an enum, a tuple or a record
+/// without one, as `derive(T)` writes it.
 write := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T) -> Result((), W.Error) {
     $if lang.meta.variants(T).len() == 0 or lang.meta.implements(Json, T) {
         value.json(w)
@@ -71,6 +72,41 @@ int_json := ($r: lang.Range) -> type { struct {
     json := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
 } };
 
+/// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has
+/// and a JSON number does not: an infinity is `"inf"` or `"-inf"`, a NaN `"nan"`.
+#[impl(Json(lang.Float))]
+float_json := ($bits: Int(1..)) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &lang.Float(bits), w: &mut W) -> Result((), W.Error) {
+        $F := lang.Float(bits);
+        $fraction := lang.float.fraction_bits(F);
+        $top := (1 << (bits - fraction - 1)) - 1;
+        $bias := (1 << (bits - fraction - 2)) - 1;
+        $digits := (fraction + 3) / 4;
+        b := lang.float.bits(F, value.*);
+        e := (b >> fraction) & top;
+        m := b & ((1 << fraction) - 1);
+        w.write_all(quote)?;
+        if b >> (bits - 1) == 1 and !(e == top and m != 0) { w.write_all("-")?; }
+        if e == top {
+            w.write_all(if m == 0 { "inf" } else { "nan" })?;
+            return w.write_all(quote);
+        }
+        w.write_all(if e == 0 { "0x0" } else { "0x1" })?;
+        // The fraction's hexadecimal digits, most significant first, trailing zeros left out.
+        mut shown: usize = digits;
+        for shown > 0 and ((m << (digits * 4 - fraction)) >> ((digits - shown) * 4)) % 16 == 0 { shown -= 1; }
+        if shown > 0 { w.write_all(".")?; }
+        for i in 0..shown {
+            d := (((m << (digits * 4 - fraction)) >> ((digits - 1 - i) * 4)) % 16).to(usize);
+            w.write_all(hex[d..d + 1])?;
+        }
+        power: i32 = if e == 0 { if m == 0 { 0 } else { 1 - bias } } else { (e - bias).to(i32) };
+        w.write_all(if power < 0 { "p" } else { "p+" })?;
+        power.format(w)?;
+        w.write_all(quote)
+    };
+} };
+
 #[impl(Json(bool))]
 bool_json := struct {
     json := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
@@ -113,8 +149,8 @@ option_json := ($T: type) -> type { struct {
     };
 } };
 
-/// A `Json` witness for `T` by reflection: a struct is an object of its fields, each by its own
-/// `Json`; an enum's variant is its name, or, holding parts, an object whose one member is named
+/// A `Json` witness for `T` by reflection: a struct or a record is an object of its fields, each
+/// by its own `Json`, a tuple an array of its items; an enum's variant is its name, or, holding parts, an object whose one member is named
 /// by it and holds its part, or the array of its parts.
 /// `#[impl(std.fmt.json.Json(Line))] line_json := std.fmt.json.derive(Line);`
 derive := ($T: type) -> type { struct {
@@ -123,6 +159,7 @@ derive := ($T: type) -> type { struct {
         $for v in lang.meta.variants(T) {
             if at == v.index {
                 $if v.name.len() == 0 {
+                    $if lang.meta.items(T).len() > 0 { return parts(W, T, w, value, v, .array); }
                     return parts(W, T, w, value, v, .object);
                 } else {
                     $if v.parts.len() == 0 { return string(w, v.name); }

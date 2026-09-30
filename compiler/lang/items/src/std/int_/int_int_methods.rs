@@ -13,3 +13,6 @@ pub const nearest: Item = Item::new(&["std", "int", "int_methods", "nearest"]);
 /// The integer whose storage holds `bytes`, least significant first: its first
 /// `lang.meta.size(Int(r))` bytes, which it must have.
 pub const from_le: Item = Item::new(&["std", "int", "int_methods", "from_le"]);
+/// The integer the decimal digits `text` write; `.none` for an empty text, one holding
+/// anything but digits, or a number outside `Int(r)` or past `u64`.
+pub const parse: Item = Item::new(&["std", "int", "int_methods", "parse"]);

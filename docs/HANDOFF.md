@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 684 tests pass; clippy,
+Everything is committed in the main chain; no `jj` workspace holds work. 689 tests pass; clippy,
 `lines` and `layers` are clean; the corpus has 312 passing programs and 2 planned, and LIR
 lowers every function the corpus reaches.
 
@@ -21,7 +21,19 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: property tests (361). A test with parameters runs over 100 generated cases, each on
+Last landed: literals identified by their instantiation (362) and property tests' gaps (363). A
+function literal, closure or type literal in a body with `$` parameters and run-time ones is
+evaluated under the body's instantiation (`Func::within` and a nominal type's identity hold an
+`Instantiation`; a compile-time call is the one binding every parameter), so `() -> u16 { n + n }`
+in `($n: u8) -> u16` builds and `struct { v: [n]u8 }` there is a type per `n`; the test runner's
+case is a closure again. Properties now generate floats (their encoding one choice, JSON as the
+exact hexadecimal form), arrays, tuples and records (reflection's one shape covers both), and
+borrowing parameters, lent what the case holds (`Lent` on `lang.mem.Ref`, `Store` for `[T]`, a
+prefix of up to 32 items), so fuzz targets (`&[u8]`) run as properties; `#[test.gen(g)]` picks a
+parameter's generator (attributes are typed before they are evaluated); `vun test --seed n
+--cases n` (`std.testing.Options`, `vun_command::Values::Count`). On the way: `Int(r).parse`, and a
+MIR temporary holding an expression's value takes its type (`d < "0"[0]` did not build). Before
+that, property tests (361). A test with parameters runs over 100 generated cases, each on
 its own thread; values come from `std.testing.gen` (a type's `Arbitrary`, or reflection through
 `lang.meta.make`) reading a recorded choice stream, and the first failing case is shrunk on its
 choices, reported once with its arguments as JSON (`(x: u8) { assert(x < 200); }` reports
@@ -95,23 +107,18 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are),
 359 (typing's typed reasons, generic functions' own type; its type part approved) and 360 (reasons
 in generic bodies, `W.Error` through the requirements), 361 (property tests, `lang.meta.params`,
-`make`, `implements`, `f.call(t)` on callables, quiet threads). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+`make`, `implements`, `f.call(t)` on callables, quiet threads), 362 (literals identified by
+their instantiation) and 363 (property generators, `test.gen`, `--seed` and `--cases`, tuples and
+records in reflection's shape, floats in JSON). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
 
-- A function literal or closure written in a generic function's body is evaluated outside any
-  call (`Func::within` is `None`): `Env::inside` binds the function's `$` parameters but leaves
-  `instance` as it was, and `Func::within` is an `Instance`, whose arguments are all values,
-  while a body with run-time parameters is an `Instantiation` (`Vec<Option<Value>>`). So a
-  function literal there cannot read the body's `$` parameters once built, and a closure there is
-  typed against the plain generic body (`() -> u16 { n + n }` inside `($n: u8) -> u16` does not
-  lower). A `struct` literal in such a body is likely identified the same for every
-  instantiation (decision 28). The fix is to identify a body's literals by its instantiation:
-  unify `Instance` and `Instantiation`, or let `within` hold the latter (about 60 uses of
-  `Instance`). `std.testing.property` works around it with a named `Case` type.
 - `R` of `$F: lang.ops.Call((), R)` is inferred from functions and closures, not from a struct's
-  `Call` impl: `sys.spawn((), Case(F, A), &mut case)` writes its `$` arguments.
+  `Call` impl: a call passing a struct that implements `Call` writes its `$` arguments.
+- A declaration destructuring into `mut` binders, `(mut a, mut b) := (false, false);`, is typed
+  but not lowered ("not supported in compiled code yet"); `std.testing.Options.chosen` declares
+  them one by one.
 
 - A generic body is typed only as far as its `$` values are not needed: a local of an
   unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
@@ -168,12 +175,14 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 ## Running tests: what is left
 
 Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
-- Properties: no generators yet for arrays, slices, tuples or floats (`Arbitrary` impls for
-  `lang.mem.Array` and `Slice` need a run-time loop filling an array, not a `$for` of `n` steps);
-  no `--seed` or case count chosen for a run; no `#[test.gen(...)]`; the language server's lens
-  shows `falsified` and the trap, not the arguments.
-- Fuzz targets (`&[u8]`), `Bench` and `Sim` do not run: the runner treats every test with
-  parameters as a property.
+- Properties: the language server's lens shows `falsified` and the trap, not the arguments, and
+  runs with the default seed and count. An integer's choice is any `u64` wrapped into its range
+  (`lang` gives no range's bounds to draw within), so shrinking a wide integer walks through
+  values outside it; a float's is bounded by its width. Only shared borrows are lent (`&T`,
+  `&[T]`), and a slice holds at most `std.testing.property.longest` (32) items.
+- Fuzz targets (`&[u8]`) run as properties under `vun test`; the coverage-guided fuzzer (`vun
+  fuzz`) and the corpus in `fuzz/<test path>/` do not exist. `Bench` and `Sim` do not exist:
+  the runner treats every test with parameters as a property.
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
@@ -182,7 +191,10 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   driver runs from an empty `target/tmp/memos` on `petal.wg` (`VUN_QUERY_CHECK=1`), then passed
   on a third; alone, or with the `testing` or `runtime` tests, it passes. On 2026-09-30 it failed
   in 2 of 4 full memo-checked runs on `petal.wg` and passed 5 of 5 alone. Shared entries are
-  content-addressed, so a rewritten entry is not the cause; not found yet.
+  content-addressed, so a rewritten entry is not the cause; not found yet. It reproduces: after a
+  full `VUN_QUERY_CHECK=1` driver run, the test alone fails every time with the memos that run
+  left in `target/tmp/memos` (4 of 4 on `petal.wg`, on 361 and on 363 alike), and passes every
+  time once they are removed. It passed with `VUN_LOG=vun_query=debug` on, which slows it.
 
 ## Next steps, most useful first
 

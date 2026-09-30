@@ -3,7 +3,8 @@
 
 use vun_build::layout::MANIFEST;
 use vun_driver::Codegen;
-use vun_driver::testing::{Ignored, Line, Outcome, Place, Ran, Said, Totals, Trapped};
+use vun_driver::testing::{Ignored, Line, Options, Outcome, Place, Ran, Said, Totals, Trapped};
+use vun_term::Shell;
 
 use crate::backend::BACKENDS;
 use crate::common::Fixture;
@@ -114,19 +115,37 @@ fn a_file_outside_any_package_names_no_tests() {
     assert_eq!(reported, [vun_diag::errors::TEST_NO_NAMESPACE]);
 }
 
-/// Three properties: one holding for every pair of bytes, and two falsified, each shrunk to the
-/// least arguments that fail.
+/// Properties over bytes, a struct, a tuple, an array, a float and a slice: two holding, one of
+/// them over a generator a parameter names, and the others falsified, each shrunk to the least
+/// arguments that fail.
 const PROPERTIES: &str = "\
 Pair := struct { a: u8, flag: bool };
 
+digit := (c: &mut std.testing.Choices) -> u8 { c.draw(9).to(u8) };
+
 #[test]
 holds := (x: u8, y: u8) { assert(x + y <= 510); };
+
+#[test]
+digits := (#[test.gen(digit)] d: u8) { assert(d < 10); };
 
 #[test]
 bounded := (x: u8) { assert(x < 200); };
 
 #[test]
 paired := (p: Pair) { assert(!(p.flag and p.a > 10)); };
+
+#[test]
+tupled := (t: (u8, bool)) { assert(!(t.1 and t.0 > 5)); };
+
+#[test]
+arrays := (xs: [3]u16) { assert(xs[1] < 100); };
+
+#[test]
+floats := (x: f32) { assert(!(x > 1.0)); };
+
+#[test]
+fuzzed := (input: &[u8]) { assert(input.len() < 3); };
 ";
 
 #[test]
@@ -146,7 +165,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         let file = session.load(&manifest).unwrap();
         let ns = session.tested(file, Some(fixture.root.path())).unwrap();
         let program = session.build_tests(file, ns, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-        let run = std::process::Command::new(program).output().unwrap();
+        let run = std::process::Command::new(&program).output().unwrap();
         let stdout = String::from_utf8(run.stdout).unwrap();
         let (lines, written): (Vec<_>, Vec<_>) = stdout.lines().partition(|l| Line::of(l).is_some());
         let lines: Vec<Line> = lines.into_iter().filter_map(Line::of).collect();
@@ -164,18 +183,44 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             |name: &str, condition: &str| (name.to_owned(), Some(format!("assertion failed: `{condition}`")));
         let expected = [
             ("holds".to_owned(), None),
+            ("digits".to_owned(), None),
             failed("bounded", "x < 200"),
             failed("paired", "!(p.flag and p.a > 10)"),
+            failed("tupled", "!(t.1 and t.0 > 5)"),
+            failed("arrays", "xs[1] < 100"),
+            failed("floats", "!(x > 1.0)"),
+            failed("fuzzed", "input.len() < 3"),
         ];
         assert_eq!(said, expected, "{backend}");
         let totals = lines.iter().find_map(|l| match l {
             Line::Totals(totals) => Some(*totals),
             Line::Test(_) => None,
         });
-        assert_eq!(totals, Some(Totals { passed: 1, trapped: 0, falsified: 2, ignored: 0 }), "{backend}");
+        assert_eq!(totals, Some(Totals { passed: 2, trapped: 0, falsified: 6, ignored: 0 }), "{backend}");
         // The smallest failing arguments, each written before its test's line.
-        let shrunk = ["x = 200", "p = {\"a\":11,\"flag\":true}"];
+        let shrunk = [
+            "x = 200",
+            "p = {\"a\":11,\"flag\":true}",
+            "t = [6,true]",
+            "xs = [0,100,0]",
+            "x = \"0x1.000002p+0\"",
+            "input = \"\\u0000\\u0000\\u0000\"",
+        ];
         assert!(shrunk.iter().all(|s| written.contains(s)), "{backend}: {written:#?}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
+        // A run asking for a seed reports it; one asking for no cases falsifies nothing.
+        let outcomes = |names: &[&str], options: Options| {
+            let (mut out, mut err) = (Vec::new(), Vec::new());
+            let run = session.run_tests(&program, names, options).unwrap();
+            let reported = run.report(&mut Shell::plain(&mut out, &mut err)).unwrap();
+            reported.ran.into_iter().map(|ran| ran.outcome).collect::<Vec<_>>()
+        };
+        let seeded = outcomes(&["bounded"], Options { seed: Some(7), cases: None });
+        assert!(
+            matches!(seeded.as_slice(), [Outcome::Falsified(f)] if f.seed == 7),
+            "{backend}: {seeded:#?}"
+        );
+        let none = outcomes(&[], Options { seed: None, cases: Some(0) });
+        assert!(none.len() == 8 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
     }
 }

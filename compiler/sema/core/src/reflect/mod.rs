@@ -1,6 +1,7 @@
-//! Reflection (spec 03, section 6): types turned into plain data. Every value of a `struct` or
-//! `enum` type is one variant of its type and the parts that variant holds; a struct is one
-//! variant, its fields its parts. What a primitive gives is typed by its declaration in
+//! Reflection (spec 03, section 6): types turned into plain data. Every value of a `struct`,
+//! `enum`, tuple or record type is one variant of its type and the parts that variant holds; a
+//! struct is one variant, its fields its parts, as a record is, and a tuple one whose parts are
+//! its items. What a primitive gives is typed by its declaration in
 //! `lang.meta`, so the descriptor structs are ordinary `lang` declarations whose fields the
 //! compiler fills, each named by its handle.
 
@@ -27,12 +28,26 @@ struct Part {
     attrs: Vec<Value>,
 }
 
-/// A variant of a type: an enum's, or the one a struct is, named by nothing.
+/// A variant of a type: an enum's, or the one a struct, a tuple or a record is, named by nothing.
 struct Variant {
     name: Symbol,
     index: usize,
     parts: Vec<Part>,
     attrs: Vec<Value>,
+}
+
+impl Part {
+    /// The part at `index`, named by its position: an item of a payload or of a tuple.
+    fn at(index: usize, ty: Result<Ty, Unevaluated>) -> Self {
+        Self { name: Symbol::intern(&index.to_string()), index, ty, attrs: Vec::new() }
+    }
+}
+
+impl Variant {
+    /// The one variant of a type that has no others, holding `parts`.
+    fn alone(parts: Vec<Part>) -> Self {
+        Self { name: Symbol::intern(""), index: 0, parts, attrs: Vec::new() }
+    }
 }
 
 /// A member of a namespace: a declaration with the values of its attributes, or a namespace below.

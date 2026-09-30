@@ -1,6 +1,7 @@
 //! Property tests (spec 11, section 2): a test's arguments are generated from its parameters'
 //! types, each read from a stream of choices, so the case that fails is replayed and shrunk as
-//! its choices, whatever generated it.
+//! its choices, whatever generated it. A parameter whose type borrows, such as `&[u8]`, is lent
+//! what the case holds for it (`lend`).
 
 /// How many choices a case takes at most; past them, each is 0.
 room: usize = 256;
@@ -8,7 +9,8 @@ room: usize = 256;
 /// The greatest choice.
 widest: u64 = 0xFFFF_FFFF_FFFF_FFFF;
 
-/// How many cases a property test runs, each with arguments generated anew.
+/// How many cases a property test runs, each with arguments generated anew, unless the run asks
+/// for another count.
 cases: usize = 100;
 
 /// How many cases shrinking a failing one runs at most.
@@ -98,6 +100,33 @@ derived := ($T: type, c: &mut Choices) -> T {
     unsafe lang.hint.unreachable()
 };
 
+/// A float of `lang.Float(bits)`: its encoding chosen whole, so the least choice is `0.0` and a
+/// smaller positive choice a smaller positive float.
+#[impl(Arbitrary(lang.Float))]
+float_arbitrary := ($bits: Int(1..)) -> type { struct {
+    arbitrary := (c: &mut Choices) -> lang.Float(bits) {
+        encoding := c.draw(((1 << bits) - 1).sat(u64));
+        lang.float.from_bits(lang.Float(bits), encoding.wrap(lang.float.Bits(lang.Float(bits))))
+    };
+} };
+
+/// An array of `n` items, each generated in turn.
+#[impl(Arbitrary(lang.mem.Array))]
+array_arbitrary := ($n: Int(0..), $T: type) -> type { struct {
+    arbitrary := (c: &mut Choices) -> [n]T {
+        $if n == 0 {
+            []
+        } else {
+            mut items := [gen(T, c); n];
+            for i in 1..n { items[i] = gen(T, c); }
+            items
+        }
+    };
+} };
+
+/// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
+Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
+
 /// An integer of `Int(r)`: a choice reduced into the range as `wrap` reduces (decision 331), so
 /// the least choice is the integer of the range congruent to 0. A range wider than 64 bits has
 /// only its low 64 bits chosen.
@@ -106,33 +135,35 @@ int_arbitrary := ($r: lang.Range) -> type { struct {
     arbitrary := (c: &mut Choices) -> Int(r) { c.draw(widest).wrap(Int(r)) };
 } };
 
-/// The tuple of the types of `f`'s parameters: what a call of it passes.
-Args := ($F: type, $f: F) -> type { ($for p in lang.meta.params(F, f) { p.type },) };
+/// The tuple of what a case of `f` holds for each of its parameters.
+Args := ($F: type, $f: F) -> type { ($for p in lang.meta.params(F, f) { std.testing.property.lend.Held(p.type) },) };
 
-/// Arguments for `f` read from `c`, each generated from its parameter's type.
+/// What a case of `f` holds for each of its parameters, read from `c`.
 arguments := ($F: type, $f: F, c: &mut Choices) -> Args(F, f) {
-    ($for p in lang.meta.params(F, f) { gen(p.type, c) },)
+    ($for p in lang.meta.params(F, f) { argument(p, c) },)
 };
 
-/// A test and the arguments of one of its cases: what a thread runs, reporting a trap unless
-/// `quiet`.
-Case := ($F: type, $A: type) -> type { struct { f: F, args: A, quiet: bool } };
-
-/// A case runs as a call of its test with its arguments.
-#[impl(lang.ops.Call((), ())(Case))]
-case_call := ($F: type, $A: type) -> type { struct {
-    call := (self: &mut Case(F, A), args: ()) {
-        std.os.thread.reporting.set(!self.quiet);
-        _ = self.f.call(self.args);
-    };
-} };
+/// What a case holds for the parameter `p`, read from `c`: by the generator it names, or by its
+/// type.
+argument := ($p: lang.meta.Field, c: &mut Choices) -> std.testing.property.lend.Held(p.type) {
+    $if .some(g) = std.meta.attr(lang.meta.Field, p, Generated(std.testing.property.lend.Held(p.type))) {
+        with := g.with;
+        with(c)
+    } else {
+        gen(std.testing.property.lend.Held(p.type), c)
+    }
+};
 
 /// Runs `f` with arguments read from `c`, on a thread of its own, reporting a trap unless
 /// `quiet`: the trap that ended it, if one did. Where the system runs one thread, on the calling
 /// one, and a trap ends the run.
 attempt := ($F: type, $f: F, sys: &mut std.os.System, c: &mut Choices, quiet: bool) -> ?lang.panic.Trap {
-    mut case := Case(F, Args(F, f)){ .f = f, .args = arguments(F, f, c), .quiet = quiet };
-    match sys.spawn((), Case(F, Args(F, f)), &mut case) {
+    held := arguments(F, f, c);
+    mut case := [held, quiet] () {
+        std.os.thread.reporting.set(!quiet);
+        _ = f.call(($for p in lang.meta.params(F, f) { std.testing.property.lend.passed(p.type, &held.$(p.index)) },));
+    };
+    match sys.spawn(&mut case) {
         .ok(t) => match t.join() {
             .ok(_) => .none,
             .err(trap) => .some(trap),
@@ -153,12 +184,12 @@ Failing := struct {
     shrinks: usize,
 };
 
-/// The property test `f` run over `cases` cases drawn from `seed`, each on a thread of its own:
+/// The property test `f` run over `count` cases drawn from `seed`, each on a thread of its own:
 /// `.none` when none trapped, else the first that did, shrunk, with the case it was. Only the
 /// smallest case reports its trap, run once more.
-check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64) -> ?(Failing, usize) {
+check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, count: usize) -> ?(Failing, usize) {
     mut master := seed;
-    for case in 0..cases {
+    for case in 0..count {
         mut c := Choices.seeded(next(&mut master));
         if .some(trap) = attempt(F, f, sys, &mut c, true) {
             smallest := shrink(F, f, sys, .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 });
@@ -219,11 +250,11 @@ retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[room]u64, len: us
 /// its own.
 write := ($F: type, $f: F, w: &mut std.os.Stream, failing: &Failing) -> Result((), std.os.Error) {
     mut c := Choices.replaying(&failing.taken, failing.len);
-    args := arguments(F, f, &mut c);
+    held := arguments(F, f, &mut c);
     $for p in lang.meta.params(F, f) {
         w.write_all(p.name)?;
         w.write_all(" = ")?;
-        std.fmt.json.write(w, &args.$(p.index))?;
+        std.fmt.json.write(w, &std.testing.property.lend.passed(p.type, &held.$(p.index)))?;
         w.write_all("\n")?;
     }
     .ok(())

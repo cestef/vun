@@ -59,7 +59,8 @@ election := (s: &mut testing.Sim) {
 | `&mut testing.Bench` | benchmark | `vun bench` |
 | `&mut testing.Sim` | simulation | `vun test`, `vun sim --seeds N` |
 
-Attributes: `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout,
+Attributes: `#[test.gen(g)]` on a parameter of a property generates its argument with `g`,
+`(c: &mut testing.Choices) -> T`, rather than from its type; `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout,
 where a mode counts steps (`interp`); `#[test.ignore("why")]` keeps a test from running, the
 runner reporting it with its reason (`std.testing.Ignored`, read with `std.meta.attr`);
 `#[test.on(.target)]` restricts a test to target runs.
@@ -71,9 +72,13 @@ runner reporting it with its reason (`std.testing.Ignored`, read with `std.meta.
 A test with parameters is a **property**: the runner calls it with arguments generated from its
 parameters' types (`lang.meta.params`), over `std.testing.property.cases` cases (100), each on a
 thread of its own. `testing.gen(T, c)` makes a value of `T`: by `T`'s `testing.Arbitrary` where
-it has one, and otherwise, for a struct or an enum, by reflection, a variant, then each of its
-parts (`lang.meta.make`). An integer type's `Arbitrary` reduces a choice into its range as `wrap`
-does, so an `Int(0..=100)` is never 101. Every value is read from a **choice stream**
+it has one, and otherwise, for a struct, an enum, a tuple or a record, by reflection, a variant,
+then each of its parts (`lang.meta.make`). The `Arbitrary` impls of `std` cover integers, which
+reduce a choice into their range as `wrap` does (an `Int(0..=100)` is never 101), floats, whose
+encoding is one choice (so the least is `0.0`), and arrays, item by item. A parameter whose type
+borrows is lent what its case holds (`testing.property.lend.Lent`): `&T` holds a `T`, and a type with
+no value of its own stores one its way (`testing.property.lend.Store`), a slice `[T]` as a prefix of
+up to 32 generated items, so `&[u8]` is lent 0 to 32 bytes. Every value is read from a **choice stream**
 (`testing.Choices`: each choice a `u64` at most a bound, drawn from a seeded splitmix64 generator
 and recorded), so:
 
@@ -86,11 +91,12 @@ and recorded), so:
   and the value as JSON (`std.fmt.json.write`, derived by reflection where a type has no
   `Json`), before the test's line;
 - a test's cases are drawn from a seed, the FNV-1a hash of its name, so every run draws the same
-  cases; the line reports the seed and the case.
+  cases; the line reports the seed and the case. `vun test --seed n` draws every property's
+  cases from `n` instead, replaying a reported failure, and `--cases n` runs `n` cases of each
+  (`std.testing.Options`, read from the runner's arguments; decision 363).
 
-Not yet: generators for arrays, slices, tuples and floats, a seed or a count of cases chosen for
-a run, `#[test.gen(...)]` choosing a parameter's generator, and the same test run under a
-coverage-guided fuzzer, sharing one corpus with the seeded runs (decision 361).
+A fuzz target (`&[u8]`) runs under `vun test` as the property it is. Not yet: the same test run
+under a coverage-guided fuzzer, sharing one corpus with the seeded runs.
 
 Corpus and crash inputs live in `fuzz/<test path>/`, are committed, and replay as regressions on
 every `vun test`.
@@ -117,8 +123,8 @@ program's table says it (`std.trace.Site.of`), or for a property
 `{"totals":{"passed":n,"trapped":n,"falsified":n,"ignored":n}}`. The lines are `std.testing.Line` written by
 `std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
 program's standard output and error as one stream, so what a test writes, the backtrace of its
-trap included, comes before its line and is reported with it. Unit tests and properties run;
-fuzz targets, benchmarks and simulations do not yet.
+trap included, comes before its line and is reported with it. Unit tests, properties and fuzz
+targets run; benchmarks and simulations do not yet.
 
 ## 4. Deterministic simulation
 

@@ -15,6 +15,7 @@ const KEEP: Param = Param::option("keep").values(Values::Catalog(Catalog {
     what: "an error",
     declared_in: "errors.vun",
 }));
+const TIMES: Param = Param::option("times").about("how many times").values(Values::Count);
 /// Named as the root's `--version` flag, but an option of its command.
 const RELEASE: Param = Param::option("version").about("which release");
 
@@ -34,7 +35,7 @@ const PROGRAM: Program<()> = Program {
                 "print things",
                 &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
-            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, REST]).aliases(&["x"]),
+            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, TIMES, REST]).aliases(&["x"]),
         ],
     )
     .params(&[DEEP]),
@@ -161,4 +162,14 @@ fn a_catalog_is_checked_as_a_choice_and_described_rather_than_listed() {
     let page = selected.help(Detail::Long).to_string();
     assert!(page.contains("[values: an error, as `errors.vun` declares them]"), "{page}");
     assert!(!page.contains("names.duplicate"), "{page}");
+}
+
+#[test]
+fn a_count_is_checked_as_a_whole_number() {
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("x a.vun --times 3")) else { panic!("not a run") };
+    assert_eq!(args.count(&TIMES), Some(3));
+    assert_eq!(
+        error("x a.vun --times three"),
+        (errors::CLI_INVALID_VALUE, "write a whole number, such as `100`".to_owned())
+    );
 }

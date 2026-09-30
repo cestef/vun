@@ -6,11 +6,14 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.testing.property.lend`.
+pub const lend: Item = Item::new(&["std", "testing", "property", "lend"]);
 /// How many choices a case takes at most; past them, each is 0.
 pub const room: Item = Item::new(&["std", "testing", "property", "room"]);
 /// The greatest choice.
 pub const widest: Item = Item::new(&["std", "testing", "property", "widest"]);
-/// How many cases a property test runs, each with arguments generated anew.
+/// How many cases a property test runs, each with arguments generated anew, unless the run asks
+/// for another count.
 pub const cases: Item = Item::new(&["std", "testing", "property", "cases"]);
 /// How many cases shrinking a failing one runs at most.
 pub const tries: Item = Item::new(&["std", "testing", "property", "tries"]);
@@ -28,21 +31,30 @@ pub const r#gen: Item = Item::new(&["std", "testing", "property", "gen"]);
 /// A value of the struct or enum type `T` read from `c`: a variant, the first for the least
 /// choice, so that shrinking moves towards it, then each of its parts.
 pub const derived: Item = Item::new(&["std", "testing", "property", "derived"]);
+/// A float of `lang.Float(bits)`: its encoding chosen whole, so the least choice is `0.0` and a
+/// smaller positive choice a smaller positive float.
+pub const float_arbitrary: Item = Item::new(
+    &["std", "testing", "property", "float_arbitrary"],
+);
+/// An array of `n` items, each generated in turn.
+pub const array_arbitrary: Item = Item::new(
+    &["std", "testing", "property", "array_arbitrary"],
+);
+/// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
+pub const Generated: Item = Item::new(&["std", "testing", "property", "Generated"]);
 /// An integer of `Int(r)`: a choice reduced into the range as `wrap` reduces (decision 331), so
 /// the least choice is the integer of the range congruent to 0. A range wider than 64 bits has
 /// only its low 64 bits chosen.
 pub const int_arbitrary: Item = Item::new(
     &["std", "testing", "property", "int_arbitrary"],
 );
-/// The tuple of the types of `f`'s parameters: what a call of it passes.
+/// The tuple of what a case of `f` holds for each of its parameters.
 pub const Args: Item = Item::new(&["std", "testing", "property", "Args"]);
-/// Arguments for `f` read from `c`, each generated from its parameter's type.
+/// What a case of `f` holds for each of its parameters, read from `c`.
 pub const arguments: Item = Item::new(&["std", "testing", "property", "arguments"]);
-/// A test and the arguments of one of its cases: what a thread runs, reporting a trap unless
-/// `quiet`.
-pub const Case: Item = Item::new(&["std", "testing", "property", "Case"]);
-/// A case runs as a call of its test with its arguments.
-pub const case_call: Item = Item::new(&["std", "testing", "property", "case_call"]);
+/// What a case holds for the parameter `p`, read from `c`: by the generator it names, or by its
+/// type.
+pub const argument: Item = Item::new(&["std", "testing", "property", "argument"]);
 /// Runs `f` with arguments read from `c`, on a thread of its own, reporting a trap unless
 /// `quiet`: the trap that ended it, if one did. Where the system runs one thread, on the calling
 /// one, and a trap ends the run.
@@ -50,7 +62,7 @@ pub const attempt: Item = Item::new(&["std", "testing", "property", "attempt"]);
 /// A failing case: the choices it took, the trap that ended it, and how many smaller cases
 /// shrinking found before it.
 pub const Failing: Item = Item::new(&["std", "testing", "property", "Failing"]);
-/// The property test `f` run over `cases` cases drawn from `seed`, each on a thread of its own:
+/// The property test `f` run over `count` cases drawn from `seed`, each on a thread of its own:
 /// `.none` when none trapped, else the first that did, shrunk, with the case it was. Only the
 /// smallest case reports its trap, run once more.
 pub const check: Item = Item::new(&["std", "testing", "property", "check"]);

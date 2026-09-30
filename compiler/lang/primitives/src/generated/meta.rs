@@ -52,7 +52,7 @@ pub enum Meta {
     Parts,
     /// The value of `T` that is its variant `variant` holding `parts`: what `part` takes apart.
     make,
-    /// The item types of the tuple type `T`, in order.
+    /// The item types of the tuple type `T`, in order; none for another type.
     items,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
     /// written in, with its compile-time arguments.

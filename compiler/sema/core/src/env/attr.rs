@@ -6,6 +6,7 @@ use vun_primitives::Primitive;
 use vun_sema_ty::{Marker, Signature, Value};
 
 use super::Env;
+use crate::typeck::{Stage, Typer};
 
 impl Env<'_, '_> {
     /// The attributes of the literal `literal`: written on it (`#[kind.linear] struct { }`) or on
@@ -40,10 +41,16 @@ impl Env<'_, '_> {
     }
 
     /// The value of each of `attrs` that has one here: plain data, which its reader finds by
-    /// type (`#[Registers{ .class = .general }]`).
+    /// type (`#[Registers{ .class = .general }]`). Each is typed first, as a declaration's value
+    /// is, so a call inferring its `$` arguments has one (`#[test.gen(digit)]`).
     #[must_use]
     pub fn values(&self, attrs: &[ExprId]) -> Vec<Value> {
-        attrs.iter().filter_map(|&attr| self.eval(attr).ok()).collect()
+        let value = |attr: ExprId| {
+            let mut typer = Typer::new(self, Stage::Compile);
+            typer.typed(attr);
+            self.clone().typed_by(Some(typer.finish(0).found)).eval(attr).ok()
+        };
+        attrs.iter().filter_map(|&attr| value(attr)).collect()
     }
 
     /// The arguments of each attribute `primitive` among `attrs` whose arguments have a value
