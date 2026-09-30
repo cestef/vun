@@ -24,4 +24,4 @@ pub use shell::{Out, Shell, Verb, Verbosity};
 pub use style::Style;
 pub use table::{Align, Column, Table};
 pub use text::{Piece, Text};
-pub use units::{Bytes, Counted, Elapsed, Noun};
+pub use units::{Bytes, Counted, Elapsed, Nanos, Noun};

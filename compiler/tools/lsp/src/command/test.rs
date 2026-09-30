@@ -142,6 +142,7 @@ impl Server<'_> {
             Outcome::Ignored(_) => "ignored",
             Outcome::Trapped(_) => "trapped",
             Outcome::Falsified(_) => "falsified",
+            Outcome::Measured(_) => "measured",
         }
     }
 }

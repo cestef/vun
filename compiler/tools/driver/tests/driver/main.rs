@@ -7,6 +7,7 @@ mod add;
 mod asm;
 mod backend;
 mod bare;
+mod bench;
 mod bind;
 mod borrows;
 mod checks;

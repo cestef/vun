@@ -1,0 +1,94 @@
+//! Benchmarks (spec 11, section 5): a test whose one parameter is `&mut std.testing.Bench`. Run as
+//! a test, its loop runs the body once; measured (`vun bench`), the loop runs the body in batches,
+//! each as many times as all before it, until it has run `least` nanoseconds, and the benchmark
+//! reports how many times the body ran and how long that took. The clock is read between batches
+//! only, and the body never sees how many times it runs.
+
+/// How long a measured loop runs at least, in nanoseconds.
+least: u64 = 500 * std.time.nanos_per_milli;
+
+/// What a measured benchmark reports: how many times its body ran, and how long that took.
+Measured := struct {
+    iterations: u64,
+    nanos: u64,
+};
+
+#[impl(std.fmt.json.Json(Measured))]
+measured_json := std.fmt.json.derive(Measured);
+
+/// The loop of a benchmark: `for b.loop() { ... }`, set up once before it.
+Bench := struct {
+    /// Whether it is measured, rather than run once as a test.
+    measuring: bool,
+    /// When the loop started; `.none` before it does.
+    started: ?std.time.Instant = .none,
+    /// How many times the body ran in the batches that ended.
+    runs: u64 = 0,
+    /// How many times the body runs in the batch under way, and how many of those are left.
+    batch: u64 = 0,
+    left: u64 = 0,
+    /// How long the loop ran, once it ended.
+    nanos: u64 = 0,
+
+    /// Whether the body runs once more.
+    loop := (self: &mut Bench) -> bool {
+        if self.left > 0 {
+            self.left -|= 1;
+            return true;
+        }
+        now := match std.os.now(.monotonic) {
+            .ok(now) => now,
+            // Without a clock, it runs as a test does.
+            .err(_) => {
+                self.measuring = false;
+                std.time.Instant.at(0)
+            },
+        };
+        start := match self.started {
+            .some(start) => start,
+            .none => now,
+        };
+        self.started = .some(start);
+        self.runs +|= self.batch;
+        took := now.since(&start).as_nanos();
+        if self.runs > 0 and (!self.measuring or took >= least) {
+            self.nanos = took;
+            return false;
+        }
+        self.batch = if self.runs == 0 { 1 } else { self.runs };
+        self.left = (self.batch - 1).sat(u64);
+        true
+    };
+
+    /// Keeps what makes `value` from being optimized away, as though the loop read it.
+    keep := (self: &Bench, $T: type, value: &T) {
+        $if lang.meta.size(T) > 0 {
+            byte := unsafe lang.mem.cast(T, u8, lang.mem.pointer_to(T, value));
+            _ = unsafe lang.mem.volatile_load(u8, byte);
+        }
+    };
+};
+
+/// Whether `f` is a benchmark: its one parameter is `&mut Bench`.
+benchmark := ($F: type, $f: F) -> bool {
+    $params := lang.meta.params(F, f);
+    params.len() == 1 and params[0].type == &mut Bench
+};
+
+/// What became of the benchmark `f`, run on a thread of its own, measured or once as a test.
+/// Where the system runs one thread, on the calling one, and a trap ends the run.
+outcome := ($F: type, $f: F, sys: &mut std.os.System, measuring: bool) -> std.testing.Outcome {
+    mut run := [measuring] () -> Measured {
+        mut b := Bench{ .measuring = measuring };
+        f(&mut b);
+        .{ .iterations = b.runs, .nanos = b.nanos }
+    };
+    ran: Result(Measured, lang.panic.Trap) = match sys.spawn(&mut run) {
+        .ok(t) => t.join(),
+        .err(_) => .ok(run()),
+    };
+    match ran {
+        .ok(measured) => if measuring { .measured(measured) } else { .passed },
+        .err(trap) => .trapped(std.testing.trapped(trap)),
+    }
+};

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::Child;
 
 use vun_data::{Object, ToData};
-use vun_term::{Document, Noun, Record, Shell, Status, Style, Text, Verb};
+use vun_term::{Document, Nanos, Noun, Record, Shell, Status, Style, Text, Verb};
 
 use super::{Argument, Falsified, Line, Options, Outcome, Ran, Totals};
 use crate::Session;
@@ -16,6 +16,8 @@ const PASSED: Noun = Noun { one: "passed", many: "passed" };
 const TRAPPED: Noun = Noun { one: "trapped", many: "trapped" };
 const FALSIFIED: Noun = Noun { one: "falsified", many: "falsified" };
 const IGNORED: Noun = Noun { one: "ignored", many: "ignored" };
+const MEASURED: Noun = Noun { one: "measured", many: "measured" };
+const ITERATIONS: Noun = Noun { one: "iteration", many: "iterations" };
 
 /// The tests' program running, its standard output and error read as one stream: what a test
 /// writes, the backtrace of its trap included, comes before its line.
@@ -97,8 +99,8 @@ pub struct Tested {
 }
 
 impl Tested {
-    /// What its outcome says: why it was not run, or the trap's message and place, and for a
-    /// property the case that failed.
+    /// What its outcome says: why it was not run, or the trap's message and place, for a
+    /// property the case that failed, and for a benchmark what it measured.
     fn said(&self) -> Vec<Text> {
         let outcome = &self.ran.outcome;
         let ignored = match outcome {
@@ -117,8 +119,18 @@ impl Tested {
             )),
             _ => None,
         };
+        let measured = match outcome {
+            Outcome::Measured(measured) => {
+                let iterations = ITERATIONS.count(usize::try_from(measured.iterations).unwrap_or(usize::MAX));
+                Some(Text::from(format!(
+                    "{} per iteration, over {iterations}",
+                    Nanos(measured.per_iteration())
+                )))
+            }
+            _ => None,
+        };
         let arguments = self.arguments.iter().map(|a| Text::from(a.to_string()));
-        [ignored, message, at, case].into_iter().flatten().chain(arguments).collect()
+        [ignored, message, at, case, measured].into_iter().flatten().chain(arguments).collect()
     }
 }
 
@@ -151,11 +163,12 @@ impl Status for Tested {
             Outcome::Ignored(_) => Verb::warned("Ignored"),
             Outcome::Trapped(_) => Verb::failed("Trapped"),
             Outcome::Falsified(_) => Verb::failed("Falsified"),
+            Outcome::Measured(_) => Verb::good("Measured"),
         }
     }
 }
 
-/// How many tests passed, trapped, were falsified and were not run.
+/// How many tests passed, trapped, were falsified, were not run and were measured.
 struct Tally(Totals);
 
 impl Record for Tally {
@@ -164,20 +177,21 @@ impl Record for Tally {
     }
 
     fn text(&self) -> Text {
-        let Totals { passed, trapped, falsified, ignored } = self.0;
+        let Totals { passed, trapped, falsified, ignored, measured } = self.0;
         let counts = [
             PASSED.count(passed),
             TRAPPED.count(trapped),
             FALSIFIED.count(falsified),
             IGNORED.count(ignored),
+            MEASURED.count(measured),
         ];
         Text::join(counts.map(|count| Text::from(count.to_string())), ", ")
     }
 
     fn fields(&self) -> Object<'static> {
-        let Totals { passed, trapped, falsified, ignored } = self.0;
+        let Totals { passed, trapped, falsified, ignored, measured } = self.0;
         let object = Object::new().with("passed", passed).with("trapped", trapped);
-        object.with("falsified", falsified).with("ignored", ignored)
+        object.with("falsified", falsified).with("ignored", ignored).with("measured", measured)
     }
 }
 

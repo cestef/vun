@@ -6,6 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.testing.bench`.
+pub const bench: Item = Item::new(&["std", "testing", "bench"]);
+/// The namespace `std.testing.options`.
+pub const options: Item = Item::new(&["std", "testing", "options"]);
 /// The namespace `std.testing.property`.
 pub const property: Item = Item::new(&["std", "testing", "property"]);
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
@@ -16,6 +20,10 @@ pub const Arbitrary: Item = Item::new(&["std", "testing", "Arbitrary"]);
 pub const Choices: Item = Item::new(&["std", "testing", "Choices"]);
 /// A value of a type read from choices: by its `Arbitrary`, or by reflection.
 pub const r#gen: Item = Item::new(&["std", "testing", "gen"]);
+/// The loop of a benchmark.
+pub const Bench: Item = Item::new(&["std", "testing", "Bench"]);
+/// How a run is asked for.
+pub const Options: Item = Item::new(&["std", "testing", "Options"]);
 /// A test that is not run, and why.
 pub const Ignored: Item = Item::new(&["std", "testing", "Ignored"]);
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
@@ -53,21 +61,17 @@ pub const place_json: Item = Item::new(&["std", "testing", "place_json"]);
 pub const failed: Item = Item::new(&["std", "testing", "failed"]);
 /// The exports of the program running the tests of `ns`.
 pub const runner: Item = Item::new(&["std", "testing", "runner"]);
-/// The option drawing every property's cases from the seed that follows it.
-pub const seed_option: Item = Item::new(&["std", "testing", "seed_option"]);
-/// The option running as many cases of each property as the number that follows it.
-pub const cases_option: Item = Item::new(&["std", "testing", "cases_option"]);
-/// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
-/// from `n` rather than from its name, `--cases n` runs `n` cases of each, and the other
-/// arguments name the tests to run, every one if none does.
-pub const Options: Item = Item::new(&["std", "testing", "Options"]);
 /// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those
-/// `options` name, and writes a line for each to the standard output, then the totals. A test
-/// marked `test.ignore` is not run.
+/// `options` name, the benchmarks alone when it asks for them measured, and writes a line for
+/// each to the standard output, then the totals. A test marked `test.ignore` is not run.
 pub const run: Item = Item::new(&["std", "testing", "run"]);
-/// What became of the test `f`, named `name`: a unit test runs once, a property over the cases
-/// `options` ask for, whose arguments are generated, the smallest failing one's written to `out`.
+/// What became of the test `f`, named `name`: a unit test runs once, a benchmark's loop once or
+/// measured as `options` ask, a property over the cases they ask for, whose arguments are
+/// generated, the smallest failing one's written to `out`.
 pub const tested: Item = Item::new(&["std", "testing", "tested"]);
+/// What became of the property test `f`, named `name`, over the cases `options` ask for: the
+/// smallest failing case's arguments are written to `out`.
+pub const checked: Item = Item::new(&["std", "testing", "checked"]);
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.
 pub const trapped: Item = Item::new(&["std", "testing", "trapped"]);
 /// The seed the cases of the property test `name` are drawn from: the FNV-1a hash of its name,

@@ -1,4 +1,5 @@
-//! Quantities as cargo shows them: `0.42s`, `1m 03s`, `3.4 MiB`, `2 errors`.
+//! Quantities as cargo shows them: `0.42s`, `1m 03s`, `3.4 MiB`, `2 errors`, and a time measured
+//! in nanoseconds, `12.3 ns`.
 
 use std::fmt;
 use std::time::Duration;
@@ -15,6 +16,21 @@ impl fmt::Display for Elapsed {
             write!(f, "{:.2}s", self.0.as_secs_f64())
         } else {
             write!(f, "{}m {:02}s", secs / MINUTE, secs % MINUTE)
+        }
+    }
+}
+
+/// A time measured in nanoseconds, such as a benchmark's per iteration, in the largest unit it
+/// reaches: `12.3 ns`, `4.56 µs`, `1.20 ms`, `2.00 s`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Nanos(pub f64);
+
+impl fmt::Display for Nanos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const UNITS: [(&str, f64); 3] = [("s", 1e9), ("ms", 1e6), ("µs", 1e3)];
+        match UNITS.into_iter().find(|&(_, size)| self.0 >= size) {
+            Some((unit, size)) => write!(f, "{:.2} {unit}", self.0 / size),
+            None => write!(f, "{:.1} ns", self.0),
         }
     }
 }

@@ -13,7 +13,7 @@ use crate::common::Fixture;
 const SUITE: u64 = 1100;
 
 /// The plan every package declares, here empty.
-const BUILD: &str = "build := (b: &mut std.build.Build) {};\n";
+pub(crate) const BUILD: &str = "build := (b: &mut std.build.Build) {};\n";
 
 /// Two tests of the root file, reading a global only run time knows, and three of a namespace
 /// below, one reading past an array and one not run.
@@ -97,7 +97,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             ran("indexes", trapped(&index)),
             ran("last", Outcome::Passed),
             ran("skipped", Outcome::Ignored(Ignored { reason: "not yet".to_owned() })),
-            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1 }),
+            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1, measured: 0 }),
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
@@ -199,7 +199,11 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             Line::Totals(totals) => Some(*totals),
             Line::Test(_) | Line::Argument(_) => None,
         });
-        assert_eq!(totals, Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0 }), "{backend}");
+        assert_eq!(
+            totals,
+            Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0, measured: 0 }),
+            "{backend}"
+        );
         // The smallest failing arguments, each a line before its test's.
         let written: Vec<&Argument> = lines
             .iter()
@@ -230,12 +234,12 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             let reported = run.report(&mut Shell::plain(&mut out, &mut err)).unwrap();
             reported.tests.into_iter().map(|tested| tested.ran.outcome).collect::<Vec<_>>()
         };
-        let seeded = outcomes(&["bounded"], Options { seed: Some(7), cases: None });
+        let seeded = outcomes(&["bounded"], Options { seed: Some(7), cases: None, bench: false });
         assert!(
             matches!(seeded.as_slice(), [Outcome::Falsified(f)] if f.seed == 7),
             "{backend}: {seeded:#?}"
         );
-        let none = outcomes(&[], Options { seed: None, cases: Some(0) });
+        let none = outcomes(&[], Options { seed: None, cases: Some(0), bench: false });
         assert!(none.len() == 9 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
     }
 }

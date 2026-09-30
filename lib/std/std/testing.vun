@@ -1,9 +1,9 @@
 //! Tests, properties, benchmarks and simulation (spec 11). The runner is an ordinary program:
 //! `start := std.testing.runner(app);` runs every test of the namespace `app` and those nested in
 //! it, each on a thread of its own, since a trap ends only its thread (spec 07, section 3), and
-//! writes one JSON line per test, then one of the totals (spec 11, section 3). A test with
-//! parameters is a property: it runs with arguments generated from their types
-//! (`std.testing.property`).
+//! writes one JSON line per test, then one of the totals (spec 11, section 3). A test whose one
+//! parameter is `&mut Bench` is a benchmark (`std.testing.bench`); a test with other parameters is
+//! a property, run with arguments generated from their types (`std.testing.property`).
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 #[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
@@ -21,6 +21,10 @@ Arbitrary := std.testing.property.Arbitrary;
 Choices := std.testing.property.Choices;
 /// A value of a type read from choices: by its `Arbitrary`, or by reflection.
 gen := std.testing.property.gen;
+/// The loop of a benchmark.
+Bench := std.testing.bench.Bench;
+/// How a run is asked for.
+Options := std.testing.options.Options;
 
 /// A test that is not run, and why.
 Ignored := struct {
@@ -41,6 +45,8 @@ Outcome := enum {
     trapped(Trapped),
     /// A case of a property test trapped: the smallest case found.
     falsified(Falsified),
+    /// A benchmark ran measured: how many times its body ran, and how long that took.
+    measured(std.testing.bench.Measured),
 };
 
 /// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
@@ -65,6 +71,7 @@ Totals := struct {
     trapped: usize,
     falsified: usize,
     ignored: usize,
+    measured: usize,
 
     /// Counts `outcome`.
     count := (self: &mut Totals, outcome: &Outcome) {
@@ -73,6 +80,7 @@ Totals := struct {
             .trapped(_) => { self.trapped += 1; },
             .falsified(_) => { self.falsified += 1; },
             .ignored(_) => { self.ignored += 1; },
+            .measured(_) => { self.measured += 1; },
         }
     };
 };
@@ -136,78 +144,14 @@ runner := ($ns: lang.meta.Namespace) -> type {
     }.main)
 };
 
-/// The option drawing every property's cases from the seed that follows it.
-seed_option := "--seed";
-/// The option running as many cases of each property as the number that follows it.
-cases_option := "--cases";
-
-/// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
-/// from `n` rather than from its name, `--cases n` runs `n` cases of each, and the other
-/// arguments name the tests to run, every one if none does.
-Options := struct {
-    args: std.os.Args,
-    seed: ?u64,
-    cases: usize,
-
-    /// The options `args` ask for; `.none` when an option has no number after it.
-    of := (args: std.os.Args) -> ?Options {
-        mut options := Options{ .args = args, .seed = .none, .cases = std.testing.property.cases };
-        // The option the next argument is the number of.
-        mut after: ?&[u8] = .none;
-        for i in 1..args.len() {
-            if .some(arg) = args.get(i) {
-                match after {
-                    .some(given) => {
-                        n := match u64.parse(arg) {
-                            .some(number) => number,
-                            .none => return .none,
-                        };
-                        if given == seed_option { options.seed = .some(n); } else { options.cases = n.sat(usize); }
-                        after = .none;
-                    },
-                    .none => if Options.option(arg) { after = .some(arg); },
-                }
-            }
-        }
-        match after {
-            .some(_) => .none,
-            .none => .some(options),
-        }
-    };
-
-    /// Whether `arg` is an option, which the number after it goes with.
-    option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option };
-
-    /// Whether the test `name` is run: every test when the arguments name none, else those they
-    /// name.
-    chosen := (self: &Options, name: &[u8]) -> bool {
-        mut after := false;
-        mut named := false;
-        for i in 1..self.args.len() {
-            if .some(arg) = self.args.get(i) {
-                if after {
-                    after = false;
-                } else if Options.option(arg) {
-                    after = true;
-                } else if arg == name {
-                    return true;
-                } else {
-                    named = true;
-                }
-            }
-        }
-        !named
-    };
-};
-
 /// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those
-/// `options` name, and writes a line for each to the standard output, then the totals. A test
-/// marked `test.ignore` is not run.
+/// `options` name, the benchmarks alone when it asks for them measured, and writes a line for
+/// each to the standard output, then the totals. A test marked `test.ignore` is not run.
 run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) -> Result(Totals, std.os.Error) {
     mut out := sys.stdout();
-    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0 };
+    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0, .measured = 0 };
     $for c in std.meta.collect(ns, test) {
-        if options.chosen(c.decl.name) {
+        if options.chosen(c.decl.name) and ($std.testing.bench.benchmark(c.ns.$(c.decl.name)) or !options.bench) {
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
                 .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
@@ -220,8 +164,9 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
     .ok(totals)
 };
 
-/// What became of the test `f`, named `name`: a unit test runs once, a property over the cases
-/// `options` ask for, whose arguments are generated, the smallest failing one's written to `out`.
+/// What became of the test `f`, named `name`: a unit test runs once, a benchmark's loop once or
+/// measured as `options` ask, a property over the cases they ask for, whose arguments are
+/// generated, the smallest failing one's written to `out`.
 tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Options, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
     $if lang.meta.params(F, f).len() == 0 {
         // On a thread of its own; where the system runs one thread, on the calling one, and a
@@ -238,18 +183,28 @@ tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opti
             },
         })
     } else {
-        seed := match options.seed {
-            .some(seed) => seed,
-            .none => seed_of(name),
-        };
-        .ok(match std.testing.property.check(F, f, sys, seed, options.cases) {
-            .none => Outcome.passed,
-            .some((failing, case)) => {
-                std.testing.property.write(F, f, out, &failing)?;
-                Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
-            },
-        })
+        $if std.testing.bench.benchmark(F, f) {
+            .ok(std.testing.bench.outcome(F, f, sys, options.bench))
+        } else {
+            checked(F, f, name, sys, options, out)
+        }
     }
+};
+
+/// What became of the property test `f`, named `name`, over the cases `options` ask for: the
+/// smallest failing case's arguments are written to `out`.
+checked := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Options, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
+    seed := match options.seed {
+        .some(seed) => seed,
+        .none => seed_of(name),
+    };
+    .ok(match std.testing.property.check(F, f, sys, seed, options.cases) {
+        .none => Outcome.passed,
+        .some((failing, case)) => {
+            std.testing.property.write(F, f, out, &failing)?;
+            Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
+        },
+    })
 };
 
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.

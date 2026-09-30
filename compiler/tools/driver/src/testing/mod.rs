@@ -15,6 +15,8 @@ pub const SEED: Param = Param::option("seed")
 pub const CASES: Param = Param::option("cases")
     .about("how many cases of each property to run; 100 if not given")
     .values(Values::Count);
+/// The runner's option asking for the benchmarks alone, measured: what `vun bench` passes.
+const BENCH: Param = Param::flag("bench");
 
 /// How a run of the tests' program is asked for besides the tests it names: the options
 /// `std.testing.Options` reads from the program's arguments.
@@ -22,19 +24,22 @@ pub const CASES: Param = Param::option("cases")
 pub struct Options {
     pub seed: Option<u64>,
     pub cases: Option<u64>,
+    /// Whether the benchmarks run alone, measured.
+    pub bench: bool,
 }
 
 impl Options {
-    /// The options a command line gives.
+    /// The options a command line gives, the benchmarks measured alone when `bench`.
     #[must_use]
-    pub fn of(args: &Args) -> Self {
-        Self { seed: args.count(&SEED), cases: args.count(&CASES) }
+    pub fn of(args: &Args, bench: bool) -> Self {
+        Self { seed: args.count(&SEED), cases: args.count(&CASES), bench }
     }
 
     /// Its arguments to the tests' program: each option given, as written, and its number.
     fn args(self) -> impl Iterator<Item = String> {
         let given = [(SEED, self.seed), (CASES, self.cases)].into_iter();
-        given.filter_map(|(param, n)| Some([param.long_form(), n?.to_string()])).flatten()
+        let numbers = given.filter_map(|(param, n)| Some([param.long_form(), n?.to_string()])).flatten();
+        numbers.chain(self.bench.then(|| BENCH.long_form()))
     }
 }
 
@@ -68,6 +73,7 @@ pub enum Outcome {
     Ignored(Ignored),
     Trapped(Trapped),
     Falsified(Falsified),
+    Measured(Measured),
 }
 
 impl Outcome {
@@ -76,7 +82,7 @@ impl Outcome {
     pub fn trap(&self) -> Option<&Trapped> {
         match self {
             Self::Trapped(trapped) | Self::Falsified(Falsified { trapped, .. }) => Some(trapped),
-            Self::Passed | Self::Ignored(_) => None,
+            Self::Passed | Self::Ignored(_) | Self::Measured(_) => None,
         }
     }
 }
@@ -90,6 +96,24 @@ pub struct Falsified {
     pub seed: u64,
     pub case: usize,
     pub shrinks: usize,
+}
+
+/// What a measured benchmark reports (`std.testing.bench.Measured`): how many times its body ran,
+/// and how long that took.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Measured {
+    pub iterations: u64,
+    pub nanos: u64,
+}
+
+impl Measured {
+    /// The nanoseconds a run of the body took on average.
+    #[must_use]
+    pub fn per_iteration(self) -> f64 {
+        #[expect(clippy::cast_precision_loss, reason = "an average, shown")]
+        let (nanos, iterations) = (self.nanos as f64, self.iterations.max(1) as f64);
+        nanos / iterations
+    }
 }
 
 /// A test that is not run, and why (`std.testing.Ignored`).
@@ -120,13 +144,14 @@ pub struct Place {
     pub column: u32,
 }
 
-/// How many tests passed, trapped, were falsified and were not run.
+/// How many tests passed, trapped, were falsified, were not run and were measured.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Totals {
     pub passed: usize,
     pub trapped: usize,
     pub falsified: usize,
     pub ignored: usize,
+    pub measured: usize,
 }
 
 /// An argument as a failing case's report shows it: `x = 200`, its value as JSON.

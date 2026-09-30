@@ -64,6 +64,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             explain::EXPLAIN,
             fmt::FMT,
             test::TEST,
+            test::BENCH,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
             Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),

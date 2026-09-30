@@ -127,8 +127,8 @@ program's table says it (`std.trace.Site.of`), or for a property
 `{"totals":{"passed":n,"trapped":n,"falsified":n,"ignored":n}}`. The lines are `std.testing.Line` written by
 `std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
 program's standard output and error as one stream, so what a test writes, the backtrace of its
-trap included, comes before its line and is reported with it. Unit tests, properties and fuzz
-targets run; benchmarks and simulations do not yet.
+trap included, comes before its line and is reported with it. Unit tests, properties, fuzz
+targets and benchmarks run; simulations do not yet.
 
 ## 4. Deterministic simulation
 
@@ -141,7 +141,14 @@ is TigerBeetle's and FoundationDB's approach, with no runtime support.
 ## 5. Benchmarks
 
 - `b.loop()` runs setup once, prevents the loop body from being optimized away, and hides the
-  iteration count from the code (the semantics Go adopted in 1.24).
+  iteration count from the code (the semantics Go adopted in 1.24). Measured, it runs the body in
+  batches, each as many times as all before it, reading the clock between batches only, until the
+  loop has run `std.testing.bench.least` (500 ms); `b.keep(&x)` reads `x` as volatile memory, so
+  what makes it stays.
+- `vun test` runs a benchmark as a test: its loop runs the body once. `vun bench [path] [names]`
+  builds the same program and runs the benchmarks alone, measured (the runner's `--bench`): each
+  reports `measured` with how many times its body ran and how long that took, shown per
+  iteration. Not yet: the statistics, instruction counts and baselines below.
 - `--measure time` (default natively): statistics over wall-clock samples.
 - `--measure instructions`: counts LIR operations in the interpreter; deterministic, suitable as a CI
   gate. Natively, hardware counters where available; on Cortex-M, the DWT cycle counter.

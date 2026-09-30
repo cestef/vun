@@ -10,5 +10,6 @@ pub const passed: Item = Item::new(&["std", "testing", "Totals", "passed"]);
 pub const trapped: Item = Item::new(&["std", "testing", "Totals", "trapped"]);
 pub const falsified: Item = Item::new(&["std", "testing", "Totals", "falsified"]);
 pub const ignored: Item = Item::new(&["std", "testing", "Totals", "ignored"]);
+pub const measured: Item = Item::new(&["std", "testing", "Totals", "measured"]);
 /// Counts `outcome`.
 pub const count: Item = Item::new(&["std", "testing", "Totals", "count"]);

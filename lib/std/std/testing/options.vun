@@ -1,0 +1,75 @@
+//! How a run of the tests' program is asked for: the options its arguments give (spec 11,
+//! section 3).
+
+/// The option drawing every property's cases from the seed that follows it.
+seed_option := "--seed";
+/// The option running as many cases of each property as the number that follows it.
+cases_option := "--cases";
+/// The option running the benchmarks alone, measured.
+bench_option := "--bench";
+
+/// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
+/// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
+/// benchmarks alone, measured, and the other arguments name the tests to run, every one if none
+/// does.
+Options := struct {
+    args: std.os.Args,
+    seed: ?u64,
+    cases: usize,
+    bench: bool,
+
+    /// The options `args` ask for; `.none` when an option has no number after it.
+    of := (args: std.os.Args) -> ?Options {
+        mut options := Options{ .args = args, .seed = .none, .cases = std.testing.property.cases, .bench = false };
+        // The option the next argument is the number of.
+        mut after: ?&[u8] = .none;
+        for i in 1..args.len() {
+            if .some(arg) = args.get(i) {
+                match after {
+                    .some(given) => {
+                        n := match u64.parse(arg) {
+                            .some(number) => number,
+                            .none => return .none,
+                        };
+                        if given == seed_option { options.seed = .some(n); } else { options.cases = n.sat(usize); }
+                        after = .none;
+                    },
+                    .none => if Options.option(arg) {
+                        after = .some(arg);
+                    } else if arg == bench_option {
+                        options.bench = true;
+                    },
+                }
+            }
+        }
+        match after {
+            .some(_) => .none,
+            .none => .some(options),
+        }
+    };
+
+    /// Whether `arg` is an option, which the number after it goes with.
+    option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option };
+
+    /// Whether the test `name` is run: every test when the arguments name none, else those they
+    /// name.
+    chosen := (self: &Options, name: &[u8]) -> bool {
+        mut after := false;
+        mut named := false;
+        for i in 1..self.args.len() {
+            if .some(arg) = self.args.get(i) {
+                if after {
+                    after = false;
+                } else if Options.option(arg) {
+                    after = true;
+                } else if arg == bench_option {
+                } else if arg == name {
+                    return true;
+                } else {
+                    named = true;
+                }
+            }
+        }
+        !named
+    };
+};

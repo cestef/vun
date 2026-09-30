@@ -13,3 +13,5 @@ pub const ignored: Item = Item::new(&["std", "testing", "Outcome", "ignored"]);
 pub const trapped: Item = Item::new(&["std", "testing", "Outcome", "trapped"]);
 /// A case of a property test trapped: the smallest case found.
 pub const falsified: Item = Item::new(&["std", "testing", "Outcome", "falsified"]);
+/// A benchmark ran measured: how many times its body ran, and how long that took.
+pub const measured: Item = Item::new(&["std", "testing", "Outcome", "measured"]);

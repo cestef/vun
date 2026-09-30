@@ -1,6 +1,7 @@
 //! `vun test [path] [names]... [--seed n] [--cases n]`: builds the program running the tests of a
 //! namespace, runs it and reports each test as it ends (spec 11). The path is a file, a directory
-//! or a package's directory; with none, the package around the current directory.
+//! or a package's directory; with none, the package around the current directory. `vun bench`
+//! runs the benchmarks alone, measured, through the same program.
 
 use std::io;
 use std::path::Path;
@@ -39,7 +40,32 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
         Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
     ]);
 
+pub(super) const BENCH: Command<Session> =
+    Command::run("bench", "run the benchmarks of a namespace, measured", bench)
+        .params(&[
+            PATH,
+            NAMES,
+            vun_driver::codegen::BACKEND,
+            vun_driver::codegen::LINKER,
+            vun_driver::program::OUTPUT,
+        ])
+        .sets(&[COMPILE])
+        .examples(&[
+            Example { line: "", about: "measure the benchmarks of the package around this directory" },
+            Example { line: "main.vun memcpy_4k", about: "measure one benchmark of a file" },
+        ]);
+
 fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    tests(session, args, shell, false)
+}
+
+fn bench(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    tests(session, args, shell, true)
+}
+
+/// Builds the tests' program and runs it: the tests the arguments name, or the benchmarks alone,
+/// measured, when `bench`.
+fn tests(session: &mut Session, args: &Args, shell: &mut Shell<'_>, bench: bool) -> io::Result<Outcome> {
     let started = Instant::now();
     let path = args.value(&PATH).map(Path::new);
     let Some(root) = session.tests_root(path)? else { return Ok(session.outcome()) };
@@ -53,7 +79,7 @@ fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     session.conclude(shell, subject, started);
     let Some(program) = program else { return Ok(session.outcome()) };
     shell.status(&Started { step: Step::Run, subject: program.display().to_string() });
-    let options = vun_driver::testing::Options::of(args);
+    let options = vun_driver::testing::Options::of(args, bench);
     let reported = session.run_tests(&program, args.values(&NAMES), options)?.report(shell)?;
     Ok(if reported.passed { Outcome::Success } else { Outcome::Failure })
 }
