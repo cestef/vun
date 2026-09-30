@@ -1,0 +1,128 @@
+/* The playground: the source beside what building and running it reported, one screen high. */
+
+body.play { height: 100svh; }
+.playground { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 1520px; margin: 0 auto; padding: 4px 16px 16px; }
+
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; }
+.tools button { padding: 6px 12px; border-radius: 9px; color: var(--muted); transition: color 0.15s, background-color 0.15s, transform 0.15s; }
+.tools button:hover { color: var(--ink); background: var(--echo); }
+.tools button:active { transform: scale(0.96); }
+.tools .helix[aria-pressed='true'] { color: var(--ink); background: var(--echo); }
+
+.run { display: flex; align-items: center; gap: 10px; }
+.tools .run { color: var(--background); background: var(--accent); font-weight: 600; }
+.tools .run:hover { color: var(--background); background: var(--accent); filter: brightness(1.06); }
+.tools .run.running { background: var(--ink); }
+.run:disabled { opacity: 0.5; cursor: progress; }
+.run kbd { font: inherit; font-size: 11px; font-weight: 400; opacity: 0.75; }
+
+.panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; }
+.pane { min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--code-border); border-radius: 16px; background: var(--code-background); overflow: hidden; }
+.pane.source > .cm-editor { flex: 1; min-height: 0; }
+
+/* Code colored by the grammar: the light color inline, the dark one as `--shiki-dark` */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .shiki span, :root:not([data-theme='light']) .tok { color: var(--shiki-dark) !important; font-style: var(--shiki-dark-font-style) !important; }
+}
+:root[data-theme='dark'] .shiki span, :root[data-theme='dark'] .tok { color: var(--shiki-dark) !important; font-style: var(--shiki-dark-font-style) !important; }
+pre.shiki { margin: 0; padding: 0; background: transparent !important; white-space: pre; overflow-x: auto; }
+
+/* The caret: a bar, or with Helix's keys a block outside insert mode, see-through, blinking */
+.pane.source .cm-cursor { border-left: 2px solid color-mix(in srgb, var(--accent) 75%, transparent); }
+.pane.source .cm-hx-block-cursor .cm-hx-cursor { background: color-mix(in srgb, var(--accent) 38%, transparent); border-radius: 2px; }
+.caret-a .cm-cursor { animation: caret-a 1.1s ease-in-out infinite; }
+.caret-b .cm-cursor { animation: caret-b 1.1s ease-in-out infinite; }
+/* The block fades its background alone, so the character under it stays. */
+.caret-a .cm-hx-block-cursor .cm-hx-cursor { animation: block-a 1.1s ease-in-out infinite; }
+.caret-b .cm-hx-block-cursor .cm-hx-cursor { animation: block-b 1.1s ease-in-out infinite; }
+.pane.source .cm-editor:not(.cm-focused) .cm-hx-block-cursor .cm-hx-cursor { background: var(--echo); animation: none; }
+@keyframes caret-a { 0%, 45% { opacity: 1; } 60%, 88% { opacity: 0.12; } }
+@keyframes caret-b { 0%, 45% { opacity: 1; } 60%, 88% { opacity: 0.12; } }
+@keyframes block-a { 60%, 88% { background-color: color-mix(in srgb, var(--accent) 6%, transparent); } }
+@keyframes block-b { 60%, 88% { background-color: color-mix(in srgb, var(--accent) 6%, transparent); } }
+
+/* The language server's tooltips */
+.cm-tooltip-hover .cm-lsp-documentation, .cm-lsp-signature-tooltip { padding: 8px 12px; max-width: 560px; font-size: 12.5px; line-height: 1.5; }
+.cm-lsp-documentation pre { margin: 6px 0; }
+.cm-lsp-documentation p { margin: 6px 0; }
+.cm-diagnostic { padding: 6px 10px; font-size: 12.5px; white-space: pre-wrap; }
+.cm-diagnostic-error { border-left-color: var(--accent); }
+.cm-diagnostic-warning { border-left-color: var(--code-keyword); }
+.cm-diagnostic { max-width: 560px; }
+.cm-fixes { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; max-width: 560px; font-size: 12px; }
+.cm-fixes button { display: flex; align-items: baseline; gap: 8px; padding: 3px 9px; border: 1px solid var(--code-border); border-radius: 6px; background: var(--code-background); color: var(--code-string); transition: border-color 0.15s; }
+.cm-fixes button:hover { border-color: var(--code-string); }
+.cm-fixes kbd { font: inherit; font-size: 11px; color: var(--code-comment); }
+
+/* The report */
+.report { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; line-height: 1.5; color: var(--code-text); }
+
+.diagnostic { flex: none; padding: 12px 14px; border: 1px solid var(--code-border); border-left: 3px solid var(--code-comment); border-radius: 10px; background: var(--code-bar); animation: arrive 0.2s ease-out; }
+.diagnostic.error { border-left-color: var(--accent); }
+.diagnostic.warning { border-left-color: var(--code-keyword); }
+.diagnostic header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; color: var(--ink); font-weight: 600; }
+.diagnostic .message { flex: 1; min-width: 12ch; }
+.severity { padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: var(--echo); color: var(--code-comment); }
+.severity.error { background: var(--accent); color: var(--background); }
+.severity.warning { background: var(--code-keyword); color: var(--background); }
+.diagnostic .id { font-size: 11px; font-weight: 400; color: var(--code-comment); border-bottom: 1px dashed currentColor; }
+.diagnostic .id:not(:disabled):hover, .diagnostic .id.open { color: var(--accent); }
+.diagnostic .id:disabled { border-bottom: none; cursor: default; }
+
+code.part { padding: 0 0.3em; border-radius: 4px; background: var(--echo); font-weight: inherit; }
+code.part.type { color: var(--code-literal); }
+
+.place { margin: 4px 0 0; color: var(--code-comment); font-size: 11.5px; }
+button.place:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+.excerpt { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; margin: 8px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--code-background); overflow-x: auto; white-space: pre; }
+.excerpt .number { color: var(--code-comment); text-align: right; user-select: none; }
+.range { border-radius: 3px; text-decoration: underline 2px; text-underline-offset: 4px; }
+.range.primary { text-decoration-color: var(--code-comment); }
+.range.primary.error { text-decoration-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.range.primary.warning { text-decoration-color: var(--code-keyword); background: color-mix(in srgb, var(--code-keyword) 14%, transparent); }
+.range.label { text-decoration-color: var(--code-literal); }
+.excerpt .note { font-size: 11.5px; }
+.excerpt .note::before { content: '└ '; }
+.note.primary.error { color: var(--accent); }
+.note.primary.warning { color: var(--code-keyword); }
+.note.label { color: var(--code-literal); }
+
+.child { margin: 6px 0 0; }
+.child b { color: var(--code-comment); font-weight: 600; }
+.child.help b { color: var(--code-string); }
+
+.fix { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 8px; padding: 5px 10px; border: 1px solid var(--code-border); border-radius: 8px; text-align: left; transition: border-color 0.15s, background-color 0.15s; }
+.fix:not(:disabled):hover { border-color: var(--code-string); background: var(--code-background); }
+.fix .apply { color: var(--code-string); font-weight: 700; }
+.fix:disabled { opacity: 0.55; cursor: default; }
+.fix.applied { opacity: 1; border-color: var(--code-string); }
+.fix.stale { border-color: var(--accent); }
+.safety { font-size: 10.5px; color: var(--code-comment); border: 1px solid var(--code-border); border-radius: 4px; padding: 0 4px; }
+
+.page { margin-top: 10px; padding: 4px 14px; border-radius: 8px; background: var(--code-background); line-height: 1.6; }
+.page h1 { font-size: 14px; }
+.page h2 { font-size: 13px; }
+.page pre.shiki { padding: 8px 0; }
+
+.summary { flex: none; margin: 0; color: var(--code-comment); }
+.summary.built::before { content: '✓ '; color: var(--code-string); }
+.summary.failed::before { content: '✗ '; color: var(--accent); }
+
+.program { flex: none; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--code-bar); color: var(--ink); font-size: 13px; line-height: 1.45; white-space: pre-wrap; animation: arrive 0.2s ease-out; }
+
+/* The bars under both panes, one alike: the report's status, Helix's mode line and command line */
+.status, .pane .cm-hx-status-panel, .pane .cm-hx-command-panel { margin: 0; padding: 8px 16px; border-top: 1px solid var(--code-border); background: var(--code-bar); font-family: inherit; font-size: 12px; line-height: 1.5; color: var(--code-comment); }
+.pane .cm-panels-bottom { border-top: none; }
+/* Helix's command line, while no command is typed and it says nothing */
+.pane .cm-hx-command-panel:not(:has(input, .cm-hx-command-panel-flex > span:last-child:not(:empty))) { display: none; }
+
+@keyframes arrive { from { opacity: 0; transform: translateY(4px); } }
+
+@media (max-width: 760px) {
+  body.play { height: auto; }
+  .panes { grid-template-columns: minmax(0, 1fr); }
+  .pane.source { height: 55svh; }
+  .pane.output { min-height: 40svh; }
+}

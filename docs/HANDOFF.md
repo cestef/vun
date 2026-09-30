@@ -214,8 +214,8 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 
 The website: `site/` (Vite, TypeScript) holds the landing page (the hero, the brand's motion
 ported from `assets/motion`, the install command) and the playground; the spec reader was
-removed at the owner's request. It is not committed while `docs/dev/repository.md` calls `site/`
-the owner's, and nothing deploys it yet. Open in the playground: a program that never ends runs
+removed at the owner's request. Nothing deploys it yet; a host must send the headers of
+`site/public/_headers`, or the editor has no language server. Open in the playground: a program that never ends runs
 until stopped (the stop button ends the worker), and threads, which WASI lacks, are not
 offered. The wasm backend still refuses inline assembly (no `lang.arch.wasm32`
 table), naked functions and addresses past a function's start, and reports no frame sizes or

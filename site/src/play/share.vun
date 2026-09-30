@@ -1,0 +1,85 @@
+//! Reading the system's clocks and sleeping (spec 08, section 2): a pause of a millisecond
+//! takes at least that long on the monotonic clock.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    before := match sys.now(.monotonic) {
+        .ok(at) => at,
+        .err(_) => return .code(1),
+    };
+    span := std.time.Duration.millis(1);
+    match sys.pause(span) {
+        .ok(()) => {},
+        .err(_) => return .code(2),
+    }
+    after := match sys.now(.monotonic) {
+        .ok(at) => at,
+        .err(_) => return .code(3),
+    };
+    real := match sys.now(.real) {
+        .ok(at) => at,
+        .err(_) => return .code(4),
+    };
+    waited := after.since(&before).as_nanos() >= span.as_nanos();
+    // Past 2020-01-01 on the time of day.
+    dated := real.as_nanos() / std.time.nanos_per_second > 1_577_836_800;
+    if waited and dated { .ok } else { .code(5) }
+};
+//! Writing a file, reading it back, and a typed error for one that is missing (spec 08,
+//! section 2).
+
+start := std.os.start(main);
+
+path := "files.vun.out";
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    match check(sys) {
+        .ok(.true) => .ok,
+        .ok(.false) => .code(1),
+        .err(_) => .code(2),
+    }
+};
+
+/// Whether the bytes written come back, and a missing file is `.missing`.
+check := (sys: &mut std.os.System) -> Result(bool, std.os.Error) {
+    mut out := sys.open(path, .write)?;
+    std.fmt.print(out.stream(), "{} lines\n", 2)?;
+    out.close()?;
+    mut back := sys.open(path, .read)?;
+    mut bytes: [16]u8 = [0; 16];
+    n := back.stream().read(&mut bytes)?;
+    back.close()?;
+    same := n == 8 and bytes[0] == '2' and bytes[7] == '\n';
+    missing := match sys.open("no such file", .read) {
+        .err(.missing) => true,
+        _ => false,
+    };
+    .ok(same and missing)
+};
+//! The tour shown in the README.
+
+os := std.os;
+start := os.start(main);
+
+// integers are ranges: `a + b` can't overflow
+mid := (a: u32, b: u32) -> u32 { (a + b) / 2 };
+
+// types are values, known at compile time
+max := ($T: type, a: T, b: T) -> T { if a > b { a } else { b } };
+
+main := (sys: &mut os.System) -> os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "mid: {}\n", mid(4_000_000_000, 4_000_000_002));
+    std.fmt.print(&mut out, "max: {}\n", max(u8, 7, 42));
+    .ok
+};
+//! A hosted program: the runtime is a function you call (spec 08).
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "hello\n");
+    .ok
+};

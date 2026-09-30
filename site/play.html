@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>vun playground</title>
+    <meta name="description" content="Vun compiled and run in the browser." />
+    <link rel="icon" href="../assets/logo/icon/light.svg" type="image/svg+xml" />
+  </head>
+  <body class="play">
+    <header class="bar">
+      <a class="home" href="./" aria-label="vun"><span data-mark></span></a>
+      <nav>
+        <a href="play.html" aria-current="page">play</a>
+        <a href="https://github.com/cestef/vun">github</a>
+        <button class="theme" type="button" aria-label="theme"></button>
+      </nav>
+    </header>
+
+    <main class="playground">
+      <div class="tools">
+        <div class="examples" role="tablist" data-examples></div>
+        <button type="button" class="helix" data-helix aria-pressed="false">helix</button>
+        <button type="button" class="share" data-share>share</button>
+        <button type="button" class="run" data-run disabled><span data-run-label>run</span><kbd>ctrl ↵</kbd></button>
+      </div>
+      <div class="panes">
+        <section class="pane source" data-editor></section>
+        <section class="pane output">
+          <div class="report" data-output></div>
+          <p class="status" data-status>loading the compiler</p>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="/src/play/main.ts"></script>
+  </body>
+</html>

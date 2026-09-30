@@ -1,0 +1,5 @@
+# The playground's language server waits on shared memory, which only a page isolated across
+# origins has (the format of Cloudflare Pages and Netlify).
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
