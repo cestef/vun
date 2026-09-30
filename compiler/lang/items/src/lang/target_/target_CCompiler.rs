@@ -7,6 +7,7 @@
 )]
 use crate::Item;
 pub const command: Item = Item::new(&["lang", "target", "CCompiler", "command"]);
+pub const builds_for: Item = Item::new(&["lang", "target", "CCompiler", "builds_for"]);
 /// The program bundling objects into a static library, as `ar` does.
 pub const archiver: Item = Item::new(&["lang", "target", "CCompiler", "archiver"]);
 pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
@@ -24,6 +25,6 @@ pub const version_flag: Item = Item::new(
     &["lang", "target", "CCompiler", "version_flag"],
 );
 /// The directory holding the headers and libraries of the target's system that its tools
-/// build against (a sysroot, an SDK): where a machine keeps them, which its toolchain file
+/// build against (a sysroot, an SDK): where a machine keeps them, which its tools file
 /// names, and none where they are the tools' own.
 pub const sysroot: Item = Item::new(&["lang", "target", "CCompiler", "sysroot"]);

@@ -81,7 +81,7 @@ fn status(name: &str, firmware: &str) -> Option<i32> {
     board.choice = Choice::of(targets::bare_thumbv7em::eabihf);
     let file = board.load(&firmware).unwrap();
     let _ = board.lir(file);
-    if board.runner.is_empty() {
+    if board.runner().is_empty() {
         return None;
     }
     let mut session = fixture.session();

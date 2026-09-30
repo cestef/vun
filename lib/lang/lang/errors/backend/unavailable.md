@@ -19,8 +19,8 @@ error[backend.unavailable]: backend `cranelift` cannot generate code yet
 ## Fix
 
 Name a backend that generates code for the target, or none: the target's preferences for the
-profile then choose. `vun toolchain components` lists the backends of this toolchain and which
-generate code.
+profile then choose. `vun toolchain show` lists the backends of this toolchain and which generate
+code; `vun target show` says which one a build for the target takes, and why.
 
 ```console
 $ vun build main.vun

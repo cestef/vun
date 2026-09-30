@@ -20,7 +20,7 @@ impl Binder<'_> {
     /// The Vun file binding the header named `header`.
     pub(crate) fn file(&mut self, header: &str) -> File {
         let doc = vec![
-            ["Bindings to the C header `", header, "`, written by `vun tool bind`: regenerate them"].concat(),
+            ["Bindings to the C header `", header, "`, written by `vun ffi bind`: regenerate them"].concat(),
             "rather than edit them.".to_owned(),
         ];
         self.params_reserved = self.top_names();

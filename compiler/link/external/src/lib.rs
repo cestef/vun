@@ -9,6 +9,7 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: true,
     outputs: &Output::ALL,
     readiness: Readiness::Planned,
+    runs: &[],
 };
 
 #[derive(Default)]

@@ -1,9 +1,9 @@
-//! The machine's toolchain file (spec 12, section 6): what this machine runs to build and run
+//! The machine's tools file (spec 12, section 6): what this machine runs to build and run
 //! programs for a target, where the target's own tools do not fit it, such as a cross C compiler
 //! and an emulator. It is read as literal data, without evaluating anything:
 //!
 //! ```vun
-//! toolchain := .{
+//! tools := .{
 //!     .targets = .{
 //!         .{
 //!             .target = linux.arm64.kernel,
@@ -22,19 +22,19 @@ use vun_diag::{DiagCx, Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_span::Span;
 use vun_syntax::literal::{Decl, Literal};
-use vun_target::TargetSpec;
+use vun_target::{BuildsFor, TargetSpec};
 
 use crate::manifest::record::{Fields, Record};
 
 /// What the machine runs for each target it names.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Toolchain {
-    pub targets: Vec<Tools>,
+pub struct Tools {
+    pub targets: Vec<TargetTools>,
 }
 
 /// What the machine runs for one target.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Tools {
+pub struct TargetTools {
     /// The target, by its path in the package `targets`, as `--target` names it.
     pub target: Vec<Symbol>,
     /// The C compiler run instead of the target's.
@@ -64,16 +64,16 @@ mod field {
     pub(super) const TOOLS: &[&str] = &[TARGET, COMPILER, ARCHIVER, FLAGS, SYSROOT, RUNNER];
 }
 
-impl Toolchain {
+impl Tools {
     /// The environment variable naming the file, instead of the user's.
-    pub const ENV: &str = "VUN_TOOLCHAIN";
-    /// The toolchain's directory in the user's configuration, and the file there.
+    pub const ENV: &str = "VUN_TOOLS";
+    /// The directory of `vun` in the user's configuration, and the file there.
     pub const CONFIG: &str = "vun";
-    pub const FILE: &str = "toolchain.vun";
+    pub const FILE: &str = "tools.vun";
     /// The declaration holding it.
-    pub const DECL: &str = "toolchain";
+    pub const DECL: &str = "tools";
 
-    /// The machine's file: the one [`Self::ENV`] names, or `vun/toolchain.vun` in the user's
+    /// The machine's file: the one [`Self::ENV`] names, or `vun/tools.vun` in the user's
     /// configuration directory (XDG on Unix, including macOS; the known folder on Windows).
     #[must_use]
     pub fn path() -> Option<PathBuf> {
@@ -85,18 +85,18 @@ impl Toolchain {
         })
     }
 
-    /// Reads the toolchain from the declarations of its file; one without the declaration holds
+    /// Reads the tools from the declarations of their file; one without the declaration holds
     /// nothing.
     pub fn read(decls: &[Decl<'_>], cx: &mut DiagCx<'_>) -> Option<Self> {
         let Some(decl) = decls.iter().find(|d| d.name == Self::DECL) else { return Some(Self::default()) };
         let fields = Fields::new(decl, field::TOOLCHAIN, cx)?;
-        let targets = fields.get(field::TARGETS).map_or(Some(Vec::new()), |d| d.items(Tools::read, cx));
+        let targets = fields.get(field::TARGETS).map_or(Some(Vec::new()), |d| d.items(TargetTools::read, cx));
         fields.finish(cx);
         Some(Self { targets: targets? })
     }
 }
 
-impl Tools {
+impl TargetTools {
     fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
         let mut fields = Fields::new(decl, field::TOOLS, cx)?;
         let target = fields.require(field::TARGET).and_then(|d| match &d.value {
@@ -139,6 +139,7 @@ impl Tools {
         let compiler = &mut spec.c.compiler;
         if let Some(command) = self.compiler {
             compiler.command = command;
+            compiler.builds_for = BuildsFor::Target;
         }
         if let Some(archiver) = self.archiver {
             compiler.archiver = archiver;
@@ -154,7 +155,7 @@ impl Tools {
     pub fn unnamed(&self, why: &(dyn std::error::Error + 'static), cx: &mut DiagCx<'_>) {
         let path =
             self.target.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(vun_grammar::PATH_SEPARATOR);
-        let msg = Msg::new().text("the toolchain names no target ").code(path);
+        let msg = Msg::new().text("the tools file names no target ").code(path);
         cx.error_at(self.span, Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(why));
     }
 }

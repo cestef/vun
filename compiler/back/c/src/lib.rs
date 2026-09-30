@@ -16,13 +16,14 @@ use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
 use vun_lir::FuncId;
 use vun_lir::unit::Unit;
-use vun_target::{Arches, Name, TargetSpec};
+use vun_target::{Name, Names, TargetSpec};
 
 use emit::Emitter;
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("c"),
-    arches: Arches::Any,
+    arches: Names::Any,
+    formats: Names::Any,
     caps: BackendCaps {
         emits: Emits::Source,
         features: &[Feature::CAbi, Feature::NoAlias, Feature::FrameSizes, Feature::DebugInfo],
@@ -31,6 +32,7 @@ pub const INFO: BackendInfo = BackendInfo {
         floats: HeldFloats::Every,
     },
     readiness: Readiness::Ready,
+    runs: &[vun_target::Run::Compiler],
 };
 
 /// The functions a shard of a program holds on average (spec 13, section 2): a function goes to

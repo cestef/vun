@@ -17,11 +17,12 @@ use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
 pub use listing::Listing;
 use vun_lir_passes::legalize::Half;
-use vun_target::{Arches, Name};
+use vun_target::{Name, Names};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("wasm"),
-    arches: Arches::Only(&[Name("wasm32")]),
+    arches: Names::Only(&[Name("wasm32")]),
+    formats: Names::Only(&[Name("wasm")]),
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[],
@@ -30,6 +31,7 @@ pub const INFO: BackendInfo = BackendInfo {
         floats: HeldFloats::Every,
     },
     readiness: Readiness::Ready,
+    runs: &[],
 };
 
 /// The object format the backend writes, as targets name it.

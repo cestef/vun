@@ -71,11 +71,11 @@ pub struct Session {
     pub shared: Option<PathBuf>,
     /// Whether what the queries did with their memos is reported at exit (`Tally`).
     pub tally: bool,
-    /// The machine's toolchain file, the user's unless set (`Toolchain::path`).
-    pub toolchain: Option<PathBuf>,
-    /// The command programs built for the target run through, from the toolchain file; empty
-    /// where they run as they are.
-    pub runner: Vec<Symbol>,
+    /// The machine's tools file, the user's unless set (`Tools::path`).
+    pub tools: Option<PathBuf>,
+    /// The entry of the machine's tools file the target is equipped with, if one names it (its
+    /// runner is what programs built for the target run through: `Session::runner`).
+    pub equipped: Option<vun_build::tools::TargetTools>,
     /// The memory map of the program built, from its package's plan; empty for a program an
     /// operating system loads.
     pub memory: Vec<vun_link::MemoryRegion>,
@@ -124,8 +124,8 @@ impl Session {
             persistence: Persistence::Off,
             tally: std::env::var(vun_query::Tally::VAR).is_ok_and(|v| v == "1"),
             shared: None,
-            toolchain: vun_build::toolchain::Toolchain::path(),
-            runner: Vec::new(),
+            tools: vun_build::tools::Tools::path(),
+            equipped: None,
             memory: Vec::new(),
             sections: Vec::new(),
             language_server: None,

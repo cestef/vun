@@ -23,6 +23,7 @@ use vun_trace::{Activity, tracing};
 
 use crate::Session;
 use crate::codegen::{Coded, Listed, Uncoded};
+use crate::registry::Link;
 
 pub const OUTPUT: Param = Param::option("output")
     .short('o')
@@ -212,14 +213,19 @@ impl Session {
             regions: self.memory.clone(),
             sections: self.sections.clone(),
         };
-        let named = self.codegen.linker.unwrap_or_else(|| self.registry.linker_for(kind, target));
+        let linkage = self.registry.linkage(self.codegen, target);
+        if let Link::Instead(own) = linkage.by {
+            tracing::info!(linker = %linkage.linker, instead_of = %own, output = kind.name(), "linker");
+        }
+        let named = linkage.linker;
         let Some(linker) = self.registry.linker(named) else {
             let msg = Msg::new().text("no linker ").code(named.as_str()).text(" is in this toolchain");
             let help = Msg::new()
                 .text("choose another with ")
                 .code("--linker")
-                .text(", or add its component: ")
-                .code("vun toolchain components");
+                .text("; ")
+                .code("vun toolchain show")
+                .text(" lists this toolchain's");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg).help(help)));
         };
         if let Support::No(unsupported) = linker.info().supports(target, &plan) {

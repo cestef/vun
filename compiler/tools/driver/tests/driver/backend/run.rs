@@ -32,7 +32,7 @@ pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Outp
 }
 
 /// The targets every program here runs on besides the machine's own, where the machine runs
-/// their programs through the runner its toolchain file names: arm64 and 32-bit Arm Linux, and
+/// their programs through the runner its tools file names: arm64 and 32-bit Arm Linux, and
 /// WASI.
 const CROSS: [Item; 3] = [targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1];
 
@@ -72,7 +72,7 @@ fn statuses_on(name: &str, source: &str, choice: &Choice) -> Vec<(String, Option
     let file = session.load(&path).unwrap();
     // Choosing the target equips it with the machine's tools.
     let _ = session.lir(file);
-    if *choice != Choice::Host && session.runner.is_empty() {
+    if *choice != Choice::Host && session.runner().is_empty() {
         return Vec::new();
     }
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));

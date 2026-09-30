@@ -10,7 +10,7 @@ use vun_term::Shell;
 
 use status::{Conclude, Report, Started, Step};
 
-use vun_driver::{Session, VERSION, checks, codegen, formats, target, trace};
+use vun_driver::{Session, VERSION, checks, codegen, formats, trace};
 
 pub(crate) const PROGRAM: Program<Session> = Program {
     version: VERSION,
@@ -65,8 +65,13 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             fmt::FMT,
             test::TEST,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
-            Command::group(tool::GROUP, "bindings to other languages", &[tool::BIND]),
-            Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
+            Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
+            Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),
+            Command::group(
+                toolchain::GROUP,
+                "this toolchain: its version, library and components",
+                toolchain::COMMANDS,
+            ),
             Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
             Command::group("util", "infrequently used commands", &[util::COMPLETION, util::LSP]),
             Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS)
@@ -86,7 +91,7 @@ pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 pub(crate) const COMPILE: OptionSet = OptionSet {
     title: "Compile options",
     params: &[
-        target::TARGET,
+        vun_driver::target::TARGET,
         checks::CHECKS,
         trace::TRACE,
         codegen::RELEASE,
@@ -123,7 +128,7 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     codegen::configure(session, args);
     checks::configure(session, args)?;
     trace::configure(session, args);
-    target::configure(session, args)
+    vun_driver::target::configure(session, args)
 }
 
 trait Inputs {
@@ -204,12 +209,13 @@ mod cache;
 mod debug;
 mod doc;
 mod explain;
+mod ffi;
 mod fix;
 mod fmt;
 mod pkg;
 mod status;
+mod target;
 mod test;
-mod tool;
 mod toolchain;
 mod util;
 

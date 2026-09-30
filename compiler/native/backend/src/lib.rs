@@ -19,7 +19,7 @@ use vun_native_arm64::Arm;
 use vun_native_thumb::Thumb2;
 use vun_native_x86_64::X86;
 use vun_object::{Float, Format, Machine};
-use vun_target::{Arches, Name, TargetSpec};
+use vun_target::{Name, Names, TargetSpec};
 
 /// An architecture the backend generates code for: its name among targets', the machine of a
 /// target's objects, and the compilation of a unit into one.
@@ -67,6 +67,16 @@ const ARCHES: [Arch; 3] = [
     },
 ];
 
+const FORMAT_NAMES: [Name; FORMATS.len()] = {
+    let mut names = [Name(""); FORMATS.len()];
+    let mut i = 0;
+    while i < FORMATS.len() {
+        names[i] = FORMATS[i].0;
+        i += 1;
+    }
+    names
+};
+
 const NAMES: [Name; ARCHES.len()] = {
     let mut names = [Name(""); ARCHES.len()];
     let mut i = 0;
@@ -79,7 +89,8 @@ const NAMES: [Name; ARCHES.len()] = {
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("native"),
-    arches: Arches::Only(&NAMES),
+    arches: Names::Only(&NAMES),
+    formats: Names::Only(&FORMAT_NAMES),
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
@@ -88,6 +99,7 @@ pub const INFO: BackendInfo = BackendInfo {
         floats: HeldFloats::Computed,
     },
     readiness: Readiness::Ready,
+    runs: &[],
 };
 
 #[derive(Default)]

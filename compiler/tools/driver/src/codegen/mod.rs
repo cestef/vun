@@ -139,7 +139,7 @@ impl Session {
         };
         self.provided(file, unit).map_err(Uncoded::Reported)?;
         let backend = match self.registry.choose(self.codegen, &target) {
-            Ok(backend) => backend,
+            Ok(picked) => picked.backend,
             Err(unchosen) => {
                 let d = self.unchosen(&unchosen, &target);
                 return Err(Uncoded::Reported(self.diag.error(d)));

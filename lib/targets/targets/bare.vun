@@ -37,6 +37,6 @@ _on := (
         .linker = .gnu,
         // Without the C library, but with the compiler's own helpers its code calls, such as
         // 64-bit division on a 32-bit core.
-        .c = targets.ilp32(targets.gnu(command, archiver, machine, &["-nostdlib", "-nostartfiles"], &["gcc"])),
+        .c = targets.ilp32(targets.gnu(command, .target, archiver, machine, &["-nostdlib", "-nostartfiles"], &["gcc"])),
     }
 };

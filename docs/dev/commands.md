@@ -68,10 +68,10 @@ cargo xtask remote --host am3.wg -- cargo nextest run   # or VUN_REMOTE=am3.wg
 `remote` mirrors the working copy (rsync, without `/target` and `/.jj`) to
 `vun-build/<workspace directory>` in the host's home and runs the words there over ssh, output
 shown as it comes; each `jj` workspace has its own mirror and `target/`. A host needs rustup (the
-toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and
-its own `~/.config/vun/toolchain.vun`. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
+toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and,
+to run cross targets, its own `~/.config/vun/tools.vun` (`am3.wg` has none: its cross tests skip). The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
 x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
-cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its toolchain file
+cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its tools file
 has rows for `linux.arm64.kernel`, `linux.arm.kernel`, `bare.thumbv7em.eabihf` and `macos.arm64.darwin`). Known host differences: Fedora 44's libclang fails
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
@@ -99,7 +99,9 @@ cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, 
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
-cargo run -q -p vun-cli -- toolchain components   # each component's status and what it handles
+cargo run -q -p vun-cli -- toolchain show        # version, library and why there, each component's status
+cargo run -q -p vun-cli -- target list           # every target: backend, linker, where it runs, what is lacking
+cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
 ```
 
 Saved queries live in `.vun/queries/` beside the root file (delete it to start cold), builds in
@@ -126,8 +128,9 @@ toolchain, target and checks).
 
 ## Cross builds
 
-Cross builds read the machine's toolchain file (spec 12 section 6, decision 192),
-`~/.config/vun/toolchain.vun`; `VUN_TOOLCHAIN` points at another file. Every session that chooses
+Cross builds read the machine's tools file (spec 12 section 6, decisions 192 and 366),
+`~/.config/vun/tools.vun`; `VUN_TOOLS` points at another file; `vun target show` names the entry
+each part comes from. Every session that chooses
 a target reads it, tests included: a broken file, or an entry naming a target the branch lacks,
 fails every test choosing a target (`target.unchosen`). Without a row for a target, the backend
 tests skip it.

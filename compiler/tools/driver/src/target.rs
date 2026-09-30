@@ -7,11 +7,9 @@ use std::sync::Arc;
 
 use vun_command::{Args, Param};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
-use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::FileRef;
-use vun_intern::Symbol;
 use vun_query::Sharing;
-use vun_sema::target::{Choice, Chosen, Target, TargetOf};
+use vun_sema::target::{Choice, Chosen, Target, TargetOf, TargetPath};
 use vun_target::TargetSpec;
 use vun_trace::tracing;
 
@@ -27,7 +25,7 @@ pub const TARGET: Param = Param::option("target")
 /// Never: a path naming no target is reported when the target is chosen.
 pub fn configure(session: &mut Session, args: &Args) -> Result<(), Box<Diagnostic>> {
     if let Some(path) = args.value(&TARGET) {
-        session.choice = Choice::Path(path.split(PATH_SEPARATOR).map(Symbol::intern).collect());
+        session.choice = Choice::Path(TargetPath::parse(path));
     }
     Ok(())
 }
@@ -60,7 +58,9 @@ impl Session {
                 let help = Msg::new()
                     .text("choose one with ")
                     .code("--target")
-                    .text(", or name the machine's in the toolchain file");
+                    .text(", of those ")
+                    .code("vun target list")
+                    .text(" lists");
                 Err(self
                     .diag
                     .error(Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(&why).help(help)))

@@ -5,7 +5,7 @@ use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_link_gnu::Ld;
-use vun_target::{Name, Readiness, TargetSpec};
+use vun_target::{Name, Readiness, Run, TargetSpec};
 use vun_tool::Executable;
 
 pub const INFO: LinkerInfo = LinkerInfo {
@@ -14,6 +14,7 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: false,
     outputs: &[Output::Executable, Output::Shared],
     readiness: Readiness::Ready,
+    runs: &[Run::Compiler, Run::Program(PROGRAM)],
 };
 
 /// The program, as found on the search path.

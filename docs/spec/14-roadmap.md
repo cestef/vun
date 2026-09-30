@@ -7,5 +7,5 @@
 | 2 | MIR checks: place states, kinds, `defer`, borrows, scoping; coroutine lowering; must-fail corpus | every must-fail file is rejected with exactly its expected diagnostics; generators and async run in the interpreter |
 | 3 | LIR, C backend, `Linker` with lld and GNU ld, QEMU runner, the test runner in all modes | blinky on a real board; differential tests against the interpreter pass |
 | 4 | Cranelift and QBE backends, wild and mold, hosted `std.os`, benchmarks and fuzzing | the compiler's test suite passes natively on three backends |
-| 5 | board runtimes, `std.task` executors, stack and `panic.never` analyses, deferred logging, `vun tool bind`, probe-rs integration | measured stack high-water marks within computed bounds; Vun inside an ESP-IDF project |
+| 5 | board runtimes, `std.task` executors, stack and `panic.never` analyses, deferred logging, `vun ffi bind`, probe-rs integration | measured stack high-water marks within computed bounds; Vun inside an ESP-IDF project |
 | 6 | `fmt`, LSP, `fix`, lints API, package tooling, `doc`, LLVM backend | usable daily; code size within 10% of C on a reference firmware |

@@ -2,11 +2,12 @@
 
 use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
-use vun_target::{Arches, Name};
+use vun_target::{Name, Names};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("cranelift"),
-    arches: Arches::Only(&[Name("x86_64"), Name("arm64"), Name("riscv64"), Name("s390x")]),
+    arches: Names::Only(&[Name("x86_64"), Name("arm64"), Name("riscv64"), Name("s390x")]),
+    formats: Names::Any,
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[Feature::Vectors, Feature::TailCalls, Feature::DebugInfo],
@@ -15,6 +16,7 @@ pub const INFO: BackendInfo = BackendInfo {
         floats: HeldFloats::Every,
     },
     readiness: Readiness::Planned,
+    runs: &[],
 };
 
 /// Declared, generating no code yet.

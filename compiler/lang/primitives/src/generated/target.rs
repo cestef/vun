@@ -8,7 +8,7 @@ pub enum Target {
     /// The largest address of the target: `usize` is `Int(0..=usize_max)`.
     usize_max,
     /// The target being built for, as its declaration gives it: code picks what differs between
-    /// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
+    /// systems by its members at compile time (`lang.target.current.os`). A machine's tools file
     /// changes only where the tools are, which this value does not say.
     current,
 }

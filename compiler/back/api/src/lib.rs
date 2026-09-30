@@ -23,7 +23,7 @@ use vun_lir::unit::Unit;
 use vun_lir_passes::legalize::Division;
 use vun_origin::OriginId;
 pub use vun_target::Readiness;
-use vun_target::{Arches, Name, Profile, Support, TargetSpec, Unsupported};
+use vun_target::{Name, Names, Profile, Run, Support, TargetSpec, Unsupported};
 
 /// What a backend produces.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -42,7 +42,7 @@ pub enum Emits {
 }
 
 impl Emits {
-    /// Its name, as `vun toolchain components` shows it.
+    /// Its name, as `vun toolchain show` lists it.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
@@ -111,18 +111,24 @@ pub enum Feature {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BackendInfo {
     pub id: Name,
-    pub arches: Arches,
+    pub arches: Names,
+    /// The object formats it writes; any for a backend emitting source.
+    pub formats: Names,
     pub caps: BackendCaps,
     pub readiness: Readiness,
+    /// The programs it runs.
+    pub runs: &'static [Run],
 }
 
 impl BackendInfo {
     #[must_use]
     pub fn supports(&self, target: &TargetSpec) -> Support {
-        if self.arches.contains(target.arch) {
-            Support::Yes
-        } else {
+        if !self.arches.contains(target.arch) {
             Support::No(Unsupported::Arch(target.arch))
+        } else if !self.formats.contains(target.object_format) {
+            Support::No(Unsupported::ObjectFormat(target.object_format))
+        } else {
+            Support::Yes
         }
     }
 

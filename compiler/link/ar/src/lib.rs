@@ -4,7 +4,7 @@
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
-use vun_target::{Name, Readiness, TargetSpec};
+use vun_target::{Name, Readiness, Run, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool};
 
 pub const INFO: LinkerInfo = LinkerInfo {
@@ -13,6 +13,7 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: false,
     outputs: &[Output::Static],
     readiness: Readiness::Ready,
+    runs: &[Run::Archiver],
 };
 
 /// Replaces or inserts the members, creating the archive, and writes its symbol index.

@@ -11,16 +11,16 @@ use vun_items::lang::target_Convention as convention;
 use vun_items::lang::target_Threads as threads;
 use vun_items::lang::target_Version as version;
 use vun_items::lang::{
-    target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
-    target_FrameSizes as frames,
+    target_Atomics as atomics, target_Attributes as attributes, target_BuildsFor as builds_for,
+    target_CCompiler as compiler, target_FrameSizes as frames,
 };
 use vun_items::lang::{target_Backends as backends, target_Spec as spec};
 use vun_items::lang::{target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_items::std::build_Output as output;
 use vun_sema_ty::Value;
 use vun_target::{
-    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Output,
-    TargetSpec, Threads, Version,
+    Atomics, Attributes, Backends, BuildsFor, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes,
+    Output, TargetSpec, Threads, Version,
 };
 
 use super::members::Members;
@@ -122,6 +122,11 @@ impl Variants for Convention {
     ];
 }
 
+impl Variants for BuildsFor {
+    const VARIANTS: &'static [(Item, Self)] =
+        &[(builds_for::target, Self::Target), (builds_for::host, Self::Host)];
+}
+
 impl Variants for Atomics {
     const VARIANTS: &'static [(Item, Self)] = &[(atomics::none, Self::None), (atomics::gnu, Self::Gnu)];
 }
@@ -162,6 +167,7 @@ impl Read for CCompiler {
         let m = Members::of(value)?;
         Ok(Self {
             command: m.string(compiler::command)?,
+            builds_for: m.read(compiler::builds_for)?,
             archiver: m.string(compiler::archiver)?,
             flags: m.strings(compiler::flags)?,
             optimize: m.strings(compiler::optimize)?,

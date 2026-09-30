@@ -126,7 +126,7 @@ impl Session {
         session.store = self.store.clone();
         session.schemes = self.schemes.clone();
         session.codegen = self.codegen;
-        session.toolchain.clone_from(&self.toolchain);
+        session.tools.clone_from(&self.tools);
         session.persistence = match self.persistence {
             Persistence::Off => Persistence::Off,
             Persistence::On | Persistence::At(_) => Persistence::On,

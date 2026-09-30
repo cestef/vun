@@ -14,7 +14,7 @@ use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 pub use vun_target::Output;
-use vun_target::{Name, Readiness, Support, TargetSpec, Unsupported};
+use vun_target::{Name, Readiness, Run, Support, TargetSpec, Unsupported};
 
 /// A region of target memory, such as flash or RAM.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -78,6 +78,8 @@ pub struct LinkerInfo {
     /// What it builds programs as.
     pub outputs: &'static [Output],
     pub readiness: Readiness,
+    /// The programs it runs, whatever the target; see [`Linker::runs`].
+    pub runs: &'static [Run],
 }
 
 impl LinkerInfo {
@@ -104,6 +106,12 @@ impl LinkerInfo {
 
 pub trait Linker {
     fn info(&self) -> &LinkerInfo;
+
+    /// The programs it runs to link for `target`.
+    fn runs(&self, target: &TargetSpec) -> Vec<Run> {
+        let _ = target;
+        self.info().runs.to_vec()
+    }
 
     /// Links; an adapter that is only planned reports that it cannot yet.
     ///

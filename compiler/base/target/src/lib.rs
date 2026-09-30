@@ -11,14 +11,16 @@ mod check;
 mod floats;
 mod machine;
 mod name;
+mod run;
 mod threads;
 mod trace;
 
-pub use c::{Atomics, Attributes, CCompiler, CInt, CTypes, FrameSizes};
+pub use c::{Atomics, Attributes, BuildsFor, CCompiler, CInt, CTypes, FrameSizes};
 pub use check::{Check, Checks};
 pub use floats::Floats;
 pub use machine::Machine;
 pub use name::Name;
+pub use run::Run;
 pub use threads::Threads;
 pub use trace::Detail;
 
@@ -50,6 +52,17 @@ pub enum Profile {
     Debug,
     /// Fast to run.
     Release,
+}
+
+impl Profile {
+    /// The name its builds are called by: `debug`, `release`.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Debug => "debug",
+            Self::Release => "release",
+        }
+    }
 }
 
 /// `lang.target.Backends`: the backends a target builds with under each profile, most preferred
@@ -122,19 +135,19 @@ pub enum Readiness {
     Planned,
 }
 
-/// The architectures a component handles.
+/// The names of an open set a component handles, such as architectures or object formats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Arches {
+pub enum Names {
     Any,
     Only(&'static [Name]),
 }
 
-impl Arches {
+impl Names {
     #[must_use]
-    pub fn contains(self, arch: Symbol) -> bool {
+    pub fn contains(self, name: Symbol) -> bool {
         match self {
             Self::Any => true,
-            Self::Only(list) => list.iter().any(|n| n.is(arch)),
+            Self::Only(list) => list.iter().any(|n| n.is(name)),
         }
     }
 }
@@ -147,7 +160,7 @@ pub enum Support {
 }
 
 /// Why a component cannot handle a target or request.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unsupported {
     Arch(Symbol),
     ObjectFormat(Symbol),

@@ -2,6 +2,7 @@
 pub mod target_Atomics;
 pub mod target_Attributes;
 pub mod target_Backends;
+pub mod target_BuildsFor;
 pub mod target_C;
 pub mod target_CCompiler;
 pub mod target_CInt;

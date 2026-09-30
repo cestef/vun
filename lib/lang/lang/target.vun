@@ -6,6 +6,16 @@ Endian := enum { little, big };
 /// A C integer type of a target: its width in bits and its alignment in bytes.
 CInt := struct { bits: u8, align: u8 };
 
+/// The machine a C compiler's command builds for.
+BuildsFor := enum {
+    /// The target: a cross compiler (`arm-none-eabi-gcc`), or one its flags tell the target
+    /// (`clang --target=...`).
+    target,
+    /// The machine it runs on, as a system's own `cc` does: it builds for the target only on a
+    /// machine of it, and elsewhere the machine's tools file names another.
+    host,
+};
+
 /// What a C compiler offers beyond C99 for atomic memory access.
 Atomics := enum {
     /// Nothing: atomic access is refused.
@@ -37,6 +47,7 @@ FrameSizes := enum {
 /// beyond C99.
 CCompiler := struct {
     command: &[u8],
+    builds_for: BuildsFor = .target,
     /// The program bundling objects into a static library, as `ar` does.
     archiver: &[u8],
     flags: &[&[u8]],
@@ -52,7 +63,7 @@ CCompiler := struct {
     /// it (clang's `-mmacos-version-min=`); none where the target records no release.
     version_flag: ?&[u8] = .none,
     /// The directory holding the headers and libraries of the target's system that its tools
-    /// build against (a sysroot, an SDK): where a machine keeps them, which its toolchain file
+    /// build against (a sysroot, an SDK): where a machine keeps them, which its tools file
     /// names, and none where they are the tools' own.
     sysroot: ?&[u8] = .none,
 };
@@ -165,7 +176,7 @@ Features: type = _;
 usize_max: Int(0..) = _;
 
 /// The target being built for, as its declaration gives it: code picks what differs between
-/// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
+/// systems by its members at compile time (`lang.target.current.os`). A machine's tools file
 /// changes only where the tools are, which this value does not say.
 current: Spec = _;
 

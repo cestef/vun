@@ -49,6 +49,7 @@ pub(crate) fn target() -> TargetSpec {
             long_long: int(64, 8),
             pointer_align: 8,
             compiler: CCompiler {
+                builds_for: vun_target::BuildsFor::Target,
                 command: name("cc"),
                 archiver: name("ar"),
                 flags: Vec::new(),

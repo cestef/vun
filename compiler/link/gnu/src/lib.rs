@@ -10,7 +10,7 @@ use std::path::Path;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Edit;
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
-use vun_target::{Name, Readiness, TargetSpec};
+use vun_target::{Name, Readiness, Run, TargetSpec};
 use vun_tool::{Arg, Executable, Invocation, Tool, gcc};
 
 pub use script::{Script, Unscripted};
@@ -21,6 +21,7 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: true,
     outputs: &[Output::Executable, Output::Shared],
     readiness: Readiness::Ready,
+    runs: &[Run::Compiler],
 };
 
 /// The extension of a linker script written beside the output.

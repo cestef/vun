@@ -3,7 +3,7 @@
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_suggest::Lookup;
-use vun_target::{Profile, TargetSpec};
+use vun_target::{TargetSpec, Unsupported};
 
 use crate::Session;
 use crate::registry::{Unchosen, Unfit};
@@ -25,40 +25,43 @@ impl Session {
                 let msg = Msg::new().text("backend ").code(name.as_str()).text(" cannot generate code yet");
                 self.fitting(target, Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg))
             }
-            Unchosen::Named(name, Unfit::Arch) => {
-                let msg = Msg::new()
-                    .text("backend ")
-                    .code(name.as_str())
-                    .text(" does not generate code for ")
-                    .code(target.arch.as_str());
+            &Unchosen::Named(name, Unfit::Unsupported(why)) => {
+                let msg = Msg::new().text("backend ").code(name.as_str()).append(Self::unsupported(why));
                 self.fitting(target, Diagnostic::error(errors::BACKEND_UNSUPPORTED, msg))
             }
             Unchosen::Preferred(profile, tried) => {
-                let which = match profile {
-                    Profile::Debug => "debug",
-                    Profile::Release => "release",
-                };
                 let msg = Msg::new()
                     .text("no backend the target prefers for ")
-                    .text(which)
+                    .text(profile.name())
                     .text(" builds can build");
                 let d = tried
                     .iter()
                     .fold(Diagnostic::error(errors::BACKEND_UNCHOSEN, msg), |d, &(name, unfit)| {
-                        d.child(ChildKind::Note, Self::unfit(name, unfit, target.arch))
+                        d.child(ChildKind::Note, Self::unfit(name, unfit))
                     });
                 self.fitting(target, d)
             }
         }
     }
 
-    fn unfit(name: Symbol, unfit: Unfit, arch: Symbol) -> Msg {
+    fn unfit(name: Symbol, unfit: Unfit) -> Msg {
         let why = match unfit {
             Unfit::Absent => Msg::new().text(" is not in this toolchain"),
             Unfit::Planned => Msg::new().text(" cannot generate code yet"),
-            Unfit::Arch => Msg::new().text(" does not generate code for ").code(arch.as_str()),
+            Unfit::Unsupported(why) => Self::unsupported(why),
         };
         Msg::new().code(name.as_str()).append(why)
+    }
+
+    /// Why a backend does not generate code for a target.
+    fn unsupported(why: Unsupported) -> Msg {
+        let msg = Msg::new().text(" does not generate ");
+        match why {
+            Unsupported::Arch(arch) => msg.text("code for ").code(arch.as_str()),
+            Unsupported::ObjectFormat(format) => msg.text("objects of format ").code(format.as_str()),
+            Unsupported::MemoryRegions => msg.text("code placed in memory regions"),
+            Unsupported::Output(output) => msg.text("programs as ").code(output.name()),
+        }
     }
 
     /// `d`, with the backends that could build for `target` named.

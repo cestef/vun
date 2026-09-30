@@ -5,4 +5,4 @@ pub mod layout;
 pub mod lock;
 pub mod manifest;
 pub mod store;
-pub mod toolchain;
+pub mod tools;

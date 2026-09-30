@@ -10,6 +10,8 @@ use crate::Item;
 pub const Endian: Item = Item::new(&["lang", "target", "Endian"]);
 /// A C integer type of a target: its width in bits and its alignment in bytes.
 pub const CInt: Item = Item::new(&["lang", "target", "CInt"]);
+/// The machine a C compiler's command builds for.
+pub const BuildsFor: Item = Item::new(&["lang", "target", "BuildsFor"]);
 /// What a C compiler offers beyond C99 for atomic memory access.
 pub const Atomics: Item = Item::new(&["lang", "target", "Atomics"]);
 /// What a C compiler offers beyond C99 for placing data: alignments past every C type's, and
@@ -46,7 +48,7 @@ pub const Features: Item = Item::new(&["lang", "target", "Features"]);
 /// The largest address of the target: `usize` is `Int(0..=usize_max)`.
 pub const usize_max: Item = Item::new(&["lang", "target", "usize_max"]);
 /// The target being built for, as its declaration gives it: code picks what differs between
-/// systems by its members at compile time (`lang.target.current.os`). A machine's toolchain file
+/// systems by its members at compile time (`lang.target.current.os`). A machine's tools file
 /// changes only where the tools are, which this value does not say.
 pub const current: Item = Item::new(&["lang", "target", "current"]);
 /// Whether the target's processor has `feature` (`Spec.features`).

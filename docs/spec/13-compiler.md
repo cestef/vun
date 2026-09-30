@@ -610,7 +610,7 @@ pub trait DiagSink {
   - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,
     packages, diagnostic renderers and the pure-Rust backends (C text, Cranelift); enough to check,
     build and run a program with nothing else installed. Cargo features choose the set.
-  - *a native library loaded on first use*: libclang for `vun tool bind`, libLLVM for the LLVM
+  - *a native library loaded on first use*: libclang for `vun ffi bind`, libLLVM for the LLVM
     backend, through a thin adapter crate each, the only crates allowed `unsafe`. Never linked in;
     missing, it is one diagnostic naming the library and the versions accepted, and every other
     command works.
@@ -653,7 +653,7 @@ the target's architecture (`BackendInfo.arches`); that is `Registry::choose`, it
 fit; otherwise the build is refused with `backend.unavailable` or `backend.unsupported`, naming the
 backends that could, and a target none of whose preferences fit reports `backend.unchosen` with
 each one's reason. The profile also reaches the tools: a release build adds the target C
-compiler's `optimize` flags. `vun toolchain components` lists each backend with whether it
+compiler's `optimize` flags. `vun toolchain show` lists each backend with whether it
 generates code and for which architectures. Linkers are named by the target (`linker`).
 
 ### 8.1 What every backend shares
@@ -926,7 +926,7 @@ runs); ordered loads and stores are `ldar` and `stlr`. The C convention passes a
 four floats of one type a field per floating-point register, another of up to 16 bytes in up to
 two general registers, a larger one as the address of a copy the caller makes, and a result in
 memory through `x8`; narrow integers are extended to 32 bits both ways. The backend tests run
-every program on linux.arm64.kernel too, through the runner of the machine's toolchain file (spec 12,
+every program on linux.arm64.kernel too, through the runner of the machine's tools file (spec 12,
 section 6), and require the same results as on x86-64.
 
 Thumb-2 (decision 293) holds integers and singles' bits in general registers of 32 bits, and a
@@ -936,7 +936,7 @@ operation on doubles (`Selection::Homed`) loads its operands into `d0` and `d1` 
 computes there (`vadd.f64`, `vcmp.f64`, `vcvt`) and stores its result to its home (`vstr`), or
 into a general register for a single or an integer; calls and the entry pass doubles between
 homes and the convention's `d` registers. A comparison of doubles sets no flags a branch fuses.
-The backend tests run every program on linux.arm.kernel too, where the machine's toolchain file names a
+The backend tests run every program on linux.arm.kernel too, where the machine's tools file names a
 runner for it.
 
 **Legalization.** Each backend declares the widest integer it computes with

@@ -3,7 +3,7 @@
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_link_gnu::Ld;
-use vun_target::{Name, Readiness, TargetSpec};
+use vun_target::{Name, Readiness, Run, TargetSpec};
 use vun_tool::gcc;
 
 pub const INFO: LinkerInfo = LinkerInfo {
@@ -12,7 +12,11 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: false,
     outputs: &[Output::Executable, Output::Shared],
     readiness: Readiness::Ready,
+    runs: &[Run::Compiler, Run::Program(PROGRAM)],
 };
+
+/// The program the C compiler runs as its linker, found on the search path.
+const PROGRAM: &str = "mold";
 
 #[derive(Default)]
 pub struct MoldLinker;

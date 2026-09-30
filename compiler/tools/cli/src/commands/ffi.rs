@@ -1,4 +1,4 @@
-//! `vun tool`: C bindings, C headers and register packages (spec 12, section 7).
+//! `vun ffi`: C bindings, C headers and register packages (spec 12, section 7).
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -23,7 +23,7 @@ const CFLAGS: Param = Param::option("cflag")
     .arity(Arity::Many)
     .about("a flag the build compiles the header with, such as -Iinclude; repeat it for each");
 
-pub(super) const GROUP: &str = "tool";
+pub(super) const GROUP: &str = "ffi";
 
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
     .params(&[HEADER, OUT, CFLAGS])
@@ -32,7 +32,7 @@ pub(super) const BIND: Command<Session> = Command::run("bind", "generate declara
         about: "bind a header",
     }]);
 
-/// `vun tool bind <header>`: the header's declarations as Vun, through libclang loaded now.
+/// `vun ffi bind <header>`: the header's declarations as Vun, through libclang loaded now.
 fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let header =
         PathBuf::from(args.value(&HEADER).expect("positional parameters are present when a command runs"));

@@ -2,11 +2,12 @@
 
 use vun_backend::{BackendCaps, BackendInfo, Emits, HeldFloats, Planned, Readiness, Widest};
 use vun_lir_passes::legalize::Half;
-use vun_target::{Arches, Name};
+use vun_target::{Name, Names};
 
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("external"),
-    arches: Arches::Any,
+    arches: Names::Any,
+    formats: Names::Any,
     caps: BackendCaps {
         emits: Emits::Object,
         features: &[],
@@ -15,6 +16,7 @@ pub const INFO: BackendInfo = BackendInfo {
         floats: HeldFloats::Every,
     },
     readiness: Readiness::Planned,
+    runs: &[],
 };
 
 /// Declared, generating no code yet.

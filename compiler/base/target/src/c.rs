@@ -10,6 +10,14 @@ pub struct CInt {
     pub align: u32,
 }
 
+/// `lang.target.BuildsFor`: the machine a C compiler's command builds for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum BuildsFor {
+    Target,
+    /// The machine it runs on, as a system's own `cc` does.
+    Host,
+}
+
 /// `lang.target.Atomics`: what a C compiler offers beyond C99 for atomic access.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Atomics {
@@ -38,6 +46,7 @@ pub enum FrameSizes {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct CCompiler {
     pub command: Symbol,
+    pub builds_for: BuildsFor,
     /// The program bundling objects into a static library.
     pub archiver: Symbol,
     pub flags: Vec<Symbol>,

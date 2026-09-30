@@ -70,14 +70,14 @@ fn asm_run(name: &str, target: Item, backend: &str, source: &str) -> Ran {
     // Choosing the target equips it with the machine's tools, and a runner where it needs one.
     let _ = session.lir(file);
     let native = cfg!(target_arch = "x86_64") && target == targets::linux_x86_64::kernel;
-    if !cfg!(target_os = "linux") || !native && session.runner.is_empty() {
+    if !cfg!(target_os = "linux") || !native && session.runner().is_empty() {
         return Ran::Elsewhere;
     }
     let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     // A runner the toolchain names but this machine lacks runs nothing either.
     match session.command(&program).status() {
         Ok(status) => Ran::Exited(status.code()),
-        Err(why) if why.kind() == std::io::ErrorKind::NotFound && !session.runner.is_empty() => {
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound && !session.runner().is_empty() => {
             Ran::Elsewhere
         }
         Err(why) => panic!("{why}"),

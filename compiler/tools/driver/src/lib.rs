@@ -21,6 +21,7 @@ mod queries;
 mod reduce;
 mod registry;
 mod session;
+pub mod setup;
 mod shared;
 mod shell;
 mod stack;
@@ -28,14 +29,14 @@ pub mod stages;
 mod steps;
 pub mod target;
 pub mod testing;
-mod toolchain;
+mod tools;
 pub mod trace;
 pub mod view;
 
 pub use coverage::Coverage;
 pub use pages::Page;
 pub use queries::Persistence;
-pub use registry::{Codegen, Registry, Unchosen, Unfit};
+pub use registry::{Codegen, Link, Linkage, Pick, Picked, Registry, Unchosen, Unfit};
 pub use session::Session;
 pub use shared::Shared;
 

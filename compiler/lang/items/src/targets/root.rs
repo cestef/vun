@@ -23,10 +23,10 @@ pub const hosts: Item = Item::new(&["targets", "hosts"]);
 pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
 /// The flags a release build adds for a GCC or Clang driver.
 pub const c_optimize: Item = Item::new(&["targets", "c_optimize"]);
-/// A GCC or Clang driver, run as `command`, beside the `archiver` of its toolchain: `machine`
-/// selects the target machine (instruction set, floating-point ABI) in every compile and link,
-/// which also picks the libraries built for it, and its links take `link_flags` and, after the
-/// objects, `libraries`.
+/// A GCC or Clang driver, run as `command`, building for the machine `builds_for` says, beside
+/// the `archiver` of its tools: `machine` selects the target machine (instruction set,
+/// floating-point ABI) in every compile and link, which also picks the libraries built for it,
+/// and its links take `link_flags` and, after the objects, `libraries`.
 pub const gnu: Item = Item::new(&["targets", "gnu"]);
 /// The backends of a target the native backend generates code for: it for debug builds, and C
 /// wherever the others are missing.

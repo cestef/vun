@@ -6,21 +6,20 @@ use std::fmt;
 
 use vun_codec::{Decode, Encode};
 use vun_hir::db::FileRef;
-use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Query};
 use vun_sema_ty::Value;
 use vun_sema_ty::trap::Unevaluated;
 use vun_target::Machine;
 
-use super::{Declared, Read, Unread};
+use super::{Declared, Read, TargetPath, Unread};
 use crate::env::Env;
 
 /// How a target is chosen.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Choice {
     /// The declaration at this path inside the package `targets`, such as `linux.x86_64.kernel`.
-    Path(Vec<Symbol>),
+    Path(TargetPath),
     /// The first of `targets.hosts` for the machine running the toolchain.
     Host,
     /// A target read already, such as a program's in a package's plan.
@@ -31,7 +30,7 @@ impl Choice {
     /// The target a handle of `vun_items::targets` names.
     #[must_use]
     pub fn of(target: Item) -> Self {
-        Self::Path(target.path().iter().skip(1).map(|&name| Symbol::intern(name)).collect())
+        Self::Path(TargetPath::of(target))
     }
 }
 
@@ -80,8 +79,7 @@ impl Query for Chosen {
         let env = Env::of(cx, file).ok_or(Unchosen::Unevaluated(Unevaluated::Absent))?;
         match choice {
             Choice::Path(path) => {
-                let names = std::iter::once(vun_items::targets.symbol()).chain(path.iter().copied());
-                let value = env.path(names).map_err(Unchosen::Unevaluated)?;
+                let value = env.path(path.from_package()).map_err(Unchosen::Unevaluated)?;
                 Declared::read(&value).map_err(Unchosen::Unread)
             }
             Choice::Host => {
@@ -89,10 +87,9 @@ impl Query for Chosen {
                 let (Value::Tuple(targets) | Value::Array(targets)) = hosts else {
                     return Err(Unchosen::Unread(Unread::Record));
                 };
-                let Machine { arch, os } = Machine::RUNNING;
                 for target in &targets {
                     let declared = Declared::read(target).map_err(Unchosen::Unread)?;
-                    if arch.is(declared.spec.arch) && os.is(declared.spec.os) {
+                    if Machine::RUNNING.is(&declared.spec) {
                         return Ok(declared);
                     }
                 }

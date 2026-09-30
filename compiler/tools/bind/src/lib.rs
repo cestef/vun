@@ -1,4 +1,4 @@
-//! `vun tool bind` (spec 07, section 5): Vun declarations from a C header, read through libclang
+//! `vun ffi bind` (spec 07, section 5): Vun declarations from a C header, read through libclang
 //! with the build's compile flags, so that sizes, macros and conditionals are the target's.
 //!
 //! Only what the header's own directory declares is bound; what it includes from elsewhere,

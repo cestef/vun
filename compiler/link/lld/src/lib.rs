@@ -7,7 +7,7 @@ mod flavor;
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
-use vun_target::{Readiness, TargetSpec};
+use vun_target::{Readiness, Run, TargetSpec};
 use vun_tool::{Executable, Invocation, Tool};
 
 use flavor::{FLAVORS, FORMATS};
@@ -18,6 +18,7 @@ pub const INFO: LinkerInfo = LinkerInfo {
     regions: false,
     outputs: &[Output::Executable, Output::Shared],
     readiness: Readiness::Ready,
+    runs: &[],
 };
 
 #[derive(Default)]
@@ -26,6 +27,14 @@ pub struct LldLinker;
 impl Linker for LldLinker {
     fn info(&self) -> &LinkerInfo {
         &INFO
+    }
+
+    fn runs(&self, target: &TargetSpec) -> Vec<Run> {
+        FLAVORS
+            .iter()
+            .filter(|f| f.format.is(target.object_format))
+            .map(|f| Run::Program(f.program))
+            .collect()
     }
 
     fn link(&self, plan: &LinkPlan, target: &TargetSpec, diag: &mut DiagCtxt) -> Result<(), ErrorGuaranteed> {

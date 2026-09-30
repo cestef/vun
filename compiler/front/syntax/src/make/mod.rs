@@ -1,5 +1,5 @@
 //! Making Vun source: declarations and expressions as values, which one printer writes, so that
-//! tools generating code (`vun tool bind`) never assemble text. Types are expressions (spec 02,
+//! tools generating code (`vun ffi bind`) never assemble text. Types are expressions (spec 02,
 //! section 1), so one [`Expr`] serves for values and types, and declarations of `lang` and `std`
 //! are named by their handles in `vun-items`.
 //!

@@ -37,7 +37,7 @@ Traps that cost a session before. Add one when it costs you time.
 - `cargo fmt` rewraps code: edit scripts must assert their replacements applied.
 - `fuzz` is a workspace member (workspace lints, one lockfile); `cargo +nightly fuzz` still runs
   from `fuzz/` and builds into the root `target/`.
-- The toolchain file is read by every session that chooses a target, tests included (see
+- The machine's tools file (`tools.vun`) is read by every session that chooses a target, tests included (see
   `commands.md`). Its field errors reuse the `manifest.*` ids, as the lock file's do.
 
 ## Tests
