@@ -48,6 +48,10 @@ pub fn serve_over(
 ) -> io::Result<Outcome> {
     // Messages are read as they come, so that those waiting when one is handled are known.
     let mut server = server::Server::new(session);
+    if !vun_par::SPAWNS {
+        let incoming = transport::Incoming(Box::new(input) as Box<dyn BufRead>);
+        return server.run(server::Frames::Inline(incoming), &mut transport::Outgoing(output));
+    }
     let events = server.events.clone();
     std::thread::spawn(move || {
         let mut incoming = transport::Incoming(input);
@@ -62,5 +66,5 @@ pub fn serve_over(
         // message that could not be read.
         let _ = events.send(server::Event::Frame(Ok(None)));
     });
-    server.run(&mut transport::Outgoing(output))
+    server.run(server::Frames::Read, &mut transport::Outgoing(output))
 }

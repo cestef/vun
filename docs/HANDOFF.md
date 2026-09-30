@@ -24,8 +24,11 @@ wasi.wasm32.
 Last landed: the compiler runs under WASI (389), and the playground runs it in the browser.
 `vun` builds for `wasm32-wasip1` (16 MB, 2.6 MB with brotli): the user's directories are
 `vun_build::dirs::Dirs` (none there), a process is `vun_fs::PROCESS` (random there), and the CLI
-leaves out `vun ffi` and mimalloc there. `site/play.html` runs `vun build` in a worker through
-`@bjorn3/browser_wasi_shim`, then the program; hello builds in about 1.8 s in Chromium. Before
+leaves out `vun ffi` and mimalloc there. `site/play.html` runs `vun build --format json` in a worker through
+`@bjorn3/browser_wasi_shim`, then the program, and draws the records as cards; its CodeMirror
+editor (Helix's keys on request) is served by `vun util lsp` in a second worker, reading messages
+inline where no thread starts (`vun_par::SPAWNS`). Hello builds in about 1.8 s in Chromium;
+diagnostics show about 1 s after the page loads. Before
 that: the wasm target links in process (388). `vun-link-wasm` is `wasi.wasm32.p1`'s linker
 in place of `wasm-ld` (still `--linker lld`): strong over weak, COMDATs, unreached code and data
 left out, the stack first in memory, `__wasm_call_ctors` and the bounds of named sections, weak

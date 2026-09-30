@@ -1875,6 +1875,7 @@ dependencies = [
  "vun-grammar",
  "vun-lsp-protocol",
  "vun-origin",
+ "vun-par",
  "vun-span",
  "vun-term",
  "vun-trace",

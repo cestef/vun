@@ -1376,6 +1376,9 @@ before it is added to the corpus.
 Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a thin shell over
 `vun-driver`: one session, whose query engine is the compiler's, so what the editor shows is what
 `vun check` reports, computed by the same queries, and each answer reuses what the last computed.
+A thread reads the messages as they come, so that the loop handles every one waiting before it
+checks what changed; where no thread starts (WASI's first preview, `vun_par::SPAWNS`), the loop
+reads each message itself once the last is handled, and checks after each.
 
 - *Documents.* The text the editor holds of an open file is the file's text, whether saved or not:
   opening it and each change (the whole text) read it as a new version of the file, a file of its

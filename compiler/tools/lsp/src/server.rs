@@ -3,7 +3,7 @@
 //! and publishing diagnostics once those waiting are handled.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
@@ -55,6 +55,13 @@ pub(crate) enum Event {
     Tested { uri: Uri, tests: Vec<Tested> },
 }
 
+/// Where the loop's messages come from: a thread reading them as they come, sending each as an
+/// event, or, where no thread starts, the loop itself, reading one once the last is handled.
+pub(crate) enum Frames {
+    Read,
+    Inline(transport::Incoming<Box<dyn BufRead>>),
+}
+
 pub(crate) struct Server<'s> {
     pub(crate) session: &'s mut Session,
     pub(crate) documents: BTreeMap<Uri, Document>,
@@ -93,8 +100,19 @@ impl<'s> Server<'s> {
     /// Serves the events it receives until the client exits or closes the stream: each is
     /// handled in order, a message answered, and once none waits, what changed is checked and
     /// published.
-    pub(crate) fn run(&mut self, out: &mut transport::Outgoing<impl Write>) -> io::Result<Outcome> {
-        while let Ok(first) = self.received.recv() {
+    pub(crate) fn run(
+        &mut self,
+        mut frames: Frames,
+        out: &mut transport::Outgoing<impl Write>,
+    ) -> io::Result<Outcome> {
+        loop {
+            let first = match &mut frames {
+                Frames::Inline(incoming) => Event::Frame(incoming.next()),
+                Frames::Read => match self.received.recv() {
+                    Ok(event) => event,
+                    Err(_) => break,
+                },
+            };
             let mut next = Some(first);
             while let Some(event) = next {
                 match event {

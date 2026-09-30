@@ -24,6 +24,10 @@ use usage::{COUNTS, Counts};
 #[cfg(test)]
 mod tests;
 
+/// Whether the platform starts threads: wasm without shared memory, as WASI's first preview
+/// is, runs on one.
+pub const SPAWNS: bool = !cfg!(all(target_family = "wasm", not(target_feature = "atomics")));
+
 /// The stack of each thread: as large as a process's main thread's, since compile-time
 /// evaluation recurses deeply.
 pub(crate) const STACK: usize = 8 << 20;

@@ -108,7 +108,11 @@ cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
 The site's plugin serves that file as `play/vun.wasm` and `lib/` as `play/library.json`. The
 same compiler runs under wasmtime: `wasmtime run --dir .::/play --dir lib::/lib --env
 VUN_LIBRARY=/lib vun.wasm build /play/main.vun --target wasi.wasm32.p1`. It is 16 MB, 2.6 MB
-with brotli.
+with brotli. The language server waits on shared memory, which needs the page isolated across
+origins: Vite's servers send the headers, and `site/public/_headers` asks a host that reads it
+(Cloudflare Pages, Netlify); without them the editor has no server. `share.vun` is the preset
+dictionary of share links and is never edited: a new one is a new file under the next version
+letter in `share.ts`.
 
 ## Remote machines
 

@@ -19,6 +19,7 @@ vun-grammar.workspace = true
 vun-data.workspace = true
 vun-lsp-protocol.workspace = true
 vun-origin.workspace = true
+vun-par.workspace = true
 vun-span.workspace = true
 vun-term.workspace = true
 vun-trace.workspace = true
