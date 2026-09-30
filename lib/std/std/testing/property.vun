@@ -1,0 +1,230 @@
+//! Property tests (spec 11, section 2): a test's arguments are generated from its parameters'
+//! types, each read from a stream of choices, so the case that fails is replayed and shrunk as
+//! its choices, whatever generated it.
+
+/// How many choices a case takes at most; past them, each is 0.
+room: usize = 256;
+
+/// The greatest choice.
+widest: u64 = 0xFFFF_FFFF_FFFF_FFFF;
+
+/// How many cases a property test runs, each with arguments generated anew.
+cases: usize = 100;
+
+/// How many cases shrinking a failing one runs at most.
+tries: usize = 1000;
+
+/// A stream of choices, each a `u64` at most a bound: those recorded to replay first, then drawn
+/// from a seeded generator, or 0 where it replays only; each recorded as taken.
+Choices := struct {
+    /// The state of the generator (splitmix64).
+    state: u64,
+    /// Whether the choices past those replayed are drawn from the generator rather than 0.
+    random: bool,
+    replay: [room]u64,
+    replayed: usize,
+    taken: [room]u64,
+    len: usize,
+
+    /// A stream drawing from `seed`.
+    seeded := (seed: u64) -> Choices {
+        .{ .state = seed, .random = true, .replay = [0; room], .replayed = 0, .taken = [0; room], .len = 0 }
+    };
+
+    /// A stream replaying the first `len` of `choices`, then 0.
+    replaying := (choices: &[room]u64, len: usize) -> Choices {
+        .{ .state = 0, .random = false, .replay = choices.*, .replayed = len, .taken = [0; room], .len = 0 }
+    };
+
+    /// The next choice, at most `bound`.
+    draw := (self: &mut Choices, bound: u64) -> u64 {
+        if self.len == room { return 0; }
+        raw := if self.len < self.replayed {
+            self.replay[self.len]
+        } else if self.random {
+            next(&mut self.state)
+        } else {
+            0
+        };
+        choice := raw % (bound + 1);
+        self.taken[self.len] = choice;
+        self.len += 1;
+        choice
+    };
+};
+
+/// The next value of the generator whose state is `state`: splitmix64.
+next := (state: &mut u64) -> u64 {
+    state.* +%= 0x9E37_79B9_7F4A_7C15;
+    mut z := state.*;
+    z = z ^ (z >> 30);
+    z *%= 0xBF58_476D_1CE4_E5B9;
+    z = z ^ (z >> 27);
+    z *%= 0x94D0_49BB_1331_11EB;
+    z ^ (z >> 31)
+};
+
+/// How a type's values are generated its own way, rather than by reflection (spec 11,
+/// section 2).
+Arbitrary := interface(($Self: type) -> type { struct {
+    arbitrary: (c: &mut Choices) -> Self = _;
+} });
+
+/// A value of `T` read from `c`: by `T`'s `Arbitrary` where it has one, and otherwise, for a
+/// struct or an enum, a variant, then each of its parts.
+gen := ($T: type, c: &mut Choices) -> T {
+    $if lang.meta.implements(Arbitrary, T) {
+        lang.meta.witness(Arbitrary, T).arbitrary(c)
+    } else if lang.meta.variants(T).len() == 0 {
+        $std.diag.error(.{ .msg = "no values of this type are generated: implement `std.testing.Arbitrary` for it" });
+        unsafe lang.hint.unreachable()
+    } else {
+        derived(T, c)
+    }
+};
+
+/// A value of the struct or enum type `T` read from `c`: a variant, the first for the least
+/// choice, so that shrinking moves towards it, then each of its parts.
+derived := ($T: type, c: &mut Choices) -> T {
+    $last := lang.meta.variants(T).len() - 1;
+    at := c.draw(last.to(u64));
+    $for v in lang.meta.variants(T) {
+        $if v.index == last {
+            return lang.meta.make(T, v.index, ($for p in v.parts { gen(p.type, c) },));
+        } else {
+            if at == v.index { return lang.meta.make(T, v.index, ($for p in v.parts { gen(p.type, c) },)); }
+        }
+    }
+    unsafe lang.hint.unreachable()
+};
+
+/// An integer of `Int(r)`: a choice reduced into the range as `wrap` reduces (decision 331), so
+/// the least choice is the integer of the range congruent to 0. A range wider than 64 bits has
+/// only its low 64 bits chosen.
+#[impl(Arbitrary(Int))]
+int_arbitrary := ($r: lang.Range) -> type { struct {
+    arbitrary := (c: &mut Choices) -> Int(r) { c.draw(widest).wrap(Int(r)) };
+} };
+
+/// The tuple of the types of `f`'s parameters: what a call of it passes.
+Args := ($F: type, $f: F) -> type { ($for p in lang.meta.params(F, f) { p.type },) };
+
+/// Arguments for `f` read from `c`, each generated from its parameter's type.
+arguments := ($F: type, $f: F, c: &mut Choices) -> Args(F, f) {
+    ($for p in lang.meta.params(F, f) { gen(p.type, c) },)
+};
+
+/// A test and the arguments of one of its cases: what a thread runs, reporting a trap unless
+/// `quiet`.
+Case := ($F: type, $A: type) -> type { struct { f: F, args: A, quiet: bool } };
+
+/// A case runs as a call of its test with its arguments.
+#[impl(lang.ops.Call((), ())(Case))]
+case_call := ($F: type, $A: type) -> type { struct {
+    call := (self: &mut Case(F, A), args: ()) {
+        std.os.thread.reporting.set(!self.quiet);
+        _ = self.f.call(self.args);
+    };
+} };
+
+/// Runs `f` with arguments read from `c`, on a thread of its own, reporting a trap unless
+/// `quiet`: the trap that ended it, if one did. Where the system runs one thread, on the calling
+/// one, and a trap ends the run.
+attempt := ($F: type, $f: F, sys: &mut std.os.System, c: &mut Choices, quiet: bool) -> ?lang.panic.Trap {
+    mut case := Case(F, Args(F, f)){ .f = f, .args = arguments(F, f, c), .quiet = quiet };
+    match sys.spawn((), Case(F, Args(F, f)), &mut case) {
+        .ok(t) => match t.join() {
+            .ok(_) => .none,
+            .err(trap) => .some(trap),
+        },
+        .err(_) => {
+            case();
+            .none
+        },
+    }
+};
+
+/// A failing case: the choices it took, the trap that ended it, and how many smaller cases
+/// shrinking found before it.
+Failing := struct {
+    taken: [room]u64,
+    len: usize,
+    trap: lang.panic.Trap,
+    shrinks: usize,
+};
+
+/// The property test `f` run over `cases` cases drawn from `seed`, each on a thread of its own:
+/// `.none` when none trapped, else the first that did, shrunk, with the case it was. Only the
+/// smallest case reports its trap, run once more.
+check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64) -> ?(Failing, usize) {
+    mut master := seed;
+    for case in 0..cases {
+        mut c := Choices.seeded(next(&mut master));
+        if .some(trap) = attempt(F, f, sys, &mut c, true) {
+            smallest := shrink(F, f, sys, .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 });
+            mut replayed := Choices.replaying(&smallest.taken, smallest.len);
+            _ = attempt(F, f, sys, &mut replayed, false);
+            return .some((smallest, case));
+        }
+    }
+    .none
+};
+
+/// The smallest case found from `failing` that still traps, within `tries` cases: a shorter
+/// stream, then each choice at 0 or halved, until none of them traps.
+shrink := ($F: type, $f: F, sys: &mut std.os.System, failing: Failing) -> Failing {
+    mut best := failing;
+    mut left := tries;
+    mut shrunk := true;
+    for shrunk and left > 0 {
+        shrunk = false;
+        mut len: usize = best.len / 2;
+        for len < best.len and left > 0 {
+            left -= 1;
+            if .some(smaller) = retried(F, f, sys, &best.taken, len, best.shrinks) {
+                best = smaller;
+                shrunk = true;
+            }
+            len = (len + best.len + 1) / 2;
+        }
+        for i in 0..best.len {
+            mut target: u64 = 0;
+            for target < best.taken[i] and left > 0 {
+                left -= 1;
+                mut taken := best.taken;
+                taken[i] = target;
+                if .some(smaller) = retried(F, f, sys, &taken, best.len, best.shrinks) {
+                    best = smaller;
+                    shrunk = true;
+                    break;
+                }
+                target = (target + (best.taken[i] - target + 1) / 2).to(u64);
+            }
+        }
+    }
+    best
+};
+
+/// The case replaying the first `len` of `taken`, when it still traps, as a failing case found
+/// by one more shrink than `shrinks`.
+retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[room]u64, len: usize, shrinks: usize) -> ?Failing {
+    mut c := Choices.replaying(taken, len);
+    match attempt(F, f, sys, &mut c, true) {
+        .some(trap) => .some(.{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = (shrinks + 1).to(usize) }),
+        .none => .none,
+    }
+};
+
+/// Writes the arguments `failing` replays for `f`, each as `name = ` and its JSON on a line of
+/// its own.
+write := ($F: type, $f: F, w: &mut std.os.Stream, failing: &Failing) -> Result((), std.os.Error) {
+    mut c := Choices.replaying(&failing.taken, failing.len);
+    args := arguments(F, f, &mut c);
+    $for p in lang.meta.params(F, f) {
+        w.write_all(p.name)?;
+        w.write_all(" = ")?;
+        std.fmt.json.write(w, &args.$(p.index))?;
+        w.write_all("\n")?;
+    }
+    .ok(())
+};

@@ -15,6 +15,7 @@ use vun_query::{Cx, Cycle, Query};
 use vun_sema::callable::Generic;
 use vun_sema::decl::{DeclType, DeclValue};
 use vun_sema::eval::Instantiate;
+use vun_sema::typeck::Leaves;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::trap::Unevaluated;
@@ -67,14 +68,16 @@ impl Program {
         self.functions.iter().map(|reached| &reached.i)
     }
 
-    /// Every body typing checks for the program, each once: the instantiations reached, then
-    /// the generic body of each generic function among them, checked apart from its
-    /// instantiations.
+    /// Every body typing checks for the program, each once, with what typing may leave
+    /// untyped in it: the instantiations reached, which are built, then the generic body of
+    /// each generic function among them, checked apart from its instantiations.
     #[must_use]
-    pub fn bodies(&self) -> Vec<Instantiation> {
-        let generic = self.instantiations().map(|i| Instantiation::new(i.f.clone(), Vec::new()));
+    pub fn bodies(&self) -> Vec<(Instantiation, Leaves)> {
+        let reached = self.instantiations().map(|i| (i.clone(), Leaves::Nothing));
+        let generic =
+            self.instantiations().map(|i| (Instantiation::new(i.f.clone(), Vec::new()), Leaves::Unbound));
         let mut seen = std::collections::HashSet::new();
-        self.instantiations().cloned().chain(generic).filter(|i| seen.insert(i.clone())).collect()
+        reached.chain(generic).filter(|(i, _)| seen.insert(i.clone())).collect()
     }
 
     /// The calls that led to `i` from outside generic code, innermost first: from each generic

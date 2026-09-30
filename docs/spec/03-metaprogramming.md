@@ -30,7 +30,9 @@ through ordinary higher-order functions.
 
 A local declared with a value that exists at compile time only (a namespace, a type, a name) is
 known then, as a `$` local is: `arith := lang.float.soft.arith; arith.add(f64, a, b)` calls the
-function statically, and `T := u8; x: T = 7` annotates with the type.
+function statically, and `T := u8; x: T = 7` annotates with the type. A `$` local,
+`$last := fields(T).len() - 1`, is computed when compiling and nothing of its declaration runs:
+each read of it is its value, even one of a type that exists at compile time only.
 
 Among statements, `$for` and `$if` generate statements: each step of a `$for` is the body with
 the binder bound to one item, typed and lowered on its own, so `a.$(f.name)` may have a different
@@ -217,8 +219,16 @@ of the interface `I` gives, as impls are seen where it is asked: `witness(lang.o
 u8).Output(u8)` is `Int(0..=510)`. `Frame(f)` is the result type of a coroutine function's signature, so it names
 the frames of a function without writing a call; for a function that does not suspend it traps.
 
-Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by
-assembling descriptor structs.
+**Functions and values.** `lang.meta.params(F, f)` describes each parameter of the function `f`
+of type `F` as a `lang.meta.Field` (its name, position, the type `F` gives it and the values of
+the attributes written on it), so code can generate a call's arguments. `lang.meta.make(T,
+variant, parts)` is the value of `T` that is its variant `variant` holding the tuple `parts`, of
+type `lang.meta.Parts(T, variant)`: the inverse of `part`, at compile time and at run time.
+`lang.meta.implements(I, T)` tells whether `witness(I, T)` gives an impl, so a `$if` chooses
+between a type's own impl and a derived one (decision 361).
+
+Reflection is read-only for types. Types are created by writing type literals (with L0 and L1),
+never by assembling descriptor structs; values are made from parts by `make`.
 
 **Attributes.** A field's or a variant's descriptor holds the values of the attributes written on
 it (`attrs: &[lang.meta.Any]`, each with its type), evaluated where its type was built.

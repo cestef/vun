@@ -29,7 +29,8 @@ impl Session {
         let program = self.db.get::<Programs>(&(key, Roots::Functions));
         let plain = self.functions(file).into_iter().map(Instantiation::plain);
         let mut seen = std::collections::HashSet::new();
-        for i in plain.chain(program.bodies()).filter(|i| seen.insert(i.clone())) {
+        let bodies = program.bodies().into_iter().map(|(i, _)| i);
+        for i in plain.chain(bodies).filter(|i| seen.insert(i.clone())) {
             let Some(typed) = self.db.get::<Typed>(&i) else { continue };
             let Some(parsed) = self.db.get::<Parsed>(&i.f.literal.file) else { continue };
             let hir = &parsed.hir;

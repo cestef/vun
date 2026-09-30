@@ -41,6 +41,14 @@ impl Typer<'_, '_, '_> {
         self.known(expr, valued)
     }
 
+    /// Whether a value of the function or closure type `ty` answers `name` itself: a requirement
+    /// of the interface calls go through (the table `calls`), made for its parameters and result.
+    fn answers(&self, ty: Ty, name: Symbol) -> bool {
+        let required = self.env().required(ty).filter(|_| ty.callable().is_some());
+        let members = required.and_then(|r| self.env().cx.get::<Members>(&r));
+        members.is_some_and(|m| matches!(m.find(name), Found::Decl(_)))
+    }
+
     /// A member of a namespace, of a type's namespace, or of a value: a field, or a declaration of
     /// its type, called as a method.
     pub(super) fn member(&mut self, expr: ExprId, object: ExprId, name: Symbol) -> Option<Known> {
@@ -100,6 +108,8 @@ impl Typer<'_, '_, '_> {
         match &*known.ty {
             TyKind::Record(_) => return self.record_field(expr, known.ty, name, known.stage),
             TyKind::Param(_) | TyKind::Frame(_) => return self.required_member(expr, known.ty, name),
+            // A function or closure answers the requirements of the interface calls go through.
+            _ if self.answers(known.ty, name) => return self.required_member(expr, known.ty, name),
             _ => {}
         }
         // A type without a namespace of its own, such as an integer, a tuple, an array or a

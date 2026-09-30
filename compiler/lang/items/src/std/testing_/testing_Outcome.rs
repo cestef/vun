@@ -11,3 +11,5 @@ pub const passed: Item = Item::new(&["std", "testing", "Outcome", "passed"]);
 pub const ignored: Item = Item::new(&["std", "testing", "Outcome", "ignored"]);
 /// A trap ended it: its site, and what the program's table says of it.
 pub const trapped: Item = Item::new(&["std", "testing", "Outcome", "trapped"]);
+/// A case of a property test trapped: the smallest case found.
+pub const falsified: Item = Item::new(&["std", "testing", "Outcome", "falsified"]);

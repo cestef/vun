@@ -20,6 +20,9 @@ pub const Ended: Item = Item::new(&["std", "os", "thread", "Ended"]);
 /// Where the calling thread's runtime keeps how it ended, which the runtime sets when the thread
 /// begins; 0 in the thread the program started in.
 pub const ending: Item = Item::new(&["std", "os", "thread", "ending"]);
+/// Whether a trap in the calling thread is reported where it fires, its backtrace written to the
+/// standard error; a thread that sets it `false` leaves its traps to what joins it.
+pub const reporting: Item = Item::new(&["std", "os", "thread", "reporting"]);
 /// Keeps the trap `t` as how the calling thread ended, and tells whether a runtime spawned the
 /// thread: a trap in the thread the program started in ends the program instead.
 pub const trapped: Item = Item::new(&["std", "os", "thread", "trapped"]);

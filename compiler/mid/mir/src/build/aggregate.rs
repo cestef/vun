@@ -8,9 +8,10 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_sema::env::Env;
 use vun_sema::member::Members;
-use vun_sema_ty::{Nominal, Ty, TyKind};
+use vun_sema_ty::{Nominal, NominalKind, Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
+use crate::place::Projection;
 use crate::{Aggregate, Operand, Rvalue};
 
 impl Builder<'_, '_, '_> {
@@ -59,6 +60,42 @@ impl Builder<'_, '_, '_> {
             Ok(())
         })?;
         Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin))
+    }
+
+    /// `lang.meta.make(T, variant, parts)`: the variant of `T` at `variant` holding the items of
+    /// the tuple `parts`, a struct's fields in declaration order.
+    pub(super) fn made(&mut self, args: &[Entry<Arg>], origin: OriginId) -> Result<Operand, Unbuilt> {
+        let unbuilt = move || Unbuilt::at(origin);
+        let [Entry::One(ty), Entry::One(variant), Entry::One(parts)] = args else { return Err(unbuilt()) };
+        let ty = self.env().ty(ty.value).map_err(|why| Unbuilt::unevaluated(origin, why))?;
+        let at = self.env().eval(variant.value).map_err(|why| Unbuilt::unevaluated(origin, why))?;
+        let members = self.env.cx.get::<Members>(&ty).ok_or_else(unbuilt)?;
+        let (kind, count) = match &*ty {
+            TyKind::Nominal(n) if n.kind == NominalKind::Struct => {
+                let names: Vec<Symbol> = members.fields.iter().map(|f| f.name).collect();
+                let count = names.len();
+                (Aggregate::Struct { ty, fields: names }, count)
+            }
+            _ => {
+                let v = members.variants.get(at.as_usize().ok_or_else(unbuilt)?).ok_or_else(unbuilt)?;
+                (Aggregate::Variant { ty, name: v.name }, v.payload.len())
+            }
+        };
+        let tuple = self.operand(parts.value)?;
+        let parts = Self::items(&tuple, count, origin)?;
+        Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin))
+    }
+
+    /// The first `count` items of the tuple `tuple`, each an operand of its own.
+    pub(super) fn items(tuple: &Operand, count: usize, origin: OriginId) -> Result<Vec<Operand>, Unbuilt> {
+        let item = |i: usize| match tuple {
+            Operand::Place(place) => Ok(Operand::Place(place.clone().project(Projection::Position(i)))),
+            Operand::Const(Value::Tuple(items)) => {
+                items.get(i).cloned().map(Operand::Const).ok_or(Unbuilt::at(origin))
+            }
+            Operand::Const(_) => Err(Unbuilt::at(origin)),
+        };
+        (0..count).map(item).collect()
     }
 
     /// A value of the struct type `ty`: the fields written, in the order written, then the whole

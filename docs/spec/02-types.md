@@ -177,7 +177,9 @@ both implement, so it takes either with static dispatch:
 `map := (o: ?T, $U: type, $F: lang.ops.Call((T), U), f: F) -> ?U`. When `$F` is inferred from
 `f`, the arguments of its constraint are inferred from the type found: `U` is the result of the
 function or closure passed, and inside a generic body, where the type found is a `$` parameter,
-the arguments of the constraint that parameter is declared with.
+the arguments of the constraint that parameter is declared with. A function or closure answers
+that interface's requirement itself: `f.call((a, b))` is `f(a, b)`, so code holding the arguments
+as a tuple calls with them (decision 361).
 
 A function with `$` parameters has no function type: its signature depends on the `$` arguments
 of a call. Named as a value, it is of its own type, whose only value it is, and that type exists

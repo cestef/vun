@@ -9,11 +9,12 @@ use std::process::Child;
 use vun_data::{Object, ToData};
 use vun_term::{Document, Noun, Record, Shell, Status, Style, Text, Verb};
 
-use super::{Line, Outcome, Ran, Totals, Trapped};
+use super::{Falsified, Line, Outcome, Ran, Totals};
 use crate::Session;
 
 const PASSED: Noun = Noun { one: "passed", many: "passed" };
 const TRAPPED: Noun = Noun { one: "trapped", many: "trapped" };
+const FALSIFIED: Noun = Noun { one: "falsified", many: "falsified" };
 const IGNORED: Noun = Noun { one: "ignored", many: "ignored" };
 
 /// The tests' program running, its standard output and error read as one stream: what a test
@@ -86,20 +87,27 @@ struct Tested {
 }
 
 impl Tested {
-    /// What its outcome says: why it was not run, or the trap's message and place.
+    /// What its outcome says: why it was not run, or the trap's message and place, and for a
+    /// property the case that failed.
     fn said(&self) -> Vec<Text> {
-        match &self.ran.outcome {
-            Outcome::Passed | Outcome::Trapped(Trapped { said: None, .. }) => Vec::new(),
-            Outcome::Ignored(ignored) => vec![Text::of(Style::Warning, ignored.reason.clone())],
-            Outcome::Trapped(Trapped { said: Some(said), .. }) => {
-                let message = said.message.clone().map(|m| Text::of(Style::Error, m));
-                let at = said
-                    .at
-                    .as_ref()
-                    .map(|at| Text::of(Style::Scope, format!("at {}:{}:{}", at.file, at.line, at.column)));
-                [message, at].into_iter().flatten().collect()
-            }
-        }
+        let outcome = &self.ran.outcome;
+        let ignored = match outcome {
+            Outcome::Ignored(ignored) => Some(Text::of(Style::Warning, ignored.reason.clone())),
+            _ => None,
+        };
+        let said = outcome.trap().and_then(|t| t.said.as_ref());
+        let message = said.and_then(|s| s.message.clone()).map(|m| Text::of(Style::Error, m));
+        let at = said
+            .and_then(|s| s.at.as_ref())
+            .map(|at| Text::of(Style::Scope, format!("at {}:{}:{}", at.file, at.line, at.column)));
+        let case = match outcome {
+            Outcome::Falsified(Falsified { seed, case, shrinks, .. }) => Some(Text::of(
+                Style::Scope,
+                format!("case {case} of seed {seed:#018x}, shrunk {shrinks} times, with the arguments below"),
+            )),
+            _ => None,
+        };
+        [ignored, message, at, case].into_iter().flatten().collect()
     }
 }
 
@@ -130,11 +138,12 @@ impl Status for Tested {
             Outcome::Passed => Verb::good("Passed"),
             Outcome::Ignored(_) => Verb::warned("Ignored"),
             Outcome::Trapped(_) => Verb::failed("Trapped"),
+            Outcome::Falsified(_) => Verb::failed("Falsified"),
         }
     }
 }
 
-/// How many tests passed, trapped and were not run.
+/// How many tests passed, trapped, were falsified and were not run.
 struct Tally(Totals);
 
 impl Record for Tally {
@@ -143,19 +152,29 @@ impl Record for Tally {
     }
 
     fn text(&self) -> Text {
-        let Totals { passed, trapped, ignored } = self.0;
-        let counts = [PASSED.count(passed), TRAPPED.count(trapped), IGNORED.count(ignored)];
+        let Totals { passed, trapped, falsified, ignored } = self.0;
+        let counts = [
+            PASSED.count(passed),
+            TRAPPED.count(trapped),
+            FALSIFIED.count(falsified),
+            IGNORED.count(ignored),
+        ];
         Text::join(counts.map(|count| Text::from(count.to_string())), ", ")
     }
 
     fn fields(&self) -> Object<'static> {
-        let Totals { passed, trapped, ignored } = self.0;
-        Object::new().with("passed", passed).with("trapped", trapped).with("ignored", ignored)
+        let Totals { passed, trapped, falsified, ignored } = self.0;
+        let object = Object::new().with("passed", passed).with("trapped", trapped);
+        object.with("falsified", falsified).with("ignored", ignored)
     }
 }
 
 impl Status for Tally {
     fn verb(&self) -> Verb {
-        if self.0.trapped == 0 { Verb::good("Tested") } else { Verb::failed("Tested") }
+        if self.0.trapped == 0 && self.0.falsified == 0 {
+            Verb::good("Tested")
+        } else {
+            Verb::failed("Tested")
+        }
     }
 }

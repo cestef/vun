@@ -140,10 +140,10 @@ impl Session {
         program
             .bodies()
             .iter()
-            .filter_map(|i| {
+            .filter_map(|(i, leaves)| {
                 let typed = self.db.get::<Typed>(i)?;
                 let parsed = self.db.get::<Parsed>(&i.f.literal.file)?;
-                typed.gave_up_under(&parsed.hir, i.f.literal.expr.origin)
+                typed.gave_up_under(&parsed.hir, i.f.literal.expr.origin, *leaves)
             })
             .collect()
     }

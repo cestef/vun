@@ -1,15 +1,23 @@
 //! JSON (RFC 8259) written from typed values, each type writing itself through `Json`: an integer
 //! is a number, a `bool` `true` or `false`, bytes a string, another sequence an array and an
 //! option its value or `null`. `derive(T)` writes a struct as an object of its fields and an
-//! enum's value as its variant's name, or, where the variant holds parts, as an object naming it.
+//! enum's value as its variant's name, or, where the variant holds parts, as an object naming it;
+//! a struct or an enum without a `Json` of its own is written as `derive(T)` writes it.
 
 /// How a value is written as JSON.
 Json := interface(($Self: type) -> type { struct {
     json: ($W: std.fmt.Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
 } });
 
-/// Writes `value` as JSON to `w`.
-write := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T) -> Result((), W.Error) { value.json(w) };
+/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct or an enum without one, as
+/// `derive(T)` writes it.
+write := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T) -> Result((), W.Error) {
+    $if lang.meta.variants(T).len() == 0 or lang.meta.implements(Json, T) {
+        value.json(w)
+    } else {
+        derive(T).json(value, w)
+    }
+};
 
 quote := "\"";
 backslash := "\\";
@@ -121,7 +129,7 @@ derive := ($T: type) -> type { struct {
                     w.write_all(object_open)?;
                     member(w, true, v.name)?;
                     $if v.parts.len() == 1 {
-                        if .some(part) = lang.meta.part(T, value, v.index, 0) { part.json(w)?; }
+                        if .some(part) = lang.meta.part(T, value, v.index, 0) { write(w, part)?; }
                     } else {
                         parts(W, T, w, value, v, .array)?;
                     }
@@ -147,7 +155,7 @@ parts := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T, $v: lang.meta.Vari
         } else {
             if p.index > 0 { w.write_all(comma)?; }
         }
-        if .some(part) = lang.meta.part(T, value, v.index, p.index) { part.json(w)?; }
+        if .some(part) = lang.meta.part(T, value, v.index, p.index) { write(w, part)?; }
     }
     w.write_all(if object { object_close } else { array_close })
 };

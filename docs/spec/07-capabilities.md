@@ -96,6 +96,9 @@ itself lays out each thread's block and sets the thread pointer (spec 08, sectio
   what the closure returned. A trap in the thread the program started in, or on a target without
   threads, ends the program. Nothing runs on the way out: `defer` does not run, and what the thread
   held stays held. At compile time a trap ends the evaluation of the call it is in: the same rule.
+  A thread reports its traps where they fire, a backtrace on the standard error, unless it sets
+  `std.os.thread.reporting` to `false`, leaving them to what joins it: a property test's search
+  runs its cases so, and reports only the smallest failing one (spec 11, section 2).
 - A trap calls `lang.panic.trap`, a typed link symbol that the program's runtime provides
   (spec 08). Every trap site passes a 32-bit **site id**, so a trap costs a call and a constant.
 - A program whose runtime declares the link symbol `lang.trace.symbols.table` gets the **table

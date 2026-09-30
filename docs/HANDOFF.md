@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 683 tests pass; clippy,
+Everything is committed in the main chain; no `jj` workspace holds work. 684 tests pass; clippy,
 `lines` and `layers` are clean; the corpus has 312 passing programs and 2 planned, and LIR
 lowers every function the corpus reaches.
 
@@ -21,7 +21,13 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: typing says why in generic bodies too (360). An unbound `$` parameter, and a
+Last landed: property tests (361). A test with parameters runs over 100 generated cases, each on
+its own thread; values come from `std.testing.gen` (a type's `Arbitrary`, or reflection through
+`lang.meta.make`) reading a recorded choice stream, and the first failing case is shrunk on its
+choices, reported once with its arguments as JSON (`(x: u8) { assert(x < 200); }` reports
+`x = 200`). On the way: `lang.meta.params`, `make`/`Parts`, `implements`; `f.call(t)` on functions
+and closures; `$` locals run nothing; `std.os.thread.reporting`. Before that, typing says why in
+generic bodies too (360). An unbound `$` parameter, and a
 requirement of an interface made for a constrained one (`W.Error`), have no value for the reason
 `Unevaluated::Unbound`, and a form giving up for it is left to the instantiations; reasons travel
 through locals bound without a type and through expected types a context cannot know; `W.Error`
@@ -88,10 +94,24 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
 `test.ignore`, one stream for the tests' program, checks' trap messages), 358 (calls through
 borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are),
 359 (typing's typed reasons, generic functions' own type; its type part approved) and 360 (reasons
-in generic bodies, `W.Error` through the requirements). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+in generic bodies, `W.Error` through the requirements), 361 (property tests, `lang.meta.params`,
+`make`, `implements`, `f.call(t)` on callables, quiet threads). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
+
+- A function literal or closure written in a generic function's body is evaluated outside any
+  call (`Func::within` is `None`): `Env::inside` binds the function's `$` parameters but leaves
+  `instance` as it was, and `Func::within` is an `Instance`, whose arguments are all values,
+  while a body with run-time parameters is an `Instantiation` (`Vec<Option<Value>>`). So a
+  function literal there cannot read the body's `$` parameters once built, and a closure there is
+  typed against the plain generic body (`() -> u16 { n + n }` inside `($n: u8) -> u16` does not
+  lower). A `struct` literal in such a body is likely identified the same for every
+  instantiation (decision 28). The fix is to identify a body's literals by its instantiation:
+  unify `Instance` and `Instantiation`, or let `within` hold the latter (about 60 uses of
+  `Instance`). `std.testing.property` works around it with a named `Case` type.
+- `R` of `$F: lang.ops.Call((), R)` is inferred from functions and closures, not from a struct's
+  `Call` impl: `sys.spawn((), Case(F, A), &mut case)` writes its `$` arguments.
 
 - A generic body is typed only as far as its `$` values are not needed: a local of an
   unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
@@ -147,16 +167,21 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 
 ## Running tests: what is left
 
-Runs natively (354, 355, 357); spec 11 is the reference. Open:
-- Only unit tests run: a test with parameters fails to type at the runner's call. The other kinds
-  (property, fuzz, `Bench`, `Sim`) need the parameters' types through `lang.meta`.
+Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
+- Properties: no generators yet for arrays, slices, tuples or floats (`Arbitrary` impls for
+  `lang.mem.Array` and `Slice` need a run-time loop filling an array, not a `$for` of `n` steps);
+  no `--seed` or case count chosen for a run; no `#[test.gen(...)]`; the language server's lens
+  shows `falsified` and the trap, not the arguments.
+- Fuzz targets (`&[u8]`), `Bench` and `Sim` do not run: the runner treats every test with
+  parameters as a property.
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
 - `persist::an_unchanged_program_built_again_computes_nothing_it_saves` failed twice in full
   driver runs from an empty `target/tmp/memos` on `petal.wg` (`VUN_QUERY_CHECK=1`), then passed
-  on a third; alone, or with the `testing` or `runtime` tests, it passes. Shared entries are
+  on a third; alone, or with the `testing` or `runtime` tests, it passes. On 2026-09-30 it failed
+  in 2 of 4 full memo-checked runs on `petal.wg` and passed 5 of 5 alone. Shared entries are
   content-addressed, so a rewritten entry is not the cause; not found yet.
 
 ## Next steps, most useful first

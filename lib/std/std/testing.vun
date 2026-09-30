@@ -1,7 +1,9 @@
 //! Tests, properties, benchmarks and simulation (spec 11). The runner is an ordinary program:
 //! `start := std.testing.runner(app);` runs every test of the namespace `app` and those nested in
 //! it, each on a thread of its own, since a trap ends only its thread (spec 07, section 3), and
-//! writes one JSON line per test, then one of the totals (spec 11, section 3).
+//! writes one JSON line per test, then one of the totals (spec 11, section 3). A test with
+//! parameters is a property: it runs with arguments generated from their types
+//! (`std.testing.property`).
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 #[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
@@ -9,6 +11,13 @@ test := struct {
     /// Skips the test, saying why: `#[test.ignore("needs a network")]`.
     ignore := (reason: &[u8]) -> Ignored { .{ .reason = reason } };
 };
+
+/// How a type's values are generated for property tests its own way (spec 11, section 2).
+Arbitrary := std.testing.property.Arbitrary;
+/// The choices generated values are read from.
+Choices := std.testing.property.Choices;
+/// A value of a type read from choices: by its `Arbitrary`, or by reflection.
+gen := std.testing.property.gen;
 
 /// A test that is not run, and why.
 Ignored := struct {
@@ -27,6 +36,18 @@ Outcome := enum {
     ignored(Ignored),
     /// A trap ended it: its site, and what the program's table says of it.
     trapped(Trapped),
+    /// A case of a property test trapped: the smallest case found.
+    falsified(Falsified),
+};
+
+/// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
+/// its cases were drawn from, the case that trapped first and how many smaller cases shrinking
+/// found. Its arguments are written before its line, as what the test wrote.
+Falsified := struct {
+    trapped: Trapped,
+    seed: u64,
+    case: usize,
+    shrinks: usize,
 };
 
 /// A trap ending a test.
@@ -39,6 +60,7 @@ Trapped := struct {
 Totals := struct {
     passed: usize,
     trapped: usize,
+    falsified: usize,
     ignored: usize,
 
     /// Counts `outcome`.
@@ -46,6 +68,7 @@ Totals := struct {
         match outcome {
             .passed => { self.passed += 1; },
             .trapped(_) => { self.trapped += 1; },
+            .falsified(_) => { self.falsified += 1; },
             .ignored(_) => { self.ignored += 1; },
         }
     };
@@ -71,6 +94,8 @@ ran_json := std.fmt.json.derive(Ran);
 outcome_json := std.fmt.json.derive(Outcome);
 #[impl(std.fmt.json.Json(Ignored))]
 ignored_json := std.fmt.json.derive(Ignored);
+#[impl(std.fmt.json.Json(Falsified))]
+falsified_json := std.fmt.json.derive(Falsified);
 #[impl(std.fmt.json.Json(Trapped))]
 trapped_json := std.fmt.json.derive(Trapped);
 #[impl(std.fmt.json.Json(Totals))]
@@ -89,37 +114,25 @@ runner := ($ns: lang.meta.Namespace) -> type {
     std.os.start(struct {
         main := (sys: &mut std.os.System) -> std.os.Exit {
             match run(ns, sys) {
-                .ok(totals) => if totals.trapped == 0 { .ok } else { .code(failed) },
+                .ok(totals) => if totals.trapped == 0 and totals.falsified == 0 { .ok } else { .code(failed) },
                 .err(_) => .code(failed),
             }
         };
     }.main)
 };
 
-/// Runs the unit tests of `ns` and the namespaces in it, in the order they are declared, or
-/// those the program's arguments name, and writes a line for each to the standard output, then
-/// the totals. A test marked `test.ignore` is not run.
+/// Runs the tests of `ns` and the namespaces in it, in the order they are declared, or those the
+/// program's arguments name, and writes a line for each to the standard output, then the totals.
+/// A test marked `test.ignore` is not run.
 run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std.os.Error) {
     args := sys.args();
     mut out := sys.stdout();
-    mut totals := Totals{ .passed = 0, .trapped = 0, .ignored = 0 };
+    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0 };
     $for c in std.meta.collect(ns, test) {
         if chosen(args, c.decl.name) {
-            mut f := c.ns.$(c.decl.name);
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
-                // On a thread of its own; where the system runs one thread, on the calling one,
-                // and a trap ends the run.
-                .none => match sys.spawn(&mut f) {
-                    .ok(t) => match t.join() {
-                        .ok(_) => Outcome.passed,
-                        .err(trap) => Outcome.trapped(.{ .site = trap.site, .said = std.trace.Site.of(trap.site) }),
-                    },
-                    .err(_) => {
-                        f();
-                        Outcome.passed
-                    },
-                },
+                .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, &mut out)?,
             };
             totals.count(&outcome);
             write(&mut out, &Line.test(.{ .name = c.decl.name, .outcome = outcome }))?;
@@ -127,6 +140,51 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std
     }
     write(&mut out, &Line.totals(totals))?;
     .ok(totals)
+};
+
+/// What became of the test `f`, named `name`: a unit test runs once, a property over cases whose
+/// arguments are generated, the smallest failing one's written to `out`.
+tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, out: &mut std.os.Stream) -> Result(Outcome, std.os.Error) {
+    $if lang.meta.params(F, f).len() == 0 {
+        // On a thread of its own; where the system runs one thread, on the calling one, and a
+        // trap ends the run.
+        mut g := f;
+        .ok(match sys.spawn(&mut g) {
+            .ok(t) => match t.join() {
+                .ok(_) => Outcome.passed,
+                .err(trap) => Outcome.trapped(trapped(trap)),
+            },
+            .err(_) => {
+                g();
+                Outcome.passed
+            },
+        })
+    } else {
+        seed := seed_of(name);
+        .ok(match std.testing.property.check(F, f, sys, seed) {
+            .none => Outcome.passed,
+            .some((failing, case)) => {
+                std.testing.property.write(F, f, out, &failing)?;
+                Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
+            },
+        })
+    }
+};
+
+/// A trap as a test's outcome reports it: its site, and what the program's table says of it.
+trapped := (trap: lang.panic.Trap) -> Trapped {
+    .{ .site = trap.site, .said = std.trace.Site.of(trap.site) }
+};
+
+/// The seed the cases of the property test `name` are drawn from: the FNV-1a hash of its name,
+/// so every run draws the same cases.
+seed_of := (name: &[u8]) -> u64 {
+    mut h: u64 = 0xCBF2_9CE4_8422_2325;
+    for i in 0..name.len() {
+        h = h ^ name[i];
+        h *%= 0x0100_0000_01B3;
+    }
+    h
 };
 
 /// Whether the test `name` is run: every test when the arguments past the program's name name

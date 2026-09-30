@@ -144,7 +144,7 @@ start := ($main: std.os.Main) -> type { struct {
 
     #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> lang.never {
-        std.trace.trapped(t, trap);
+        if std.os.thread.reporting.get() { std.trace.trapped(t, trap); }
         if std.os.thread.trapped(t) { unsafe pthread_exit(0) } else { end(std.os.trapped) }
     };
 

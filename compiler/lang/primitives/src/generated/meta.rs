@@ -12,6 +12,9 @@ pub enum Meta {
     /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
     /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
     witness,
+    /// Whether `T` has an impl of the interface `I`, as impls are seen where it is asked: whether
+    /// `witness(I, T)` gives one.
+    implements,
     /// The bytes of the file at `path`, from the directory of the file calling, in its package
     /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
     embed,
@@ -45,11 +48,18 @@ pub enum Meta {
     Part,
     /// The part `index` of `v`, when `v` is the variant `variant` of `T`.
     part,
+    /// The types of the parts of the variant `variant` of `T`, as a tuple.
+    Parts,
+    /// The value of `T` that is its variant `variant` holding `parts`: what `part` takes apart.
+    make,
     /// The item types of the tuple type `T`, in order.
     items,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
     /// written in, with its compile-time arguments.
     name_of,
+    /// The parameters of the function `f`, in order: each by its name, or its position when it binds
+    /// no name, the type `F` gives it and the values of the attributes written on it.
+    params,
     /// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
     /// its signature.
     Frame,
@@ -75,6 +85,7 @@ impl Meta {
         Self::Origin,
         Self::origin,
         Self::witness,
+        Self::implements,
         Self::embed,
         Self::inside,
         Self::same,
@@ -89,8 +100,11 @@ impl Meta {
         Self::variant,
         Self::Part,
         Self::part,
+        Self::Parts,
+        Self::make,
         Self::items,
         Self::name_of,
+        Self::params,
         Self::Frame,
         Self::size,
         Self::align,
@@ -108,6 +122,7 @@ impl Meta {
             Self::Origin => "Origin",
             Self::origin => "origin",
             Self::witness => "witness",
+            Self::implements => "implements",
             Self::embed => "embed",
             Self::inside => "inside",
             Self::same => "same",
@@ -122,8 +137,11 @@ impl Meta {
             Self::variant => "variant",
             Self::Part => "Part",
             Self::part => "part",
+            Self::Parts => "Parts",
+            Self::make => "make",
             Self::items => "items",
             Self::name_of => "name_of",
+            Self::params => "params",
             Self::Frame => "Frame",
             Self::size => "size",
             Self::align => "align",
@@ -142,6 +160,7 @@ impl Meta {
             Self::Origin => vun_items::lang::meta::Origin,
             Self::origin => vun_items::lang::meta::origin,
             Self::witness => vun_items::lang::meta::witness,
+            Self::implements => vun_items::lang::meta::implements,
             Self::embed => vun_items::lang::meta::embed,
             Self::inside => vun_items::lang::meta::inside,
             Self::same => vun_items::lang::meta::same,
@@ -156,8 +175,11 @@ impl Meta {
             Self::variant => vun_items::lang::meta::variant,
             Self::Part => vun_items::lang::meta::Part,
             Self::part => vun_items::lang::meta::part,
+            Self::Parts => vun_items::lang::meta::Parts,
+            Self::make => vun_items::lang::meta::make,
             Self::items => vun_items::lang::meta::items,
             Self::name_of => vun_items::lang::meta::name_of,
+            Self::params => vun_items::lang::meta::params,
             Self::Frame => vun_items::lang::meta::Frame,
             Self::size => vun_items::lang::meta::size,
             Self::align => vun_items::lang::meta::align,

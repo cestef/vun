@@ -96,7 +96,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             ran("indexes", trapped(&index)),
             ran("last", Outcome::Passed),
             ran("skipped", Outcome::Ignored(Ignored { reason: "not yet".to_owned() })),
-            Line::Totals(Totals { passed: 2, trapped: 2, ignored: 1 }),
+            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1 }),
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
@@ -112,4 +112,70 @@ fn a_file_outside_any_package_names_no_tests() {
     assert_eq!(session.tested(file, Some(&path)), None);
     let reported: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(reported, [vun_diag::errors::TEST_NO_NAMESPACE]);
+}
+
+/// Three properties: one holding for every pair of bytes, and two falsified, each shrunk to the
+/// least arguments that fail.
+const PROPERTIES: &str = "\
+Pair := struct { a: u8, flag: bool };
+
+#[test]
+holds := (x: u8, y: u8) { assert(x + y <= 510); };
+
+#[test]
+bounded := (x: u8) { assert(x < 200); };
+
+#[test]
+paired := (p: Pair) { assert(!(p.flag and p.a > 10)); };
+";
+
+#[test]
+fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    for (id, backend) in BACKENDS.into_iter().enumerate() {
+        let fixture = Fixture::new(&format!("testing-properties-{backend}"));
+        let mut app = Fixture::manifest("props", u64::try_from(id).unwrap() + SUITE + 10, "0.1.0");
+        app.include.push(app.name.clone());
+        let dir = fixture.write("", &app, PROPERTIES);
+        let manifest =
+            fixture.root.write(dir.join(MANIFEST), [app.source().unwrap().as_str(), BUILD].concat());
+        let mut session = fixture.session();
+        session.codegen = Codegen::through(backend);
+        let file = session.load(&manifest).unwrap();
+        let ns = session.tested(file, Some(fixture.root.path())).unwrap();
+        let program = session.build_tests(file, ns, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+        let run = std::process::Command::new(program).output().unwrap();
+        let stdout = String::from_utf8(run.stdout).unwrap();
+        let (lines, written): (Vec<_>, Vec<_>) = stdout.lines().partition(|l| Line::of(l).is_some());
+        let lines: Vec<Line> = lines.into_iter().filter_map(Line::of).collect();
+        // What each test's outcome says, apart from the program's site ids and the cases drawn.
+        let said: Vec<(String, Option<String>)> = lines
+            .iter()
+            .filter_map(|line| match line {
+                Line::Test(Ran { name, outcome }) => {
+                    Some((name.clone(), outcome.trap().and_then(|t| t.said.clone()?.message)))
+                }
+                Line::Totals(_) => None,
+            })
+            .collect();
+        let failed =
+            |name: &str, condition: &str| (name.to_owned(), Some(format!("assertion failed: `{condition}`")));
+        let expected = [
+            ("holds".to_owned(), None),
+            failed("bounded", "x < 200"),
+            failed("paired", "!(p.flag and p.a > 10)"),
+        ];
+        assert_eq!(said, expected, "{backend}");
+        let totals = lines.iter().find_map(|l| match l {
+            Line::Totals(totals) => Some(*totals),
+            Line::Test(_) => None,
+        });
+        assert_eq!(totals, Some(Totals { passed: 1, trapped: 0, falsified: 2, ignored: 0 }), "{backend}");
+        // The smallest failing arguments, each written before its test's line.
+        let shrunk = ["x = 200", "p = {\"a\":11,\"flag\":true}"];
+        assert!(shrunk.iter().all(|s| written.contains(s)), "{backend}: {written:#?}");
+        assert_eq!(run.status.code(), Some(1), "{backend}");
+    }
 }

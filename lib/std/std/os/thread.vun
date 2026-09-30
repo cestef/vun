@@ -46,6 +46,10 @@ Ended := enum {
 /// begins; 0 in the thread the program started in.
 ending: std.sync.Local(usize) = .init(0);
 
+/// Whether a trap in the calling thread is reported where it fires, its backtrace written to the
+/// standard error; a thread that sets it `false` leaves its traps to what joins it.
+reporting: std.sync.Local(bool) = .init(true);
+
 /// Keeps the trap `t` as how the calling thread ended, and tells whether a runtime spawned the
 /// thread: a trap in the thread the program started in ends the program instead.
 trapped := (t: &lang.panic.Trap) -> bool {

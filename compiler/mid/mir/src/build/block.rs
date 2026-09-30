@@ -44,6 +44,10 @@ impl Builder<'_, '_, '_> {
             HirStmt::Decl(d) => {
                 let decl = &hir.decls[*d];
                 match (&hir.pats[decl.pat].kind, decl.value) {
+                    // A `$` local holds a value known when compiling, which each read of it is:
+                    // nothing runs.
+                    (PatKind::Bind(binder), Some(_))
+                        if hir.binders[*binder].comptime && !hir.binders[*binder].mutable => {}
                     (PatKind::Bind(binder), value) => {
                         // Without a value, the local starts uninitialized. Its type is the
                         // binding's, as annotated, else its value's.

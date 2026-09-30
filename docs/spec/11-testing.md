@@ -68,16 +68,29 @@ runner reporting it with its reason (`std.testing.Ignored`, read with `std.meta.
 
 ## 2. Inputs from types
 
-`testing.gen(T)` derives a generator from `T` by reflection: structs field by field, enums by
-variant, arrays and slices by length and element. It reads from a typed **choice stream**, so:
+A test with parameters is a **property**: the runner calls it with arguments generated from its
+parameters' types (`lang.meta.params`), over `std.testing.property.cases` cases (100), each on a
+thread of its own. `testing.gen(T, c)` makes a value of `T`: by `T`'s `testing.Arbitrary` where
+it has one, and otherwise, for a struct or an enum, by reflection, a variant, then each of its
+parts (`lang.meta.make`). An integer type's `Arbitrary` reduces a choice into its range as `wrap`
+does, so an `Int(0..=100)` is never 101. Every value is read from a **choice stream**
+(`testing.Choices`: each choice a `u64` at most a bound, drawn from a seeded splitmix64 generator
+and recorded), so:
 
-- range types bound generation for free: an `Int(0..=100)` is never 101;
-- shrinking works on the choice stream, so custom generators shrink too;
-- the same test runs as a seeded property test and under a coverage-guided fuzzer, sharing one
-  corpus.
+- the first case that traps is **shrunk** on its choices, whatever generated them: shorter
+  streams, then each choice at 0 or moved halfway towards it, as long as the case still traps.
+  The least choice is the first variant and the integer congruent to 0, so the case shrinks
+  towards those; `(x: u8) { assert(x < 200); }` reports `x = 200`;
+- the search runs its cases quietly (`std.os.thread.reporting`); the smallest failing case runs
+  once more and reports its trap, and the runner writes its arguments, one line each, `name = `
+  and the value as JSON (`std.fmt.json.write`, derived by reflection where a type has no
+  `Json`), before the test's line;
+- a test's cases are drawn from a seed, the FNV-1a hash of its name, so every run draws the same
+  cases; the line reports the seed and the case.
 
-A type overrides its generator by implementing `testing.Arbitrary`. A single test picks one with
-`#[test.gen(...)]` on a parameter.
+Not yet: generators for arrays, slices, tuples and floats, a seed or a count of cases chosen for
+a run, `#[test.gen(...)]` choosing a parameter's generator, and the same test run under a
+coverage-guided fuzzer, sharing one corpus with the seeded runs (decision 361).
 
 Corpus and crash inputs live in `fuzz/<test path>/`, are committed, and replay as regressions on
 every `vun test`.
@@ -99,11 +112,13 @@ All modes emit the same JSON result stream, so editors run single tests the same
 one line per test run, `{"test":{"name":...,"outcome":...}}`, its outcome `"passed"`,
 `{"ignored":{"reason":...}}` or
 `{"trapped":{"site":n,"said":{"message":...,"at":{"file":...,"line":...,"column":...}}}}` as the
-program's table says it (`std.trace.Site.of`), then the totals,
-`{"totals":{"passed":n,"trapped":n,"ignored":n}}`. The lines are `std.testing.Line` written by
+program's table says it (`std.trace.Site.of`), or for a property
+`{"falsified":{"trapped":...,"seed":n,"case":n,"shrinks":n}}`, then the totals,
+`{"totals":{"passed":n,"trapped":n,"falsified":n,"ignored":n}}`. The lines are `std.testing.Line` written by
 `std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
 program's standard output and error as one stream, so what a test writes, the backtrace of its
-trap included, comes before its line and is reported with it. Only unit tests run yet.
+trap included, comes before its line and is reported with it. Unit tests and properties run;
+fuzz targets, benchmarks and simulations do not yet.
 
 ## 4. Deterministic simulation
 

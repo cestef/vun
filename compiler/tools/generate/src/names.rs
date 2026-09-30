@@ -30,11 +30,15 @@ pub(crate) fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
 
+/// The words the Rust edition of the generated code reserves that `syn` still reads as
+/// identifiers.
+const RESERVED: &[&str] = &["gen"];
+
 /// A name as a Rust identifier, raw when it is a Rust keyword: the group `impl` is `r#impl`.
 pub(crate) fn raw(name: &str) -> Ident {
     match syn::parse_str::<Ident>(name) {
-        Ok(ident) => ident,
-        Err(_) => Ident::new_raw(name, Span::call_site()),
+        Ok(ident) if !RESERVED.contains(&name) => ident,
+        _ => Ident::new_raw(name, Span::call_site()),
     }
 }
 

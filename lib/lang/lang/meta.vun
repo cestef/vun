@@ -14,6 +14,9 @@ origin: ($T: type) -> Origin = _;
 /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
 #[lint.allow(std.lints.naming.case, "it gives an impl, a namespace, which a primitive's annotation cannot say")]
 witness: ($I: lang.Interface, $T: type) -> type = _;
+/// Whether `T` has an impl of the interface `I`, as impls are seen where it is asked: whether
+/// `witness(I, T)` gives one.
+implements: ($I: lang.Interface, $T: type) -> bool = _;
 /// The bytes of the file at `path`, from the directory of the file calling, in its package
 /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
 embed: ($path: &[u8]) -> &static [u8] = _;
@@ -63,8 +66,9 @@ array_concat := ($n: Int(0..), $T: type) -> type { struct {
     concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
 } };
 
-/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, or an
-/// item of a variant's payload, named by its position (`0`, `1`, ...).
+/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, an item
+/// of a variant's payload, named by its position (`0`, `1`, ...), or a parameter of a function,
+/// a part of the tuple a call passes.
 Field := struct {
     name: &[u8],
     /// Its position among the parts of its variant.
@@ -113,11 +117,19 @@ Part: ($T: type, $variant: usize, $index: usize) -> type = _;
 /// The part `index` of `v`, when `v` is the variant `variant` of `T`.
 #[panic.never]
 part: ($T: type, v: &T, $variant: usize, $index: usize) -> ?&Part(T, variant, index) = _;
+/// The types of the parts of the variant `variant` of `T`, as a tuple.
+Parts: ($T: type, $variant: usize) -> type = _;
+/// The value of `T` that is its variant `variant` holding `parts`: what `part` takes apart.
+make: ($T: type, $variant: usize, parts: Parts(T, variant)) -> T = _;
 /// The item types of the tuple type `T`, in order.
 items: ($T: type) -> &[type] = _;
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 name_of: ($T: type) -> &[u8] = _;
+
+/// The parameters of the function `f`, in order: each by its name, or its position when it binds
+/// no name, the type `F` gives it and the values of the attributes written on it.
+params: ($F: type, $f: F) -> &[Field] = _;
 
 /// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
 /// its signature.

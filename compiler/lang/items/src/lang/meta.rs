@@ -18,6 +18,9 @@ pub const origin: Item = Item::new(&["lang", "meta", "origin"]);
 /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
 /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
 pub const witness: Item = Item::new(&["lang", "meta", "witness"]);
+/// Whether `T` has an impl of the interface `I`, as impls are seen where it is asked: whether
+/// `witness(I, T)` gives one.
+pub const implements: Item = Item::new(&["lang", "meta", "implements"]);
 /// The bytes of the file at `path`, from the directory of the file calling, in its package
 /// (spec 03, section 7): the one input compile-time code reads, recorded as a dependency.
 pub const embed: Item = Item::new(&["lang", "meta", "embed"]);
@@ -45,8 +48,9 @@ pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
 pub const slice_concat: Item = Item::new(&["lang", "meta", "slice_concat"]);
 /// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
 pub const array_concat: Item = Item::new(&["lang", "meta", "array_concat"]);
-/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, or an
-/// item of a variant's payload, named by its position (`0`, `1`, ...).
+/// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, an item
+/// of a variant's payload, named by its position (`0`, `1`, ...), or a parameter of a function,
+/// a part of the tuple a call passes.
 pub const Field: Item = Item::new(&["lang", "meta", "Field"]);
 /// The fields of the struct type `T` in declaration order, generated ones included.
 pub const fields: Item = Item::new(&["lang", "meta", "fields"]);
@@ -70,11 +74,18 @@ pub const variant: Item = Item::new(&["lang", "meta", "variant"]);
 pub const Part: Item = Item::new(&["lang", "meta", "Part"]);
 /// The part `index` of `v`, when `v` is the variant `variant` of `T`.
 pub const part: Item = Item::new(&["lang", "meta", "part"]);
+/// The types of the parts of the variant `variant` of `T`, as a tuple.
+pub const Parts: Item = Item::new(&["lang", "meta", "Parts"]);
+/// The value of `T` that is its variant `variant` holding `parts`: what `part` takes apart.
+pub const make: Item = Item::new(&["lang", "meta", "make"]);
 /// The item types of the tuple type `T`, in order.
 pub const items: Item = Item::new(&["lang", "meta", "items"]);
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 pub const name_of: Item = Item::new(&["lang", "meta", "name_of"]);
+/// The parameters of the function `f`, in order: each by its name, or its position when it binds
+/// no name, the type `F` gives it and the values of the attributes written on it.
+pub const params: Item = Item::new(&["lang", "meta", "params"]);
 /// The type of the frames the coroutine function `f` makes (spec 06, section 1): the result of
 /// its signature.
 pub const Frame: Item = Item::new(&["lang", "meta", "Frame"]);

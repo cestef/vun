@@ -90,11 +90,9 @@ impl Server<'_> {
     /// Each trap a test's last run fired in `document`, where it fired.
     pub(crate) fn traps(&self, document: &Document) -> Vec<Diagnostic> {
         let tests = self.results.values().flatten();
-        let traps = tests.filter_map(|(name, outcome)| match outcome {
-            Outcome::Trapped(Trapped { said: Some(Said { message, at: Some(at) }), .. }) => {
-                Some((name, message, at))
-            }
-            _ => None,
+        let traps = tests.filter_map(|(name, outcome)| match outcome.trap()? {
+            Trapped { said: Some(Said { message, at: Some(at) }), .. } => Some((name, message, at)),
+            Trapped { .. } => None,
         });
         traps
             .filter(|(_, _, at)| std::path::absolute(&at.file).is_ok_and(|file| file == document.path))
@@ -131,6 +129,7 @@ impl Server<'_> {
             Outcome::Passed => "passed",
             Outcome::Ignored(_) => "ignored",
             Outcome::Trapped(_) => "trapped",
+            Outcome::Falsified(_) => "falsified",
         }
     }
 }

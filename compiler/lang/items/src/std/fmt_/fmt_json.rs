@@ -8,7 +8,8 @@
 use crate::Item;
 /// How a value is written as JSON.
 pub const Json: Item = Item::new(&["std", "fmt", "json", "Json"]);
-/// Writes `value` as JSON to `w`.
+/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct or an enum without one, as
+/// `derive(T)` writes it.
 pub const write: Item = Item::new(&["std", "fmt", "json", "write"]);
 pub const quote: Item = Item::new(&["std", "fmt", "json", "quote"]);
 pub const backslash: Item = Item::new(&["std", "fmt", "json", "backslash"]);

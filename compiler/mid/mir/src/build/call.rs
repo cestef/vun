@@ -2,10 +2,12 @@
 //! impls (spec 01, section 4), and an argument for a `Code(T)` parameter is passed as code
 //! (spec 03, section 4).
 
-use vun_desugar::{Borrow, ITERATION, IterationRow};
+use vun_desugar::{Borrow, CALLS, ITERATION, IterationRow};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Name};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_primitives::Primitive;
+use vun_primitives::meta::Meta;
 use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
@@ -38,6 +40,9 @@ impl Builder<'_, '_, '_> {
         if let Some(value) = self.frame_call(call, callee, args, origin)? {
             return Ok(value);
         }
+        if let Some(value) = self.callable_call(callee, args, origin)? {
+            return Ok(value);
+        }
         // A value that is no function is called through its type's witness.
         if self.typed().is_some_and(|t| t.operators.contains_key(&Operation::Expr(call))) {
             return self.call_through(call, callee, args, origin);
@@ -59,6 +64,11 @@ impl Builder<'_, '_, '_> {
             }
             None => self.operand(callee)?,
         };
+        // `lang.meta.make(T, variant, parts)` builds the variant from the parts (spec 03,
+        // section 6).
+        if let Operand::Const(Value::Primitive(Primitive::Meta(Meta::make))) = &callee {
+            return self.made(args, origin);
+        }
         // A variant's constructor builds the variant.
         if let Operand::Const(Value::Constructor { ty, name }) = &callee {
             let kind = Aggregate::Variant { ty: *ty, name: *name };
@@ -166,6 +176,35 @@ impl Builder<'_, '_, '_> {
             return Ok(None);
         };
         Ok(Some(self.temp(rvalue, origin)))
+    }
+
+    /// `f.call(args)` on a function or closure, which answers the interface calls go through
+    /// itself (the table `calls`, spec 01, section 4): a call of `f` with the items of `args`;
+    /// `None` for any other call.
+    fn callable_call(
+        &mut self,
+        callee: ExprId,
+        args: &[Entry<Arg>],
+        origin: OriginId,
+    ) -> Result<Option<Operand>, Unbuilt> {
+        let ExprKind::Member { object, name: Name::Plain(name) } = self.env.parsed.hir.exprs[callee].kind
+        else {
+            return Ok(None);
+        };
+        let (Some(ty), Some(function)) = (self.type_of(object), CALLS.first()) else { return Ok(None) };
+        if name != function.symbol() {
+            return Ok(None);
+        }
+        let Some(signature) = ty.through_borrows().callable() else { return Ok(None) };
+        let [Entry::One(Arg { name: None, value })] = args else { return Err(Unbuilt::at(origin)) };
+        let f = if ty.borrowed().is_some() {
+            Operand::Place(self.through_borrows(object)?)
+        } else {
+            self.operand(object)?
+        };
+        let tuple = self.operand(*value)?;
+        let args = Self::items(&tuple, signature.params.len(), origin)?;
+        Ok(Some(self.temp(Rvalue::Call { callee: f, args }, origin)))
     }
 
     /// The method `callee` names through a value, the value, and the method by its type and

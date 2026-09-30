@@ -3,7 +3,7 @@
 //! that interface's `resume` (the table `iteration`). Also the signatures of function literals
 //! and how long a call holds each parameter's borrow.
 
-use vun_desugar::{Borrow, Extent, ITERATION};
+use vun_desugar::{Borrow, CALLS, Extent, ITERATION};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -114,11 +114,26 @@ impl Env<'_, '_> {
     }
 
     /// The requirements of the interface `ty` is known by, made for `ty`: what a parameter of a
-    /// generic body, or a frame, has as members.
+    /// generic body, a frame, or a function or closure has as members. A function or closure is
+    /// known by the interface calls go through (the table `calls`), made for its parameters and
+    /// result.
     #[must_use]
     pub fn required(&self, ty: Ty) -> Option<Ty> {
-        let call = Instance { f: ty.interface()?.clone(), args: vec![Value::Type(ty)] };
+        let interface = ty.interface().cloned().or_else(|| self.called_through(ty))?;
+        let call = Instance { f: interface, args: vec![Value::Type(ty)] };
         self.cx.get::<Call>(&call).ok()?.as_type()
+    }
+
+    /// The interface calls go through (the table `calls`), made for the parameters and result of
+    /// the function or closure type `ty`.
+    fn called_through(&self, ty: Ty) -> Option<Func> {
+        let constructor = self.item(CALLS.first()?.parent()?).ok()?;
+        let args = self.implemented(ty, &constructor)?;
+        let Value::Fn(f) = constructor else { return None };
+        match self.cx.get::<Call>(&Instance { f, args }).ok()? {
+            Value::Interface(interface) => Some(interface),
+            _ => None,
+        }
     }
 
     /// What frames of type `frame` yield and return: the payloads of the variants `item` and

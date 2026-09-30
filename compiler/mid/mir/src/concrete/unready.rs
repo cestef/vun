@@ -5,7 +5,7 @@ use vun_diag::{Diagnostic, Msg};
 use vun_hir::db::Parsed;
 use vun_origin::OriginId;
 use vun_query::Cx;
-use vun_sema::typeck::Typed;
+use vun_sema::typeck::{Leaves, Typed};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;
 
@@ -62,7 +62,7 @@ impl Unready {
             Self::Unbuilt(_) | Self::Unevaluated { .. } => None,
         };
         let gave_up = || {
-            let d = typed.gave_up_under(&cx.get::<Parsed>(&i.f.literal.file)?.hir, at)?;
+            let d = typed.gave_up_under(&cx.get::<Parsed>(&i.f.literal.file)?.hir, at, Leaves::Nothing)?;
             let within = d.primary.as_ref().is_some_and(|label| label.origin != at);
             let msg = Msg::new().text("lowering stops at this, which needs its type");
             Some(if within { d.label(at, Some(msg)) } else { d })

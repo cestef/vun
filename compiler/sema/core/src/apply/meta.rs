@@ -31,8 +31,15 @@ impl ApplyMeta for Meta {
             (Self::variant, [_, value]) => env.variant_index(value),
             (Self::fields, [ty]) => env.fields(ty.as_type().ok_or(Unevaluated::Unsupported)?),
             (Self::decls, [Value::Namespace(ns)]) => env.decls(ns),
+            (Self::params, [ty, f]) => env.params(ty.as_type().ok_or(Unevaluated::Unsupported)?, f),
             (Self::Part, [ty, variant, index]) => {
                 env.part_type(ty.as_type().ok_or(Unevaluated::Unsupported)?, variant, index)
+            }
+            (Self::Parts, [ty, variant]) => {
+                env.parts_type(ty.as_type().ok_or(Unevaluated::Unsupported)?, variant)
+            }
+            (Self::make, [ty, variant, parts]) => {
+                env.make(ty.as_type().ok_or(Unevaluated::Unsupported)?, variant, parts)
             }
             (Self::part, [ty, value, variant, index]) => {
                 let args = [Some(ty.clone()), None, Some(variant.clone()), Some(index.clone())];
@@ -44,6 +51,9 @@ impl ApplyMeta for Meta {
                 .witness(interface, ty.as_type().ok_or(Unevaluated::Unsupported)?)
                 .map(Value::Type)
                 .ok_or_else(|| Unevaluated::trap(Reason::Argument)),
+            (Self::implements, [Value::Interface(interface), ty]) => {
+                env.decide(env.witness(interface, ty.as_type().ok_or(Unevaluated::Unsupported)?).is_some())
+            }
             // A file of the package, beside the file evaluated in (spec 03, section 7).
             (Self::embed, [path]) => {
                 let path = path.text().ok_or(Unevaluated::Unsupported)?;

@@ -1,5 +1,6 @@
 //! Where typing gave up, told where a value it left without a type is needed.
 
+use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{ExprId, Hir, NsId};
 use vun_hir::visit::{self, Visitor};
@@ -9,13 +10,29 @@ use vun_sema_ty::trap::Unevaluated;
 
 use super::{Found, GaveUp, Known, TypedBody, Typer};
 
+/// What typing may leave without a type in a body with no gap in it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Leaves {
+    /// Nothing: a body that is built, its `$` parameters bound.
+    Nothing,
+    /// The forms reading a `$` parameter the body leaves unbound: a generic body, typed apart
+    /// from its instantiations, which type them.
+    Unbound,
+}
+
 impl TypedBody {
-    /// Why the value written at `at` has no type though typing reported nothing: the first form
-    /// under it whose rule gave up, its parts typed. Nothing when no form was found there.
+    /// Why the value at `at`, written there or bound to the local declared there, has no type
+    /// though typing reported nothing: the first form under it typing gave up on silently in a
+    /// body that `leaves` that. Nothing when no form was found there.
     #[must_use]
-    pub fn gave_up_under(&self, hir: &Hir, at: OriginId) -> Option<Diagnostic> {
-        let (value, _) = hir.exprs.iter().find(|(_, e)| e.origin == at)?;
-        let silent = Silent(self);
+    pub fn gave_up_under(&self, hir: &Hir, at: OriginId, leaves: Leaves) -> Option<Diagnostic> {
+        let written = hir.exprs.iter().find(|(_, e)| e.origin == at).map(|(e, _)| e);
+        let bound = || {
+            let (binder, _) = hir.binders.iter().find(|(_, b)| b.origin == at)?;
+            hir.decls[hir.decl_of(binder)?].value
+        };
+        let value = written.or_else(bound)?;
+        let silent = Silent(self, leaves);
         let (form, why) = silent.first_under(hir, value)?;
         let form = &hir.exprs[form];
         let msg =
@@ -44,12 +61,16 @@ impl TypedBody {
 }
 
 impl GaveUp {
-    /// Whether typing said nothing of it: neither an error reported explains it, nor is it
-    /// left to the instantiations of a generic body, as a form reading a `$` parameter the
-    /// body leaves unbound is.
+    /// Whether typing said nothing of it in a body that `leaves` that: no error reported
+    /// explains it, and it is not left to the instantiations of a generic body, as a form
+    /// reading a `$` parameter the body leaves unbound is.
     #[must_use]
-    pub fn silent(&self) -> bool {
-        !matches!(self, Self::Reported | Self::Unevaluated(Unevaluated::Unbound))
+    pub fn silent(&self, leaves: Leaves) -> bool {
+        match self {
+            Self::Reported => false,
+            Self::Unevaluated(Unevaluated::Unbound) => leaves == Leaves::Nothing,
+            _ => true,
+        }
     }
 
     /// Why, as a report says.
@@ -103,12 +124,13 @@ impl GaveUps for TypedBody {
     }
 }
 
-/// The forms of a typed body, or of some step of it, typing gave up on silently.
-struct Silent<'t>(&'t TypedBody);
+/// The forms of a typed body, or of some step of it, typing gave up on silently, in a body
+/// that leaves what the second says.
+struct Silent<'t>(&'t TypedBody, Leaves);
 
 impl GaveUps for Silent<'_> {
     fn gave_up_on(&self, expr: ExprId) -> Option<&GaveUp> {
-        self.0.gave_up_on(expr).filter(|why| why.silent())
+        self.0.gave_up_on(expr).filter(|why| why.silent(self.1))
     }
 }
 

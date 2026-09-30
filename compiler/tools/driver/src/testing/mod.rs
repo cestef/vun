@@ -27,6 +27,29 @@ pub enum Outcome {
     Passed,
     Ignored(Ignored),
     Trapped(Trapped),
+    Falsified(Falsified),
+}
+
+impl Outcome {
+    /// The trap that ended the test, or the smallest failing case of a property.
+    #[must_use]
+    pub fn trap(&self) -> Option<&Trapped> {
+        match self {
+            Self::Trapped(trapped) | Self::Falsified(Falsified { trapped, .. }) => Some(trapped),
+            Self::Passed | Self::Ignored(_) => None,
+        }
+    }
+}
+
+/// A property test's failing case, shrunk (`std.testing.Falsified`): the trap of the smallest
+/// case found, the seed its cases were drawn from, the case that trapped first and how many
+/// smaller cases shrinking found.
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Falsified {
+    pub trapped: Trapped,
+    pub seed: u64,
+    pub case: usize,
+    pub shrinks: usize,
 }
 
 /// A test that is not run, and why (`std.testing.Ignored`).
@@ -57,11 +80,12 @@ pub struct Place {
     pub column: u32,
 }
 
-/// How many tests passed, trapped and were not run.
+/// How many tests passed, trapped, were falsified and were not run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Totals {
     pub passed: usize,
     pub trapped: usize,
+    pub falsified: usize,
     pub ignored: usize,
 }
 
