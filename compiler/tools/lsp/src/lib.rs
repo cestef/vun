@@ -23,7 +23,6 @@ mod tokens;
 mod transport;
 
 use std::io::{self, BufRead, Write};
-use std::sync::mpsc;
 
 use vun_command::Outcome;
 use vun_driver::Session;
@@ -48,16 +47,20 @@ pub fn serve_over(
     output: impl Write,
 ) -> io::Result<Outcome> {
     // Messages are read as they come, so that those waiting when one is handled are known.
-    let (sender, received) = mpsc::channel();
+    let mut server = server::Server::new(session);
+    let events = server.events.clone();
     std::thread::spawn(move || {
         let mut incoming = transport::Incoming(input);
         loop {
             let next = incoming.next();
             let last = !matches!(next, Ok(Some(_)));
-            if sender.send(next).is_err() || last {
+            if events.send(server::Event::Frame(next)).is_err() || last {
                 break;
             }
         }
+        // The server keeps a sender of its own: the end of the stream is said, even after a
+        // message that could not be read.
+        let _ = events.send(server::Event::Frame(Ok(None)));
     });
-    server::Server::new(session).run(&received, &mut transport::Outgoing(output))
+    server.run(&mut transport::Outgoing(output))
 }

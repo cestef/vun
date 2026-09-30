@@ -76,6 +76,8 @@ fn each_declaration_exporting_the_program_has_a_lens_running_it() {
 fn each_test_of_a_package_file_has_a_lens_running_it() {
     use vun_lsp_protocol::command::CodeLensParams;
 
+    use vun_driver::testing::{Outcome, Place, Ran, Said, Trapped};
+
     use crate::command::test::Tested;
 
     served("lsp-test-lens", |client, uri| {
@@ -93,5 +95,30 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
         assert_eq!(command.command, crate::command::Order::Test.name());
         let tested: Tested = command.arguments.as_ref().unwrap()[0].read().unwrap();
         assert_eq!(tested, Tested { text_document, name: "adds".to_owned() });
+
+        // A run reports a trap: the lens says so, and the trap is shown where it fired, until
+        // the document changes.
+        let file = uri.to_file_path().unwrap().display().to_string();
+        let said = Said {
+            message: Some("assertion failed".to_owned()),
+            at: Some(Place { file, line: 2, column: 21 }),
+        };
+        let ran =
+            Ran { name: "adds".to_owned(), outcome: Outcome::Trapped(Trapped { site: 0, said: Some(said) }) };
+        client.server.tested(uri.clone(), vec![ran]);
+        let asked: Vec<_> = client.server.outbox.drain(..).filter_map(|m| m.method).collect();
+        assert_eq!(asked, [r::CodeLensRefresh::METHOD]);
+        let titles = |client: &mut super::Client<'_, '_>| -> Vec<String> {
+            let lenses = client.request::<r::CodeLens>(&params).unwrap();
+            lenses.into_iter().filter_map(|l| l.command).map(|c| c.title).collect()
+        };
+        assert_eq!(titles(client), ["Test: trapped"]);
+        let published = client.published();
+        let traps: Vec<_> =
+            published[0].diagnostics.iter().map(|d| (d.range.start.line, d.range.start.character)).collect();
+        assert_eq!(traps, [(1, 20)], "{published:?}");
+        client.open(uri, "#[test]\nadds := () {};\n");
+        assert_eq!(titles(client), ["Test"]);
+        assert!(client.published()[0].diagnostics.is_empty());
     });
 }

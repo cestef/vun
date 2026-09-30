@@ -55,6 +55,8 @@ pub mod requests {
         ExecuteCommand = "workspace/executeCommand": command::ExecuteCommandParams => Option<Value<'static>>;
         /// Sent by the server.
         ShowDocument = "window/showDocument": command::ShowDocumentParams => command::ShowDocumentResult;
+        /// Sent by the server: the lenses it gives changed.
+        CodeLensRefresh = "workspace/codeLens/refresh": Option<Value<'static>> => ();
     });
 }
 

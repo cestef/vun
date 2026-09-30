@@ -24,7 +24,7 @@ use crate::server::{Document, Server};
 const PUBLISH: Activity = Activity::stage("publish diagnostics");
 
 /// How diagnostics name where they come from.
-const SOURCE: &str = "vun";
+pub(crate) const SOURCE: &str = "vun";
 
 impl Hears<n::DidOpen> for Server<'_> {
     fn hear(&mut self, params: DidOpenParams) -> Result<(), Failure> {
@@ -91,6 +91,8 @@ impl Server<'_> {
         let lines = Lines::of(&text);
         let file = self.session.open(&path, text);
         self.documents.insert(uri.clone(), Document { path, version, file, lines });
+        // What its tests' last run said held of the text before.
+        self.results.remove(&uri);
         self.changed.insert(uri);
         Ok(())
     }
@@ -105,6 +107,7 @@ impl Server<'_> {
                 .sorted(&*self.session)
                 .into_iter()
                 .filter_map(|d| self.diagnostic(d, document))
+                .chain(self.traps(document))
                 .collect();
             let params = PublishDiagnosticsParams { uri, version: Some(document.version), diagnostics };
             self.notify::<n::PublishDiagnostics>(&params);

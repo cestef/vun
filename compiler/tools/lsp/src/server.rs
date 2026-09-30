@@ -1,10 +1,11 @@
 //! The server: the session it answers from, the documents the client holds open, and the loop
-//! reading messages, answering each, and publishing diagnostics once those waiting are handled.
+//! handling events, the messages the client sends and what the tasks the server started report,
+//! and publishing diagnostics once those waiting are handled.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
 
 use vun_command::Outcome;
@@ -12,6 +13,7 @@ use vun_data::ToData;
 use vun_data::Value;
 use vun_data::json::Json;
 use vun_driver::Session;
+use vun_driver::testing::Outcome as Ended;
 use vun_lsp_protocol::Request;
 use vun_lsp_protocol::base::{PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
@@ -45,6 +47,14 @@ pub(crate) struct Document {
     pub(crate) lines: Lines,
 }
 
+/// What the server's loop handles.
+pub(crate) enum Event {
+    /// A message the client sent: its text, `None` once the client closed the stream.
+    Frame(Result<Option<String>, Unframed>),
+    /// What a run of `vun.test` reported of the tests of the document at `uri`.
+    Tested { uri: Uri, ran: Vec<vun_driver::testing::Ran> },
+}
+
 pub(crate) struct Server<'s> {
     pub(crate) session: &'s mut Session,
     pub(crate) documents: BTreeMap<Uri, Document>,
@@ -56,10 +66,16 @@ pub(crate) struct Server<'s> {
     pub(crate) outbox: Vec<Message>,
     /// The requests the server sent, which number the next.
     pub(crate) asked: i64,
+    /// How the tests of each document ended when last run, by name, until it changes.
+    pub(crate) results: BTreeMap<Uri, BTreeMap<String, Ended>>,
+    /// Where events are sent, and where the loop receives them.
+    pub(crate) events: Sender<Event>,
+    received: Receiver<Event>,
 }
 
 impl<'s> Server<'s> {
     pub(crate) fn new(session: &'s mut Session) -> Self {
+        let (events, received) = mpsc::channel();
         Self {
             session,
             documents: BTreeMap::new(),
@@ -68,33 +84,28 @@ impl<'s> Server<'s> {
             changed: BTreeSet::new(),
             outbox: Vec::new(),
             asked: 0,
+            results: BTreeMap::new(),
+            events,
+            received,
         }
     }
 
-    /// Serves the messages `received` until the client exits or closes the stream: each is
-    /// answered in order, and once none waits, what changed is checked and published.
-    pub(crate) fn run(
-        &mut self,
-        received: &Receiver<Result<Option<String>, Unframed>>,
-        out: &mut transport::Outgoing<impl Write>,
-    ) -> io::Result<Outcome> {
-        while let Ok(first) = received.recv() {
-            for frame in std::iter::once(first).chain(received.try_iter()) {
-                let reply = match frame {
-                    Ok(Some(text)) => self.handle(&text),
-                    Ok(None) => return Ok(self.closed()),
-                    Err(unframed) => {
-                        let failure = Failure::new(ErrorCode::ParseError, Reason::Unframed(unframed));
-                        tracing::warn!(%failure, "unreadable message");
-                        Some(Message::response(Id::Null, Err(failure.response())))
+    /// Serves the events it receives until the client exits or closes the stream: each is
+    /// handled in order, a message answered, and once none waits, what changed is checked and
+    /// published.
+    pub(crate) fn run(&mut self, out: &mut transport::Outgoing<impl Write>) -> io::Result<Outcome> {
+        while let Ok(first) = self.received.recv() {
+            let mut next = Some(first);
+            while let Some(event) = next {
+                match event {
+                    Event::Frame(frame) => {
+                        if let Some(ended) = self.frame(frame, out)? {
+                            return Ok(ended);
+                        }
                     }
-                };
-                if let Some(reply) = reply {
-                    out.send(&Json(&reply.to_data()).to_string())?;
+                    Event::Tested { uri, ran } => self.tested(uri, ran),
                 }
-                if let State::Exited(outcome) = self.state {
-                    return Ok(outcome);
-                }
+                next = self.received.try_recv().ok();
             }
             self.publish();
             for message in self.outbox.drain(..) {
@@ -102,6 +113,30 @@ impl<'s> Server<'s> {
             }
         }
         Ok(self.closed())
+    }
+
+    /// Answers the message `frame`: how the server ends, once it does.
+    fn frame(
+        &mut self,
+        frame: Result<Option<String>, Unframed>,
+        out: &mut transport::Outgoing<impl Write>,
+    ) -> io::Result<Option<Outcome>> {
+        let reply = match frame {
+            Ok(Some(text)) => self.handle(&text),
+            Ok(None) => return Ok(Some(self.closed())),
+            Err(unframed) => {
+                let failure = Failure::new(ErrorCode::ParseError, Reason::Unframed(unframed));
+                tracing::warn!(%failure, "unreadable message");
+                Some(Message::response(Id::Null, Err(failure.response())))
+            }
+        };
+        if let Some(reply) = reply {
+            out.send(&Json(&reply.to_data()).to_string())?;
+        }
+        Ok(match self.state {
+            State::Exited(outcome) => Some(outcome),
+            _ => None,
+        })
     }
 
     /// How the server ends when the client closes the stream: as `exit` would.

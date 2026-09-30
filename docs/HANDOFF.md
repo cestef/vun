@@ -25,9 +25,11 @@ Last landed: test lenses and the runner's gaps (357). The server offers a `Test`
 test a file declares (`Session::tests`, from `std.meta.collect` through `vun_sema::testing::Tests`)
 running `vun.test`; `#[test.ignore("why")]` reports a test `ignored`; `vun test` reads the
 program's output and error as one stream, so a test's output and backtrace come with its line
-(`vun_driver::testing::Run`, shared with the server); run-time checks name their trap site with
+(`vun_driver::testing::Run`, shared with the server), and when a run ends the server titles
+each lens with the outcome and shows a trap as an error where it fired; run-time checks name their trap site with
 their `Reason`'s message. The nushell completion script exports its root command as `main`, as a
-module named `vun` must (`use vun.nu *`). Before that, tests run (354, 355). A trap ends its thread and `Thread.join` gives
+module named `vun` must (`use vun.nu *`), and `cargo gen` keeps what Zed writes building the dev
+extension (`extension.wasm`, `grammars/`), which it had removed as stale. Before that, tests run (354, 355). A trap ends its thread and `Thread.join` gives
 `Result(R, lang.panic.Trap)`; `std.testing.runner(ns)` runs each unit test on a thread of its own
 and writes JSON lines (`std.fmt.json`, derived by reflection); `vun test [path] [names]...` builds
 it for the namespace of a file, a directory or a package (`Roots::Members`, `vun_sema::testing::Runner`)
@@ -119,8 +121,6 @@ Runs natively (354, 355, 357); spec 11 is the reference. Open:
 - Only unit tests run: a test with parameters fails to type at the runner's call. The other kinds
   (property, fuzz, `Bench`, `Sim`) need the parameters' types through `lang.meta`.
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
-- Lens results: `vun.test` writes its report beside the document; the lens titles do not show
-  the outcome yet, and a trap is not published as a diagnostic at its site.
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
