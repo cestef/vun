@@ -1,10 +1,13 @@
-//! Nushell completion: an `extern` signature per command, which nushell also offers as the
-//! subcommands of its parent; choices through completers.
+//! Nushell completion: a module of an `extern` signature per command, which nushell also offers
+//! as the subcommands of its parent; choices through completers.
 
 use std::fmt::Write;
 
 use super::Tree;
 use crate::{Arity, Catalog, Param, ParamKind, Values};
+
+/// The command a module exports under its own name.
+const MAIN: &str = "main";
 
 /// A completer: its name and the values it offers.
 type Completer = (String, Vec<&'static str>);
@@ -16,7 +19,10 @@ impl Tree<'_> {
         for node in &self.nodes {
             let name =
                 std::iter::once(self.program).chain(node.path.iter().copied()).collect::<Vec<_>>().join(" ");
-            let _ = writeln!(body, "# {}\nexport extern \"{name}\" [", node.about);
+            // The script is a module named as the program (`use vun.nu *`), whose command of its
+            // own name is `main`.
+            let signature = if node.path.is_empty() { MAIN } else { &name };
+            let _ = writeln!(body, "# {}\nexport extern \"{signature}\" [", node.about);
             for param in node.positionals.iter().chain(&node.options) {
                 let shape = param.nu_shape(&name, &mut completers);
                 let _ = match param.kind {

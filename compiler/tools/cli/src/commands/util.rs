@@ -20,7 +20,7 @@ pub(super) const COMPLETION: Command<Session> =
             Example { line: "bash >> ~/.bashrc", about: "complete in bash" },
             Example {
                 line: "nu | save -f ($nu.default-config-dir | path join vun.nu)",
-                about: "complete in nushell, then `source` it",
+                about: "complete in nushell, then load it with `use vun.nu *`",
             },
         ]);
 
