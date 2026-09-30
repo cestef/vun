@@ -277,6 +277,13 @@ diff (section 7) first.
 the nearest `build.vun`, fetches that exact toolchain (hash-checked and recorded in the lock) into
 `~/.cache/vun/toolchains`, and runs it. `vun toolchain list|install|prune` manages the cache.
 
+**The toolchain's directory.** A toolchain is a directory holding the executable `bin/vun` and
+its library in `lib/`: the packages `lang`, `std`, `targets` and `boards`, and the pages of
+`vun explain`. A release archive unpacks to one, as the launcher will. `vun` reads the library
+the environment variable `VUN_LIBRARY` names, else `lib/` beside its own `bin/` when that holds
+every default dependency, else the checkout it was built from, which is how development builds
+run.
+
 **The machine's toolchain file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target; building for another machine needs other tools, a cross C compiler
 and an emulator to run what it built, and where they are is a fact of the machine, not of the

@@ -33,7 +33,7 @@ use vun_term::Shell;
 use vun_trace::tracing;
 
 use crate::formats::Format;
-use crate::packages::{LIBRARY, Packages};
+use crate::packages::{Library, Packages};
 use crate::registry::Codegen;
 use crate::{Persistence, Registry};
 
@@ -113,8 +113,7 @@ impl Session {
             diag: DiagCtxt::default(),
             format: Format::DEFAULT,
             packages: Packages::default(),
-            // Its real path, so that its files are named as an editor names them.
-            library: std::fs::canonicalize(LIBRARY).unwrap_or_else(|_| PathBuf::from(LIBRARY)),
+            library: Library::find().dir,
             store: Store::user(),
             schemes: Schemes::default(),
             choice: Choice::host(),

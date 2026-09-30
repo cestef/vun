@@ -52,9 +52,10 @@ single-threaded `tree-sitter generate`; each round settling the conflicts is one
 - VS Code or VSCodium: `npm install` in `editors/vscode`, `npx @vscode/vsce package
   --allow-missing-repository --skip-license -o vun.vsix`, `codium --install-extension vun.vsix`.
 - Zed: `zed: install dev extension` on `editors/zed`, which Zed compiles for `wasm32-wasip2`.
-- Each needs `vun` on the path: `LIBRARY` is the checkout's `lib/` as the build saw it, so a
-  binary built elsewhere is built at the same path (`rsync` the checkout to that path on the
-  host).
+- Each needs `vun` on the path. It reads its library as spec 12, section 6 says: `VUN_LIBRARY`,
+  else `lib/` beside its `bin/` (a release archive), else the checkout it was built from, so a
+  binary copied alone to another host needs `VUN_LIBRARY` or the archive's layout.
+  `VUN_LOG=vun_driver=debug` names the library read and why (`found=Named|Installed|Checkout`).
 - The server can be driven without an editor: a JSON-RPC client over `vun util lsp`'s stdio
   (`initialize`, `didOpen`, then the requests) answers what an editor would be shown.
 

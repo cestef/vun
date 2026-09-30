@@ -13,6 +13,7 @@ mod deps;
 mod fetch;
 mod graph;
 mod inputs;
+mod library;
 mod locate;
 mod lockfile;
 mod rewrite;
@@ -35,14 +36,11 @@ use vun_uri::Uri;
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
 use inputs::Sources;
+pub use library::{Found, Library};
 pub use select::Selection;
 pub use update::Updated;
 
 use crate::Session;
-
-/// The library shipped with the toolchain, where default dependencies are found. Until the
-/// launcher installs toolchains (spec 12, section 6), it is the repository's `lib/`.
-pub const LIBRARY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../lib");
 
 /// Identifies a package.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
