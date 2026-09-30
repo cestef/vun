@@ -42,7 +42,8 @@ impl Lowered {
         let numbering = NUMBER.start();
         let l = Lowering::new(cx, root, true)?;
         if let Some((i, unready)) = program.unready.first() {
-            let unlowered = Unlowered::new(i.f.literal.expr.origin, Why::Unready(unready.clone()));
+            // Where the body stopped; the calls leading to it follow.
+            let unlowered = Unlowered::new(unready.at(), Why::Unready(unready.clone()));
             return Err(unlowered.through(program.leading(cx, i)));
         }
         if let Some(export) = program.unevaluated.first() {

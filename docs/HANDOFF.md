@@ -21,7 +21,12 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: test lenses and the runner's gaps (357). The server offers a `Test` lens over each
+Last landed: calls and `$` arguments (358). `h()` calls what a borrow `h` holds; a `$`
+parameter implements its constraint, so `R` of `$F: Call((), R)` is inferred in a generic body;
+`()` where a type is expected is the unit type however it is reached; a body with an untyped
+local is reported at the local, with typing's own error, or as a compiler bug naming `vun debug
+dump mir` when typing reported none (`corpus/accept/types/callables.vun`). Before that, test
+lenses and the runner's gaps (357). The server offers a `Test` lens over each
 test a file declares (`Session::tests`, from `std.meta.collect` through `vun_sema::testing::Tests`)
 running `vun.test`; `#[test.ignore("why")]` reports a test `ignored`; `vun test` reads the
 program's output and error as one stream, so a test's output and backtrace come with its line
@@ -65,7 +70,8 @@ peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking fro
 gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
 (spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 356 (an optional path, the nearest
 `build.vun` when none, for every command; only `vun test` follows it yet), 357 (test lenses,
-`test.ignore`, one stream for the tests' program, checks' trap messages). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+`test.ignore`, one stream for the tests' program, checks' trap messages), 358 (calls through
+borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -124,12 +130,6 @@ Runs natively (354, 355, 357); spec 11 is the reference. Open:
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
-- Two sema bugs met writing the runner, worked around: inside a `$`-generic function,
-  `sys.spawn(f)` with `f: &mut F`, `$F: lang.ops.Call((), ())` cannot infer `R` from `F`'s bound;
-  and `()` passed to a `$R: type` parameter of a method call is the unit value, not the type
-  (`types.mismatch` in `std.os.thread`). Both surfaced from `std` as `backend.unlowered` ("the
-  type of this value is unknown") at the function, hiding the real error, which only a copy
-  outside `std` shows.
 - `persist::an_unchanged_program_built_again_computes_nothing_it_saves` failed twice in full
   driver runs from an empty `target/tmp/memos` on `petal.wg` (`VUN_QUERY_CHECK=1`), then passed
   on a third; alone, or with the `testing` or `runtime` tests, it passes. Shared entries are

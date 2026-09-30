@@ -114,6 +114,12 @@ impl DiagCtxt {
         (self.error_count() > 0).then_some(ErrorGuaranteed(()))
     }
 
+    /// The first error reported.
+    #[must_use]
+    pub fn first_error(&self) -> Option<&Diagnostic> {
+        self.diagnostics.iter().find(|d| d.severity == Severity::Error)
+    }
+
     #[must_use]
     pub fn error_count(&self) -> usize {
         self.count(Severity::Error)

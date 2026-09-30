@@ -64,6 +64,11 @@ Traps that cost a session before. Add one when it costs you time.
   never through the bare `Typer::env()`: without what typing found, a call whose `$` arguments
   are inferred (`TypeOf(x)`) or a form typed by its context has no value, and the call stays
   silently untyped. `VUN_LOG=vun_sema::typeck=trace` shows each evaluation that gave no value.
+- A `None` from a typing function with no report is a silent give-up: the body builds, and only
+  lowering finds the untyped local, reported where it is as "typing found no type for this and
+  reported no error". `vun debug dump mir <file>` shows such locals as `?` with their place;
+  reduce the program to that form (a copy outside `std` works: a library's own errors are shown
+  only as a program reaches them) and find which rule returned `None`.
 - The parser's depth bound counts each operand being read and each link of a chain; past it the
   rest of the expression is one `Error` node, so later stages never recurse deeper than about
   twice `MAX_NESTING`.

@@ -5,9 +5,7 @@
 
 use std::sync::Arc;
 
-use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
-use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lower::Lower;
 use vun_query::{Cx, Cycle, Query};
@@ -22,48 +20,11 @@ use vun_sema_ty::Value;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::trap::Unevaluated;
 
-use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt, Why};
+mod unready;
 
-/// Why an instantiation's body is not ready for code generation.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub enum Unready {
-    /// A form MIR does not lower yet.
-    Unbuilt(Unbuilt),
-    /// A compile-time value the body reads has none.
-    Unevaluated { at: OriginId, why: Unevaluated },
-    /// A local typing found no type for.
-    Untyped { at: OriginId },
-}
+pub use unready::Unready;
 
-impl From<Unbuilt> for Unready {
-    fn from(unbuilt: Unbuilt) -> Self {
-        Self::Unbuilt(unbuilt)
-    }
-}
-
-impl std::fmt::Display for Unready {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unbuilt(Unbuilt { why: Why::Form, .. }) => {
-                f.write_str("this form is not supported in compiled code yet")
-            }
-            Self::Unbuilt(Unbuilt { why: Why::Unevaluated(why), .. }) | Self::Unevaluated { why, .. } => {
-                write!(f, "a value this needs at compile time has none: {}", why.why())
-            }
-            Self::Untyped { .. } => f.write_str("the type of this value is unknown"),
-        }
-    }
-}
-
-impl Unready {
-    /// Where the body stopped.
-    #[must_use]
-    pub fn at(&self) -> OriginId {
-        match self {
-            Self::Unbuilt(Unbuilt { at, .. }) | Self::Unevaluated { at, .. } | Self::Untyped { at } => *at,
-        }
-    }
-}
+use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, Unbuilt};
 
 /// An instantiation's body as code generation reads it; see the module.
 pub struct Concrete;
@@ -87,7 +48,11 @@ impl Query for Concrete {
         body.evaluate(&env)?;
         body.propagate(&env, &i.args);
         body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
-        body.typed()?;
+        if let Err(Unready::Untyped { at, .. }) = body.typed() {
+            let typed = cx.get::<Typed>(i);
+            let reported = typed.and_then(|t| t.diag.first_error().cloned()).map(Box::new);
+            return Err(Unready::Untyped { at, reported });
+        }
         body.verified();
         Ok(Arc::new(body))
     }
@@ -290,7 +255,7 @@ impl Body {
     /// Whether every local has a type.
     fn typed(&self) -> Result<(), Unready> {
         match self.locals.iter().find(|(_, l)| l.ty.is_none()) {
-            Some((_, local)) => Err(Unready::Untyped { at: local.origin }),
+            Some((_, local)) => Err(Unready::Untyped { at: local.origin, reported: None }),
             None => Ok(()),
         }
     }

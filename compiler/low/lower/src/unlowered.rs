@@ -140,6 +140,13 @@ impl Why {
             }
             Self::Untargeted => Some(Msg::new().text("choose a target with ").code("--target")),
             Self::Recursive => Some(Msg::new().text("await the call through a pointer to its frame")),
+            Self::Unready(Unready::Untyped { .. }) => Some(
+                Msg::new()
+                    .code("vun debug dump mir")
+                    .text(" shows each local typing left without a type as ")
+                    .code("?")
+                    .text(", at its place"),
+            ),
             _ => None,
         }
     }
@@ -204,6 +211,8 @@ impl Unlowered {
                 let trap = Trap { reason: reason.clone(), at: Some(self.at), calls: Vec::new() };
                 trap.report(self.calls.last().copied().unwrap_or(self.at))
             }
+            // What typing reported, where it did, rather than what it left unknown.
+            Why::Unready(Unready::Untyped { reported: Some(reported), .. }) => (**reported).clone(),
             Why::Unavailable(needed) => {
                 let msg = Msg::new().text("the instruction needs ").append(needed.msg());
                 Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
