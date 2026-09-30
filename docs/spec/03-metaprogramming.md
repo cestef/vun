@@ -136,7 +136,11 @@ assert(len <= N);   // the argument arrives as code; the message quotes it with 
 ```
 
 Because the parameter is `$`, each call site instantiates `assert` with its own code, so the check
-compiles to exactly `if !(len <= N) { ... }` at the call site.
+compiles to exactly `if !(len <= N) { ... }` at the call site. Code spliced at run time is folded to
+a constant only when it has a value at compile time; code reading what only run time knows (a `mut`
+binding, or what a cell holds, `std.sync.Atomic` and `Local` included, since a pointer into a cell
+reads a run-time place) runs where it is spliced. A failed assertion's trap site is where its
+condition is written.
 
 A code value is written where its code is: its names resolve there, with the bindings of the call
 and of the `$for` steps it was written in, and splicing it at compile time evaluates it there. An

@@ -90,6 +90,8 @@ impl Apply for Primitive {
             (Self::Mem(Mem::cell), [_, value]) | (Self::Simd(Simd::lanes | Simd::of), [_, _, value]) => {
                 Ok(value.clone())
             }
+            // What a cell holds changes at run time: a pointer into it reads a run-time place.
+            (Self::Mem(Mem::cell_pointer), _) => Err(Unevaluated::Runtime),
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
             // `lang.mem.Array(n, T)`: `[n]T`.

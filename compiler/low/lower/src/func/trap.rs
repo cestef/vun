@@ -26,7 +26,7 @@ impl FnLower<'_, '_, '_> {
 
     /// Ends the current block with a trap at the origin lowered.
     pub(crate) fn trap(&mut self) -> Result<(), Unlowered> {
-        self.site(None)?;
+        self.site(self.at, None)?;
         self.b.terminate(Terminator::Unreachable);
         Ok(())
     }
@@ -51,11 +51,11 @@ impl FnLower<'_, '_, '_> {
         Ok(self.l.constant(Bytes { bytes: zeros, relocs: Vec::new(), sites }, layout.align, self.at))
     }
 
-    /// Calls the trap handler for a new site at the origin lowered, saying `msg`.
-    pub(crate) fn site(&mut self, msg: Option<Msg>) -> Result<(), Unlowered> {
+    /// Calls the trap handler for a new site at `site_at`, saying `msg`.
+    pub(crate) fn site(&mut self, site_at: OriginId, msg: Option<Msg>) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Callee);
-        let site = self.new_site(at, msg)?;
+        let site = self.new_site(site_at, msg)?;
         let Constant::Type(ty) = self.l.item(vun_items::lang::panic::Trap, self.at)? else {
             return Err(unsupported());
         };

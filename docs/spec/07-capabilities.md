@@ -88,7 +88,8 @@ itself lays out each thread's block and sets the thread pointer (spec 08, sectio
 - **Traps** end the current execution context. Trap sites are: a failed `.to`, a compound
   assignment out of range, a zero divisor, an unproven index, unwrapping `.none`, and
   `std.panic.fail(reason)`, whose compile-time `lang.panic.Reason` (`.message(text)` or
-  `.assertion(source, origin)`) makes each distinct reason its own site. There is no unwinding.
+  `.assertion(source, origin)`) makes each distinct reason its own site, placed where an
+  assertion's condition is written. There is no unwinding.
 - **The execution context is the thread.** A trap in a thread a runtime spawned ends that thread
   alone: the handler keeps the trap where the runtime keeps how the thread ended
   (`std.os.thread.Ended`), then ends the thread, and `Thread.join` gives `.err(trap)` in place of

@@ -72,10 +72,12 @@ impl FnLower<'_, '_, '_> {
                 let args: Vec<&Operand> = args.iter().collect();
                 self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
             }
-            // `lang.panic.fail(reason)` is a trap site saying its reason, known when compiling.
+            // `lang.panic.fail(reason)` is a trap site saying its reason, known when compiling,
+            // at the place the reason names where it names one.
             Operand::Const(Constant::Primitive(Primitive::Panic(Panic::fail))) => {
                 let [Operand::Const(reason)] = args else { return Err(unsupported()) };
-                self.site(Some(Failure::of(reason).ok_or_else(unsupported)?.msg()))
+                let failure = Failure::of(reason).ok_or_else(unsupported)?;
+                self.site(failure.place().unwrap_or(self.at), Some(failure.msg()))
             }
             // `lang.check.site(at)` is a new site at `at`, known when compiling: its id, read from
             // a constant the program writes it into.

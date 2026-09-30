@@ -100,6 +100,15 @@ impl Failure {
         }
     }
 
+    /// Where it points: the condition an assertion names.
+    #[must_use]
+    pub fn place(&self) -> Option<OriginId> {
+        match self {
+            Self::Message(_) => None,
+            Self::Assertion { at, .. } => Some(*at),
+        }
+    }
+
     /// What it says.
     #[must_use]
     pub fn msg(&self) -> Msg {
@@ -176,7 +185,7 @@ impl Reason {
     fn place(&self) -> Option<OriginId> {
         match self {
             Self::Reported { at, .. } => *at,
-            Self::Failed(Failure::Assertion { at, .. }) => Some(*at),
+            Self::Failed(failure) => failure.place(),
             _ => None,
         }
     }
