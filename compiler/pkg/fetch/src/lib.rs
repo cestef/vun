@@ -38,7 +38,7 @@ impl fmt::Display for Failure {
                 let suffixes: Vec<_> = FORMATS.iter().flat_map(|f| f.suffixes).copied().collect();
                 write!(f, "no known archive format; supported: {}", suffixes.join(", "))
             }
-            Self::Download(_) => f.write_str("cannot download the archive"),
+            Self::Download(_) => f.write_str("cannot download it"),
             Self::Unpack(_) => f.write_str("cannot unpack the archive"),
         }
     }

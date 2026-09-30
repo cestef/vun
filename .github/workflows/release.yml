@@ -82,6 +82,17 @@ jobs:
           path: dist
           merge-multiple: true
       - run: cargo xtask release dist --tag "$GITHUB_REF_NAME"
-      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" dist/*.tar.gz dist/release.json
+      # The manifest's raw Ed25519 signature, checked by `vun` against the key it is built with
+      # (`compiler/pkg/build/src/release/key.pub`).
+      - name: Sign the manifest
+        env:
+          RELEASE_KEY: ${{ secrets.RELEASE_KEY }}
+        run: |
+          test -n "$RELEASE_KEY" || { echo "the RELEASE_KEY secret is not set" >&2; exit 1; }
+          key="$(mktemp)"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$RELEASE_KEY" > "$key"
+          openssl pkeyutl -sign -rawin -inkey "$key" -in dist/release.json -out dist/release.json.sig
+      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" dist/*.tar.gz dist/release.json dist/release.json.sig
         env:
           GH_TOKEN: ${{ github.token }}

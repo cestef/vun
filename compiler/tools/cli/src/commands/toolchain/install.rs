@@ -47,15 +47,16 @@ fn settle(session: &mut Session, shell: &mut Shell<'_>, wanted: Wanted, default:
         Wanted::Latest => None,
         Wanted::Version(version) => Some(version),
     };
-    let release = match session.toolchain_release(wanted) {
-        Ok(release) => release,
+    let published = match session.toolchain_release(wanted) {
+        Ok(published) => published,
         Err(why) => {
             session.uninstalled(asked, &why);
             return session.outcome();
         }
     };
+    let release = &published.release;
     shell.status(&Started { step: Step::Install, subject: release.version.to_string() });
-    let installed = match session.install(&toolchains, &release) {
+    let installed = match session.install(&toolchains, &published) {
         Ok(installed) => installed,
         Err(why) => {
             session.uninstalled(Some(release.version), &why);

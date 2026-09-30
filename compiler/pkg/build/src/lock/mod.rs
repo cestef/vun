@@ -2,7 +2,8 @@
 //! recording every version the graph requires, with the hash it was verified against, one entry
 //! per line, sorted, so that merges never conflict. The selected version of an identity is the
 //! largest recorded. It is read without evaluation and written by the literal writer, as
-//! manifests are, and is no source namespace.
+//! manifests are, and is no source namespace. A project pinning a toolchain records the hash of
+//! the release's manifest, which names every machine's toolchain by the hash of its tree.
 
 mod read;
 #[cfg(test)]
@@ -19,12 +20,20 @@ pub const FILE: &str = vun_span::source_file!("lock");
 /// The version of the lockfile's layout this toolchain reads and writes.
 pub const LAYOUT: u32 = 1;
 
-/// A lockfile: the required packages, sorted by name, version and identity, and the identities
-/// the root replaces.
+/// A lockfile: the toolchain the root pins, the required packages, sorted by name, version and
+/// identity, and the identities the root replaces.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Lock {
+    toolchain: Option<Pinned>,
     entries: Vec<Locked>,
     replaced: Vec<Replaced>,
+}
+
+/// The toolchain the root pins: its version and the hash of its release's manifest.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Pinned {
+    pub version: Version,
+    pub hash: Hash,
 }
 
 /// An identity the root manifest replaces, and what with.
@@ -61,6 +70,7 @@ mod field {
     pub(super) const LAYOUT: &str = "version";
     pub(super) const DEPS: &str = "deps";
     pub(super) const REPLACE: &str = "replace";
+    pub(super) const TOOLCHAIN: &str = "toolchain";
 
     pub(super) const NAME: &str = "name";
     pub(super) const VERSION: &str = "version";
@@ -75,13 +85,14 @@ mod field {
     pub(super) const ENTRY: &[&str] = &[NAME, VERSION, ID, HASH, VIA];
     pub(super) const REPLACEMENT: &[&str] = &[NAME, ID, HASH, PATH];
     pub(super) const IDENTITY: &[&str] = &[ID, MAJOR];
+    pub(super) const PINNED: &[&str] = &[VERSION, HASH];
 }
 
 impl Lock {
-    /// Whether it records nothing: no version selected, nothing replaced.
+    /// Whether it records nothing: no toolchain pinned, no version selected, nothing replaced.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty() && self.replaced.is_empty()
+        self.toolchain.is_none() && self.entries.is_empty() && self.replaced.is_empty()
     }
 
     /// The lock of `entries`, in their canonical order.
@@ -89,7 +100,19 @@ impl Lock {
     pub fn new(mut entries: Vec<Locked>) -> Self {
         entries.sort();
         entries.dedup();
-        Self { entries, replaced: Vec::new() }
+        Self { toolchain: None, entries, replaced: Vec::new() }
+    }
+
+    /// This lock with the toolchain `pinned` recorded.
+    #[must_use]
+    pub fn pinning(self, toolchain: Option<Pinned>) -> Self {
+        Self { toolchain, ..self }
+    }
+
+    /// The toolchain the root pins, as recorded.
+    #[must_use]
+    pub fn toolchain(&self) -> Option<Pinned> {
+        self.toolchain
     }
 
     /// This lock with `replaced` recorded, in their canonical order.

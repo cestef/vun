@@ -60,6 +60,21 @@ from a directory laid out as a forge's (`releases/download/<version>/`,
 `releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at
 the root installs the latest release for a first time.
 
+The release job signs `release.json` with the `RELEASE_KEY` secret (an Ed25519 key in PEM), and
+`vun` checks it against `compiler/pkg/build/src/release/key.pub` (decision 368). The key is made,
+or replaced, once, with its secret half kept off the repository:
+
+```sh
+bash -c 'set -e; d=~/.local/share/vun-release; mkdir -p "$d"; (umask 077; openssl genpkey -algorithm ed25519 -out "$d/key.pem")
+openssl pkey -in "$d/key.pem" -pubout -outform DER | tail -c 32 | python3 -c "import sys, base64; print(\"ed25519:\" + base64.b32encode(sys.stdin.buffer.read()).decode().lower().rstrip(\"=\"))" > compiler/pkg/build/src/release/key.pub
+gh secret set RELEASE_KEY < "$d/key.pem"'
+```
+
+A new key leaves toolchains built with the old one unable to check new releases, so it is
+replaced only when the old one is lost or leaked. Installing from a directory signed with another
+key: `openssl pkeyutl -sign -rawin -inkey key.pem -in release.json -out release.json.sig`, and
+`VUN_RELEASES_KEY` naming its public half.
+
 ## Trying the editor packages
 
 - Helix: append `editors/helix/languages.toml` to `~/.config/helix/languages.toml`, link

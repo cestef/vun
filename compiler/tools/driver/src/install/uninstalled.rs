@@ -11,10 +11,19 @@ use vun_target::Machine;
 pub enum Uninstalled {
     /// The user has no home to install toolchains in.
     Homeless,
-    /// The base releases are found under is not a URI.
-    Repository(vun_uri::Invalid),
+    /// Where releases are found, or their key, does not read.
+    Repository(vun_build::release::Misnamed),
     /// The release's manifest could not be read.
     Manifest(vun_fetch::Failure),
+    /// The manifest's signature could not be read.
+    Unsigned(vun_fetch::Failure),
+    /// The manifest is not the one the releases' key signed.
+    Forged(vun_build::release::Forged),
+    /// The manifest is not the one the project's lockfile records.
+    Unlocked {
+        expected: Hash,
+        found: Hash,
+    },
     /// The manifest is not JSON.
     Json(vun_data::json::Error),
     /// The manifest is not a release.
@@ -35,8 +44,16 @@ impl fmt::Display for Uninstalled {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Homeless => f.write_str("the user has no home directory to install it in"),
-            Self::Repository(_) => f.write_str("where releases are found is not a URI"),
+            Self::Repository(_) => f.write_str("where releases are found does not read"),
             Self::Manifest(_) => f.write_str("the release's manifest cannot be read"),
+            Self::Unsigned(_) => f.write_str("the release's manifest has no signature to read"),
+            Self::Forged(_) => f.write_str("the release's manifest is not the one its releases signed"),
+            Self::Unlocked { expected, found } => {
+                write!(
+                    f,
+                    "the release's manifest hashes to `{found}`, where the lockfile records `{expected}`"
+                )
+            }
             Self::Json(_) | Self::Shape(_) => f.write_str("the release's manifest is not one"),
             Self::Unbuilt(Machine { arch, os }) => {
                 write!(f, "the release has no toolchain for `{arch}` on `{os}`")
@@ -54,11 +71,12 @@ impl Error for Uninstalled {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Repository(e) => Some(e),
-            Self::Manifest(e) | Self::Archive(e) => Some(e),
+            Self::Manifest(e) | Self::Unsigned(e) | Self::Archive(e) => Some(e),
+            Self::Forged(e) => Some(e),
             Self::Json(e) => Some(e),
             Self::Shape(e) => Some(e),
             Self::Io(e) => Some(e),
-            Self::Homeless | Self::Unbuilt(_) | Self::Changed { .. } => None,
+            Self::Homeless | Self::Unbuilt(_) | Self::Changed { .. } | Self::Unlocked { .. } => None,
         }
     }
 }

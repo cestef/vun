@@ -4,7 +4,8 @@
 const ALPHABET: &[u8; 32] = b"abcdefghijklmnopqrstuvwxyz234567";
 const BITS: u32 = 5;
 
-pub(super) fn encode(bytes: &[u8]) -> String {
+#[must_use]
+pub fn encode(bytes: &[u8]) -> String {
     let mut out = String::with_capacity((bytes.len() * 8).div_ceil(BITS as usize));
     let (mut buffer, mut held) = (0u32, 0u32);
     for &b in bytes {
@@ -23,7 +24,8 @@ pub(super) fn encode(bytes: &[u8]) -> String {
 
 /// Decodes exactly `N` bytes; the unused low bits of the last character must be zero, so that
 /// every digest has one spelling.
-pub(super) fn decode<const N: usize>(text: &str) -> Option<[u8; N]> {
+#[must_use]
+pub fn decode<const N: usize>(text: &str) -> Option<[u8; N]> {
     if text.len() != (N * 8).div_ceil(BITS as usize) {
         return None;
     }

@@ -1,6 +1,6 @@
 use vun_hash::Hash;
 
-use super::{Lock, Locked, Replaced, Replacing};
+use super::{Lock, Locked, Pinned, Replaced, Replacing};
 use crate::manifest::{Identity, Version};
 
 fn entry(name: &str, version: &str, identity: Option<Identity>, via: Option<&str>) -> Locked {
@@ -65,4 +65,16 @@ fn replacements_round_trip() {
     );
     assert_eq!(Lock::parse(&text), Some(lock.clone()));
     assert_eq!(lock.replacement(hal).map(|r| &r.with), Some(&Replacing::Path("../hal fork".into())));
+}
+
+#[test]
+fn a_pinned_toolchain_round_trips_before_the_entries() {
+    let pinned = Pinned { version: Version::parse("0.4.2").unwrap(), hash: Hash::of(b"release.json") };
+    let lock = Lock::new(vec![entry("a", "1.0.0", None, None)]).pinning(Some(pinned));
+    let text = lock.to_string();
+    let at = |decl: &str| text.lines().position(|l| l.starts_with(decl));
+    assert!(at("toolchain :=").is_some_and(|t| at("deps :=").is_some_and(|d| t < d)), "{text}");
+    assert_eq!(Lock::parse(&text), Some(lock.clone()));
+    assert_eq!(lock.toolchain(), Some(pinned));
+    assert!(!Lock::default().pinning(Some(pinned)).is_empty());
 }

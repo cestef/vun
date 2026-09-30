@@ -7,7 +7,7 @@ use vun_syntax::cst::Cst;
 use vun_syntax::literal::{Decl, Literal};
 use vun_syntax::tokens::Tokens;
 
-use super::{FILE, LAYOUT, Lock, Locked, Replaced, Replacing, field};
+use super::{FILE, LAYOUT, Lock, Locked, Pinned, Replaced, Replacing, field};
 use crate::manifest::Identity;
 use crate::manifest::record::{Fields, Record};
 
@@ -15,17 +15,19 @@ impl Lock {
     /// Reads the lockfile whose declarations are `decls`; `file` locates what is missing.
     pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
         let whole = Decl::new(FILE, Literal::Record(decls.to_vec()), Span::new(file, 0, 0));
-        let mut fields = Fields::new(&whole, &[field::LAYOUT, field::DEPS, field::REPLACE], cx)?;
+        let mut fields =
+            Fields::new(&whole, &[field::LAYOUT, field::TOOLCHAIN, field::DEPS, field::REPLACE], cx)?;
         let layout = fields.require(field::LAYOUT).and_then(|d| {
             d.int::<u32>(cx).filter(|&l| l == LAYOUT).or_else(|| {
                 d.invalid(Msg::new().text("the layout this toolchain writes, ").code(LAYOUT.to_string()), cx)
             })
         });
+        let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| Pinned::read(d, cx).map(Some));
         let entries = fields.require(field::DEPS).and_then(|d| d.items(Locked::read, cx));
         let replaced = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| d.items(Replaced::read, cx));
         fields.finish(cx);
         layout?;
-        Some(Self::new(entries?).replacing(replaced?))
+        Some(Self::new(entries?).replacing(replaced?).pinning(toolchain?))
     }
 
     /// Reads the text of a lockfile; `None` when it does not read, whatever the reason.
@@ -54,6 +56,16 @@ impl Locked {
         let via = fields.get(field::VIA).map_or(Some(None), |d| d.string(cx).map(Some));
         fields.finish(cx);
         Some(Self { name: name?, version: version?, identity: identity?, hash: hash?, via: via? })
+    }
+}
+
+impl Pinned {
+    fn read(decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
+        let mut fields = Fields::new(decl, field::PINNED, cx)?;
+        let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
+        let hash = fields.require(field::HASH).and_then(|d| d.content_hash(cx));
+        fields.finish(cx);
+        Some(Self { version: version?, hash: hash? })
     }
 }
 

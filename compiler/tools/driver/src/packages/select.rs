@@ -6,8 +6,9 @@
 
 use std::collections::HashMap;
 
-use vun_build::lock::{Lock, Locked};
+use vun_build::lock::{Lock, Locked, Pinned};
 use vun_build::manifest::{DepKind, Identity, Version};
+use vun_build::toolchains::Toolchains;
 use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_span::Span;
 
@@ -75,7 +76,16 @@ impl Session {
             return Err(reported);
         }
         let replaced = self.packages.list[&project].replace.iter().map(|r| r.recorded.clone()).collect();
-        Ok(Selection { lock: Lock::new(entries).replacing(replaced), absent })
+        let pinned = self.packages.list[&project].toolchain.and_then(|version| self.pinned(project, version));
+        Ok(Selection { lock: Lock::new(entries).replacing(replaced).pinning(pinned), absent })
+    }
+
+    /// The toolchain `project` pins at `version`: as its lockfile records it, else as the manifest
+    /// of the installed toolchain's release names it; `None` before it is installed.
+    fn pinned(&self, project: PackageKey, version: Version) -> Option<Pinned> {
+        let recorded =
+            self.recorded_lock(project).and_then(|l| l.toolchain()).filter(|t| t.version == version);
+        recorded.or_else(|| Some(Pinned { version, hash: Toolchains::user()?.manifest(version)? }))
     }
 
     /// What the project replaces `identity` with.

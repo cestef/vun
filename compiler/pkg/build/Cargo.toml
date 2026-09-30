@@ -15,6 +15,7 @@ workspace = true
 vun-uri.workspace = true
 vun-fetch.workspace = true
 etcetera.workspace = true
+ring.workspace = true
 vun-hash.workspace = true
 vun-data.workspace = true
 vun-intern.workspace = true

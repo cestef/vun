@@ -131,6 +131,8 @@ anstyle = "1"
 ariadne = "0.6"
 blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }
+# Ed25519, already built for `ureq`'s TLS: the signatures of releases.
+ring = { version = "0.17", default-features = false }
 flate2 = "1"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 ruzstd = { version = "0.9", default-features = false, features = ["std"] }

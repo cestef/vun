@@ -72,7 +72,7 @@ impl Session {
     }
 
     /// The lockfile of `root`, if it reads.
-    pub(super) fn recorded_lock(&self, root: PackageKey) -> Option<Lock> {
+    pub(crate) fn recorded_lock(&self, root: PackageKey) -> Option<Lock> {
         let path = self.packages.list[&root].dir.join(lock::FILE);
         Lock::parse(&std::fs::read_to_string(path).ok()?)
     }

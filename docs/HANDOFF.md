@@ -93,9 +93,9 @@ Toolchains, targets and releases (364 to 367, the owner's model): a toolchain is
 list|show` and `vun toolchain show` show what builds and why (`vun_driver::setup`); `vun
 toolchain list|install|remove|update` and a project's `.toolchain` install from releases and hand
 off (`vun_driver::install`); `.github/workflows/release.yml`, `cargo xtask package|release` and
-`install.sh` make and install releases (`docs/dev/commands.md`, "Releasing"). Open there: the
-lockfile does not record a pinned toolchain's hash; the release manifest is not signed; the first
-tagged release (`0.1.0`) has not run in CI yet.
+`install.sh` make and install releases (`docs/dev/commands.md`, "Releasing"); manifests are signed
+and a pinned release's manifest hash is locked (368). Open there: the first tagged release
+(`0.1.0`) has not run in CI yet; `install.sh` trusts its first toolchain as far as TLS.
 
 ## Decisions waiting for the owner
 

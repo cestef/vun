@@ -263,7 +263,7 @@ silently replaced by another version. Without a lockfile, the present packages d
 implicit before every compiling command (decision 181), walks the graph as declared rather than as
 selected, so it fills the store and rewrites a stale lockfile without consulting it. Replacements are listed in `replace`, one per line:
 `.{ .name, .id, .hash }` for a stored package or `.{ .name, .id, .path }` for a directory. A pinned
-toolchain will add a `toolchain` declaration (section 6).
+toolchain is recorded as `toolchain := .{ .version, .hash }` (section 6).
 
 ## 5. Workspaces
 
@@ -299,7 +299,10 @@ or from the base `VUN_RELEASES` names (a mirror, or a directory as a `file:` URI
 forge lays releases out. Each release carries a manifest, `release.json`, naming for each machine
 (`arch` and `os`, as targets name them) its archive, `vun-<arch>-<os>.tar.gz`, and the BLAKE3
 hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSES/`, which is
-checked before anything is kept. `vun toolchain list|install|remove|update` manages them;
+checked before anything is kept. The manifest is signed: `release.json.sig` is the Ed25519
+signature of its bytes, checked against the key `vun` is built with, or the one
+`VUN_RELEASES_KEY` names (`ed25519:<base32>`, for a mirror signing its own), so the manifest and,
+through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|remove|update` manages them;
 `update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
 to; the default and the running toolchain are not removed. A first installation runs the
 repository's `install.sh`, which unpacks this machine's archive of the latest release somewhere
@@ -308,8 +311,12 @@ temporary and lets it run `vun toolchain update`.
 A package pins a toolchain with `.toolchain` in its `build.vun`. A `vun` loading a project that
 pins another version installs that version when missing and hands the command to it (it replaces
 the process), so no launcher stands apart from the toolchains; the toolchain handed to runs as
-itself (`VUN_TOOLCHAIN=local`, which also keeps the running one anywhere). Recording the pinned
-toolchain's hash in the lockfile is still to come.
+itself (`VUN_TOOLCHAIN=local`, which also keeps the running one anywhere). The lockfile records
+the pinned release as `toolchain := .{ .version, .hash }`, the hash of its manifest's bytes, which
+names every machine's toolchain at once; a `vun` handing off refuses a manifest of that version
+hashing otherwise, and installs again a toolchain installed from another. A first installation
+trusts the toolchain `install.sh` fetches as far as the connection; the `vun toolchain update` it
+runs checks the signature.
 
 **The machine's tools file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target: a C compiler building for the target (`builds_for = .target`, a

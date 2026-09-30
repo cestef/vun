@@ -50,3 +50,13 @@ fn collection_keeps_what_registered_lockfiles_record() {
     assert_eq!(store.collect().unwrap().removed[0].hash, kept);
     assert!(store.list().unwrap().is_empty());
 }
+
+#[test]
+fn a_project_named_by_the_empty_path_is_the_current_directory() {
+    let dir = Scratch::new("register-here");
+    let store = Store::at(&dir.join("store"));
+    store.register(Path::new("")).unwrap();
+    store.register(Path::new(".")).unwrap();
+    let roots = std::fs::read_dir(dir.join("store").join(Store::ROOTS)).unwrap().count();
+    assert_eq!(roots, 1, "both name the current directory");
+}

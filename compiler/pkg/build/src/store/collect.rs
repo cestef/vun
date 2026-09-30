@@ -47,7 +47,8 @@ impl Store {
     /// # Errors
     /// Returns an error if the directory cannot be resolved or the root written.
     pub fn register(&self, dir: &Path) -> io::Result<()> {
-        let dir = dir.canonicalize()?;
+        // The directory of a file named relatively in the current one is the empty path.
+        let dir = if dir.as_os_str().is_empty() { Path::new(".") } else { dir }.canonicalize()?;
         let text = dir.to_string_lossy();
         self.root_of(&text).put(text.as_bytes())
     }

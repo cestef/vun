@@ -1,6 +1,8 @@
 //! Pinned toolchains (spec 12, section 6): a project's `build.vun` names the toolchain that builds
 //! it (`.toolchain`), and any `vun` loading the project installs that one when missing and hands
-//! the command to it, so no launcher stands apart from the toolchains.
+//! the command to it, so no launcher stands apart from the toolchains. The project's lockfile
+//! records the hash of the release's manifest, and a toolchain installed from another manifest is
+//! not handed to.
 
 use std::path::Path;
 use std::process::Command;
@@ -20,8 +22,8 @@ pub const LOCAL: &str = "local";
 
 impl Session {
     /// Hands the command over to the toolchain the project around `path` pins, installed first
-    /// when missing, unless it pins none, pins this one, or [`ENV`] is [`LOCAL`]. Returns when this
-    /// toolchain is the one to run.
+    /// when missing or installed from another manifest than the lockfile records, unless it pins
+    /// none, pins this one, or [`ENV`] is [`LOCAL`]. Returns when this toolchain is the one to run.
     ///
     /// # Errors
     /// Returns once why the pinned toolchain cannot run is reported.
@@ -37,11 +39,19 @@ impl Session {
         let Some(toolchains) = Toolchains::user() else {
             return Err(self.uninstalled(Some(pinned), &Uninstalled::Homeless));
         };
-        if !toolchains.installed().is_ok_and(|installed| installed.contains(&pinned)) {
-            let release = self
+        let locked = self.recorded_lock(key).and_then(|l| l.toolchain()).filter(|t| t.version == pinned);
+        let installed = toolchains.installed().is_ok_and(|installed| installed.contains(&pinned));
+        if !installed || locked.is_some_and(|t| toolchains.manifest(pinned) != Some(t.hash)) {
+            let published = self
                 .toolchain_release(Wanted::Version(pinned))
                 .map_err(|why| self.uninstalled(Some(pinned), &why))?;
-            self.install(&toolchains, &release).map_err(|why| self.uninstalled(Some(pinned), &why))?;
+            if let Some(locked) = locked
+                && published.hash() != locked.hash
+            {
+                let why = Uninstalled::Unlocked { expected: locked.hash, found: published.hash() };
+                return Err(self.uninstalled(Some(pinned), &why));
+            }
+            self.install(&toolchains, &published).map_err(|why| self.uninstalled(Some(pinned), &why))?;
         }
         tracing::info!(%pinned, "handing the command to the pinned toolchain");
         let mut command = Command::new(toolchains.exe(pinned));

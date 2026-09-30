@@ -52,6 +52,13 @@ impl Toolchains {
         self.root.join(version.to_string())
     }
 
+    /// The hash of the manifest of the release the toolchain of `version` was installed from,
+    /// kept beside its tree; `None` when it is not installed from a release.
+    #[must_use]
+    pub fn manifest(&self, version: Version) -> Option<Hash> {
+        std::fs::read(self.dir(version).join(crate::release::Release::FILE)).ok().map(|m| Hash::of(&m))
+    }
+
     /// The executable of the toolchain of `version`.
     #[must_use]
     pub fn exe(&self, version: Version) -> PathBuf {
