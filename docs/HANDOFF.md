@@ -178,9 +178,11 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   treats a test whose parameters are not one `&mut Bench` as a property.
 - Benchmarks (decision 384) report one measurement: no statistics over samples, no
   `--measure instructions`, no baselines in `.vun/bench/` nor `--fail-over`.
-- A `$` binding in a `$for` step read by run-time code in that step fails to lower ("a form
-  compile-time evaluation does not run yet"): `$b := f(c.x); if b {}` in `std.testing.run` did;
-  `$f(c.x)` inline works. Not reduced yet.
+- In `std.testing.run`, `$b := std.testing.bench.benchmark(c.ns.$(c.decl.name))` in a `$for`
+  step over `std.meta.collect`, read by run-time code there, failed to lower ("a form
+  compile-time evaluation does not run yet"); the same call inline as `$benchmark(..)` works, and
+  a `$` binding of a call on an array's item in a `$for` step works. Not reduced further. A
+  `$for` over a `.{ }` literal does not lower ("not supported in compiled code yet").
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
