@@ -34,7 +34,7 @@ const PATH: Param = Param::positional("file")
 /// The root file `args` names, or a file holding nothing.
 fn root(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> Option<FileId> {
     match args.value(&PATH) {
-        Some(path) => session.root_at(Path::new(path), shell),
+        Some(path) => session.root_at(Path::new(path), None, shell),
         None => Some(session.empty_file()),
     }
 }

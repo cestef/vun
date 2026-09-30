@@ -13,7 +13,7 @@ use vun_span::Version;
 pub const NAME: &str = "vun";
 /// What a toolchain's tree holds, as snapshots name it: what a release archive holds and the
 /// release's hash covers.
-pub const CONTENTS: [&str; 3] = [BIN, "lib", "LICENSE.md"];
+pub const CONTENTS: [&str; 3] = [BIN, "lib", "LICENSES"];
 /// The directory of a toolchain's executable.
 pub const BIN: &str = "bin";
 

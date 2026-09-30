@@ -132,28 +132,31 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
 }
 
 trait Inputs {
-    /// Reads the file `args` names, once its project is ready: dependencies fetched and the
-    /// lockfile written, as cargo does before compiling.
-    fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId>;
+    /// Reads the file `args` names for `step`, once its project is ready: dependencies fetched and
+    /// the lockfile written, as cargo does before compiling.
+    fn root(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> Option<FileId>;
 
     /// Reads the file at `path`, once its project is ready, as `root` does, handing the command
-    /// to the toolchain the project pins if it pins another.
-    fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId>;
+    /// to the toolchain the project pins if it pins another. `started` is shown once this
+    /// toolchain is the one to run, so a handed-off command announces it once.
+    fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId>;
 
     /// Builds the program `args` names, reporting how it went.
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf>;
 }
 
 impl Inputs for Session {
-    fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId> {
-        let path =
-            Path::new(args.value(&FILE).expect("positional parameters are present when a command runs"));
-        self.root_at(path, shell)
+    fn root(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> Option<FileId> {
+        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+        self.root_at(Path::new(path), Some(&Started { step, subject: path.to_owned() }), shell)
     }
 
-    fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId> {
+    fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId> {
         // A project pinning another toolchain is that one's to build.
         self.hand_off(path).ok()?;
+        if let Some(started) = started {
+            shell.status(started);
+        }
         for (name, hash, fetched) in self.prepare(path) {
             fetched.report(name, hash, shell);
         }
@@ -166,9 +169,8 @@ impl Inputs for Session {
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf> {
         let started = Instant::now();
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-        shell.status(&Started { step: Step::Build, subject: path.to_owned() });
         let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
-        let built = self.root(args, shell).and_then(|file| {
+        let built = self.root(args, Step::Build, shell).and_then(|file| {
             if self.is_package(file) {
                 // A package's `build.vun` builds the programs its plan records.
                 self.carry_out(file).ok().and_then(|built| built.into_iter().next())
@@ -200,8 +202,7 @@ fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
 fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let started = Instant::now();
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    shell.status(&Started { step: Step::Check, subject: path.to_owned() });
-    if let Some(file) = session.root(args, shell) {
+    if let Some(file) = session.root(args, Step::Check, shell) {
         session.check(file);
     }
     session.conclude(shell, path.to_owned(), started);

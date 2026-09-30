@@ -13,7 +13,7 @@ use vun_driver::fix::{Applied, Fixed};
 use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
-use super::status::{Conclude, Started, Step};
+use super::status::{Conclude, Step};
 use super::{COMPILE, FILE, Inputs};
 
 const UNSAFE: Param =
@@ -61,9 +61,8 @@ impl Status for Written {
 fn fix(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let started = Instant::now();
     let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    shell.status(&Started { step: Step::Fix, subject: path.to_owned() });
     let applied = if args.flag(&UNSAFE) { Applied::Unsafe } else { Applied::Safe };
-    if let Some(file) = session.root(args, shell) {
+    if let Some(file) = session.root(args, Step::Fix, shell) {
         for Fixed { path, fixes, text } in session.fix(file, applied) {
             path.put(text)?;
             shell.status(&Written { path, fixes });

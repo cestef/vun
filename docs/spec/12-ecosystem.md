@@ -298,7 +298,7 @@ from the releases of the project's repository, each tagged with its version as i
 or from the base `VUN_RELEASES` names (a mirror, or a directory as a `file:` URI), laid out as a
 forge lays releases out. Each release carries a manifest, `release.json`, naming for each machine
 (`arch` and `os`, as targets name them) its archive, `vun-<arch>-<os>.tar.gz`, and the BLAKE3
-hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSE.md`, which is
+hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSES/`, which is
 checked before anything is kept. `vun toolchain list|install|remove|update` manages them;
 `update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
 to; the default and the running toolchain are not removed. A first installation runs the

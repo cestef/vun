@@ -11,7 +11,7 @@ whitepaper/                                  Typst paper; it quotes real numbers
 editors/                                     editor grammars, generated from `grammar.vun` by `cargo gen`
 docs/                                        spec, decisions, these notes, research, references
 assets/{logo,cards}, assets/palette.toml     logo SVGs and animations; Typst cards (code, social, icon) and their PNGs
-README.md, CONTRIBUTING.md, LICENSE-*        for people: pitch, how to try, how to contribute; MIT OR Apache-2.0
+README.md, CONTRIBUTING.md, LICENSES/       for people: pitch, how to try, how to contribute; DBAD or QUACK
 ```
 
 `site/` is the owner's and untracked.

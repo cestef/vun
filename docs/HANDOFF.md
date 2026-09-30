@@ -94,10 +94,8 @@ list|show` and `vun toolchain show` show what builds and why (`vun_driver::setup
 toolchain list|install|remove|update` and a project's `.toolchain` install from releases and hand
 off (`vun_driver::install`); `.github/workflows/release.yml`, `cargo xtask package|release` and
 `install.sh` make and install releases (`docs/dev/commands.md`, "Releasing"). Open there: the
-lockfile does not record a pinned toolchain's hash; a handed-off command prints its first status
-line twice (the parent's, then the child's); the release manifest is not signed; the workspace
-`version` is still `0.0.0` and `Cargo.toml`'s `license` disagrees with `LICENSE.md`; the first
-tagged release has not run in CI yet.
+lockfile does not record a pinned toolchain's hash; the release manifest is not signed; the first
+tagged release (`0.1.0`) has not run in CI yet.
 
 ## Decisions waiting for the owner
 

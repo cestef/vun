@@ -44,9 +44,9 @@ fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let path = args.value(&PATH).map(Path::new);
     let Some(root) = session.tests_root(path)? else { return Ok(session.outcome()) };
     let subject = path.unwrap_or(&root).display().to_string();
-    shell.status(&Started { step: Step::Build, subject: subject.clone() });
+    let announced = Started { step: Step::Build, subject: subject.clone() };
     let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
-    let program = session.root_at(&root, shell).and_then(|file| {
+    let program = session.root_at(&root, Some(&announced), shell).and_then(|file| {
         let ns = session.tested(file, path)?;
         session.build_tests(file, ns, output).ok()
     });
