@@ -3,15 +3,12 @@
 /whitepaper/*.pdf
 /fuzz/corpus
 /fuzz/artifacts
-# Written by `tree-sitter generate` from grammar.js (`cargo xtask tree-sitter`).
 editors/tree-sitter/src/
 editors/zed/target
 editors/zed/Cargo.lock
 editors/vscode/node_modules
 editors/vscode/package-lock.json
-# Motion Canvas: dependencies, what `pnpm gen` writes, renders.
 assets/motion/node_modules
 assets/motion/generated
 assets/motion/output
-# The OBS scene collection `pnpm obs` writes, naming this checkout's files.
 assets/stream/obs
