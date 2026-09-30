@@ -188,6 +188,14 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   full `VUN_QUERY_CHECK=1` driver run, the test alone fails every time with the memos that run
   left in `target/tmp/memos` (4 of 4 on `petal.wg`, on 361 and on 363 alike), and passes every
   time once they are removed. It passed with `VUN_LOG=vun_query=debug` on, which slows it.
+  `Db::first_changed` and the log target `vun_query::changed` now name what the second build
+  computes: different library memos each run (`declared`, `decl_value`, `decl_type`,
+  `type_members`, `callee`, `reported`), each asked for with none held (`absent`), though the
+  first build computed the same keys and saved `whole=true`, layered over the shared file. So the
+  first build's file lacks memos it computed, or the second's lookup misses them (`Attached::find`
+  takes the first position of a hash, and a key saved in both the shared file and the project's
+  would be found there without its memo). Heavier logging hides it; next: `VUN_THREADS=1`, to
+  tell a race from an ordering fault.
 
 ## Next steps, most useful first
 

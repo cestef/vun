@@ -15,7 +15,6 @@ mod store;
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
 use vun_codec::{Context, Decode, Encode, Writer};
 use vun_hash::Hash;
@@ -140,7 +139,13 @@ impl Db {
     /// [`Db::save`] would write differs from what was loaded.
     #[must_use]
     pub fn changed(&self) -> bool {
-        self.store.get().is_none() || self.changed.load(Ordering::Relaxed)
+        self.store.get().is_none() || self.changed.get().is_some()
+    }
+
+    /// The query of the first memo computed that the memos loaded did not hold.
+    #[must_use]
+    pub fn first_changed(&self) -> Option<&'static str> {
+        self.changed.get().copied()
     }
 }
 

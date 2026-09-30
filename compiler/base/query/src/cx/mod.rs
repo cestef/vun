@@ -31,6 +31,10 @@ use super::table::{Slot, Table, TableId};
 use super::tally::Event;
 use super::{Query, Revision};
 
+/// The log target naming each saved memo computed anew and why, asked for alone without slowing
+/// the rest: `VUN_LOG=vun_query::changed=debug`.
+const CHANGED: &str = "vun_query::changed";
+
 /// The queries being computed on one thread, and what each has read so far.
 pub struct Cx<'db> {
     db: &'db Db,
@@ -164,7 +168,7 @@ impl<'db> Cx<'db> {
             // An input not set holds what it computes until it is, alike in every database.
             Memo::input(value.clone(), fingerprint, revision, Source::Unset)
         } else {
-            let novelty = self.computing(table, entry.memo.load().as_deref(), fingerprint, &reads);
+            let novelty = self.computing(table, slot, why, entry.memo.load().as_deref(), fingerprint, &reads);
             let durability = self.durability(&reads);
             Memo::computed(value.clone(), fingerprint, reads, revision, durability, novelty)
         };
@@ -209,6 +213,8 @@ impl<'db> Cx<'db> {
     fn computing<Q: Query>(
         &self,
         table: &Table<Q>,
+        slot: Slot,
+        why: Why,
         replaced: Option<&Memo<Q>>,
         fingerprint: Fingerprint,
         reads: &[Dep],
@@ -219,11 +225,41 @@ impl<'db> Cx<'db> {
             return memo.novelty.get();
         }
         if table.persisted.load(Ordering::Relaxed) {
-            tracing::trace!(query = Q::NAME, replaced = replaced.is_some(), "a memo changed");
-            self.db.changed.store(true, Ordering::Relaxed);
+            tracing::debug!(
+                target: CHANGED,
+                query = Q::NAME,
+                key = ?table.key(slot),
+                asked = why.show(self.db),
+                differs = self.differs(replaced.map(|m| (m.fingerprint, m.deps.get(self.db))), fingerprint, reads),
+                "a saved memo computed anew"
+            );
+            _ = self.db.changed.set(Q::NAME);
             self.db.unshared.store(true, Ordering::Relaxed);
         }
         Novelty::New
+    }
+
+    /// How a memo computed differs from the one it replaces, given as its fingerprint and its
+    /// reads (`None` when they cannot be resolved): what makes it new.
+    fn differs(
+        &self,
+        replaced: Option<(Fingerprint, Option<&[Dep]>)>,
+        fingerprint: Fingerprint,
+        reads: &[Dep],
+    ) -> String {
+        let show = |dep: &Dep| {
+            let table = self.db.any_table(dep.table);
+            format!("{}({})", table.name(), table.show(dep.slot))
+        };
+        match replaced {
+            None => "none was held".to_owned(),
+            Some((held, _)) if held != fingerprint => "its value differs".to_owned(),
+            Some((_, None)) => "the reads saved with it are not all held".to_owned(),
+            Some((_, Some(held))) => match held.iter().zip(reads).find(|(a, b)| a != b) {
+                Some((was, now)) => format!("it reads {} where it read {}", show(now), show(was)),
+                None => format!("it reads {} memos where it read {}", reads.len(), held.len()),
+            },
+        }
     }
 
     /// `reads` with each memo once, in the order it was first read: verifying follows it, since a

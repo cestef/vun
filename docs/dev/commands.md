@@ -122,6 +122,7 @@ toolchain, target and checks).
 | `vun_link_lld=debug` | each `wasm-ld` run |
 | `vun_lir_passes=debug` | each function's tidy (`trace`: each pass) |
 | `vun_query=debug` | each query computed and why, shared memos named |
+| `vun_query::changed=debug` | each persisted memo computed anew, with why it was asked and how it differs from the one held; cheap alone, so it does not hide a race (`Db::first_changed` names the first) |
 
 ## Cross builds
 

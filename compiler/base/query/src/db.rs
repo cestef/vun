@@ -70,8 +70,8 @@ pub struct Db {
     pub(crate) waits: Waits,
     /// The saved memos loaded, restored as their keys are first asked for.
     pub(crate) store: OnceLock<Arc<Store>>,
-    /// Whether a memo was computed that the saved ones did not already hold.
-    pub(crate) changed: AtomicBool,
+    /// The query of the first memo computed that the saved ones did not already hold.
+    pub(crate) changed: OnceLock<&'static str>,
     /// Whether a memo was computed since the shared memos were last saved.
     pub(crate) unshared: AtomicBool,
     /// The persisted queries, in the order registered.

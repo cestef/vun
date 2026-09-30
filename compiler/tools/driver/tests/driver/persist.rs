@@ -120,5 +120,6 @@ fn an_unchanged_program_built_again_computes_nothing_it_saves() {
     let code = "code := (sys: &mut std.os.System) -> std.os.Exit { .ok };\n";
     drop(build(&fixture, code));
     // A memo reading a query that is not saved is never saved either, and so computed again.
-    assert!(!build(&fixture, code).db.changed());
+    let again = build(&fixture, code);
+    assert!(!again.db.changed(), "computed again: {:?}", again.db.first_changed());
 }
