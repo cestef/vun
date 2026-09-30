@@ -6,6 +6,7 @@ use vun_diag::Msg;
 use vun_lir::{Address, DataId, InstKind, Target, Terminator, Value};
 use vun_origin::OriginId;
 use vun_sema_ty::item::Site;
+use vun_sema_ty::trap::Reason;
 use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
@@ -13,20 +14,20 @@ use crate::piece::{Bytes, SiteAt};
 use crate::unlowered::{Form, Unlowered};
 
 impl FnLower<'_, '_, '_> {
-    /// Goes on where `holds` is not 0, and traps where it is.
-    pub(crate) fn check(&mut self, holds: Value) -> Result<(), Unlowered> {
+    /// Goes on where `holds` is not 0, and traps where it is, saying `why`.
+    pub(crate) fn check(&mut self, holds: Value, why: &Reason) -> Result<(), Unlowered> {
         let (ok, fail) = (self.b.block(&[], self.at), self.b.block(&[], self.at));
         let to = |block| Target { block, args: Vec::new() };
         self.b.terminate(Terminator::Branch { cond: holds, then: to(ok), otherwise: to(fail) });
         self.b.switch_to(fail);
-        self.trap()?;
+        self.trap(Some(why.msg()))?;
         self.b.switch_to(ok);
         Ok(())
     }
 
-    /// Ends the current block with a trap at the origin lowered.
-    pub(crate) fn trap(&mut self) -> Result<(), Unlowered> {
-        self.site(self.at, None)?;
+    /// Ends the current block with a trap at the origin lowered, saying `msg`.
+    pub(crate) fn trap(&mut self, msg: Option<Msg>) -> Result<(), Unlowered> {
+        self.site(self.at, msg)?;
         self.b.terminate(Terminator::Unreachable);
         Ok(())
     }

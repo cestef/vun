@@ -8,6 +8,7 @@ use vun_lir::{Access, BinOp, CastOp, Cond, Scalar, Value};
 use vun_mir::{Place, Projection};
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
+use vun_sema_ty::trap::Reason;
 use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
@@ -148,7 +149,7 @@ impl FnLower<'_, '_, '_> {
         let index = self.b.load(index_int, addr, Access::Plain, self.at);
         let index = self.word_index(index, index_int, signed)?;
         let inside = self.b.compare(Cond::ULt, index, len, self.at);
-        self.check(inside)?;
+        self.check(inside, &Reason::Bounds)?;
         let stride = self.b.constant(word, u128::from(stride), self.at);
         let offset = self.b.binary(BinOp::Mul, index, stride, self.at);
         Ok(Reached { addr: self.b.offset(from.addr, offset, self.at), ty: item, len: None })
@@ -163,7 +164,7 @@ impl FnLower<'_, '_, '_> {
             // A negative index is past every word too, read without its sign.
             let words = self.b.constant(int, 1 << bits, self.at);
             let within = self.b.compare(Cond::ULt, value, words, self.at);
-            self.check(within)?;
+            self.check(within, &Reason::Bounds)?;
         }
         Ok(self.resize(value, int, signed, word))
     }

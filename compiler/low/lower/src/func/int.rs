@@ -8,6 +8,7 @@ use vun_mir::Operand;
 use vun_primitives::int::Int;
 use vun_sema_int::{Integer, Interval};
 use vun_sema_ty::Ty;
+use vun_sema_ty::trap::Reason;
 
 use super::FnLower;
 use crate::unlowered::{Form, Unlowered};
@@ -59,11 +60,11 @@ impl FnLower<'_, '_, '_> {
         if !proven && fits {
             let limit = self.b.constant(own, u128::from(width), at);
             let within = self.b.compare(Cond::ULt, amount, limit, at);
-            self.check(within)?;
+            self.check(within, &Reason::Shift)?;
         } else if !proven && signed {
             let zero = self.b.constant(own, 0, at);
             let within = self.b.compare(Cond::SGe, amount, zero, at);
-            self.check(within)?;
+            self.check(within, &Reason::Shift)?;
         }
         let Some(dest) = dest else { return Ok(()) };
         let (int, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
@@ -102,7 +103,7 @@ impl FnLower<'_, '_, '_> {
         if divisor.interval().is_some_and(|r| r.contains(&Interval::singleton(Integer::zero()))) {
             let zero = self.b.constant(int, 0, self.at);
             let nonzero = self.b.compare(Cond::Ne, b, zero, self.at);
-            self.check(nonzero)?;
+            self.check(nonzero, &Reason::DivisionByZero)?;
         }
         let op = match (quotient, signed) {
             (true, true) => BinOp::SDiv,

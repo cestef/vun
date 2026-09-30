@@ -144,7 +144,9 @@ impl Reason {
         Some(Self::Reported { message: message.text()?, at })
     }
 
-    fn msg(&self) -> Msg {
+    /// What it says.
+    #[must_use]
+    pub fn msg(&self) -> Msg {
         Msg::new().text(match self {
             Self::DivisionByZero => "division by zero",
             Self::Shift => "a shift by more than the value's width",

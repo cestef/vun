@@ -105,7 +105,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         });
         this.b.switch_to(otherwise);
         match mode {
-            Mode::Resume => this.trap()?,
+            Mode::Resume => this.trap(None)?,
             Mode::End => this.b.terminate(Terminator::Return(None)),
         }
         this.coroutine = Some(Coroutine { shape, step, mode });

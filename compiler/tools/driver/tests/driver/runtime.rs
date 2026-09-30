@@ -14,6 +14,9 @@ fn segments(elf: &[u8]) -> Vec<u32> {
     (0..count).map(|i| u32::try_from(int(offset + i * size, 4)).unwrap()).collect()
 }
 
+/// The first line a trap reading past an array writes: its site's message.
+const PAST: &str = "trap: an index past the last item";
+
 /// `PT_DYNAMIC` and `PT_INTERP`: what a program the dynamic linker starts has.
 const DYNAMIC: [u32; 2] = [2, 3];
 
@@ -140,7 +143,7 @@ fn a_trap_writes_where_it_is_written_and_the_calls_that_led_to_it() {
         let lines: Vec<&str> = text.lines().collect();
         let dig = format!("  in dig ({file}:3:8)");
         assert_eq!(ran.status.code(), Some(101), "{backend}");
-        assert_eq!(lines[..4], ["trap", &format!("  at {file}:4:21"), &dig, &dig], "{backend}: {text}");
+        assert_eq!(lines[..4], [PAST, &format!("  at {file}:4:21"), &dig, &dig], "{backend}: {text}");
         assert!(lines[4..].iter().all(|l| l.starts_with("  in ")), "{backend}: {text}");
     }
 }
@@ -174,7 +177,7 @@ fn a_trap_in_inlined_code_names_each_function_it_is_inlined_into() {
         let text = String::from_utf8(ran.stderr).unwrap();
         let lines: Vec<&str> = text.lines().collect();
         let at = format!("  at {file}:3:44");
-        let inlined = ["trap", &at, "  in pick, inlined", "  in sum, inlined", "  in main, inlined"];
+        let inlined = [PAST, &at, "  in pick, inlined", "  in sum, inlined", "  in main, inlined"];
         assert_eq!(lines[..5], inlined, "{backend}: {text}");
     }
 }
@@ -210,7 +213,7 @@ fn a_trap_in_a_thread_ends_it_alone_naming_the_calls_up_to_where_it_starts_then_
         assert_eq!(ran.status.code(), Some(3), "{backend}: {text}");
         assert_eq!(
             lines[..4],
-            ["trap", &at, "  in pick, inlined", "  in main.f, inlined"],
+            [PAST, &at, "  in pick, inlined", "  in main.f, inlined"],
             "{backend}: {text}"
         );
         let spawned = lines.iter().position(|&l| l == "  spawned by").expect(&text);

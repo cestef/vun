@@ -8,6 +8,7 @@ use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
 use vun_primitives::bounds::Bounds;
 use vun_sema::layout::{BoundsEnd, Parts};
+use vun_sema_ty::trap::Reason;
 use vun_sema_ty::{Ty, TyKind};
 
 use super::FnLower;
@@ -184,7 +185,7 @@ impl FnLower<'_, '_, '_> {
         let end = self.b.select(b.open, len, end, self.at);
         let ordered = self.b.compare(Cond::ULe, lo, end, self.at);
         let valid = self.b.binary(BinOp::And, ordered, inside, self.at);
-        self.check(valid)?;
+        self.check(valid, &Reason::Bounds)?;
         let addr = self.scaled(from.addr, lo, stride);
         let count = self.b.binary(BinOp::Sub, end, lo, self.at);
         Ok(Reached { addr, ty: TyKind::slice(item), len: Some(count) })

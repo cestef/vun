@@ -6,6 +6,7 @@ use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
 use vun_sema_int::{Extended, Integer, Interval};
 use vun_sema_ty::Ty;
+use vun_sema_ty::trap::Reason;
 
 use super::FnLower;
 use crate::repr::Types;
@@ -35,7 +36,7 @@ impl FnLower<'_, '_, '_> {
         let value = match narrowing {
             Narrowing::To => {
                 if let Some(inside) = self.inside(x, source, signed, &cuts) {
-                    self.check(inside)?;
+                    self.check(inside, &Reason::Narrowing)?;
                 }
                 self.resize(x, source, signed, target)
             }
