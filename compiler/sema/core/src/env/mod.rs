@@ -169,6 +169,17 @@ impl<'a, 'db> Env<'a, 'db> {
         self
     }
 
+    /// This environment, evaluating with the types typing found for the steps `path` of the body
+    /// it is typed by, each inside the one before: a `$for` step's or a tested `$if` branch's.
+    #[must_use]
+    pub fn stepping(mut self, path: &[typeck::Step]) -> Self {
+        for step in path {
+            self.types =
+                self.types.and_then(|found| found.steps.get(step).map(|typed| Arc::clone(&typed.found)));
+        }
+        self
+    }
+
     /// The type typing found for `expr`, if any.
     #[must_use]
     pub fn type_of(&self, expr: ExprId) -> Option<Ty> {

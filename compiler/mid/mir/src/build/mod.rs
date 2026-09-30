@@ -34,13 +34,13 @@ use vun_query::{Cx, Cycle, Query};
 use vun_sema::env::Env;
 use vun_sema::typeck::{Step, Typed, TypedBody};
 use vun_sema_ty::Ty;
-use vun_sema_ty::call::{Instantiation, Staging};
+use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;
 
 use crate::Lowered;
 use crate::place::Place;
 use crate::{
-    Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind,
+    Block, BlockId, Body, Local, LocalDecl, Operand, Role, Rvalue, Stepped, Stmt, Terminator, TerminatorKind,
 };
 
 /// A form MIR does not lower yet, by where it is written.
@@ -222,19 +222,19 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         self.step.as_ref().unwrap_or(self.env)
     }
 
-    /// `expr`, evaluated by the call running the body, under the bindings of the step lowered.
+    /// `expr`, evaluated by the call running the body, in the step lowered.
     fn comptime(&self, expr: ExprId, expected: Option<Ty>) -> Rvalue {
-        Rvalue::Comptime { expr, staged: self.stepped(), expected }
+        Rvalue::Comptime { expr, at: self.stepped(), expected }
     }
 
     /// The code `expr`, written in the call running the body.
     fn quote(&mut self, expr: ExprId, origin: OriginId) -> Operand {
-        self.temp(Rvalue::Quote { expr, staged: self.stepped() }, origin)
+        self.temp(Rvalue::Quote { expr, at: self.stepped() }, origin)
     }
 
-    /// The bindings of the `$for` steps lowered.
-    fn stepped(&self) -> Vec<Staging> {
-        self.env().staged()[self.env.staged().len()..].to_vec()
+    /// The steps lowered, and their bindings.
+    fn stepped(&self) -> Stepped {
+        Stepped { staged: self.env().staged()[self.env.staged().len()..].to_vec(), path: self.path.clone() }
     }
 
     /// The typed body of the code lowered: the instantiation's, or a `$for` step's in it.

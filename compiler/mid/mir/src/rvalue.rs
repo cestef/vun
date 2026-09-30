@@ -6,6 +6,7 @@ use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_sema::env::Env;
+use vun_sema::typeck::Step;
 use vun_sema_ty::call::{Code, Staging};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
@@ -75,20 +76,19 @@ pub enum Rvalue {
     /// A compile-time value that depends on the call running the body, evaluated in its
     /// environment: a `struct` or `enum` literal, identified by the call (decision 28), a
     /// function literal, which sees the call's parameters, or such a parameter of an enclosing
-    /// function. `staged` are the `$for` bindings of the step it is written in (spec 03,
-    /// section 1).
+    /// function, in the step `at` (spec 03, section 1).
     Comptime {
         expr: ExprId,
-        staged: Vec<Staging>,
+        at: Stepped,
         /// The type a value is wanted of, which forms typed by their context read: the type of
         /// the `$` parameter the value is passed to.
         expected: Option<Ty>,
     },
-    /// The code `expr`, written in the call running the body under the bindings `staged`: a
-    /// quote, or an argument for a `Code(T)` parameter (spec 03, section 4).
+    /// The code `expr`, written in the call running the body in the step `at`: a quote, or an
+    /// argument for a `Code(T)` parameter (spec 03, section 4).
     Quote {
         expr: ExprId,
-        staged: Vec<Staging>,
+        at: Stepped,
     },
     /// `$c` at run time, for code `c` that reads what only its call site holds: the value of the
     /// code, built where it is written by the call site expanding this body (spec 03, section 4).
@@ -172,12 +172,27 @@ impl Rvalue {
     #[must_use]
     pub fn compile_time(&self, env: &Env<'_, '_>) -> Option<Result<Value, Unevaluated>> {
         match self {
-            Self::Comptime { expr, staged, expected } => {
-                Some(env.clone().staging(staged).eval_as(*expr, *expected))
-            }
-            Self::Quote { expr, staged } => Some(Ok(Value::Code(env.clone().staging(staged).code(*expr)))),
+            Self::Comptime { expr, at, expected } => Some(at.env(env).eval_as(*expr, *expected)),
+            Self::Quote { expr, at } => Some(Ok(Value::Code(at.env(env).code(*expr)))),
             _ => None,
         }
+    }
+}
+
+/// Where in a body a compile-time rvalue is written: in the `$for` steps and tested `$if`
+/// branches `path`, each inside the one before, under their bindings `staged`. Each step's forms
+/// have the types typing found for that step apart, which evaluating them reads.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Stepped {
+    pub staged: Vec<Staging>,
+    pub path: Vec<Step>,
+}
+
+impl Stepped {
+    /// `env`, the environment of the call running the body, in these steps.
+    #[must_use]
+    pub fn env<'a, 'db>(&self, env: &Env<'a, 'db>) -> Env<'a, 'db> {
+        env.clone().staging(&self.staged).stepping(&self.path)
     }
 }
 

@@ -1,0 +1,15 @@
+start := std.os.start(main);
+unary := ($F: type, $f: F) -> bool { lang.meta.params(F, f).len() == 1 };
+halve := (x: u8) -> u8 { x / 2 };
+both := (x: u8, y: u8) -> u8 { (x + y).wrap(u8) };
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut total: u8 = 0;
+    $for k in [3, 5] {
+        // Evaluated with the types typing found for the step, which infer `F`.
+        $one := unary(halve);
+        $two := unary(both);
+        if one { total = (total + k).wrap(u8); }
+        if two { total = (total + 100).wrap(u8); }
+    }
+    std.os.Exit.of(total % 126)
+};

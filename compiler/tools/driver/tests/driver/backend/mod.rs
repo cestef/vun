@@ -111,6 +111,11 @@ fn coroutines_generated_by_staged_loops_run_as_their_steps() {
 }
 
 #[test]
+fn compile_time_bindings_of_staged_loops_run_with_their_steps_types() {
+    assert_eq!(status("backend-staged-bindings", &program("staged_bindings.vun")), Some(3 + 5));
+}
+
+#[test]
 fn borrowed_constants_and_placed_fields_run_through_each_backend() {
     assert_eq!(status("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
 }

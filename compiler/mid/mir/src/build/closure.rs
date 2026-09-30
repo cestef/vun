@@ -25,7 +25,7 @@ impl Builder<'_, '_, '_> {
                 Entry::Staged(_) => Err(Unbuilt::at(origin)),
             })
             .collect::<Result<_, _>>()?;
-        let kind = Aggregate::Closure { literal: func, staged: self.stepped() };
+        let kind = Aggregate::Closure { literal: func, staged: self.stepped().staged };
         Ok(self.temp(Rvalue::Aggregate { kind, parts }, origin))
     }
 

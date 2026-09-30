@@ -133,7 +133,7 @@ impl Builder<'_, '_, '_> {
             Passed::Inferred(value) => Operand::Const(value),
             // Code of a `T` is a `Code(T)`.
             Passed::Code(expr) => {
-                let quote = Rvalue::Quote { expr, staged: self.stepped() };
+                let quote = Rvalue::Quote { expr, at: self.stepped() };
                 self.typed_temp(quote, self.type_of(expr).map(TyKind::code), origin)
             }
             Passed::Known { expr, ty } => {
