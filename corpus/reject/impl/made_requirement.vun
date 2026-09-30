@@ -1,0 +1,23 @@
+//! A witness made for a use, by a type constructor or for the values of an impl's `_`, is checked
+//! against its interface's requirements where it is used (spec 02, section 3).
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+} });
+
+Pair := ($T: type) -> type { struct { x: T } };
+
+#[impl(Shape(Pair))]
+pair_area := ($T: type) -> type { struct { area := (self: &Pair(T)) -> bool { true }; } };
+
+Tag := struct {};
+
+#[impl(lang.ops.Call(_, ())(Tag))]
+tag_call := ($Params: type) -> type { struct { call := (self: &mut Tag, args: Params) -> bool { true }; } };
+
+uses := () {
+    p: Pair(u8) = .{ .x = 1 };
+    _ = p.area(); //~ impl.requirement_type
+    mut t: Tag = .{};
+    t(1); //~ impl.requirement_type
+};

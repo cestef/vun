@@ -15,8 +15,8 @@ use vun_sema_ty::{Signature, Ty, TyKind, Value};
 use super::omitted::Plan;
 use super::{Known, Reported, Stage, Typer};
 use crate::callable::Callable;
+use crate::callable::Generic;
 use crate::eval::Instantiate;
-use crate::typeck::call::Generic;
 
 /// How a call's arguments are passed.
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]

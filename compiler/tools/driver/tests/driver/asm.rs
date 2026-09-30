@@ -2,6 +2,7 @@
 //! declarations in the order the generated assembler numbers it, so the instruction and form a
 //! block names are the ones the backend encodes.
 
+use vun_diag::{Diagnostic, errors};
 use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
 use vun_inline::Needed;
@@ -115,14 +116,20 @@ fn thumb(line: &str) -> String {
     )
 }
 
-/// Why `source` does not lower for the target at `target`, if it does not.
-fn unlowered(name: &str, source: &str, target: [&str; 2]) -> Option<Why> {
+/// Why `source` does not lower for the target at `target`, if it does not, and its report as
+/// the text it points at and the texts its trace frames do.
+fn unlowered(name: &str, source: &str, target: [&str; 2]) -> Option<(Why, Diagnostic, Vec<String>)> {
     let fixture = crate::common::Fixture::new(&format!("asm-{name}-{}", target[1]));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
     let file = session.load(&path).unwrap();
-    session.lir(file).as_ref().as_ref().err().map(|unlowered| unlowered.why.clone())
+    let unlowered = session.lir(file).as_ref().as_ref().err()?.clone();
+    let d = unlowered.diagnostic();
+    let text = |origin| session.origins.source_span(origin).range.of(source).to_owned();
+    let shown =
+        d.primary.iter().map(|p| p.origin).chain(d.trace.iter().map(|f| f.origin)).map(text).collect();
+    Some((unlowered.why, d, shown))
 }
 
 #[test]
@@ -148,6 +155,24 @@ fn a_block_is_refused_for_a_processor_lacking_what_one_of_its_forms_needs() {
         ("single", "vadd(f32, s0, s0, s1)", m4f, None),
     ];
     for (name, line, target, why) in cases {
-        assert_eq!(unlowered(name, &thumb(line), target), why, "{line} on {target:?}");
+        assert_eq!(unlowered(name, &thumb(line), target).map(|(why, ..)| why), why, "{line} on {target:?}");
     }
+}
+
+/// An instruction called outside a block, from a generic function.
+const OUTSIDE: &str = "\
+start := std.os.start(main);
+step := ($T: type) { ..lang.arch.x86_64.names; mov(rax, rcx); };
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    step(u8);
+    std.os.Exit.of(0)
+};
+";
+
+#[test]
+fn an_instruction_called_outside_a_block_is_refused_at_the_call_leading_to_it() {
+    let (why, d, shown) = unlowered("outside", OUTSIDE, ["linux", "x86_64"]).unwrap();
+    assert!(matches!(why, Why::Reported(_)), "{why:?}");
+    assert_eq!(d.id, errors::COMPTIME_REPORTED);
+    assert_eq!(shown, ["step(u8)", "mov(rax, rcx)"]);
 }

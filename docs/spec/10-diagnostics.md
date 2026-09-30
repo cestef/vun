@@ -185,6 +185,10 @@ format := ($spec: Code(&[u8])) {
   the call that led to it from outside the reporting code, the place it was reported labeled; a
   `$e` is run while typing wherever it surely runs and all it reads is known, and a `$if` or
   `$for` not decided there runs none of its `$e`. `.fixes` are carried, not shown yet.
+- A report outside any `$` form runs only if the program runs it: it is no error where it is
+  written, and a program built that reaches it is refused, the report shown at the call that led
+  to it from outside the reporting code as above, with the calls between as frames. A function no
+  build reaches reports nothing. A library's report is shown before any other failure to build.
 - Places come from code: a `Code(T)` parameter knows where its argument is written
   (`c.span()`), and `c.within(bytes)` where the bytes `bytes` of the string literal it writes are,
   escapes mapped to the source that writes them (`lang.meta.within`, an origin derived from the

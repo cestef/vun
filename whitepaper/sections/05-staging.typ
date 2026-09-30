@@ -171,7 +171,9 @@ Compile-time code reports errors with the same diagnostic model as the compiler
 structured message and fixes; the location may point inside a string literal, so an embedded
 language can report the exact offending substring. A report without a location is attributed to
 the call that led into the reporting code from outside it. The formatting library uses this to
-reject, at compile time, a format string whose placeholders do not match its arguments.
+reject, at compile time, a format string whose placeholders do not match its arguments. A report
+outside any compile-time form refuses only a program that reaches it, at the call that led to it:
+an instruction called outside a block of instructions is refused this way.
 
 == Traceability and cost
 

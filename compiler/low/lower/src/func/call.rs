@@ -37,8 +37,7 @@ impl FnLower<'_, '_, '_> {
         match callee {
             Operand::Const(Constant::Fn(f)) => {
                 let i = Instantiation::called(cx, f, args);
-                let body =
-                    cx.get::<Concrete>(&i).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
+                let body = cx.get::<Concrete>(&i).map_err(|u| Unlowered::new(u.at(), Why::Unready(u)))?;
                 // Calling a coroutine function runs nothing: it builds the frame.
                 if body.suspends() {
                     return self.construct(&i, &body, args, dest, ty);

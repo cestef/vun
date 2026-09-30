@@ -8,11 +8,13 @@
 //! arguments (decision 92). `#[impl(T)]`, with no interface, gives `T` the declarations of its
 //! value as methods, found by the same lookup (decision 102).
 
+mod conformance;
 mod lookup;
 mod requirement;
 
 use std::sync::Arc;
 
+pub use conformance::{Conformance, Shortfall, Unmet};
 pub use lookup::{Method, Required, Witness, Witnesses};
 pub use requirement::{Implemented, Implementing, Requirement};
 use vun_codec::{Decode, Encode};

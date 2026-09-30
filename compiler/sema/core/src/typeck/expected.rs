@@ -30,6 +30,7 @@ impl Typer<'_, '_, '_> {
                     self.check_visible(expr, name, &decl.visible);
                     self.env().cx.get::<MemberType>(&(expected, name)).ok()
                 }
+                Found::Spread(site) => self.declared_at(expr, name, site.clone()),
                 Found::Absent | Found::Field(_) => {
                     self.no_member(origin, expected, name);
                     None
@@ -42,7 +43,7 @@ impl Typer<'_, '_, '_> {
                     self.no_member(origin, expected, name);
                     return None;
                 };
-                self.site(site)
+                self.env().site_type(site).ok()
             }
             TyKind::Tuple(_)
             | TyKind::Record(_)

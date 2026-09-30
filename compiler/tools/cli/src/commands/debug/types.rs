@@ -26,7 +26,7 @@ pub(super) fn types(session: &mut Session, args: &Args, out: &mut dyn Write) -> 
     let key = session.file_ref(file);
     let program = session.db.get::<Programs>(&(key, Roots::Functions));
     let plain = session.functions(file).into_iter().map(Instantiation::plain);
-    let instantiations: Vec<Instantiation> = plain.chain(program.functions.iter().cloned()).collect();
+    let instantiations: Vec<Instantiation> = plain.chain(program.instantiations().cloned()).collect();
     for i in instantiations {
         let Some(typed) = session.db.get::<Typed>(&i) else { continue };
         let Some(parsed) = session.db.get::<Parsed>(&i.f.literal.file) else { continue };

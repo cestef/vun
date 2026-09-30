@@ -95,8 +95,8 @@ impl Inlining {
             return Ok(lir);
         }
         lir.function.inline_small(small.iter().map(|(g, body)| (*g, body)));
-        let target = cx.get::<TargetOf>(&()).ok_or(Unlowered { at, why: Why::Untargeted })?;
-        let types = Types::new(cx, &target).map_err(|bits| Unlowered { at, why: Why::Address(bits) })?;
+        let target = cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
+        let types = Types::new(cx, &target).map_err(|bits| Unlowered::new(at, Why::Address(bits)))?;
         lir.function.tidy(types.pointer_bits());
         Ok(lir)
     }

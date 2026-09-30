@@ -132,7 +132,7 @@ impl Typer<'_, '_, '_> {
                 self.no_impl(site, interface, ty);
                 return None;
             };
-            self.check_visible(site, function, &method.visible);
+            self.check_method(site, function, &method);
             method.owner
         };
         self.applied(at, site, (owner, function), receiver, left, args)
@@ -150,7 +150,7 @@ impl Typer<'_, '_, '_> {
         let params = TyKind::Tuple(types).intern();
         let args = [Some(Value::Type(params)), None];
         let method = self.env().made_implemented_by(left.ty.through_borrows(), constructor, &args, name)?;
-        self.check_visible(call, name, &method.visible);
+        self.check_method(call, name, &method);
         let args = [Argument::Matched(params)];
         self.applied(Operation::Expr(call), call, (method.owner, name), callee, left, &args)
     }

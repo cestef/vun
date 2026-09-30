@@ -13,7 +13,7 @@ use vun_syntax::visibility::Visibility;
 use super::input::{FileRef, Package, PackageId, Unloaded};
 use super::layout::Namespace;
 use super::parsed::Parsed;
-use crate::tree::{DeclId, ExprKind, Hir, Name, NsId};
+use crate::tree::{DeclId, ExprKind, Hir, Name, NsId, Spread};
 
 /// Why a path names no namespace.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -135,10 +135,11 @@ impl Query for Members {
             file_level = written.is_file(hir);
             names.extend(hir.members(written.ns).into_iter().map(|b| hir.binders[b].name));
             names.extend(written.variants(hir));
+            // The names a spread selects are members as written, among the others.
             let whole = hir.spreads(written.ns).into_iter().filter(|s| s.select.is_none());
-            for (_, path) in whole.filter_map(|s| hir.path(s.path)) {
-                if let Ok(target) = cx.get::<NamespaceAt>(&(ns.package, path)) {
-                    names.extend(cx.get::<Exports>(&target).iter().copied());
+            for s in whole {
+                if let Some(target) = s.target(cx, hir, ns.package) {
+                    names.extend(s.names(cx, hir, &target).iter().copied());
                 }
             }
         }
@@ -150,6 +151,26 @@ impl Query for Members {
 
     fn cycle(_: &Cx<'_>, _: &Namespace, _: &Cycle) -> Self::Value {
         Arc::default()
+    }
+}
+
+impl Spread {
+    /// The namespace it names, read from the files of `package` alone (spec 01, section 8);
+    /// `None` when it names none, which the name checks of its file report.
+    #[must_use]
+    pub fn target(&self, cx: &Cx<'_>, hir: &Hir, package: PackageId) -> Option<Namespace> {
+        let (_, path) = hir.path(self.path)?;
+        cx.get::<NamespaceAt>(&(package, path)).ok()
+    }
+
+    /// The names it brings from `target`, the namespace it names: those it selects, or every
+    /// public one.
+    #[must_use]
+    pub fn names(&self, cx: &Cx<'_>, hir: &Hir, target: &Namespace) -> Arc<[Symbol]> {
+        match &self.select {
+            Some(select) => select.iter().map(|&b| hir.binders[b].name).collect(),
+            None => cx.get::<Exports>(target),
+        }
     }
 }
 

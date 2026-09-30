@@ -242,10 +242,13 @@ countdown := (n: u32) -> u32 {
   (`\and`).
 - **A block is `lang.arch.asm({ ... })`.** `lang.arch.asm` takes the block as code (`$code:
   Code(())`, spec 03, section 4) and is `unsafe`; each statement of the block calls an instruction,
-  declares a label, or spreads the names. An instruction is callable with any operands, its `lang.ops.Call` impl covering every
-  argument tuple (`_`, spec 02, section 3), so the block is typed as any code is; sema then reads
-  the typed block against the table of the instructions' architecture, into typed values of it.
-  The call is of type `()`, or `never` when its last instruction does not return.
+  declares a label, or spreads the names. An instruction is callable with any operands, its
+  `lang.ops.Call` impl covering every argument tuple (`_`, spec 02, section 3), so the block is
+  typed as any code is; sema then reads the typed block against the table of the instructions'
+  architecture, into typed values of it. The call is of type `()`, or `never` when its last
+  instruction does not return. Outside a block an instruction cannot run: its call reports through
+  `lang.diag.error`, so a program reaching one is refused at the call that led to it
+  (`comptime.reported`, spec 10, section 3).
 - **Operands are values.** A register is a variant of its width's enum. An immediate is an integer
   known at compile time, which the operation's width holds, signed or unsigned, and the form's
   immediate holds as it extends it; a constant is never cut to the bits read. A declaration's

@@ -246,7 +246,7 @@ impl<'a, 'db> Env<'a, 'db> {
             Value::Type(ty) => {
                 let members = self.cx.get::<Members>(&ty);
                 match members.as_deref().map_or(Found::Unknown, |m| m.find(name)) {
-                    Found::Decl(_) => self.cx.get::<MemberValue>(&(ty, name)),
+                    Found::Decl(_) | Found::Spread(_) => self.cx.get::<MemberValue>(&(ty, name)),
                     Found::Variant(v) if v.payload.is_empty() => {
                         Ok(Value::Variant { ty, name, payload: Vec::new() })
                     }

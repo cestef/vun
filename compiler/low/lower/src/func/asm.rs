@@ -71,7 +71,7 @@ impl FnLower<'_, '_, '_> {
         let Some(target) = self.l.env.cx.get::<TargetOf>(&()) else { return Ok(()) };
         match asm.needs.iter().find(|n| !target.has(n.needed)) {
             Some(need) if target.isa == asm.arch.symbol() => {
-                Err(Unlowered { at: need.at, why: Why::Unavailable(need.needed) })
+                Err(Unlowered::new(need.at, Why::Unavailable(need.needed)))
             }
             _ => Ok(()),
         }

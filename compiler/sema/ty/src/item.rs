@@ -4,7 +4,7 @@
 //! directory.
 
 use vun_codec::{Decode, Encode};
-use vun_hir::db::{Exports, FileRef, Namespace, NamespaceAt, Package, Parsed, Written};
+use vun_hir::db::{FileRef, Namespace, Package, Parsed, Written};
 use vun_hir::tree::{DeclId, ExprId, Hir, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginId;
@@ -128,12 +128,9 @@ impl Query for Declared {
                 });
             }
             for s in hir.spreads(written.ns) {
-                let selects =
-                    s.select.as_ref().map(|names| names.iter().any(|&b| hir.binders[b].name == *name));
-                let Some((_, path)) = hir.path(s.path) else { continue };
-                let Ok(target) = cx.get::<NamespaceAt>(&(ns.package, path)) else { continue };
-                let brings = selects.unwrap_or_else(|| cx.get::<Exports>(&target).contains(name));
-                if brings {
+                if let Some(target) = s.target(cx, hir, ns.package)
+                    && s.names(cx, hir, &target).contains(name)
+                {
                     return cx.get::<Self>(&(target, *name));
                 }
             }

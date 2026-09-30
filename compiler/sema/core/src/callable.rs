@@ -10,7 +10,7 @@ use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_primitives::Primitive;
 use vun_primitives::meta::Meta;
 use vun_query::Cx;
-use vun_sema_ty::call::Func;
+use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::{Ty, Value};
 
 use crate::env::Env;
@@ -215,5 +215,20 @@ impl Written<'_, '_> {
             _ => None,
         };
         Some(self.params()?.iter().map(mode).collect())
+    }
+}
+
+/// An instantiation as generic code or not.
+pub trait Generic {
+    /// Whether this is an instantiation of generic code: a function built in a compile-time
+    /// call, or one with `$` parameters, all bound.
+    fn generic(&self, cx: &Cx<'_>) -> bool;
+}
+
+impl Generic for Instantiation {
+    fn generic(&self, cx: &Cx<'_>) -> bool {
+        let Some(comptime) = self.f.comptime(cx) else { return false };
+        let bound = comptime.iter().zip(&self.args).all(|(&c, arg)| !c || arg.is_some());
+        (self.f.within.is_some() || comptime.contains(&true)) && bound
     }
 }

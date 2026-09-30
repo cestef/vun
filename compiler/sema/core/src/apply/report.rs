@@ -15,20 +15,8 @@ pub(crate) trait ApplyDiag {
 
 impl ApplyDiag for Diag {
     fn apply(self, args: &[Value]) -> Result<Value, Unevaluated> {
-        match (self, args) {
-            (Self::error, [message, at]) => {
-                let message = message.text().ok_or(Unevaluated::Unsupported)?;
-                // An optional place: the origin a variant's payload holds, if it holds one.
-                let at = match at {
-                    Value::Variant { payload, .. } => match payload.as_slice() {
-                        [Value::Origin(origin)] => Some(*origin),
-                        _ => None,
-                    },
-                    _ => None,
-                };
-                Err(Unevaluated::trap(Reason::Reported { message, at }))
-            }
-            _ => Err(Unevaluated::Unsupported),
+        match self {
+            Self::error => Err(Unevaluated::trap(Reason::reported(args).ok_or(Unevaluated::Unsupported)?)),
         }
     }
 }

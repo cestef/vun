@@ -5,13 +5,16 @@ use vun_hir::db::{Namespace, Outer, Package, PackageId, Scope};
 use vun_hir::tree::{ExprId, Name};
 use vun_intern::Symbol;
 use vun_items::Item;
+use vun_primitives::Primitive;
+use vun_primitives::meta::Meta;
 use vun_query::{Cx, Query};
-use vun_sema_ty::Value;
 use vun_sema_ty::item::{Declared, Site};
 use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{TyKind, Value};
 
 use super::Env;
-use crate::decl::DeclValue;
+use crate::decl::{DeclType, DeclValue};
+use crate::typeck::{Known, Stage};
 
 impl Env<'_, '_> {
     /// What the path `object.name` leads to: the member `name` of the namespace `object` is.
@@ -72,6 +75,25 @@ impl Env<'_, '_> {
                 root(dep.package.clone().map_err(|_| Unevaluated::Absent)?)
             }
             None => Err(Unevaluated::Absent),
+        }
+    }
+
+    /// The type of `site`.
+    ///
+    /// # Errors
+    /// Returns why it has none here.
+    pub fn site_type(&self, site: Site) -> Result<Known, Unevaluated> {
+        match site {
+            Site::Decl(decl) => self.cx.get::<DeclType>(&decl),
+            // A variant a spread brings is the value its enum gives it, as `E.v` is.
+            site @ Site::Variant { .. } => Ok(Known {
+                ty: self.value_of(site)?.ty().ok_or(Unevaluated::Unsupported)?,
+                stage: Stage::Compile,
+            }),
+            // A file or directory is a value of `lang.meta.Namespace` (spec 01, section 8).
+            Site::Namespace(_) => {
+                Ok(Known { ty: TyKind::primitive(Primitive::Meta(Meta::Namespace)), stage: Stage::Compile })
+            }
         }
     }
 

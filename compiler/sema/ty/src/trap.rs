@@ -120,6 +120,21 @@ pub struct Trap {
 }
 
 impl Reason {
+    /// What `lang.diag.error` applied to `args` reports: its message, and its place when the
+    /// optional one holds an origin.
+    #[must_use]
+    pub fn reported(args: &[Value]) -> Option<Self> {
+        let [message, at] = args else { return None };
+        let at = match at {
+            Value::Variant { payload, .. } => match payload.as_slice() {
+                [Value::Origin(origin)] => Some(*origin),
+                _ => None,
+            },
+            _ => None,
+        };
+        Some(Self::Reported { message: message.text()?, at })
+    }
+
     fn msg(&self) -> Msg {
         Msg::new().text(match self {
             Self::DivisionByZero => "division by zero",

@@ -408,8 +408,10 @@ brings: an umbrella namespace is a list of spreads.
 
 - `path` is a namespace path starting at the package or a dependency, so tools resolve spreads
   from the manifest and the files alone, without evaluation.
-- A selected name is a member like a declared one. A name spread whole may not also be declared in
-  the same namespace or spread there twice (`names.duplicate`), as with a file and a directory.
+- A selected name is a member like a declared one, and so is every name a spread brings into a
+  `struct` or `enum` body: reached through its type as a declared member is
+  (`lang.arch.x86_64.names.mov`). A name spread whole may not also be declared in the same
+  namespace or spread there twice (`names.duplicate`), as with a file and a directory.
 - A whole spread brings the public names, so it resolves without evaluation. A selection may name a
   restricted name visible where the spread is written, and any other is `names.private`. A spread
   member keeps the declaration's scope, so re-exporting never widens it.

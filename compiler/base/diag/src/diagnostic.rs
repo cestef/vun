@@ -61,6 +61,14 @@ pub struct TraceFrame {
     pub origin: OriginId,
 }
 
+impl TraceFrame {
+    /// The frame of a call whose instantiation, the code it reaches, holds what is reported.
+    #[must_use]
+    pub fn instantiated(origin: OriginId) -> Self {
+        Self { msg: "in the instantiation this call reaches".into(), origin }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Diagnostic {
     pub id: DiagId,

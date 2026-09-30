@@ -4,16 +4,12 @@ use vun_desugar::PREFIX_OPERATORS;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Hir, Lit, Name};
 use vun_hir::visit;
-use vun_primitives::Primitive;
-use vun_primitives::meta::Meta;
 use vun_sema_float::Format;
 use vun_sema_int::{Integer, Interval};
 use vun_sema_ty::float::FloatType;
-use vun_sema_ty::item::Site;
 use vun_sema_ty::{Ty, TyKind};
 
 use super::{Known, Stage, Typer};
-use crate::decl::DeclType;
 use crate::member::{Found, Members};
 
 impl Typer<'_, '_, '_> {
@@ -144,7 +140,7 @@ impl Typer<'_, '_, '_> {
                         }
                         found
                     }
-                    Found::Absent | Found::Decl(_) | Found::Variant(_) => {
+                    Found::Absent | Found::Decl(_) | Found::Variant(_) | Found::Spread(_) => {
                         self.no_member(at, target?, *name);
                         self.typed(*value)
                     }
@@ -155,19 +151,5 @@ impl Typer<'_, '_, '_> {
             stage = stage.max(found.map_or(self.stage, |k| k.stage));
         }
         Some(Known { ty: target?, stage })
-    }
-
-    pub(super) fn site(&self, site: Site) -> Option<Known> {
-        match site {
-            Site::Decl(decl) => self.env().cx.get::<DeclType>(&decl).ok(),
-            // A variant a spread brings is the value its enum gives it, as `E.v` is.
-            site @ Site::Variant { .. } => {
-                Some(Known { ty: self.env().value_of(site).ok()?.ty()?, stage: Stage::Compile })
-            }
-            // A file or directory is a value of `lang.meta.Namespace` (spec 01, section 8).
-            Site::Namespace(_) => {
-                Some(Known { ty: TyKind::primitive(Primitive::Meta(Meta::Namespace)), stage: Stage::Compile })
-            }
-        }
     }
 }

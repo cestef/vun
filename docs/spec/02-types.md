@@ -118,7 +118,10 @@ uart_writer := struct {
 ```
 
 - `#[impl(I(T))]` is a `lang` attribute. It checks the struct against the requirements of `I(T)`
-  (each present, with a type the requirement's declared type accepts), fills in defaults, and registers the result, the **witness**, for the pair `(I, T)`.
+  (each present, with a type the requirement's declared type accepts), fills in defaults, and
+  registers the result, the **witness**, for the pair `(I, T)`. A witness made for a use, by a type
+  constructor or for the values of `_` (below), is checked where it is used: a method found through
+  it reports each requirement it does not meet at the use, the impl labeled.
 - An impl lives in the package of `T` or of `I` (orphan rule). At most one impl per pair.
 - Members of the witness join `T`'s method lookup (spec 01, section 4). A name declared by two
   impls a file sees, or by an impl and `T` itself, is an error where it is looked up

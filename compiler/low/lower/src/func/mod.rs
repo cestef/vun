@@ -155,7 +155,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
 
     /// The type of `local` in `body`, which concrete MIR always has.
     fn typed(body: &Body, local: Local, at: OriginId) -> Result<Ty, Unlowered> {
-        body.locals[local].ty.ok_or(Unlowered { at, why: Why::Unready(Unready::Untyped { at }) })
+        body.locals[local].ty.ok_or(Unlowered::new(at, Why::Unready(Unready::Untyped { at })))
     }
 
     /// A LIR block for each MIR block, after the entry.

@@ -40,7 +40,7 @@ impl Lowering<'_, '_> {
             .exports
             .iter()
             .filter(|(_, symbol)| operations.iter().any(|(_, s)| s == symbol))
-            .map(|&(i, _)| program.functions[i].clone())
+            .map(|&(i, _)| program.functions[i].i.clone())
             .collect();
         while let Some(f) = pending.pop() {
             let Ok(body) = cx.get::<Concrete>(&f) else { continue };

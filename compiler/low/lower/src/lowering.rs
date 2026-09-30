@@ -46,8 +46,8 @@ impl<'a, 'db> Lowering<'a, 'db> {
     pub(crate) fn new(cx: &'a Cx<'db>, file: &FileRef, checked: bool) -> Result<Self, Unlowered> {
         let env = Env::of(cx, file).expect("a lowered function's file is read");
         let at = Self::root_of(&env);
-        let target = cx.get::<TargetOf>(&()).ok_or(Unlowered { at, why: Why::Untargeted })?;
-        let types = Types::new(cx, &target).map_err(|bits| Unlowered { at, why: Why::Address(bits) })?;
+        let target = cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
+        let types = Types::new(cx, &target).map_err(|bits| Unlowered::new(at, Why::Address(bits)))?;
         let checks = cx.get::<vun_sema::checks::ChecksOf>(&());
         Ok(Self {
             types,

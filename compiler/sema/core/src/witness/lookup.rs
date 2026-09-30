@@ -13,7 +13,7 @@ use vun_sema_ty::call::{Func, Instance};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{ImplDecl, Impls};
+use super::{Conformance, ImplDecl, Impls, Unmet};
 use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::eval::Call;
@@ -38,6 +38,8 @@ pub struct Method {
     pub owner: Ty,
     pub decl: DeclRef,
     pub visible: Visible,
+    /// The witness it is found through.
+    pub witness: Witness,
 }
 
 /// The witnesses of a type that a file sees, by the impls declared in its scope and in the
@@ -128,10 +130,30 @@ impl Witness {
         Some(Self { decl: decl.clone(), ty: witness, requirements: Some(requirements) })
     }
 
+    /// Whether it is made for a use, by a type constructor or for the values of `_`, rather than
+    /// declared as it is: then its requirements are checked where it is used.
+    #[must_use]
+    pub fn made(&self) -> bool {
+        self.decl.holed.is_some() || !matches!(self.decl.target, Value::Type(_))
+    }
+
+    /// The requirements of its interface it does not meet.
+    #[must_use]
+    pub fn unmet(&self, cx: &Cx<'_>) -> Arc<[Unmet]> {
+        self.requirements
+            .map(|requirements| cx.get::<Conformance>(&(self.ty, requirements)))
+            .unwrap_or_default()
+    }
+
     /// The member `name` of this witness, or else the default of its interface.
     fn method(&self, cx: &Cx<'_>, name: Symbol) -> Option<Method> {
         let declared = |owner: Ty| match cx.get::<Members>(&owner)?.find(name) {
-            Found::Decl(d) => Some(Method { owner, decl: d.decl.clone(), visible: d.visible.clone() }),
+            Found::Decl(d) => Some(Method {
+                owner,
+                decl: d.decl.clone(),
+                visible: d.visible.clone(),
+                witness: self.clone(),
+            }),
             _ => None,
         };
         declared(self.ty).or_else(|| declared(self.requirements?).filter(|m| !m.decl.required(cx)))

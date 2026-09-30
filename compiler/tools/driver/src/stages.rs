@@ -158,7 +158,7 @@ impl Session {
             self.db.get::<Programs>(&(key.clone(), Roots::Functions))
         };
         let _timer = BODIES.start();
-        for body in program.functions.iter().filter(|i| i.f.literal.file != key) {
+        for body in program.instantiations().filter(|i| i.f.literal.file != key) {
             if let Some(typed) = self.db.get::<Typed>(body) {
                 self.diag.absorb(&typed.diag);
             }
@@ -206,7 +206,7 @@ impl Session {
         let program = self.db.get::<Programs>(&(root, Roots::Functions));
         let mut seen = vun_hash::Set::default();
         let bodies: Vec<Instantiation> =
-            plain.chain(program.functions.iter().cloned()).filter(|body| seen.insert(body.clone())).collect();
+            plain.chain(program.instantiations().cloned()).filter(|body| seen.insert(body.clone())).collect();
         for body in bodies {
             if let Some(reports) = self.db.get::<Q>(&body) {
                 self.diag.absorb(&reports);

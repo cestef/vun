@@ -16,7 +16,7 @@ pub use body::{Block, BlockId, Body, Local, LocalDecl, Role, Stmt, Terminator, T
 pub use build::{Mir, Unbuilt, Why};
 pub use concrete::{Concrete, Lowered, Unready};
 pub use place::{Place, Projection};
-pub use program::{Program, Programs, Roots};
+pub use program::{Program, Programs, Reached, Roots, Statement};
 pub use rvalue::{Aggregate, Asm, Operand, Rvalue};
 pub use verify::Malformed;
 

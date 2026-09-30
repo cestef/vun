@@ -11,6 +11,7 @@ use vun_sema_ty::{Ty, TyKind, Value};
 use super::{Known, Typer};
 use crate::eval::Call;
 use crate::member::{Found, MemberType, Members};
+use crate::witness::Method;
 
 impl Typer<'_, '_, '_> {
     /// The struct declaring the method `name` that `ty` has through an impl (spec 02, section 3);
@@ -21,8 +22,22 @@ impl Typer<'_, '_, '_> {
         if methods.len() > 1 {
             self.collision(expr, name, methods.iter().map(|m| m.decl.decl.origin).collect());
         }
-        self.check_visible(expr, name, &method.visible);
+        self.check_method(expr, name, &method);
         Some(method.owner)
+    }
+
+    /// Checks `method`, which `expr` uses by the name `name`: that it is visible there, and that
+    /// the witness it is found through, when made for this use, meets its interface's
+    /// requirements (spec 02, section 3), reported here with the impl labeled.
+    pub(super) fn check_method(&mut self, expr: ExprId, name: Symbol, method: &Method) {
+        self.check_visible(expr, name, &method.visible);
+        let witness = &method.witness;
+        let (Some(requirements), true) = (witness.requirements, witness.made()) else { return };
+        let origin = self.hir().exprs[expr].origin;
+        for unmet in witness.unmet(self.env().cx).iter() {
+            let d = unmet.diagnostic(requirements).at(origin, None);
+            self.diag.error(d.label(witness.decl.attr, Some(Msg::new().text("the impl is here"))));
+        }
     }
 
     /// Reports `name` at `expr` as declared at each of `origins` (`impl.collision`).

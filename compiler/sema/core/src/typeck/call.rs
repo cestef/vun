@@ -7,7 +7,6 @@ use vun_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, TraceFrame, errors};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
 use vun_hir::visit::Visitor;
 use vun_origin::OriginTable;
-use vun_query::Cx;
 use vun_sema_ty::Ty;
 use vun_sema_ty::call::Instantiation;
 
@@ -15,7 +14,6 @@ use super::apply::{Argument, Callee, Passing};
 use super::omitted::{Plan, Unifier};
 use super::{Known, Typer};
 use crate::callable::Callable;
-use crate::callable::Parameters;
 use crate::member::MemberValue;
 use vun_primitives::Primitive;
 use vun_primitives::arch::Arch as Form;
@@ -171,22 +169,7 @@ impl Typer<'_, '_, '_> {
                 d.clone()
             });
         }
-        let frame = TraceFrame { msg: "in the instantiation this call reaches".into(), origin };
+        let frame = TraceFrame::instantiated(origin);
         self.diag.absorb_through(&placed, &frame);
-    }
-}
-
-/// An instantiation as generic code or not.
-pub(super) trait Generic {
-    /// Whether this is an instantiation of generic code: a function built in a compile-time
-    /// call, or one with `$` parameters, all bound.
-    fn generic(&self, cx: &Cx<'_>) -> bool;
-}
-
-impl Generic for Instantiation {
-    fn generic(&self, cx: &Cx<'_>) -> bool {
-        let Some(comptime) = self.f.comptime(cx) else { return false };
-        let bound = comptime.iter().zip(&self.args).all(|(&c, arg)| !c || arg.is_some());
-        (self.f.within.is_some() || comptime.contains(&true)) && bound
     }
 }

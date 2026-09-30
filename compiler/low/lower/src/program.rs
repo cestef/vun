@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use vun_hir::db::FileRef;
 use vun_lir::Unit;
-use vun_mir::{Programs, Roots, Unready};
+use vun_mir::{Program, Programs, Roots, Unready};
 use vun_query::{Cx, Query};
 use vun_sema_ty::call::Instantiation;
 use vun_trace::Activity;
@@ -42,12 +42,13 @@ impl Lowered {
         let numbering = NUMBER.start();
         let l = Lowering::new(cx, root, true)?;
         if let Some((i, unready)) = program.unready.first() {
-            return Err(Unlowered { at: i.f.literal.expr.origin, why: Why::Unready(unready.clone()) });
+            let unlowered = Unlowered::new(i.f.literal.expr.origin, Why::Unready(unready.clone()));
+            return Err(unlowered.through(program.leading(cx, i)));
         }
         if let Some(export) = program.unevaluated.first() {
             let at = export.decl.decl.origin;
             let unready = Unready::Unevaluated { at, why: export.why.clone() };
-            return Err(Unlowered { at, why: Why::Unready(unready) });
+            return Err(Unlowered::new(at, Why::Unready(unready)));
         }
         let at = Lowering::root_of(&l.env);
         let mut assembly = Assembly::new(&l);
@@ -58,8 +59,11 @@ impl Lowered {
             pieces.into_iter().map(|piece| Inlining { piece, unchecked: unchecked.clone() }).collect();
         let lirs = cx.get_all::<InlinedLir>(&keys);
         let _placing = PLACE.start();
-        for lir in lirs {
-            assembly.add(lir.as_ref().as_ref().map_err(Clone::clone)?, at)?;
+        if let Some(failure) = Self::failure(cx, &program, &keys, &lirs) {
+            return Err(failure);
+        }
+        for lir in lirs.iter().filter_map(|lir| lir.as_ref().as_ref().ok()) {
+            assembly.add(lir, at)?;
         }
         // Each exported datum encoded on its own, the ids it names placed as a function's are.
         for datum in &program.data {
@@ -70,6 +74,23 @@ impl Lowered {
             assembly.export(&own.refs, &bytes, align, (datum.symbol, datum.section), origin)?;
         }
         Ok(assembly.finish())
+    }
+
+    /// Why the pieces `keys` of `program`, lowered as `lirs`, make no program, if they do not: a
+    /// library's report, which says why in its own words, else the first failure; traced through
+    /// the calls that led to it.
+    fn failure(
+        cx: &Cx<'_>,
+        program: &Program,
+        keys: &[Inlining],
+        lirs: &[<InlinedLir as Query>::Value],
+    ) -> Option<Unlowered> {
+        let failed =
+            keys.iter().zip(lirs).filter_map(|(key, lir)| Some((&key.piece, lir.as_ref().as_ref().err()?)));
+        let (piece, unlowered) =
+            failed.min_by_key(|(_, unlowered)| !matches!(unlowered.why, Why::Reported(_)))?;
+        let calls = piece.instantiation().map(|i| program.leading(cx, i)).unwrap_or_default();
+        Some(unlowered.clone().through(calls))
     }
 }
 
@@ -85,9 +106,9 @@ impl Query for EachLowered {
     fn compute(cx: &Cx<'_>, root: &FileRef) -> Self::Value {
         let program = cx.get::<Programs>(&(root.clone(), Roots::Functions));
         let unchecked = Lowering::unchecked(cx, root, &program);
-        let pieces: Vec<Piece> = program.functions.iter().map(|f| Piece::of(f, false, &unchecked)).collect();
+        let pieces: Vec<Piece> = program.instantiations().map(|f| Piece::of(f, false, &unchecked)).collect();
         let lowered = cx.get_all::<FunctionLir>(&pieces);
-        let each = program.functions.iter().zip(lowered.iter());
+        let each = program.instantiations().zip(lowered.iter());
         let each = each.map(|(f, lir)| (f.clone(), lir.as_ref().as_ref().map(drop).map_err(Clone::clone)));
         Arc::new(each.collect())
     }

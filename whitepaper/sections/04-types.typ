@@ -82,9 +82,11 @@ Writer := interface(($Self: type) -> type { struct {
 
 Conformance is the `lang` attribute `#[impl(I(T))]` on any expression that produces a structure.
 The attribute checks the structure against the requirements of `I(T)`, fills in defaults, and
-registers the result, called the _witness_, for the pair `(I, T)`. An implementation lives in the
-package of `T` or of `I`, and there is at most one per pair. Because an implementation is any
-structure-valued expression, deriving an implementation is calling a function:
+registers the result, called the _witness_, for the pair `(I, T)`; a witness made for a use, by a
+type constructor or for the values of an argument written `_`, is checked where it is used. An
+implementation lives in the package of `T` or of `I`, and there is at most one per pair. Because
+an implementation is any structure-valued expression, deriving an implementation is calling a
+function:
 
 ```vun
 #[impl(Serialize(Point))]

@@ -24,7 +24,7 @@ impl Typer<'_, '_, '_> {
                 return Some(Known { ty, stage: Stage::Compile });
             }
         }
-        self.site(self.env().resolve(expr).ok()?)
+        self.env().site_type(self.env().resolve(expr).ok()?).ok()
     }
 
     /// A member of a namespace, of a type's namespace, or of a value: a field, or a declaration of
@@ -38,13 +38,7 @@ impl Typer<'_, '_, '_> {
                 // reads every path, typed or not.
                 Ok(Value::Namespace(ns)) => {
                     let site = self.env().cx.get::<Declared>(&(ns.clone(), name))?;
-                    if let Site::Decl(decl) = &site
-                        && let Some(visible) =
-                            Env::of(self.env().cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
-                    {
-                        self.check_visible(expr, name, &visible);
-                    }
-                    return self.site(site);
+                    return self.declared_at(expr, name, site);
                 }
                 Ok(Value::Type(ty)) => {
                     let members = self.env().cx.get::<Members>(&ty);
@@ -62,6 +56,7 @@ impl Typer<'_, '_, '_> {
                                 v.payload.iter().map(|p| p.as_ref().ok().copied()).collect::<Option<_>>()?;
                             Some(Known { ty: Signature::new(params, ty).ty(), stage: Stage::Compile })
                         }
+                        Found::Spread(site) => self.declared_at(expr, name, site.clone()),
                         Found::Field(_) => {
                             self.field_of_type(self.hir().exprs[expr].origin, ty, name);
                             None
@@ -110,6 +105,10 @@ impl Typer<'_, '_, '_> {
                 self.finding().methods.insert(expr, (known.ty, name));
                 self.env().cx.get::<MemberType>(&(known.ty, name)).ok()
             }
+            Found::Spread(site) => {
+                self.finding().methods.insert(expr, (known.ty, name));
+                self.declared_at(expr, name, site.clone())
+            }
             // A member missing from the type and its impls; a variant is reached through its
             // type, never through a value, so a value's lookup goes on to the impls.
             found @ (Found::Variant(_) | Found::Absent | Found::Unknown) => {
@@ -123,6 +122,18 @@ impl Typer<'_, '_, '_> {
                 self.env().cx.get::<MemberType>(&(owner, name)).ok()
             }
         }
+    }
+
+    /// The type of the member `name` the path `expr` reaches, declared at `site`, which a spread
+    /// keeps visible as its declaration is (spec 01, section 8).
+    pub(super) fn declared_at(&mut self, expr: ExprId, name: Symbol, site: Site) -> Option<Known> {
+        if let Site::Decl(decl) = &site
+            && let Some(visible) =
+                Env::of(self.env().cx, &decl.file).map(|e| e.decl_visible(decl.decl.id, name))
+        {
+            self.check_visible(expr, name, &visible);
+        }
+        self.env().site_type(site).ok()
     }
 
     /// Whether members of `ty` may be declared where they are not known here: a nominal type, a

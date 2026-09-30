@@ -70,11 +70,10 @@ impl Query for Frames {
         let at = frame.literal.expr.origin;
         let shaped = || -> Result<FrameShape, Unlowered> {
             let instantiation = frame.instantiation();
-            let body = cx
-                .get::<Concrete>(&instantiation)
-                .map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
-            let target = cx.get::<TargetOf>(&()).ok_or(Unlowered { at, why: Why::Untargeted })?;
-            let types = Types::new(cx, &target).map_err(|bits| Unlowered { at, why: Why::Address(bits) })?;
+            let body =
+                cx.get::<Concrete>(&instantiation).map_err(|u| Unlowered::new(u.at(), Why::Unready(u)))?;
+            let target = cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
+            let types = Types::new(cx, &target).map_err(|bits| Unlowered::new(at, Why::Address(bits)))?;
             FrameShape::of(types, &instantiation, &body)
         };
         Arc::new(shaped())
@@ -82,7 +81,7 @@ impl Query for Frames {
 
     fn cycle(_: &Cx<'_>, ty: &Ty, _: &Cycle) -> Self::Value {
         let TyKind::Frame(frame) = &**ty else { unreachable!("frames are shaped by their types") };
-        Arc::new(Err(Unlowered { at: frame.literal.expr.origin, why: Why::Recursive }))
+        Arc::new(Err(Unlowered::new(frame.literal.expr.origin, Why::Recursive)))
     }
 }
 

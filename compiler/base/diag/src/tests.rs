@@ -30,7 +30,7 @@ fn a_report_reached_several_ways_is_kept_once_reached_the_shortest_way() {
     let other = Diagnostic::error(errors::INT_DOES_NOT_FIT, "does not fit either").at(at, None);
     let through = |d: &Diagnostic, origin| {
         let mut d = d.clone();
-        d.trace.push(TraceFrame { msg: "in the instantiation this call reaches".into(), origin });
+        d.trace.push(TraceFrame::instantiated(origin));
         d
     };
     let mut diag = DiagCtxt::new();

@@ -29,8 +29,8 @@ decision log, pending confirmation. Those that concern the language are: a field
 function is called as a value, never as a method; compile-time work in a body splits into
 expansions run while typing and evaluations run after it; floats, like integers, are one
 constructor indexed by a compile-time width; exit statuses are a range every supported system
-passes on; a linked symbol names the library it comes from; and a fixed-buffer allocator borrows
-its storage. The sections above describe these rules as they are implemented.
+passes on; a linked symbol names the library it comes from; a fixed-buffer allocator borrows
+its storage; and a library's report reached at run time refuses the program that reaches it. The sections above describe these rules as they are implemented.
 
 == Open problems
 

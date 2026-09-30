@@ -113,13 +113,20 @@ impl Piece {
         Piece::Function { f: f.clone(), end, checked: !unchecked.contains(f) }
     }
 
+    /// The instantiation it lowers, if any.
+    pub(crate) fn instantiation(&self) -> Option<&Instantiation> {
+        match self {
+            Piece::Function { f, .. } => Some(f),
+            Piece::Constructor { .. } => None,
+        }
+    }
+
     /// The function's LIR, tidied, and what its ids name.
     fn lowered(&self, cx: &Cx<'_>) -> Result<Lir, Unlowered> {
         let (mut function, l) = match self {
             Piece::Function { f, end, checked } => {
                 let mut l = Lowering::new(cx, &f.f.literal.file, *checked)?;
-                let body =
-                    cx.get::<Concrete>(f).map_err(|u| Unlowered { at: u.at(), why: Why::Unready(u) })?;
+                let body = cx.get::<Concrete>(f).map_err(|u| Unlowered::new(u.at(), Why::Unready(u)))?;
                 let function = match (body.suspends(), end) {
                     (true, false) => FnLower::coroutine(&mut l, f, &body, Mode::Resume)?,
                     (true, true) => FnLower::coroutine(&mut l, f, &body, Mode::End)?,
@@ -132,8 +139,7 @@ impl Piece {
                 let mut l = Lowering::new(cx, &nominal.literal.file, true)?;
                 let ty = TyKind::Nominal(nominal.clone()).intern();
                 let at = nominal.literal.expr.origin;
-                let body =
-                    Body::constructor(cx, ty, *name).ok_or(Unlowered { at, why: Why::NoLayout(ty) })?;
+                let body = Body::constructor(cx, ty, *name).ok_or(Unlowered::new(at, Why::NoLayout(ty)))?;
                 let params = body.params.clone();
                 let function =
                     FnLower::function(&mut l, &body, &params, None, Linkage::Internal, Arc::default(), true)?;

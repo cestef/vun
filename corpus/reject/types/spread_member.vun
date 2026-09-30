@@ -1,0 +1,11 @@
+//! A member a spread brings into a struct is a member like a declared one (spec 01, section 8):
+//! reached through the struct, it has its declaration's type and value.
+
+conds := struct {
+    ..lang.arch.thumb.Cond;
+    ..lang.int.{ u8 };
+};
+
+near: lang.arch.thumb.Cond = conds.ne;
+narrow: conds.u8 = 1;
+wrong: bool = conds.eq; //~ types.mismatch

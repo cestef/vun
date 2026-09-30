@@ -216,7 +216,7 @@ impl From<Found<'_>> for Lookup {
     fn from(found: Found<'_>) -> Self {
         match found {
             Found::Variant(v) => Self::Variant(v.payload.iter().map(|p| p.as_ref().ok().copied()).collect()),
-            Found::Absent | Found::Field(_) | Found::Decl(_) => Self::Absent,
+            Found::Absent | Found::Field(_) | Found::Decl(_) | Found::Spread(_) => Self::Absent,
             Found::Unknown => Self::Other,
         }
     }

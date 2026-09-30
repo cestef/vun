@@ -61,7 +61,7 @@ impl<'a, 'db> Types<'a, 'db> {
     /// # Errors
     /// Returns [`Why::NoLayout`] for a type with no layout at run time.
     pub fn shape(self, ty: Ty, at: OriginId) -> Result<Arc<Shape>, Unlowered> {
-        self.cx.get::<Shapes>(&ty).ok_or(Unlowered { at, why: Why::NoLayout(ty) })
+        self.cx.get::<Shapes>(&ty).ok_or(Unlowered::new(at, Why::NoLayout(ty)))
     }
 
     /// Where the field `name` of a struct of type `ty` lies, and its type.
@@ -80,7 +80,7 @@ impl<'a, 'db> Types<'a, 'db> {
     /// # Errors
     /// Returns [`Why::NoLayout`] for a type with no layout at run time or no fields.
     pub fn fields(self, ty: Ty, at: OriginId) -> Result<Fields, Unlowered> {
-        let unlaid = || Unlowered { at, why: Why::NoLayout(ty) };
+        let unlaid = || Unlowered::new(at, Why::NoLayout(ty));
         let members = self.cx.get::<Members>(&ty).ok_or_else(unlaid)?;
         let shape = self.shape(ty, at)?;
         let Parts::Sequence(offsets) = &shape.parts else { return Err(unlaid()) };

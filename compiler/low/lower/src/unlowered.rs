@@ -3,17 +3,20 @@
 use std::fmt;
 
 use vun_codec::{Decode, Encode};
-use vun_diag::{Diagnostic, Msg, errors};
+use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
 use vun_inline::Needed;
 use vun_mir::Unready;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_sema_ty::Ty;
+use vun_sema_ty::trap::{Reason, Trap};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unlowered {
     pub at: OriginId,
     pub why: Why,
+    /// The calls that led to it from outside generic code, innermost first (`Program::leading`).
+    pub calls: Vec<OriginId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -34,6 +37,9 @@ pub enum Why {
     Recursive,
     /// An instruction of a block needs this of the target's processor, which lacks it.
     Unavailable(Needed),
+    /// Library code reached at run time reports an error (`lang.diag.error`): the program is
+    /// refused (spec 10, section 3).
+    Reported(Reason),
 }
 
 /// What lowering does not handle yet.
@@ -73,6 +79,7 @@ impl fmt::Display for Unlowered {
             Why::Unavailable(Needed::Feature(feature)) => {
                 write!(f, "the instruction needs `{feature}`, which the target's processor lacks")
             }
+            Why::Reported(_) => f.write_str("library code reached at run time reports an error"),
             Why::Unavailable(Needed::Float(bits)) => write!(
                 f,
                 "the instruction needs a floating-point unit computing {bits}-bit floats, which the \
@@ -97,6 +104,7 @@ impl Why {
             Self::Address(_) => "address",
             Self::Recursive => "recursive frame",
             Self::Unavailable(_) => "unavailable instruction",
+            Self::Reported(_) => "reported",
         }
     }
 }
@@ -135,21 +143,45 @@ impl Form {
 
 impl Unlowered {
     #[must_use]
-    pub fn unsupported(at: OriginId, form: Form) -> Self {
-        Self { at, why: Why::Unsupported(form) }
+    pub fn new(at: OriginId, why: Why) -> Self {
+        Self { at, why, calls: Vec::new() }
     }
 
-    /// Its report where a program is built.
+    #[must_use]
+    pub fn unsupported(at: OriginId, form: Form) -> Self {
+        Self::new(at, Why::Unsupported(form))
+    }
+
+    /// This failure, reached through `calls`, innermost first.
+    #[must_use]
+    pub fn through(self, calls: Vec<OriginId>) -> Self {
+        Self { calls, ..self }
+    }
+
+    /// Its report where a program is built. A library's report is shown at the outermost call
+    /// that led to it, as when it is reported at compile time (spec 10, section 3); any other
+    /// failure where it arises. Either lists the calls leading to it.
     #[must_use]
     pub fn diagnostic(&self) -> Diagnostic {
-        let d = if let Why::Unavailable(needed) = self.why {
-            let msg = Msg::new().text("the instruction needs ").append(needed.msg());
-            Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
-        } else {
-            let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());
-            Diagnostic::error(errors::BACKEND_UNLOWERED, msg)
+        let mut d = match &self.why {
+            Why::Reported(reason) => {
+                let trap = Trap { reason: reason.clone(), at: Some(self.at), calls: Vec::new() };
+                trap.report(self.calls.last().copied().unwrap_or(self.at))
+            }
+            Why::Unavailable(needed) => {
+                let msg = Msg::new().text("the instruction needs ").append(needed.msg());
+                Diagnostic::error(errors::ASM_UNAVAILABLE, msg.text(", which the target's processor lacks"))
+                    .at(self.at, None)
+            }
+            _ => {
+                let msg = Msg::new().text("the program does not lower to LIR: ").text(self.to_string());
+                Diagnostic::error(errors::BACKEND_UNLOWERED, msg).at(self.at, None)
+            }
         };
-        d.at(self.at, None)
+        let shown = d.primary.as_ref().map(|p| p.origin);
+        let frames = self.calls.iter().filter(|&&origin| Some(origin) != shown);
+        d.trace.extend(frames.map(|&origin| TraceFrame::instantiated(origin)));
+        d
     }
 
     /// This failure, where a primitive is what is not handled, naming it.

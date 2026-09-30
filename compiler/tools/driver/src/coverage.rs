@@ -87,7 +87,7 @@ impl Session {
             }
             coverage.bodies += 1;
             let instantiations: Vec<&Instantiation> =
-                program.functions.iter().filter(|i| i.f.literal == f).collect();
+                program.instantiations().filter(|i| i.f.literal == f).collect();
             let unready = program.unready.iter().find(|(i, _)| i.f.literal == f).map(|(_, u)| u.clone());
             // A literal only compile-time code calls is covered by the bodies built for it.
             let at_compile_time = ran.iter().filter(|(i, _)| i.f.literal == f).map(|(_, built)| built);

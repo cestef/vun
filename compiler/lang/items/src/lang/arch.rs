@@ -56,10 +56,8 @@ pub const here: Item = Item::new(&["lang", "arch", "here"]);
 pub const label: Item = Item::new(&["lang", "arch", "label"]);
 /// Marks the next instruction with `at`.
 pub const place: Item = Item::new(&["lang", "arch", "place"]);
-/// What an instruction called outside a block does: it cannot run there, so a program calling one
-/// is refused where it is built.
-pub const outside: Item = Item::new(&["lang", "arch", "outside"]);
 /// The witness making each instruction of type `I` callable with any operands (spec 02, section
 /// 3): an instruction set declares `#[impl(lang.ops.Call(_, ())(Instruction))]` on
-/// `called(Instruction)`, so that a block's calls are typed as any call is.
+/// `called(Instruction)`, so that a block's calls are typed as any call is. Outside a block an
+/// instruction cannot run: a program reaching such a call is refused, at the call.
 pub const called: Item = Item::new(&["lang", "arch", "called"]);

@@ -1,20 +1,22 @@
 //! Primitives called at run time: integer arithmetic in the storage of the result's range
 //! (spec 04, rule 1), comparisons of integers through their borrows, narrowings, whether an
 //! integer fits a type, the variant of an enum value, a vector as its lanes and back, and the
-//! memory operations of `lang.mem` (`memory.rs`).
+//! memory operations of `lang.mem` (`memory.rs`); a library's report refuses the program.
 
 use vun_lir::{Access, BinOp, Cond, Scalar, Value};
 use vun_mir::Operand;
 use vun_primitives::Primitive;
+use vun_primitives::diag::Diag;
 use vun_primitives::hint::Hint;
 use vun_primitives::int::Int;
 use vun_primitives::meta::Meta;
 use vun_primitives::simd::Simd;
 use vun_sema::callable::Callable;
+use vun_sema_ty::trap::Reason;
 use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
-use crate::unlowered::{Form, Unlowered};
+use crate::unlowered::{Form, Unlowered, Why};
 
 impl FnLower<'_, '_, '_> {
     pub(crate) fn primitive(
@@ -110,6 +112,18 @@ impl FnLower<'_, '_, '_> {
             // A hint changes nothing the program does; after `unreachable`, the block MIR ends
             // there says so.
             Primitive::Hint(Hint::cold | Hint::unreachable) => Ok(()),
+            // Library code reached at run time that reports an error refuses the program.
+            Primitive::Diag(Diag::error) => {
+                let constants: Option<Vec<Constant>> = args
+                    .iter()
+                    .map(|a| match a {
+                        Operand::Const(value) => Some(value.clone()),
+                        Operand::Place(_) => None,
+                    })
+                    .collect();
+                let reason = constants.as_deref().and_then(Reason::reported).ok_or_else(unsupported)?;
+                Err(Unlowered::new(at, Why::Reported(reason)))
+            }
             _ => Err(unsupported()),
         }
     }

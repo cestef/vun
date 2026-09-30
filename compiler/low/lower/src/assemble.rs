@@ -75,23 +75,23 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
     ) -> Result<Vec<Piece>, Unlowered> {
         let cx = self.l.types.cx;
         let mut pieces: Vec<Piece> = Vec::new();
-        for f in &program.functions {
+        for f in program.instantiations() {
             self.functions.insert(f.clone(), FuncId::new(pieces.len()));
             pieces.push(Piece::of(f, false, unchecked));
         }
         let suspends = |f: &&Instantiation| cx.get::<Concrete>(f).is_ok_and(|b| b.suspends());
-        for f in program.functions.iter().filter(suspends) {
+        for f in program.instantiations().filter(suspends) {
             self.ends.insert(f.clone(), FuncId::new(pieces.len()));
             pieces.push(Piece::of(f, true, unchecked));
         }
         for &(ty, name) in &program.constructors {
-            let TyKind::Nominal(nominal) = &*ty else { return Err(Unlowered { at, why: Why::NoLayout(ty) }) };
+            let TyKind::Nominal(nominal) = &*ty else { return Err(Unlowered::new(at, Why::NoLayout(ty))) };
             self.constructors.insert((ty, name), FuncId::new(pieces.len()));
             pieces.push(Piece::Constructor { nominal: nominal.clone(), name });
         }
         for &(i, symbol) in &program.exports {
             // A coroutine function's frames are built where it is called: it has no symbol.
-            let f = &program.functions[i];
+            let f = &program.functions[i].i;
             if self.ends.contains_key(f) {
                 return Err(Unlowered::unsupported(f.f.literal.expr.origin, Form::Frame));
             }

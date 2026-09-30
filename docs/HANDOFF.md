@@ -7,8 +7,8 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 673 tests pass; clippy,
-`cargo gen --check`, `lines` and `layers` are clean; the corpus has 305 passing programs and 3
+Everything is committed in the main chain; no `jj` workspace holds work. 668 tests pass; clippy,
+`cargo gen --check`, `lines` and `layers` are clean; the corpus has 309 passing programs and 3
 planned, and LIR lowers every function the corpus reaches.
 
 Built: the front end, packages and the store, the persisted parallel query engine, sema, MIR and
@@ -27,7 +27,15 @@ every card, and `cargo xtask layers` writes `layers.toml` from `RANKS`. Open: re
 variants no longer declared, as `cargo gen` does; code in the tall and square clips is small at 80
 columns; the overlays are not yet tried in OBS itself.
 
-Last landed (338, 339): lints run. A `lang.lint.Lint` states a check per kind of node (`.decl`,
+Last landed (344 to 346): a `lang.diag.error` reached at run time refuses the program at the call
+that led to it (a program's functions record the statement that reached each, `Reached`; a
+lowering failure carries the calls through generic instantiations as frames, and a library's
+report comes before other failures), so an instruction called outside a block is refused at the
+call and `lang.arch.outside` is gone; impls whose witness a constructor or `_` makes are checked
+where used (`witness::Conformance`, shared with the file check; the owner's choice); spread
+members of a `struct` body are members of its type (`Found::Spread`, one spread reading in
+`vun_hir::tree::Spread::{target, names}` for namespaces and types), which fixed
+`lang.arch.x86_64.names.mov` typing as nothing. Before that (338, 339): lints run. A `lang.lint.Lint` states a check per kind of node (`.decl`,
 `.call`); the `Linted` query, part of `Checked`, runs each lint a file's package and its
 dependencies define on each node through `lang.lint.reports`, a pure compile-time call, unless a
 `#[lint.allow(lint, "reason")]` around it silences it. `std.lints.naming.case` (deny) holds every
@@ -94,8 +102,9 @@ the parser reading the tables), 324 (language server features), 325 (DWARF subpr
 (exported data), 328 (a constant shifted by a run-time amount has no width), 329 (board
 peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
 `sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
-gone), 341 (the checks' shadow reserved span by span). 279 (static Linux targets), 282 (`&mut T` where `&T` is) and 326 (section
-placements) were the owner's choice.
+gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
+(spread members of type bodies). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+(section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
 
@@ -112,8 +121,6 @@ placements) were the owner's choice.
 
 ## For the owner
 
-- Forget and delete the `regalloc-2f` workspace directory (`ws-regalloc`, 3.2 GB, content ported)
-  if it is still on disk.
 - `~/.config/vun/toolchain.vun` needs a `linux.gnu.arm64` row (same compiler, sysroot and runner
   as `linux.arm64`) for glibc arm64 programs.
 
@@ -136,10 +143,10 @@ placements) were the owner's choice.
    Checked: fmt, clippy, gen --check, lines, corpus, full nextest and `VUN_QUERY_CHECK=1` driver
    tests on am3, the asm driver tests on petal (x86), tree-sitter (204 of 204 agree), the parse
    fuzzer (3 minutes).
-   Open: calling an instruction outside a block fails in MIR at `lang.arch.outside` with an
-   origin inside `lib/lang/lang/arch.vun`; it should be refused at the caller's call (carry the
-   instantiation's call site through lowering failures). Holed impls (`_`) are not checked
-   against the interface's requirements.
+   The open points of (a) landed (344 to 346). Open still: `for` over a witness made per use
+   (`Env::witness`, `Typer::iteration`) is not checked for conformance, having no use site at
+   hand; an instruction value whose table holds types (`[0]type`) has no run-time layout, which
+   only a library's report now hides.
    (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
    tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
    (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension

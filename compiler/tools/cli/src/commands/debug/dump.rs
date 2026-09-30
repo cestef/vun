@@ -138,7 +138,7 @@ impl Stage {
                 for &(at, symbol) in &program.exports {
                     writeln!(out, "export {symbol}: fn {at}")?;
                 }
-                for (at, i) in program.functions.iter().enumerate() {
+                for (at, i) in program.instantiations().enumerate() {
                     let origin = i.f.literal.expr.origin;
                     writeln!(out, "fn {at} at {}", session.sources.locate(session.source_span(origin)))?;
                     match session.db.get::<Concrete>(i) {

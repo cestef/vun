@@ -31,9 +31,6 @@ pub enum Arch {
     label,
     /// Marks the next instruction with `at`.
     place,
-    /// What an instruction called outside a block does: it cannot run there, so a program calling one
-    /// is refused where it is built.
-    outside,
 }
 impl Arch {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::arch;
@@ -50,7 +47,6 @@ impl Arch {
         Self::here,
         Self::label,
         Self::place,
-        Self::outside,
     ];
     /// The declaration's name.
     #[must_use]
@@ -68,7 +64,6 @@ impl Arch {
             Self::here => "here",
             Self::label => "label",
             Self::place => "place",
-            Self::outside => "outside",
         }
     }
     /// The declaration.
@@ -87,7 +82,6 @@ impl Arch {
             Self::here => vun_items::lang::arch::here,
             Self::label => vun_items::lang::arch::label,
             Self::place => vun_items::lang::arch::place,
-            Self::outside => vun_items::lang::arch::outside,
         }
     }
 }
