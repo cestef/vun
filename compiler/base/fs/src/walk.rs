@@ -49,6 +49,13 @@ pub trait Tree {
     /// # Errors
     /// Returns an error if the path does not exist or an entry cannot be read.
     fn size(&self) -> io::Result<u64>;
+
+    /// Its absolute path, links resolved; the empty path, which the directory of a file named
+    /// relatively in the current one is, names the current directory.
+    ///
+    /// # Errors
+    /// Returns an error if the path does not exist.
+    fn resolved(&self) -> io::Result<PathBuf>;
 }
 
 impl Tree for Path {
@@ -81,5 +88,9 @@ impl Tree for Path {
 
     fn size(&self) -> io::Result<u64> {
         self.files()?.iter().try_fold(0, |total, f| Ok(total + f.metadata()?.len()))
+    }
+
+    fn resolved(&self) -> io::Result<PathBuf> {
+        if self.as_os_str().is_empty() { Path::new(".") } else { self }.canonicalize()
     }
 }

@@ -63,7 +63,7 @@ impl Session {
     /// shared file they are layered over, or, when there are none, the newest shared file.
     pub(crate) fn restore(&mut self, root: &Path) {
         let own = match self.persistence {
-            Persistence::On => Self::saved_at(root),
+            Persistence::On => self.saved_at(root),
             Persistence::Off | Persistence::At(_) => None,
         };
         if let Some(path) = &own {
@@ -191,12 +191,11 @@ impl Session {
         }
     }
 
-    /// The file queries are saved in for `root`, named by the running toolchain: its path, size
-    /// and time of change, which every build changes.
-    #[must_use]
-    pub fn saved_at(root: &Path) -> Option<PathBuf> {
-        let dir = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(QUERIES);
-        Some(dir.join(Self::toolchain()?.finish_hash().digest()))
+    /// The file queries are saved in for `root`, in its project's work directory, named by the
+    /// running toolchain: its path, size and time of change, which every build changes.
+    pub fn saved_at(&mut self, root: &Path) -> Option<PathBuf> {
+        let digest = Self::toolchain()?.finish_hash().digest();
+        Some(self.work(root).join(QUERIES).join(digest))
     }
 
     /// A hasher fed the running toolchain: its path, size and time of change, which every build

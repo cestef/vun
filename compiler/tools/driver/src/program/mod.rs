@@ -73,7 +73,7 @@ impl Session {
         tracing::info!(backend = coded.backend.0, artifacts = coded.artifacts.len(), "coded");
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
-        let builds = root.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(BUILDS);
+        let builds = self.work(&root).join(BUILDS);
         let compiler = &coded.target.c.compiler;
         let profile = self.codegen.profile;
         let dir = builds.join(cache::Objects::key(&coded.artifacts, &coded.target, profile).digest());

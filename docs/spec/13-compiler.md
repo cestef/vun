@@ -96,7 +96,7 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   `vun-codec` (`#[derive(Encode, Decode)]`). A handle into a process table (a symbol, an
   interned value, a file, an origin) is written once per file by content and recorded again when
   read, and those tables are the process's, as interners are. Memos are saved by query name and
-  key position in `.vun/queries/<toolchain>` beside the root file, the toolchain named by its
+  key position in `.vun/queries/<toolchain>` of the root file's project (spec 12, section 5), the toolchain named by its
   executable. A memo whose trace reads a query that is not persisted is not saved; inputs
   (`Query::INPUT`) never are. A loaded memo is verified before its first use like any memo of an
   earlier revision, so a stale file costs recomputation, never a wrong result; a traced memo
@@ -752,7 +752,7 @@ a backtrace walks), the flags its links take (bare
 metal: `-nostdlib -nostartfiles`), the libraries of its own they name after the objects (`gcc`
 where it links none by itself), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
-`.vun/build/<content hash>/` next to the root file, the hash of the artifacts, the C compiler
+`.vun/build/<content hash>/` of the root file's project, the hash of the artifacts, the C compiler
 and the profile, compiles each source with it through `vun-tool`, in parallel, with
 `-fstack-usage` where it has it (`vun debug dump frames` prints the sizes read back,
 `Backend::frame_sizes`), and links with the target's linker. What the directory holds is kept:
@@ -1379,13 +1379,13 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   debug` prints: those of any file, of a package's `build.vun`, of the program a root file
   exports, as the file is one), a `source` action running the command `vun.view`.
 - *Commands.* `workspace/executeCommand` carries out the commands the server announces, one row
-  each. `vun.view` writes a view of a document beside it, in `.vun/views/<file>.<view>`, and asks
+  each. `vun.view` writes a view of a document in its project's `.vun/views/<path>.<view>`, at the document's path in the project,, and asks
   the client to show it (`window/showDocument`); what computing it reports is left to the
   document's diagnostics. `vun.run` builds the program the document exports and runs it, without
-  input, its output written to `.vun/views/<file>.run` as it comes, then how it ended; what stops
+  input, its output written to `.vun/views/<path>.run` as it comes, then how it ended; what stops
   the build is written there instead. `vun.test` builds the tests' program of the document's
   namespace (spec 11) and runs one test by name, what `vun test` reports of it written to
-  `.vun/views/<file>.test` as it comes. When the run ends, how each test ended is kept until its
+  `.vun/views/<path>.test` as it comes. When the run ends, how each test ended is kept until its
   document changes: its lens's title says it (`Test: trapped`), a trap is published as an error
   where it fired, in whichever open document that is, and the client is asked to refresh its
   lenses (`workspace/codeLens/refresh`). The server's loop handles events: the messages the

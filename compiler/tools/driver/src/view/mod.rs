@@ -10,6 +10,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use vun_data::{FromData, ToData};
+use vun_fs::Tree;
 use vun_span::FileId;
 use vun_variants::Variants;
 
@@ -89,22 +90,6 @@ impl View {
         }
     }
 
-    /// Where the view of the file at `source` is written to be shown: beside it, in the work
-    /// directory, named by the file and the view.
-    #[must_use]
-    pub fn beside(self, source: &Path) -> PathBuf {
-        Self::shown(source, self.name())
-    }
-
-    /// Where what an editor shows of the file at `source` is written, as `shown` names it: beside
-    /// the file, in the work directory.
-    #[must_use]
-    pub fn shown(source: &Path, shown: &str) -> PathBuf {
-        let name = source.file_name().unwrap_or_default().to_string_lossy();
-        let dir = source.parent().unwrap_or(Path::new("")).join(vun_fs::WORK).join(VIEWS);
-        dir.join([&*name, shown].join("."))
-    }
-
     #[must_use]
     pub const fn subject(self) -> Subject {
         match self {
@@ -151,5 +136,25 @@ impl Session {
             View::Code => self.dump_code(file, out),
             View::Frames => self.dump_frames(file, out),
         }
+    }
+}
+
+impl Session {
+    /// Where what an editor shows of the file at `source` is written, as `shown` names it (a
+    /// view's name, or the output of a run): in its project's work directory, at the file's path
+    /// in the project, so that files of one name in two directories do not meet.
+    pub fn shown_at(&mut self, source: &Path, shown: &str) -> PathBuf {
+        let project = self.project_dir(source).resolved();
+        let file = source.resolved();
+        let relative = match (&file, &project) {
+            (Ok(file), Ok(project)) => file.strip_prefix(project).ok(),
+            _ => None,
+        };
+        let relative =
+            relative.map_or_else(|| PathBuf::from(source.file_name().unwrap_or_default()), Path::to_path_buf);
+        let mut name = relative.into_os_string();
+        name.push(".");
+        name.push(shown);
+        self.work(source).join(VIEWS).join(name)
     }
 }

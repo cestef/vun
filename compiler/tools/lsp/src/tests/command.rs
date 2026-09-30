@@ -29,7 +29,7 @@ fn each_view_of_a_file_is_a_source_action_whose_command_writes_and_shows_it() {
         let params =
             ExecuteCommandParams { command: command.command.clone(), arguments: command.arguments.clone() };
         assert_eq!(client.request::<r::ExecuteCommand>(&params).unwrap(), None);
-        let path = View::Layout.beside(&uri.to_file_path().unwrap());
+        let path = client.server.session.shown_at(&uri.to_file_path().unwrap(), View::Layout.name());
         assert!(!std::fs::read(&path).unwrap().is_empty());
         let asked = std::mem::take(&mut client.server.outbox);
         let shown = asked.iter().find(|m| m.method.as_deref() == Some(r::ShowDocument::METHOD)).unwrap();

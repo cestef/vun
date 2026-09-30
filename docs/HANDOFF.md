@@ -228,9 +228,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    by the form and by the value. A function evaluated while a `$if` step is typed cannot pass
    one of its run-time locals to a `$` parameter (`same(type, t, A)` inside a `for`:
    `comptime.unsupported`), though the same call evaluates at compile time elsewhere.
-5. Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters. Workspaces: one
-   shared `.vun/` for the members (each keeps its own beside its root files; the saved queries,
-   builds and views all derive it from a root file's directory).
+5. Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.

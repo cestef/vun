@@ -1,14 +1,16 @@
-//! Carrying out a package's plan (spec 12, section 2): `vun build` on a `build.vun` runs its
-//! `build` and builds each program the plan records, in a session of its own, since a session
-//! compiles for one target. Steps this toolchain does not carry out yet are warnings.
+//! Carrying out a package's plan (spec 12, section 2): `vun build` on a package runs its `build`
+//! and builds each program the plan records, in a session of its own, since a session compiles
+//! for one target, or only the program rooted at a file named. Steps this toolchain does not
+//! carry out yet are warnings.
 
 use std::path::{Path, PathBuf};
 
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_fs::Tree;
 use vun_link::{MemoryRegion, SectionPlacement};
 use vun_origin::OriginId;
 use vun_sema::target::Choice;
-use vun_sema_plan::{Action, Options};
+use vun_sema_plan::{Action, Options, Plan};
 use vun_span::{FileId, SourceMap};
 use vun_trace::tracing;
 
@@ -44,23 +46,12 @@ impl Session {
     /// # Panics
     /// Never: a plan that did not run, or a build that stopped, is reported.
     pub fn carry_out(&mut self, file: FileId) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
-        let Some(plan) = self.plan(file) else {
-            return Err(self.diag.failed().expect("a plan that did not run is reported"));
-        };
-        let steps = Action::steps(&plan).map_err(|(step, why)| {
-            let msg = Msg::new()
-                .text("step ")
-                .num(i128::try_from(step + 1).unwrap_or(i128::MAX))
-                .text(" of the plan is not a ")
-                .code(vun_items::std::build::Action.to_string());
-            self.diag.error(Diagnostic::error(errors::PLAN_UNREAD, msg).at(plan.at, None).caused_by(&why))
-        })?;
-        let dir = Path::new(&self.sources.file(file).path).parent().unwrap_or(Path::new("")).to_path_buf();
+        let (plan, steps, dir) = self.steps(file)?;
         let mut built = Vec::new();
         for (step, action) in steps.iter().enumerate() {
             let pending = match action {
                 Action::Program(options) => {
-                    built.push(self.build_program(&dir, options, plan.at)?);
+                    built.push(self.build_program(&dir, options, plan.at, None)?);
                     continue;
                 }
                 Action::Dep { params, .. } if params.is_empty_record() => continue,
@@ -82,6 +73,47 @@ impl Session {
             );
         }
         Ok(built)
+    }
+
+    /// Builds the program the plan of the package whose `build.vun` is `file` records with its
+    /// root at `root`, with the options the plan gives it, written to `output` when given;
+    /// `None` when the plan records no program rooted there.
+    ///
+    /// # Errors
+    /// Returns once what stopped it is reported.
+    pub fn planned(
+        &mut self,
+        file: FileId,
+        root: &Path,
+        output: Option<&Path>,
+    ) -> Result<Option<PathBuf>, ErrorGuaranteed> {
+        let (plan, steps, dir) = self.steps(file)?;
+        let wanted = root.resolved().ok();
+        let rooted = steps.iter().find_map(|action| match action {
+            Action::Program(options) if dir.join(options.root.as_str()).resolved().ok() == wanted => {
+                Some(options)
+            }
+            _ => None,
+        });
+        rooted.map(|options| self.build_program(&dir, options, plan.at, output)).transpose()
+    }
+
+    /// The plan of the package whose `build.vun` is `file`, its steps, and the directory their
+    /// roots are relative to.
+    fn steps(&mut self, file: FileId) -> Result<(Plan, Vec<Action>, PathBuf), ErrorGuaranteed> {
+        let Some(plan) = self.plan(file) else {
+            return Err(self.diag.failed().expect("a plan that did not run is reported"));
+        };
+        let steps = Action::steps(&plan).map_err(|(step, why)| {
+            let msg = Msg::new()
+                .text("step ")
+                .num(i128::try_from(step + 1).unwrap_or(i128::MAX))
+                .text(" of the plan is not a ")
+                .code(vun_items::std::build::Action.to_string());
+            self.diag.error(Diagnostic::error(errors::PLAN_UNREAD, msg).at(plan.at, None).caused_by(&why))
+        })?;
+        let dir = Path::new(&self.sources.file(file).path).parent().unwrap_or(Path::new("")).to_path_buf();
+        Ok((plan, steps, dir))
     }
 
     /// The program to run among those `built`: the one there is, else `None` once why none is
@@ -116,6 +148,7 @@ impl Session {
         dir: &Path,
         options: &Options,
         at: OriginId,
+        output: Option<&Path>,
     ) -> Result<PathBuf, ErrorGuaranteed> {
         let mut session = self.child(Choice::Given(Box::new(options.target.clone())));
         session.codegen.output = options.output;
@@ -138,7 +171,8 @@ impl Session {
             .collect();
         let root = dir.join(options.root.as_str());
         tracing::info!(root = %root.display(), arch = %options.target.spec.arch, "building a program of the plan");
-        let result = session.load(&root).ok_or(()).and_then(|file| session.build(file, None).map_err(|_| ()));
+        let result =
+            session.load(&root).ok_or(()).and_then(|file| session.build(file, output).map_err(|_| ()));
         self.diag.absorb(&session.diag);
         result.map_err(|()| self.diag.failed().expect("a build that stopped is reported"))
     }

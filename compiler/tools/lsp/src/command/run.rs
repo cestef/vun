@@ -8,7 +8,6 @@ use std::path::Path;
 use std::process::Stdio;
 
 use vun_data::{FromData, ToData};
-use vun_driver::view::View;
 use vun_fs::Edit;
 use vun_lsp_protocol::base::TextDocumentIdentifier;
 use vun_lsp_protocol::command::CodeLens;
@@ -60,7 +59,8 @@ impl Server<'_> {
     /// comes, and shown; what stops the build is written there instead.
     pub(super) fn run_program(&mut self, ran: &Ran) -> Result<(), Failure> {
         let document = self.document(&ran.text_document)?;
-        let (file, path) = (document.file, View::shown(&document.path, OUTPUT));
+        let (file, source) = (document.file, document.path.clone());
+        let path = self.session.shown_at(&source, OUTPUT);
         let mut output = Self::output(&path)?;
         let Ok(program) = self.session.build(file, None) else {
             self.stopped(&mut output)?;

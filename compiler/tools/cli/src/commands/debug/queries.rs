@@ -81,7 +81,7 @@ impl Row for Held<'_> {
 
 pub(super) fn queries(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let root = args.value(&FILE).expect("positional parameters are present when a command runs");
-    let Some(path) = Session::saved_at(Path::new(root)) else { return Ok(Outcome::Failure) };
+    let Some(path) = session.saved_at(Path::new(root)) else { return Ok(Outcome::Failure) };
     let unreadable = |session: &mut Session, cause: &(dyn std::error::Error + 'static)| {
         let msg = Msg::new().text("cannot read the saved queries ").code(path.display().to_string());
         session.diag.error(Diagnostic::error(errors::IO_UNREADABLE_FILE, msg).caused_by(cause));

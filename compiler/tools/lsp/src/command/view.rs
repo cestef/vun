@@ -43,7 +43,8 @@ impl Server<'_> {
     /// Writes the view `viewed` asks for beside its document, and asks the client to show it.
     pub(super) fn show_view(&mut self, viewed: &Viewed) -> Result<(), Failure> {
         let document = self.document(&viewed.text_document)?;
-        let (file, path) = (document.file, viewed.view.beside(&document.path));
+        let (file, source) = (document.file, document.path.clone());
+        let path = self.session.shown_at(&source, viewed.view.name());
         let mut text = Vec::new();
         let written = self.session.view(viewed.view, file, &mut text).and_then(|()| path.put(text));
         written.map_err(Failure::unwritten)?;

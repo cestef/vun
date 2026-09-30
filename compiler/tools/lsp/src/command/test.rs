@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 
 use vun_data::{FromData, ToData};
 use vun_driver::testing::{self, Options, Outcome, Place, Said, Trapped};
-use vun_driver::view::View;
 use vun_lsp_protocol::base::{Position, PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::command::CodeLens;
 use vun_lsp_protocol::document::{Diagnostic, Severity};
@@ -57,7 +56,7 @@ impl Server<'_> {
     /// build is written there instead.
     pub(super) fn run_test(&mut self, tested: &Tested) -> Result<(), Failure> {
         let source = self.document(&tested.text_document)?.path.clone();
-        let path = View::shown(&source, OUTPUT);
+        let path = self.session.shown_at(&source, OUTPUT);
         let mut output = Self::output(&path)?;
         let subject = self.session.subject(Some(&source)).map_err(Failure::unwritten)?;
         let root = subject.and_then(|s| s.tested().into_iter().next()).map(|(root, _)| root);

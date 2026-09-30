@@ -5,10 +5,11 @@
 use std::io;
 use std::path::PathBuf;
 
+use vun_build::layout::MANIFEST;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_doc::Docs;
-use vun_fs::{Edit, Tree, WORK};
+use vun_fs::{Edit, Tree};
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use vun_driver::Session;
@@ -72,7 +73,8 @@ fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     for package in &packages {
         session.document(&mut docs, package)?;
     }
-    let dir = args.value(&OUTPUT).map_or_else(|| packages[0].join(WORK).join(DOCS), PathBuf::from);
+    let work = session.work(&packages[0].join(MANIFEST));
+    let dir = args.value(&OUTPUT).map_or_else(|| work.join(DOCS), PathBuf::from);
     for written in docs.site() {
         dir.join(&written.path).put(written.contents)?;
     }

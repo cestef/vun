@@ -140,7 +140,7 @@ cargo run -q -p vun-cli -- target list           # every target: backend, linker
 cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
 ```
 
-Saved queries live in `.vun/queries/` beside the root file (delete it to start cold), builds in
+Saved queries live in `.vun/queries/` of the project (its package's directory, a workspace's root, or beside a file outside any package; delete it to start cold), builds in
 `.vun/build/`. The libraries' memos are shared entries of the store (`<store>/memos`, per
 toolchain, target and checks).
 

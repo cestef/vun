@@ -161,3 +161,24 @@ build := (b: &mut std.build.Build) {
     let (programs, reported) = fixture.carried(build, APP, Some(vun_link_mold::INFO.id.symbol()));
     assert_eq!((programs, reported), (Vec::new(), vec![errors::LINK_UNSUPPORTED]));
 }
+
+#[test]
+fn a_root_file_the_plan_records_builds_as_the_plan_says() {
+    if !HOSTED {
+        return;
+    }
+    let fixture = Fixture::new("plan-rooted");
+    let build = "\
+build := (b: &mut std.build.Build) {
+    b.program(.{ .root = \"app.vun\", .target = targets.linux.x86_64.kernel });
+};
+";
+    let path = fixture.root.write(MANIFEST, format!("{PACKAGE}\n{build}"));
+    let app = fixture.root.write("app.vun", APP);
+    let other = fixture.root.write("other.vun", APP);
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let program = session.planned(file, &app, None).unwrap().expect("the plan records `app.vun`");
+    assert_eq!(std::process::Command::new(program).status().unwrap().code(), Some(7));
+    assert_eq!(session.planned(file, &other, None).unwrap(), None, "nothing the plan records");
+}

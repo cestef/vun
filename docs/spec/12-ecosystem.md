@@ -44,7 +44,7 @@ blinky/
   fuzz/                 corpus and crash inputs, per test
   docs/                 guides; API docs come from doc comments
   vendor/               only after `vun pkg vendor`
-  .vun/               the toolchain's builds and saved queries, ignored by version control and never package content
+  .vun/               the project's builds, saved queries and editor views, ignored by version control and never package content; one per project, a workspace's at its root
 ```
 
 No directory name is significant to the compiler except through `build.vun`, which states the roots.
@@ -270,11 +270,11 @@ toolchain is recorded as `toolchain := .{ .version, .hash }` (section 6).
 A root `build.vun` may declare `.members = .{ "pkgs/hal", "pkgs/app" }`, directories below it each
 holding a package. The root is a package too, and with its members it is one project: its graph
 is theirs together, the root's `toolchain` and `replace` apply to them, and they share the root's
-lockfile, which records every member's dependencies. Members refer to each other by path. A
+lockfile, which records every member's dependencies, and its `.vun/`. Members refer to each other by path. A
 member whose directory holds no package is `package.missing_member`. A command given the root's
 directory, or no path at or below the root outside any member, acts on each package of the
 workspace, the root first (section 7); given a member's, or no path inside one, on that member.
-Members do not share one `.vun/` yet: each keeps its own beside its root files. `vun pkg tag`
+`vun pkg tag`
 releases members, running the API diff (section 7) first.
 
 ## 6. Toolchain
@@ -370,7 +370,7 @@ package's directory, and with none the package around the current directory, its
 | Command | Does |
 |---------|------|
 | `vun build [path]` (`b`) | build the program a root file exports, or carry out the plan of a package, or of each package of a workspace; `--library shared` or `static` builds a library of a file's exports |
-| `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); words after `--` go to the program |
+| `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); a file the plan records as a program's root is built with the plan's options for it, any other as a program of its own; words after `--` go to the program |
 | `vun check [path]` (`c`) | analyze without generating code: a file and what its program reaches, every file of a directory, or of a package with its plan, or of each package of a workspace |
 | `vun test [path] [names]...` (`t`) | build and run the tests of a namespace (spec 11): a file, a directory or a package's directory, the package around the current directory when none; only the tests `names` names, when it names some |
 | `vun fix [path] [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |

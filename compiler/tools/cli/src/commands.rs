@@ -211,7 +211,18 @@ impl Inputs for Session {
         let built = if !ready {
             None
         } else if let Some(file) = subject.file() {
-            self.load(file).and_then(|file| self.build(file, output).ok()).map(|p| vec![p])
+            // A program its package's plan records is built as the plan says; any other file
+            // builds as a program of its own.
+            let planned = match &subject {
+                Subject::Package { dir, .. } => {
+                    self.load(&dir.join(MANIFEST)).and_then(|plan| self.planned(plan, file, output).ok())
+                }
+                Subject::Loose(_) | Subject::Workspace { .. } => Some(None),
+            };
+            planned.and_then(|planned| match planned {
+                Some(program) => Some(vec![program]),
+                None => self.load(file).and_then(|file| self.build(file, output).ok()).map(|p| vec![p]),
+            })
         } else {
             // A package's plan records its programs; a workspace builds each package's.
             let plans = subject.packages().into_iter().map(|dir| {
