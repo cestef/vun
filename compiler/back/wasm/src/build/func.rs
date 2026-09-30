@@ -118,7 +118,8 @@ impl<'a> Lower<'a> {
         self.op(Op::GlobalSet(sp));
         for (slot, data) in self.f.slots.iter() {
             let at = self.alloc(data.size, data.align);
-            debug_assert_eq!(self.frame.slots.push(at), slot);
+            let pushed = self.frame.slots.push(at);
+            debug_assert_eq!(pushed, slot);
         }
     }
 
