@@ -27,11 +27,10 @@ impl Attributes<'_, '_> {
         self.env.attribute(&self.exprs, attr)
     }
 
-    /// The value of each attribute written here that has one: plain data, which its reader finds
-    /// by type (`#[Registers{ .class = .general }]`).
+    /// The value of each attribute written here that has one (`Env::values`).
     #[must_use]
     pub fn values(&self) -> Vec<Value> {
-        self.exprs.iter().filter_map(|&attr| self.env.eval(attr).ok()).collect()
+        self.env.values(&self.exprs)
     }
 
     /// The count `attr` gives, as `n` of `#[comptime.fuel(n)]`.

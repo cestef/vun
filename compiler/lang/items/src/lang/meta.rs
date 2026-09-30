@@ -35,6 +35,8 @@ pub const name_eq: Item = Item::new(&["lang", "meta", "name_eq"]);
 pub const Any: Item = Item::new(&["lang", "meta", "Any"]);
 /// `value`, of type `T`, as an `Any`.
 pub const any: Item = Item::new(&["lang", "meta", "any"]);
+/// The value `a` holds, when it is of type `T`.
+pub const value: Item = Item::new(&["lang", "meta", "value"]);
 /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
 pub const append: Item = Item::new(&["lang", "meta", "append"]);
 /// The items of `a` followed by those of `b`, in compile-time memory.

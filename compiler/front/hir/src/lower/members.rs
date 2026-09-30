@@ -79,15 +79,17 @@ impl Lower<'_, '_> {
 
     fn variants(&mut self, nodes: Vec<NodeId>) -> List<Variant> {
         self.entries(nodes, &mut |this, n| {
-            let (inner, doc, _) = this.annotations(n);
+            let (inner, doc, attrs) = this.annotations(n);
             let origin = this.origin(inner);
             match this.kind(inner) {
-                NodeKind::Name => Some(Variant { name: this.name(inner), payload: Vec::new(), doc, origin }),
+                NodeKind::Name => {
+                    Some(Variant { name: this.name(inner), payload: Vec::new(), attrs, doc, origin })
+                }
                 NodeKind::Call => {
                     let f = this.fields(inner);
                     let name = f.one(NodeField::Callee).map_or(Name::Hole, |c| this.name(c));
                     let payload = f.get(NodeField::Args).iter().map(|&a| this.expr(a)).collect();
-                    Some(Variant { name, payload, doc, origin })
+                    Some(Variant { name, payload, attrs, doc, origin })
                 }
                 _ => None,
             }

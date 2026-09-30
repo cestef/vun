@@ -39,6 +39,13 @@ impl Env<'_, '_> {
         attrs.iter().find_map(|&attr| self.arguments(attr, primitive))
     }
 
+    /// The value of each of `attrs` that has one here: plain data, which its reader finds by
+    /// type (`#[Registers{ .class = .general }]`).
+    #[must_use]
+    pub fn values(&self, attrs: &[ExprId]) -> Vec<Value> {
+        attrs.iter().filter_map(|&attr| self.eval(attr).ok()).collect()
+    }
+
     /// The arguments of each attribute `primitive` among `attrs` whose arguments have a value
     /// here, as [`Self::attribute`] gives the first: `#[lint.allow(..)]` written once per lint.
     #[must_use]

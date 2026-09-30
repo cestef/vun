@@ -89,7 +89,8 @@ impl MemberTable {
                 }
                 let default = field.default.map(|d| ExprRef::new(env.file.clone(), hir, d));
                 let offset = env.count(&field.attrs, Primitive::Layout(Layout::offset));
-                self.fields.push(Field { name, ty: env.ty(field.ty), visible, default, offset });
+                let attrs = env.values(&field.attrs);
+                self.fields.push(Field { name, ty: env.ty(field.ty), visible, default, offset, attrs });
             }
             Member::Decl(decl) => {
                 let d = &hir.decls[*decl];
@@ -135,9 +136,9 @@ impl MemberTable {
     fn variants(&mut self, env: &Env<'_, '_>, variants: &List<Variant>) {
         for entry in variants {
             match entry {
-                Entry::One(Variant { name: Name::Plain(name), payload, .. }) => {
+                Entry::One(Variant { name: Name::Plain(name), payload, attrs, .. }) => {
                     let payload = payload.iter().map(|&t| env.ty(t)).collect();
-                    self.variants.push(VariantDef { name: *name, payload });
+                    self.variants.push(VariantDef { name: *name, payload, attrs: env.values(attrs) });
                 }
                 _ => self.complete = false,
             }

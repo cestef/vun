@@ -42,6 +42,8 @@ name_eq := struct {
 Any: type = _;
 /// `value`, of type `T`, as an `Any`.
 any: ($T: type, value: T) -> Any = _;
+/// The value `a` holds, when it is of type `T`.
+value: ($T: type, a: Any) -> ?T = _;
 /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
 append: ($T: type, items: &[T], item: T) -> &static [T] = _;
 /// The items of `a` followed by those of `b`, in compile-time memory.
@@ -68,6 +70,9 @@ Field := struct {
     /// Its position among the parts of its variant.
     index: usize,
     type: type,
+    /// The values of the attributes written on it, plain data found by type (`std.meta.attr`);
+    /// none for an item of a payload.
+    attrs: &[Any],
 };
 
 /// The fields of the struct type `T` in declaration order, generated ones included.
@@ -80,6 +85,8 @@ Variant := struct {
     /// Its position among the variants of its type.
     index: usize,
     parts: &[Field],
+    /// The values of the attributes written on it; none for the variant a struct is.
+    attrs: &[Any],
 };
 
 /// The variants of `T` in declaration order: an enum's, the one a struct is, none for another

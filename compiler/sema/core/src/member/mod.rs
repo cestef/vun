@@ -11,10 +11,10 @@ pub use table::Members;
 
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
-use vun_sema_ty::Ty;
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::{DeclRef, ExprRef, Site};
 use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{Ty, Value};
 
 use crate::visible::Visible;
 
@@ -53,6 +53,8 @@ pub struct Field {
     pub default: Option<ExprRef>,
     /// The offset `#[layout.offset(n)]` places it at, in bytes.
     pub offset: Option<u64>,
+    /// The values of the attributes written on it, evaluated where the struct was built.
+    pub attrs: Vec<Value>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -68,6 +70,8 @@ pub struct MemberDecl {
 pub struct VariantDef {
     pub name: Symbol,
     pub payload: Vec<Result<Ty, Unevaluated>>,
+    /// The values of the attributes written on it, evaluated where the enum was built.
+    pub attrs: Vec<Value>,
 }
 
 /// What a name is among a type's members.

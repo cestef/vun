@@ -29,3 +29,28 @@ variant_name := ($T: type, v: &T) -> &[u8] {
     }
     ""
 };
+
+/// The values of the attributes written on `d`, a field or a variant as reflection gives it
+/// (`lang.meta.Field`, `lang.meta.Variant`): plain data, each with its type, known at compile
+/// time only.
+attrs := ($D: type, $d: D) -> &[lang.meta.Any] { d.attrs };
+
+/// The first attribute written on `d` that is an `A`, as `#[Rename{ .to = "key" }]`.
+attr := ($D: type, $d: D, $A: type) -> ?A {
+    $for a in d.attrs {
+        $if .some(v) = lang.meta.value(A, a) { return .some(v); }
+    }
+    .none
+};
+
+/// Whether an attribute written on `d` is `A`: the type itself, a marker such as `#[test]`, or a
+/// value of it.
+has := ($D: type, $d: D, $A: type) -> bool {
+    $for a in d.attrs {
+        $if .some(t) = lang.meta.value(type, a) {
+            $if same(type, t, A) { return true; }
+        }
+        $if .some(_) = lang.meta.value(A, a) { return true; }
+    }
+    false
+};

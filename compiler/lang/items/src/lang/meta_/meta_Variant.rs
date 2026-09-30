@@ -10,3 +10,5 @@ pub const name: Item = Item::new(&["lang", "meta", "Variant", "name"]);
 /// Its position among the variants of its type.
 pub const index: Item = Item::new(&["lang", "meta", "Variant", "index"]);
 pub const parts: Item = Item::new(&["lang", "meta", "Variant", "parts"]);
+/// The values of the attributes written on it; none for the variant a struct is.
+pub const attrs: Item = Item::new(&["lang", "meta", "Variant", "attrs"]);

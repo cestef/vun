@@ -18,6 +18,7 @@ struct Part {
     name: Symbol,
     index: usize,
     ty: Result<Ty, Unevaluated>,
+    attrs: Vec<Value>,
 }
 
 /// A variant of a type: an enum's, or the one a struct is, named by nothing.
@@ -25,6 +26,7 @@ struct Variant {
     name: Symbol,
     index: usize,
     parts: Vec<Part>,
+    attrs: Vec<Value>,
 }
 
 /// How reflection computes one fact of what it describes.
@@ -35,6 +37,7 @@ const PART: &[(Item, Fact<Part>)] = &[
     (lang::meta_Field::name, |_, p| Ok(Value::string(p.name.as_str()))),
     (lang::meta_Field::index, |_, p| Ok(Value::Int(Integer::from(p.index)))),
     (lang::meta_Field::r#type, |_, p| p.ty.clone().map(Value::Type)),
+    (lang::meta_Field::attrs, |_, p| Ok(Env::held(&p.attrs))),
 ];
 
 /// What reflection tells of a variant, by the descriptor field holding it.
@@ -42,6 +45,7 @@ const VARIANT: &[(Item, Fact<Variant>)] = &[
     (lang::meta_Variant::name, |_, v| Ok(Value::string(v.name.as_str()))),
     (lang::meta_Variant::index, |_, v| Ok(Value::Int(Integer::from(v.index)))),
     (lang::meta_Variant::parts, |env, v| env.describe(lang::meta::Field, &v.parts, PART)),
+    (lang::meta_Variant::attrs, |_, v| Ok(Env::held(&v.attrs))),
 ];
 
 impl Env<'_, '_> {
@@ -59,14 +63,16 @@ impl Env<'_, '_> {
                     name: Symbol::intern(&i.to_string()),
                     index: i,
                     ty: ty.clone(),
+                    attrs: Vec::new(),
                 });
-                Variant { name: v.name, index, parts: parts.collect() }
+                Variant { name: v.name, index, parts: parts.collect(), attrs: v.attrs.clone() }
             });
             return Ok(variants.collect());
         }
         let parts = members.fields.iter().enumerate();
-        let parts = parts.map(|(index, f)| Part { name: f.name, index, ty: f.ty.clone() }).collect();
-        Ok(vec![Variant { name: Symbol::intern(""), index: 0, parts }])
+        let parts =
+            parts.map(|(index, f)| Part { name: f.name, index, ty: f.ty.clone(), attrs: f.attrs.clone() });
+        Ok(vec![Variant { name: Symbol::intern(""), index: 0, parts: parts.collect(), attrs: Vec::new() }])
     }
 
     /// The fields of the struct type `ty`, the parts of its one variant: `Cycle` while they are
@@ -133,11 +139,30 @@ impl Env<'_, '_> {
             Value::Struct { .. } | Value::Variant { .. } => None,
             _ => return Err(Unevaluated::Unsupported),
         };
-        let (name, payload) = match part {
-            Some(part) => (lang::Option::some.symbol(), vec![part]),
+        Ok(Self::optional(option, part))
+    }
+
+    /// `value` as a value of the option type `option`.
+    fn optional(option: Ty, value: Option<Value>) -> Value {
+        let (name, payload) = match value {
+            Some(value) => (lang::Option::some.symbol(), vec![value]),
             None => (lang::Option::none.symbol(), Vec::new()),
         };
-        Ok(Value::Variant { ty: option, name, payload })
+        Value::Variant { ty: option, name, payload }
+    }
+
+    /// `values` as a `&[lang.meta.Any]`, each with its type; one without a type, such as a
+    /// function, is left out, as no `lang.meta.value` could give it back.
+    fn held(values: &[Value]) -> Value {
+        let held = values.iter().filter_map(|v| Some(Value::Any { ty: v.ty()?, value: Box::new(v.clone()) }));
+        Value::Array(held.collect())
+    }
+
+    /// `lang.meta.value(T, a)`, of the option type `option`: what `a` holds, `.some` when it is
+    /// of type `ty`.
+    pub(crate) fn held_value(option: Ty, ty: Ty, any: &Value) -> Result<Value, Unevaluated> {
+        let Value::Any { ty: held, value } = any else { return Err(Unevaluated::Unsupported) };
+        Ok(Self::optional(option, (*held == ty).then(|| value.as_ref().clone())))
     }
 
     fn index_of(value: &Value) -> Result<usize, Unevaluated> {

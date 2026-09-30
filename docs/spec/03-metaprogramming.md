@@ -180,7 +180,7 @@ Hygiene comes from construction, not from renaming passes.
 std.meta.fields(Point)        // [.{ .name = "x", .type = i32, .attrs = ..., .offset = 0 }, ...]
 std.meta.decls(Point)         // declarations, with values and attributes
 std.meta.size(Point)          // 8
-std.meta.attrs(f)             // attributes of a field or declaration
+std.meta.attrs(f)             // attributes of a field or variant, each a `lang.meta.Any`
 std.meta.name_of(Point)       // "Point"
 std.meta.origin(Point)        // the origin chain (spec 10)
 std.meta.TypeOf(p.x + 1)      // the type of an expression, typed and never run
@@ -215,6 +215,13 @@ the frames of a function without writing a call; for a function that does not su
 
 Reflection is read-only. Types are created by writing type literals (with L0 and L1), never by
 assembling descriptor structs.
+
+**Attributes.** A field's or a variant's descriptor holds the values of the attributes written on
+it (`attrs: &[lang.meta.Any]`, each with its type), evaluated where its type was built.
+`lang.meta.value(T, a)` gives what an `Any` holds when it is a `T`, and `std.meta` reads them by
+type: `attr(f, A)` is the first that is an `A` (`.some(r)` for `#[Rename{ .to = "key" }]`), and
+`has(f, A)` tells whether one is `A` itself (a marker such as `#[Skip]`) or an `A`. Attributes are
+compile-time data: these take the descriptor as a `$` parameter.
 
 **Collection.** `std.meta.collect(package, attr)` returns every declaration of `package` that
 carries the attribute `attr`, with its value: the way a pass manager, a lint set or a command table

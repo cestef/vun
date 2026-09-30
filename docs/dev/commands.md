@@ -75,6 +75,11 @@ has rows for `linux.arm64`, `linux.arm`, `bare.cortex_m4f` and `macos.arm64`). K
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
 own target there is `linux.arm64`.
+`remote` is an xtask, built and run on this machine first, and xtask depends on the compiler:
+while the tree does not build here (a `lang` declaration added and used before `cargo gen` wrote
+its handle), mirror by hand (`rsync -a --delete --exclude /target --exclude /.jj ./
+<host>:vun-build/<workspace directory>/`), run `cargo gen` there on a copy without the new uses,
+and bring the generated directories back.
 `--reserve` runs the words on the host's fastest cores, those of the highest `cpu_capacity`
 (`am3.wg`'s 0 and 7 to 10), with the host's services (`system.slice`) confined to the others and
 given them back after, by `systemctl set-property --runtime` (a reboot undoes it too); it needs

@@ -126,7 +126,8 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
-4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.meta.attr`, `std.Dyn`,
+4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.Dyn` (`meta/derive.vun` waits for it and
+   an `Encoder`), declarations' attributes (`std.meta.decls`),
    `testing.Bench`/`Sim` and `mem.copy`. Lints: level `expect` shows as `warn` and never reports
    that a lint stayed silent; the command line sets no levels yet, and dependencies' lints are
    not capped at `warn` when building a dependent (the build's levels apply to its own
@@ -134,7 +135,9 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
    over `#[target.require]`. A trap in a `$` form inside a declaration's value is reported twice,
-   by the form and by the value.
+   by the form and by the value. A function evaluated while a `$if` step is typed cannot pass
+   one of its run-time locals to a `$` parameter (`same(type, t, A)` inside a `for`:
+   `comptime.unsupported`), though the same call evaluates at compile time elsewhere.
 5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed

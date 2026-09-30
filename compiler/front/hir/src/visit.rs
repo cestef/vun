@@ -228,6 +228,7 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
                 if let Computed(e) = variant.name {
                     v.expr(hir, e);
                 }
+                each(v, hir, &variant.attrs);
                 each(v, hir, &variant.payload);
             });
             v.namespace(hir, *ns);

@@ -25,6 +25,8 @@ pub enum Meta {
     Any,
     /// `value`, of type `T`, as an `Any`.
     any,
+    /// The value `a` holds, when it is of type `T`.
+    value,
     /// The items of `items` followed by `item`, in compile-time memory (spec 03, section 7).
     append,
     /// The items of `a` followed by those of `b`, in compile-time memory.
@@ -75,6 +77,7 @@ impl Meta {
         Self::same,
         Self::Any,
         Self::any,
+        Self::value,
         Self::append,
         Self::concat,
         Self::fields,
@@ -106,6 +109,7 @@ impl Meta {
             Self::same => "same",
             Self::Any => "Any",
             Self::any => "any",
+            Self::value => "value",
             Self::append => "append",
             Self::concat => "concat",
             Self::fields => "fields",
@@ -138,6 +142,7 @@ impl Meta {
             Self::same => vun_items::lang::meta::same,
             Self::Any => vun_items::lang::meta::Any,
             Self::any => vun_items::lang::meta::any,
+            Self::value => vun_items::lang::meta::value,
             Self::append => vun_items::lang::meta::append,
             Self::concat => vun_items::lang::meta::concat,
             Self::fields => vun_items::lang::meta::fields,

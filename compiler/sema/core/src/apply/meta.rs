@@ -81,6 +81,11 @@ impl ApplyMeta for Meta {
                 let ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
                 Ok(Value::Any { ty, value: Box::new(value.clone()) })
             }
+            (Self::value, [ty, any]) => {
+                let option =
+                    env.primitive_signature(Primitive::Meta(self), &[Some(ty.clone()), None])?.result;
+                Env::held_value(option, ty.as_type().ok_or(Unevaluated::Unsupported)?, any)
+            }
             (Self::concat, [_, Value::Array(a), Value::Array(b)]) => {
                 Ok(Value::Array(a.iter().chain(b).cloned().collect()))
             }

@@ -68,6 +68,7 @@ pub struct FieldDef {
 pub struct Variant {
     pub name: Name,
     pub payload: Vec<ExprId>,
+    pub attrs: Vec<ExprId>,
     pub doc: Vec<String>,
     pub origin: OriginId,
 }

@@ -10,3 +10,6 @@ pub const name: Item = Item::new(&["lang", "meta", "Field", "name"]);
 /// Its position among the parts of its variant.
 pub const index: Item = Item::new(&["lang", "meta", "Field", "index"]);
 pub const r#type: Item = Item::new(&["lang", "meta", "Field", "type"]);
+/// The values of the attributes written on it, plain data found by type (`std.meta.attr`);
+/// none for an item of a payload.
+pub const attrs: Item = Item::new(&["lang", "meta", "Field", "attrs"]);

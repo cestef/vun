@@ -12,3 +12,12 @@ pub const Quoted: Item = Item::new(&["std", "meta", "Quoted"]);
 pub const code_quoted: Item = Item::new(&["std", "meta", "code_quoted"]);
 /// The name of the variant of its type `T` that `v` is, as declared.
 pub const variant_name: Item = Item::new(&["std", "meta", "variant_name"]);
+/// The values of the attributes written on `d`, a field or a variant as reflection gives it
+/// (`lang.meta.Field`, `lang.meta.Variant`): plain data, each with its type, known at compile
+/// time only.
+pub const attrs: Item = Item::new(&["std", "meta", "attrs"]);
+/// The first attribute written on `d` that is an `A`, as `#[Rename{ .to = "key" }]`.
+pub const attr: Item = Item::new(&["std", "meta", "attr"]);
+/// Whether an attribute written on `d` is `A`: the type itself, a marker such as `#[test]`, or a
+/// value of it.
+pub const has: Item = Item::new(&["std", "meta", "has"]);

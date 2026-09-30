@@ -1,0 +1,42 @@
+//! Attributes written on fields and variants are plain data, which compile-time code reads by
+//! type (spec 02, section 5; spec 03, section 6).
+
+Rename := struct { to: &[u8] };
+Skip := struct {};
+
+Row := struct {
+    #[Rename{ .to = "identifier" }]
+    id: u32,
+    #[Skip]
+    cache: u8,
+    name: u8,
+};
+
+Level := enum {
+    #[Rename{ .to = "warning" }]
+    warn,
+    error,
+};
+
+/// The key a field is written under: its rename, or its name.
+key := ($f: std.meta.Field) -> &[u8] {
+    $if .some(r) = std.meta.attr(f, Rename) { r.to } else { f.name }
+};
+
+/// How many fields of `T` are written: those not marked `#[Skip]`.
+written := ($T: type) -> usize {
+    mut n: usize = 0;
+    $for f in std.meta.fields(T) {
+        $if !std.meta.has(f, Skip) { n += 1; }
+    }
+    n
+};
+
+#[test]
+attributes := () {
+    $assert(key(std.meta.fields(Row)[0]).len() == 10);
+    $assert(key(std.meta.fields(Row)[2]).len() == 4);
+    $assert(written(Row) == 2);
+    $assert(std.meta.has(lang.meta.variants(Level)[0], Rename));
+    $assert(!std.meta.has(lang.meta.variants(Level)[1], Rename));
+};
