@@ -193,6 +193,7 @@ package := struct {
     unnamed := diag.Diag{};
     version_conflict := diag.Diag{};
     stale_lock := diag.Diag{};
+    missing_member := diag.Diag{};
 };
 
 /// A package's plan, which its `build` records (spec 12, section 2).
@@ -201,6 +202,8 @@ plan := struct {
     stopped := diag.Diag{};
     unread := diag.Diag{};
     unsupported := diag.Diag{};
+    nothing_to_run := diag.Diag{};
+    ambiguous_run := diag.Diag{};
 };
 
 /// Running a namespace's tests through `std.testing.runner` (spec 11).

@@ -59,7 +59,8 @@ impl Server<'_> {
         let source = self.document(&tested.text_document)?.path.clone();
         let path = View::shown(&source, OUTPUT);
         let mut output = Self::output(&path)?;
-        let root = self.session.tests_root(Some(&source)).map_err(Failure::unwritten)?;
+        let subject = self.session.subject(Some(&source)).map_err(Failure::unwritten)?;
+        let root = subject.and_then(|s| s.tested().into_iter().next()).map(|(root, _)| root);
         let program = root.and_then(|root| self.session.load(&root)).and_then(|root| {
             let ns = self.session.tested(root, Some(&source))?;
             self.session.build_tests(root, ns, None).ok()

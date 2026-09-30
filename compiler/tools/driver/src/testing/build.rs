@@ -2,7 +2,6 @@
 
 use std::path::{Path, PathBuf};
 
-use vun_build::layout::MANIFEST;
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{Namespace, Package};
 use vun_mir::Roots;
@@ -13,18 +12,6 @@ use vun_span::{EXTENSION, FileId};
 use crate::Session;
 
 impl Session {
-    /// The file the program running the tests at `path` is built from: the manifest of the
-    /// package around `path`, or around the current directory with no path, or, outside any
-    /// package, the file `path` itself. With no path and no package, that is reported.
-    ///
-    /// # Errors
-    /// Fails when the current directory cannot be read.
-    pub fn tests_root(&mut self, path: Option<&Path>) -> std::io::Result<Option<PathBuf>> {
-        let Some(path) = path else { return Ok(self.project()?.map(|(dir, _)| dir.join(MANIFEST))) };
-        let dir = if path.is_dir() { path } else { path.parent().unwrap_or(Path::new("")) };
-        Ok(Some(self.package_around(dir).map_or_else(|| path.to_path_buf(), |(dir, _)| dir.join(MANIFEST))))
-    }
-
     /// The namespace whose tests `path` names, in the package of `root`: a file's or a
     /// directory's of the package, its root one at the package's directory or with no path.
     /// Reported when there is none, as for a file outside any package.

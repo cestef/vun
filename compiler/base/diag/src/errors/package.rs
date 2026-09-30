@@ -19,3 +19,6 @@ pub const PACKAGE_VERSION_CONFLICT: DiagId = DiagId::new(
     "lang.errors.package.version_conflict",
 );
 pub const PACKAGE_STALE_LOCK: DiagId = DiagId::new("lang.errors.package.stale_lock");
+pub const PACKAGE_MISSING_MEMBER: DiagId = DiagId::new(
+    "lang.errors.package.missing_member",
+);

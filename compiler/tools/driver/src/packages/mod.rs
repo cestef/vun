@@ -19,13 +19,14 @@ mod lockfile;
 mod rewrite;
 mod select;
 mod update;
+mod workspace;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use vun_build::layout::MANIFEST;
 use vun_build::lock::{Lock, Replaced, Replacing};
-use vun_build::manifest::{DEFAULT_DEPS, DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
+use vun_build::manifest::{DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, Version};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
@@ -138,20 +139,6 @@ impl Packages {
         if let Some(dir) = path.parent() {
             self.seen.remove(dir);
         }
-    }
-}
-
-impl Package {
-    /// Adds the default dependencies the package neither declares nor is, from `library`.
-    fn with_defaults(mut self, library: &Path) -> Self {
-        for &default in DEFAULT_DEPS {
-            let name = Symbol::intern(default);
-            if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
-                let source = DepSource::Dir(library.join(default));
-                self.deps.push(Dep { name, source, kind: DepKind::Vun, span: None });
-            }
-        }
-        self
     }
 }
 

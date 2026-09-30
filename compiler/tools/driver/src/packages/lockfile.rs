@@ -57,7 +57,8 @@ impl Session {
     pub fn prepare(&mut self, path: &Path) -> Vec<(Symbol, Hash, Fetched)> {
         let found = {
             let _timer = LOCATE.start();
-            path.parent().and_then(|dir| self.package_around(dir))
+            let around = path.parent().and_then(|dir| self.package_around(dir));
+            around.map(|(dir, key)| self.project_of(&dir, key))
         };
         let Some((dir, project)) = found else { return Vec::new() };
         let fetched = {

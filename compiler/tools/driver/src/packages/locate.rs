@@ -13,14 +13,14 @@ use super::PackageKey;
 use crate::Session;
 
 impl Session {
-    /// The package `file` belongs to. The first one found is the project, whose graph version
-    /// selection runs over.
+    /// The package `file` belongs to. The project of the first one found, its workspace's when
+    /// it is a member, is the one whose graph version selection runs over.
     pub fn package_of(&mut self, file: FileId) -> PackageKey {
         let path = PathBuf::from(&self.sources.file(file).path);
-        let found = path.parent().and_then(|dir| self.package_around(dir)).map(|(_, key)| key);
-        let key = found.unwrap_or_else(|| self.loose());
+        let found = path.parent().and_then(|dir| self.package_around(dir));
+        let key = found.as_ref().map_or_else(|| self.loose(), |&(_, key)| key);
         if self.packages.root.is_none() {
-            self.packages.root = found;
+            self.packages.root = found.map(|(dir, key)| self.project_of(&dir, key).1);
         }
         key
     }
@@ -55,8 +55,8 @@ impl Session {
     /// Returns an error if the current directory cannot be read.
     pub fn project(&mut self) -> std::io::Result<Option<(PathBuf, PackageKey)>> {
         let found = self.package_around(&std::env::current_dir()?);
-        if let Some((_, key)) = &found {
-            self.packages.root = Some(*key);
+        if let Some((dir, key)) = &found {
+            self.packages.root = Some(self.project_of(dir, *key).1);
         } else {
             let msg = Msg::new().text("no ").code(MANIFEST).text(" declaring ").code(manifest::PACKAGE);
             let msg = msg.text(" in this directory or above");

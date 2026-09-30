@@ -8,7 +8,8 @@ use super::{Dep, PackageKey};
 use crate::Session;
 
 impl Session {
-    /// Visits every dependency of every package reachable from `project`, with its dependent.
+    /// Visits every dependency of every package reachable from `project` and the members it
+    /// lists, with its dependent.
     /// `visit` returns the package it loaded for the dependency, whose own dependencies are
     /// visited next, or those of its replacement when the project replaces its identity.
     pub(super) fn walk(
@@ -17,7 +18,8 @@ impl Session {
         mut visit: impl FnMut(&mut Self, PackageKey, &Dep) -> Option<PackageKey>,
     ) {
         let mut seen = HashSet::new();
-        let mut pending = vec![project];
+        let mut pending = self.member_packages(project);
+        pending.push(project);
         while let Some(package) = pending.pop() {
             if !seen.insert(package) {
                 continue;

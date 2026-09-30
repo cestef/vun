@@ -2,7 +2,7 @@
 //! dependencies resolved but not reported, the text of its source files and the bytes of every
 //! file it holds.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use vun_build::layout::{MANIFEST, SEPARATOR};
@@ -53,6 +53,13 @@ impl Sources {
         let sources =
             self.0.iter().filter(|(path, _)| Path::new(path).extension().is_some_and(|e| e == EXTENSION));
         sources.map(|(path, bytes)| (path, std::str::from_utf8(bytes).ok().map(Arc::from)))
+    }
+}
+
+impl super::Package {
+    /// Its source files, by their paths below its directory.
+    pub fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.sources.texts().map(|(path, _)| self.dir.join(path))
     }
 }
 

@@ -15,7 +15,7 @@ use vun_driver::Session;
 
 const PACKAGES: Param = Param::positional("packages")
     .arity(Arity::Many)
-    .about("the package directories to document; the project around this directory otherwise")
+    .about("the package directories to document; the package around this directory, or each of its workspace, otherwise")
     .values(Values::Path(PathKind::Dir));
 const LIBRARY: Param = Param::flag("library").about("document the toolchain's library too");
 const OUTPUT: Param = Param::option("output")
@@ -62,8 +62,8 @@ impl Status for Documented {
 fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let mut packages: Vec<PathBuf> = args.values(&PACKAGES).map(PathBuf::from).collect();
     if packages.is_empty() {
-        let Some((dir, _)) = session.project()? else { return Ok(session.outcome()) };
-        packages.push(dir);
+        let Some(subject) = session.subject(None)? else { return Ok(session.outcome()) };
+        packages = subject.packages();
     }
     if args.flag(&LIBRARY) {
         packages.extend(session.library.entries()?.into_iter().filter(|dir| Session::is_package_root(dir)));

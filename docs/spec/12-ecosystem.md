@@ -124,7 +124,7 @@ build := (b: &mut std.build.Build) {
   with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the
   package knows, names and parameters, is written as records (spec 02, section 2), whose types
   are inferred and which the driver reads by reflection.
-- `vun build build.vun` carries out the plan in order: each program is built in a session for its
+- `vun build` on a package (its directory, its `build.vun`, or no path inside it) carries out the plan in order: each program is built in a session for its
   own target, its root relative to the `build.vun`, its memory map placed by the link plan. Steps
   the toolchain does not carry out yet (`flash`, `test_on`, dependency parameters, lint levels)
   are warnings (`plan.unsupported`); a step that is not a `std.build.Action` as `std.build`
@@ -267,9 +267,15 @@ toolchain is recorded as `toolchain := .{ .version, .hash }` (section 6).
 
 ## 5. Workspaces
 
-A root `build.vun` may declare `.members = .{ "pkgs/hal", "pkgs/app" }`. Members share one lockfile
-and one `.vun/`, and refer to each other by path. `vun pkg tag` releases members, running the API
-diff (section 7) first.
+A root `build.vun` may declare `.members = .{ "pkgs/hal", "pkgs/app" }`, directories below it each
+holding a package. The root is a package too, and with its members it is one project: its graph
+is theirs together, the root's `toolchain` and `replace` apply to them, and they share the root's
+lockfile, which records every member's dependencies. Members refer to each other by path. A
+member whose directory holds no package is `package.missing_member`. A command given the root's
+directory, or no path at or below the root outside any member, acts on each package of the
+workspace, the root first (section 7); given a member's, or no path inside one, on that member.
+Members do not share one `.vun/` yet: each keeps its own beside its root files. `vun pkg tag`
+releases members, running the API diff (section 7) first.
 
 ## 6. Toolchain
 
@@ -355,16 +361,22 @@ everyday verbs at the root, each noun a group of verbs, infrequent commands unde
 commands for developing the compiler under `debug`. A command exists in the tree once it is
 implemented; nothing is listed that does not run.
 
+Every command that compiles takes a path, optional (decision 356): a file, a directory or a
+package's directory, and with none the package around the current directory, its nearest
+`build.vun`, as cargo finds `Cargo.toml`; the root of a workspace names each of its packages
+(section 5). A file outside any package is a program of its own; a directory outside any is
+`package.no_project`.
+
 | Command | Does |
 |---------|------|
-| `vun build <file>` (`b`) | build the program a root file exports; `--library shared` or `static` builds a library of its exports |
-| `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
-| `vun check <file>` (`c`) | analyze without generating code |
+| `vun build [path]` (`b`) | build the program a root file exports, or carry out the plan of a package, or of each package of a workspace; `--library shared` or `static` builds a library of a file's exports |
+| `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); words after `--` go to the program |
+| `vun check [path]` (`c`) | analyze without generating code: a file and what its program reaches, every file of a directory, or of a package with its plan, or of each package of a workspace |
 | `vun test [path] [names]...` (`t`) | build and run the tests of a namespace (spec 11): a file, a directory or a package's directory, the package around the current directory when none; only the tests `names` names, when it names some |
-| `vun fix <file> [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
+| `vun fix [path] [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
-| `vun doc [<packages>...] [--library] [-o <dir>]` | the API documentation of packages: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
+| `vun doc [<packages>...] [--library] [-o <dir>]` | the API documentation of packages, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |

@@ -1,12 +1,16 @@
 //! Loading dependencies: the package of each, checked against its hash, as selection chose it;
 //! why one cannot be loaded is a diagnostic, reported where the dependency is needed.
 
+use std::path::Path;
+
+use vun_build::manifest::{DEFAULT_DEPS, DepKind};
 use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_intern::Symbol;
 use vun_span::Span;
 
 use vun_hash::{Change, Hash, Snapshot};
 
-use super::{Dep, DepSource, PackageKey};
+use super::{Dep, DepSource, Package, PackageKey};
 use crate::Session;
 
 /// Why the package of a dependency is not there as declared.
@@ -167,5 +171,19 @@ impl Session {
             Some(span) => d.at(self.origins.source(span), None),
             None => d,
         }
+    }
+}
+
+impl Package {
+    /// Adds the default dependencies the package neither declares nor is, from `library`.
+    pub(super) fn with_defaults(mut self, library: &Path) -> Self {
+        for &default in DEFAULT_DEPS {
+            let name = Symbol::intern(default);
+            if self.name != Some(name) && self.deps.iter().all(|d| d.name != name) {
+                let source = DepSource::Dir(library.join(default));
+                self.deps.push(Dep { name, source, kind: DepKind::Vun, span: None });
+            }
+        }
+        self
     }
 }

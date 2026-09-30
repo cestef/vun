@@ -10,6 +10,8 @@ use vun_term::Shell;
 
 use status::{Conclude, Report, Started, Step};
 
+use vun_build::layout::MANIFEST;
+use vun_driver::subject::Subject;
 use vun_driver::{Session, VERSION, checks, codegen, formats, trace};
 
 pub(crate) const PROGRAM: Program<Session> = Program {
@@ -21,12 +23,12 @@ pub(crate) const PROGRAM: Program<Session> = Program {
         &[
             Command::run(
                 "build",
-                "build the program a root file exports, or the programs a package's build.vun plans",
+                "build the program a root file exports, or the programs each package's plan records",
                 build,
             )
             .aliases(&["b"])
             .params(&[
-                FILE,
+                PATH,
                 vun_driver::codegen::BACKEND,
                 vun_driver::codegen::LINKER,
                 vun_driver::codegen::LIBRARY,
@@ -40,24 +42,24 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                     about: "cross-compile to a path",
                 },
                 Example {
-                    line: "build.vun",
-                    about: "carry out the package's plan: build each program it records",
+                    line: "",
+                    about: "carry out the plan of the package around this directory, or of each package of its workspace",
                 },
             ]),
-            Command::run("run", "build the program a root file exports and run it", run)
+            Command::run("run", "build the program a root file exports, or a package's, and run it", run)
                 .aliases(&["r"])
                 .params(&[
-                    FILE,
+                    PATH,
                     ARGS,
                     vun_driver::codegen::BACKEND,
                     vun_driver::codegen::LINKER,
                     vun_driver::program::OUTPUT,
                 ])
                 .sets(&[COMPILE])
-                .examples(&[Example {
-                    line: "main.vun -- --verbose input.txt",
-                    about: "pass arguments to the program",
-                }]),
+                .examples(&[
+                    Example { line: "", about: "run the program the plan of the package around this directory builds" },
+                    Example { line: "main.vun -- --verbose input.txt", about: "pass arguments to the program" },
+                ]),
             CHECK,
             fix::FIX,
             doc::DOC,
@@ -83,8 +85,16 @@ pub(crate) const PROGRAM: Program<Session> = Program {
 
 const CHECK: Command<Session> = Command::run("check", "analyze without generating code", check)
     .aliases(&["c"])
-    .params(&[FILE])
-    .sets(&[COMPILE]);
+    .params(&[PATH])
+    .sets(&[COMPILE])
+    .examples(&[
+        Example {
+            line: "",
+            about: "check every file of the package around this directory, or of its workspace",
+        },
+        Example { line: "net/", about: "check the files of a directory" },
+        Example { line: "main.vun", about: "check a file and what its program reaches" },
+    ]);
 /// Where `vun check` is below the root, for messages that suggest it.
 pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 
@@ -105,6 +115,11 @@ pub(crate) const COMPILE: OptionSet = OptionSet {
 
 pub(crate) const FILE: Param =
     Param::positional("file").about("the root source file").values(Values::Path(PathKind::File));
+/// What a command acts on (decision 356).
+pub(crate) const PATH: Param = Param::positional("path")
+    .arity(Arity::Optional)
+    .about("a file, a directory or a package's directory; the package around this directory if none")
+    .values(Values::Path(PathKind::Any));
 const ARGS: Param = Param::positional("args").arity(Arity::Many).about("arguments passed to the program");
 /// Reports at exit where the time went, as `VUN_TIMINGS=1` does.
 const TIMINGS: Param = Param::flag("timings")
@@ -132,81 +147,115 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     vun_driver::target::configure(session, args)
 }
 
-trait Inputs {
-    /// Reads the file `args` names for `step`, once its project is ready: dependencies fetched and
-    /// the lockfile written, as cargo does before compiling.
-    fn root(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> Option<FileId>;
+/// What a command's path names, once its project is ready, and how it is shown.
+struct Named {
+    subject: Subject,
+    shown: String,
+    /// Whether the project is ready: its dependencies fetched and its lockfile written.
+    ready: bool,
+}
 
-    /// Reads the file at `path`, once its project is ready, as `root` does, handing the command
-    /// to the toolchain the project pins if it pins another. `started` is shown once this
-    /// toolchain is the one to run, so a handed-off command announces it once.
+trait Inputs {
+    /// What the path `args` gives names, with none the package around this directory, for `step`:
+    /// the command handed to the toolchain the project pins if it pins another, `step` announced,
+    /// then the project made ready; `None` once why nothing is named is reported.
+    fn named(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> io::Result<Option<Named>>;
+
+    /// Makes the project around the file at `path` ready, as cargo does before compiling:
+    /// dependencies fetched and the lockfile written, after handing the command to the
+    /// toolchain the project pins if it pins another. `started` is shown once this toolchain is
+    /// the one to run, so a handed-off command announces it once.
+    fn ready(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> bool;
+
+    /// Reads the file at `path` once its project is ready.
     fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId>;
 
-    /// Builds the program `args` names, reporting how it went.
-    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf>;
+    /// Builds what the path `args` gives names, reporting how it went: the program of a file, or
+    /// the programs the plan of each package records.
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<PathBuf>>>;
 }
 
 impl Inputs for Session {
-    fn root(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> Option<FileId> {
-        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-        self.root_at(Path::new(path), Some(&Started { step, subject: path.to_owned() }), shell)
+    fn named(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> io::Result<Option<Named>> {
+        let path = args.value(&PATH).map(Path::new);
+        let Some(subject) = self.subject(path)? else { return Ok(None) };
+        let shown = path.map_or_else(|| subject.shown(), |p| p.display().to_string());
+        let ready = self.ready(&subject.root(), Some(&Started { step, subject: shown.clone() }), shell);
+        Ok(Some(Named { subject, shown, ready }))
     }
 
-    fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId> {
+    fn ready(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> bool {
         // A project pinning another toolchain is that one's to build.
-        self.hand_off(path).ok()?;
+        if self.hand_off(path).is_err() {
+            return false;
+        }
         if let Some(started) = started {
             shell.status(started);
         }
         for (name, hash, fetched) in self.prepare(path) {
             fetched.report(name, hash, shell);
         }
-        if self.failed() {
-            return None;
-        }
-        self.load(path)
+        !self.failed()
     }
 
-    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf> {
+    fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId> {
+        self.ready(path, started, shell).then(|| self.load(path)).flatten()
+    }
+
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<PathBuf>>> {
         let started = Instant::now();
-        let path = args.value(&FILE).expect("positional parameters are present when a command runs");
+        let Some(Named { subject, shown, ready }) = self.named(args, Step::Build, shell)? else {
+            return Ok(None);
+        };
         let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
-        let built = self.root(args, Step::Build, shell).and_then(|file| {
-            if self.is_package(file) {
-                // A package's `build.vun` builds the programs its plan records.
-                self.carry_out(file).ok().and_then(|built| built.into_iter().next())
-            } else {
-                self.build(file, output).ok()
-            }
-        });
-        let subject = built.as_ref().map_or_else(|| path.to_owned(), |p| p.display().to_string());
-        self.conclude(shell, subject, started);
-        built
+        let built = if !ready {
+            None
+        } else if let Some(file) = subject.file() {
+            self.load(file).and_then(|file| self.build(file, output).ok()).map(|p| vec![p])
+        } else {
+            // A package's plan records its programs; a workspace builds each package's.
+            let plans = subject.packages().into_iter().map(|dir| {
+                let manifest = self.load(&dir.join(MANIFEST))?;
+                self.carry_out(manifest).ok()
+            });
+            plans.collect::<Option<Vec<_>>>().map(|built| built.concat())
+        };
+        let concluded = match built.as_deref() {
+            Some([program]) => Subject::relative(program),
+            _ => shown,
+        };
+        self.conclude(shell, concluded, started);
+        Ok(built)
     }
 }
 
-#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn build(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    session.built(args, shell);
+    session.built(args, shell)?;
     Ok(session.outcome())
 }
 
 fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let Some(program) = session.built(args, shell) else { return Ok(session.outcome()) };
-    shell.status(&Started { step: Step::Run, subject: program.display().to_string() });
+    let Some(built) = session.built(args, shell)? else { return Ok(session.outcome()) };
+    let Some(program) = session.to_run(built) else { return Ok(session.outcome()) };
+    shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
     let status = session.command(&program).args(args.values(&ARGS)).status()?;
     // A program ended by a signal has no status to pass on.
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
 }
 
-#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let started = Instant::now();
-    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
-    if let Some(file) = session.root(args, Step::Check, shell) {
-        session.check(file);
+    let Some(Named { subject, shown, ready }) = session.named(args, Step::Check, shell)? else {
+        return Ok(session.outcome());
+    };
+    if ready {
+        for path in session.files(&subject) {
+            if let Some(file) = session.load(&path) {
+                session.check(file);
+            }
+        }
     }
-    session.conclude(shell, path.to_owned(), started);
+    session.conclude(shell, shown, started);
     Ok(session.outcome())
 }
 

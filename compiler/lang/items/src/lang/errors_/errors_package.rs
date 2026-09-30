@@ -23,3 +23,6 @@ pub const version_conflict: Item = Item::new(
     &["lang", "errors", "package", "version_conflict"],
 );
 pub const stale_lock: Item = Item::new(&["lang", "errors", "package", "stale_lock"]);
+pub const missing_member: Item = Item::new(
+    &["lang", "errors", "package", "missing_member"],
+);

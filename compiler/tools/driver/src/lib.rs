@@ -28,6 +28,7 @@ mod shell;
 mod stack;
 pub mod stages;
 mod steps;
+pub mod subject;
 pub mod target;
 pub mod testing;
 mod tools;

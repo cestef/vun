@@ -10,3 +10,7 @@ pub const missing_build: Item = Item::new(&["lang", "errors", "plan", "missing_b
 pub const stopped: Item = Item::new(&["lang", "errors", "plan", "stopped"]);
 pub const unread: Item = Item::new(&["lang", "errors", "plan", "unread"]);
 pub const unsupported: Item = Item::new(&["lang", "errors", "plan", "unsupported"]);
+pub const nothing_to_run: Item = Item::new(
+    &["lang", "errors", "plan", "nothing_to_run"],
+);
+pub const ambiguous_run: Item = Item::new(&["lang", "errors", "plan", "ambiguous_run"]);

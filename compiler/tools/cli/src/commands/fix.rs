@@ -14,14 +14,14 @@ use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use super::status::{Conclude, Step};
-use super::{COMPILE, FILE, Inputs};
+use super::{COMPILE, Inputs, Named, PATH};
 
 const UNSAFE: Param =
     Param::flag("unsafe").about("also apply the fixes that may change what the program does");
 
 pub(super) const FIX: Command<Session> =
     Command::run("fix", "apply the fixes diagnostics propose, then report what is left", fix)
-        .params(&[FILE, UNSAFE])
+        .params(&[PATH, UNSAFE])
         .sets(&[COMPILE])
         .examples(&[
             Example { line: "main.vun", about: "apply the fixes that keep what the program means" },
@@ -60,14 +60,18 @@ impl Status for Written {
 
 fn fix(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let started = Instant::now();
-    let path = args.value(&FILE).expect("positional parameters are present when a command runs");
     let applied = if args.flag(&UNSAFE) { Applied::Unsafe } else { Applied::Safe };
-    if let Some(file) = session.root(args, Step::Fix, shell) {
+    let Some(Named { subject, shown, ready }) = session.named(args, Step::Fix, shell)? else {
+        return Ok(session.outcome());
+    };
+    let files = if ready { session.files(&subject) } else { Vec::new() };
+    for path in files {
+        let Some(file) = session.load(&path) else { continue };
         for Fixed { path, fixes, text } in session.fix(file, applied) {
             path.put(text)?;
             shell.status(&Written { path, fixes });
         }
     }
-    session.conclude(shell, path.to_owned(), started);
+    session.conclude(shell, shown, started);
     Ok(session.outcome())
 }

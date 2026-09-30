@@ -358,7 +358,8 @@ Case is decided by what a binding is, which compile-time evaluation knows exactl
 
 ## 6. Tools
 
-**`vun fix <file>`** applies the fixes checking a file proposes, to the files of its package
+**`vun fix [path]`** applies the fixes checking each file the path names proposes (spec 12,
+section 7), to the files of its package
 (`vun_driver::fix`):
 - `Safe` fixes by default, `--unsafe` for those that may change behavior as well; per diagnostic,
   its preferred fix of that safety, or else its first;

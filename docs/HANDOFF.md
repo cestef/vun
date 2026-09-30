@@ -111,8 +111,7 @@ the parser reading the tables), 324 (language server features), 325 (DWARF subpr
 peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
 `sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
 gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
-(spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 356 (an optional path, the nearest
-`build.vun` when none, for every command; only `vun test` follows it yet), 357 (test lenses,
+(spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 357 (test lenses,
 `test.ignore`, one stream for the tests' program, checks' trap messages), 358 (calls through
 borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported where they are),
 359 (typing's typed reasons, generic functions' own type; its type part approved) and 360 (reasons
@@ -232,7 +231,9 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    by the form and by the value. A function evaluated while a `$if` step is typed cannot pass
    one of its run-time locals to a `$` parameter (`same(type, t, A)` inside a `for`:
    `comptime.unsupported`), though the same call evaluates at compile time elsewhere.
-5. Plans (`vun build build.vun`): `flash`, `test_on`, dependency parameters.
+5. Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters. Workspaces: one
+   shared `.vun/` for the members (each keeps its own beside its root files; the saved queries,
+   builds and views all derive it from a root file's directory).
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.

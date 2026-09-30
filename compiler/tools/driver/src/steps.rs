@@ -84,6 +84,31 @@ impl Session {
         Ok(built)
     }
 
+    /// The program to run among those `built`: the one there is, else `None` once why none is
+    /// is reported.
+    pub fn to_run(&mut self, built: Vec<PathBuf>) -> Option<PathBuf> {
+        if built.len() == 1 {
+            return built.into_iter().next();
+        }
+        let d = if built.is_empty() {
+            let msg = Msg::new().text("the plan builds no program to run");
+            Diagnostic::error(errors::PLAN_NOTHING_TO_RUN, msg)
+                .help(Msg::new().text("name the root file of a program instead"))
+        } else {
+            let msg = Msg::new()
+                .text("the plan builds ")
+                .num(i128::try_from(built.len()).unwrap_or(i128::MAX))
+                .text(" programs; which to run is not said");
+            let d = Diagnostic::error(errors::PLAN_AMBIGUOUS_RUN, msg);
+            let d = built.iter().fold(d, |d, program| {
+                d.note(Msg::new().text("it builds ").code(crate::subject::Subject::relative(program)))
+            });
+            d.help(Msg::new().text("name the root file of the program to run"))
+        };
+        self.diag.error(d);
+        None
+    }
+
     /// Builds the program `options` describe, its root relative to `dir`, in a session for its
     /// target; the reports of that session become this one's.
     fn build_program(

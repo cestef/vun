@@ -31,7 +31,9 @@ impl Session {
         if std::env::var(ENV).is_ok_and(|v| v == LOCAL) {
             return Ok(());
         }
-        let Some((_, key)) = path.parent().and_then(|dir| self.package_around(dir)) else { return Ok(()) };
+        let Some((dir, key)) = path.parent().and_then(|dir| self.package_around(dir)) else { return Ok(()) };
+        // A workspace's root pins the toolchain of its members.
+        let (_, key) = self.project_of(&dir, key);
         let Some(pinned) = self.packages.list[&key].toolchain else { return Ok(()) };
         if Version::parse(VERSION) == Some(pinned) {
             return Ok(());
