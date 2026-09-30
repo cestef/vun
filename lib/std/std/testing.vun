@@ -5,7 +5,15 @@
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 #[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
-test := struct {};
+test := struct {
+    /// Skips the test, saying why: `#[test.ignore("needs a network")]`.
+    ignore := (reason: &[u8]) -> Ignored { .{ .reason = reason } };
+};
+
+/// A test that is not run, and why.
+Ignored := struct {
+    reason: &[u8],
+};
 
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 assert := ($cond: lang.meta.Code(bool)) {
@@ -15,6 +23,8 @@ assert := ($cond: lang.meta.Code(bool)) {
 /// What became of a test.
 Outcome := enum {
     passed,
+    /// It is not run (`test.ignore`).
+    ignored(Ignored),
     /// A trap ended it: its site, and what the program's table says of it.
     trapped(Trapped),
 };
@@ -29,6 +39,16 @@ Trapped := struct {
 Totals := struct {
     passed: usize,
     trapped: usize,
+    ignored: usize,
+
+    /// Counts `outcome`.
+    count := (self: &mut Totals, outcome: &Outcome) {
+        match outcome {
+            .passed => { self.passed += 1; },
+            .trapped(_) => { self.trapped += 1; },
+            .ignored(_) => { self.ignored += 1; },
+        }
+    };
 };
 
 /// A line the runner writes: a test run and what became of it, then the totals.
@@ -49,6 +69,8 @@ line_json := std.fmt.json.derive(Line);
 ran_json := std.fmt.json.derive(Ran);
 #[impl(std.fmt.json.Json(Outcome))]
 outcome_json := std.fmt.json.derive(Outcome);
+#[impl(std.fmt.json.Json(Ignored))]
+ignored_json := std.fmt.json.derive(Ignored);
 #[impl(std.fmt.json.Json(Trapped))]
 trapped_json := std.fmt.json.derive(Trapped);
 #[impl(std.fmt.json.Json(Totals))]
@@ -76,29 +98,30 @@ runner := ($ns: lang.meta.Namespace) -> type {
 
 /// Runs the unit tests of `ns` and the namespaces in it, in the order they are declared, or
 /// those the program's arguments name, and writes a line for each to the standard output, then
-/// the totals. Each runs on a thread of its own; where the system runs one thread, on the
-/// calling one, and a trap ends the run.
+/// the totals. A test marked `test.ignore` is not run.
 run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std.os.Error) {
     args := sys.args();
     mut out := sys.stdout();
-    mut totals := Totals{ .passed = 0, .trapped = 0 };
+    mut totals := Totals{ .passed = 0, .trapped = 0, .ignored = 0 };
     $for c in std.meta.collect(ns, test) {
         if chosen(args, c.decl.name) {
             mut f := c.ns.$(c.decl.name);
-            outcome := match sys.spawn(&mut f) {
-                .ok(t) => match t.join() {
-                    .ok(_) => Outcome.passed,
-                    .err(trap) => Outcome.trapped(.{ .site = trap.site, .said = std.trace.Site.of(trap.site) }),
-                },
-                .err(_) => {
-                    f();
-                    Outcome.passed
+            outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
+                .some(ignored) => Outcome.ignored(ignored),
+                // On a thread of its own; where the system runs one thread, on the calling one,
+                // and a trap ends the run.
+                .none => match sys.spawn(&mut f) {
+                    .ok(t) => match t.join() {
+                        .ok(_) => Outcome.passed,
+                        .err(trap) => Outcome.trapped(.{ .site = trap.site, .said = std.trace.Site.of(trap.site) }),
+                    },
+                    .err(_) => {
+                        f();
+                        Outcome.passed
+                    },
                 },
             };
-            match outcome {
-                .passed => { totals.passed += 1; },
-                .trapped(_) => { totals.trapped += 1; },
-            }
+            totals.count(&outcome);
             write(&mut out, &Line.test(.{ .name = c.decl.name, .outcome = outcome }))?;
         }
     }

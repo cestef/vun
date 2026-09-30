@@ -31,7 +31,7 @@ use vun_syntax::make::{Attributes, Expr};
 pub use defined::{CheckedLints, DefinedLints};
 use levels::Configured;
 use nodes::{Kind, Node};
-use tables::{Level, field};
+use tables::Level;
 
 use crate::decl::DeclValue;
 use crate::env::Env;
@@ -153,15 +153,15 @@ impl Lint {
     /// level its package's build configures.
     fn read(env: &Env<'_, '_>, decl: &DeclRef, configured: &Configured) -> Option<Self> {
         let value = env.cx.get::<DeclValue>(decl).ok()?;
-        let Value::Name(group) = *field(&value, lang::lint_Lint::group)? else { return None };
+        let Value::Name(group) = *value.field(lang::lint_Lint::group)? else { return None };
         let members = env.item(std_items::lints).and_then(|lints| env.member(lints, group)).ok();
-        let default = match field(&value, lang::lint_Lint::default)? {
+        let default = match value.field(lang::lint_Lint::default)? {
             Value::Variant { payload, .. } if !payload.is_empty() => Level::of(&payload[0])?,
             _ => Level::of(&env.member(members.clone()?, GROUP_LEVEL.symbol()).ok()?)?,
         };
         let level = configured.level(&value, members.as_ref(), default);
         let check = |at: Item, node: Item| {
-            let check = field(&value, at)?.clone();
+            let check = value.field(at)?.clone();
             let unchecked = call(env, lang::lint::unchecked, vec![env.item(node).ok()?]).ok();
             (Some(&check) != unchecked.as_ref()).then_some(check)
         };
@@ -236,17 +236,17 @@ impl Lint {
     /// The diagnostic `report`, a `lang.lint.Report`, of `node`: what the lint says, with its
     /// fixes, the level it reports at, and the fix allowing it on the declaration around.
     fn diagnostic(&self, report: &Value, node: &Node, severity: Severity) -> Diagnostic {
-        let at = match field(report, lang::lint_Report::at) {
+        let at = match report.field(lang::lint_Report::at) {
             Some(Value::Origin(at)) => *at,
             _ => node.origin,
         };
-        let text = |f: &Value, at: Item| field(f, at).and_then(Value::text);
+        let text = |f: &Value, at: Item| f.field(at).and_then(Value::text);
         let msg = text(report, lang::lint_Report::msg).unwrap_or_default();
         let mut d = Diagnostic::new(self.id.clone(), severity, Msg::new().text(msg)).at(at, None);
         let span = OriginTable::global().source_span(at);
-        if let Some(Value::Array(fixes)) = field(report, lang::lint_Report::fixes) {
+        if let Some(Value::Array(fixes)) = report.field(lang::lint_Report::fixes) {
             for fix in fixes {
-                let safety = field(fix, lang::lint_Fix::safety).and_then(tables::safety);
+                let safety = fix.field(lang::lint_Fix::safety).and_then(tables::safety);
                 if let (Some(msg), Some(safety), Some(replacing)) =
                     (text(fix, lang::lint_Fix::msg), safety, text(fix, lang::lint_Fix::text))
                 {

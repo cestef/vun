@@ -2,22 +2,21 @@
 //! command building it and running it, its output written beside the document as it comes, then
 //! how it ended.
 
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
+use std::path::Path;
 use std::process::Stdio;
 
 use vun_data::{FromData, ToData};
 use vun_driver::view::View;
 use vun_fs::Edit;
 use vun_lsp_protocol::base::TextDocumentIdentifier;
-use vun_lsp_protocol::command::{CodeLens, CodeLensParams};
-use vun_lsp_protocol::requests as r;
+use vun_lsp_protocol::command::CodeLens;
 use vun_term::Shell;
 use vun_trace::tracing;
 
 use super::Order;
 use crate::failure::Failure;
-use crate::methods::Answers;
 use crate::server::Server;
 
 /// What the output of a run is named by, beside the document.
@@ -31,31 +30,40 @@ pub(crate) struct Ran {
     pub(crate) text_document: TextDocumentIdentifier,
 }
 
-impl Answers<r::CodeLens> for Server<'_> {
-    fn answer(&mut self, params: CodeLensParams) -> Result<Vec<CodeLens>, Failure> {
-        let file = self.document(&params.text_document)?.file;
-        let ran = Ran { text_document: params.text_document };
+impl Server<'_> {
+    /// An empty file at `path` for what a command writes: a new one each time, since one still
+    /// running writes to its own.
+    pub(super) fn output(path: &Path) -> Result<File, Failure> {
+        path.put([]).map_err(Failure::unwritten)?;
+        OpenOptions::new().append(true).open(path).map_err(Failure::unwritten)
+    }
+
+    /// Writes to `output` what stopped a build.
+    pub(super) fn stopped(&mut self, output: &mut File) -> Result<(), Failure> {
+        let mut out = Vec::new();
+        self.session.emit(&mut Shell::plain(&mut Vec::new(), &mut out));
+        output.write_all(&out).map_err(Failure::unwritten)
+    }
+
+    /// A lens over each declaration of `document` exporting the program it roots.
+    pub(super) fn run_lenses(&mut self, document: &TextDocumentIdentifier) -> Result<Vec<CodeLens>, Failure> {
+        let file = self.document(document)?.file;
+        let ran = Ran { text_document: document.clone() };
         let lenses = self.session.runnable(file).into_iter().filter_map(|name| {
             let range = self.location(name)?.range;
             Some(CodeLens { range, command: Some(Order::Run.command(TITLE.to_owned(), &ran)) })
         });
         Ok(lenses.collect())
     }
-}
 
-impl Server<'_> {
     /// Builds the program `ran` names and runs it, its output written beside the document as it
     /// comes, and shown; what stops the build is written there instead.
     pub(super) fn run_program(&mut self, ran: &Ran) -> Result<(), Failure> {
         let document = self.document(&ran.text_document)?;
         let (file, path) = (document.file, View::shown(&document.path, OUTPUT));
-        // A new file each run: one still running writes to its own.
-        path.put([]).map_err(Failure::unwritten)?;
-        let mut output = OpenOptions::new().append(true).open(&path).map_err(Failure::unwritten)?;
+        let mut output = Self::output(&path)?;
         let Ok(program) = self.session.build(file, None) else {
-            let mut out = Vec::new();
-            self.session.emit(&mut Shell::plain(&mut Vec::new(), &mut out));
-            output.write_all(&out).map_err(Failure::unwritten)?;
+            self.stopped(&mut output)?;
             return self.show(&path);
         };
         drop(std::mem::take(&mut self.session.diag));

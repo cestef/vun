@@ -3,7 +3,7 @@
 
 use vun_build::layout::MANIFEST;
 use vun_driver::Codegen;
-use vun_driver::testing::{Line, Outcome, Place, Ran, Said, Totals, Trapped};
+use vun_driver::testing::{Ignored, Line, Outcome, Place, Ran, Said, Totals, Trapped};
 
 use crate::backend::BACKENDS;
 use crate::common::Fixture;
@@ -14,8 +14,8 @@ const SUITE: u64 = 1100;
 /// The plan every package declares, here empty.
 const BUILD: &str = "build := (b: &mut std.build.Build) {};\n";
 
-/// Two tests of the root file, reading a global only run time knows, and two of a namespace
-/// below, one reading past an array.
+/// Two tests of the root file, reading a global only run time knows, and three of a namespace
+/// below, one reading past an array and one not run.
 const ROOT: &str = "\
 three: std.sync.Atomic(u32) = .init(3);
 
@@ -37,6 +37,10 @@ indexes := () {
 
 #[test]
 last := () {};
+
+#[test]
+#[test.ignore(\"not yet\")]
+skipped := () { assert(false); };
 ";
 
 fn ran(name: &str, outcome: Outcome) -> Line {
@@ -73,7 +77,8 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             message: Some("assertion failed: `three.load(.relaxed) == 4`".to_owned()),
             at: Some(at(&root, 7, 22)),
         };
-        let index = Said { message: None, at: Some(at(&more, 4, 8)) };
+        let index =
+            Said { message: Some("an index past the last item".to_owned()), at: Some(at(&more, 4, 8)) };
         let trapped = |said: &Said| Outcome::Trapped(Trapped { site: 0, said: Some(said.clone()) });
         // Site ids are the program's own: compared apart from them.
         let sites: Vec<Line> = lines
@@ -90,7 +95,8 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             ran("fails", trapped(&assertion)),
             ran("indexes", trapped(&index)),
             ran("last", Outcome::Passed),
-            Line::Totals(Totals { passed: 2, trapped: 2 }),
+            ran("skipped", Outcome::Ignored(Ignored { reason: "not yet".to_owned() })),
+            Line::Totals(Totals { passed: 2, trapped: 2, ignored: 1 }),
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");

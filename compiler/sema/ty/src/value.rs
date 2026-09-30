@@ -4,6 +4,7 @@
 use vun_codec::{Decode, Encode};
 use vun_hir::db::Namespace;
 use vun_intern::Symbol;
+use vun_items::Item;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::meta::Meta;
@@ -115,6 +116,13 @@ impl Value {
             _ => None,
         });
         String::from_utf8(bytes.collect::<Option<_>>()?).ok()
+    }
+
+    /// The value of the field `field`, by its handle, of this struct value.
+    #[must_use]
+    pub fn field(&self, field: Item) -> Option<&Self> {
+        let Self::Struct { fields, .. } = self else { return None };
+        fields.iter().find(|(name, _)| *name == field.symbol()).map(|(_, v)| v)
     }
 
     /// The items a `$for` steps through: those of an array, or the integers of a finite range

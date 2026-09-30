@@ -84,9 +84,3 @@ fn variant<T: Copy>(value: &Value, table: &[(Item, T)]) -> Option<T> {
     let Value::Variant { name, .. } = value else { return None };
     table.iter().find(|(item, _)| item.symbol() == *name).map(|&(_, t)| t)
 }
-
-/// The value of the field `field`, by its handle, of the struct value `value`.
-pub(super) fn field(value: &Value, field: Item) -> Option<&Value> {
-    let Value::Struct { fields, .. } = value else { return None };
-    fields.iter().find(|(name, _)| *name == field.symbol()).map(|(_, v)| v)
-}

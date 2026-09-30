@@ -1,15 +1,18 @@
 //! The commands the server carries out, one row of [`Order`] each, offered as code actions and
-//! code lenses: a view of a document, and running the program a root file exports, each written
-//! beside the document and shown (spec 13, section 11).
+//! code lenses: a view of a document, running the program a root file exports and running a
+//! test, each written beside the document and shown (spec 13, section 11).
 
 pub(crate) mod run;
+pub(crate) mod test;
 pub(crate) mod view;
 
 use std::path::Path;
 
 use vun_data::{FromData, ToData, Value};
 use vun_lsp_protocol::base::Uri;
-use vun_lsp_protocol::command::{Command, ExecuteCommandParams, ShowDocumentParams};
+use vun_lsp_protocol::command::{
+    CodeLens, CodeLensParams, Command, ExecuteCommandParams, ShowDocumentParams,
+};
 use vun_lsp_protocol::requests as r;
 use vun_lsp_protocol::rpc::ErrorCode;
 use vun_variants::Variants;
@@ -27,6 +30,9 @@ pub(crate) enum Order {
     /// Builds and runs the program a document exports: [`run::Ran`].
     #[data(name = "vun.run")]
     Run,
+    /// Builds the tests' program of a document's namespace and runs one test: [`test::Tested`].
+    #[data(name = "vun.test")]
+    Test,
 }
 
 impl Order {
@@ -67,7 +73,16 @@ impl Answers<r::ExecuteCommand> for Server<'_> {
         match order {
             Order::View => self.show_view(&argument.read().map_err(Failure::params)?)?,
             Order::Run => self.run_program(&argument.read().map_err(Failure::params)?)?,
+            Order::Test => self.run_test(&argument.read().map_err(Failure::params)?)?,
         }
         Ok(None)
+    }
+}
+
+impl Answers<r::CodeLens> for Server<'_> {
+    fn answer(&mut self, params: CodeLensParams) -> Result<Vec<CodeLens>, Failure> {
+        let mut lenses = self.run_lenses(&params.text_document)?;
+        lenses.extend(self.test_lenses(&params.text_document)?);
+        Ok(lenses)
     }
 }

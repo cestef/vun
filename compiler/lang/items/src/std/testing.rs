@@ -8,6 +8,8 @@
 use crate::Item;
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 pub const test: Item = Item::new(&["std", "testing", "test"]);
+/// A test that is not run, and why.
+pub const Ignored: Item = Item::new(&["std", "testing", "Ignored"]);
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 pub const assert: Item = Item::new(&["std", "testing", "assert"]);
 /// What became of a test.
@@ -23,6 +25,7 @@ pub const Ran: Item = Item::new(&["std", "testing", "Ran"]);
 pub const line_json: Item = Item::new(&["std", "testing", "line_json"]);
 pub const ran_json: Item = Item::new(&["std", "testing", "ran_json"]);
 pub const outcome_json: Item = Item::new(&["std", "testing", "outcome_json"]);
+pub const ignored_json: Item = Item::new(&["std", "testing", "ignored_json"]);
 pub const trapped_json: Item = Item::new(&["std", "testing", "trapped_json"]);
 pub const totals_json: Item = Item::new(&["std", "testing", "totals_json"]);
 pub const site_json: Item = Item::new(&["std", "testing", "site_json"]);
@@ -33,8 +36,7 @@ pub const failed: Item = Item::new(&["std", "testing", "failed"]);
 pub const runner: Item = Item::new(&["std", "testing", "runner"]);
 /// Runs the unit tests of `ns` and the namespaces in it, in the order they are declared, or
 /// those the program's arguments name, and writes a line for each to the standard output, then
-/// the totals. Each runs on a thread of its own; where the system runs one thread, on the
-/// calling one, and a trap ends the run.
+/// the totals. A test marked `test.ignore` is not run.
 pub const run: Item = Item::new(&["std", "testing", "run"]);
 /// Whether the test `name` is run: every test when the arguments past the program's name name
 /// none, else those they name.

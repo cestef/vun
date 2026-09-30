@@ -71,3 +71,27 @@ fn each_declaration_exporting_the_program_has_a_lens_running_it() {
         assert_eq!(command.command, crate::command::Order::Run.name());
     });
 }
+
+#[test]
+fn each_test_of_a_package_file_has_a_lens_running_it() {
+    use vun_lsp_protocol::command::CodeLensParams;
+
+    use crate::command::test::Tested;
+
+    served("lsp-test-lens", |client, uri| {
+        let dir = uri.to_file_path().unwrap().parent().unwrap().to_path_buf();
+        let manifest = "package := .{ .name = \"a\", .id = 0x4402, .version = \"0.1.0\", .edition = 2026, \
+                        .include = .{ \"build.vun\", \"a.vun\" } };\nbuild := (b: &mut std.build.Build) {};\n";
+        std::fs::write(dir.join(vun_build::layout::MANIFEST), manifest).unwrap();
+        client.open(uri, "#[test]\nadds := () { assert(1 + 1 == 2); };\n\nhelper := () {};\n");
+        let text_document = TextDocumentIdentifier { uri: uri.clone() };
+        let params = CodeLensParams { text_document: text_document.clone() };
+        let lenses = client.request::<r::CodeLens>(&params).unwrap();
+        let at: Vec<_> = lenses.iter().map(|l| (l.range.start.line, l.range.start.character)).collect();
+        assert_eq!(at, [(1, 0)], "{lenses:?}");
+        let command = lenses[0].command.as_ref().unwrap();
+        assert_eq!(command.command, crate::command::Order::Test.name());
+        let tested: Tested = command.arguments.as_ref().unwrap()[0].read().unwrap();
+        assert_eq!(tested, Tested { text_document, name: "adds".to_owned() });
+    });
+}

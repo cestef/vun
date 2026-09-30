@@ -24,3 +24,6 @@ vun-term.workspace = true
 vun-trace.workspace = true
 vun-uri.workspace = true
 vun-variants.workspace = true
+
+[dev-dependencies]
+vun-build.workspace = true

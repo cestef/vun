@@ -1844,6 +1844,7 @@ dependencies = [
 name = "vun-lsp"
 version = "0.0.0"
 dependencies = [
+ "vun-build",
  "vun-command",
  "vun-data",
  "vun-diag",

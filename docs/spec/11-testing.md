@@ -59,8 +59,10 @@ election := (s: &mut testing.Sim) {
 | `&mut testing.Bench` | benchmark | `vun bench` |
 | `&mut testing.Sim` | simulation | `vun test`, `vun sim --seeds N` |
 
-Attributes: `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout;
-`#[test.ignore(.reason = "...")]`; `#[test.on(.target)]` restricts a test to target runs.
+Attributes: `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout,
+where a mode counts steps (`interp`); `#[test.ignore("why")]` keeps a test from running, the
+runner reporting it with its reason (`std.testing.Ignored`, read with `std.meta.attr`);
+`#[test.on(.target)]` restricts a test to target runs.
 
 `assert` takes `Code(bool)` (spec 03), so a failure prints the asserted expression and its span.
 
@@ -94,12 +96,14 @@ every `vun test`.
   breakpoint.
 
 All modes emit the same JSON result stream, so editors run single tests the same way everywhere:
-one line per test run, `{"test":{"name":...,"outcome":...}}`, its outcome `"passed"` or
+one line per test run, `{"test":{"name":...,"outcome":...}}`, its outcome `"passed"`,
+`{"ignored":{"reason":...}}` or
 `{"trapped":{"site":n,"said":{"message":...,"at":{"file":...,"line":...,"column":...}}}}` as the
-program's table says it (`std.trace.Site.of`), then the totals, `{"totals":{"passed":n,"trapped":n}}`.
-The lines are `std.testing.Line` written by `std.fmt.json.derive`, read by the driver as
-`vun_driver::testing::Line`; what the tests write themselves passes through. Only unit tests run
-yet.
+program's table says it (`std.trace.Site.of`), then the totals,
+`{"totals":{"passed":n,"trapped":n,"ignored":n}}`. The lines are `std.testing.Line` written by
+`std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
+program's standard output and error as one stream, so what a test writes, the backtrace of its
+trap included, comes before its line and is reported with it. Only unit tests run yet.
 
 ## 4. Deterministic simulation
 

@@ -1,10 +1,8 @@
-//! Running tests (spec 11): the program `std.testing.runner` gives for a namespace, built from a
-//! root file as any program is, and the lines it writes, read as typed values.
+//! The program running a namespace's tests: which namespace a path names, and building it.
 
 use std::path::{Path, PathBuf};
 
 use vun_build::layout::MANIFEST;
-use vun_data::{FromData, ToData};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{Namespace, Package};
 use vun_mir::Roots;
@@ -13,63 +11,6 @@ use vun_sema_ty::trap::Unevaluated;
 use vun_span::{EXTENSION, FileId};
 
 use crate::Session;
-
-/// A line the runner writes (`std.testing.Line`): a test run, then the totals.
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub enum Line {
-    Test(Ran),
-    Totals(Totals),
-}
-
-/// A test run: its name, as declared, and what became of it.
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub struct Ran {
-    pub name: String,
-    pub outcome: Outcome,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub enum Outcome {
-    Passed,
-    Trapped(Trapped),
-}
-
-/// A trap ending a test: its site, and what the program's table says of it.
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub struct Trapped {
-    pub site: u32,
-    pub said: Option<Said>,
-}
-
-/// What the program's table says of a trap site (`std.trace.Site`).
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub struct Said {
-    pub message: Option<String>,
-    pub at: Option<Place>,
-}
-
-/// A place in source, its line and column counted from 1 (`std.trace.Place`).
-#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
-pub struct Place {
-    pub file: String,
-    pub line: u32,
-    pub column: u32,
-}
-
-/// How many tests passed and how many trapped.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
-pub struct Totals {
-    pub passed: usize,
-    pub trapped: usize,
-}
-
-impl Line {
-    /// The line the runner wrote as `text`; `None` for what the tests write themselves.
-    #[must_use]
-    pub fn of(text: &str) -> Option<Self> {
-        vun_data::json::parse(text).ok()?.read().ok()
-    }
-}
 
 impl Session {
     /// The file the program running the tests at `path` is built from: the manifest of the
@@ -88,6 +29,21 @@ impl Session {
     /// directory's of the package, its root one at the package's directory or with no path.
     /// Reported when there is none, as for a file outside any package.
     pub fn tested(&mut self, root: FileId, path: Option<&Path>) -> Option<Namespace> {
+        let ns = self.namespace_at(root, path);
+        if ns.is_none() {
+            let msg = Msg::new()
+                .code(path.map(|p| p.display().to_string()).unwrap_or_default())
+                .text(" is no namespace of a package");
+            let help = Msg::new().text(
+                "name a file or directory of a package, or its directory; a file outside any is in none",
+            );
+            self.diag.error(Diagnostic::error(errors::TEST_NO_NAMESPACE, msg).help(help));
+        }
+        ns
+    }
+
+    /// The namespace at `path` in the package of `root`, as [`Self::tested`] finds it, unreported.
+    pub(crate) fn namespace_at(&mut self, root: FileId, path: Option<&Path>) -> Option<Namespace> {
         let key = self.package_of(root);
         let package = self.publish(key);
         let (name, relative) = {
@@ -102,17 +58,7 @@ impl Session {
             Some(_) => data.namespace_of(&file.display().to_string()).filter(|names| data.holds(names)),
             None => None,
         };
-        let Some(names) = names else {
-            let msg = Msg::new()
-                .code(path.map(|p| p.display().to_string()).unwrap_or_default())
-                .text(" is no namespace of a package");
-            let help = Msg::new().text(
-                "name a file or directory of a package, or its directory; a file outside any is in none",
-            );
-            self.diag.error(Diagnostic::error(errors::TEST_NO_NAMESPACE, msg).help(help));
-            return None;
-        };
-        Some(Namespace { package, path: names })
+        names.map(|path| Namespace { package, path })
     }
 
     /// Builds the program running the tests of `ns` from `root`: the exports among the members

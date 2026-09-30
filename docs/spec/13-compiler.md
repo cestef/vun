@@ -1368,9 +1368,14 @@ Server Protocol: JSON-RPC messages framed by `Content-Length` headers. It is a t
   the client to show it (`window/showDocument`); what computing it reports is left to the
   document's diagnostics. `vun.run` builds the program the document exports and runs it, without
   input, its output written to `.vun/views/<file>.run` as it comes, then how it ended; what stops
-  the build is written there instead.
+  the build is written there instead. `vun.test` builds the tests' program of the document's
+  namespace (spec 11) and runs one test by name, what `vun test` reports of it written to
+  `.vun/views/<file>.test` as it comes.
 - *Code lenses.* Over the name of each declaration of a root file exporting its program
-  (`vun_mir::Program::roots`), a lens running `vun.run`.
+  (`vun_mir::Program::roots`), a lens running `vun.run`; over the name of each test the file
+  declares, a lens running `vun.test`. The tests are those the runner finds, `std.meta.collect`
+  of the file's namespace called through the query engine (`vun_sema::testing::Tests`), never a
+  match of `#[test]` in the text.
 - *Signature help.* In the arguments of a call, its callee's declaration as the source writes it
   (its name, parameters and result, from a function literal or else a function type), each
   parameter, the one the argument at the position fills, and its doc comment.

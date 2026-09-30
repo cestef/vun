@@ -21,7 +21,13 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: tests run (354, 355). A trap ends its thread and `Thread.join` gives
+Last landed: test lenses and the runner's gaps (357). The server offers a `Test` lens over each
+test a file declares (`Session::tests`, from `std.meta.collect` through `vun_sema::testing::Tests`)
+running `vun.test`; `#[test.ignore("why")]` reports a test `ignored`; `vun test` reads the
+program's output and error as one stream, so a test's output and backtrace come with its line
+(`vun_driver::testing::Run`, shared with the server); run-time checks name their trap site with
+their `Reason`'s message. The nushell completion script exports its root command as `main`, as a
+module named `vun` must (`use vun.nu *`). Before that, tests run (354, 355). A trap ends its thread and `Thread.join` gives
 `Result(R, lang.panic.Trap)`; `std.testing.runner(ns)` runs each unit test on a thread of its own
 and writes JSON lines (`std.fmt.json`, derived by reflection); `vun test [path] [names]...` builds
 it for the namespace of a file, a directory or a package (`Roots::Members`, `vun_sema::testing::Runner`)
@@ -56,7 +62,8 @@ peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking fro
 `sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
 gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
 (spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 356 (an optional path, the nearest
-`build.vun` when none, for every command; only `vun test` follows it yet). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+`build.vun` when none, for every command; only `vun test` follows it yet), 357 (test lenses,
+`test.ignore`, one stream for the tests' program, checks' trap messages). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -108,65 +115,29 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 
 ## Running tests: what is left
 
-Steps 1 to 3 below are built (354, 355). Open: step 4 (editors, `lang.meta.Decl.origin`,
-`Session::tests`, test lenses); only unit tests run (a test with parameters fails to type at the
-runner's call; the other kinds need parameter reflection in `lang.meta`); `#[test.ignore]` and
-`#[test.fuel]` are not read; a file outside any package is in no namespace, so `vun test` refuses
-it (`test.no_namespace`; making a loose file a namespace is the owner's call); the runner's
-backtraces go to the standard error and interleave with `vun test`'s lines; an index trap's site
-has no message; where the system runs one thread (WASI), the first trap ends the run.
-
-## Running tests: the direction taken
-
-The owner turned down three designs as hacky: a process per test, a trap handler that jumps
-back (setjmp and longjmp), and running tests only at compile time. The direction below adds no
-test machinery. Test isolation falls out of one general rule the spec already implies. Present it
-to the owner, write it as a proposed decision, then build it in this order.
-
-1. **A trap ends its thread, and joining reports it.** Spec 07, section 3 already says a trap
-   "ends the current execution context" and never defines the context. Define it as the thread
-   (a task where `std.task` schedules tasks). A trap ends that thread alone, and
-   `std.os.thread.Thread.join` gives how it ended: returned with the value, or trapped with the
-   `lang.panic.Trap` (its site id, which the trace table maps to a message and origin). A trap in
-   the thread the program started in ends the program, as now. There is still no unwinding:
-   `defer` does not run, and what the thread held stays held, which the checks of unsafe code can
-   report. The handler each runtime exports (`lang.panic.symbols.trap`: `std.os.libc`,
-   `std.os.linux.kernel`, `std.os.wasi`) writes the backtrace as now. In a spawned thread it then
-   stores the trap in the thread's record (`std.os.thread.Placed.record`, which the runtime
-   already keeps and `join` copies back) and exits the thread alone: `pthread_exit`, the Linux
-   `exit` syscall rather than `exit_group` (the joiner's futex on the child tid wakes as now), or
-   WASI's thread exit. Where there is one execution context (bare targets without `std.task`),
-   the program ends. At compile time a trap already ends the call being evaluated: it is the same
-   rule. The rule is general, not for tests: supervisors, servers and `std.task.Pool` gain it too.
-2. **`std.testing.runner(pkg)` is library code (spec 11, section 1).** Its tests are
-   `std.meta.collect(pkg, std.testing.test)` (decision 353); each test's value is
-   `c.ns.$(c.decl.name)`. The runner is an ordinary program: it runs each test on its own thread,
-   several at once, joins them and writes one JSON line per test (name, origin, returned or
-   trapped with the site's message), then a summary, and exits with a failure status when any
-   test trapped. Unit tests, those with no parameters, come first. The other kinds of spec 11
-   (property, fuzz, `Bench`, `Sim`) are chosen by the test's parameter types, read through
-   `lang.meta`. `#[test.ignore(...)]` and `#[test.fuel(n)]` are read with `std.meta.attr`. A
-   filter (test names) comes in as program arguments.
-3. **`vun test [file]`** builds a program whose entry is the runner over the package of `file`,
-   or over the file's own namespace for a loose file. Open: how that root is named without
-   writing source text. Two candidates: the plan's `std.build.Options.output` gains `.tests`
-   (the program built from the package's root, with the runner as its entry), or the driver adds
-   a generated root through `vun_syntax::make`, typed and never a string,
-   `start := std.testing.program(<package>);`, beside `std.os.start`. The same JSON stream is
-   what every mode writes (spec 11, section 3): native first; qemu and the interpreter later.
-4. **Editors.** `lang.meta.Decl` gains `origin` (where the member is declared). The driver lists
-   a file's tests by evaluating the same `collect` through the query engine (`Session::tests`),
-   so the server's test lenses (`vun.test`, beside `vun.run`) come from the library's own
-   definition of a test, never from matching `#[test]` in the text. Results come back from the
-   JSON lines and show as the lenses' titles and as diagnostics at the trap's origin.
-
-Known trap on the way: a function evaluated while a `$if` step is typed cannot pass one of its
-run-time locals to a `$` parameter (see item 4 of the next steps). The runner should read
-attributes through `$` descriptors, as `std.meta.attr` does.
+Runs natively (354, 355, 357); spec 11 is the reference. Open:
+- Only unit tests run: a test with parameters fails to type at the runner's call. The other kinds
+  (property, fuzz, `Bench`, `Sim`) need the parameters' types through `lang.meta`.
+- `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
+- Lens results: `vun.test` writes its report beside the document; the lens titles do not show
+  the outcome yet, and a trap is not published as a diagnostic at its site.
+- Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
+  corpus and every example live in one. Recommended to keep; the owner may overrule.
+- Where the system runs one thread (WASI), the first trap ends the run.
+- Two sema bugs met writing the runner, worked around: inside a `$`-generic function,
+  `sys.spawn(f)` with `f: &mut F`, `$F: lang.ops.Call((), ())` cannot infer `R` from `F`'s bound;
+  and `()` passed to a `$R: type` parameter of a method call is the unit value, not the type
+  (`types.mismatch` in `std.os.thread`). Both surfaced from `std` as `backend.unlowered` ("the
+  type of this value is unknown") at the function, hiding the real error, which only a copy
+  outside `std` shows.
+- `persist::an_unchanged_program_built_again_computes_nothing_it_saves` failed twice in full
+  driver runs from an empty `target/tmp/memos` on `petal.wg` (`VUN_QUERY_CHECK=1`), then passed
+  on a third; alone, or with the `testing` or `runtime` tests, it passes. Shared entries are
+  content-addressed, so a rewritten entry is not the cause; not found yet.
 
 ## Next steps, most useful first
 
-The owner's queue, in order: step 4 of running tests above (test lenses), then the editor polish of item 0 (hover on
+The owner's queue, in order: the editor polish of item 0 (hover on
 a declaration's own name and on type annotations, stopping a run, views of the function at the
 cursor, VS Code commands), then the rest of lint levels in item 4 (command-line levels,
 dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).

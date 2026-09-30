@@ -18,7 +18,7 @@ use crate::lint::{DefinedLints, Linted};
 use crate::member::{MemberType, MemberValue, Members};
 use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
-use crate::testing::Runner;
+use crate::testing::{Runner, Tests};
 use crate::trace::TraceOf;
 use crate::typeck::{Reported, Typed};
 use crate::witness::{Conformance, Impls, Requirement, Witnesses};
@@ -33,6 +33,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<DefinedLints>,
     Db::persist::<Planned>,
     Db::persist::<Runner>,
+    Db::persist::<Tests>,
     Db::persist::<DeclType>,
     Db::persist::<DeclValue>,
     Db::persist::<Declaration>,

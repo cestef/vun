@@ -13,7 +13,6 @@ use vun_primitives::lint::Lint;
 use vun_query::{Cx, Query};
 use vun_sema_ty::item::DeclRef;
 
-use super::tables::field;
 use crate::decl::DeclValue;
 use crate::env::Env;
 
@@ -65,7 +64,7 @@ impl Query for CheckedLints {
         let lints = defined.filter_map(|decl| {
             let id = super::Lint::id_of(&super::Lint::path(cx, &decl)?);
             let value = cx.get::<DeclValue>(&decl).ok();
-            let doc = value.as_ref().and_then(|v| field(v, lang::lint_Lint::doc)?.text());
+            let doc = value.as_ref().and_then(|v| v.field(lang::lint_Lint::doc)?.text());
             Some((id, doc))
         });
         Arc::new(lints.collect())

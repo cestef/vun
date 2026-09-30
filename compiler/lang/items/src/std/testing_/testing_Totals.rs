@@ -8,3 +8,6 @@
 use crate::Item;
 pub const passed: Item = Item::new(&["std", "testing", "Totals", "passed"]);
 pub const trapped: Item = Item::new(&["std", "testing", "Totals", "trapped"]);
+pub const ignored: Item = Item::new(&["std", "testing", "Totals", "ignored"]);
+/// Counts `outcome`.
+pub const count: Item = Item::new(&["std", "testing", "Totals", "count"]);
