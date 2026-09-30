@@ -7,7 +7,7 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 689 tests pass; clippy,
+Everything is committed in the main chain. 693 tests pass; clippy,
 `lines` and `layers` are clean; the corpus has 312 passing programs and 2 planned, and LIR
 lowers every function the corpus reaches.
 
@@ -86,6 +86,18 @@ witness is made, spread members of type bodies, editor queries last-wins.
 Brand kits (342, [`dev/assets.md`](dev/assets.md)) open points: removing outputs of variants no
 longer declared, as `cargo gen` does; code in the tall and square clips is small at 80 columns;
 the OBS overlays are not yet tried in OBS itself.
+
+Toolchains, targets and releases (364 to 367, the owner's model): a toolchain is a release
+(`bin/vun` + `lib/`, found by `vun_driver::packages::Library`); targets are
+`targets.<os>.<arch>.<abi>`; the machine's file is `tools.vun` (`VUN_TOOLS`); `vun target
+list|show` and `vun toolchain show` show what builds and why (`vun_driver::setup`); `vun
+toolchain list|install|remove|update` and a project's `.toolchain` install from releases and hand
+off (`vun_driver::install`); `.github/workflows/release.yml`, `cargo xtask package|release` and
+`install.sh` make and install releases (`docs/dev/commands.md`, "Releasing"). Open there: the
+lockfile does not record a pinned toolchain's hash; a handed-off command prints its first status
+line twice (the parent's, then the child's); the release manifest is not signed; the workspace
+`version` is still `0.0.0` and `Cargo.toml`'s `license` disagrees with `LICENSE.md`; the first
+tagged release has not run in CI yet.
 
 ## Decisions waiting for the owner
 
