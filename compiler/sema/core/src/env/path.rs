@@ -2,7 +2,7 @@
 //! and primitives are declared at.
 
 use vun_hir::db::{Namespace, Outer, Package, PackageId, Scope};
-use vun_hir::tree::{ExprId, Name};
+use vun_hir::tree::{ExprId, Name, NsId};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_primitives::Primitive;
@@ -57,6 +57,21 @@ impl Env<'_, '_> {
     /// Returns why it leads nowhere here.
     pub fn site(&self, item: Item) -> Result<Site, Unevaluated> {
         self.cx.get::<ItemSite>(&(self.file.package, item))
+    }
+
+    /// Where `name`, declared nowhere in the file, leads from inside its namespace `ns`: to the
+    /// member a spread brings into `ns` or a namespace around it, else outside the file.
+    ///
+    /// # Errors
+    /// Returns why it leads nowhere here.
+    pub fn outside(&self, name: Symbol, ns: NsId) -> Result<Site, Unevaluated> {
+        let spread = self.parsed.resolution.enclosing(ns).flatten().find_map(|n| {
+            self.names.spreads.brought.get(&n).and_then(|brought| brought.get(&name))
+        });
+        match spread {
+            Some(ns) => self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent),
+            None => self.outer(name),
+        }
     }
 
     /// Where `name` leads outside the file: the package, a dependency, or the prelude.

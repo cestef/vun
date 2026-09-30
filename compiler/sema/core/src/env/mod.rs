@@ -219,16 +219,7 @@ impl<'a, 'db> Env<'a, 'db> {
                 let Value::Namespace(ns) = self.eval(path)? else { return Err(Unevaluated::Unsupported) };
                 self.cx.get::<Declared>(&(ns, hir.binders[b].name)).ok_or(Unevaluated::Absent)
             }
-            Some(Res::Outer { name, ns }) => {
-                let spread =
-                    self.parsed.resolution.enclosing(ns).flatten().find_map(|n| {
-                        self.names.spreads.brought.get(&n).and_then(|brought| brought.get(&name))
-                    });
-                match spread {
-                    Some(ns) => self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent),
-                    None => self.outer(name),
-                }
-            }
+            Some(Res::Outer { name, ns }) => self.outside(name, ns),
             None => match &self.parsed.hir.exprs[expr].kind {
                 ExprKind::Member { object, name } => self.member_site(*object, name),
                 _ => Err(Unevaluated::Unsupported),
