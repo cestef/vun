@@ -2,8 +2,10 @@
 //! `start := std.testing.runner(app);` runs every test of the namespace `app` and those nested in
 //! it, each on a thread of its own, since a trap ends only its thread (spec 07, section 3), and
 //! writes one JSON line per test, then one of the totals (spec 11, section 3). A test whose one
-//! parameter is `&mut Bench` is a benchmark (`std.testing.bench`); a test with other parameters is
-//! a property, run with arguments generated from their types (`std.testing.property`).
+//! parameter is `&mut Bench` is a benchmark (`std.testing.bench`), one whose one parameter is
+//! `&mut Sim` a simulation (`std.testing.sim`); a test with other parameters is a property, run
+//! with arguments generated from their types (`std.testing.property`), as a simulation runs with
+//! its schedules drawn from the same choices.
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 #[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
@@ -23,6 +25,9 @@ Choices := std.testing.property.Choices;
 gen := std.testing.property.gen;
 /// The loop of a benchmark.
 Bench := std.testing.bench.Bench;
+/// A simulation, and its clock.
+Sim := std.testing.sim.Sim;
+Clock := std.testing.sim.Clock;
 /// How a run is asked for.
 Options := std.testing.options.Options;
 
@@ -151,7 +156,7 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
     mut out := sys.stdout();
     mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0, .measured = 0 };
     $for c in std.meta.collect(ns, test) {
-        if options.chosen(c.decl.name) and ($std.testing.bench.benchmark(c.ns.$(c.decl.name)) or !options.bench) {
+        if options.chosen(c.decl.name) and ($takes(c.ns.$(c.decl.name), &mut Bench) or !options.bench) {
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
                 .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
@@ -183,7 +188,7 @@ tested := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opti
             },
         })
     } else {
-        $if std.testing.bench.benchmark(F, f) {
+        $if takes(F, f, &mut Bench) {
             .ok(std.testing.bench.outcome(F, f, sys, options.bench))
         } else {
             checked(F, f, name, sys, options, out)
@@ -205,6 +210,12 @@ checked := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opt
             Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
         },
     })
+};
+
+/// Whether the one parameter of `f` is a `T`.
+takes := ($F: type, $f: F, $T: type) -> bool {
+    $params := lang.meta.params(F, f);
+    params.len() == 1 and params[0].type == T
 };
 
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.

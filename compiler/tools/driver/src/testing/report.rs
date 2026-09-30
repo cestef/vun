@@ -113,10 +113,13 @@ impl Tested {
             .and_then(|s| s.at.as_ref())
             .map(|at| Text::of(Style::Scope, format!("at {}:{}:{}", at.file, at.line, at.column)));
         let case = match outcome {
-            Outcome::Falsified(Falsified { seed, case, shrinks, .. }) => Some(Text::of(
-                Style::Scope,
-                format!("case {case} of seed {seed:#018x}, shrunk {shrinks} times, with the arguments below"),
-            )),
+            Outcome::Falsified(Falsified { seed, case, shrinks, .. }) => {
+                let below = if self.arguments.is_empty() { "" } else { ", with the arguments below" };
+                Some(Text::of(
+                    Style::Scope,
+                    format!("case {case} of seed {seed:#018x}, shrunk {shrinks} times{below}"),
+                ))
+            }
             _ => None,
         };
         let measured = match outcome {

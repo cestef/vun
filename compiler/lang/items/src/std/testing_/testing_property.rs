@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.testing.property.lend`.
 pub const lend: Item = Item::new(&["std", "testing", "property", "lend"]);
+/// The namespace `std.testing.property.shrink`.
+pub const shrink: Item = Item::new(&["std", "testing", "property", "shrink"]);
 /// How many choices a case takes at most; past them, each is 0.
 pub const room: Item = Item::new(&["std", "testing", "property", "room"]);
 /// The greatest choice.
@@ -56,10 +58,12 @@ pub const arguments: Item = Item::new(&["std", "testing", "property", "arguments
 /// What a case holds for the parameter `p`, read from `c`: by the generator it names, or by its
 /// type.
 pub const argument: Item = Item::new(&["std", "testing", "property", "argument"]);
-/// Runs `f` with arguments read from `c`, on a thread of its own, reporting a trap unless
-/// `quiet`: the trap that ended it, if one did. Where the system runs one thread, on the calling
-/// one, and a trap ends the run.
+/// Runs `f` with arguments read from `c`, or a simulation with its schedule drawn from `c`, on a
+/// thread of its own, reporting a trap unless `quiet`: the trap that ended it, if one did. Where
+/// the system runs one thread, on the calling one, and a trap ends the run.
 pub const attempt: Item = Item::new(&["std", "testing", "property", "attempt"]);
+/// Runs `f` with arguments read from `c`, as `attempt` does.
+pub const generated: Item = Item::new(&["std", "testing", "property", "generated"]);
 /// A failing case: the choices it took, the trap that ended it, and how many smaller cases
 /// shrinking found before it.
 pub const Failing: Item = Item::new(&["std", "testing", "property", "Failing"]);
@@ -67,12 +71,10 @@ pub const Failing: Item = Item::new(&["std", "testing", "property", "Failing"]);
 /// `.none` when none trapped, else the first that did, shrunk, with the case it was. Only the
 /// smallest case reports its trap, run once more.
 pub const check: Item = Item::new(&["std", "testing", "property", "check"]);
-/// The smallest case found from `failing` that still traps, within `tries` cases: a shorter
-/// stream, then each choice at 0 or halved, until none of them traps.
-pub const shrink: Item = Item::new(&["std", "testing", "property", "shrink"]);
-/// The case replaying the first `len` of `taken`, when it still traps, as a failing case found
-/// by one more shrink than `shrinks`.
-pub const retried: Item = Item::new(&["std", "testing", "property", "retried"]);
 /// Writes the arguments `failing` replays for `f`, each on a line of its own
-/// (`std.testing.Argued`).
+/// (`std.testing.Argued`); a simulation has none.
 pub const write: Item = Item::new(&["std", "testing", "property", "write"]);
+/// Writes the arguments `failing` replays for the property `f`, as `write` does.
+pub const arguments_written: Item = Item::new(
+    &["std", "testing", "property", "arguments_written"],
+);

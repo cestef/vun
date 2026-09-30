@@ -12,6 +12,8 @@ pub const bench: Item = Item::new(&["std", "testing", "bench"]);
 pub const options: Item = Item::new(&["std", "testing", "options"]);
 /// The namespace `std.testing.property`.
 pub const property: Item = Item::new(&["std", "testing", "property"]);
+/// The namespace `std.testing.sim`.
+pub const sim: Item = Item::new(&["std", "testing", "sim"]);
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 pub const test: Item = Item::new(&["std", "testing", "test"]);
 /// How a type's values are generated for property tests its own way (spec 11, section 2).
@@ -22,6 +24,9 @@ pub const Choices: Item = Item::new(&["std", "testing", "Choices"]);
 pub const r#gen: Item = Item::new(&["std", "testing", "gen"]);
 /// The loop of a benchmark.
 pub const Bench: Item = Item::new(&["std", "testing", "Bench"]);
+/// A simulation, and its clock.
+pub const Sim: Item = Item::new(&["std", "testing", "Sim"]);
+pub const Clock: Item = Item::new(&["std", "testing", "Clock"]);
 /// How a run is asked for.
 pub const Options: Item = Item::new(&["std", "testing", "Options"]);
 /// A test that is not run, and why.
@@ -72,6 +77,8 @@ pub const tested: Item = Item::new(&["std", "testing", "tested"]);
 /// What became of the property test `f`, named `name`, over the cases `options` ask for: the
 /// smallest failing case's arguments are written to `out`.
 pub const checked: Item = Item::new(&["std", "testing", "checked"]);
+/// Whether the one parameter of `f` is a `T`.
+pub const takes: Item = Item::new(&["std", "testing", "takes"]);
 /// A trap as a test's outcome reports it: its site, and what the program's table says of it.
 pub const trapped: Item = Item::new(&["std", "testing", "trapped"]);
 /// The seed the cases of the property test `name` are drawn from: the FNV-1a hash of its name,

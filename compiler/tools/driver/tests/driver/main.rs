@@ -43,6 +43,7 @@ mod replace;
 mod runtime;
 mod select;
 mod sequences;
+mod sim;
 mod staged;
 mod stdlib;
 mod testing;

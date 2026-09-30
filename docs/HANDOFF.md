@@ -122,7 +122,8 @@ records in reflection's shape, floats in JSON), 380 (what a program reaches chec
 code, failing arguments as typed lines), 381 (a name in a pattern always binds;
 `suspicious.shadowing` reports one hiding a constant), 382 (`lang.int.least` and `greatest`,
 integers drawn by distance from 0 then side), 383 (generic bodies checked per instantiation,
-not typed abstractly) and 384 (benchmarks, `vun bench`). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+not typed abstractly), 384 (benchmarks, `vun bench`) and 386 (simulations; shrinking keeps only
+smaller cases). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -173,8 +174,10 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Properties: only shared borrows are lent (`&T`, `&[T]`), and a slice holds at most
   `std.testing.property.longest` (32) items.
 - Fuzz targets (`&[u8]`) run as properties under `vun test`; the coverage-guided fuzzer (`vun
-  fuzz`) and the corpus in `fuzz/<test path>/` do not exist. `Sim` does not exist: the runner
-  treats a test whose parameters are not one `&mut Bench` as a property.
+  fuzz`) and the corpus in `fuzz/<test path>/` do not exist.
+- Simulations (decision 386) have a virtual clock and a seeded scheduler over a tuple of tasks;
+  not yet a simulated network or disk, nor choices drawn by the tasks themselves (a task would
+  need the `Sim` its test holds mutably while `run` does).
 - Benchmarks (decision 384) report one measurement: no statistics over samples, no
   `--measure instructions`, no baselines in `.vun/bench/` nor `--fail-over`.
 - A `$for` over a `.{ }` literal does not lower ("not supported in compiled code yet"); over an
@@ -218,7 +221,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.Dyn` (`meta/derive.vun` waits for it and
    an `Encoder`), `std.meta.decls` of a struct type (namespaces only for now),
-   `testing.Sim` and `mem.copy`. Lints: level `expect` shows as `warn` and never reports
+   `mem.copy` (and `node`, `Packet`, `crc32` stand-ins). Lints: level `expect` shows as `warn` and never reports
    that a lint stayed silent; the command line sets no levels yet, and dependencies' lints are
    not capped at `warn` when building a dependent (the build's levels apply to its own
    package); `#[lint.allow]` applies to declarations, not to locals; the grammar generator still reads a PascalCase table

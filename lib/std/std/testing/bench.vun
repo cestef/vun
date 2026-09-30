@@ -69,12 +69,6 @@ Bench := struct {
     };
 };
 
-/// Whether `f` is a benchmark: its one parameter is `&mut Bench`.
-benchmark := ($F: type, $f: F) -> bool {
-    $params := lang.meta.params(F, f);
-    params.len() == 1 and params[0].type == &mut Bench
-};
-
 /// What became of the benchmark `f`, run on a thread of its own, measured or once as a test.
 /// Where the system runs one thread, on the calling one, and a trap ends the run.
 outcome := ($F: type, $f: F, sys: &mut std.os.System, measuring: bool) -> std.testing.Outcome {

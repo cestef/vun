@@ -13,8 +13,6 @@ pub const Measured: Item = Item::new(&["std", "testing", "bench", "Measured"]);
 pub const measured_json: Item = Item::new(&["std", "testing", "bench", "measured_json"]);
 /// The loop of a benchmark: `for b.loop() { ... }`, set up once before it.
 pub const Bench: Item = Item::new(&["std", "testing", "bench", "Bench"]);
-/// Whether `f` is a benchmark: its one parameter is `&mut Bench`.
-pub const benchmark: Item = Item::new(&["std", "testing", "bench", "benchmark"]);
 /// What became of the benchmark `f`, run on a thread of its own, measured or once as a test.
 /// Where the system runs one thread, on the calling one, and a trap ends the run.
 pub const outcome: Item = Item::new(&["std", "testing", "bench", "outcome"]);

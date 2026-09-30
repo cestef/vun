@@ -167,10 +167,19 @@ argument := ($p: lang.meta.Field, c: &mut Choices) -> std.testing.property.lend.
     }
 };
 
-/// Runs `f` with arguments read from `c`, on a thread of its own, reporting a trap unless
-/// `quiet`: the trap that ended it, if one did. Where the system runs one thread, on the calling
-/// one, and a trap ends the run.
+/// Runs `f` with arguments read from `c`, or a simulation with its schedule drawn from `c`, on a
+/// thread of its own, reporting a trap unless `quiet`: the trap that ended it, if one did. Where
+/// the system runs one thread, on the calling one, and a trap ends the run.
 attempt := ($F: type, $f: F, sys: &mut std.os.System, c: &mut Choices, quiet: bool) -> ?lang.panic.Trap {
+    $if std.testing.takes(F, f, &mut std.testing.Sim) {
+        std.testing.sim.attempt(F, f, sys, c, quiet)
+    } else {
+        generated(F, f, sys, c, quiet)
+    }
+};
+
+/// Runs `f` with arguments read from `c`, as `attempt` does.
+generated := ($F: type, $f: F, sys: &mut std.os.System, c: &mut Choices, quiet: bool) -> ?lang.panic.Trap {
     held := arguments(F, f, c);
     mut case := [held, quiet] () {
         std.os.thread.reporting.set(!quiet);
@@ -195,6 +204,16 @@ Failing := struct {
     len: usize,
     trap: lang.panic.Trap,
     shrinks: usize,
+
+    /// Whether it took fewer choices than `other`, or as many and a smaller one at the first
+    /// place they differ: what shrinking a case makes of it.
+    smaller := (self: &Failing, other: &Failing) -> bool {
+        if self.len != other.len { return self.len < other.len; }
+        for i in 0..self.len {
+            if self.taken[i] != other.taken[i] { return self.taken[i] < other.taken[i]; }
+        }
+        false
+    };
 };
 
 /// The property test `f` run over `count` cases drawn from `seed`, each on a thread of its own:
@@ -205,7 +224,8 @@ check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, count: usize) -> 
     for case in 0..count {
         mut c := Choices.seeded(next(&mut master));
         if .some(trap) = attempt(F, f, sys, &mut c, true) {
-            smallest := shrink(F, f, sys, .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 });
+            failing: Failing = .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 };
+            smallest := std.testing.property.shrink.smallest(F, f, sys, failing);
             mut replayed := Choices.replaying(&smallest.taken, smallest.len);
             _ = attempt(F, f, sys, &mut replayed, false);
             return .some((smallest, case));
@@ -214,54 +234,14 @@ check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, count: usize) -> 
     .none
 };
 
-/// The smallest case found from `failing` that still traps, within `tries` cases: a shorter
-/// stream, then each choice at 0 or halved, until none of them traps.
-shrink := ($F: type, $f: F, sys: &mut std.os.System, failing: Failing) -> Failing {
-    mut best := failing;
-    mut left := tries;
-    mut shrunk := true;
-    for shrunk and left > 0 {
-        shrunk = false;
-        mut len: usize = best.len / 2;
-        for len < best.len and left > 0 {
-            left -= 1;
-            if .some(smaller) = retried(F, f, sys, &best.taken, len, best.shrinks) {
-                best = smaller;
-                shrunk = true;
-            }
-            len = (len + best.len + 1) / 2;
-        }
-        for i in 0..best.len {
-            mut target: u64 = 0;
-            for target < best.taken[i] and left > 0 {
-                left -= 1;
-                mut taken := best.taken;
-                taken[i] = target;
-                if .some(smaller) = retried(F, f, sys, &taken, best.len, best.shrinks) {
-                    best = smaller;
-                    shrunk = true;
-                    break;
-                }
-                target = (target + (best.taken[i] - target + 1) / 2).to(u64);
-            }
-        }
-    }
-    best
-};
-
-/// The case replaying the first `len` of `taken`, when it still traps, as a failing case found
-/// by one more shrink than `shrinks`.
-retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[room]u64, len: usize, shrinks: usize) -> ?Failing {
-    mut c := Choices.replaying(taken, len);
-    match attempt(F, f, sys, &mut c, true) {
-        .some(trap) => .some(.{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = (shrinks + 1).to(usize) }),
-        .none => .none,
-    }
-};
-
 /// Writes the arguments `failing` replays for `f`, each on a line of its own
-/// (`std.testing.Argued`).
+/// (`std.testing.Argued`); a simulation has none.
 write := ($F: type, $f: F, w: &mut std.os.Stream, failing: &Failing) -> Result((), std.os.Error) {
+    $if std.testing.takes(F, f, &mut std.testing.Sim) { .ok(()) } else { arguments_written(F, f, w, failing) }
+};
+
+/// Writes the arguments `failing` replays for the property `f`, as `write` does.
+arguments_written := ($F: type, $f: F, w: &mut std.os.Stream, failing: &Failing) -> Result((), std.os.Error) {
     mut c := Choices.replaying(&failing.taken, failing.len);
     held := arguments(F, f, &mut c);
     $for p in lang.meta.params(F, f) {

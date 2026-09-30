@@ -44,10 +44,10 @@ memcpy_4k := (b: &mut testing.Bench) {
 
 #[test]                                            // deterministic simulation
 election := (s: &mut testing.Sim) {
-    net := s.network(.{ .drop = .percent(5), .reorder = true });
-    for i in 0..3 { s.spawn(node(net, i)); }
-    s.run_until(.virtual(60 * s.second));
-    assert(leaders(s) == 1);
+    clock := testing.Clock.init();
+    mut nodes := [node(&clock, 0), node(&clock, 1), node(&clock, 2)];
+    _ = s.run(&clock, .{ &mut nodes[0], &mut nodes[1], &mut nodes[2] }, .seconds(60));
+    assert(leaders(&nodes) == 1);
 };
 ```
 
@@ -57,7 +57,7 @@ election := (s: &mut testing.Sim) {
 | values of ordinary types | property test | `vun test` (seeded cases), `vun fuzz` (coverage-guided) |
 | `&[u8]` | fuzz target | same |
 | `&mut testing.Bench` | benchmark | `vun bench` |
-| `&mut testing.Sim` | simulation | `vun test`, `vun sim --seeds N` |
+| `&mut testing.Sim` | simulation | `vun test` (seeded cases, as a property's) |
 
 Attributes: `#[test.gen(g)]` on a parameter of a property generates its argument with `g`,
 `(c: &mut testing.Choices) -> T`, rather than from its type; `#[test.fuel(n)]` sets a deterministic step budget instead of a wall-clock timeout,
@@ -128,15 +128,28 @@ program's table says it (`std.trace.Site.of`), or for a property
 `std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
 program's standard output and error as one stream, so what a test writes, the backtrace of its
 trap included, comes before its line and is reported with it. Unit tests, properties, fuzz
-targets and benchmarks run; simulations do not yet.
+targets, benchmarks and simulations run.
 
 ## 4. Deterministic simulation
 
 Time, network, storage and randomness reach code only through capabilities (spec 07), and executors
-are library code (spec 06). `testing.Sim` supplies simulated versions of all of them: a virtual
-clock, a seeded scheduler that chooses which ready task resumes, and a network and disk that drop,
-reorder, delay and corrupt on command. A failure prints its seed; `--seed` replays it exactly. This
-is TigerBeetle's and FoundationDB's approach, with no runtime support.
+are library code (spec 06). A test whose one parameter is `&mut testing.Sim` is a simulation: its
+tasks, `std.task.Async` frames, run on a `testing.Clock` through `s.run(&clock, tasks, limit)`,
+`tasks` a tuple of their borrows.
+
+- The clock is virtual: a task sleeps on it (`yield ..clock.sleep(span)`), and it moves only when
+  no task is ready, to the earliest time one sleeps until, waking every task (one resumed early
+  finds its event not fired and waits again).
+- One task runs at a time, the next chosen among those ready by the case's choices: the choices a
+  property's arguments are read from (section 2). A simulation therefore runs over a property's
+  cases, a failing schedule is shrunk on its choices to the fewest and smallest, and the seed and
+  case a failure reports replay it exactly (`--seed`).
+- `run` ends `.done` when every task finished, `.stalled` when those left wait on events nothing
+  will fire, `.timed_out` when the clock has moved `limit`. The tasks stay for the test to end.
+
+This is TigerBeetle's and FoundationDB's approach, with no runtime support. Not yet: a simulated
+network and disk that drop, reorder, delay and corrupt on command, and choices drawn by the tasks
+themselves.
 
 ## 5. Benchmarks
 

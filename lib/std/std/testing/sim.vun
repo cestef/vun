@@ -1,0 +1,149 @@
+//! Deterministic simulation (spec 11, section 4): a test whose one parameter is `&mut Sim` runs
+//! tasks, `std.task.Async` frames, on a virtual clock, one at a time, each next one chosen among
+//! those ready by the case's choices. They are the choices a property's arguments are read from,
+//! so a simulation runs over the cases a property does, a failing one is shrunk on its choices,
+//! and `--seed` replays it exactly. Time passes only when no task is ready: the clock jumps to the
+//! earliest time a task sleeps until.
+
+/// The clock of a simulation: virtual time, which tasks sleep on and which moves only when none
+/// is ready. Shared by the tasks, which borrow it, and the simulation running them.
+Clock := struct {
+    _now: std.sync.Atomic(u64),
+    /// The earliest time a task sleeps until; `never` when none does.
+    _next: std.sync.Atomic(u64),
+    /// What a sleeping task waits on: never fired, since the simulation resumes every task once
+    /// the clock moves.
+    _tick: std.task.Event,
+
+    /// A clock reading 0, with no task sleeping.
+    init := () -> Clock {
+        .{ ._now = std.sync.Atomic(u64).init(0), ._next = std.sync.Atomic(u64).init(never), ._tick = std.task.Event.init() }
+    };
+
+    /// The time the clock reads.
+    now := (self: &Clock) -> std.time.Instant { std.time.Instant.at(self._now.load(.relaxed)) };
+
+    /// Waits until the clock reads `span` later than it does now.
+    sleep := (self: &Clock, span: std.time.Duration) -> std.task.Async(()) {
+        until := (self._now.load(.relaxed) + span.as_nanos()).sat(u64);
+        for self._now.load(.relaxed) < until {
+            self._asked(until);
+            yield .on(&self._tick);
+        }
+    };
+
+    /// Moves to the earliest time a task sleeps until, unless that is past `end`, where it stops:
+    /// `.none` when it moved, else why the simulation ends.
+    jump := (self: &Clock, end: std.time.Instant) -> ?Ended {
+        next := self._next.swap(never, .relaxed);
+        if next == never { return .some(.stalled); }
+        if next > end.as_nanos() {
+            self._now.store(end.as_nanos(), .relaxed);
+            return .some(.timed_out);
+        }
+        self._now.store(next, .relaxed);
+        .none
+    };
+
+    /// Records that a task sleeps until `until`.
+    _asked := (self: &Clock, until: u64) {
+        mut seen := self._next.load(.relaxed);
+        for until < seen {
+            found := self._next.compare_swap(seen, until, .relaxed);
+            if found == seen { break; }
+            seen = found;
+        }
+    };
+};
+
+/// The time of no task sleeping.
+never: u64 = 0xFFFF_FFFF_FFFF_FFFF;
+
+/// How a simulation's run ended: every task finished, the tasks left wait on events nothing will
+/// fire, or the clock reached the limit.
+Ended := enum { done, stalled, timed_out };
+#[impl(lang.ops.Eq(Ended))]
+ended_eq := std.cmp.derive_eq(Ended);
+
+/// A simulation: what chooses which ready task runs next.
+Sim := struct {
+    _choices: &mut std.testing.Choices,
+
+    /// A simulation choosing by `choices`.
+    of := (choices: &mut std.testing.Choices) -> Sim { .{ ._choices = choices } };
+
+    /// Runs `tasks`, borrows of `std.task.Async` frames, on `clock` until each finished, none can
+    /// go on, or the clock has moved `limit` past where it read: one ready task at a time, the
+    /// next chosen by the case's choices, the clock moved to the earliest time a task sleeps until
+    /// whenever none is ready.
+    run := ($T: type, self: &mut Sim, clock: &Clock, tasks: T, limit: std.time.Duration) -> Ended {
+        $n := lang.meta.items(T).len();
+        end := std.time.Instant.at((clock.now().as_nanos() + limit.as_nanos()).sat(u64));
+        mut waits: [n]?std.task.Wait = [.none; n];
+        mut done: [n]bool = [false; n];
+        // Whether a task runs whatever its wait says: at first, and once the clock moved, which a
+        // sleeping task then sees, and any other finds its event not fired and waits again.
+        mut due: [n]bool = [true; n];
+        for {
+            mut runnable: u64 = 0;
+            $for i in 0..n {
+                if Sim.ready(done[i], due[i], &waits[i]) { runnable += 1; }
+            }
+            if runnable == 0 {
+                mut finished := true;
+                $for i in 0..n { finished = finished and done[i]; }
+                if finished { break .done; }
+                if .some(ended) = clock.jump(end) { break ended; }
+                due = [true; n];
+                continue;
+            }
+            mut left: ?u64 = .some(self._choices.draw((runnable - 1).sat(u64)));
+            $for i in 0..n {
+                if Sim.ready(done[i], due[i], &waits[i]) {
+                    match left {
+                        .some(0) => {
+                            left = .none;
+                            due[i] = false;
+                            match tasks.$(i).resume() {
+                                .yielded(wait) => { waits[i] = .some(wait); },
+                                .done(_) => { done[i] = true; },
+                            }
+                        },
+                        .some(k) => { left = .some((k - 1).sat(u64)); },
+                        .none => {},
+                    }
+                }
+            }
+        }
+    };
+
+    /// Whether a task not `done` runs next: `due`, never resumed, or its wait ready.
+    ready := (done: bool, due: bool, waiting: &?std.task.Wait) -> bool {
+        if done { return false; }
+        match waiting {
+            .some(wait) => due or wait.ready(),
+            .none => true,
+        }
+    };
+};
+
+/// Runs the simulation `f` with the choices `c`, on a thread of its own, reporting a trap unless
+/// `quiet`: the trap that ended it, if one did. The choices it took stay in `c`, a trap included.
+/// Where the system runs one thread, on the calling one, and a trap ends the run.
+attempt := ($F: type, $f: F, sys: &mut std.os.System, c: &mut std.testing.Choices, quiet: bool) -> ?lang.panic.Trap {
+    mut case := [c, quiet] () {
+        std.os.thread.reporting.set(!quiet);
+        mut s := Sim.of(c);
+        f(&mut s);
+    };
+    match sys.spawn(&mut case) {
+        .ok(t) => match t.join() {
+            .ok(_) => .none,
+            .err(trap) => .some(trap),
+        },
+        .err(_) => {
+            case();
+            .none
+        },
+    }
+};

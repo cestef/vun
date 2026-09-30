@@ -1,0 +1,46 @@
+//! Shrinking a failing case (spec 11, section 2): on the choices it took, whatever generated them,
+//! towards fewer and smaller ones.
+
+/// The smallest case found from `failing` that still traps, within `tries` cases: a shorter
+/// stream, then each choice at 0 or halved, until none of them traps.
+smallest := ($F: type, $f: F, sys: &mut std.os.System, failing: std.testing.property.Failing) -> std.testing.property.Failing {
+    mut best := failing;
+    mut left := std.testing.property.tries;
+    mut shrunk := true;
+    for shrunk and left > 0 {
+        shrunk = false;
+        mut len: usize = best.len / 2;
+        for len < best.len and left > 0 {
+            left -= 1;
+            if .some(smaller) = retried(F, f, sys, &best.taken, len, &best) {
+                best = smaller;
+                shrunk = true;
+            }
+            len = (len + best.len + 1) / 2;
+        }
+        for i in 0..best.len {
+            mut target: u64 = 0;
+            for target < best.taken[i] and left > 0 {
+                left -= 1;
+                mut taken := best.taken;
+                taken[i] = target;
+                if .some(smaller) = retried(F, f, sys, &taken, best.len, &best) {
+                    best = smaller;
+                    shrunk = true;
+                    break;
+                }
+                target = (target + (best.taken[i] - target + 1) / 2).to(u64);
+            }
+        }
+    }
+    best
+};
+
+/// The case replaying the first `len` of `taken`, when it still traps and is smaller than `best`,
+/// as a failing case found by one more shrink than it.
+retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[std.testing.property.room]u64, len: usize, best: &std.testing.property.Failing) -> ?std.testing.property.Failing {
+    mut c := std.testing.property.Choices.replaying(taken, len);
+    trap := std.testing.property.attempt(F, f, sys, &mut c, true)?;
+    found: std.testing.property.Failing = .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = (best.shrinks + 1).to(usize) };
+    if found.smaller(best) { .some(found) } else { .none }
+};

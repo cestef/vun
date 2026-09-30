@@ -12,3 +12,8 @@ pub const trap: Item = Item::new(&["std", "testing", "property", "Failing", "tra
 pub const shrinks: Item = Item::new(
     &["std", "testing", "property", "Failing", "shrinks"],
 );
+/// Whether it took fewer choices than `other`, or as many and a smaller one at the first
+/// place they differ: what shrinking a case makes of it.
+pub const smaller: Item = Item::new(
+    &["std", "testing", "property", "Failing", "smaller"],
+);
