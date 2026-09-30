@@ -18,7 +18,8 @@ pub(crate) const ZED: Generator = Generator {
     source: SYNTAX,
     output: "editors/zed",
     emit: Emit::Data(emit),
-    keeps: &["Cargo.toml", "Cargo.lock", "src/lib.rs", "target"],
+    // Beside the hand-written extension, what Zed writes building it as a dev extension.
+    keeps: &["Cargo.toml", "Cargo.lock", "src/lib.rs", "target", "extension.wasm", "grammars"],
 };
 
 /// The version of Zed's extension manifest.
