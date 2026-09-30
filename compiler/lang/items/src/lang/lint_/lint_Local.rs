@@ -10,3 +10,5 @@ pub const name: Item = Item::new(&["lang", "lint", "Local", "name"]);
 pub const origin: Item = Item::new(&["lang", "lint", "Local", "origin"]);
 pub const used: Item = Item::new(&["lang", "lint", "Local", "used"]);
 pub const param: Item = Item::new(&["lang", "lint", "Local", "param"]);
+pub const tests: Item = Item::new(&["lang", "lint", "Local", "tests"]);
+pub const hides: Item = Item::new(&["lang", "lint", "Local", "hides"]);

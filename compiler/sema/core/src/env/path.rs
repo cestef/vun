@@ -65,9 +65,12 @@ impl Env<'_, '_> {
     /// # Errors
     /// Returns why it leads nowhere here.
     pub fn outside(&self, name: Symbol, ns: NsId) -> Result<Site, Unevaluated> {
-        let spread = self.parsed.resolution.enclosing(ns).flatten().find_map(|n| {
-            self.names.spreads.brought.get(&n).and_then(|brought| brought.get(&name))
-        });
+        let spread = self
+            .parsed
+            .resolution
+            .enclosing(ns)
+            .flatten()
+            .find_map(|n| self.names.spreads.brought.get(&n).and_then(|brought| brought.get(&name)));
         match spread {
             Some(ns) => self.cx.get::<Declared>(&(ns.clone(), name)).ok_or(Unevaluated::Absent),
             None => self.outer(name),

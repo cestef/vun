@@ -3,3 +3,18 @@
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 level: lang.lint.Level = .warn;
+
+/// A binder of a pattern testing a value, named as a constant from outside the file: the pattern
+/// binds a new local, matching any value, where comparing with the constant was likely meant
+/// (`.ok(true)` matches every `.ok`).
+#[lint.define]
+shadowing := lang.lint.Lint{
+    .group = .suspicious,
+    .doc = std.meta.embed("suspicious/shadowing.md"),
+    .local = (cx: &mut lang.lint.Cx, l: lang.lint.Local) {
+        if l.tests and l.hides {
+            msg := "the pattern binds a new local `" ++ l.name ++ "`, matching any value";
+            cx.report(l.origin, msg, &[]);
+        }
+    },
+};

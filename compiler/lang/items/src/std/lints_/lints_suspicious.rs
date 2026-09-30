@@ -9,3 +9,7 @@ use crate::Item;
 /// The level of the group's lints unless a build or an attribute sets another (spec 10,
 /// section 4).
 pub const level: Item = Item::new(&["std", "lints", "suspicious", "level"]);
+/// A binder of a pattern testing a value, named as a constant from outside the file: the pattern
+/// binds a new local, matching any value, where comparing with the constant was likely meant
+/// (`.ok(true)` matches every `.ok`).
+pub const shadowing: Item = Item::new(&["std", "lints", "suspicious", "shadowing"]);

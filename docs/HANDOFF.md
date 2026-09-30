@@ -118,12 +118,13 @@ borrows, a `$` parameter's constraint, `()` as a type, untyped locals reported w
 359 (typing's typed reasons, generic functions' own type; its type part approved) and 360 (reasons
 in generic bodies, `W.Error` through the requirements), 361 (property tests, `lang.meta.params`,
 `make`, `implements`, `f.call(t)` on callables, quiet threads), 362 (literals identified by
-their instantiation) and 363 (property generators, `test.gen`, `--seed` and `--cases`, tuples and
-records in reflection's shape, floats in JSON). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+their instantiation), 363 (property generators, `test.gen`, `--seed` and `--cases`, tuples and
+records in reflection's shape, floats in JSON), 380 (what a program reaches checked as its own
+code, failing arguments as typed lines) and 381 (a name in a pattern always binds;
+`suspicious.shadowing` reports one hiding a constant). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
-
 
 - A generic body is typed only as far as its `$` values are not needed: a local of an
   unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
@@ -131,11 +132,6 @@ records in reflection's shape, floats in JSON). 279 (static Linux targets), 282 
   them abstractly would need an opaque type for `T` and for a requirement's value (an associated
   type), with every compile-time evaluation reading one deferring rather than trapping: a
   language decision for the owner.
-
-- A pattern naming a value binds a new local of that name: `.ok(true)` binds `true` and matches
-  everything (found by `style.unused` in `corpus/accept/programs/files.vun`, now `.ok(.true)`).
-  Shadowing a prelude name is allowed, so nothing reports it; a pattern whose name resolves to a
-  value should compare with it, or be refused (a language decision for the owner).
 
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).

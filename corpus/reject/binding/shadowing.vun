@@ -1,0 +1,27 @@
+//! A name in a pattern binds a new local, even one naming something outside the file; in a
+//! pattern testing a value, that matches anything, and `std.lints.suspicious.shadowing` reports it
+//! (spec 01, section 6).
+
+pick := (r: ?bool) -> u8 {
+    match r {
+        .some(true) => if true { 1 } else { 2 }, //~ std.lints.suspicious.shadowing
+        .none => 0,
+    }
+};
+
+tested := (r: ?bool) -> bool {
+    if .some(true) = r { true } else { false } //~ std.lints.suspicious.shadowing
+};
+
+compared := (r: ?bool) -> u8 {
+    match r {
+        .some(.true) => 1,
+        .some(flag) => if flag { 2 } else { 3 },
+        .none => 0,
+    }
+};
+
+bound := () -> u8 {
+    true := 4;
+    true
+};

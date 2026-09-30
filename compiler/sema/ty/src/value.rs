@@ -173,6 +173,18 @@ impl Value {
         }
     }
 
+    /// Whether this is data a pattern compares with, as a constant: an integer, a float, a
+    /// variant, or a tuple, array or struct of them; not a function, a type or a namespace.
+    #[must_use]
+    pub fn is_datum(&self) -> bool {
+        match self {
+            Self::Int(_) | Self::Float(_) | Self::Variant { .. } => true,
+            Self::Tuple(items) | Self::Array(items) => items.iter().all(Self::is_datum),
+            Self::Struct { fields, .. } => fields.iter().all(|(_, value)| value.is_datum()),
+            _ => false,
+        }
+    }
+
     /// Whether this is a record with no member, as a plan keeps it or as written: `.{}`.
     #[must_use]
     pub fn is_empty_record(&self) -> bool {

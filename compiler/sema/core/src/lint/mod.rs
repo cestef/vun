@@ -100,6 +100,14 @@ const LOCAL: &[(Item, Fact<Node>)] = &[
         Kind::Local { param, .. } => env.decide(*param),
         _ => Err(Unevaluated::Unsupported),
     }),
+    (lang::lint_Local::tests, |env, n| match &n.kind {
+        Kind::Local { tests, .. } => env.decide(*tests),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Local::hides, |env, n| match &n.kind {
+        Kind::Local { hides, .. } => env.decide(*hides),
+        _ => Err(Unevaluated::Unsupported),
+    }),
 ];
 const CALL: &[(Item, Fact<Node>)] = &[
     (lang::lint_Call::callee, |_, n| match &n.kind {

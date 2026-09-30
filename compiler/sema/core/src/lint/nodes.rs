@@ -16,7 +16,7 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{TyKind, Value};
 
 use super::literal::Literal;
-use super::locals::Locals;
+use super::locals::{Bound, Locals};
 use super::tables::Binds;
 use crate::callable::Callable;
 use crate::decl::DeclValue;
@@ -28,9 +28,10 @@ pub(super) enum Kind {
     /// A member of a namespace or a type: its name, what it binds, whether any package sees it,
     /// and whether a doc comment says what it is.
     Decl { name: Symbol, binds: Binds, public: bool, documented: bool },
-    /// A local binding or a parameter: its name, whether the code names it, and whether it is a
-    /// parameter.
-    Local { name: Symbol, used: bool, param: bool },
+    /// A local binding or a parameter: its name, whether the code names it, whether it is a
+    /// parameter, whether a pattern testing the value it matches binds it, and whether it hides
+    /// a constant from outside the file.
+    Local { name: Symbol, used: bool, param: bool, tests: bool, hides: bool },
     /// A call, by the value of what it calls.
     Call { callee: Value },
 }
@@ -57,6 +58,7 @@ impl Node {
             nodes: Vec::new(),
             allowed: Vec::new(),
             declared: None,
+            ns: None,
             public: true,
             used: used.collect(),
         };
@@ -74,6 +76,8 @@ struct Walk<'e, 'a, 'db> {
     allowed: Vec<Value>,
     /// The declaration or field walked.
     declared: Option<OriginId>,
+    /// The namespace whose members are walked.
+    ns: Option<NsId>,
     /// Whether the declarations around are seen from any package.
     public: bool,
     /// The binders the code names.
@@ -86,6 +90,7 @@ impl Walk<'_, '_, '_> {
     }
 
     fn namespace(&mut self, ns: NsId) {
+        let around = self.ns.replace(ns);
         let members: Vec<_> =
             self.env.parsed.hir.namespaces[ns].members.iter().filter_map(Entry::written).collect();
         for member in members {
@@ -95,6 +100,7 @@ impl Walk<'_, '_, '_> {
                 Member::Spread(_) => {}
             }
         }
+        self.ns = around;
     }
 
     /// `f` run inside the declaration or field written at `declared`, with the lints its
@@ -183,10 +189,10 @@ impl Walk<'_, '_, '_> {
                 }
                 let mut locals = Locals::default();
                 locals.expr(self.hir(), expr);
-                for (b, param) in locals.found() {
-                    let binder = &self.hir().binders[b];
-                    let (name, origin) = (binder.name, binder.origin);
-                    self.push(Kind::Local { name, used: self.used.contains(&b), param }, origin);
+                for Bound { binder, param, tests } in locals.found() {
+                    let (name, origin) = (self.hir().binders[binder].name, self.hir().binders[binder].origin);
+                    let (used, hides) = (self.used.contains(&binder), self.hides(name));
+                    self.push(Kind::Local { name, used, param, tests, hides }, origin);
                 }
             }
         }
@@ -217,6 +223,12 @@ impl Walk<'_, '_, '_> {
             _ => false,
         };
         Some(if gives { Binds::Type } else { Binds::Value })
+    }
+
+    /// Whether a local named `name` in the namespace walked hides a constant from outside the file.
+    fn hides(&self, name: Symbol) -> bool {
+        let site = self.ns.and_then(|ns| self.env.outside(name, ns).ok());
+        site.and_then(|site| self.env.value_of(site).ok()).is_some_and(|value| value.is_datum())
     }
 
     /// Whether the annotation `expr` denotes `type` or `lang.Interface`: what binds a type.

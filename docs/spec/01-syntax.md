@@ -293,6 +293,12 @@ means the one thing below.
 | `n := p` | a value matching `p`, bound whole to `n` as well |
 | any other expression | a value equal to it: a constant, `Color.red`, `$f(x)` |
 
+A plain name always binds, whatever it names around the pattern, so adding a name to a prelude or
+a library never changes what a pattern matches; to compare with a constant, write it as anything
+but a plain name: a variant (`.true`), a path (`limits.max`) or a literal. In a pattern testing a
+value, a binder hiding a constant from outside the file is reported by the lint
+`std.lints.suspicious.shadowing` (`.ok(true)` binds `true` and matches every `.ok`).
+
 A literal or range pattern is the comparison with the value matched (`value == x`, `lo <= x`),
 so an integer in it is an operand as in an expression and need not fit the matched type: `0..=300`
 matches every `u8`. Any other value in a pattern is a value of the matched type.
