@@ -115,9 +115,9 @@ fn a_file_outside_any_package_names_no_tests() {
     assert_eq!(reported, [vun_diag::errors::TEST_NO_NAMESPACE]);
 }
 
-/// Properties over bytes, a struct, a tuple, an array, a float and a slice: two holding, one of
-/// them over a generator a parameter names, and the others falsified, each shrunk to the least
-/// arguments that fail.
+/// Properties over bytes, a signed byte, a struct, a tuple, an array, a float and a slice: two
+/// holding, one of them over a generator a parameter names, and the others falsified, each shrunk
+/// to the least arguments that fail.
 const PROPERTIES: &str = "\
 Pair := struct { a: u8, flag: bool };
 
@@ -131,6 +131,9 @@ digits := (#[test.gen(digit)] d: u8) { assert(d < 10); };
 
 #[test]
 bounded := (x: u8) { assert(x < 200); };
+
+#[test]
+signed := (n: i8) { assert(n >= -100); };
 
 #[test]
 paired := (p: Pair) { assert(!(p.flag and p.a > 10)); };
@@ -184,6 +187,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             ("holds".to_owned(), None),
             ("digits".to_owned(), None),
             failed("bounded", "x < 200"),
+            failed("signed", "n >= -100"),
             failed("paired", "!(p.flag and p.a > 10)"),
             failed("tupled", "!(t.1 and t.0 > 5)"),
             failed("arrays", "xs[1] < 100"),
@@ -195,7 +199,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             Line::Totals(totals) => Some(*totals),
             Line::Test(_) | Line::Argument(_) => None,
         });
-        assert_eq!(totals, Some(Totals { passed: 2, trapped: 0, falsified: 6, ignored: 0 }), "{backend}");
+        assert_eq!(totals, Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0 }), "{backend}");
         // The smallest failing arguments, each a line before its test's.
         let written: Vec<&Argument> = lines
             .iter()
@@ -206,6 +210,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             .collect();
         let shrunk = [
             ("x", "200"),
+            ("n", "-101"),
             ("p", "{\"a\":11,\"flag\":true}"),
             ("t", "[6,true]"),
             ("xs", "[0,100,0]"),
@@ -231,6 +236,6 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             "{backend}: {seeded:#?}"
         );
         let none = outcomes(&[], Options { seed: None, cases: Some(0) });
-        assert!(none.len() == 8 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
+        assert!(none.len() == 9 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
     }
 }

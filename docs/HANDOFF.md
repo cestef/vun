@@ -120,8 +120,9 @@ in generic bodies, `W.Error` through the requirements), 361 (property tests, `la
 `make`, `implements`, `f.call(t)` on callables, quiet threads), 362 (literals identified by
 their instantiation), 363 (property generators, `test.gen`, `--seed` and `--cases`, tuples and
 records in reflection's shape, floats in JSON), 380 (what a program reaches checked as its own
-code, failing arguments as typed lines) and 381 (a name in a pattern always binds;
-`suspicious.shadowing` reports one hiding a constant). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+code, failing arguments as typed lines), 381 (a name in a pattern always binds;
+`suspicious.shadowing` reports one hiding a constant) and 382 (`lang.int.least` and `greatest`,
+integers drawn by distance from 0 then side). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -177,8 +178,7 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 
 Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Properties: only shared borrows are lent (`&T`, `&[T]`), and a slice holds at most
-  `std.testing.property.longest` (32) items. A signed integer shrinks towards the integer
-  congruent to 0 by choices, so `n: i8` failing below -100 reports -128, not -100.
+  `std.testing.property.longest` (32) items.
 - Fuzz targets (`&[u8]`) run as properties under `vun test`; the coverage-guided fuzzer (`vun
   fuzz`) and the corpus in `fuzz/<test path>/` do not exist. `Bench` and `Sim` do not exist:
   the runner treats every test with parameters as a property.

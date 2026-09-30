@@ -85,8 +85,10 @@ and recorded), so:
 
 - the first case that traps is **shrunk** on its choices, whatever generated them: shorter
   streams, then each choice at 0 or moved halfway towards it, as long as the case still traps.
-  The least choice is the first variant and the integer congruent to 0, so the case shrinks
-  towards those; `(x: u8) { assert(x < 200); }` reports `x = 200`;
+  The least choice is the first variant, and an integer is drawn as its distance from the one of
+  its range nearest 0, then, where both sides hold that distance, a side, above first; so the case
+  shrinks towards the first variants and the integers of least magnitude, keeping their signs:
+  `(x: u8) { assert(x < 200); }` reports `x = 200`, `(n: i8) { assert(n >= -100); }` `n = -101`;
 - the search runs its cases quietly (`std.os.thread.reporting`); the smallest failing case runs
   once more and reports its trap, and the runner writes its arguments before the test's line,
   one line each, `{"argument":{"name":...,"value":...}}` (`std.testing.Argued`), the value as

@@ -37,6 +37,10 @@ pub const fits: Item = Item::new(&["lang", "int", "fits"]);
 pub const magnitude: Item = Item::new(&["lang", "int", "magnitude"]);
 /// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
 pub const count: Item = Item::new(&["lang", "int", "count"]);
+/// The least integer of `r`: -128 for `-128..128`. A range unbounded below has none.
+pub const least: Item = Item::new(&["lang", "int", "least"]);
+/// The greatest integer of `r`: 127 for `-128..128`. A range unbounded above has none.
+pub const greatest: Item = Item::new(&["lang", "int", "greatest"]);
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 pub const abs: Item = Item::new(&["lang", "int", "abs"]);
 /// The integers of the integer type `T`.

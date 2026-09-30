@@ -37,6 +37,10 @@ fits: ($r: Range, x: Int(r), $T: type) -> bool = _;
 magnitude: ($r: Range) -> Range = _;
 /// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
 count: ($r: Range) -> Int(1..) = _;
+/// The least integer of `r`: -128 for `-128..128`. A range unbounded below has none.
+least: ($r: Range) -> Int(r) = _;
+/// The greatest integer of `r`: 127 for `-128..128`. A range unbounded above has none.
+greatest: ($r: Range) -> Int(r) = _;
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 #[panic.never]
 abs: ($r: Range, x: Int(r)) -> Int(magnitude(r)) = _;

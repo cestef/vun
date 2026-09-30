@@ -41,7 +41,8 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
 
    They are the impl of `std.int.Narrow` for every `Int(r)` (spec 02, section 3), over the
    primitives `lang.int.to`, `wrap`, `sat` and `fits`. `lang.int.count(r)` is how many integers a bounded range holds
-   (256 for `0..=255`), and `Int(r).parse(text)` reads decimal digits into `?Int(r)`.
+   (256 for `0..=255`), `lang.int.least(r)` and `lang.int.greatest(r)` are its ends (-128 and 127
+   for `-128..128`), and `Int(r).parse(text)` reads decimal digits into `?Int(r)`.
 4. **Comparisons narrow.** Where a comparison of an immutable binding is known to hold, the
    binding has the narrowed range: in `if i < n { a } else { b }`, `i` is `Int(lo..n.max)` in `a`
    and `Int(n.min..=hi)` in `b`. The same holds for `==` and `!=` at a bound, for conditions joined

@@ -15,6 +15,10 @@ pub enum Int {
     magnitude,
     /// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
     count,
+    /// The least integer of `r`: -128 for `-128..128`. A range unbounded below has none.
+    least,
+    /// The greatest integer of `r`: 127 for `-128..128`. A range unbounded above has none.
+    greatest,
     /// The absolute value of `x`, whose range is the magnitude of `x`'s.
     abs,
     /// The integers of the integer type `T`.
@@ -74,6 +78,8 @@ impl Int {
         Self::fits,
         Self::magnitude,
         Self::count,
+        Self::least,
+        Self::greatest,
         Self::abs,
         Self::range,
         Self::sum,
@@ -115,6 +121,8 @@ impl Int {
             Self::fits => "fits",
             Self::magnitude => "magnitude",
             Self::count => "count",
+            Self::least => "least",
+            Self::greatest => "greatest",
             Self::abs => "abs",
             Self::range => "range",
             Self::sum => "sum",
@@ -157,6 +165,8 @@ impl Int {
             Self::fits => vun_items::lang::int::fits,
             Self::magnitude => vun_items::lang::int::magnitude,
             Self::count => vun_items::lang::int::count,
+            Self::least => vun_items::lang::int::least,
+            Self::greatest => vun_items::lang::int::greatest,
             Self::abs => vun_items::lang::int::abs,
             Self::range => vun_items::lang::int::range,
             Self::sum => vun_items::lang::int::sum,

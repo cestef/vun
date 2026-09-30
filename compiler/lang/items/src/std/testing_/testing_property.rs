@@ -42,10 +42,10 @@ pub const array_arbitrary: Item = Item::new(
 );
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 pub const Generated: Item = Item::new(&["std", "testing", "property", "Generated"]);
-/// An integer of `Int(r)`: a choice among as many as the range holds, reduced into it as `wrap`
-/// reduces (decision 331), so the least choice is the integer of the range congruent to 0 and a
-/// smaller one on the same side of it is nearer. A range of more than 2^64 integers has only its
-/// low 64 bits chosen.
+/// An integer of `Int(r)`: its distance from the integer of the range nearest 0, then, where both
+/// sides hold that distance, which side, above first. A smaller choice is an integer of smaller
+/// magnitude, and shrinking the distance keeps the side. A range of more than 2^64 integers has
+/// only the 2^64 on each side nearest 0 chosen.
 pub const int_arbitrary: Item = Item::new(
     &["std", "testing", "property", "int_arbitrary"],
 );

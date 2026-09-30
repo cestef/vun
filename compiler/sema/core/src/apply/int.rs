@@ -59,6 +59,10 @@ impl ApplyInt for Int {
             (Self::count, [Value::Range(Some(a))]) => {
                 a.count().map(Value::Int).ok_or_else(|| Unevaluated::trap(Reason::Argument))
             }
+            (Self::least | Self::greatest, [Value::Range(Some(a))]) => {
+                let end = if self == Self::least { a.lo() } else { a.hi() };
+                end.finite().cloned().map(Value::Int).ok_or_else(|| Unevaluated::trap(Reason::Argument))
+            }
             (_, [Value::Range(Some(a)), Value::Range(Some(b))]) => self.range(a, b).map(Value::Range),
             (_, [Value::Range(Some(a)), Value::Range(Some(_)), Value::Int(x), Value::Int(y)]) => {
                 self.value(env, a, x, y)

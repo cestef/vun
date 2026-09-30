@@ -127,15 +127,24 @@ array_arbitrary := ($n: Int(0..), $T: type) -> type { struct {
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
 
-/// An integer of `Int(r)`: a choice among as many as the range holds, reduced into it as `wrap`
-/// reduces (decision 331), so the least choice is the integer of the range congruent to 0 and a
-/// smaller one on the same side of it is nearer. A range of more than 2^64 integers has only its
-/// low 64 bits chosen.
+/// An integer of `Int(r)`: its distance from the integer of the range nearest 0, then, where both
+/// sides hold that distance, which side, above first. A smaller choice is an integer of smaller
+/// magnitude, and shrinking the distance keeps the side. A range of more than 2^64 integers has
+/// only the 2^64 on each side nearest 0 chosen.
 #[impl(Arbitrary(Int))]
 int_arbitrary := ($r: lang.Range) -> type { struct {
     arbitrary := (c: &mut Choices) -> Int(r) {
-        $most := (lang.int.count(r) - 1).sat(u64);
-        c.draw(most).wrap(Int(r))
+        // Of a type holding it alone, so that adding an offset from it spans `r` exactly.
+        $at := 0.sat(Int(r));
+        $nearest := at.to(Int(at..=at));
+        $below := (at - lang.int.least(r)).sat(u64);
+        $above := (lang.int.greatest(r) - at).sat(u64);
+        $farthest := if below < above { above } else { below };
+        $Offset := Int(lang.int.least(r) - at..=lang.int.greatest(r) - at);
+        distance := c.draw(farthest);
+        up := distance <= above and (distance == 0 or distance > below or c.draw(1) == 0);
+        offset: Offset = if up { distance.to(Offset) } else { (-distance).to(Offset) };
+        nearest + offset
     };
 } };
 
