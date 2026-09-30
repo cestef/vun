@@ -172,7 +172,9 @@ itself: `W.Error` names the requirement `Error`. Its value, as that of any requi
 value of a `$` parameter no constraint makes abstract, as `T` of `$T: type`, are known only in
 an instantiation: the generic body is typed as far as they are not needed, and the rest is
 checked per instantiation (decision 360). The check runs per instantiation and is reported
-against the generic definition.
+against the generic definition. This is the rule, not a stage towards typing generic bodies
+abstractly (decision 383): a `$` value is a compile-time value like any other, which a body may
+compute with (`$if`, `$for`, `lang.meta`), so no opaque stand-in could type what it decides.
 
 A function type `(T) -> U` is a plain function value: static and capture-free. Code taking a
 callback is generic over `lang.ops.Call` (the table `calls`), which function values and closures

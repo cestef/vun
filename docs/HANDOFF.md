@@ -121,18 +121,12 @@ in generic bodies, `W.Error` through the requirements), 361 (property tests, `la
 their instantiation), 363 (property generators, `test.gen`, `--seed` and `--cases`, tuples and
 records in reflection's shape, floats in JSON), 380 (what a program reaches checked as its own
 code, failing arguments as typed lines), 381 (a name in a pattern always binds;
-`suspicious.shadowing` reports one hiding a constant) and 382 (`lang.int.least` and `greatest`,
-integers drawn by distance from 0 then side). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+`suspicious.shadowing` reports one hiding a constant), 382 (`lang.int.least` and `greatest`,
+integers drawn by distance from 0 then side) and 383 (generic bodies checked per instantiation,
+not typed abstractly). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
-
-- A generic body is typed only as far as its `$` values are not needed: a local of an
-  unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
-  returning `Result((), W.Error)`), stay untyped there and are checked per instantiation. Typing
-  them abstractly would need an opaque type for `T` and for a requirement's value (an associated
-  type), with every compile-time evaluation reading one deferring rather than trapping: a
-  language decision for the owner.
 
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
