@@ -184,6 +184,11 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   `--measure instructions`, no baselines in `.vun/bench/` nor `--fail-over`.
 - A `$for` over a `.{ }` literal does not lower ("not supported in compiled code yet"); over an
   array it does.
+- A pattern-only form where a value is expected is never reported: `&xs[..]` parses its
+  subscript as a `Rest` (patterns share the expression grammar), HIR lowering makes it
+  `ExprKind::Error` through the `_` arm of `Lower::expr_kind` with no diagnostic (it has no
+  `DiagCx`), and typing then calls it a compiler bug. Either the grammar's operand contexts keep
+  `Rest` to patterns, or lowering reports what it turns into `Error` without a parse error.
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
