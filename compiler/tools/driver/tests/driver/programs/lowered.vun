@@ -25,9 +25,22 @@ failing := (n: u8) -> Result(u8, u8) { if n > 0 { .err(n) } else { .ok(0) } };
 twice := ($F: lang.ops.Call((u8), u8), f: F, x: u8) -> u8 { f(f(x)) };
 add_one := (x: u8) -> u8 { (x + 1).wrap(u8) };
 
+/// A function literal and a closure written in a body with a `$` parameter, both reading it.
+scaled := ($n: u8, x: u8) -> u32 {
+    by := (y: u8) -> u16 { y * n };
+    plus := [x] () -> u16 { x + n };
+    by(x) + plus()
+};
+
+/// A `struct` written in a body with a `$` parameter: a type per instantiation.
+sized := ($n: u8, x: u8) -> usize {
+    B := struct { v: [n]u8 };
+    (std.meta.size(B) + x).wrap(usize)
+};
+
 main := (sys: &mut std.os.System) -> std.os.Exit {
     n: u8 = sys.args().len().sat(u8);
-    mut failed: Int(0..=8) = 0;
+    mut failed: Int(0..=10) = 0;
     // A closure capturing by borrow and by value.
     mut total: u32 = 0;
     bump := [&mut total] (by: u8) { total += by; };
@@ -60,6 +73,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if !(unsafe lang.mem.read(u16, second) == 9 and lang.mem.address(u16, second) % 2 == 0) {
         failed +|= 1;
     }
+    // Literals inside an instantiation see its `$` parameters.
+    if scaled(2, n) != 5 { failed +|= 1; }
+    if !(sized(2, n) == 3 and sized(3, n) == 4) { failed +|= 1; }
     // How many checks failed: 0 when all hold.
     std.os.Exit.of(failed)
 };

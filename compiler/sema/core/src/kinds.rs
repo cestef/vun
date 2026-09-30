@@ -129,7 +129,8 @@ impl Kinds {
             kind.duplication = Duplication::Linear;
         }
         if marked(KindAttr::free) {
-            let args = nominal.instance.iter().flat_map(|i| i.args.iter().filter_map(Value::as_type));
+            let args =
+                nominal.instance.iter().flat_map(|i| i.args.iter().flatten().filter_map(Value::as_type));
             let args = Kind::of_parts(args.map(|t| cx.get::<Self>(&t)));
             kind.misplaced |= parts.is_scoped() || args.is_scoped() || args.misplaced;
             kind.region = Region::Free;

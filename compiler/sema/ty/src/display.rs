@@ -6,6 +6,7 @@ use std::fmt;
 use vun_sema_int::{Extended, Integer};
 
 use super::{Nominal, NominalKind, TyKind, Value};
+use crate::call::Instantiation;
 use crate::ops::Endpoints;
 
 impl fmt::Display for TyKind {
@@ -41,7 +42,8 @@ impl fmt::Display for TyKind {
         match self {
             Self::Primitive(p, args) => Applied(p.name(), args).fmt(f),
             Self::Nominal(Nominal { name: Some(name), instance, .. }) => {
-                Applied(name.as_str(), instance.as_ref().map_or(&[], |i| &i.args)).fmt(f)
+                let call = instance.as_ref().and_then(Instantiation::call);
+                Applied(name.as_str(), call.as_ref().map_or(&[], |c| &c.args)).fmt(f)
             }
             Self::Nominal(n) => f.write_str(match n.kind {
                 NominalKind::Struct => "struct { .. }",

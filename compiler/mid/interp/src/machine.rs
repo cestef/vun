@@ -10,7 +10,7 @@ use vun_sema::eval::Instantiate;
 use vun_sema::eval::Metered;
 use vun_sema::fuel::Fueled;
 use vun_sema_ty::Value;
-use vun_sema_ty::call::{Instance, Instantiation};
+use vun_sema_ty::call::Instance;
 use vun_sema_ty::trap::Reason;
 use vun_sema_ty::trap::Unevaluated;
 
@@ -48,7 +48,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
         if call.args.len() != body.params.len() {
             return Err(Unevaluated::Unsupported);
         }
-        let env = Instantiation::running(cx, call).ok_or(Unevaluated::Absent)?;
+        let env = call.instantiation().running(cx).ok_or(Unevaluated::Absent)?;
         let mut locals = IndexVec::filled(None, body.locals.len());
         for (&param, arg) in body.params.iter().zip(&call.args) {
             locals[param] = Some(arg.clone());

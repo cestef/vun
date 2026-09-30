@@ -13,7 +13,7 @@ use vun_primitives::Primitive;
 use vun_primitives::check::Check;
 use vun_primitives::trace::Trace;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema_ty::call::{Instance, Staging};
+use vun_sema_ty::call::{Instantiation, Staging};
 use vun_sema_ty::item::{DeclRef, Site};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{TyKind, Value};
@@ -136,7 +136,7 @@ pub struct TypedDecl;
 
 impl Query for TypedDecl {
     const NAME: &'static str = "typed_decl";
-    type Key = (DeclRef, Option<Instance>, Vec<Staging>);
+    type Key = (DeclRef, Option<Instantiation>, Vec<Staging>);
     type Value = Option<Arc<TypedBody>>;
 
     fn compute(cx: &Cx<'_>, (decl, instance, staged): &Self::Key) -> Self::Value {

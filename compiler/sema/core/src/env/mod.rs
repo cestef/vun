@@ -39,7 +39,7 @@ use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Name, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
 use vun_query::Cx;
-use vun_sema_ty::call::{Func, Instance, Staging};
+use vun_sema_ty::call::{Func, Instantiation, Staging};
 use vun_sema_ty::item::{DeclRef, Declared, ExprRef, Site};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
@@ -54,9 +54,10 @@ pub struct Env<'a, 'db> {
     pub file: FileRef,
     pub parsed: Arc<ParsedFile>,
     names: Arc<CheckedNames>,
-    /// The compile-time call evaluated in, if any: types built here are identified by it.
-    pub instance: Option<Instance>,
-    /// The parameters of that call, bound to its arguments.
+    /// The instantiation evaluated in, if any: types and functions built here are identified by
+    /// it.
+    pub instance: Option<Instantiation>,
+    /// The parameters it binds, bound to their values.
     pub(super) bindings: Map<BinderId, Value>,
     /// The `$for` bindings evaluated under, also among `bindings`.
     staged: Vec<Staging>,
@@ -82,18 +83,17 @@ impl<'a, 'db> Env<'a, 'db> {
         })
     }
 
-    /// The environment inside the compile-time call `instance`: its function's parameters are
-    /// bound to its arguments, for the body and for whatever the body builds, such as the field
-    /// types of a `struct` it returns.
+    /// The environment inside `instance`: its function's parameters are bound to their values,
+    /// for the body and for whatever the body builds, such as the field types of a `struct` it
+    /// returns or a closure it makes.
     #[must_use]
-    pub fn within(cx: &'a Cx<'db>, instance: &Instance) -> Option<Self> {
-        let mut env = Self::inside(cx, &instance.f, instance.args.iter().cloned().map(Some))?;
-        env.instance = Some(instance.clone());
-        Some(env)
+    pub fn within(cx: &'a Cx<'db>, instance: &Instantiation) -> Option<Self> {
+        Self::inside(cx, &instance.f, instance.args.iter().cloned())
     }
 
     /// The environment of the function value `f`'s literal, with its parameters bound to `args`
-    /// by position, those given: a signature whose types name `$` parameters is typed here.
+    /// by position, those given: a signature whose types name `$` parameters is typed here. With
+    /// none given, it is the environment `f` was evaluated in.
     #[must_use]
     pub fn inside(cx: &'a Cx<'db>, f: &Func, args: impl IntoIterator<Item = Option<Value>>) -> Option<Self> {
         let mut env = match &f.within {
@@ -109,8 +109,12 @@ impl<'a, 'db> Env<'a, 'db> {
             },
             _ => None,
         });
-        let bound: Vec<_> = binders.zip(args).filter_map(|(b, arg)| Some((b?, arg?))).collect();
-        env.bindings.extend(bound);
+        let args: Vec<_> = args.into_iter().collect();
+        env.bindings.extend(binders.zip(&args).filter_map(|(b, arg)| Some((b?, arg.clone()?))));
+        let instance = Instantiation::new(f.clone(), args);
+        if !instance.args.is_empty() {
+            env.instance = Some(instance);
+        }
         Some(env.staging(&f.staged))
     }
 
@@ -192,7 +196,7 @@ impl<'a, 'db> Env<'a, 'db> {
 
     /// The environment the literal `literal` was evaluated in: inside `instance`, or in its file.
     #[must_use]
-    pub fn defining(cx: &'a Cx<'db>, literal: &ExprRef, instance: Option<&Instance>) -> Option<Self> {
+    pub fn defining(cx: &'a Cx<'db>, literal: &ExprRef, instance: Option<&Instantiation>) -> Option<Self> {
         match instance {
             Some(call) => Self::within(cx, call),
             None => Self::of(cx, &literal.file),

@@ -162,11 +162,10 @@ impl Env<'_, '_> {
             return implemented(None, None, self.eval(*value).ok()?);
         }
         let requirements = self.ty(*value).ok()?;
-        let TyKind::Nominal(Nominal { instance: Some(Instance { f, args }), .. }) = &*requirements else {
-            return None;
-        };
+        let TyKind::Nominal(Nominal { instance: Some(made), .. }) = &*requirements else { return None };
+        let Instance { f, args } = made.call()?;
         let [target] = args.as_slice() else { return None };
-        implemented(Some(Contract { interface: f.clone(), requirements }), None, target.clone())
+        implemented(Some(Contract { interface: f, requirements }), None, target.clone())
     }
 
     /// The interfaces `C(a, _, ...)` at `expr` stands for, where it writes `_` among the

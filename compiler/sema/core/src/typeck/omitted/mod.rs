@@ -12,7 +12,7 @@ use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Hir, Param};
 use vun_hir::visit::{self, Visitor};
 use vun_intern::Symbol;
-use vun_sema_ty::{Nominal, Ty, TyKind, Value};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use crate::callable::Callable;
 use crate::env::Env;
@@ -182,11 +182,8 @@ impl Unifier<'_, '_, '_> {
 
     /// Matches the arguments written for `constructor` against those `ty` was made with.
     fn parts(&mut self, constructor: &Value, ty: Option<Ty>, args: &[ExprId]) {
-        let made = ty.and_then(|ty| match (constructor, &*ty) {
-            (Value::Primitive(p), TyKind::Primitive(q, made)) if p == q => Some(made.clone()),
-            (Value::Fn(f), TyKind::Nominal(Nominal { instance: Some(i), .. })) if i.f == *f => {
-                Some(i.args.clone())
-            }
+        let made = ty.and_then(|ty| match constructor {
+            Value::Primitive(_) | Value::Fn(_) => ty.made_by(constructor),
             _ => None,
         });
         for (arg, part) in args.iter().zip(made.iter().flatten()) {

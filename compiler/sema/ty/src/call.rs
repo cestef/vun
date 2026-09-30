@@ -18,23 +18,32 @@ pub struct Instance {
     pub args: Vec<Value>,
 }
 
-/// A function value: a function literal, and the compile-time call it was evaluated in, whose
-/// parameters its body sees too: a method of `Pair(u8)` sees `T` bound to `u8`.
+impl Instance {
+    /// This call as the instantiation binding every parameter to its argument.
+    #[must_use]
+    pub fn instantiation(&self) -> Instantiation {
+        Instantiation::new(self.f.clone(), self.args.iter().cloned().map(Some).collect())
+    }
+}
+
+/// A function value: a function literal, and the instantiation it was evaluated in, whose
+/// parameters its body sees too: a method of `Pair(u8)` sees `T` bound to `u8`, and a closure in
+/// a body with `$n: u8` sees `n`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Func {
     pub literal: ExprRef,
-    pub within: Option<Arc<Instance>>,
+    pub within: Option<Arc<Instantiation>>,
     /// The `$for` bindings of the entries that generated it, which its body sees too.
     pub staged: Arc<[Staging]>,
 }
 
 /// A code value (spec 03, section 4): an expression, and what it was written under, where its
-/// names resolve (hygiene by construction): the compile-time call and every binder bound there.
+/// names resolve (hygiene by construction): the instantiation and every binder bound there.
 /// A quote `#{ e }` is one, and so is an argument for a `Code(T)` parameter.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Code {
     pub expr: ExprRef,
-    pub within: Option<Arc<Instance>>,
+    pub within: Option<Arc<Instantiation>>,
     pub bound: Arc<[Staging]>,
 }
 
@@ -105,5 +114,12 @@ impl Instantiation {
     pub fn new(f: Func, args: Vec<Option<Value>>) -> Self {
         let args = if args.iter().all(Option::is_none) { Vec::new() } else { args };
         Self { f, args }
+    }
+
+    /// The compile-time call this is, when it binds every parameter: `Pair(u8)` for a type made
+    /// by `Pair`.
+    #[must_use]
+    pub fn call(&self) -> Option<Instance> {
+        Some(Instance { f: self.f.clone(), args: self.args.iter().cloned().collect::<Option<_>>()? })
     }
 }

@@ -5,7 +5,7 @@
 use vun_hir::resolve::Res;
 use vun_hir::tree::{BinderId, ExprId, Name, PatKind};
 use vun_origin::OriginTable;
-use vun_sema_ty::call::Instance;
+use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{NominalKind, Ty, Value};
 
@@ -103,7 +103,7 @@ impl Env<'_, '_> {
     }
 
     /// Whether the function `call` runs is written around `expr`.
-    fn runs_around(&self, call: &Instance, expr: ExprId) -> bool {
+    fn runs_around(&self, call: &Instantiation, expr: ExprId) -> bool {
         let origins = OriginTable::global();
         let span = |e: ExprId| origins.source_span(self.parsed.hir.exprs[e].origin);
         let (outer, inner) = (span(call.f.literal.expr.id), span(expr));

@@ -65,7 +65,10 @@ value, as `ys := xs[1..3]`, is `types.slice_value`, whose fix borrows it (`&xs[1
 written and by the compile-time arguments of the evaluation that produced it. Two identical
 literals in different declarations are different types, so `NodeId := struct { raw: u32 }` and
 `TypeId := struct { raw: u32 }` never mix. A function returning a literal gives one type per set of
-arguments (`Pair(u16)` is one type, memoized, spec 03). Aliases are not literals and stay
+arguments (`Pair(u16)` is one type, memoized, spec 03). The same holds for a literal in the body
+of a function with `$` parameters and run-time ones: it is identified by the instantiation that
+evaluates it, so `B := struct { v: [n]u8 }` in `($n: u8, x: u8)` is one type per `n`, and a
+function literal or closure written there sees `n` as the body does (decision 362). Aliases are not literals and stay
 structural: `u8 := Int(0..=255)` is `Int(0..=255)`.
 
 `bool`, `never` (the empty enum), `Option`, `Result`, `Step`, `Branch` and `Ordering` are

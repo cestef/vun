@@ -34,7 +34,7 @@ use vun_primitives::mem::Mem;
 use vun_primitives::meta::Meta;
 use vun_sema_int::Interval;
 
-use crate::call::{Func, Instance};
+use crate::call::{Func, Instance, Instantiation};
 use crate::item::ExprRef;
 
 /// A type.
@@ -93,7 +93,7 @@ pub struct Param {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Frame {
     pub literal: ExprRef,
-    pub within: Option<Instance>,
+    pub within: Option<Instantiation>,
     /// The `$for` bindings of the entries that generated the coroutine function.
     pub staged: std::sync::Arc<[crate::call::Staging]>,
     pub args: Vec<Option<Value>>,
@@ -127,13 +127,13 @@ pub struct Closure {
     pub signature: Signature,
 }
 
-/// The identity of a `struct` or `enum` literal: where it is written and the compile-time call
-/// that evaluated it (decision 28). Its members are looked up from the literal.
+/// The identity of a `struct` or `enum` literal: where it is written and the instantiation that
+/// evaluated it (decision 28). Its members are looked up from the literal.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Nominal {
     pub literal: ExprRef,
-    /// `None` for a literal evaluated outside any call.
-    pub instance: Option<Instance>,
+    /// `None` for a literal evaluated outside any call or instantiation.
+    pub instance: Option<Instantiation>,
     pub kind: NominalKind,
     /// The declaration the literal is written in, which diagnostics name the type by.
     pub name: Option<Symbol>,

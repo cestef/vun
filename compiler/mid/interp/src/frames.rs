@@ -9,7 +9,7 @@ use vun_mir::{BlockId, Body, Mir, Place};
 use vun_query::Cx;
 use vun_sema::eval::Instantiate;
 use vun_sema::fuel::Fueled;
-use vun_sema_ty::call::{Instance, Instantiation, Resumed, Suspended};
+use vun_sema_ty::call::{Instance, Resumed, Suspended};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};
 
@@ -25,7 +25,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
 
     /// A frame going on with `suspended`, a call of `body`.
     fn resuming(cx: &'a Cx<'db>, body: &'b Body, suspended: &Suspended) -> Result<Self, Unevaluated> {
-        let env = Instantiation::running(cx, &suspended.call).ok_or(Unevaluated::Absent)?;
+        let env = suspended.call.instantiation().running(cx).ok_or(Unevaluated::Absent)?;
         let locals = IndexVec::from(suspended.locals.clone());
         Ok(Self { body, env, locals, steps: 0, fuel: suspended.call.f.fuel(cx) })
     }
@@ -65,7 +65,7 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
     fn suspended(&self, place: &Place) -> Result<(Suspended, Arc<Body>), Unevaluated> {
         let Value::Frame(suspended) = self.read(place)? else { return Err(Unevaluated::Unsupported) };
         let cx = self.env.cx;
-        let instantiation = Instantiation::of(cx, &suspended.call).ok_or(Unevaluated::Absent)?;
+        let instantiation = suspended.call.instantiation().body(cx).ok_or(Unevaluated::Absent)?;
         let body = cx.get::<Mir>(&instantiation).map_err(|unbuilt| Unevaluated::Unbuilt(unbuilt.at))?;
         Ok((*suspended, body))
     }

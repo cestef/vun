@@ -9,7 +9,7 @@ use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema_ty::call::{Func, Instance};
+use vun_sema_ty::call::{Func, Instance, Instantiation};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
@@ -222,7 +222,11 @@ impl Env<'_, '_> {
             made.len() == args.len() && made.iter().zip(args).all(|(m, a)| a.as_ref().is_none_or(|a| a == m))
         };
         let made = |c: &super::Contract| {
-            c.interface.within.as_deref().is_some_and(|i| i.f == constructor && fits(&i.args))
+            c.interface
+                .within
+                .as_deref()
+                .and_then(Instantiation::call)
+                .is_some_and(|i| i.f == constructor && fits(&i.args))
         };
         let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
         let concrete = witnesses.iter().filter(|w| w.decl.contract.as_ref().is_some_and(made));

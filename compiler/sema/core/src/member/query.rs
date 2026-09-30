@@ -69,7 +69,8 @@ impl Query for MemberValue {
             // `Writer.write_all`). For a `$` parameter of a generic body, only an instantiation
             // binding it has a witness.
             ExprKind::Hole => {
-                let target = instance.as_ref().and_then(|i| i.args.first()).and_then(Value::as_type);
+                let target =
+                    instance.as_ref().and_then(|i| i.args.first()?.as_ref()).and_then(Value::as_type);
                 match target.map(|t| (t, env.method(t, *name))) {
                     Some((_, Some(provided))) if provided.owner != *ty => {
                         cx.get::<MemberValue>(&(provided.owner, *name))

@@ -6,7 +6,7 @@ use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
 
 use super::{Nominal, NominalKind, Ty, TyKind, Value};
-use crate::call::Instance;
+use crate::call::Instantiation;
 
 impl TyKind {
     /// Whether this type has no value, such as `never`: what has it never finishes.
@@ -94,7 +94,7 @@ impl TyKind {
     fn made_with_empty(&self, found: &Self) -> bool {
         let (Self::Nominal(expected), Self::Nominal(found)) = (self, found) else { return false };
         let (Some(call), Some(found_call)) = (&expected.instance, &found.instance) else { return false };
-        let empty = |v: &Value| v.as_type().is_some_and(|t| t.is_empty());
+        let empty = |v: &Option<Value>| v.as_ref().and_then(Value::as_type).is_some_and(|t| t.is_empty());
         expected.literal == found.literal
             && call.f == found_call.f
             && call.args.len() == found_call.args.len()
@@ -164,8 +164,8 @@ impl TyKind {
         match (constructor, self) {
             (Value::Type(ty), _) => (**ty == *self).then(Vec::new),
             (Value::Primitive(p), Self::Primitive(q, args)) => (p == q).then(|| args.clone()),
-            (Value::Fn(f), Self::Nominal(Nominal { instance: Some(Instance { f: g, args }), .. })) => {
-                (f == g).then(|| args.clone())
+            (Value::Fn(f), Self::Nominal(Nominal { instance: Some(made), .. })) => {
+                made.call().filter(|call| call.f == *f).map(|call| call.args)
             }
             _ => None,
         }
@@ -183,7 +183,8 @@ impl TyKind {
             Self::Frame(frame) => frame.written.as_ref(),
             _ => None,
         };
-        let made = interface.within.as_deref().into_iter().chain(written);
-        made.into_iter().find(|made| made.f == *f).map(|made| made.args.clone())
+        let made =
+            interface.within.as_deref().and_then(Instantiation::call).into_iter().chain(written.cloned());
+        made.into_iter().find(|made| made.f == *f).map(|made| made.args)
     }
 }

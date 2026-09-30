@@ -525,7 +525,11 @@ Types come from the same values: a parameter or local has its annotation's type,
 member its annotation or its value's type, and each function body is typed on its own query. A
 compile-time call is an instance: its body, and what it builds, are evaluated with its parameters
 bound to its arguments, so the fields of `Pair(u8)` have type `u8`, and a `struct` or `enum`
-literal evaluated in it is identified by the literal and the instance (decision 28). A
+literal evaluated in it is identified by the literal and the instance (decision 28). A body with
+`$` parameters and run-time ones is evaluated the same way under its instantiation, which binds
+the `$` ones only; a compile-time call is the instantiation binding every parameter, so function
+literals, closures and type literals are identified by the instantiation they are evaluated in
+(`Func::within`, decision 362). A
 value or type that is not known yet is unknown, and checks that would need it stay silent rather
 than guess.
 

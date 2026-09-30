@@ -92,7 +92,7 @@ impl Query for MeteredCall {
 
     fn compute(cx: &Cx<'_>, call: &Instance) -> Self::Value {
         // Every argument is a value of its parameter's type, as at run time.
-        let signature = Instantiation::of(cx, call).and_then(|i| i.signature(cx).ok());
+        let signature = call.instantiation().body(cx).and_then(|i| i.signature(cx).ok());
         if signature.is_some_and(|s| s.params.len() == call.args.len() && s.refuses(&call.args)) {
             return Metered::unrun(Unevaluated::trap(Reason::Argument));
         }
@@ -125,17 +125,18 @@ impl Query for Call {
     }
 }
 
-/// An instantiation read through queries: the call it runs, its environment and its signature.
+/// An instantiation read through queries: the body it runs, its environment and its signature.
 pub trait Instantiate: Sized {
-    /// The instantiation `call` runs: its function, with its `$` parameters bound to the call's
+    /// The instantiation whose typed body this one runs: its `$` parameters bound, the others
+    /// left out, as a compile-time call binding every parameter runs the body typed for its `$`
     /// arguments.
     #[must_use]
-    fn of(cx: &Cx<'_>, call: &Instance) -> Option<Self>;
+    fn body(&self, cx: &Cx<'_>) -> Option<Self>;
 
-    /// The environment the call `call` runs its body in: its parameters bound, its identity the
-    /// call (decision 28), and the types typing found for the instantiation it runs.
+    /// The environment this instantiation runs its body in: its parameters bound, its identity
+    /// this instantiation (decision 28), and the types typing found for its body.
     #[must_use]
-    fn running<'a, 'db>(cx: &'a Cx<'db>, call: &Instance) -> Option<Env<'a, 'db>>;
+    fn running<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>>;
 
     /// The signature of this instantiation, its types evaluated with its `$` parameters bound.
     ///
@@ -151,15 +152,15 @@ pub trait Instantiate: Sized {
 }
 
 impl Instantiate for Instantiation {
-    fn of(cx: &Cx<'_>, call: &Instance) -> Option<Self> {
-        let comptime = call.f.comptime(cx)?;
-        let args = comptime.iter().zip(&call.args).map(|(&c, arg)| c.then(|| arg.clone()));
-        Some(Self::new(call.f.clone(), args.collect()))
+    fn body(&self, cx: &Cx<'_>) -> Option<Self> {
+        let comptime = self.f.comptime(cx)?;
+        let args = comptime.iter().zip(&self.args).map(|(&c, arg)| arg.clone().filter(|_| c));
+        Some(Self::new(self.f.clone(), args.collect()))
     }
 
-    fn running<'a, 'db>(cx: &'a Cx<'db>, call: &Instance) -> Option<Env<'a, 'db>> {
-        let types = cx.get::<crate::typeck::Typed>(&Self::of(cx, call)?);
-        Some(Env::within(cx, call)?.typed_by(types.map(|t| Arc::clone(&t.found))))
+    fn running<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>> {
+        let types = cx.get::<crate::typeck::Typed>(&self.body(cx)?);
+        Some(Env::within(cx, self)?.typed_by(types.map(|t| Arc::clone(&t.found))))
     }
 
     fn signature(&self, cx: &Cx<'_>) -> Result<Signature, Unevaluated> {

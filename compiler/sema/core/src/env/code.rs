@@ -71,7 +71,7 @@ impl<'a, 'db> Env<'a, 'db> {
     #[must_use]
     pub fn quoted(cx: &'a Cx<'db>, code: &Code) -> Option<Self> {
         let env = if let Some(call) = &code.within {
-            Instantiation::running(cx, call)?
+            call.running(cx)?
         } else {
             let env = Self::of(cx, &code.expr.file)?;
             let hir = &env.parsed.hir;

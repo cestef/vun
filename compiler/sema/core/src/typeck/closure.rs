@@ -8,7 +8,7 @@ use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
 use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
 use vun_query::Cx;
-use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::{Closure, Signature, TyKind, Value};
 
@@ -131,8 +131,9 @@ impl Typer<'_, '_, '_> {
 /// The instantiation a closure's body is typed within.
 pub(super) trait Enclosing: Sized {
     /// For a closure's function, the instantiation of the function it is written in, whose
-    /// typed body holds its own: the call it was evaluated in when that runs the enclosing
-    /// function, or the plain one. `None` for any other function.
+    /// typed body holds its own: the one it was evaluated in when that runs the enclosing
+    /// function, or else the enclosing function evaluated where the closure was, binding
+    /// nothing. `None` for any other function.
     fn enclosing(&self, cx: &Cx<'_>) -> Option<Self>;
 }
 
@@ -143,8 +144,11 @@ impl Enclosing for Instantiation {
         let hir = &parsed.hir;
         let enclosing = hir.enclosing_function(hir.closure_of(self.f.literal.expr.id)?)?;
         match &self.f.within {
-            Some(call) if call.f.literal.expr.id == enclosing => Self::of(cx, call),
-            _ => Some(Self::plain(ExprRef::new(file.clone(), hir, enclosing))),
+            Some(within) if within.f.literal.expr.id == enclosing => within.body(cx),
+            _ => {
+                let literal = ExprRef::new(file.clone(), hir, enclosing);
+                Some(Self::new(Func { literal, ..self.f.clone() }, Vec::new()))
+            }
         }
     }
 }
