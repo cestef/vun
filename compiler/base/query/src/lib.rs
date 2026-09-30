@@ -33,7 +33,7 @@ use std::fmt;
 pub use cx::{Cx, Cycle, Differs, Reuse, Unsound};
 pub use db::{Db, Sharing};
 pub use fingerprint::Fingerprint;
-pub use persist::{Census, Counted, Layering, Unloaded};
+pub use persist::{Build, Census, Counted, Layering, Unloaded};
 pub use tally::{Event, Tally};
 
 /// A point in the history of inputs.

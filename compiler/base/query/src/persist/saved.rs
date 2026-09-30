@@ -29,18 +29,21 @@ use crate::fingerprint::Fingerprint;
 pub(super) const FORMAT: u32 = 11;
 
 /// The compiler running, as saved memos name it.
-pub(crate) struct Build;
+pub struct Build;
 
 impl Build {
-    /// The running executable, by its size and when it was written: another build of the
-    /// compiler is another executable, and its memos may hold values of types changed since.
-    /// `None` when the executable cannot be found, where no memo is trusted.
-    pub(crate) fn identity() -> Option<Hash> {
+    /// The running executable ([`vun_fs::EXECUTABLE`]), by its path, its size and when it was
+    /// written: another build of the compiler is another executable, and its memos may hold
+    /// values of types changed since. `None` when the executable cannot be found, where no memo
+    /// is trusted.
+    #[must_use]
+    pub fn identity() -> Option<Hash> {
         static IDENTITY: OnceLock<Option<Hash>> = OnceLock::new();
         *IDENTITY.get_or_init(|| {
-            let meta = std::env::current_exe().and_then(std::fs::metadata).ok()?;
+            let exe = vun_fs::EXECUTABLE.as_deref()?;
+            let meta = std::fs::metadata(exe).ok()?;
             let written = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?;
-            Some(Hash::of_value(&(meta.len(), written.as_nanos())))
+            Some(Hash::of_value(&(exe.as_os_str().as_encoded_bytes(), meta.len(), written.as_nanos())))
         })
     }
 }

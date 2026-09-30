@@ -3,6 +3,7 @@
 //! create what they need, directories replaced whole, and the executable bit.
 
 mod edit;
+mod executable;
 mod mode;
 mod process;
 mod refusal;
@@ -11,6 +12,7 @@ mod scratch;
 mod walk;
 
 pub use edit::{Edit, Part};
+pub use executable::EXECUTABLE;
 pub use mode::{Mode, Modes};
 pub use process::PROCESS;
 pub use refusal::Refusal;

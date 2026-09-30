@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 vun-trace.workspace = true
+vun-fs.workspace = true
 arc-swap.workspace = true
 boxcar.workspace = true
 foldhash.workspace = true

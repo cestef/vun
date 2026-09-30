@@ -42,7 +42,9 @@ impl Library {
     /// editor names them.
     #[must_use]
     pub fn find() -> Self {
-        let exe = std::env::current_exe().and_then(std::fs::canonicalize).ok();
+        let exe = vun_fs::EXECUTABLE
+            .as_deref()
+            .map(|exe| std::fs::canonicalize(exe).unwrap_or_else(|_| exe.to_path_buf()));
         let library = Self::locate(std::env::var_os(Self::ENV), exe.as_deref());
         let dir = std::fs::canonicalize(&library.dir).unwrap_or(library.dir);
         tracing::debug!(dir = %dir.display(), found = ?library.found, "library");

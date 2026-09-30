@@ -27,8 +27,10 @@ Last landed: the compiler runs under WASI (389), and the playground runs it in t
 leaves out `vun ffi` and mimalloc there. `site/play.html` runs `vun build --format json` in a worker through
 `@bjorn3/browser_wasi_shim`, then the program, and draws the records as cards; its CodeMirror
 editor (Helix's keys on request) is served by `vun util lsp` in a second worker, reading messages
-inline where no thread starts (`vun_par::SPAWNS`). Hello builds in about 1.8 s in Chromium;
-diagnostics show about 1 s after the page loads. Before
+inline where no thread starts (`vun_par::SPAWNS`). The page lays out a toolchain's tree in memory
+(`toolchain/<build>/bin/vun`, found through the first argument, `vun_fs::EXECUTABLE`) and keeps
+the memos the compiler saves between runs and in IndexedDB between visits: hello builds in
+1.6 s cold and 0.1 s after; diagnostics show about 1 s after the page loads. Before
 that: the wasm target links in process (388). `vun-link-wasm` is `wasi.wasm32.p1`'s linker
 in place of `wasm-ld` (still `--linker lld`): strong over weak, COMDATs, unreached code and data
 left out, the stack first in memory, `__wasm_call_ctors` and the bounds of named sections, weak

@@ -303,9 +303,11 @@ dependency, else the checkout it was built from, which is how development builds
 starts no process and no thread, and loads no library. There it is a user without a home: the
 store is kept in the working directory and the tools file is only the one `VUN_TOOLS` names;
 `vun ffi`, which loads libclang, is left out; the work spread over threads elsewhere runs on the
-one thread; the library is the one `VUN_LIBRARY` names. The playground runs it in a browser, the
-library in a file system held in memory, building for `wasi.wasm32.p1`, whose linker runs in
-process (spec 13, section 8.4).
+one thread; the executable is the file its first argument names, which the host starting it
+sets, and the library the one beside it or `VUN_LIBRARY` names. The playground runs it in a
+browser, a toolchain's tree in a file system held in memory, building for `wasi.wasm32.p1`,
+whose linker runs in process (spec 13, section 8.4); the memos it saves are kept between runs
+and visits.
 
 **Installing and pinning.** Toolchains are installed side by side, one directory per version,
 from the releases of the project's repository, each tagged with its version as it is (`0.4.2`),

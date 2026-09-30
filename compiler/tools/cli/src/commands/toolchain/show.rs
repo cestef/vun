@@ -16,7 +16,7 @@ pub(super) const SHOW: Command<Session> =
 
 fn show(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let library = Library::find();
-    let binary = std::env::current_exe()?;
+    let binary = vun_fs::EXECUTABLE.clone().ok_or(io::ErrorKind::NotFound)?;
     let facts = [
         Fact { about: About::Version, value: VERSION.to_owned(), why: None },
         Fact { about: About::Binary, value: binary.display().to_string(), why: None },

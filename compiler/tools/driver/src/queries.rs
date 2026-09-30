@@ -17,7 +17,7 @@ use std::time::{Duration, SystemTime};
 
 use vun_fs::{Edit, Tree};
 use vun_hash::{Algorithm, Hash, Hasher, Stable};
-use vun_query::{Db, Layering, Unloaded};
+use vun_query::{Build, Db, Layering, Unloaded};
 use vun_trace::tracing;
 
 use crate::Session;
@@ -142,7 +142,7 @@ impl Session {
     /// The directory of the shared files for the running toolchain, in a directory of its own,
     /// the target chosen, the checks and the coverage, if the session shares memos.
     fn shared_dir(&self) -> Option<PathBuf> {
-        let dir = self.shared.as_ref()?.join(Self::toolchain()?.finish_hash().digest());
+        let dir = self.shared.as_ref()?.join(Build::identity()?.digest());
         let mut hasher = Hasher::default();
         (Stable::of(&self.choice), Stable::of(&self.checks()), Stable::of(&self.covered())).hash(&mut hasher);
         Some(dir.join(hasher.finish_hash().digest()))
@@ -192,20 +192,9 @@ impl Session {
     }
 
     /// The file queries are saved in for `root`, in its project's work directory, named by the
-    /// running toolchain: its path, size and time of change, which every build changes.
+    /// running toolchain (`Build::identity`), which every build changes.
     pub fn saved_at(&mut self, root: &Path) -> Option<PathBuf> {
-        let digest = Self::toolchain()?.finish_hash().digest();
-        Some(self.work(root).join(QUERIES).join(digest))
-    }
-
-    /// A hasher fed the running toolchain: its path, size and time of change, which every build
-    /// changes.
-    fn toolchain() -> Option<Hasher> {
-        let exe = std::env::current_exe().ok()?;
-        let meta = exe.metadata().ok()?;
-        let mut hasher = Hasher::default();
-        (exe.as_os_str().as_encoded_bytes(), meta.len(), meta.modified().ok()?).hash(&mut hasher);
-        Some(hasher)
+        Some(self.work(root).join(QUERIES).join(Build::identity()?.digest()))
     }
 }
 
