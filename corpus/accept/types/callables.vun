@@ -1,0 +1,30 @@
+//! Calling what implements `lang.ops.Call` (spec 02, section 4): through borrows of a function
+//! or a closure, and inside a generic function, whose `$F: lang.ops.Call((), R)` is inferred from
+//! the constraint its own parameter was declared with; `()` passed where a type is expected is
+//! the unit type.
+
+/// A function value and a closure, each called through a borrow.
+through := (n: u8) -> u16 {
+    mut f := () -> u8 { 1 };
+    mut g := [n] () -> u8 { n };
+    (bf, bg) := (&mut f, &mut g);
+    bf() + bg()
+};
+
+/// Calls `f` twice through `twice`, whose `R` is inferred from `F`'s constraint.
+twice := ($R: type, $F: lang.ops.Call((), R), f: &mut F) -> (R, R) { (f(), f()) };
+
+/// `R` inferred from the constraint `$F` is declared with, then passed on.
+inferred := ($F: lang.ops.Call((), ()), f: &mut F) { _ = twice(f); };
+
+/// `()` written as the type argument.
+written := ($F: lang.ops.Call((), ()), f: &mut F) { _ = twice((), F, f); };
+
+/// Both, with a closure counting its calls.
+counted := () -> u8 {
+    mut n: u8 = 0;
+    mut bump := [&mut n] () { n +|= 1; };
+    inferred(&mut bump);
+    written(&mut bump);
+    n
+};

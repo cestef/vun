@@ -53,6 +53,12 @@ impl Env<'_, '_> {
             {
                 Err(Unevaluated::Unsupported)
             }
+            // Where a type is expected, a tuple of types is a type, as typing reads it: `()` is the
+            // unit type, however it is reached, so that a type has one value.
+            (_, Some(ty)) if ty == TyKind::of_types() => match self.eval(expr)? {
+                tuple @ Value::Tuple(_) => tuple.as_type().map(Value::Type).ok_or(Unevaluated::Unsupported),
+                value => Ok(value),
+            },
             _ => self.eval(expr),
         }
     }

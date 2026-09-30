@@ -53,6 +53,10 @@ impl Builder<'_, '_, '_> {
         let method = self.method(callee)?;
         let callee = match &method {
             Some((f, ..)) => f.clone(),
+            // A borrow of a function calls the function (spec 02, section 4).
+            None if self.type_of(callee).is_some_and(|t| t.borrowed().is_some()) => {
+                Operand::Place(self.through_borrows(callee)?)
+            }
             None => self.operand(callee)?,
         };
         // A variant's constructor builds the variant.

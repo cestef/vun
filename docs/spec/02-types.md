@@ -172,7 +172,8 @@ callback is generic over `lang.ops.Call` (the table `calls`), which function val
 both implement, so it takes either with static dispatch:
 `map := (o: ?T, $U: type, $F: lang.ops.Call((T), U), f: F) -> ?U`. When `$F` is inferred from
 `f`, the arguments of its constraint are inferred from the type found: `U` is the result of the
-function or closure passed.
+function or closure passed, and inside a generic body, where the type found is a `$` parameter,
+the arguments of the constraint that parameter is declared with.
 
 ### Deriving
 
@@ -194,7 +195,8 @@ pointer. Dynamic dispatch is library code.
 
 Every operator desugars to an interface in `lang.ops` (appendix B): `a + b` is
 `lang.ops.Add.add(a, b)`, `a[i]` is `lang.ops.Index.at(&a, i)`, `a == b` is `lang.ops.Eq.eq(&a, &b)`,
-`f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`. Which interface and function each
+`f(x)` on a non-function value is `lang.ops.Call.call(&f, (x,))`, and on a borrow of a function or
+closure calls what it borrows. Which interface and function each
 operator names is data, the table `operators` of `lang.syntax.desugar`, so the compiler finds them
 by lookup; the result of `a == b` is the result type of `Eq.eq` for the type of `a`, `bool` in
 `lang`. The comparison operators are `PartialOrd`, which requires `lt` and `le` and provides `gt`

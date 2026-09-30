@@ -22,7 +22,8 @@ impl Typer<'_, '_, '_> {
     /// A call of a value of function type: its arguments are checked against the parameters, and
     /// it has the result type. `$` arguments left out are inferred from the others' types.
     pub(super) fn call(&mut self, call: ExprId, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
-        let signature = self.typed(callee).and_then(|k| k.ty.callable());
+        // A borrow of a function calls the function.
+        let signature = self.typed(callee).and_then(|k| k.ty.through_borrows().callable());
         let written: Option<Vec<ExprId>> = args
             .iter()
             .map(|a| match a {
