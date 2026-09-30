@@ -70,6 +70,19 @@ fn walks_refuse_links() {
     assert_eq!(e.get_ref().and_then(|e| e.downcast_ref()), Some(&Refusal::Link(dir.join("a/link"))));
 }
 
+/// What a walk skips is never read: a link below it is no refusal.
+#[cfg(unix)]
+#[test]
+fn walks_skip_what_they_are_told_to_without_reading_it() {
+    let dir = Scratch::new("skip");
+    dir.write("a/b.vun", "");
+    dir.write("a/tool/c.js", "");
+    std::os::unix::fs::symlink("/etc", dir.join("a/tool/link")).unwrap();
+    let tool = dir.join("a/tool");
+    let files = dir.join("a").files_except(&|p| p == tool).unwrap();
+    assert_eq!(names(&files, dir.path()), ["a/b.vun"]);
+}
+
 #[test]
 fn scratch_directories_are_removed_when_dropped() {
     let path = Scratch::new("drop").path().to_path_buf();

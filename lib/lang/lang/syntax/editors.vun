@@ -4,7 +4,7 @@
 //! and each editor names a capture its own way.
 //!
 //! A pattern captures nodes `.{ .nodes = &[...], .capture = .c }`, named after a node kind or a
-//! token kind, or captures a node where it stands `.{ .kind = .k, .field = .f, .node = .n,
+//! token kind, or captures a node where it stands `.{ .kinds = [.k], .field = .f, .node = .n,
 //! .capture = .c }`: a node `n` in the field `f` of a `k`, or, with `.inner = .g`, in the field `g`
 //! of what that field holds.
 
@@ -39,11 +39,26 @@ highlights := .{
         .{ .nodes = &[.\mut, .qualifier, .mode], .capture = .keyword },
     ],
     .places = .{
-        .{ .kind = .param, .field = .pattern, .node = .name, .capture = .parameter },
-        .{ .kind = .member, .field = .property, .node = .name, .capture = .property },
-        .{ .kind = .dot_name, .field = .property, .node = .name, .capture = .variant },
-        .{ .kind = .call, .field = .callee, .node = .name, .capture = .call },
-        .{ .kind = .call, .field = .callee, .inner = .property, .node = .name, .capture = .method },
+        .{ .kinds = [.param], .field = .pattern, .node = .name, .capture = .parameter },
+        .{ .kinds = [.member], .field = .property, .node = .name, .capture = .property },
+        .{ .kinds = [.dot_name], .field = .property, .node = .name, .capture = .variant },
+        .{ .kinds = [.call], .field = .callee, .node = .name, .capture = .call },
+        .{ .kinds = [.call], .field = .callee, .inner = .property, .node = .name, .capture = .method },
+        // A type written where one is expected, in the field `type`: a name, or the last of a
+        // path.
+        .{
+            .kinds = [.param, .returns, .typed_binding, .field, .typed_lit],
+            .field = .type,
+            .node = .name,
+            .capture = .type,
+        },
+        .{
+            .kinds = [.param, .returns, .typed_binding, .field, .typed_lit],
+            .field = .type,
+            .inner = .property,
+            .node = .name,
+            .capture = .type,
+        },
     },
     // Bindings whose value says what their name names.
     .bindings = [
@@ -75,7 +90,7 @@ text_objects := .{
         .{ .nodes = &[.param], .capture = .parameter_inside },
         .{ .nodes = &[.comment, .doc_comment], .capture = .comment_around },
     ],
-    .places = .{ .{ .kind = .\fn, .field = .block, .node = .block, .capture = .function_inside } },
+    .places = .{ .{ .kinds = [.\fn], .field = .block, .node = .block, .capture = .function_inside } },
 };
 
 // The Sublime syntax: the scope of each punctuation token, and the tokens around names that say

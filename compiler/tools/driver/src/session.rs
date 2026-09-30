@@ -110,7 +110,8 @@ impl Session {
             diag: DiagCtxt::default(),
             format: Format::DEFAULT,
             packages: Packages::default(),
-            library: PathBuf::from(LIBRARY),
+            // Its real path, so that its files are named as an editor names them.
+            library: std::fs::canonicalize(LIBRARY).unwrap_or_else(|_| PathBuf::from(LIBRARY)),
             store: Store::user(),
             schemes: Schemes::default(),
             choice: Choice::host(),

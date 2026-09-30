@@ -9,7 +9,7 @@ use vun_data::lua::Lua;
 use super::{GRAMMAR_REPOSITORY, LANGUAGE, Server, grammar_revision};
 use crate::generate::{Data, Emit, Format, Generator, Read, Source};
 use crate::grammar::SYNTAX;
-use crate::grammar::tree_sitter::{dialects, queries};
+use crate::grammar::tree_sitter::{dialects, parser_sources, queries};
 
 pub(crate) const NVIM: Generator =
     Generator { source: SYNTAX, output: "editors/nvim", emit: Emit::Data(emit), keeps: &["plugin"] };
@@ -33,9 +33,6 @@ struct Parser {
     requires_generate_from_grammar: bool,
 }
 
-/// The sources of the parser the tree-sitter CLI writes, which nvim-treesitter compiles.
-const PARSER_FILES: [&str; 2] = ["src/parser.c", "src/scanner.c"];
-
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
     let config = Config {
         filetype: LANGUAGE.to_owned(),
@@ -43,7 +40,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
         parser: Parser {
             url: GRAMMAR_REPOSITORY.to_owned(),
             revision: grammar_revision()?,
-            files: PARSER_FILES.map(str::to_owned).into(),
+            files: parser_sources(sources)?.into_iter().map(str::to_owned).collect(),
             requires_generate_from_grammar: false,
         },
         server: Server::of(),

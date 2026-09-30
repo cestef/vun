@@ -117,6 +117,13 @@ Traps that cost a session before. Add one when it costs you time.
   the framework's carrier and temp, so nothing else may use them across a jump's moves.
 - A LIR value never spans registers (no `Loc::Pair`): wide values are split by legalization.
 
+## Editors
+
+- Queries are written general patterns first: Helix since 25.07, Neovim and Zed let the last
+  pattern matching a node win, so a catch-all such as `(name) @variable` goes first.
+- A generator's output directory may hold another tool's files (`node_modules` after
+  `npm install` in `editors/vscode`, with links); what the generator `keeps` is never walked.
+
 ## Assets and remote runs
 
 - Motion Canvas lays out every `Layout` under a layout, reaching through plain `Node`s: a `Path`

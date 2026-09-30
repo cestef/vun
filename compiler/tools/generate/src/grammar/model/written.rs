@@ -162,7 +162,7 @@ pub(super) struct NodeCapture {
 
 #[derive(FromLiteral)]
 pub(super) struct Place {
-    pub(super) kind: Name,
+    pub(super) kinds: Vec<Name>,
     pub(super) field: Name,
     pub(super) inner: Option<Name>,
     pub(super) node: Name,

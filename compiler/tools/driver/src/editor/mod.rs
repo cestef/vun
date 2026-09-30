@@ -27,12 +27,13 @@ use std::path::PathBuf;
 
 use vun_diag::DiagCtxt;
 use vun_hir::db::{Package, Parsed};
-use vun_hir::tree::{ExprId, Name};
+use vun_hir::tree::Name;
 use vun_origin::Resolve;
+use vun_sema::decl::TypedDecl;
 use vun_sema::site::{Declaration, NameSite};
 use vun_sema::typeck::{Known, Typed};
 use vun_sema_ty::call::Instantiation;
-use vun_sema_ty::item::{ExprRef, Site};
+use vun_sema_ty::item::{DeclRef, ExprRef, Site};
 use vun_span::{FileId, Span};
 
 use crate::Session;
@@ -96,12 +97,17 @@ impl Session {
         Some(Hovered { span, known, doc })
     }
 
-    /// The type typing found for `expr`, in the body of the function holding it.
+    /// The type typing found for `expr`: in the body of the function holding it, or else in the
+    /// value of the member declaration holding it.
     fn known(&self, expr: &ExprRef) -> Option<Known> {
         let parsed = self.db.get::<Parsed>(&expr.file)?;
-        let function: ExprId = parsed.hir.enclosing_function(expr.expr.id)?;
-        let function = ExprRef::new(expr.file.clone(), &parsed.hir, function);
-        let typed = self.db.get::<Typed>(&Instantiation::plain(function))?;
+        let hir = &parsed.hir;
+        let typed = if let Some(function) = hir.enclosing_function(expr.expr.id) {
+            self.db.get::<Typed>(&Instantiation::plain(ExprRef::new(expr.file.clone(), hir, function)))?
+        } else {
+            let decl = DeclRef::new(expr.file.clone(), hir, hir.enclosing_member(expr.expr.id)?);
+            self.db.get::<TypedDecl>(&(decl, None, Vec::new()))?
+        };
         typed.types.get(&expr.expr.id).copied()
     }
 

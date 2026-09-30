@@ -17,9 +17,10 @@ pub(crate) enum Node {
     Token(Token),
 }
 
-/// A node captured where it stands: in `field` of a `kind`, or in `inner` of what that holds.
+/// A node captured where it stands: in `field` of one of `kinds`, or in `inner` of what that
+/// holds.
 pub(crate) struct Place {
-    pub(crate) kind: Kind,
+    pub(crate) kinds: Vec<Kind>,
     pub(crate) field: Field,
     pub(crate) inner: Option<Field>,
     pub(crate) node: Kind,
@@ -166,7 +167,7 @@ impl Model {
         });
         let places = places.iter().map(|p| {
             Ok(Place {
-                kind: self.kind_named("places", &p.kind)?,
+                kinds: p.kinds.iter().map(|k| self.kind_named("places", k)).collect::<Read<_>>()?,
                 field: self.field_named("places", &p.field)?,
                 inner: p.inner.as_ref().map(|f| self.field_named("places", f)).transpose()?,
                 node: self.kind_named("places", &p.node)?,

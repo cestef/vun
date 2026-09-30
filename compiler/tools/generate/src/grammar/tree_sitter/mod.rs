@@ -49,24 +49,7 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
     let model = Model::read(sources)?;
     let editors = Editors::read(&model, sources)?;
     let rules = Rules::of(&model, &editors);
-    let mut all = rules.all();
-    all.extend(rules.wrapped());
-    all.extend(rules.lexical()?);
-    let mut extras = vec![Rule::Pattern(r"\s".to_owned())];
-    for &extra in &editors.tree_sitter.extras {
-        let name = model.token_name(extra);
-        all.push((name.to_owned(), lexical::rule(name).ok_or_else(|| rules::missing(name))?));
-        extras.push(Rule::symbol(name));
-    }
-    let syntax = Syntax {
-        name: LANGUAGE.to_owned(),
-        word: Some(rules::hidden(model.token_name(editors.tree_sitter.word))),
-        extras,
-        externals: Vec::new(),
-        conflicts: Vec::new(),
-        conflicts_file: Some(CONFLICTS.to_owned()),
-        rules: all,
-    };
+    let syntax = syntax(&model, &editors, &rules)?;
     let config = Config::of(LANGUAGE, vun_span::EXTENSION, HIGHLIGHTS, env!("CARGO_PKG_VERSION"));
     Ok(vec![
         Data { name: "grammar.js".to_owned(), format: Format::JavaScript, text: syntax.to_string() },
@@ -81,4 +64,33 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Data>> {
             text: dialects::STANDARD.query(&rules, queries::File::Highlights).to_string(),
         },
     ])
+}
+
+/// The C sources of the parser `grammar.js` makes, which a tool building it compiles.
+pub(crate) fn parser_sources(sources: &[Source<'_>]) -> Read<Vec<&'static str>> {
+    let model = Model::read(sources)?;
+    let editors = Editors::read(&model, sources)?;
+    Ok(syntax(&model, &editors, &Rules::of(&model, &editors))?.sources())
+}
+
+/// The grammar `grammar.js` writes.
+fn syntax(model: &Model, editors: &Editors, rules: &Rules<'_>) -> Read<Syntax> {
+    let mut all = rules.all();
+    all.extend(rules.wrapped());
+    all.extend(rules.lexical()?);
+    let mut extras = vec![Rule::Pattern(r"\s".to_owned())];
+    for &extra in &editors.tree_sitter.extras {
+        let name = model.token_name(extra);
+        all.push((name.to_owned(), lexical::rule(name).ok_or_else(|| rules::missing(name))?));
+        extras.push(Rule::symbol(name));
+    }
+    Ok(Syntax {
+        name: LANGUAGE.to_owned(),
+        word: Some(rules::hidden(model.token_name(editors.tree_sitter.word))),
+        extras,
+        externals: Vec::new(),
+        conflicts: Vec::new(),
+        conflicts_file: Some(CONFLICTS.to_owned()),
+        rules: all,
+    })
 }

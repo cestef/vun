@@ -77,12 +77,12 @@ impl File {
     }
 }
 
-/// How an editor reads queries: the files it reads, what it names each capture, and whether
-/// the first pattern matching a node wins, rather than the last.
+/// How an editor reads queries: the files it reads and what it names each capture. Every editor
+/// lets the last pattern matching a node win, so patterns go from the most general to the most
+/// specific (Helix too, since 25.07).
 pub(crate) struct Dialect {
     pub(crate) files: &'static [File],
     pub(crate) capture: fn(Capture) -> Option<&'static str>,
-    pub(crate) first_wins: bool,
 }
 
 /// A pattern with typed captures; lists of them go from the most general to the most specific.
@@ -92,7 +92,7 @@ impl Dialect {
     /// The query `file` of the grammar in this dialect, leaving out the patterns capturing
     /// something the dialect has no name for.
     pub(super) fn query(&self, rules: &Rules<'_>, file: File) -> Query<&'static str> {
-        let mut typed = match file {
+        let typed = match file {
             File::Highlights => highlights::patterns(rules),
             File::Folds => structure::folds(rules),
             File::Indents => structure::indents(rules),
@@ -100,9 +100,6 @@ impl Dialect {
             File::Outline => structure::outline(rules),
             File::TextObjects => structure::text_objects(rules),
         };
-        if self.first_wins {
-            typed.reverse();
-        }
         Query { patterns: typed.into_iter().filter_map(|p| p.map(&self.capture)).collect() }
     }
 }
@@ -123,9 +120,11 @@ fn captured(rules: &Rules<'_>, captures: &Captures) -> Vec<Typed> {
             Some(inner) => Pattern::any().child(Some(model.field_name(inner)), node),
             None => node,
         };
-        patterns.push(
-            Pattern::node(model.kind_name(place.kind)).child(Some(model.field_name(place.field)), held),
-        );
+        for &kind in &place.kinds {
+            patterns.push(
+                Pattern::node(model.kind_name(kind)).child(Some(model.field_name(place.field)), held.clone()),
+            );
+        }
     }
     patterns
 }

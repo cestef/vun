@@ -31,6 +31,21 @@ fn list(f: &mut fmt::Formatter<'_>, items: impl IntoIterator<Item = impl fmt::Di
     write!(f, "[{}]", items.join(", "))
 }
 
+impl Grammar {
+    /// Where `tree-sitter generate` writes the parser, beside `grammar.js`.
+    pub const PARSER: &str = "src/parser.c";
+    /// Where the external scanner is written by hand, beside the parser.
+    pub const SCANNER: &str = "src/scanner.c";
+
+    /// The C sources of its parser, which a tool building it compiles: the generated parser, and
+    /// the scanner where it has external tokens.
+    #[must_use]
+    pub fn sources(&self) -> Vec<&'static str> {
+        let scanner = (!self.externals.is_empty()).then_some(Self::SCANNER);
+        std::iter::once(Self::PARSER).chain(scanner).collect()
+    }
+}
+
 impl fmt::Display for Grammar {
     /// The `grammar.js` of this grammar.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

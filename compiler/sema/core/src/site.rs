@@ -1,6 +1,6 @@
 //! Where a name written in a file is declared, as tools show it (spec 13, section 11): the binder
 //! of the file it resolves to, or the declaration or namespace an outer name, a spread or a member
-//! of a namespace reaches.
+//! of a namespace or of a type's namespace reaches.
 
 use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprKind, Name};
@@ -10,6 +10,7 @@ use vun_sema_ty::Value;
 use vun_sema_ty::item::{Declared, ExprRef, Site};
 
 use crate::env::Env;
+use crate::member::{Found, Members};
 
 /// What a name leads to.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -42,6 +43,12 @@ impl Query for NameSite {
             },
             ExprKind::Member { object, name: Name::Plain(name) } => match env.eval(*object) {
                 Ok(Value::Namespace(ns)) => cx.get::<Declared>(&(ns, *name)).map(Declaration::Site),
+                // A declaration of a type's namespace, its own or one a spread brings.
+                Ok(Value::Type(ty)) => match cx.get::<Members>(&ty)?.find(*name) {
+                    Found::Decl(decl) => Some(Declaration::Site(Site::Decl(decl.decl.clone()))),
+                    Found::Spread(site) => Some(Declaration::Site(site.clone())),
+                    _ => None,
+                },
                 _ => None,
             },
             _ => None,

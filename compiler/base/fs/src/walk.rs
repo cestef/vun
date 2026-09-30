@@ -16,7 +16,16 @@ pub trait Tree {
     ///
     /// # Errors
     /// Returns an error if the path does not exist, a directory cannot be read or a link is met.
-    fn files(&self) -> io::Result<Vec<PathBuf>>;
+    fn files(&self) -> io::Result<Vec<PathBuf>> {
+        self.files_except(&|_| false)
+    }
+
+    /// The files at or below this path, as [`Tree::files`], leaving out every path `skip` names
+    /// and never reading below it: what another tool owns there, such as `node_modules`.
+    ///
+    /// # Errors
+    /// As [`Tree::files`], for the paths not skipped.
+    fn files_except(&self, skip: &dyn Fn(&Path) -> bool) -> io::Result<Vec<PathBuf>>;
 
     /// The files at or below this path whose extension is `ext`, sorted.
     ///
@@ -43,7 +52,10 @@ pub trait Tree {
 }
 
 impl Tree for Path {
-    fn files(&self) -> io::Result<Vec<PathBuf>> {
+    fn files_except(&self, skip: &dyn Fn(&Path) -> bool) -> io::Result<Vec<PathBuf>> {
+        if skip(self) {
+            return Ok(Vec::new());
+        }
         let kind = self.symlink_metadata()?.file_type();
         if kind.is_symlink() {
             return Err(Refusal::Link(self.to_path_buf()).into());
@@ -53,7 +65,7 @@ impl Tree for Path {
         }
         let mut found = Vec::new();
         for entry in self.entries()? {
-            found.extend(entry.files()?);
+            found.extend(entry.files_except(skip)?);
         }
         Ok(found)
     }

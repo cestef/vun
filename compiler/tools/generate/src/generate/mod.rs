@@ -157,13 +157,15 @@ impl Generator {
         generated: &BTreeMap<String, String>,
     ) -> std::io::Result<Changes> {
         let dir = root.join(self.output);
-        let present = if dir.is_dir() { dir.files()? } else { Vec::new() };
+        // What the output keeps is another's, never read.
+        let kept =
+            |path: &Path| path.strip_prefix(&dir).is_ok_and(|r| self.keeps.iter().any(|k| r.starts_with(k)));
+        let present = if dir.is_dir() { dir.files_except(&kept)? } else { Vec::new() };
         let stale = present
             .into_iter()
             .filter(|path| {
                 let relative = path.strip_prefix(&dir).unwrap_or(path);
-                let kept = self.keeps.iter().any(|k| relative.starts_with(k));
-                !kept && relative.to_str().is_none_or(|n| !generated.contains_key(n))
+                relative.to_str().is_none_or(|n| !generated.contains_key(n))
             })
             .collect();
         let differing = generated

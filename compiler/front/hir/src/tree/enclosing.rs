@@ -19,6 +19,12 @@ impl Hir {
         self.index().function[expr]
     }
 
+    /// The innermost namespace member declaration holding `expr`, if any.
+    #[must_use]
+    pub fn enclosing_member(&self, expr: ExprId) -> Option<DeclId> {
+        self.index().holder[expr]
+    }
+
     /// The attributes `#[...] expr` or the prefix operator applied to `expr`, if any.
     #[must_use]
     pub fn wrapper_of(&self, expr: ExprId) -> Option<ExprId> {

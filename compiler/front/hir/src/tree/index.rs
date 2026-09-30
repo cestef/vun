@@ -1,7 +1,8 @@
 //! What each node of a file relates to, found in one walk rather than by scanning the file at
 //! every question: the declaration and namespace of each binder, the spread selecting it, the
 //! `struct` literal of each namespace, the closure of each function literal, the function
-//! literal around each expression, and what wraps an expression as attributes and prefixes do.
+//! literal and the member declaration around each expression, and what wraps an expression as
+//! attributes and prefixes do.
 
 use vun_index::IndexVec;
 
@@ -22,6 +23,8 @@ pub(crate) struct Index {
     pub(crate) closure: IndexVec<ExprId, Option<ExprId>>,
     /// The innermost function literal whose body holds each expression.
     pub(crate) function: IndexVec<ExprId, Option<ExprId>>,
+    /// The innermost namespace member declaration holding each expression.
+    pub(crate) holder: IndexVec<ExprId, Option<DeclId>>,
     /// The attributes `#[...] e` or the prefix operator applied to each expression.
     pub(crate) wrapper: IndexVec<ExprId, Option<ExprId>>,
     /// The declaration each expression is the value of.
@@ -37,6 +40,7 @@ impl Index {
             literal: IndexVec::filled(None, hir.namespaces.len()),
             closure: IndexVec::filled(None, hir.exprs.len()),
             function: IndexVec::filled(None, hir.exprs.len()),
+            holder: IndexVec::filled(None, hir.exprs.len()),
             wrapper: IndexVec::filled(None, hir.exprs.len()),
             valued: IndexVec::filled(None, hir.exprs.len()),
         };
@@ -83,30 +87,50 @@ impl Index {
             }
         }
         if let Some(root) = hir.root {
-            Functions { around: Vec::new(), function: &mut index.function }.namespace(hir, root);
+            let mut around = Around { functions: Vec::new(), members: Vec::new(), index: &mut index };
+            around.namespace(hir, root);
         }
         index
     }
 }
 
-/// Walks the tree, recording for each expression the function literal around it.
-struct Functions<'i> {
-    around: Vec<ExprId>,
-    function: &'i mut IndexVec<ExprId, Option<ExprId>>,
+/// Walks the tree, recording for each expression the function literal and the member
+/// declaration around it.
+struct Around<'i> {
+    functions: Vec<ExprId>,
+    members: Vec<DeclId>,
+    index: &'i mut Index,
 }
 
-impl Visitor for Functions<'_> {
+impl Visitor for Around<'_> {
+    fn decl(&mut self, hir: &Hir, decl: DeclId) {
+        // A member declaration is one binding its names among a namespace's members.
+        let mut binders = Vec::new();
+        hir.binders(hir.decls[decl].pat, &mut binders);
+        let member = binders.first().is_some_and(|&b| self.index.member[b].is_some());
+        if member {
+            self.members.push(decl);
+        }
+        visit::walk_decl(self, hir, decl);
+        if member {
+            self.members.pop();
+        }
+    }
+
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
-        if self.function[expr].is_none() {
-            self.function[expr] = self.around.last().copied();
+        if self.index.function[expr].is_none() {
+            self.index.function[expr] = self.functions.last().copied();
+        }
+        if self.index.holder[expr].is_none() {
+            self.index.holder[expr] = self.members.last().copied();
         }
         let function = matches!(hir.exprs[expr].kind, ExprKind::Fn { .. });
         if function {
-            self.around.push(expr);
+            self.functions.push(expr);
         }
         visit::walk_expr(self, hir, expr);
         if function {
-            self.around.pop();
+            self.functions.pop();
         }
     }
 }

@@ -103,7 +103,7 @@ the parser reading the tables), 324 (language server features), 325 (DWARF subpr
 peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
 `sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
 gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
-(spread members of type bodies). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+(spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -147,10 +147,20 @@ gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at
    (`Env::witness`, `Typer::iteration`) is not checked for conformance, having no use site at
    hand; an instruction value whose table holds types (`[0]type`) has no run-time layout, which
    only a library's report now hides.
-   (b) the owner publishes `tree-sitter-vun` by hand (`docs/dev/commands.md`, "Publishing the
-   tree-sitter grammar"); the packages pin the revision in `editors/tree-sitter/release.json`;
-   (c) try the packages in each editor (nothing was run in an editor yet; the Zed extension
-   passes `cargo check`), and the LSP features (324) in them.
+   (b) `cestef/tree-sitter-vun` is published (private, the owner's choice, until the language is
+   public; `../tree-sitter-vun`, a `jj` clone), pinned in `editors/tree-sitter/release.json`.
+   (c) Tried (347): Helix 25.07 (installed in the owner's config: grammar, queries symlinked to
+   `editors/helix`, `vun` in `~/.local/bin` built on `petal.wg` at this checkout's path so its
+   library path holds) and Neovim 0.11.6 (scratch config, nvim-treesitter `master`, whose `main`
+   needs 0.12; `prefer_git`, the tarball of a private repository failing) highlight and run the
+   server: diagnostics, hover, definition, references, symbols, signature help, inlay hints,
+   completion, semantic tokens, folds, formatting. VSCodium has the extension installed
+   (`vun.vun`, a VSIX from `npx @vscode/vsce package`), its TextMate grammar checked with
+   `vscode-textmate`; Zed's extension builds for `wasm32-wasip2`. Open: the owner looks at
+   VSCodium and installs Zed's dev extension (`zed: install dev extension` on `editors/zed`),
+   whether Zed lets the last pattern win is unverified; hover shows nothing on a declaration's
+   own name or on a type annotation (`u64`, which typing leaves out); the TextMate grammar scopes
+   `in(` as the loop keyword and types not at all.
    Gap: a doc comment on a record's field (`.{ /// d\n .x = 1 }`) reads as a doc of an assignment
    in tree-sitter, which cannot tell a `doc`'s list apart (`editors.vun` uses `//` inside records
    for now); `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file

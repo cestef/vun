@@ -1,29 +1,20 @@
-//! The editors' query dialects: which query files each reads, what it names each capture, and
-//! whether its first matching pattern wins.
+//! The editors' query dialects: which query files each reads, and what it names each capture.
 
 pub(crate) use super::queries::Dialect;
 use super::queries::{Capture, File};
 
 /// The names nvim-treesitter settled on, which the tree-sitter CLI and GitHub read too.
-pub(crate) const STANDARD: Dialect =
-    Dialect { files: &[File::Highlights], capture: standard, first_wins: false };
+pub(crate) const STANDARD: Dialect = Dialect { files: &[File::Highlights], capture: standard };
 
-pub(crate) const NEOVIM: Dialect = Dialect {
-    files: &[File::Highlights, File::Folds, File::Indents, File::TextObjects],
-    capture: standard,
-    first_wins: false,
-};
+pub(crate) const NEOVIM: Dialect =
+    Dialect { files: &[File::Highlights, File::Folds, File::Indents, File::TextObjects], capture: standard };
 
-pub(crate) const HELIX: Dialect = Dialect {
-    files: &[File::Highlights, File::Indents, File::TextObjects],
-    capture: helix,
-    first_wins: true,
-};
+pub(crate) const HELIX: Dialect =
+    Dialect { files: &[File::Highlights, File::Indents, File::TextObjects], capture: helix };
 
 pub(crate) const ZED: Dialect = Dialect {
     files: &[File::Highlights, File::Brackets, File::Indents, File::Outline, File::TextObjects],
     capture: zed,
-    first_wins: false,
 };
 
 fn standard(c: Capture) -> Option<&'static str> {

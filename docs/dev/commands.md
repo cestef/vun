@@ -40,6 +40,24 @@ the generated `parser.c` (16 MiB) until `jj config set --repo snapshot.max-new-f
 A warm `cargo xtask tree-sitter` takes about 10 s on `am3.wg`, nearly all of it one
 single-threaded `tree-sitter generate`; each round settling the conflicts is one more.
 
+## Trying the editor packages
+
+- Helix: append `editors/helix/languages.toml` to `~/.config/helix/languages.toml`, link
+  `editors/helix/queries/vun` into `~/.config/helix/runtime/queries/`, then
+  `hx --grammar fetch && hx --grammar build` (or build it under a scratch `XDG_CONFIG_HOME` with
+  `use-grammars = { only = ["vun"] }` and copy `grammars/vun.so`); `hx --health vun` checks it.
+- Neovim 0.11: nvim-treesitter `master` (its `main` needs 0.12), the `editors/nvim` directory on
+  the runtime path, `require("nvim-treesitter.install").prefer_git = true` while the grammar's
+  repository is private, then `:TSInstall vun`.
+- VS Code or VSCodium: `npm install` in `editors/vscode`, `npx @vscode/vsce package
+  --allow-missing-repository --skip-license -o vun.vsix`, `codium --install-extension vun.vsix`.
+- Zed: `zed: install dev extension` on `editors/zed`, which Zed compiles for `wasm32-wasip2`.
+- Each needs `vun` on the path: `LIBRARY` is the checkout's `lib/` as the build saw it, so a
+  binary built elsewhere is built at the same path (`rsync` the checkout to that path on the
+  host).
+- The server can be driven without an editor: a JSON-RPC client over `vun util lsp`'s stdio
+  (`initialize`, `didOpen`, then the requests) answers what an editor would be shown.
+
 ## Remote machines
 
 ```sh
