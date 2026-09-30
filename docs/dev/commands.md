@@ -34,6 +34,11 @@ MIRIFLAGS="-Zmiri-num-cpus=4 -Zmiri-many-seeds=0..8 -Zmiri-ignore-leaks" cargo +
 `editors/tree-sitter` into it and commit there. Then record the commit beside the grammar,
 `editors/tree-sitter/release.json` as `{ "revision": "<commit>" }`, and run `cargo gen`: the Helix,
 Neovim and Zed packages build that revision (the branch `main` while no release is recorded).
+The repository (`cestef/tree-sitter-vun`, private until the language is public, so the packages
+fetch it only where git can authenticate) is a `jj` clone at `../tree-sitter-vun`; `jj` refuses
+the generated `parser.c` (16 MiB) until `jj config set --repo snapshot.max-new-file-size 33554432`.
+A warm `cargo xtask tree-sitter` takes about 10 s on `am3.wg`, nearly all of it one
+single-threaded `tree-sitter generate`; each round settling the conflicts is one more.
 
 ## Remote machines
 

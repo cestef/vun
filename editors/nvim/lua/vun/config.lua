@@ -4,7 +4,7 @@ return {
   extension = "vun",
   parser = {
     url = "https://github.com/cestef/tree-sitter-vun",
-    revision = "main",
+    revision = "0be9f08dee4ae3919878396010da2a8f8dc5b16e",
     files = {
       "src/parser.c",
       "src/scanner.c",
