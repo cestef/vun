@@ -223,10 +223,16 @@ type: `attr(f, A)` is the first that is an `A` (`.some(r)` for `#[Rename{ .to = 
 `has(f, A)` tells whether one is `A` itself (a marker such as `#[Skip]`) or an `A`. Attributes are
 compile-time data: these take the descriptor as a `$` parameter.
 
-**Collection.** `std.meta.collect(package, attr)` returns every declaration of `package` that
-carries the attribute `attr`, with its value: the way a pass manager, a lint set or a command table
-gathers registrations. It is an ordinary call, evaluated only when something calls it, so name
-resolution and evaluation stay lazy everywhere else, and what it depends on is explicit.
+**Collection.** `lang.meta.decls(ns)` describes each member of the namespace `ns` the calling
+namespace sees (`lang.meta.Decl`: its name, the values of its attributes, and the namespace it is
+when it is a file or directory below), in the order declared; a member's value, `ns.$(d.name)`,
+is computed only where it is read. `std.meta.collect(package, attr)` walks `package` and the
+namespaces nested in it and returns every member carrying the attribute `attr` (`has`), each with
+the namespace declaring it (`std.meta.Collected`), so its value is `c.ns.$(c.decl.name)`: the way a
+pass manager, a lint set, a test runner or a command table gathers registrations. It is an ordinary
+call, evaluated only when something calls it, reading attributes and nothing else, so name
+resolution and evaluation stay lazy everywhere else, and what it depends on is explicit. Being
+`std` code, it sees another package's public members.
 
 **Freeze rule.** A type's member set is fixed when the expression defining it finishes evaluating.
 Reflecting on a type that is still being defined is an error naming the cycle. This rules out

@@ -30,6 +30,7 @@ impl ApplyMeta for Meta {
             (Self::variants, [ty]) => env.variants(ty.as_type().ok_or(Unevaluated::Unsupported)?),
             (Self::variant, [_, value]) => env.variant_index(value),
             (Self::fields, [ty]) => env.fields(ty.as_type().ok_or(Unevaluated::Unsupported)?),
+            (Self::decls, [Value::Namespace(ns)]) => env.decls(ns),
             (Self::Part, [ty, variant, index]) => {
                 env.part_type(ty.as_type().ok_or(Unevaluated::Unsupported)?, variant, index)
             }

@@ -33,6 +33,9 @@ pub enum Meta {
     concat,
     /// The fields of the struct type `T` in declaration order, generated ones included.
     fields,
+    /// The members of `ns` the namespace calling sees, in the order they are declared: every one
+    /// within its package, the public ones from another.
+    decls,
     /// The variants of `T` in declaration order: an enum's, the one a struct is, none for another
     /// type.
     variants,
@@ -81,6 +84,7 @@ impl Meta {
         Self::append,
         Self::concat,
         Self::fields,
+        Self::decls,
         Self::variants,
         Self::variant,
         Self::Part,
@@ -113,6 +117,7 @@ impl Meta {
             Self::append => "append",
             Self::concat => "concat",
             Self::fields => "fields",
+            Self::decls => "decls",
             Self::variants => "variants",
             Self::variant => "variant",
             Self::Part => "Part",
@@ -146,6 +151,7 @@ impl Meta {
             Self::append => vun_items::lang::meta::append,
             Self::concat => vun_items::lang::meta::concat,
             Self::fields => vun_items::lang::meta::fields,
+            Self::decls => vun_items::lang::meta::decls,
             Self::variants => vun_items::lang::meta::variants,
             Self::variant => vun_items::lang::meta::variant,
             Self::Part => vun_items::lang::meta::Part,

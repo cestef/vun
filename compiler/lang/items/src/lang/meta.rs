@@ -54,6 +54,13 @@ pub const fields: Item = Item::new(&["lang", "meta", "fields"]);
 /// of its type's variants and the parts that variant holds. A struct is one variant, named by
 /// nothing, whose parts are its fields.
 pub const Variant: Item = Item::new(&["lang", "meta", "Variant"]);
+/// A member of a namespace, as reflection gives it: its name, the values of the attributes
+/// written on it, and, for a file or directory below, that namespace. Its value, `ns.$(name)`, is
+/// computed only where it is read.
+pub const Decl: Item = Item::new(&["lang", "meta", "Decl"]);
+/// The members of `ns` the namespace calling sees, in the order they are declared: every one
+/// within its package, the public ones from another.
+pub const decls: Item = Item::new(&["lang", "meta", "decls"]);
 /// The variants of `T` in declaration order: an enum's, the one a struct is, none for another
 /// type.
 pub const variants: Item = Item::new(&["lang", "meta", "variants"]);

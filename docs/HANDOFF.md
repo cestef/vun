@@ -127,7 +127,7 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
 4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.Dyn` (`meta/derive.vun` waits for it and
-   an `Encoder`), declarations' attributes (`std.meta.decls`),
+   an `Encoder`), `std.meta.decls` of a struct type (namespaces only for now),
    `testing.Bench`/`Sim` and `mem.copy`. Lints: level `expect` shows as `warn` and never reports
    that a lint stayed silent; the command line sets no levels yet, and dependencies' lints are
    not capped at `warn` when building a dependent (the build's levels apply to its own

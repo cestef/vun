@@ -54,3 +54,23 @@ has := ($D: type, $d: D, $A: type) -> bool {
     }
     false
 };
+
+/// A member `collect` finds: the namespace declaring it and its descriptor. Its value is
+/// `c.ns.$(c.decl.name)`.
+Collected := struct { ns: lang.meta.Namespace, decl: lang.meta.Decl };
+
+/// The members of `ns` and of the namespaces nested in it on which an attribute is `A` (`has`),
+/// in the order they are declared: what a test runner or a command table gathers (spec 03,
+/// section 6). Nothing is evaluated but their attributes, and only when it is called. It sees
+/// what `std` sees: the public members of another package.
+collect := ($ns: lang.meta.Namespace, $A: type) -> &[Collected] {
+    mut found: &static [Collected] = &[];
+    $for d in lang.meta.decls(ns) {
+        $if .some(inner) = d.nested {
+            found = lang.meta.concat(Collected, found, collect(inner, A));
+        } else {
+            $if has(d, A) { found = lang.meta.append(Collected, found, .{ .ns = ns, .decl = d }); }
+        }
+    }
+    found
+};

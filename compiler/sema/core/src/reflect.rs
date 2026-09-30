@@ -4,9 +4,11 @@
 //! `lang.meta`, so the descriptor structs are ordinary `lang` declarations whose fields the
 //! compiler fills, each named by its handle.
 
+use vun_hir::db::{Exports, Members as NamespaceMembers, Namespace};
 use vun_intern::Symbol;
 use vun_items::{Item, lang};
 use vun_sema_int::Integer;
+use vun_sema_ty::item::{Declared, Site};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
 
@@ -29,6 +31,13 @@ struct Variant {
     attrs: Vec<Value>,
 }
 
+/// A member of a namespace: a declaration with the values of its attributes, or a namespace below.
+struct Member {
+    name: Symbol,
+    attrs: Vec<Value>,
+    nested: Option<Namespace>,
+}
+
 /// How reflection computes one fact of what it describes.
 pub(crate) type Fact<T> = fn(&Env<'_, '_>, &T) -> Result<Value, Unevaluated>;
 
@@ -48,7 +57,48 @@ const VARIANT: &[(Item, Fact<Variant>)] = &[
     (lang::meta_Variant::attrs, |_, v| Ok(Env::held(&v.attrs))),
 ];
 
+/// What reflection tells of a member of a namespace, by the descriptor field holding it.
+const DECL: &[(Item, Fact<Member>)] = &[
+    (lang::meta_Decl::name, |_, m| Ok(Value::string(m.name.as_str()))),
+    (lang::meta_Decl::attrs, |_, m| Ok(Env::held(&m.attrs))),
+    (lang::meta_Decl::nested, |env, m| {
+        let option = env.field_type(lang::meta::Decl, lang::meta_Decl::nested)?;
+        Ok(Env::optional(option, m.nested.clone().map(Value::Namespace)))
+    }),
+];
+
 impl Env<'_, '_> {
+    /// `lang.meta.decls(ns)`: a descriptor of each member of `ns` this file sees, every one
+    /// within its package and the public ones from another.
+    pub(crate) fn decls(&self, ns: &Namespace) -> Result<Value, Unevaluated> {
+        let names = if ns.package == self.file.package {
+            self.cx.get::<NamespaceMembers>(ns)
+        } else {
+            self.cx.get::<Exports>(ns)
+        };
+        let members = names.iter().filter_map(|&name| {
+            let (attrs, nested) = match self.cx.get::<Declared>(&(ns.clone(), name))? {
+                Site::Decl(decl) => {
+                    let env = Env::of(self.cx, &decl.file)?;
+                    (env.values(&env.parsed.hir.decls[decl.decl.id].attrs), None)
+                }
+                Site::Variant { .. } => (Vec::new(), None),
+                Site::Namespace(inner) => (Vec::new(), Some(inner)),
+            };
+            Some(Member { name, attrs, nested })
+        });
+        self.describe(lang::meta::Decl, &members.collect::<Vec<_>>(), DECL)
+    }
+
+    /// The declared type of the field `field` of the `lang` struct `descriptor`.
+    fn field_type(&self, descriptor: Item, field: Item) -> Result<Ty, Unevaluated> {
+        let ty = self.item(descriptor)?.as_type().ok_or(Unevaluated::Unsupported)?;
+        let members = self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?;
+        let slot =
+            members.fields.iter().find(|f| f.name == field.symbol()).ok_or(Unevaluated::Unsupported)?;
+        slot.ty.clone()
+    }
+
     /// The variants of `ty`: an enum's, the one of a struct, none for another type. `None` while
     /// its members are not all known.
     fn shape(&self, ty: Ty) -> Result<Vec<Variant>, Unevaluated> {

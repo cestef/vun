@@ -21,3 +21,11 @@ pub const attr: Item = Item::new(&["std", "meta", "attr"]);
 /// Whether an attribute written on `d` is `A`: the type itself, a marker such as `#[test]`, or a
 /// value of it.
 pub const has: Item = Item::new(&["std", "meta", "has"]);
+/// A member `collect` finds: the namespace declaring it and its descriptor. Its value is
+/// `c.ns.$(c.decl.name)`.
+pub const Collected: Item = Item::new(&["std", "meta", "Collected"]);
+/// The members of `ns` and of the namespaces nested in it on which an attribute is `A` (`has`),
+/// in the order they are declared: what a test runner or a command table gathers (spec 03,
+/// section 6). Nothing is evaluated but their attributes, and only when it is called. It sees
+/// what `std` sees: the public members of another package.
+pub const collect: Item = Item::new(&["std", "meta", "collect"]);
