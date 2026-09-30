@@ -148,6 +148,18 @@ pub enum Roots {
     Members(Ty),
 }
 
+impl Roots {
+    /// Where a check of the program built from these roots reaches from: every function of the
+    /// root file besides its exports, or the members a program is built from.
+    #[must_use]
+    pub fn checked(self) -> Self {
+        match self {
+            Self::Exports | Self::Functions => Self::Functions,
+            Self::Members(ty) => Self::Members(ty),
+        }
+    }
+}
+
 /// The program whose root is a file, reached from its roots.
 pub struct Programs;
 

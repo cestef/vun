@@ -3,8 +3,10 @@
 //! Harnesses read this table to tell a missing diagnostic from one that belongs to a stage that
 //! does not exist yet.
 
+use std::collections::BTreeSet;
+
 use vun_diag::{DiagCtxt, DiagId, errors};
-use vun_hir::db::FileNames;
+use vun_hir::db::{FileNames, FileRef, Parsed};
 use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
@@ -151,13 +153,20 @@ impl Session {
         if let Some(reports) = self.db.get::<Checked>(&key) {
             self.diag.absorb(&reports);
         }
-        // The bodies of other files its program compiles, a library's included: what is built
-        // is checked, each typed where the program reaches it.
+        // The bodies of other files the program built compiles, a library's included: what is
+        // built is checked, each file parsed and each body typed where the program reaches it.
         let program = {
             let _timer = REACH.start();
-            self.db.get::<Programs>(&(key.clone(), Roots::Functions))
+            self.db.get::<Programs>(&(key.clone(), self.roots.checked()))
         };
         let _timer = BODIES.start();
+        let reached: BTreeSet<&FileRef> =
+            program.instantiations().map(|i| &i.f.literal.file).filter(|&f| *f != key).collect();
+        for file in reached {
+            if let Some(parsed) = self.db.get::<Parsed>(file) {
+                self.diag.absorb(&parsed.diag);
+            }
+        }
         for body in program.instantiations().filter(|i| i.f.literal.file != key) {
             if let Some(typed) = self.db.get::<Typed>(body) {
                 self.diag.absorb(&typed.diag);

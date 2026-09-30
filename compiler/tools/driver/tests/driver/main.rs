@@ -12,6 +12,7 @@ mod borrows;
 mod checks;
 mod comptime;
 mod coroutines;
+mod dependencies;
 mod doc;
 mod evaluator;
 mod fetch;
