@@ -114,11 +114,6 @@ records in reflection's shape, floats in JSON). 279 (static Linux targets), 282 
 
 ## Known gaps in landed work
 
-- `R` of `$F: lang.ops.Call((), R)` is inferred from functions and closures, not from a struct's
-  `Call` impl: a call passing a struct that implements `Call` writes its `$` arguments.
-- A declaration destructuring into `mut` binders, `(mut a, mut b) := (false, false);`, is typed
-  but not lowered ("not supported in compiled code yet"); `std.testing.Options.chosen` declares
-  them one by one.
 
 - A generic body is typed only as far as its `$` values are not needed: a local of an
   unconstrained `$T: type`, and a method whose signature names a requirement (`w.write_all(..)`
@@ -175,11 +170,9 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
 ## Running tests: what is left
 
 Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
-- Properties: the language server's lens shows `falsified` and the trap, not the arguments, and
-  runs with the default seed and count. An integer's choice is any `u64` wrapped into its range
-  (`lang` gives no range's bounds to draw within), so shrinking a wide integer walks through
-  values outside it; a float's is bounded by its width. Only shared borrows are lent (`&T`,
-  `&[T]`), and a slice holds at most `std.testing.property.longest` (32) items.
+- Properties: only shared borrows are lent (`&T`, `&[T]`), and a slice holds at most
+  `std.testing.property.longest` (32) items. A signed integer shrinks towards the integer
+  congruent to 0 by choices, so `n: i8` failing below -100 reports -128, not -100.
 - Fuzz targets (`&[u8]`) run as properties under `vun test`; the coverage-guided fuzzer (`vun
   fuzz`) and the corpus in `fuzz/<test path>/` do not exist. `Bench` and `Sim` do not exist:
   the runner treats every test with parameters as a property.

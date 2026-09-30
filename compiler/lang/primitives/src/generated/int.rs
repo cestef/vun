@@ -13,6 +13,8 @@ pub enum Int {
     fits,
     /// The absolute values of the integers of `r`: `0..=5` for `-5..=3`.
     magnitude,
+    /// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
+    count,
     /// The absolute value of `x`, whose range is the magnitude of `x`'s.
     abs,
     /// The integers of the integer type `T`.
@@ -71,6 +73,7 @@ impl Int {
         Self::sat,
         Self::fits,
         Self::magnitude,
+        Self::count,
         Self::abs,
         Self::range,
         Self::sum,
@@ -111,6 +114,7 @@ impl Int {
             Self::sat => "sat",
             Self::fits => "fits",
             Self::magnitude => "magnitude",
+            Self::count => "count",
             Self::abs => "abs",
             Self::range => "range",
             Self::sum => "sum",
@@ -152,6 +156,7 @@ impl Int {
             Self::sat => vun_items::lang::int::sat,
             Self::fits => vun_items::lang::int::fits,
             Self::magnitude => vun_items::lang::int::magnitude,
+            Self::count => vun_items::lang::int::count,
             Self::abs => vun_items::lang::int::abs,
             Self::range => vun_items::lang::int::range,
             Self::sum => vun_items::lang::int::sum,

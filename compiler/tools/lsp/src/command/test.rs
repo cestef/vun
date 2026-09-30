@@ -2,8 +2,10 @@
 //! tests' program of the document's namespace and running that test, what it reports written
 //! beside the document as it comes.
 
+use std::collections::BTreeMap;
+
 use vun_data::{FromData, ToData};
-use vun_driver::testing::{Options, Outcome, Place, Ran, Said, Trapped};
+use vun_driver::testing::{self, Options, Outcome, Place, Said, Trapped};
 use vun_driver::view::View;
 use vun_lsp_protocol::base::{Position, PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::command::CodeLens;
@@ -42,7 +44,7 @@ impl Server<'_> {
             let name = name.as_str().to_owned();
             let title = match results.and_then(|r| r.get(&name)) {
                 None => TITLE.to_owned(),
-                Some(outcome) => format!("{TITLE}: {}", Self::said(outcome)),
+                Some(tested) => format!("{TITLE}: {}", Self::said(&tested.ran.outcome)),
             };
             let tested = Tested { text_document: document.clone(), name };
             Some(CodeLens { range, command: Some(Order::Test.command(title, &tested)) })
@@ -75,7 +77,7 @@ impl Server<'_> {
         let (events, uri) = (self.events.clone(), tested.text_document.uri.clone());
         std::thread::spawn(move || match run.report(&mut Shell::plain(&mut output, &mut errors)) {
             // The server may have ended since.
-            Ok(reported) => drop(events.send(Event::Tested { uri, ran: reported.ran })),
+            Ok(reported) => drop(events.send(Event::Tested { uri, tests: reported.tests })),
             Err(error) => tracing::warn!(%error, "a test run did not end cleanly"),
         });
         self.show(&path)
@@ -83,27 +85,34 @@ impl Server<'_> {
 
     /// Keeps what a run of the tests of the document at `uri` reported, until the document
     /// changes: the titles of its lenses and the traps shown where they fired change with it.
-    pub(crate) fn tested(&mut self, uri: Uri, ran: Vec<Ran>) {
+    pub(crate) fn tested(&mut self, uri: Uri, tests: Vec<testing::Tested>) {
         let results = self.results.entry(uri).or_default();
-        results.extend(ran.into_iter().map(|ran| (ran.name, ran.outcome)));
+        results.extend(tests.into_iter().map(|tested| (tested.ran.name.clone(), tested)));
         self.changed.extend(self.documents.keys().cloned());
         self.ask::<r::CodeLensRefresh>(&None);
     }
 
-    /// Each trap a test's last run fired in `document`, where it fired.
+    /// Each trap a test's last run fired in `document`, where it fired, with the arguments of a
+    /// falsified property's failing case.
     pub(crate) fn traps(&self, document: &Document) -> Vec<Diagnostic> {
-        let tests = self.results.values().flatten();
-        let traps = tests.filter_map(|(name, outcome)| match outcome.trap()? {
-            Trapped { said: Some(Said { message, at: Some(at) }), .. } => Some((name, message, at)),
+        let tests = self.results.values().flat_map(BTreeMap::values);
+        let traps = tests.filter_map(|tested| match tested.ran.outcome.trap()? {
+            Trapped { said: Some(Said { message, at: Some(at) }), .. } => Some((tested, message, at)),
             Trapped { .. } => None,
         });
         traps
             .filter(|(_, _, at)| std::path::absolute(&at.file).is_ok_and(|file| file == document.path))
-            .filter_map(|(name, message, at)| {
+            .filter_map(|(tested, message, at)| {
                 let position = self.position(document, at)?;
+                let name = &tested.ran.name;
+                let arguments: Vec<String> = tested.arguments.iter().map(ToString::to_string).collect();
+                let what = match arguments.as_slice() {
+                    [] => format!("the test `{name}` trapped"),
+                    _ => format!("the test `{name}` was falsified by {}", arguments.join(", ")),
+                };
                 let message = match message {
-                    Some(message) => format!("the test `{name}` trapped: {message}"),
-                    None => format!("the test `{name}` trapped"),
+                    Some(message) => format!("{what}: {message}"),
+                    None => what,
                 };
                 Some(Diagnostic {
                     range: vun_lsp_protocol::base::Range { start: position, end: position },

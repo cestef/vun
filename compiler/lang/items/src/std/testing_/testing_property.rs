@@ -42,9 +42,10 @@ pub const array_arbitrary: Item = Item::new(
 );
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 pub const Generated: Item = Item::new(&["std", "testing", "property", "Generated"]);
-/// An integer of `Int(r)`: a choice reduced into the range as `wrap` reduces (decision 331), so
-/// the least choice is the integer of the range congruent to 0. A range wider than 64 bits has
-/// only its low 64 bits chosen.
+/// An integer of `Int(r)`: a choice among as many as the range holds, reduced into it as `wrap`
+/// reduces (decision 331), so the least choice is the integer of the range congruent to 0 and a
+/// smaller one on the same side of it is nearer. A range of more than 2^64 integers has only its
+/// low 64 bits chosen.
 pub const int_arbitrary: Item = Item::new(
     &["std", "testing", "property", "int_arbitrary"],
 );
@@ -72,6 +73,6 @@ pub const shrink: Item = Item::new(&["std", "testing", "property", "shrink"]);
 /// The case replaying the first `len` of `taken`, when it still traps, as a failing case found
 /// by one more shrink than `shrinks`.
 pub const retried: Item = Item::new(&["std", "testing", "property", "retried"]);
-/// Writes the arguments `failing` replays for `f`, each as `name = ` and its JSON on a line of
-/// its own.
+/// Writes the arguments `failing` replays for `f`, each on a line of its own
+/// (`std.testing.Argued`).
 pub const write: Item = Item::new(&["std", "testing", "property", "write"]);

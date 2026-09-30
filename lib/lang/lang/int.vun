@@ -35,6 +35,8 @@ sat: ($r: Range, x: Int(r), $T: type) -> T = _;
 fits: ($r: Range, x: Int(r), $T: type) -> bool = _;
 /// The absolute values of the integers of `r`: `0..=5` for `-5..=3`.
 magnitude: ($r: Range) -> Range = _;
+/// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
+count: ($r: Range) -> Int(1..) = _;
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 #[panic.never]
 abs: ($r: Range, x: Int(r)) -> Int(magnitude(r)) = _;

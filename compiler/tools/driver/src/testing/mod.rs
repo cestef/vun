@@ -4,7 +4,7 @@
 mod build;
 mod report;
 
-pub use report::{Reported, Run};
+pub use report::{Reported, Run, Tested};
 
 use vun_command::{Args, Param, Values};
 use vun_data::{FromData, ToData};
@@ -38,11 +38,21 @@ impl Options {
     }
 }
 
-/// A line the runner writes (`std.testing.Line`): a test run, then the totals.
+/// A line the runner writes (`std.testing.Line`): a test run, then the totals; before a falsified
+/// property's line, each argument of its failing case (`std.testing.Argued`).
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub enum Line {
     Test(Ran),
     Totals(Totals),
+    Argument(Argument),
+}
+
+/// An argument of a property's smallest failing case (`std.testing.Argument`): its parameter's
+/// name, and its value as its type writes it as JSON.
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Argument {
+    pub name: String,
+    pub value: vun_data::Value<'static>,
 }
 
 /// A test run: its name, as declared, and what became of it.
@@ -117,6 +127,13 @@ pub struct Totals {
     pub trapped: usize,
     pub falsified: usize,
     pub ignored: usize,
+}
+
+/// An argument as a failing case's report shows it: `x = 200`, its value as JSON.
+impl std::fmt::Display for Argument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} = {}", self.name, vun_data::json::Json(&self.value))
+    }
 }
 
 impl Line {

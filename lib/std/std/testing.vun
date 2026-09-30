@@ -83,6 +83,14 @@ Line := enum {
     totals(Totals),
 };
 
+/// A line the runner writes before a falsified property's line, one per parameter: the argument
+/// of its smallest failing case.
+Argued := ($T: type) -> type { enum { argument(Argument(T)) } };
+
+/// An argument of a property's failing case: its parameter's name, and its value, written as
+/// JSON by its type.
+Argument := ($T: type) -> type { struct { name: &[u8], value: T } };
+
 /// A test run: its name, as declared, and what became of it.
 Ran := struct {
     name: &[u8],

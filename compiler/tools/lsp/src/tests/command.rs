@@ -76,7 +76,7 @@ fn each_declaration_exporting_the_program_has_a_lens_running_it() {
 fn each_test_of_a_package_file_has_a_lens_running_it() {
     use vun_lsp_protocol::command::CodeLensParams;
 
-    use vun_driver::testing::{Outcome, Place, Ran, Said, Trapped};
+    use vun_driver::testing::{self, Argument, Falsified, Outcome, Place, Ran, Said, Trapped};
 
     use crate::command::test::Tested;
 
@@ -103,9 +103,10 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
             message: Some("assertion failed".to_owned()),
             at: Some(Place { file, line: 2, column: 21 }),
         };
-        let ran =
-            Ran { name: "adds".to_owned(), outcome: Outcome::Trapped(Trapped { site: 0, said: Some(said) }) };
-        client.server.tested(uri.clone(), vec![ran]);
+        let trapped = Trapped { site: 0, said: Some(said) };
+        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Trapped(trapped.clone()) };
+        let tested = testing::Tested { ran, arguments: Vec::new(), output: Vec::new() };
+        client.server.tested(uri.clone(), vec![tested]);
         let asked: Vec<_> = client.server.outbox.drain(..).filter_map(|m| m.method).collect();
         assert_eq!(asked, [r::CodeLensRefresh::METHOD]);
         let titles = |client: &mut super::Client<'_, '_>| -> Vec<String> {
@@ -117,6 +118,15 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
         let traps: Vec<_> =
             published[0].diagnostics.iter().map(|d| (d.range.start.line, d.range.start.character)).collect();
         assert_eq!(traps, [(1, 20)], "{published:?}");
+        // A property's trap names the arguments of its failing case.
+        let falsified = Falsified { trapped, seed: 7, case: 0, shrinks: 1 };
+        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Falsified(falsified) };
+        let arguments = vec![Argument { name: "x".to_owned(), value: 200_u64.into() }];
+        client.server.tested(uri.clone(), vec![testing::Tested { ran, arguments, output: Vec::new() }]);
+        client.server.outbox.clear();
+        let messages: Vec<_> = client.published()[0].diagnostics.iter().map(|d| d.message.clone()).collect();
+        assert_eq!(messages, ["the test `adds` was falsified by x = 200: assertion failed"]);
+        assert_eq!(titles(client), ["Test: falsified"]);
         client.open(uri, "#[test]\nadds := () {};\n");
         assert_eq!(titles(client), ["Test"]);
         assert!(client.published()[0].diagnostics.is_empty());

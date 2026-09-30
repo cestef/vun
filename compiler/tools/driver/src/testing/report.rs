@@ -9,7 +9,7 @@ use std::process::Child;
 use vun_data::{Object, ToData};
 use vun_term::{Document, Noun, Record, Shell, Status, Style, Text, Verb};
 
-use super::{Falsified, Line, Options, Outcome, Ran, Totals};
+use super::{Argument, Falsified, Line, Options, Outcome, Ran, Totals};
 use crate::Session;
 
 const PASSED: Noun = Noun { one: "passed", many: "passed" };
@@ -46,9 +46,9 @@ impl Session {
 }
 
 /// What a run of the tests' program reported: the tests run, and whether it ran to its totals
-/// and no test trapped.
+/// and no test trapped or was falsified.
 pub struct Reported {
-    pub ran: Vec<Ran>,
+    pub tests: Vec<Tested>,
     pub passed: bool,
 }
 
@@ -59,15 +59,17 @@ impl Run {
     /// # Errors
     /// Fails when the program's output cannot be read or reported.
     pub fn report(mut self, shell: &mut Shell<'_>) -> io::Result<Reported> {
-        let (mut totals, mut output, mut tests) = (None, Vec::new(), Vec::new());
+        let (mut totals, mut output, mut arguments, mut tests) = (None, Vec::new(), Vec::new(), Vec::new());
         for text in self.lines.lines() {
             let text = text?;
             match Line::of(&text) {
                 Some(Line::Test(ran)) => {
-                    let tested = Tested { ran, output: std::mem::take(&mut output) };
+                    let (arguments, output) = (std::mem::take(&mut arguments), std::mem::take(&mut output));
+                    let tested = Tested { ran, arguments, output };
                     shell.status(&tested);
-                    tests.push(tested.ran);
+                    tests.push(tested);
                 }
+                Some(Line::Argument(argument)) => arguments.push(argument),
                 Some(Line::Totals(ended)) => totals = Some(ended),
                 None => output.push(text),
             }
@@ -80,14 +82,18 @@ impl Run {
         if let Some(totals) = totals {
             shell.status(&Tally(totals));
         }
-        Ok(Reported { ran: tests, passed: status.success() && totals.is_some_and(|t| t.trapped == 0) })
+        let clean = totals.is_some_and(|t| t.trapped == 0 && t.falsified == 0);
+        Ok(Reported { tests, passed: status.success() && clean })
     }
 }
 
-/// A test run, what became of it and the lines the program wrote while it ran.
-struct Tested {
-    ran: Ran,
-    output: Vec<String>,
+/// A test run, what became of it, the arguments of a falsified property's failing case and the
+/// lines the program wrote while it ran.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Tested {
+    pub ran: Ran,
+    pub arguments: Vec<Argument>,
+    pub output: Vec<String>,
 }
 
 impl Tested {
@@ -111,7 +117,8 @@ impl Tested {
             )),
             _ => None,
         };
-        [ignored, message, at, case].into_iter().flatten().collect()
+        let arguments = self.arguments.iter().map(|a| Text::from(a.to_string()));
+        [ignored, message, at, case].into_iter().flatten().chain(arguments).collect()
     }
 }
 
@@ -132,6 +139,7 @@ impl Record for Tested {
         Object::new()
             .with("name", self.ran.name.clone())
             .with("outcome", self.ran.outcome.to_data())
+            .with("arguments", self.arguments.to_data())
             .with("output", self.output.clone())
     }
 }

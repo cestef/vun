@@ -74,7 +74,8 @@ parameters' types (`lang.meta.params`), over `std.testing.property.cases` cases 
 thread of its own. `testing.gen(T, c)` makes a value of `T`: by `T`'s `testing.Arbitrary` where
 it has one, and otherwise, for a struct, an enum, a tuple or a record, by reflection, a variant,
 then each of its parts (`lang.meta.make`). The `Arbitrary` impls of `std` cover integers, which
-reduce a choice into their range as `wrap` does (an `Int(0..=100)` is never 101), floats, whose
+reduce a choice among as many as their range holds (`lang.int.count`) into it as `wrap` does
+(an `Int(0..=100)` is never 101), floats, whose
 encoding is one choice (so the least is `0.0`), and arrays, item by item. A parameter whose type
 borrows is lent what its case holds (`testing.property.lend.Lent`): `&T` holds a `T`, and a type with
 no value of its own stores one its way (`testing.property.lend.Store`), a slice `[T]` as a prefix of
@@ -87,9 +88,10 @@ and recorded), so:
   The least choice is the first variant and the integer congruent to 0, so the case shrinks
   towards those; `(x: u8) { assert(x < 200); }` reports `x = 200`;
 - the search runs its cases quietly (`std.os.thread.reporting`); the smallest failing case runs
-  once more and reports its trap, and the runner writes its arguments, one line each, `name = `
-  and the value as JSON (`std.fmt.json.write`, derived by reflection where a type has no
-  `Json`), before the test's line;
+  once more and reports its trap, and the runner writes its arguments before the test's line,
+  one line each, `{"argument":{"name":...,"value":...}}` (`std.testing.Argued`), the value as
+  JSON (`std.fmt.json.write`, derived by reflection where a type has no `Json`); `vun test`
+  shows them as `x = 200`, and the language server names them in the trap it shows;
 - a test's cases are drawn from a seed, the FNV-1a hash of its name, so every run draws the same
   cases; the line reports the seed and the case. `vun test --seed n` draws every property's
   cases from `n` instead, replaying a reported failure, and `--cases n` runs `n` cases of each

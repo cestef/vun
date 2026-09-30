@@ -127,12 +127,16 @@ array_arbitrary := ($n: Int(0..), $T: type) -> type { struct {
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
 
-/// An integer of `Int(r)`: a choice reduced into the range as `wrap` reduces (decision 331), so
-/// the least choice is the integer of the range congruent to 0. A range wider than 64 bits has
-/// only its low 64 bits chosen.
+/// An integer of `Int(r)`: a choice among as many as the range holds, reduced into it as `wrap`
+/// reduces (decision 331), so the least choice is the integer of the range congruent to 0 and a
+/// smaller one on the same side of it is nearer. A range of more than 2^64 integers has only its
+/// low 64 bits chosen.
 #[impl(Arbitrary(Int))]
 int_arbitrary := ($r: lang.Range) -> type { struct {
-    arbitrary := (c: &mut Choices) -> Int(r) { c.draw(widest).wrap(Int(r)) };
+    arbitrary := (c: &mut Choices) -> Int(r) {
+        $most := (lang.int.count(r) - 1).sat(u64);
+        c.draw(most).wrap(Int(r))
+    };
 } };
 
 /// The tuple of what a case of `f` holds for each of its parameters.
@@ -246,15 +250,14 @@ retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[room]u64, len: us
     }
 };
 
-/// Writes the arguments `failing` replays for `f`, each as `name = ` and its JSON on a line of
-/// its own.
+/// Writes the arguments `failing` replays for `f`, each on a line of its own
+/// (`std.testing.Argued`).
 write := ($F: type, $f: F, w: &mut std.os.Stream, failing: &Failing) -> Result((), std.os.Error) {
     mut c := Choices.replaying(&failing.taken, failing.len);
     held := arguments(F, f, &mut c);
     $for p in lang.meta.params(F, f) {
-        w.write_all(p.name)?;
-        w.write_all(" = ")?;
-        std.fmt.json.write(w, &std.testing.property.lend.passed(p.type, &held.$(p.index)))?;
+        value := std.testing.property.lend.passed(p.type, &held.$(p.index));
+        std.fmt.json.write(w, &std.testing.Argued(p.type).argument(.{ .name = p.name, .value = value }))?;
         w.write_all("\n")?;
     }
     .ok(())

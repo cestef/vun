@@ -56,6 +56,9 @@ impl ApplyInt for Int {
                 Ok(Value::Range(range.as_ref().map(Interval::magnitude)))
             }
             (Self::negation, [Value::Range(Some(a))]) => Ok(Value::Range(Some(a.neg()))),
+            (Self::count, [Value::Range(Some(a))]) => {
+                a.count().map(Value::Int).ok_or_else(|| Unevaluated::trap(Reason::Argument))
+            }
             (_, [Value::Range(Some(a)), Value::Range(Some(b))]) => self.range(a, b).map(Value::Range),
             (_, [Value::Range(Some(a)), Value::Range(Some(_)), Value::Int(x), Value::Int(y)]) => {
                 self.value(env, a, x, y)

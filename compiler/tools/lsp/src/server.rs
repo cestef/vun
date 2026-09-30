@@ -13,7 +13,7 @@ use vun_data::ToData;
 use vun_data::Value;
 use vun_data::json::Json;
 use vun_driver::Session;
-use vun_driver::testing::Outcome as Ended;
+use vun_driver::testing::Tested;
 use vun_lsp_protocol::Request;
 use vun_lsp_protocol::base::{PositionEncoding, TextDocumentIdentifier, Uri};
 use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
@@ -52,7 +52,7 @@ pub(crate) enum Event {
     /// A message the client sent: its text, `None` once the client closed the stream.
     Frame(Result<Option<String>, Unframed>),
     /// What a run of `vun.test` reported of the tests of the document at `uri`.
-    Tested { uri: Uri, ran: Vec<vun_driver::testing::Ran> },
+    Tested { uri: Uri, tests: Vec<Tested> },
 }
 
 pub(crate) struct Server<'s> {
@@ -67,7 +67,7 @@ pub(crate) struct Server<'s> {
     /// The requests the server sent, which number the next.
     pub(crate) asked: i64,
     /// How the tests of each document ended when last run, by name, until it changes.
-    pub(crate) results: BTreeMap<Uri, BTreeMap<String, Ended>>,
+    pub(crate) results: BTreeMap<Uri, BTreeMap<String, Tested>>,
     /// Where events are sent, and where the loop receives them.
     pub(crate) events: Sender<Event>,
     received: Receiver<Event>,
@@ -103,7 +103,7 @@ impl<'s> Server<'s> {
                             return Ok(ended);
                         }
                     }
-                    Event::Tested { uri, ran } => self.tested(uri, ran),
+                    Event::Tested { uri, tests } => self.tested(uri, tests),
                 }
                 next = self.received.try_recv().ok();
             }

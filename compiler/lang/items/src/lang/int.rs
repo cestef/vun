@@ -35,6 +35,8 @@ pub const sat: Item = Item::new(&["lang", "int", "sat"]);
 pub const fits: Item = Item::new(&["lang", "int", "fits"]);
 /// The absolute values of the integers of `r`: `0..=5` for `-5..=3`.
 pub const magnitude: Item = Item::new(&["lang", "int", "magnitude"]);
+/// How many integers `r` holds: 256 for `0..=255`. An unbounded range holds no count.
+pub const count: Item = Item::new(&["lang", "int", "count"]);
 /// The absolute value of `x`, whose range is the magnitude of `x`'s.
 pub const abs: Item = Item::new(&["lang", "int", "abs"]);
 /// The integers of the integer type `T`.

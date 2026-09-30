@@ -3,7 +3,7 @@
 
 use vun_build::layout::MANIFEST;
 use vun_driver::Codegen;
-use vun_driver::testing::{Ignored, Line, Options, Outcome, Place, Ran, Said, Totals, Trapped};
+use vun_driver::testing::{Argument, Ignored, Line, Options, Outcome, Place, Ran, Said, Totals, Trapped};
 use vun_term::Shell;
 
 use crate::backend::BACKENDS;
@@ -167,8 +167,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         let program = session.build_tests(file, ns, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
         let run = std::process::Command::new(&program).output().unwrap();
         let stdout = String::from_utf8(run.stdout).unwrap();
-        let (lines, written): (Vec<_>, Vec<_>) = stdout.lines().partition(|l| Line::of(l).is_some());
-        let lines: Vec<Line> = lines.into_iter().filter_map(Line::of).collect();
+        let lines: Vec<Line> = stdout.lines().filter_map(Line::of).collect();
         // What each test's outcome says, apart from the program's site ids and the cases drawn.
         let said: Vec<(String, Option<String>)> = lines
             .iter()
@@ -176,7 +175,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
                 Line::Test(Ran { name, outcome }) => {
                     Some((name.clone(), outcome.trap().and_then(|t| t.said.clone()?.message)))
                 }
-                Line::Totals(_) => None,
+                Line::Totals(_) | Line::Argument(_) => None,
             })
             .collect();
         let failed =
@@ -194,26 +193,37 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         assert_eq!(said, expected, "{backend}");
         let totals = lines.iter().find_map(|l| match l {
             Line::Totals(totals) => Some(*totals),
-            Line::Test(_) => None,
+            Line::Test(_) | Line::Argument(_) => None,
         });
         assert_eq!(totals, Some(Totals { passed: 2, trapped: 0, falsified: 6, ignored: 0 }), "{backend}");
-        // The smallest failing arguments, each written before its test's line.
+        // The smallest failing arguments, each a line before its test's.
+        let written: Vec<&Argument> = lines
+            .iter()
+            .filter_map(|l| match l {
+                Line::Argument(argument) => Some(argument),
+                Line::Test(_) | Line::Totals(_) => None,
+            })
+            .collect();
         let shrunk = [
-            "x = 200",
-            "p = {\"a\":11,\"flag\":true}",
-            "t = [6,true]",
-            "xs = [0,100,0]",
-            "x = \"0x1.000002p+0\"",
-            "input = \"\\u0000\\u0000\\u0000\"",
-        ];
-        assert!(shrunk.iter().all(|s| written.contains(s)), "{backend}: {written:#?}");
+            ("x", "200"),
+            ("p", "{\"a\":11,\"flag\":true}"),
+            ("t", "[6,true]"),
+            ("xs", "[0,100,0]"),
+            ("x", "\"0x1.000002p+0\""),
+            ("input", "\"\\u0000\\u0000\\u0000\""),
+        ]
+        .map(|(name, json)| Argument {
+            name: name.to_owned(),
+            value: vun_data::json::parse(json).unwrap().into_owned(),
+        });
+        assert_eq!(written, shrunk.iter().collect::<Vec<_>>(), "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
         // A run asking for a seed reports it; one asking for no cases falsifies nothing.
         let outcomes = |names: &[&str], options: Options| {
             let (mut out, mut err) = (Vec::new(), Vec::new());
             let run = session.run_tests(&program, names, options).unwrap();
             let reported = run.report(&mut Shell::plain(&mut out, &mut err)).unwrap();
-            reported.ran.into_iter().map(|ran| ran.outcome).collect::<Vec<_>>()
+            reported.tests.into_iter().map(|tested| tested.ran.outcome).collect::<Vec<_>>()
         };
         let seeded = outcomes(&["bounded"], Options { seed: Some(7), cases: None });
         assert!(
