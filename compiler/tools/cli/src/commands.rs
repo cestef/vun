@@ -35,7 +35,10 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             .sets(&[COMPILE])
             .examples(&[
                 Example { line: "main.vun", about: "build the program, named after its file" },
-                Example { line: "main.vun -o hello --target linux.x86_64", about: "cross-compile to a path" },
+                Example {
+                    line: "main.vun -o hello --target linux.x86_64.kernel",
+                    about: "cross-compile to a path",
+                },
                 Example {
                     line: "build.vun",
                     about: "carry out the package's plan: build each program it records",

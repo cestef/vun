@@ -36,14 +36,11 @@ pub const Backends: Item = Item::new(&["lang", "target", "Backends"]);
 pub const Version: Item = Item::new(&["lang", "target", "Version"]);
 /// How many threads the programs of a target run.
 pub const Threads: Item = Item::new(&["lang", "target", "Threads"]);
-/// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
-/// (`targets.linux.x86_64`), so adding a target rebuilds nothing. Architectures, CPUs, systems,
+/// A target, as data (spec 13, section 7): the package `targets` declares one per system,
+/// architecture and ABI (`targets.linux.x86_64.kernel`), so adding a target changes no code. Architectures, CPUs, systems,
 /// ABIs, object formats, backends and linkers are names, the sets of them open to what the
 /// toolchain registers.
 pub const Spec: Item = Item::new(&["lang", "target", "Spec"]);
-/// A machine the toolchain runs on, as the toolchain names it, and the target it builds for
-/// there unless told otherwise.
-pub const Host: Item = Item::new(&["lang", "target", "Host"]);
 pub const require: Item = Item::new(&["lang", "target", "require"]);
 pub const Features: Item = Item::new(&["lang", "target", "Features"]);
 /// The largest address of the target: `usize` is `Int(0..=usize_max)`.

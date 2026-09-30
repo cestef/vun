@@ -3,7 +3,7 @@
 
 use vun_diag::errors;
 use vun_driver::Codegen;
-use vun_intern::Symbol;
+use vun_items::targets;
 use vun_sema::target::Choice;
 use vun_target::{Name, Output};
 use vun_tool::Executable;
@@ -42,7 +42,7 @@ fn a_linker_is_refused_for_a_format_it_does_not_link() {
     let fixture = Fixture::new("link-refused");
     let path = fixture.root.write("main.vun", EXITS);
     let mut session = fixture.session();
-    session.choice = Choice::Path(["macos", "arm64"].map(Symbol::intern).to_vec());
+    session.choice = Choice::of(targets::macos_arm64::darwin);
     let file = session.load(&path).unwrap();
     session.codegen = Codegen {
         linker: Some(vun_link_mold::INFO.id.symbol()),
@@ -151,7 +151,7 @@ fn a_shared_library_on_wasi_is_a_module_of_its_exports() {
     let fixture = Fixture::new("link-shared-wasi");
     let path = fixture.root.write("calc.vun", LIBRARY);
     let mut session = fixture.session();
-    session.choice = Choice::Path(["wasi", "wasm32"].map(Symbol::intern).to_vec());
+    session.choice = Choice::of(targets::wasi_wasm32::p1);
     let file = session.load(&path).unwrap();
     session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_wasm::INFO.id) };
     let module = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
@@ -175,7 +175,7 @@ fn a_macos_program_links_against_the_sdk_the_toolchain_names_through_each_backen
         let fixture = Fixture::new(&format!("link-macos-{backend}"));
         let path = fixture.root.write("main.vun", EXITS);
         let mut session = fixture.session();
-        session.choice = Choice::Path(["macos", "arm64"].map(Symbol::intern).to_vec());
+        session.choice = Choice::of(targets::macos_arm64::darwin);
         let file = session.load(&path).unwrap();
         let _ = session.lir(file);
         // Where the machine keeps no SDK, there is nothing to link against.

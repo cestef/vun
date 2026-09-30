@@ -12,7 +12,7 @@ or not generating code for the architecture.
 ## Example
 
 ```console
-$ vun build --target wasi.wasm32 main.vun
+$ vun build --target wasi.wasm32.p1 main.vun
 error[backend.unchosen]: no backend the target prefers for debug builds can build
   = note: `llvm` cannot generate code yet
 ```
@@ -23,5 +23,5 @@ Name a backend that can with `--backend`, build for another target, or add a bac
 to the target's preferences in `lib/targets`.
 
 ```console
-$ vun build --target wasi.wasm32 --backend c main.vun
+$ vun build --target wasi.wasm32.p1 --backend c main.vun
 ```

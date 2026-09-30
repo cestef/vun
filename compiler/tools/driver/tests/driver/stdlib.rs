@@ -4,6 +4,7 @@
 use crate::common::Fixture;
 use vun_diag::errors;
 use vun_intern::Symbol;
+use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 
 #[test]
@@ -191,10 +192,10 @@ wrong: Int(nothing()..=nothing()) = 4;
 
 #[test]
 fn the_c_library_row_is_the_chosen_systems() {
-    let rows: [(&[&str], &str); 2] =
-        [(&["linux", "gnu", "x86_64"], "__errno_location"), (&["macos", "arm64"], "__error")];
+    let rows: [(Item, &str); 2] =
+        [(targets::linux_x86_64::gnu, "__errno_location"), (targets::macos_arm64::darwin, "__error")];
     for (target, errno) in rows {
-        let fixture = Fixture::new(&format!("std-libc-{}", target[0]));
+        let fixture = Fixture::new(&format!("std-libc-{}", target.path()[1]));
         let file = fixture.root.write(
             "p.vun",
             "\
@@ -207,7 +208,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ",
         );
         let mut session = fixture.session();
-        session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+        session.choice = Choice::of(target);
         let file = session.load(&file).unwrap();
         let lowered = session.lir(file);
         let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{target:?}: {:#?}", session.diag));

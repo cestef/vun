@@ -1,0 +1,14 @@
+//! Armv7-M: Cortex-M3, Thumb-2 without a floating-point unit.
+
+/// The soft-float EABI.
+eabi := targets.bare._on(
+    .arm,
+    .thumb,
+    &[.microcontroller, .divide],
+    .eabi,
+    .aapcs,
+    &[],
+    "arm-none-eabi-gcc",
+    "arm-none-eabi-ar",
+    &["-march=armv7-m", "-mthumb", "-mfloat-abi=soft"],
+);

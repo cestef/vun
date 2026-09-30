@@ -1,6 +1,6 @@
-//! Linux. A target per CPU builds static programs that call the kernel themselves, with no C
-//! library; `gnu` holds the targets of programs on the GNU C library (`linux.gnu.x86_64`), which
-//! calling C needs.
+//! Linux: a namespace per architecture, holding a target per ABI. `kernel` builds static programs
+//! that call the kernel themselves, with no C library (`linux.x86_64.kernel`); `gnu` builds
+//! programs on the GNU C library, which calling C needs (`linux.x86_64.gnu`).
 
 /// A machine Linux runs on: its architecture, the instruction set its code is written in and the
 /// features of it the machine has, the width of an address, which gives the C data model (LP64,
@@ -14,44 +14,6 @@ _Machine := struct {
     register_bits: u8,
     floats: &[type],
     convention: lang.target.Convention,
-};
-
-#[visible(.within(targets.linux))]
-_x86_64: _Machine = .{
-    .arch = .x86_64,
-    .isa = .x86_64,
-    .pointer_bits = 64,
-    .register_bits = 64,
-    .floats = &[f32, f64],
-    .convention = .sysv,
-};
-#[visible(.within(targets.linux))]
-_arm64: _Machine = .{
-    .arch = .arm64,
-    .isa = .arm64,
-    .pointer_bits = 64,
-    .register_bits = 64,
-    .floats = &[f32, f64],
-    .convention = .aapcs64,
-};
-#[visible(.within(targets.linux))]
-_arm: _Machine = .{
-    .arch = .arm,
-    .isa = .thumb,
-    .features = &[.application, .divide],
-    .pointer_bits = 32,
-    .register_bits = 32,
-    .floats = &[f32, f64],
-    .convention = .aapcs_vfp,
-};
-#[visible(.within(targets.linux))]
-_riscv64: _Machine = .{
-    .arch = .riscv64,
-    .isa = .riscv64,
-    .pointer_bits = 64,
-    .register_bits = 64,
-    .floats = &[f32, f64],
-    .convention = .lp64d,
 };
 
 /// A Linux target of `machine` following `abi`, built with the system's C compiler, given
@@ -85,15 +47,13 @@ _on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags:
 /// `std.os.linux.kernel`: linked with none of the libraries and start files a C compiler adds of
 /// itself, naming only its helper library (`libgcc`: 128-bit division, and all division on
 /// 32-bit Arm) and no C library or unwinder, which a program without unwinding does not need.
+#[visible(.within(targets.linux))]
 _kernel := ($machine: _Machine, $flags: &[&[u8]]) -> lang.target.Spec {
     _on(machine, .kernel, flags, &["-static", "-nostdlib"], &["gcc"])
 };
 
-/// 64-bit x86.
-x86_64 := _kernel(_x86_64, &[]);
-/// 64-bit ARM (AArch64). Atomics are inline instructions: the C compiler's out-of-line ones
-/// choose between forms by asking the C library what the CPU has.
-arm64 := _kernel(_arm64, &["-mno-outline-atomics"]);
-/// 32-bit ARM (Armv7-A with division in hardware, as Cortex-A7 and A15 on have it), its code
-/// Thumb-2, floats in the floating-point extension's registers (the hard-float EABI).
-arm := _kernel(_arm, &["-march=armv7ve", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);
+/// A target of `machine` on the GNU C library: programs start through its runtime and may call C.
+#[visible(.within(targets.linux))]
+_gnu := ($machine: _Machine) -> lang.target.Spec {
+    _on(machine, .gnu, &[], &[], &[])
+};

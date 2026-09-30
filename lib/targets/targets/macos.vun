@@ -1,12 +1,14 @@
-//! macOS. A program records the oldest release it runs on, which its C compiler and its linker
+//! macOS: a namespace per architecture, holding a target per ABI. A program records the oldest release it runs on, which its C compiler and its linker
 //! are told, and links the system's library, `libSystem`, from the SDK the machine keeps (its
-//! toolchain file's `sysroot`).
+//! tools file's `sysroot`).
 
 /// The oldest macOS on Apple silicon.
+#[visible(.within(targets.macos))]
 _apple_silicon: lang.target.Version = .{ .major = 11 };
 
 /// Apple's clang, or any clang `machine` names the target to (its triple): its GNU options, the
 /// release told with `-mmacos-version-min=`, and `libSystem` linked after the objects.
+#[visible(.within(targets.macos))]
 _clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
     .{
         .command = "clang",
@@ -20,26 +22,4 @@ _clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
         .frame_sizes = .stack_usage,
         .version_flag = .some("-mmacos-version-min="),
     }
-};
-
-/// Apple silicon (64-bit ARM), Armv8.5 and later.
-arm64 := lang.target.Spec{
-    .arch = .arm64,
-    .isa = .arm64,
-    .features = &[.lse],
-    .cpu = .generic,
-    .os = .macos,
-    .abi = .darwin,
-    .convention = .darwin_arm64,
-    .pointer_bits = 64,
-    .register_bits = 64,
-    .floats = &[f32, f64],
-    .threads = .many,
-    .endian = .little,
-    .object_format = .macho,
-    .entry_symbol = .some("_main"),
-    .os_version = .some(_apple_silicon),
-    .backends = targets.native_first,
-    .linker = .lld,
-    .c = targets.lp64(_clang(&["--target=arm64-apple-macos"])),
 };

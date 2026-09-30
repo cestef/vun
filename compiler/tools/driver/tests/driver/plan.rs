@@ -40,7 +40,7 @@ fn a_plan_records_each_step_with_its_records() {
             "\
 build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });
-    fw := b.program(.{ .root = \"app.vun\", .target = targets.bare.cortex_m4f, .deps = &[.{ .name = .stm32f4, .dep = chip }] });
+    fw := b.program(.{ .root = \"app.vun\", .target = targets.bare.thumbv7em.eabihf, .deps = &[.{ .name = .stm32f4, .dep = chip }] });
     b.flash(fw, .probe(.{ .chip = \"STM32F407VGTx\" }));
     b.test_on(fw, .qemu(\"lm3s6965\"));
     b.lints(.{ .{ std.lints.pedantic, .warn } });
@@ -48,7 +48,7 @@ build := (b: &mut std.build.Build) {
 ",
     )
     .expect("the plan runs");
-    let target = ".{ .arch = .arm, .isa = .thumb, .features = .{ .microcontroller, .divide }, .cpu = .cortex_m4f, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
+    let target = ".{ .arch = .arm, .isa = .thumb, .features = .{ .microcontroller, .divide }, .cpu = .generic, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
                   .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
                   .threads = .one, .endian = .little, \
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .os_version = .none, .backends = .{ .debug = .{ .cranelift, .c }, \
@@ -56,9 +56,9 @@ build := (b: &mut std.build.Build) {
                   .int = .{ .bits = 32, .align = 4 }, .long = .{ .bits = 32, .align = 4 }, \
                   .long_long = .{ .bits = 64, .align = 8 }, .pointer_align = 4, \
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", .archiver = \"arm-none-eabi-ar\", \
-                  .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-fno-omit-frame-pointer\", \"-mcpu=cortex-m4\", \
+                  .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-fno-omit-frame-pointer\", \"-march=armv7e-m\", \
                   \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\" }, .optimize = .{ \"-O2\" }, \
-                  .link_flags = .{ \"-mcpu=cortex-m4\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
+                  .link_flags = .{ \"-march=armv7e-m\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
                   \"-nostdlib\", \"-nostartfiles\" }, .libraries = .{ \"gcc\" }, .atomics = .gnu, .attributes = .gnu, \
                   .frame_sizes = .stack_usage, .version_flag = .none, .sysroot = .none } } }";
     assert_eq!(
@@ -121,7 +121,7 @@ start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit { .code(7) };
 ";
 
-/// The plan tests build for this machine's target, which `targets.linux.x86_64` names here.
+/// The plan tests build for this machine's target, which `targets.linux.x86_64.kernel` names here.
 const HOSTED: bool = cfg!(all(target_arch = "x86_64", target_os = "linux"));
 
 #[test]
@@ -132,7 +132,7 @@ fn building_a_package_builds_the_programs_its_plan_records() {
     let fixture = Fixture::new("plan-carry");
     let build = "\
 build := (b: &mut std.build.Build) {
-    b.program(.{ .root = \"app.vun\", .target = targets.linux.x86_64 });
+    b.program(.{ .root = \"app.vun\", .target = targets.linux.x86_64.kernel });
     b.lints(.{ .{ std.lints.pedantic, .warn } });
 };
 ";
@@ -152,7 +152,7 @@ fn a_program_s_memory_map_reaches_its_link_plan() {
 build := (b: &mut std.build.Build) {
     b.program(.{
         .root = \"app.vun\",
-        .target = targets.linux.x86_64,
+        .target = targets.linux.x86_64.kernel,
         .memory = &[.{ .name = .ram, .origin = 0x2000_0000, .len = 128 * 1024 }],
     });
 };

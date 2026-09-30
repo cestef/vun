@@ -1,0 +1,13 @@
+//! 64-bit x86.
+
+_machine: targets.linux._Machine = .{
+    .arch = .x86_64,
+    .isa = .x86_64,
+    .pointer_bits = 64,
+    .register_bits = 64,
+    .floats = &[f32, f64],
+    .convention = .sysv,
+};
+
+kernel := targets.linux._kernel(_machine, &[]);
+gnu := targets.linux._gnu(_machine);

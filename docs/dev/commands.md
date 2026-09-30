@@ -72,10 +72,10 @@ toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`,
 its own `~/.config/vun/toolchain.vun`. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
 x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
 cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its toolchain file
-has rows for `linux.arm64`, `linux.arm`, `bare.cortex_m4f` and `macos.arm64`). Known host differences: Fedora 44's libclang fails
+has rows for `linux.arm64.kernel`, `linux.arm.kernel`, `bare.thumbv7em.eabihf` and `macos.arm64.darwin`). Known host differences: Fedora 44's libclang fails
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
-own target there is `linux.arm64`.
+own target there is `linux.arm64.kernel`.
 `remote` is an xtask, built and run on this machine first, and xtask depends on the compiler:
 while the tree does not build here (a `lang` declaration added and used before `cargo gen` wrote
 its handle), mirror by hand (`rsync -a --delete --exclude /target --exclude /.jj ./
@@ -98,7 +98,7 @@ cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, as std.testing.runner runs them
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
-cargo run -q -p vun-cli -- debug compare --target linux.arm64 <file>   # every backend, through qemu
+cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- toolchain components   # each component's status and what it handles
 ```
 
@@ -136,10 +136,10 @@ On the owner's machine:
 
 | Target | Compiler | Runner |
 |--------|----------|--------|
-| `linux.arm64` | `aarch64-linux-gnu-gcc`, sysroot `/usr/aarch64-redhat-linux/sys-root/fc43` | `qemu-aarch64 -L <sysroot>/usr` |
-| `linux.arm` | `clang --target=arm-linux-gnueabi -fuse-ld=lld` (finds the `libgcc` of `gcc-arm-linux-gnu`) | `qemu-arm` |
-| `bare.cortex_m4f` | the target's `arm-none-eabi-gcc` (`arm-none-eabi-gcc-cs`) | `qemu-system-arm -M netduinoplus2 -nographic -semihosting-config enable=on,target=native -kernel` |
-| `macos.arm64` | the target's `clang`, sysroot `~/sdk/MacOSX.sdk` (links with `ld64.lld`) | none: programs are linked, not run |
+| `linux.arm64.kernel` | `aarch64-linux-gnu-gcc`, sysroot `/usr/aarch64-redhat-linux/sys-root/fc43` | `qemu-aarch64 -L <sysroot>/usr` |
+| `linux.arm.kernel` | `clang --target=arm-linux-gnueabi -fuse-ld=lld` (finds the `libgcc` of `gcc-arm-linux-gnu`) | `qemu-arm` |
+| `bare.thumbv7em.eabihf` | the target's `arm-none-eabi-gcc` (`arm-none-eabi-gcc-cs`) | `qemu-system-arm -M netduinoplus2 -nographic -semihosting-config enable=on,target=native -kernel` |
+| `macos.arm64.darwin` | the target's `clang`, sysroot `~/sdk/MacOSX.sdk` (links with `ld64.lld`) | none: programs are linked, not run |
 
 The macOS SDK on `petal.wg` is assembled from Zig's own (`dnf install zig`, MIT licensed), not
 Apple's, which is licensed for Apple hardware only: `SDKSettings.json` (with `Version` and
@@ -148,7 +148,7 @@ Apple's, which is licensed for Apple hardware only: `SDKSettings.json` (with `Ve
 It links; no machine here runs what it links.
 
 GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence clang for
-`linux.arm`. Kernel targets link `-static -nostdlib -l gcc`.
+`linux.arm.kernel`. Kernel targets link `-static -nostdlib -l gcc`.
 
 ## Measuring speed
 

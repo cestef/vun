@@ -9,7 +9,7 @@ compiler. A build naming a backend with `--backend` for a target outside them is
 ## Example
 
 ```console
-$ vun build --backend native --target bare.cortex_m4f main.vun
+$ vun build --backend native --target bare.thumbv7em.eabihf main.vun
 error[backend.unsupported]: backend `native` does not generate code for `arm`
 ```
 
@@ -19,5 +19,5 @@ Name a backend that generates code for the architecture, or none: the target's p
 the profile then choose one that does.
 
 ```console
-$ vun build --target bare.cortex_m4f main.vun
+$ vun build --target bare.thumbv7em.eabihf main.vun
 ```

@@ -582,12 +582,14 @@ pub trait DiagSink {
   features, object format, entry symbol, backends by profile and linker) is a compile-time value from
   the `targets` package, a `lang.target.Spec`: architectures, object formats, backends and linkers
   are `lang.meta.Name`s, sets the registries extend, and endianness is `lang.target.Endian`. Targets
-  are named by system, then CPU: `targets.linux.x86_64`, `targets.bare.cortex_m4f`; the
-  architecture, CPU, system and ABI are fields, never parts of a name, and so is `isa`, the
+  are at paths of one rule, `targets.<os>.<arch>.<abi>` (`targets.linux.x86_64.kernel`,
+  `targets.bare.thumbv7em.eabihf`, bare metal naming an instruction set profile): the path is where
+  a target is found, and code reads what it is from its fields, never from its path: the
+  architecture, CPU, system and ABI, and `isa`, the
   instruction set its code is written in, which inline assembly names (spec 07, section 6):
   the architecture's own, but `thumb` for 32-bit Arm, and `features`, what its processor has of
   that set beyond what every one has, as the set's table names it (`application`, Arm's A
-  profile, on `targets.linux.arm`; none on the Cortex-M targets). A `Spec` also holds the
+  profile, on `targets.linux.arm.kernel`; none on the Cortex-M targets). A `Spec` also holds the
   target's C model (`lang.target.C`: the width and alignment of each C integer type), which the C
   backend declares its types from. Adding a target adds a declaration; the compiler is not
   rebuilt. Compile-time code reads the chosen target as `lang.target.current`, the value of its
@@ -599,7 +601,7 @@ pub trait DiagSink {
   which `lang.lower.soft` computes. `floats` lists the float types the processor computes, the
   others computed by `lang.float.soft` (spec 04).
 - **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
-  `targets` by its path (`--target bare.cortex_m4f`); without it, `targets.hosts` gives the
+  `targets` by its path (`--target bare.thumbv7em.eabihf`); without it, `targets.hosts` gives the
   target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The
   choice is the query `Chosen`, and its result the input `TargetOf`, which has no default: every
   width, byte order and layout is read from it, and is unknown until it is set.
@@ -643,7 +645,7 @@ pub trait DiagSink {
 
 **Choosing a backend.** A target lists the backends it builds with under each profile, most
 preferred first (`lang.target.Backends`: `debug`, what `vun build` uses, and `release`, what
-`vun build --release` uses): `linux.x86_64` debug builds prefer `native`, then `cranelift`, then
+`vun build --release` uses): `linux.x86_64.kernel` debug builds prefer `native`, then `cranelift`, then
 `c`, and release builds `llvm`, then `c`. A build takes the first that the toolchain has (its
 Cargo feature built in), that generates code (`BackendInfo.readiness`) and that generates it for
 the target's architecture (`BackendInfo.arches`); that is `Registry::choose`, its reasons typed
@@ -793,7 +795,7 @@ assembler and its instruction compilers and nothing else:
   the class the machine's addresses fix (ELF32 for 32-bit Arm, whose objects carry EABI 5 and the
   convention's float ABI in their flags, relocations with explicit addends, Thumb functions with
   bit 0 of their value set, and `$t`/`$d` mapping symbols where code and data change), or
-  Mach-O 64-bit for arm64 (`macos.arm64`), whose symbols are C names with a leading
+  Mach-O 64-bit for arm64 (`macos.arm64.darwin`), whose symbols are C names with a leading
   underscore, whose relocations keep a word's addend in place and an instruction's in an
   `ARM64_RELOC_ADDEND` before it, and whose debugging sections are `__DWARF` ones, linked by
   `ld64.lld` (lld's Mach-O flavor), all from the target as data: its `arch`, its `os` and the
@@ -924,7 +926,7 @@ runs); ordered loads and stores are `ldar` and `stlr`. The C convention passes a
 four floats of one type a field per floating-point register, another of up to 16 bytes in up to
 two general registers, a larger one as the address of a copy the caller makes, and a result in
 memory through `x8`; narrow integers are extended to 32 bits both ways. The backend tests run
-every program on linux.arm64 too, through the runner of the machine's toolchain file (spec 12,
+every program on linux.arm64.kernel too, through the runner of the machine's toolchain file (spec 12,
 section 6), and require the same results as on x86-64.
 
 Thumb-2 (decision 293) holds integers and singles' bits in general registers of 32 bits, and a
@@ -934,7 +936,7 @@ operation on doubles (`Selection::Homed`) loads its operands into `d0` and `d1` 
 computes there (`vadd.f64`, `vcmp.f64`, `vcvt`) and stores its result to its home (`vstr`), or
 into a general register for a single or an integer; calls and the entry pass doubles between
 homes and the convention's `d` registers. A comparison of doubles sets no flags a branch fuses.
-The backend tests run every program on linux.arm too, where the machine's toolchain file names a
+The backend tests run every program on linux.arm.kernel too, where the machine's toolchain file names a
 runner for it.
 
 **Legalization.** Each backend declares the widest integer it computes with
@@ -985,7 +987,7 @@ as the `ld` of a directory beside the output that the compiler looks in first (`
 
 ### 8.4 The wasm backend
 
-The toolchain's own backend for WebAssembly (`wasm32` targets, `wasi.wasm32`), in one crate,
+The toolchain's own backend for WebAssembly (`wasm32` targets, `wasi.wasm32.p1`), in one crate,
 `vun-backend-wasm`. It writes a relocatable object in the format of the WebAssembly tool
 conventions (a module with the `linking` and `reloc.*` custom sections), which `wasm-ld` links
 (the `lld` adapter, flavored by the target's object format), so its objects link with C compiled

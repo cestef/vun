@@ -1,8 +1,0 @@
-//! Linux with the GNU C library: programs start through its runtime and may call C.
-
-/// 64-bit x86.
-x86_64 := targets.linux._on(targets.linux._x86_64, .gnu, &[], &[], &[]);
-/// 64-bit ARM (AArch64).
-arm64 := targets.linux._on(targets.linux._arm64, .gnu, &[], &[], &[]);
-/// 64-bit RISC-V with the general extensions (RV64GC), whose kernel no runtime of `std` calls yet.
-riscv64 := targets.linux._on(targets.linux._riscv64, .gnu, &[], &[], &[]);

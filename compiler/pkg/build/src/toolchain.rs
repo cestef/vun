@@ -6,7 +6,7 @@
 //! toolchain := .{
 //!     .targets = .{
 //!         .{
-//!             .target = linux.arm64,
+//!             .target = linux.arm64.kernel,
 //!             .compiler = "aarch64-linux-gnu-gcc",
 //!             .archiver = "aarch64-linux-gnu-ar",
 //!             .sysroot = "/usr/aarch64-linux-gnu",
@@ -103,7 +103,11 @@ impl Tools {
             Literal::Path(path) => Some(path.iter().map(|&n| Symbol::intern(n)).collect()),
             Literal::Name(name) => Some(vec![Symbol::intern(name)]),
             _ => d.invalid(
-                Msg::new().text("a path in the package ").code("targets").text(", as ").code("linux.arm64"),
+                Msg::new()
+                    .text("a path in the package ")
+                    .code("targets")
+                    .text(", as ")
+                    .code("linux.arm64.kernel"),
                 cx,
             ),
         });

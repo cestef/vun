@@ -1,15 +1,16 @@
-//! Target descriptions, a namespace per system and a target per CPU: `targets.<system>.<cpu>`,
-//! such as `targets.linux.x86_64` or `targets.bare.cortex_m4f`. What targets share is declared
-//! here once: the backends each builds with, the C backend's flags, the C compilers, and the
-//! C models.
+//! Target descriptions, each at a path of one rule: `targets.<os>.<arch>.<abi>`, such as
+//! `targets.linux.x86_64.kernel` or `targets.bare.thumbv7em.eabihf`. A system is a namespace, an
+//! architecture a namespace in it (on bare metal, which has no baseline machine, an instruction
+//! set profile), and each target in it is an ABI. What targets share is declared here once: the
+//! backends each builds with, the C backend's flags, the C compilers, and the C models.
 
-/// The machines the toolchain runs on, named as the toolchain names them (the architecture and
-/// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
+/// The targets a build is for unless told otherwise: the first whose `arch` and `os` are the
+/// machine running the toolchain's.
 hosts := .{
-    lang.target.Host{ .arch = .x86_64, .os = .linux, .target = targets.linux.x86_64 },
-    lang.target.Host{ .arch = .aarch64, .os = .linux, .target = targets.linux.arm64 },
-    lang.target.Host{ .arch = .riscv64, .os = .linux, .target = targets.linux.gnu.riscv64 },
-    lang.target.Host{ .arch = .aarch64, .os = .macos, .target = targets.macos.arm64 },
+    targets.linux.x86_64.kernel,
+    targets.linux.arm64.kernel,
+    targets.linux.riscv64.gnu,
+    targets.macos.arm64.darwin,
 };
 
 /// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
@@ -42,7 +43,8 @@ gnu := ($command: &[u8], $archiver: &[u8], $machine: &[&[u8]], $link_flags: &[&[
 /// wherever the others are missing.
 native_first: lang.target.Backends = .{ .debug = &[.native, .cranelift, .c], .release = &[.llvm, .c] };
 
-/// The backends of a target reached through C: C for both, LLVM first for release builds.
+/// The backends of a target reached through C: Cranelift or LLVM first, C wherever they are
+/// missing.
 through_c: lang.target.Backends = .{ .debug = &[.cranelift, .c], .release = &[.llvm, .c] };
 
 /// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.

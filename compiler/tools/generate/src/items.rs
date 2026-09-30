@@ -1,4 +1,4 @@
-//! The declarations of the toolchain's packages, `lang`, `std` and the root of `targets`, as typed Rust handles in
+//! The declarations of the toolchain's packages, `lang`, `std` and `targets`, as typed Rust handles in
 //! `vun-items`, so that Rust code names a declaration by a constant the generator checked exists,
 //! never by a path in a string.
 //!
@@ -33,12 +33,10 @@ pub(crate) const STD: Generator = Generator {
     emit: Emit::Rust(emit),
     keeps: &[],
 };
-/// `targets` has handles for its root file only, such as `targets.hosts`: a target is a file of
-/// its own, so adding one generates nothing.
 pub(crate) const TARGETS: Generator = Generator {
     source: "lib/targets",
     output: "compiler/lang/items/src/targets",
-    emit: Emit::Rust(emit_root),
+    emit: Emit::Rust(emit),
     keeps: &[],
 };
 
@@ -53,12 +51,6 @@ const PRIVATE: char = '_';
 #[expect(clippy::unnecessary_wraps, reason = "every generator emits through one signature")]
 fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
     Ok(Handles::of(sources).modules())
-}
-
-#[expect(clippy::unnecessary_wraps, reason = "every generator emits through one signature")]
-fn emit_root(sources: &[Source<'_>]) -> Read<Vec<Module>> {
-    let roots = sources.iter().filter(|s| s.namespace().is_some_and(|n| n.len() == 1));
-    Ok(Handles::of(roots).modules())
 }
 
 /// The handles of each module, by the path it is of: a namespace's declarations and the

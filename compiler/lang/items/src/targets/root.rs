@@ -6,8 +6,16 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The machines the toolchain runs on, named as the toolchain names them (the architecture and
-/// system Rust's `std::env::consts` report), and the target each builds for unless told otherwise.
+/// The namespace `targets.bare`.
+pub const bare: Item = Item::new(&["targets", "bare"]);
+/// The namespace `targets.linux`.
+pub const linux: Item = Item::new(&["targets", "linux"]);
+/// The namespace `targets.macos`.
+pub const macos: Item = Item::new(&["targets", "macos"]);
+/// The namespace `targets.wasi`.
+pub const wasi: Item = Item::new(&["targets", "wasi"]);
+/// The targets a build is for unless told otherwise: the first whose `arch` and `os` are the
+/// machine running the toolchain's.
 pub const hosts: Item = Item::new(&["targets", "hosts"]);
 /// The flags giving the C backend's rules (spec 13, section 8.2): strict C99, freestanding C,
 /// memory without type-based aliasing, and a frame pointer in every function, the chain a
@@ -23,7 +31,8 @@ pub const gnu: Item = Item::new(&["targets", "gnu"]);
 /// The backends of a target the native backend generates code for: it for debug builds, and C
 /// wherever the others are missing.
 pub const native_first: Item = Item::new(&["targets", "native_first"]);
-/// The backends of a target reached through C: C for both, LLVM first for release builds.
+/// The backends of a target reached through C: Cranelift or LLVM first, C wherever they are
+/// missing.
 pub const through_c: Item = Item::new(&["targets", "through_c"]);
 /// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
 pub const lp64: Item = Item::new(&["targets", "lp64"]);

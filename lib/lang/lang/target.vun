@@ -114,8 +114,8 @@ Threads := enum {
     many,
 };
 
-/// A target, as data (spec 13, section 7): the package `targets` declares one per system and CPU
-/// (`targets.linux.x86_64`), so adding a target rebuilds nothing. Architectures, CPUs, systems,
+/// A target, as data (spec 13, section 7): the package `targets` declares one per system,
+/// architecture and ABI (`targets.linux.x86_64.kernel`), so adding a target changes no code. Architectures, CPUs, systems,
 /// ABIs, object formats, backends and linkers are names, the sets of them open to what the
 /// toolchain registers.
 Spec := struct {
@@ -158,13 +158,6 @@ Spec := struct {
     c: C,
 };
 
-/// A machine the toolchain runs on, as the toolchain names it, and the target it builds for
-/// there unless told otherwise.
-Host := struct {
-    arch: lang.meta.Name,
-    os: lang.meta.Name,
-    target: Spec,
-};
 require: ($features: Features) -> Attribute(&[Place.functions]) = _;
 Features: type = _;
 

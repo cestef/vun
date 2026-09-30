@@ -12,7 +12,7 @@ target's C compiler.
 ## Example
 
 ```console
-$ vun build --target bare.cortex_m4f main.vun
+$ vun build --target bare.thumbv7em.eabihf main.vun
 error[link.unavailable]: linker `lld` cannot link yet
 ```
 

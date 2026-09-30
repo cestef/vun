@@ -1,20 +1,2 @@
-//! WebAssembly System Interface, preview 1.
-
-/// 32-bit WebAssembly.
-wasm32 := lang.target.Spec{
-    .arch = .wasm32,
-    .isa = .wasm32,
-    .cpu = .generic,
-    .os = .wasi,
-    .abi = .p1,
-    .convention = .wasm32,
-    .pointer_bits = 32,
-    .register_bits = 64,
-    .floats = &[f32, f64],
-    .endian = .little,
-    .object_format = .wasm,
-    .entry_symbol = .some("_start"),
-    .backends = .{ .debug = &[.wasm, .llvm], .release = &[.llvm, .wasm] },
-    .linker = .lld,
-    .c = targets.ilp32(targets.gnu("clang", "llvm-ar", &["--target=wasm32-wasi"], &[], &[])),
-};
+//! WebAssembly System Interface: a namespace per architecture, holding a target per preview
+//! (`p1`).

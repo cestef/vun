@@ -116,7 +116,7 @@ impl Session {
             library: Library::find().dir,
             store: Store::user(),
             schemes: Schemes::default(),
-            choice: Choice::host(),
+            choice: Choice::Host,
             target: None,
             registry: Registry::with_defaults(),
             codegen: Codegen::default(),

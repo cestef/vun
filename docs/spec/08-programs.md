@@ -134,9 +134,9 @@ created one read and written by its owner. A failure is a `std.os.Error`: a reas
 the system's own number (`number(n)`), each system mapping its numbers (`std.os.posix_error` for
 Linux and macOS, which number a path too long apart; `std.os.wasi.error`).
 
-**Linux targets.** `targets.linux.<cpu>` (`linux.x86_64`, `linux.arm64`) builds static programs on
-the kernel runtime, with ABI `kernel`; `targets.linux.gnu.<cpu>` builds programs on the GNU C
-library, with ABI `gnu`, which a program calling C picks. arm64's static target compiles C without
+**Linux targets.** `targets.linux.<arch>.kernel` (`linux.x86_64.kernel`, `linux.arm64.kernel`)
+builds static programs on the kernel runtime, with ABI `kernel`; `targets.linux.<arch>.gnu`
+builds programs on the GNU C library, with ABI `gnu`, which a program calling C picks. arm64's static target compiles C without
 out-of-line atomics, which ask the C library what the CPU has.
 
 **Exit statuses.** How a program ends is `std.os.Exit`: `ok`, or `code(s)` with `s` a
@@ -241,7 +241,7 @@ trap: (t: &Trap) -> never = _;
 The build names the root file, the target, and the output kind. It does not name declarations:
 
 ```vun
-fw := b.program(.{ .root = "blinky/app.vun", .target = targets.bare.cortex_m4f });
+fw := b.program(.{ .root = "blinky/app.vun", .target = targets.bare.thumbv7em.eabihf });
 ```
 
 The root file is the only place where bindings are evaluated to discover exports; everywhere else

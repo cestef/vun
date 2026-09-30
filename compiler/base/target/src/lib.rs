@@ -9,6 +9,7 @@ use vun_intern::Symbol;
 mod c;
 mod check;
 mod floats;
+mod machine;
 mod name;
 mod threads;
 mod trace;
@@ -16,6 +17,7 @@ mod trace;
 pub use c::{Atomics, Attributes, CCompiler, CInt, CTypes, FrameSizes};
 pub use check::{Check, Checks};
 pub use floats::Floats;
+pub use machine::Machine;
 pub use name::Name;
 pub use threads::Threads;
 pub use trace::Detail;
@@ -109,15 +111,6 @@ pub struct TargetSpec {
     pub backends: Backends,
     pub linker: Symbol,
     pub c: CTypes,
-}
-
-/// `lang.target.Host`: a machine the toolchain runs on, named as the toolchain names it (Rust's
-/// `std::env::consts`), and the target it builds for there by default.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Host {
-    pub arch: Symbol,
-    pub os: Symbol,
-    pub target: TargetSpec,
 }
 
 /// Whether a component does its work yet.

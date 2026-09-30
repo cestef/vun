@@ -1,0 +1,14 @@
+//! Armv7E-M: Cortex-M4 and M7, Thumb-2 with the DSP extension.
+
+/// With the single-precision floating-point unit (`fpv4-sp-d16`), the hard-float EABI.
+eabihf := targets.bare._on(
+    .arm,
+    .thumb,
+    &[.microcontroller, .divide],
+    .eabihf,
+    .aapcs_vfp,
+    &[f32],
+    "arm-none-eabi-gcc",
+    "arm-none-eabi-ar",
+    &["-march=armv7e-m", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv4-sp-d16"],
+);

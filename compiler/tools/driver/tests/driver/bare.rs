@@ -5,7 +5,7 @@
 
 use vun_build::layout::MANIFEST;
 use vun_harness::repo_root;
-use vun_intern::Symbol;
+use vun_items::targets;
 use vun_origin::Resolve;
 use vun_sema::target::Choice;
 use vun_span::SourceMap;
@@ -20,7 +20,7 @@ build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{});
     b.program(.{
         .root = \"fw.vun\",
-        .target = targets.bare.cortex_m4f,
+        .target = targets.bare.thumbv7em.eabihf,
         .deps = &[.{ .name = .stm32f4, .dep = chip }],
         .memory = stm32f4.layout.memory,
         .sections = stm32f4.layout.sections,
@@ -78,7 +78,7 @@ fn status(name: &str, firmware: &str) -> Option<i32> {
     let path = fixture.root.write(MANIFEST, format!("{}\n{BUILD}", manifest.source().unwrap()));
     let firmware = fixture.root.write("fw.vun", firmware);
     let mut board = fixture.session();
-    board.choice = Choice::Path(["bare", "cortex_m4f"].map(Symbol::intern).into());
+    board.choice = Choice::of(targets::bare_thumbv7em::eabihf);
     let file = board.load(&firmware).unwrap();
     let _ = board.lir(file);
     if board.runner.is_empty() {

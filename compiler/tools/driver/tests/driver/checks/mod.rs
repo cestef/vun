@@ -3,6 +3,7 @@
 
 use vun_diag::{DiagId, errors};
 use vun_intern::Symbol;
+use vun_items::targets;
 use vun_sema::target::Choice;
 use vun_target::Check;
 
@@ -96,7 +97,7 @@ fn a_runtime_without_the_operations_of_the_checks_is_refused() {
     let fixture = Fixture::new("checks-unsupported");
     let path = fixture.root.write("main.vun", THIRD);
     let mut session = fixture.session();
-    session.choice = Choice::Path(vec![Symbol::intern("wasi"), Symbol::intern("wasm32")]);
+    session.choice = Choice::of(targets::wasi_wasm32::p1);
     session.add_checks([Check::Pointers]);
     let file = session.load(&path).unwrap();
     let _ = session.compile(file);

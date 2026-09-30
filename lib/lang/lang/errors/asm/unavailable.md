@@ -12,7 +12,7 @@ feature the target lacks, which would fault where it runs.
 ## Example
 
 ```console
-$ vun build --target targets.bare.cortex_m4f pair.vun
+$ vun build --target bare.thumbv7em.eabihf pair.vun
 error[asm.unavailable]: the instruction needs `application`, which the target's processor lacks
 ```
 

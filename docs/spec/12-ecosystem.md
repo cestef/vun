@@ -79,7 +79,7 @@ build := (b: &mut std.build.Build) {
     chip := b.dep(.stm32f4, .{ .variant = .f407 });       // parameters, not features
     fw := b.program(.{
         .root = "blinky/app.vun",
-        .target = targets.bare.cortex_m4f,
+        .target = targets.bare.thumbv7em.eabihf,
         .deps = &[.{ .name = .stm32f4, .dep = chip }],
         .memory = &[
             .{ .name = .flash, .origin = 0x0800_0000, .len = 512 * 1024 },
@@ -294,12 +294,12 @@ target. The file `vun/toolchain.vun` in the user's configuration directory (or t
 toolchain := .{
     .targets = .{
         .{
-            .target = linux.arm64,
+            .target = linux.arm64.kernel,
             .compiler = "aarch64-linux-gnu-gcc",
             .sysroot = "/usr/aarch64-linux-gnu",
             .runner = .{ "qemu-aarch64", "-L", "/usr/aarch64-linux-gnu" },
         },
-        .{ .target = macos.arm64, .sysroot = "/opt/sdk/MacOSX.sdk" },
+        .{ .target = macos.arm64.darwin, .sysroot = "/opt/sdk/MacOSX.sdk" },
     },
 };
 ```

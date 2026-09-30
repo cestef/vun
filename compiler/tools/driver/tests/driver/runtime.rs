@@ -2,6 +2,7 @@
 //! static programs, without a C library, that start at the runtime's `_start`.
 
 use vun_harness::{ACCEPT, repo_root};
+use vun_items::{Item, targets};
 
 use crate::backend::{BACKENDS, build, status, status_on};
 
@@ -71,7 +72,7 @@ fn the_runtime_moves_fills_and_compares_memory_as_c_does() {
     if !cfg!(target_os = "linux") {
         return;
     }
-    assert_eq!(status_on("runtime-memory", MEMORY, &[&["linux", "arm64"]]), Some(120));
+    assert_eq!(status_on("runtime-memory", MEMORY, &[targets::linux_arm64::kernel]), Some(120));
 }
 
 /// A corpus program of `programs/`, by its name.
@@ -97,7 +98,7 @@ fn a_file_written_reads_back_and_a_missing_one_is_missing() {
     let written = dir.path().join("written");
     let source =
         corpus("files.vun").replace("\"files.vun.out\"", &format!("{:?}", written.display().to_string()));
-    assert_eq!(status_on("runtime-files", &source, &[&["linux", "arm64"]]), Some(0));
+    assert_eq!(status_on("runtime-files", &source, &[targets::linux_arm64::kernel]), Some(0));
 }
 
 #[test]
@@ -105,7 +106,8 @@ fn each_thread_counts_in_its_own_storage_on_every_runtime() {
     if !cfg!(target_os = "linux") {
         return;
     }
-    let cross: [&[&str]; 3] = [&["linux", "arm64"], &["linux", "arm"], &["wasi", "wasm32"]];
+    let cross: [Item; 3] =
+        [targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1];
     assert_eq!(status_on("runtime-locals", &corpus("locals.vun"), &cross), Some(36));
 }
 

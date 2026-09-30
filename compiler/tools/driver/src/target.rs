@@ -1,5 +1,5 @@
 //! The target a session compiles for (spec 13, section 7). `--target` names a declaration of the
-//! package `targets`, such as `bare.cortex_m4f`; without it, `targets.hosts` gives the
+//! package `targets`, such as `bare.thumbv7em.eabihf`; without it, `targets.hosts` gives the
 //! running machine's. It is chosen when the first file is named, and set as the query input every
 //! width and byte order is read from, so nothing assumes one.
 
@@ -18,7 +18,7 @@ use vun_trace::tracing;
 use crate::Session;
 
 pub const TARGET: Param = Param::option("target")
-    .about("the target to compile for: a path in the package `targets`, such as `linux.x86_64`")
+    .about("the target to compile for: a path in the package `targets`, such as `linux.x86_64.kernel`")
     .env("VUN_TARGET");
 
 /// Applies `--target` to the session.

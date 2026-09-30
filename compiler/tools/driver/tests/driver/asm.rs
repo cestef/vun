@@ -7,6 +7,7 @@ use vun_driver::Session;
 use vun_harness::{ACCEPT, repo_root};
 use vun_inline::Needed;
 use vun_intern::Symbol;
+use vun_items::{Item, targets};
 use vun_lower::Why;
 use vun_sema::asm::{Arch, ArchTable};
 use vun_sema::target::Choice;
@@ -77,7 +78,7 @@ fn floats_are_bound_in_floating_point_registers_through_each_backend() {
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/driver/programs/asm_floats.vun"),
     )
     .unwrap();
-    assert_eq!(crate::backend::status_on("asm-floats", &source, &[&["linux", "arm64"]]), Some(0));
+    assert_eq!(crate::backend::status_on("asm-floats", &source, &[targets::linux_arm64::kernel]), Some(0));
 }
 
 /// A block writing the register an input is read in, the input used again after it.
@@ -118,11 +119,11 @@ fn thumb(line: &str) -> String {
 
 /// Why `source` does not lower for the target at `target`, if it does not, and its report as
 /// the text it points at and the texts its trace frames do.
-fn unlowered(name: &str, source: &str, target: [&str; 2]) -> Option<(Why, Diagnostic, Vec<String>)> {
-    let fixture = crate::common::Fixture::new(&format!("asm-{name}-{}", target[1]));
+fn unlowered(name: &str, source: &str, target: Item) -> Option<(Why, Diagnostic, Vec<String>)> {
+    let fixture = crate::common::Fixture::new(&format!("asm-{name}-{}", target.path()[2]));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
-    session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+    session.choice = Choice::of(target);
     let file = session.load(&path).unwrap();
     let unlowered = session.lir(file).as_ref().as_ref().err()?.clone();
     let d = unlowered.diagnostic();
@@ -134,7 +135,7 @@ fn unlowered(name: &str, source: &str, target: [&str; 2]) -> Option<(Why, Diagno
 
 #[test]
 fn a_block_is_refused_for_a_processor_lacking_what_one_of_its_forms_needs() {
-    let (m4f, a) = (["bare", "cortex_m4f"], ["linux", "arm"]);
+    let (m4f, a) = (targets::bare_thumbv7em::eabihf, targets::linux_arm::kernel);
     let feature = |name| Some(Why::Unavailable(Needed::Feature(Symbol::intern(name))));
     let cases = [
         // Two words loaded exclusively: Arm's application profile.
@@ -171,7 +172,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 
 #[test]
 fn an_instruction_called_outside_a_block_is_refused_at_the_call_leading_to_it() {
-    let (why, d, shown) = unlowered("outside", OUTSIDE, ["linux", "x86_64"]).unwrap();
+    let (why, d, shown) = unlowered("outside", OUTSIDE, targets::linux_x86_64::kernel).unwrap();
     assert!(matches!(why, Why::Reported(_)), "{why:?}");
     assert_eq!(d.id, errors::COMPTIME_REPORTED);
     assert_eq!(shown, ["step(u8)", "mov(rax, rcx)"]);

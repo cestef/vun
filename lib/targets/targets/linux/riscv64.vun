@@ -1,0 +1,12 @@
+//! 64-bit RISC-V with the general extensions (RV64GC), whose kernel no runtime of `std` calls yet.
+
+_machine: targets.linux._Machine = .{
+    .arch = .riscv64,
+    .isa = .riscv64,
+    .pointer_bits = 64,
+    .register_bits = 64,
+    .floats = &[f32, f64],
+    .convention = .lp64d,
+};
+
+gnu := targets.linux._gnu(_machine);

@@ -3,7 +3,7 @@
 
 use vun_driver::Codegen;
 use vun_driver::compare::Ran;
-use vun_intern::Symbol;
+use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 use vun_target::Name;
 
@@ -34,7 +34,7 @@ pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Outp
 /// The targets every program here runs on besides the machine's own, where the machine runs
 /// their programs through the runner its toolchain file names: arm64 and 32-bit Arm Linux, and
 /// WASI.
-const CROSS: [&[&str]; 3] = [&["linux", "arm64"], &["linux", "arm"], &["wasi", "wasm32"]];
+const CROSS: [Item; 3] = [targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1];
 
 /// Builds `source` through each backend that generates code and runs it, for the machine's
 /// target and each of `CROSS` the machine runs programs of: its exit status, the same through
@@ -44,18 +44,17 @@ pub(crate) fn status(name: &str, source: &str) -> Option<i32> {
 }
 
 /// [`status`] for the machine's target and each of `cross` the machine runs programs of.
-pub(crate) fn status_on(name: &str, source: &str, cross: &[&[&str]]) -> Option<i32> {
-    let cross = cross.iter().map(|path| Choice::Path(path.iter().map(|&n| Symbol::intern(n)).collect()));
-    let choices: Vec<Choice> = std::iter::once(Choice::host()).chain(cross).collect();
+pub(crate) fn status_on(name: &str, source: &str, cross: &[Item]) -> Option<i32> {
+    let cross = cross.iter().map(|&target| Choice::of(target));
+    let choices: Vec<Choice> = std::iter::once(Choice::Host).chain(cross).collect();
     // Each target in a session of its own, all at once.
     let statuses: Vec<(String, Option<i32>)> = std::thread::scope(|scope| {
-        let targets: Vec<_> = choices
+        let runs: Vec<_> = choices
             .iter()
             .enumerate()
             .map(|(i, choice)| scope.spawn(move || statuses_on(&format!("{name}-{i}"), source, choice)))
             .collect();
-        targets
-            .into_iter()
+        runs.into_iter()
             .flat_map(|t| t.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic)))
             .collect()
     });
@@ -73,7 +72,7 @@ fn statuses_on(name: &str, source: &str, choice: &Choice) -> Vec<(String, Option
     let file = session.load(&path).unwrap();
     // Choosing the target equips it with the machine's tools.
     let _ = session.lir(file);
-    if *choice != Choice::host() && session.runner.is_empty() {
+    if *choice != Choice::Host && session.runner.is_empty() {
         return Vec::new();
     }
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));

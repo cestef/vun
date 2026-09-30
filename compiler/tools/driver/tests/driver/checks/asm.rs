@@ -1,6 +1,7 @@
 //! The checks of assembly blocks: the memory they write and the stack pointer they return with.
 
 use vun_intern::Symbol;
+use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 use vun_target::Check;
 
@@ -23,7 +24,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     );
     let checks = |kinds: &[Check]| {
         let mut session = fixture.session();
-        session.choice = Choice::Path(vec![Symbol::intern("linux"), Symbol::intern("x86_64")]);
+        session.choice = Choice::of(targets::linux_x86_64::kernel);
         session.add_checks(kinds.iter().copied());
         let file = session.load(&path).unwrap();
         let unit = session.lir(file).as_ref().clone().unwrap();
@@ -58,17 +59,17 @@ enum Ran {
 }
 
 /// How `source`, built for `target` by `backend` with the asm checks, runs here.
-fn asm_run(name: &str, target: [&str; 2], backend: &str, source: &str) -> Ran {
+fn asm_run(name: &str, target: Item, backend: &str, source: &str) -> Ran {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
-    session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+    session.choice = Choice::of(target);
     session.codegen.backend = Some(Symbol::intern(backend));
     session.add_checks([Check::Asm]);
     let file = session.load(&path).unwrap();
     // Choosing the target equips it with the machine's tools, and a runner where it needs one.
     let _ = session.lir(file);
-    let native = cfg!(target_arch = "x86_64") && target == ["linux", "x86_64"];
+    let native = cfg!(target_arch = "x86_64") && target == targets::linux_x86_64::kernel;
     if !cfg!(target_os = "linux") || !native && session.runner.is_empty() {
         return Ran::Elsewhere;
     }
@@ -115,9 +116,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
 }
 
 /// Each architecture's block writing through a binding, and moving the stack pointer.
-const ARCHES: [([&str; 2], &str, &str, &str); 2] = [
-    (["linux", "x86_64"], "x86_64", "mov(mem(in(p), {past}), in(n))", "push(rax)"),
-    (["linux", "arm64"], "arm64", "str(in(n), mem(in(p), {past}))", "sub(sp, sp, 16)"),
+const ARCHES: [(Item, &str, &str, &str); 2] = [
+    (targets::linux_x86_64::kernel, "x86_64", "mov(mem(in(p), {past}), in(n))", "push(rax)"),
+    (targets::linux_arm64::kernel, "arm64", "str(in(n), mem(in(p), {past}))", "sub(sp, sp, 16)"),
 ];
 
 #[test]

@@ -9,7 +9,7 @@ linker scripts. A build naming a linker with `--linker` for a target outside the
 ## Example
 
 ```console
-$ vun build --linker mold --target macos.arm64 main.vun
+$ vun build --linker mold --target macos.arm64.darwin main.vun
 error[link.unsupported]: linker `mold` does not link objects of format `macho`
 ```
 
@@ -18,5 +18,5 @@ error[link.unsupported]: linker `mold` does not link objects of format `macho`
 Name a linker that links the target's format, or none: the target's own linker then links.
 
 ```console
-$ vun build --target macos.arm64 main.vun
+$ vun build --target macos.arm64.darwin main.vun
 ```

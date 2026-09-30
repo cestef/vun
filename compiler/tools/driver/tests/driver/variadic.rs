@@ -5,6 +5,7 @@
 use vun_driver::compare::Ran;
 use vun_harness::{ACCEPT, repo_root};
 use vun_intern::Symbol;
+use vun_items::{Item, targets};
 use vun_lir::ImportKind;
 use vun_sema::target::Choice;
 
@@ -59,11 +60,11 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 
 /// Builds and runs `source` for `target` through each backend, where the machine runs its
 /// programs: the exit status, the same through each.
-fn status(name: &str, source: &str, target: &[&str]) -> Option<i32> {
+fn status(name: &str, source: &str, target: Item) -> Option<i32> {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
-    session.choice = Choice::Path(target.iter().map(|&n| Symbol::intern(n)).collect());
+    session.choice = Choice::of(target);
     let file = session.load(&path).unwrap();
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert!(Ran::agree(&runs), "the backends disagree");
@@ -75,7 +76,7 @@ fn a_variadic_c_call_passes_integers_and_floats_as_c_does() {
     if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
         return;
     }
-    assert_eq!(status("variadic-format", FORMAT, &["linux", "gnu", "x86_64"]), Some(109));
+    assert_eq!(status("variadic-format", FORMAT, targets::linux_x86_64::gnu), Some(109));
 }
 
 #[test]
@@ -84,7 +85,7 @@ fn open_takes_its_permissions_as_a_variadic_argument() {
     let fixture = Fixture::new("variadic-open");
     let path = fixture.root.write("main.vun", &text);
     let mut session = fixture.session();
-    session.choice = Choice::Path(["macos", "arm64"].iter().map(|&n| Symbol::intern(n)).collect());
+    session.choice = Choice::of(targets::macos_arm64::darwin);
     let file = session.load(&path).unwrap();
     let lowered = session.lir(file);
     let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{:#?}", session.diag));

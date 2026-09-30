@@ -140,8 +140,8 @@ in Vun over the encoding (`lang.float.soft`); a primitive marked `#[lower.by(f)]
 not compute with (a float it does not list, an integer wider than an address), runs as a call of
 `f`: `lang.float.soft.arith` adds, subtracts, multiplies and divides, rounding once to nearest,
 ties to even, `lang.float.soft.compare` compares, as IEEE 754 does both, and
-`lang.float.soft.convert` converts, so `i128` to `f64` is Vun on every target. A processor without floats (`bare.cortex_m3`) computes every float so, and one of
-single precision (`bare.cortex_m4f`) its `f64`. A backend handing its code to no compiler holds
+`lang.float.soft.convert` converts, so `i128` to `f64` is Vun on every target. A processor without floats (`bare.thumbv7m.eabi`) computes every float so, and one of
+single precision (`bare.thumbv7em.eabihf`) its `f64`. A backend handing its code to no compiler holds
 such a float as its bits (`BackendCaps.floats`): an `f64` on a 32-bit target is two limbs like an
 `i64` (spec 13, section 8.1), and it reaches a C function only under a convention passing floats
 in general registers (AAPCS's base standard), never in a float register it could not fill.

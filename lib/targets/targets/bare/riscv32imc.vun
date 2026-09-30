@@ -1,0 +1,13 @@
+//! 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
+
+ilp32 := targets.bare._on(
+    .riscv32,
+    .riscv32,
+    &[],
+    .ilp32,
+    .ilp32,
+    &[],
+    "riscv32-unknown-elf-gcc",
+    "riscv32-unknown-elf-ar",
+    &["-march=rv32imc", "-mabi=ilp32"],
+);

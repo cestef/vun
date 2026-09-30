@@ -1,0 +1,14 @@
+//! 32-bit ARM: Armv7-A with division in hardware, as Cortex-A7 and A15 on have it, its code
+//! Thumb-2, floats in the floating-point extension's registers (the hard-float EABI).
+
+_machine: targets.linux._Machine = .{
+    .arch = .arm,
+    .isa = .thumb,
+    .features = &[.application, .divide],
+    .pointer_bits = 32,
+    .register_bits = 32,
+    .floats = &[f32, f64],
+    .convention = .aapcs_vfp,
+};
+
+kernel := targets.linux._kernel(_machine, &["-march=armv7ve", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);

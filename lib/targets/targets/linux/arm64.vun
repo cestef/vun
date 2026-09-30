@@ -1,0 +1,15 @@
+//! 64-bit ARM (AArch64).
+
+_machine: targets.linux._Machine = .{
+    .arch = .arm64,
+    .isa = .arm64,
+    .pointer_bits = 64,
+    .register_bits = 64,
+    .floats = &[f32, f64],
+    .convention = .aapcs64,
+};
+
+/// Atomics are inline instructions: the C compiler's out-of-line ones choose between forms by
+/// asking the C library what the CPU has.
+kernel := targets.linux._kernel(_machine, &["-mno-outline-atomics"]);
+gnu := targets.linux._gnu(_machine);

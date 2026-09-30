@@ -14,12 +14,12 @@ use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_CCompiler as compiler,
     target_FrameSizes as frames,
 };
-use vun_items::lang::{target_Backends as backends, target_Host as host, target_Spec as spec};
+use vun_items::lang::{target_Backends as backends, target_Spec as spec};
 use vun_items::lang::{target_C as c, target_CInt as cint, target_Endian as endian};
 use vun_items::std::build_Output as output;
 use vun_sema_ty::Value;
 use vun_target::{
-    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Host, Output,
+    Atomics, Attributes, Backends, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes, Output,
     TargetSpec, Threads, Version,
 };
 
@@ -220,12 +220,5 @@ impl Read for TargetSpec {
             linker: m.name(spec::linker)?,
             c: m.read(spec::c)?,
         })
-    }
-}
-
-impl Read for Host {
-    fn read(value: &Value) -> Result<Self, Unread> {
-        let m = Members::of(value)?;
-        Ok(Self { arch: m.name(host::arch)?, os: m.name(host::os)?, target: m.read(host::target)? })
     }
 }

@@ -10,7 +10,7 @@ missing operation.
 ## Example
 
 ```console
-$ vun build --checks pointers --target wasi.wasm32 main.vun
+$ vun build --checks pointers --target wasi.wasm32.p1 main.vun
 error[check.unsupported]: the runtime of the program does not provide `lang.check.access`, which its checks need: `pointers`
 ```
 

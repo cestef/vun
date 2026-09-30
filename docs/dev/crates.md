@@ -90,6 +90,6 @@ Where the code for each part lives. The workspace layout and its layering rules 
 
 Driver integration tests are one binary (`compiler/tools/driver/tests/driver/main.rs`). The
 backend tests build every program in `compiler/tools/driver/tests/driver/programs/` through C
-and native, for linux.x86_64 and, when the machine runs them, linux.arm64, linux.arm and
-wasi.wasm32, and require equal results. A test budgets every function of a hosted program at
+and native, for linux.x86_64.kernel and, when the machine runs them, linux.arm64.kernel, linux.arm.kernel and
+wasi.wasm32.p1, and require equal results. A test budgets every function of a hosted program at
 2000 instructions. Sema unit tests run on a stand-in `lang` without operator impls.
