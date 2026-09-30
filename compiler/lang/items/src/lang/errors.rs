@@ -60,6 +60,8 @@ pub const plan: Item = Item::new(&["lang", "errors", "plan"]);
 pub const test: Item = Item::new(&["lang", "errors", "test"]);
 /// The toolchain's tools and the native libraries they load (decision 131).
 pub const tool: Item = Item::new(&["lang", "errors", "tool"]);
+/// The toolchains installed side by side, and releases (spec 12, section 6).
+pub const toolchain: Item = Item::new(&["lang", "errors", "toolchain"]);
 /// Reading and writing files.
 pub const io: Item = Item::new(&["lang", "errors", "io"]);
 /// The command line (spec 12, section 7).

@@ -217,6 +217,13 @@ tool := struct {
     nothing_to_reduce := diag.Diag{};
 };
 
+/// The toolchains installed side by side, and releases (spec 12, section 6).
+toolchain := struct {
+    install_failed := diag.Diag{};
+    not_installed := diag.Diag{};
+    in_use := diag.Diag{};
+};
+
 /// Reading and writing files.
 io := struct {
     unreadable_file := diag.Diag{};

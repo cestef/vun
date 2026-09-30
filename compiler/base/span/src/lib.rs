@@ -8,6 +8,7 @@ use std::hash::{Hash, Hasher};
 use vun_codec::Encode;
 
 mod codec;
+mod data;
 mod key;
 
 pub use key::{FileRef, PackageId, Version};

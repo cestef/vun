@@ -4,7 +4,7 @@
 use crate::{Name, TargetSpec};
 
 /// An architecture and a system, as a target's `arch` and `os` name them.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_data::ToData, vun_data::FromData)]
 pub struct Machine {
     pub arch: Name,
     pub os: Name,

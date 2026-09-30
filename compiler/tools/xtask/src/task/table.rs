@@ -30,6 +30,18 @@ pub(crate) const CORPUS: Task = Task::new(
 );
 pub(crate) const SIZE: Task =
     Task::new("size", "fail when the distributed vun outgrows its budget", Work::Run(crate::check_size));
+pub(crate) const PACKAGE: Task = Task::new(
+    "package",
+    "pack a built vun and the library as this machine's release archive, its tree's hash beside it",
+    Work::Run(crate::release::package),
+)
+.params(&[crate::release::BINARY, crate::release::OUT]);
+pub(crate) const RELEASE: Task = Task::new(
+    "release",
+    "write the release's manifest from the archives packed on each machine",
+    Work::Run(crate::release::release),
+)
+.params(&[crate::release::OUT, crate::release::TAG]);
 pub(crate) const TYPESET: Task = Task::new(
     "typeset",
     "compile the whitepaper and the README code card with typst",
@@ -60,5 +72,17 @@ macro_rules! commands {
     };
 }
 
-pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] =
-    commands![CHECK, CORPUS, HOOKS, LAYERS, LINES, PUSH, REMOTE, SIZE, TREE_SITTER, TYPESET];
+pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = commands![
+    CHECK,
+    CORPUS,
+    HOOKS,
+    LAYERS,
+    LINES,
+    PACKAGE,
+    PUSH,
+    RELEASE,
+    REMOTE,
+    SIZE,
+    TREE_SITTER,
+    TYPESET
+];

@@ -2,6 +2,7 @@
 //! keys every cache; and the [`Stable`] hash in-memory identities hash by.
 
 mod base32;
+mod data;
 mod encode;
 mod stable;
 mod tree;

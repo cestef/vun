@@ -40,6 +40,25 @@ the generated `parser.c` (16 MiB) until `jj config set --repo snapshot.max-new-f
 A warm `cargo xtask tree-sitter` takes about 10 s on `am3.wg`, nearly all of it one
 single-threaded `tree-sitter generate`; each round settling the conflicts is one more.
 
+## Releasing
+
+A release is made by tagging the workspace's version, as it is (spec 12, section 6; decision
+367): raise `version` in the root `Cargo.toml`, commit, then
+
+```sh
+jj tag set 0.1.0 -r @-
+jj git push --tag 0.1.0
+```
+
+`.github/workflows/release.yml` runs the checks, builds `vun` in the `dist` profile on each
+machine, packs it with the library (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`
+and the hash of its tree beside it), writes `release.json` (`cargo xtask release <dir> --tag
+<tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand.
+The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs
+from a directory laid out as a forge's (`releases/download/<version>/`,
+`releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at
+the root installs the latest release for a first time.
+
 ## Trying the editor packages
 
 - Helix: append `editors/helix/languages.toml` to `~/.config/helix/languages.toml`, link

@@ -1,0 +1,75 @@
+# A release of the toolchain (spec 12, section 6), made when a version is tagged (`0.4.2`, the
+# workspace's version as it is): the checks run, each machine's toolchain is built and packed by
+# `cargo xtask package`, `cargo xtask release` writes the manifest `vun toolchain install` reads,
+# and everything goes to a draft release, published by hand.
+name: release
+
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: sudo apt-get update && sudo apt-get install -y clang lld
+      - run: cargo xtask check
+      - run: cargo clippy --all-targets
+      - run: cargo nextest run
+
+  package:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --profile dist --package vun-cli --target ${{ matrix.target }}
+      - run: cargo xtask package target/${{ matrix.target }}/dist/vun dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: dist/vun-*
+          if-no-files-found: error
+
+  release:
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - run: cargo xtask release dist --tag "$GITHUB_REF_NAME"
+      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" dist/*.tar.gz dist/release.json
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -27,4 +27,5 @@ pub mod errors_syntax;
 pub mod errors_target;
 pub mod errors_test;
 pub mod errors_tool;
+pub mod errors_toolchain;
 pub mod errors_types;

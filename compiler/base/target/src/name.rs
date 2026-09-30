@@ -24,6 +24,19 @@ impl Decode for Name {
     }
 }
 
+/// A name as data is its text, read back as a symbol, as it persists.
+impl vun_data::ToData for Name {
+    fn to_data(&self) -> vun_data::Value<'static> {
+        vun_data::ToData::to_data(self.0)
+    }
+}
+
+impl vun_data::FromData for Name {
+    fn from_data(value: &vun_data::Value<'_>) -> Result<Self, vun_data::Mismatch> {
+        <String as vun_data::FromData>::from_data(value).map(|text| Self(Symbol::intern(&text).as_str()))
+    }
+}
+
 impl Name {
     /// Whether a target's name is this one.
     #[must_use]

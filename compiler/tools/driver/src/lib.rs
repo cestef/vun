@@ -12,6 +12,7 @@ mod doc;
 pub mod editor;
 pub mod fix;
 pub mod formats;
+pub mod install;
 pub mod packages;
 mod pages;
 mod plan;

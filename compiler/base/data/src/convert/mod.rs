@@ -6,6 +6,7 @@ mod impls;
 mod mismatch;
 #[cfg(test)]
 mod tests;
+mod textual;
 
 pub use mismatch::{Expected, Mismatch, Step};
 

@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 vun-codec.workspace = true
+vun-data.workspace = true
 vun-hash.workspace = true
 vun-intern.workspace = true
 vun-trace.workspace = true

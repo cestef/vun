@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 vun-fs.workspace = true
+vun-data.workspace = true
 blake3.workspace = true
 foldhash.workspace = true
 vun-codec.workspace = true

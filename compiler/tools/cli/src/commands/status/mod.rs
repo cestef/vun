@@ -21,13 +21,14 @@ pub(crate) use packages::Report;
 const ERROR: Noun = Noun { one: "error", many: "errors" };
 const WARNING: Noun = Noun { one: "warning", many: "warnings" };
 
-/// A step of a compiling command.
+/// A step of a command.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Step {
     Check,
     Fix,
     Build,
     Run,
+    Install,
 }
 
 impl Step {
@@ -37,6 +38,7 @@ impl Step {
             Self::Fix => "fix",
             Self::Build => "build",
             Self::Run => "run",
+            Self::Install => "install",
         }
     }
 }
@@ -68,6 +70,7 @@ impl Status for Started {
             Step::Fix => Verb::good("Fixing"),
             Step::Build => Verb::good("Building"),
             Step::Run => Verb::good("Running"),
+            Step::Install => Verb::good("Installing"),
         }
     }
 }

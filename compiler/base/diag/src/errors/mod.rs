@@ -53,6 +53,8 @@ mod test;
 pub use test::*;
 mod tool;
 pub use tool::*;
+mod toolchain;
+pub use toolchain::*;
 mod io;
 pub use io::*;
 mod cli;

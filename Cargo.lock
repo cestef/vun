@@ -1200,6 +1200,7 @@ name = "vun-build"
 version = "0.0.0"
 dependencies = [
  "etcetera",
+ "vun-data",
  "vun-diag",
  "vun-fetch",
  "vun-fs",
@@ -1548,6 +1549,7 @@ dependencies = [
  "blake3",
  "foldhash",
  "vun-codec",
+ "vun-data",
  "vun-fs",
  "vun-par",
 ]
@@ -2240,6 +2242,7 @@ version = "0.0.0"
 dependencies = [
  "boxcar",
  "vun-codec",
+ "vun-data",
  "vun-hash",
  "vun-intern",
  "vun-trace",
@@ -2273,6 +2276,7 @@ name = "vun-target"
 version = "0.0.0"
 dependencies = [
  "vun-codec",
+ "vun-data",
  "vun-intern",
 ]
 
@@ -2328,10 +2332,12 @@ dependencies = [
 name = "vun-xtask"
 version = "0.0.0"
 dependencies = [
+ "vun-build",
  "vun-command",
  "vun-data",
  "vun-diag",
  "vun-driver",
+ "vun-fetch",
  "vun-fs",
  "vun-grammar",
  "vun-harness",
@@ -2341,6 +2347,7 @@ dependencies = [
  "vun-par",
  "vun-span",
  "vun-syntax",
+ "vun-target",
  "vun-term",
  "vun-tool",
  "vun-tree-sitter",

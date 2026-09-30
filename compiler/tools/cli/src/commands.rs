@@ -136,7 +136,8 @@ trait Inputs {
     /// lockfile written, as cargo does before compiling.
     fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId>;
 
-    /// Reads the file at `path`, once its project is ready, as `root` does.
+    /// Reads the file at `path`, once its project is ready, as `root` does, handing the command
+    /// to the toolchain the project pins if it pins another.
     fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId>;
 
     /// Builds the program `args` names, reporting how it went.
@@ -151,6 +152,8 @@ impl Inputs for Session {
     }
 
     fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId> {
+        // A project pinning another toolchain is that one's to build.
+        self.hand_off(path).ok()?;
         for (name, hash, fetched) in self.prepare(path) {
             fetched.report(name, hash, shell);
         }

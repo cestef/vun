@@ -294,13 +294,22 @@ variable `VUN_LIBRARY` names, else `lib/` beside its own `bin/` when that holds 
 dependency, else the checkout it was built from, which is how development builds run.
 
 **Installing and pinning.** Toolchains are installed side by side, one directory per version,
-from the releases of the project's repository: each release carries a manifest naming, per
-machine, its archive and the archive's BLAKE3 hash, which is checked before anything is
-unpacked. `vun toolchain list|install|remove|update` manages them; `update` installs the latest
-release and makes it the default, the one `~/.local/bin/vun` links to. A package pins a toolchain
-with `.toolchain` in its `build.vun`: any `vun` finding a pin of another version installs that
-version when missing, records its hash in the lockfile, and hands the command to it, so no
-launcher stands apart from the toolchains. `VUN_TOOLCHAIN=local` keeps the running one.
+from the releases of the project's repository, each tagged with its version as it is (`0.4.2`),
+or from the base `VUN_RELEASES` names (a mirror, or a directory as a `file:` URI), laid out as a
+forge lays releases out. Each release carries a manifest, `release.json`, naming for each machine
+(`arch` and `os`, as targets name them) its archive, `vun-<arch>-<os>.tar.gz`, and the BLAKE3
+hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSE.md`, which is
+checked before anything is kept. `vun toolchain list|install|remove|update` manages them;
+`update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
+to; the default and the running toolchain are not removed. A first installation runs the
+repository's `install.sh`, which unpacks this machine's archive of the latest release somewhere
+temporary and lets it run `vun toolchain update`.
+
+A package pins a toolchain with `.toolchain` in its `build.vun`. A `vun` loading a project that
+pins another version installs that version when missing and hands the command to it (it replaces
+the process), so no launcher stands apart from the toolchains; the toolchain handed to runs as
+itself (`VUN_TOOLCHAIN=local`, which also keeps the running one anywhere). Recording the pinned
+toolchain's hash in the lockfile is still to come.
 
 **The machine's tools file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target: a C compiler building for the target (`builds_for = .target`, a
@@ -353,6 +362,7 @@ implemented; nothing is listed that does not run.
 | `vun ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |
 | `vun toolchain show` | this toolchain's version, where it and its library are, its backends and linkers |
+| `vun toolchain list`, `install [version] [--default]`, `remove <version>`, `update` | the toolchains installed beside it (section 6) |
 | `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
@@ -360,8 +370,7 @@ implemented; nothing is listed that does not run.
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
 Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,
-`pkg vendor|why|tag|api`, `ffi header|svd`, `target flash|attach|debug`, `toolchain
-list|install|remove|update`.
+`pkg vendor|why|tag|api`, `ffi header|svd`, `target flash|attach|debug`.
 
 Options:
 

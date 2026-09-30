@@ -68,6 +68,8 @@ pub struct Package {
     sources: Sources,
     /// Its identity across versions and its version; `None` for [`PackageKey::Loose`].
     pub release: Option<(Identity, Version)>,
+    /// The toolchain it pins (`.toolchain`), which builds it.
+    pub toolchain: Option<Version>,
     /// The identities it replaces; only the project's apply.
     pub replace: Vec<Replace>,
 }
@@ -236,6 +238,7 @@ impl Session {
                 sources: Sources::of(&taken),
                 snapshot: taken.snapshot,
                 release: Some((identity, manifest.version)),
+                toolchain: manifest.toolchain,
                 replace,
             };
             let package = package.with_defaults(&self.library);
@@ -286,6 +289,7 @@ impl Session {
                 snapshot: Snapshot::default(),
                 sources: Sources::default(),
                 release: None,
+                toolchain: None,
                 replace: Vec::new(),
             };
             let package = package.with_defaults(&self.library);
