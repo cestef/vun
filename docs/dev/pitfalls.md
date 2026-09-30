@@ -45,6 +45,11 @@ Traps that cost a session before. Add one when it costs you time.
 - Snapshots are written only with `VUN_BLESS=1` (`0` or empty is off), and stale ones fail.
 - Before committing sema or `std` changes, run `cargo nextest run -p vun-driver`: the corpus does
   not exercise `std.fmt.print`'s staged paths.
+- The driver tests share the libraries' memos in `target/tmp/memos`, keyed by the test binary,
+  not by the library sources: after editing `lib/` without the binary changing, sessions compute
+  the libraries again and never rewrite the shared file, so
+  `persist::an_unchanged_program_built_again_computes_nothing_it_saves` fails (on a remote mirror
+  too). Remove `target/tmp/memos`.
 - `BackendCaps` is a `Feature` set; unimplemented backends are `vun_backend::Planned`;
   `Store::stage` returns a per-process `Staging` guard removed on drop; `xtask`, `vun-command`
   and `generate` declare tool-local diagnostic ids.

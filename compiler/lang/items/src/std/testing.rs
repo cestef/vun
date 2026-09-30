@@ -10,3 +10,34 @@ use crate::Item;
 pub const test: Item = Item::new(&["std", "testing", "test"]);
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 pub const assert: Item = Item::new(&["std", "testing", "assert"]);
+/// What became of a test.
+pub const Outcome: Item = Item::new(&["std", "testing", "Outcome"]);
+/// A trap ending a test.
+pub const Trapped: Item = Item::new(&["std", "testing", "Trapped"]);
+/// Totals of a run.
+pub const Totals: Item = Item::new(&["std", "testing", "Totals"]);
+/// A line the runner writes: a test run and what became of it, then the totals.
+pub const Line: Item = Item::new(&["std", "testing", "Line"]);
+/// A test run: its name, as declared, and what became of it.
+pub const Ran: Item = Item::new(&["std", "testing", "Ran"]);
+pub const line_json: Item = Item::new(&["std", "testing", "line_json"]);
+pub const ran_json: Item = Item::new(&["std", "testing", "ran_json"]);
+pub const outcome_json: Item = Item::new(&["std", "testing", "outcome_json"]);
+pub const trapped_json: Item = Item::new(&["std", "testing", "trapped_json"]);
+pub const totals_json: Item = Item::new(&["std", "testing", "totals_json"]);
+pub const site_json: Item = Item::new(&["std", "testing", "site_json"]);
+pub const place_json: Item = Item::new(&["std", "testing", "place_json"]);
+/// The status of a run in which a test trapped.
+pub const failed: Item = Item::new(&["std", "testing", "failed"]);
+/// The exports of the program running the tests of `ns`.
+pub const runner: Item = Item::new(&["std", "testing", "runner"]);
+/// Runs the unit tests of `ns` and the namespaces in it, in the order they are declared, or
+/// those the program's arguments name, and writes a line for each to the standard output, then
+/// the totals. Each runs on a thread of its own; where the system runs one thread, on the
+/// calling one, and a trap ends the run.
+pub const run: Item = Item::new(&["std", "testing", "run"]);
+/// Whether the test `name` is run: every test when the arguments past the program's name name
+/// none, else those they name.
+pub const chosen: Item = Item::new(&["std", "testing", "chosen"]);
+/// Writes `line` and a line break.
+pub const write: Item = Item::new(&["std", "testing", "write"]);

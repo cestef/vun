@@ -61,6 +61,8 @@ pub struct Catalog {
 pub enum PathKind {
     File,
     Dir,
+    /// A file or a directory.
+    Any,
 }
 
 impl Catalog {

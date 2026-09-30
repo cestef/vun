@@ -64,6 +64,8 @@ mod sync_;
 pub use sync_::*;
 mod task_;
 pub use task_::*;
+mod testing_;
+pub use testing_::*;
 mod time_;
 pub use time_::*;
 mod trace_;

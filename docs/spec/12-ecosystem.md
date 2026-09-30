@@ -317,6 +317,7 @@ implemented; nothing is listed that does not run.
 | `vun build <file>` (`b`) | build the program a root file exports; `--library shared` or `static` builds a library of its exports |
 | `vun run <file> [args]...` (`r`) | build and run it; words after `--` go to the program |
 | `vun check <file>` (`c`) | analyze without generating code |
+| `vun test [path] [names]...` (`t`) | build and run the tests of a namespace (spec 11): a file, a directory or a package's directory, the package around the current directory when none; only the tests `names` names, when it names some |
 | `vun fix <file> [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |

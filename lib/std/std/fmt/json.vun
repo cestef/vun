@@ -1,0 +1,153 @@
+//! JSON (RFC 8259) written from typed values, each type writing itself through `Json`: an integer
+//! is a number, a `bool` `true` or `false`, bytes a string, another sequence an array and an
+//! option its value or `null`. `derive(T)` writes a struct as an object of its fields and an
+//! enum's value as its variant's name, or, where the variant holds parts, as an object naming it.
+
+/// How a value is written as JSON.
+Json := interface(($Self: type) -> type { struct {
+    json: ($W: std.fmt.Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
+} });
+
+/// Writes `value` as JSON to `w`.
+write := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T) -> Result((), W.Error) { value.json(w) };
+
+quote := "\"";
+backslash := "\\";
+/// The first byte that is not a control character, which a string escapes.
+printable := " "[0];
+/// A control character escaped by its code: `\u00` and two digits of `hex`.
+code := "\\u00";
+hex := "0123456789abcdef";
+/// Around and between the items of an array and the members of an object.
+array_open := "[";
+array_close := "]";
+object_open := "{";
+object_close := "}";
+comma := ",";
+colon := ":";
+null := "null";
+
+/// Writes `bytes` as a string: quoted, `"` and `\` escaped by a backslash, control characters by
+/// their code.
+string := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8]) -> Result((), W.Error) {
+    w.write_all(quote)?;
+    mut start: usize = 0;
+    for i in 0..bytes.len() {
+        b := bytes[i];
+        if b == quote[0] or b == backslash[0] or b < printable {
+            w.write_all(bytes[start..i])?;
+            if b < printable {
+                w.write_all(code)?;
+                w.write_all(hex[(b / 16).to(usize)..(b / 16 + 1).to(usize)])?;
+                w.write_all(hex[(b % 16).to(usize)..(b % 16 + 1).to(usize)])?;
+            } else {
+                w.write_all(backslash)?;
+                w.write_all(bytes[i..i + 1])?;
+            }
+            start = i + 1;
+        }
+    }
+    w.write_all(bytes[start..])?;
+    w.write_all(quote)
+};
+
+/// Writes the member name `name` of an object, after a comma unless it is the `first`.
+member := ($W: std.fmt.Writer, w: &mut W, first: bool, name: &[u8]) -> Result((), W.Error) {
+    if !first { w.write_all(comma)?; }
+    string(w, name)?;
+    w.write_all(colon)
+};
+
+#[impl(Json(Int))]
+int_json := ($r: lang.Range) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
+} };
+
+#[impl(Json(bool))]
+bool_json := struct {
+    json := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
+        w.write_all(if value.* { "true" } else { "false" })
+    };
+};
+
+/// Bytes as a string, any other items as an array.
+#[impl(Json(lang.mem.Slice))]
+slice_json := ($T: type) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
+        $if lang.meta.same(type, T, u8) {
+            string(w, value)
+        } else {
+            w.write_all(array_open)?;
+            for (i, item) in value.enumerate() {
+                if i > 0 { w.write_all(comma)?; }
+                item.json(w)?;
+            }
+            w.write_all(array_close)
+        }
+    };
+} };
+
+#[impl(Json(lang.mem.Array))]
+array_json := ($n: Int(0..), $T: type) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
+        items: &[T] = value;
+        items.json(w)
+    };
+} };
+
+#[impl(Json(Option))]
+option_json := ($T: type) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &?T, w: &mut W) -> Result((), W.Error) {
+        match value {
+            .some(v) => v.json(w),
+            .none => w.write_all(null),
+        }
+    };
+} };
+
+/// A `Json` witness for `T` by reflection: a struct is an object of its fields, each by its own
+/// `Json`; an enum's variant is its name, or, holding parts, an object whose one member is named
+/// by it and holds its part, or the array of its parts.
+/// `#[impl(std.fmt.json.Json(Line))] line_json := std.fmt.json.derive(Line);`
+derive := ($T: type) -> type { struct {
+    json := ($W: std.fmt.Writer, value: &T, w: &mut W) -> Result((), W.Error) {
+        at := lang.meta.variant(T, value);
+        $for v in lang.meta.variants(T) {
+            if at == v.index {
+                $if v.name.len() == 0 {
+                    return parts(W, T, w, value, v, .object);
+                } else {
+                    $if v.parts.len() == 0 { return string(w, v.name); }
+                    w.write_all(object_open)?;
+                    member(w, true, v.name)?;
+                    $if v.parts.len() == 1 {
+                        if .some(part) = lang.meta.part(T, value, v.index, 0) { part.json(w)?; }
+                    } else {
+                        parts(W, T, w, value, v, .array)?;
+                    }
+                    return w.write_all(object_close);
+                }
+            }
+        }
+        .ok(())
+    };
+} };
+
+/// How parts are written: by name inside an object, as a struct's fields, or by position inside
+/// an array.
+Parts := enum { object, array };
+
+/// Writes the parts of `value`, which is the variant `v` of `T`, `as` says.
+parts := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T, $v: lang.meta.Variant, $as: Parts) -> Result((), W.Error) {
+    object := lang.meta.same(Parts, as, .object);
+    w.write_all(if object { object_open } else { array_open })?;
+    $for p in v.parts {
+        $if lang.meta.same(Parts, as, .object) {
+            member(w, p.index == 0, p.name)?;
+        } else {
+            if p.index > 0 { w.write_all(comma)?; }
+        }
+        if .some(part) = lang.meta.part(T, value, v.index, p.index) { part.json(w)?; }
+    }
+    w.write_all(if object { object_close } else { array_close })
+};

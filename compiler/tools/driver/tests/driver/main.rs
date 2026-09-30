@@ -43,6 +43,7 @@ mod select;
 mod sequences;
 mod staged;
 mod stdlib;
+mod testing;
 mod typing;
 mod update;
 mod variadic;

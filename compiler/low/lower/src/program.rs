@@ -23,22 +23,22 @@ const NUMBER: Activity = Activity::stage("number functions");
 /// Placing each function's ids in the program's unit, as timed.
 const PLACE: Activity = Activity::stage("place functions");
 
-/// The LIR of the program whose root is a file.
+/// The LIR of the program whose root is a file, reached from its roots.
 pub struct Lowered;
 
 impl Query for Lowered {
     const NAME: &'static str = "lowered";
-    type Key = FileRef;
+    type Key = (FileRef, Roots);
     type Value = Arc<Result<Unit, Unlowered>>;
 
-    fn compute(cx: &Cx<'_>, root: &FileRef) -> Self::Value {
-        Arc::new(Lowered::program(cx, root))
+    fn compute(cx: &Cx<'_>, (root, roots): &Self::Key) -> Self::Value {
+        Arc::new(Lowered::program(cx, root, *roots))
     }
 }
 
 impl Lowered {
-    fn program(cx: &Cx<'_>, root: &FileRef) -> Result<Unit, Unlowered> {
-        let program = cx.get::<Programs>(&(root.clone(), Roots::Exports));
+    fn program(cx: &Cx<'_>, root: &FileRef, roots: Roots) -> Result<Unit, Unlowered> {
+        let program = cx.get::<Programs>(&(root.clone(), roots));
         let numbering = NUMBER.start();
         let l = Lowering::new(cx, root, true)?;
         if let Some((i, unready)) = program.unready.first() {

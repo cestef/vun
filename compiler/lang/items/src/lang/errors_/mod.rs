@@ -25,5 +25,6 @@ pub mod errors_safety;
 pub mod errors_stack;
 pub mod errors_syntax;
 pub mod errors_target;
+pub mod errors_test;
 pub mod errors_tool;
 pub mod errors_types;

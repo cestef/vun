@@ -60,6 +60,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             doc::DOC,
             explain::EXPLAIN,
             fmt::FMT,
+            test::TEST,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             Command::group(tool::GROUP, "bindings to other languages", &[tool::BIND]),
             Command::group(toolchain::GROUP, "this toolchain's backends and linkers", toolchain::COMMANDS),
@@ -127,6 +128,9 @@ trait Inputs {
     /// lockfile written, as cargo does before compiling.
     fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId>;
 
+    /// Reads the file at `path`, once its project is ready, as `root` does.
+    fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId>;
+
     /// Builds the program `args` names, reporting how it went.
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<PathBuf>;
 }
@@ -135,6 +139,10 @@ impl Inputs for Session {
     fn root(&mut self, args: &Args, shell: &mut Shell<'_>) -> Option<FileId> {
         let path =
             Path::new(args.value(&FILE).expect("positional parameters are present when a command runs"));
+        self.root_at(path, shell)
+    }
+
+    fn root_at(&mut self, path: &Path, shell: &mut Shell<'_>) -> Option<FileId> {
         for (name, hash, fetched) in self.prepare(path) {
             fetched.report(name, hash, shell);
         }
@@ -197,6 +205,7 @@ mod fix;
 mod fmt;
 mod pkg;
 mod status;
+mod test;
 mod tool;
 mod toolchain;
 mod util;

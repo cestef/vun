@@ -50,6 +50,40 @@ origin := (index: u32) -> ?&lang.trace.Origin {
     if index.to(usize) < origins.len() { .some(&origins[index.to(usize)]) } else { .none }
 };
 
+/// The table's row of the trap site `id`, if it has one.
+row := (id: u32) -> ?&lang.trace.Site {
+    sites := rows(lang.trace.Site, table.sites, table.site_count);
+    if id.to(usize) < sites.len() { .some(&sites[id.to(usize)]) } else { .none }
+};
+
+/// A place in source as the table gives it: its file's path, its line and column, counted from 1.
+Place := struct {
+    file: &[u8],
+    line: u32,
+    column: u32,
+
+    of := (o: &lang.trace.Origin) -> Place { .{ .file = text(o.file), .line = o.line, .column = o.column } };
+};
+
+/// What the program's table says of a trap site: what it says, where that is known when
+/// compiling, and where it is written.
+Site := struct {
+    message: ?&[u8],
+    at: ?Place,
+
+    /// What the table says of the trap site `id`; nothing in a program built without it.
+    of := (id: u32) -> ?Site {
+        $if lang.trace.current == .off { return .none; }
+        match row(id) {
+            .some(s) => .some(.{
+                .message = if s.message.len > 0 { .some(text(s.message)) } else { .none },
+                .at = match origin(s.origin) { .some(o) => .some(Place.of(o)), .none => .none },
+            }),
+            .none => .none,
+        }
+    };
+};
+
 /// Writes `o` as `path:line:column`.
 place := (w: &mut std.os.Stream, o: &lang.trace.Origin) {
     std.fmt.print(w, "{}:{}:{}", text(o.file), o.line, o.column);
@@ -119,15 +153,13 @@ report := ($H: type, handler: H, site: u32, why: Why) {
 
 /// Writes why the program ends, where the trap site `site` is written, and what it says.
 written := (w: &mut std.os.Stream, site: u32, why: Why) {
-    sites := rows(lang.trace.Site, table.sites, table.site_count);
     match why {
         .trapped => { std.fmt.print(w, "trap"); },
         .failed(violation) => {
             std.fmt.print(w, "check failed: {}", std.meta.variant_name(lang.check.Violation, &violation));
         },
     }
-    if site.to(usize) < sites.len() {
-        s := &sites[site.to(usize)];
+    if .some(s) = row(site) {
         if s.message.len > 0 { std.fmt.print(w, ": {}", text(s.message)); }
         match origin(s.origin) {
             .some(o) => {

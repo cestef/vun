@@ -122,13 +122,17 @@ impl UnevaluatedExport {
 }
 
 /// Where the reach of a program starts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Roots {
     /// The root file's exports: the program as built.
+    #[default]
     Exports,
     /// The exports and every function of the root file that depends on no compile-time
     /// binding and runs at run time: what coverage measures.
     Functions,
+    /// The exports among the members of a struct type, such as the program running a
+    /// namespace's tests, `std.testing.runner(ns)`.
+    Members(Ty),
 }
 
 /// The program whose root is a file, reached from its roots.
@@ -141,7 +145,9 @@ impl Query for Programs {
 
     fn compute(cx: &Cx<'_>, (root, roots): &(FileRef, Roots)) -> Self::Value {
         let mut reach = Reach::new(cx);
-        if let Some(parsed) = cx.get::<Parsed>(root)
+        if let Roots::Members(ty) = roots {
+            reach.members(*ty);
+        } else if let Some(parsed) = cx.get::<Parsed>(root)
             && let Some(ns) = parsed.hir.root
         {
             let hir = &parsed.hir;

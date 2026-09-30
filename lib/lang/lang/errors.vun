@@ -203,6 +203,12 @@ plan := struct {
     unsupported := diag.Diag{};
 };
 
+/// Running a namespace's tests through `std.testing.runner` (spec 11).
+test := struct {
+    no_namespace := diag.Diag{};
+    unrunnable := diag.Diag{};
+};
+
 /// The toolchain's tools and the native libraries they load (decision 131).
 tool := struct {
     missing_library := diag.Diag{};

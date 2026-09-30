@@ -7,8 +7,8 @@ Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain; no `jj` workspace holds work. 671 tests pass; clippy,
-`lines` and `layers` are clean; the corpus has 309 passing programs and 3 planned, and LIR
+Everything is committed in the main chain; no `jj` workspace holds work. 681 tests pass; clippy,
+`lines` and `layers` are clean; the corpus has 311 passing programs and 2 planned, and LIR
 lowers every function the corpus reaches.
 
 Built: the front end (a parser reading the productions of `nodes.vun`), packages and the store,
@@ -21,7 +21,13 @@ generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the la
 Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
 wasi.wasm32.
 
-Last landed: the performance pass (348). Criterion benchmarks (`cargo bench -p
+Last landed: tests run (354, 355). A trap ends its thread and `Thread.join` gives
+`Result(R, lang.panic.Trap)`; `std.testing.runner(ns)` runs each unit test on a thread of its own
+and writes JSON lines (`std.fmt.json`, derived by reflection); `vun test [path] [names]...` builds
+it for the namespace of a file, a directory or a package (`Roots::Members`, `vun_sema::testing::Runner`)
+and reports each test. On the way: a pointer into a cell reads a run-time place, so `assert` over a
+global `Atomic` no longer fails to build; a failed assertion's site is its condition; `vun-data`
+derives tagged enums. Before that, the performance pass (348). Criterion benchmarks (`cargo bench -p
 vun-syntax|vun-driver`, baselines `before` and `pinned` saved on `am3.wg`), `--timeline <file>`
 for Perfetto, longest runs and waits in `--timings`, `cargo xtask remote --reserve` for stable
 measurements (`dev/commands.md`, "Measuring speed"). On `am3.wg`: cold check 0.41 s to 0.16 s
@@ -49,7 +55,8 @@ the parser reading the tables), 324 (language server features), 325 (DWARF subpr
 peripherals, exported aliases, `libgcc` on bare targets), 330 (macOS linking from target data,
 `sysroot`, `os_version`), 340 (the parser over the productions, and the grammar's edge cases
 gone), 341 (the checks' shadow reserved span by span), 344 (`lang.diag.error` at run time), 346
-(spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
+(spread members of type bodies), 347 (editor queries last-wins, types captured, server fixes), 356 (an optional path, the nearest
+`build.vun` when none, for every command; only `vun test` follows it yet). 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
 ## Known gaps in landed work
@@ -99,7 +106,17 @@ Discussed with the owner: no standalone "pre-compile, then compile from that" co
   ships as HIR and types; `embed`, the build plan and the toolchain version go into the key;
   origins survive so diagnostics and debug info still point at source.
 
-## Proposed direction: running tests (confirm with the owner first)
+## Running tests: what is left
+
+Steps 1 to 3 below are built (354, 355). Open: step 4 (editors, `lang.meta.Decl.origin`,
+`Session::tests`, test lenses); only unit tests run (a test with parameters fails to type at the
+runner's call; the other kinds need parameter reflection in `lang.meta`); `#[test.ignore]` and
+`#[test.fuel]` are not read; a file outside any package is in no namespace, so `vun test` refuses
+it (`test.no_namespace`; making a loose file a namespace is the owner's call); the runner's
+backtraces go to the standard error and interleave with `vun test`'s lines; an index trap's site
+has no message; where the system runs one thread (WASI), the first trap ends the run.
+
+## Running tests: the direction taken
 
 The owner turned down three designs as hacky: a process per test, a trap handler that jumps
 back (setjmp and longjmp), and running tests only at compile time. The direction below adds no
@@ -149,7 +166,7 @@ attributes through `$` descriptors, as `std.meta.attr` does.
 
 ## Next steps, most useful first
 
-The owner's queue, in order: the test runner above, then the editor polish of item 0 (hover on
+The owner's queue, in order: step 4 of running tests above (test lenses), then the editor polish of item 0 (hover on
 a declaration's own name and on type annotations, stopping a run, views of the function at the
 cursor, VS Code commands), then the rest of lint levels in item 4 (command-line levels,
 dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).

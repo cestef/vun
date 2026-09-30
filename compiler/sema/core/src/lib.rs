@@ -23,6 +23,7 @@ pub mod plan;
 mod reflect;
 pub mod site;
 pub mod target;
+pub mod testing;
 pub mod thread;
 pub mod trace;
 pub mod typeck;

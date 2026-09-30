@@ -1,4 +1,7 @@
-//! Tests, properties, benchmarks and simulation (spec 11).
+//! Tests, properties, benchmarks and simulation (spec 11). The runner is an ordinary program:
+//! `start := std.testing.runner(app);` runs every test of the namespace `app` and those nested in
+//! it, each on a thread of its own, since a trap ends only its thread (spec 07, section 3), and
+//! writes one JSON line per test, then one of the totals (spec 11, section 3).
 
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 #[lint.allow(std.lints.naming.case, "an attribute, written `#[test]`")]
@@ -7,4 +10,116 @@ test := struct {};
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 assert := ($cond: lang.meta.Code(bool)) {
     if !$cond { lang.panic.fail(.assertion(cond.source(), cond.span())); }
+};
+
+/// What became of a test.
+Outcome := enum {
+    passed,
+    /// A trap ended it: its site, and what the program's table says of it.
+    trapped(Trapped),
+};
+
+/// A trap ending a test.
+Trapped := struct {
+    site: u32,
+    said: ?std.trace.Site,
+};
+
+/// Totals of a run.
+Totals := struct {
+    passed: usize,
+    trapped: usize,
+};
+
+/// A line the runner writes: a test run and what became of it, then the totals.
+Line := enum {
+    test(Ran),
+    totals(Totals),
+};
+
+/// A test run: its name, as declared, and what became of it.
+Ran := struct {
+    name: &[u8],
+    outcome: Outcome,
+};
+
+#[impl(std.fmt.json.Json(Line))]
+line_json := std.fmt.json.derive(Line);
+#[impl(std.fmt.json.Json(Ran))]
+ran_json := std.fmt.json.derive(Ran);
+#[impl(std.fmt.json.Json(Outcome))]
+outcome_json := std.fmt.json.derive(Outcome);
+#[impl(std.fmt.json.Json(Trapped))]
+trapped_json := std.fmt.json.derive(Trapped);
+#[impl(std.fmt.json.Json(Totals))]
+totals_json := std.fmt.json.derive(Totals);
+#[impl(std.fmt.json.Json(std.trace.Site))]
+site_json := std.fmt.json.derive(std.trace.Site);
+#[impl(std.fmt.json.Json(std.trace.Place))]
+place_json := std.fmt.json.derive(std.trace.Place);
+
+/// The status of a run in which a test trapped.
+failed: std.os.Status = 1;
+
+/// The exports of the program running the tests of `ns`.
+#[lint.allow(std.lints.naming.case, "a program's exports, written as `std.os.start` is")]
+runner := ($ns: lang.meta.Namespace) -> type {
+    std.os.start(struct {
+        main := (sys: &mut std.os.System) -> std.os.Exit {
+            match run(ns, sys) {
+                .ok(totals) => if totals.trapped == 0 { .ok } else { .code(failed) },
+                .err(_) => .code(failed),
+            }
+        };
+    }.main)
+};
+
+/// Runs the unit tests of `ns` and the namespaces in it, in the order they are declared, or
+/// those the program's arguments name, and writes a line for each to the standard output, then
+/// the totals. Each runs on a thread of its own; where the system runs one thread, on the
+/// calling one, and a trap ends the run.
+run := ($ns: lang.meta.Namespace, sys: &mut std.os.System) -> Result(Totals, std.os.Error) {
+    args := sys.args();
+    mut out := sys.stdout();
+    mut totals := Totals{ .passed = 0, .trapped = 0 };
+    $for c in std.meta.collect(ns, test) {
+        if chosen(args, c.decl.name) {
+            mut f := c.ns.$(c.decl.name);
+            outcome := match sys.spawn(&mut f) {
+                .ok(t) => match t.join() {
+                    .ok(_) => Outcome.passed,
+                    .err(trap) => Outcome.trapped(.{ .site = trap.site, .said = std.trace.Site.of(trap.site) }),
+                },
+                .err(_) => {
+                    f();
+                    Outcome.passed
+                },
+            };
+            match outcome {
+                .passed => { totals.passed += 1; },
+                .trapped(_) => { totals.trapped += 1; },
+            }
+            write(&mut out, &Line.test(.{ .name = c.decl.name, .outcome = outcome }))?;
+        }
+    }
+    write(&mut out, &Line.totals(totals))?;
+    .ok(totals)
+};
+
+/// Whether the test `name` is run: every test when the arguments past the program's name name
+/// none, else those they name.
+chosen := (args: std.os.Args, name: &[u8]) -> bool {
+    if args.len() <= 1 { return true; }
+    for i in 1..args.len() {
+        if .some(arg) = args.get(i) {
+            if arg == name { return true; }
+        }
+    }
+    false
+};
+
+/// Writes `line` and a line break.
+write := (w: &mut std.os.Stream, line: &Line) -> Result((), std.os.Error) {
+    std.fmt.json.write(w, line)?;
+    w.write_all("\n")
 };

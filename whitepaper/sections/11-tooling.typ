@@ -108,7 +108,11 @@ edition.
 == Testing
 
 A test is a binding carrying the attribute `#[test]`, which is plain data. The test runner is a
-library program that finds tests by reflection; nothing registers itself at load time. The
+library program that finds tests by reflection; nothing registers itself at load time. It runs
+each test on a thread of its own: since a trap ends only the thread it occurs in and joining that
+thread yields the trap (@sec-capabilities), a failing test ends itself alone, without a process
+per test or a non-local jump. The driver builds the runner's program for any namespace by calling
+the runner at compile time with the namespace as a value, so no source names it. The
 parameters of a test select its kind (@tab-tests).
 
 #figure(

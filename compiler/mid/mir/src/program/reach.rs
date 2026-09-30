@@ -48,14 +48,7 @@ impl<'a, 'db> Reach<'a, 'db> {
                     self.program.exports.push((at, symbol));
                 }
             }
-            Value::Type(ty) if matches!(&**ty, TyKind::Nominal(_)) && self.types.insert(*ty) => {
-                let Some(members) = self.cx.get::<Members>(ty) else { return };
-                for member in &members.decls {
-                    let value = self.cx.get::<MemberValue>(&(*ty, member.name));
-                    let own = self.cx.get::<MemberType>(&(*ty, member.name)).map(|known| known.ty);
-                    self.export(&member.decl, value, own);
-                }
-            }
+            Value::Type(ty) => self.members(*ty),
             _ => {
                 let Some(symbol) = decl.export(self.cx) else { return };
                 let ty = match ty {
@@ -67,6 +60,19 @@ impl<'a, 'db> Reach<'a, 'db> {
                 let datum = ExportedDatum { decl: decl.clone(), value, ty, symbol, section };
                 self.program.data.push(datum);
             }
+        }
+    }
+
+    /// Finds the exports among the members of `ty`, a struct type, once.
+    pub(super) fn members(&mut self, ty: Ty) {
+        if !matches!(&*ty, TyKind::Nominal(_)) || !self.types.insert(ty) {
+            return;
+        }
+        let Some(members) = self.cx.get::<Members>(&ty) else { return };
+        for member in &members.decls {
+            let value = self.cx.get::<MemberValue>(&(ty, member.name));
+            let own = self.cx.get::<MemberType>(&(ty, member.name)).map(|known| known.ty);
+            self.export(&member.decl, value, own);
         }
     }
 

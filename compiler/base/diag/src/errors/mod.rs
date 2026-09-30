@@ -49,6 +49,8 @@ mod package;
 pub use package::*;
 mod plan;
 pub use plan::*;
+mod test;
+pub use test::*;
 mod tool;
 pub use tool::*;
 mod io;

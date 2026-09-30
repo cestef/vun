@@ -6,9 +6,22 @@ survey behind these choices.
 ## 1. Tests are bindings
 
 A test is an ordinary binding marked `#[test]`. The attribute is `std.testing.test`, plain data: the
-test runner is library code, `std.testing.runner(pkg)`, which finds every `#[test]` binding in a
-package by reflection and is itself an ordinary program (spec 08). Nothing registers anything at
+test runner is library code, `std.testing.runner(ns)`, which finds every `#[test]` binding of a
+namespace and the namespaces in it by reflection (`std.meta.collect`) and gives the exports of an
+ordinary program (spec 08): `start := std.testing.runner(app);`. Nothing registers anything at
 load time.
+
+The runner runs each test on a thread of its own and joins it: a trap ends that thread alone and
+joining gives the trap (spec 07, section 3), so a failing test ends only itself. Where the system
+runs one thread, tests run on the calling one and the first trap ends the run. The program's
+arguments, when it has some, are the names of the tests to run.
+
+`vun test [path] [names]...` builds that program for a namespace without source naming it: the
+driver calls `std.testing.runner` at compile time with the namespace as a value, and the program's
+exports are the members of the type it gives (a program's roots may be a type's members as well
+as a root file's, decision 355). The path is a file, a directory or a package's directory, the
+package around the current directory when there is none; a file outside any package is in no
+namespace (`test.no_namespace`).
 
 **The parameters select what kind of test it is:**
 
@@ -80,7 +93,13 @@ every `vun test`.
   tests, streams results back over deferred logging (spec 12), and exits through semihosting or a
   breakpoint.
 
-All modes emit the same JSON result stream, so editors run single tests the same way everywhere.
+All modes emit the same JSON result stream, so editors run single tests the same way everywhere:
+one line per test run, `{"test":{"name":...,"outcome":...}}`, its outcome `"passed"` or
+`{"trapped":{"site":n,"said":{"message":...,"at":{"file":...,"line":...,"column":...}}}}` as the
+program's table says it (`std.trace.Site.of`), then the totals, `{"totals":{"passed":n,"trapped":n}}`.
+The lines are `std.testing.Line` written by `std.fmt.json.derive`, read by the driver as
+`vun_driver::testing::Line`; what the tests write themselves passes through. Only unit tests run
+yet.
 
 ## 4. Deterministic simulation
 

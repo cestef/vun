@@ -27,6 +27,7 @@ mod stack;
 pub mod stages;
 mod steps;
 pub mod target;
+pub mod testing;
 mod toolchain;
 pub mod trace;
 pub mod view;

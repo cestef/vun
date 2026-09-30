@@ -22,6 +22,13 @@ pub const text: Item = Item::new(&["std", "trace", "text"]);
 pub const function: Item = Item::new(&["std", "trace", "function"]);
 /// The origin of index `index`.
 pub const origin: Item = Item::new(&["std", "trace", "origin"]);
+/// The table's row of the trap site `id`, if it has one.
+pub const row: Item = Item::new(&["std", "trace", "row"]);
+/// A place in source as the table gives it: its file's path, its line and column, counted from 1.
+pub const Place: Item = Item::new(&["std", "trace", "Place"]);
+/// What the program's table says of a trap site: what it says, where that is known when
+/// compiling, and where it is written.
+pub const Site: Item = Item::new(&["std", "trace", "Site"]);
 /// Writes `o` as `path:line:column`.
 pub const place: Item = Item::new(&["std", "trace", "place"]);
 /// The return address `saved` as it is saved, without the code authenticating it where code is

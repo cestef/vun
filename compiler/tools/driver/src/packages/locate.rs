@@ -35,7 +35,7 @@ impl Session {
     }
 
     /// The package whose directory is `dir` or the nearest one above it.
-    pub(super) fn package_around(&mut self, dir: &Path) -> Option<(PathBuf, PackageKey)> {
+    pub(crate) fn package_around(&mut self, dir: &Path) -> Option<(PathBuf, PackageKey)> {
         dir.ancestors().find_map(|d| self.package_at(d).map(|key| (d.to_path_buf(), key)))
     }
 

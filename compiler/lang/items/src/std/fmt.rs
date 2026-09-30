@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.fmt.json`.
+pub const json: Item = Item::new(&["std", "fmt", "json"]);
 /// Where bytes are written (spec 02, section 3).
 pub const Writer: Item = Item::new(&["std", "fmt", "Writer"]);
 /// How a value is written as text.

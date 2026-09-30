@@ -62,6 +62,9 @@ pub struct Session {
     pub registry: Registry,
     /// Which backend builds: the target's preferences for the profile unless one is named.
     pub codegen: Codegen,
+    /// Where the program built from a root file starts: its exports unless set, as to the
+    /// members of the type running a namespace's tests.
+    pub roots: Roots,
     /// Whether the queries are saved between runs; off unless the program turns it on.
     pub persistence: Persistence,
     /// The directory of the libraries' memos shared between projects, if they are shared.
@@ -118,6 +121,7 @@ impl Session {
             target: None,
             registry: Registry::with_defaults(),
             codegen: Codegen::default(),
+            roots: Roots::default(),
             persistence: Persistence::Off,
             tally: std::env::var(vun_query::Tally::VAR).is_ok_and(|v| v == "1"),
             shared: None,
@@ -219,16 +223,16 @@ impl Session {
         types
     }
 
-    /// The program whose root is `file`: its exports and the functions they reach.
+    /// The program whose root is `file`: its roots and the functions they reach.
     pub fn program(&mut self, file: FileId) -> Arc<Program> {
         let key = self.file_ref(file);
-        self.db.get::<Programs>(&(key, Roots::Exports))
+        self.db.get::<Programs>(&(key, self.roots))
     }
 
     /// The LIR of the program whose root is `file`, or why it does not lower.
     pub fn lir(&mut self, file: FileId) -> Arc<Result<vun_lir::Unit, Unlowered>> {
         let key = self.file_ref(file);
-        self.db.get::<Lowered>(&key)
+        self.db.get::<Lowered>(&(key, self.roots))
     }
 
     /// The MIR of each function literal of `file`, in source order.
