@@ -166,9 +166,15 @@ impl<Q: Query> Table<Q> {
         &self.entries[slot.index()]
     }
 
-    /// Every entry, by slot.
+    /// Every entry of a key, by slot: not those pushed by a thread another added the key before.
     pub(crate) fn entries(&self) -> impl Iterator<Item = (Slot, &Entry<Q>)> {
-        self.entries.iter().map(|(index, entry)| (Slot::at(index), entry))
+        let slots = self.slots.pin();
+        let entries = self.entries.iter().map(|(index, entry)| (Slot::at(index), entry));
+        let own = move |(slot, entry): &(Slot, &Entry<Q>)| {
+            entry.at.get().is_some()
+                || entry.key.get().is_none_or(|key| slots.get(&Probe::of(key)) == Some(slot))
+        };
+        entries.filter(own)
     }
 
     /// Every entry with a memo.
@@ -188,7 +194,7 @@ pub(crate) trait AnyTable: Send + Sync {
     fn show(&self, slot: Slot) -> String;
     /// The slot of the key saved at `at` among the query's keys in the memos loaded.
     fn saved_slot(&self, at: u32) -> Option<Slot>;
-    /// How many keys have slots.
+    /// How many slots were made, with those of threads that lost the race to add their key.
     fn len(&self) -> usize;
     /// What the memo at `slot` holds and read, if it has one whose reads are held.
     fn facts(&self, db: &Db, slot: Slot) -> Option<Facts>;

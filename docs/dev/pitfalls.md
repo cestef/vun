@@ -20,6 +20,10 @@ Traps that cost a session before. Add one when it costs you time.
   again through its reads as `Why::Cycle`. Programs with cycles (recursive types through
   `kinds`) still re-save their queries on every warm run: the recomputed memos' reads differ in
   order from the saved ones. Cheap, but a fixpoint-style cycle (salsa's) would remove it.
+- `vun_par::Map::get_or_insert_with` (papaya) runs its closure in every thread that races to
+  add a key, then keeps one value: `Table::slot` pushes an entry for each, so a table holds slots
+  no key maps to. Walk a table with `Table::entries`, which skips them; one saved with its key
+  gave a second, memo-less copy that a later build found first.
 - Process-wide tables (`SourceFiles::global()`, `OriginTable::global()`, interners) are shared by
   every session in the process.
 - Persisted queries need unique `Query::NAME`s and codecs; set queries are `INPUT`. Query values

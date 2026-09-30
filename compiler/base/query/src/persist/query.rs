@@ -16,7 +16,7 @@ use super::store::{Attached, Store};
 use crate::db::{Db, Sharing};
 use crate::fingerprint::Fingerprint;
 use crate::memo::{Dep, Deps, Memo, ReadValue};
-use crate::table::TableId;
+use crate::table::{AnyTable, TableId};
 use crate::{Query, Revision};
 
 pub(crate) trait Persisted: Send + Sync {
@@ -129,20 +129,22 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         let loaded = keeps.store().and(table.attached.get()).and_then(Attached::keys);
         let kept = loaded.map_or(0, |keys| keeps.kept(keys));
         let mut next = kept;
-        let numbers = table.entries().map(|(slot, entry)| {
+        let mut numbers = vec![None; table.len()];
+        for (slot, entry) in table.entries() {
             if include.is_some_and(|include| !include.contains(&(table.id, slot))) {
-                return None;
+                continue;
             }
-            if let (Some(keys), Some(&at)) = (loaded, entry.at.get())
-                && at < kept
-            {
-                return Some(Number { at, base: keys.saved[at as usize].fingerprint });
-            }
-            let at = next;
-            next += 1;
-            Some(Number { at, base: entry.memo.load().as_ref().map(|memo| memo.fingerprint) })
-        });
-        numbers.collect()
+            numbers[slot.index()] = Some(match (loaded, entry.at.get()) {
+                (Some(keys), Some(&at)) if at < kept => {
+                    Number { at, base: keys.saved[at as usize].fingerprint }
+                }
+                _ => {
+                    next += 1;
+                    Number { at: next - 1, base: entry.memo.load().as_ref().map(|memo| memo.fingerprint) }
+                }
+            });
+        }
+        numbers
     }
 
     fn save(&self, db: &Db, w: &mut Writer<'_>, layout: &Layout, keeps: Keeps<'_>) -> SavedQuery {

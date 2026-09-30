@@ -271,3 +271,24 @@ fn a_key_reached_by_its_saved_position_and_by_its_value_has_one_slot() {
     let distinct: std::collections::HashSet<&String> = keys.iter().collect();
     assert_eq!((keys.len(), distinct.len()), (20, 20), "one slot per key");
 }
+
+#[test]
+fn a_key_threads_add_at_once_is_saved_once() {
+    const THREADS: usize = 8;
+    let db = persisting("one two");
+    let keys: Vec<String> = (0..400).map(|n| n.to_string()).collect();
+    let start = std::sync::Barrier::new(THREADS);
+    std::thread::scope(|s| {
+        for _ in 0..THREADS {
+            s.spawn(|| {
+                start.wait();
+                for key in &keys {
+                    db.get::<Words>(key);
+                }
+            });
+        }
+    });
+    let census = Census::of(&db.save()).unwrap();
+    let words = census.queries.iter().find(|q| q.name == Words::NAME).unwrap();
+    assert_eq!((words.entries, words.memos), (keys.len(), keys.len()));
+}
