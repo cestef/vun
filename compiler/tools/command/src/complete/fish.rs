@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use super::Tree;
-use crate::{Param, Values};
+use crate::{Catalog, Param, Values};
 
 impl Tree<'_> {
     pub(super) fn fish(&self) -> String {
@@ -56,7 +56,9 @@ impl Param {
             (false, _) => String::new(),
             (true, Values::Text) => " -x".to_owned(),
             (true, Values::Path(_)) => " -r -F".to_owned(),
-            (true, Values::Choice(names)) => format!(" -x -a {}", Tree::fish_quote(&names().join(" "))),
+            (true, Values::Choice(names) | Values::Catalog(Catalog { names, .. })) => {
+                format!(" -x -a {}", Tree::fish_quote(&names().join(" ")))
+            }
         };
         format!("-l {}{short}{value}", self.name)
     }

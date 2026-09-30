@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Dialect, Outcome, PathKind, Shell, Values};
+use crate::{Catalog, Dialect, Outcome, PathKind, Shell, Values};
 use std::io::Write;
 
 const FILE: Param = Param::positional("file").about("a source file").values(Values::Path(PathKind::File));
@@ -10,6 +10,11 @@ const FORMAT: Param = Param::option("format")
 const FAST: Param = Param::flag("fast").short('f').about("go fast");
 const DEEP: Param = Param::flag("deep").about("look deeper");
 const REST: Param = Param::positional("rest").arity(Arity::Many);
+const KEEP: Param = Param::option("keep").values(Values::Catalog(Catalog {
+    names: || vec!["names.duplicate", "names.unresolved"],
+    what: "an error",
+    declared_in: "errors.vun",
+}));
 /// Named as the root's `--version` flag, but an option of its command.
 const RELEASE: Param = Param::option("version").about("which release");
 
@@ -29,7 +34,7 @@ const PROGRAM: Program<()> = Program {
                 "print things",
                 &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
-            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, REST]).aliases(&["x"]),
+            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, REST]).aliases(&["x"]),
         ],
     )
     .params(&[DEEP]),
@@ -146,4 +151,14 @@ fn globals_are_read_ahead_of_parsing_up_to_the_end_of_options() {
     let args = PROGRAM.globals(&argv("dmp --color never x -- --format json"));
     assert_eq!((args.value(&crate::COLOR), args.value(&crate::FORMAT)), (Some("never"), None));
     assert_eq!(PROGRAM.globals(&argv("--color=nevr")).value(&crate::COLOR), None);
+}
+
+#[test]
+fn a_catalog_is_checked_as_a_choice_and_described_rather_than_listed() {
+    assert_eq!(error("x a.vun --keep names.unresolvd").1, "did you mean `names.unresolved`?");
+    assert_eq!(error("x a.vun --keep zzz").1, "choose an error, as `errors.vun` declares them");
+    let Ok(Request::Run(selected, _)) = PROGRAM.parse(&argv("x a.vun")) else { panic!("not a run") };
+    let page = selected.help(Detail::Long).to_string();
+    assert!(page.contains("[values: an error, as `errors.vun` declares them]"), "{page}");
+    assert!(!page.contains("names.duplicate"), "{page}");
 }

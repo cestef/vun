@@ -3,7 +3,7 @@
 use vun_term::{Column, Style, Table, Text};
 
 use crate::parse::{LONG, SHORT};
-use crate::{Arity, Detail, HELP_COMMAND, Param, ParamKind, Selected};
+use crate::{Arity, Detail, HELP_COMMAND, Param, ParamKind, Selected, Values};
 
 /// The two columns of a help section: what to write, and what it does.
 const SECTION: [Column; 2] = [Column::left(""), Column::left("")];
@@ -97,7 +97,11 @@ impl Param {
     /// under the description for its values and environment variable.
     fn rows(&self, written: Text, detail: Detail) -> Vec<[Text; 2]> {
         let row = [written, Text::from(self.about)];
-        let values = self.choices().map(|names| format!("[values: {}]", names.join(", ")));
+        let values = match self.values {
+            Values::Choice(names) => Some(format!("[values: {}]", names().join(", "))),
+            Values::Catalog(catalog) => Some(format!("[values: {}]", catalog.described())),
+            Values::Text | Values::Path(_) => None,
+        };
         let env = self.env.map(|name| format!("[env: {name}]"));
         let extras: Vec<String> = [values, env].into_iter().flatten().collect();
         if detail == Detail::Short || extras.is_empty() {

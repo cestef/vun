@@ -16,12 +16,16 @@ use vun_driver::Session;
 
 pub(super) const KEEP: Param = Param::option("keep")
     .about("the error the reduced file must still report; the file's first failure otherwise")
-    .values(vun_command::Values::Choice(|| {
-        let relative = |id: &DiagId| match id.0 {
-            Cow::Borrowed(path) => path.strip_prefix(DiagId::COMPILER),
-            Cow::Owned(_) => None,
-        };
-        errors::ALL.iter().filter_map(relative).collect()
+    .values(vun_command::Values::Catalog(vun_command::Catalog {
+        names: || {
+            let relative = |id: &DiagId| match id.0 {
+                Cow::Borrowed(path) => path.strip_prefix(DiagId::COMPILER),
+                Cow::Owned(_) => None,
+            };
+            errors::ALL.iter().filter_map(relative).collect()
+        },
+        what: "an error",
+        declared_in: errors::DECLARED_IN,
     }));
 
 /// How far a file was cut down.

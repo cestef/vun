@@ -3,7 +3,7 @@
 use std::fmt::Write;
 
 use super::Tree;
-use crate::{Param, Values};
+use crate::{Catalog, Param, Values};
 
 /// Loads zsh's support for bash completion functions.
 const ZSH_PRELUDE: &str = "autoload -U +X bashcompinit && bashcompinit\n";
@@ -74,7 +74,7 @@ impl Values {
         match self {
             Self::Text => "COMPREPLY=();".to_owned(),
             Self::Path(_) => "COMPREPLY=($(compgen -f -- \"$cur\"));".to_owned(),
-            Self::Choice(names) => {
+            Self::Choice(names) | Self::Catalog(Catalog { names, .. }) => {
                 format!("COMPREPLY=($(compgen -W \"{}\" -- \"$cur\"));", names().join(" "))
             }
         }

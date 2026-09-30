@@ -42,12 +42,34 @@ pub enum Values {
     Path(PathKind),
     /// One of the names a table gives, such as the diagnostic formats or the backends.
     Choice(fn() -> Vec<&'static str>),
+    /// One of the names a table too large to list gives, such as the error ids: checked and
+    /// completed as a choice, and described rather than listed.
+    Catalog(Catalog),
+}
+
+/// A table of names described by what they are and where they are declared.
+#[derive(Clone, Copy, Debug)]
+pub struct Catalog {
+    pub names: fn() -> Vec<&'static str>,
+    /// What each name is: `an error`.
+    pub what: &'static str,
+    /// Where they are declared: `lib/lang/lang/errors.vun`.
+    pub declared_in: &'static str,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PathKind {
     File,
     Dir,
+}
+
+impl Catalog {
+    /// What its names are, and where they are declared: an error, as `lib/lang/lang/errors.vun`
+    /// declares them.
+    #[must_use]
+    pub fn described(&self) -> String {
+        format!("{}, as `{}` declares them", self.what, self.declared_in)
+    }
 }
 
 impl Param {
@@ -135,7 +157,7 @@ impl Param {
     #[must_use]
     pub fn choices(&self) -> Option<Vec<&'static str>> {
         match self.values {
-            Values::Choice(names) => Some(names()),
+            Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => Some(names()),
             Values::Text | Values::Path(_) => None,
         }
     }

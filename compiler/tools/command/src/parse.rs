@@ -5,7 +5,9 @@ use vun_suggest::closest;
 
 use given::Given;
 
-use crate::{Args, Arity, Command, GLOBAL, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION};
+use crate::{
+    Args, Arity, Catalog, Command, GLOBAL, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION, Values,
+};
 
 /// Prefix of long options.
 pub(crate) const LONG: &str = "--";
@@ -161,7 +163,12 @@ impl<Cx> Program<Cx> {
 impl Param {
     fn invalid_value(&self, value: &str, names: &[&str]) -> Box<Diagnostic> {
         let msg = Msg::new().code(value).text(" is not a value of ").code(self.written());
-        let all = || Msg::new().text("choose one of ").code_list(names.iter().copied());
+        let all = || match self.values {
+            Values::Catalog(Catalog { what, declared_in, .. }) => {
+                Msg::new().text("choose ").text(what).text(", as ").code(declared_in).text(" declares them")
+            }
+            _ => Msg::new().text("choose one of ").code_list(names.iter().copied()),
+        };
         let help = closest(value, names.iter().copied()).map_or_else(all, Msg::did_you_mean);
         usage_error(errors::CLI_INVALID_VALUE, msg, help)
     }

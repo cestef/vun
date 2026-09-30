@@ -4,7 +4,7 @@
 use std::fmt::Write;
 
 use super::Tree;
-use crate::{Arity, Param, ParamKind, Values};
+use crate::{Arity, Catalog, Param, ParamKind, Values};
 
 /// A completer: its name and the values it offers.
 type Completer = (String, Vec<&'static str>);
@@ -49,7 +49,7 @@ impl Param {
         match self.values {
             Values::Text => "string".to_owned(),
             Values::Path(_) => "path".to_owned(),
-            Values::Choice(names) => {
+            Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => {
                 let completer = format!("nu-complete {command} {}", self.name);
                 completers.push((completer.clone(), names()));
                 format!("string@\"{completer}\"")
