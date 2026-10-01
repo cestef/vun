@@ -10,35 +10,18 @@ use crate::Item;
 pub const debug: Item = Item::new(&["std", "fmt", "debug"]);
 /// The namespace `std.fmt.json`.
 pub const json: Item = Item::new(&["std", "fmt", "json"]);
+/// The namespace `std.fmt.places`.
+pub const places: Item = Item::new(&["std", "fmt", "places"]);
 /// The namespace `std.fmt.tests`.
 pub const tests: Item = Item::new(&["std", "fmt", "tests"]);
 /// Where bytes are written (spec 02, section 3).
 pub const Writer: Item = Item::new(&["std", "fmt", "Writer"]);
 /// How a value is written as text.
 pub const Format: Item = Item::new(&["std", "fmt", "Format"]);
-/// How an argument is written, as the bytes between the braces of its place say.
-pub const Spec: Item = Item::new(&["std", "fmt", "Spec"]);
-/// Every specifier.
-pub const specs: Item = Item::new(&["std", "fmt", "specs"]);
-/// A run of text of a format string, and the argument written after it.
-pub const Piece: Item = Item::new(&["std", "fmt", "Piece"]);
-/// Opens and closes the place of an argument.
-pub const open: Item = Item::new(&["std", "fmt", "open"]);
-pub const close: Item = Item::new(&["std", "fmt", "close"]);
-/// The place of an argument that starts at `at` in `format`: how the argument is written and how
-/// many bytes the place covers; none where no place starts there.
-pub const hole: Item = Item::new(&["std", "fmt", "hole"]);
-/// The number of arguments `format` takes: its places.
-pub const holes: Item = Item::new(&["std", "fmt", "holes"]);
-/// `format` split at each place of an argument: one piece per argument, then the text after the
-/// last.
-pub const pieces: Item = Item::new(&["std", "fmt", "pieces"]);
-/// What is wrong in a format string, whose places of arguments are `{}` and `{?}`.
-pub const Problem: Item = Item::new(&["std", "fmt", "Problem"]);
-/// A problem of a format string, and the bytes of the string it covers.
-pub const Error: Item = Item::new(&["std", "fmt", "Error"]);
-/// `format` split at each place of an argument, or its first problem: every `{` starts a place.
-pub const parse: Item = Item::new(&["std", "fmt", "parse"]);
+/// How an integer is written in base 16, with `-` before a negative one.
+pub const Hex: Item = Item::new(&["std", "fmt", "Hex"]);
+/// How an integer is written in base 2, with `-` before a negative one.
+pub const Binary: Item = Item::new(&["std", "fmt", "Binary"]);
 /// The decimal digits of `n`, in compile-time memory.
 pub const number: Item = Item::new(&["std", "fmt", "number"]);
 /// `n` and what it counts, `1 argument`, `2 arguments`.
@@ -46,16 +29,20 @@ pub const counted: Item = Item::new(&["std", "fmt", "counted"]);
 /// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
 /// with the format string is reported inside it, at the bytes it covers.
 pub const print: Item = Item::new(&["std", "fmt", "print"]);
-/// Room for the decimal digits of the widest integer.
+/// Room for the digits of the widest integer in the smallest base.
 pub const digits_max: Item = Item::new(&["std", "fmt", "digits_max"]);
-pub const zero: Item = Item::new(&["std", "fmt", "zero"]);
 pub const minus: Item = Item::new(&["std", "fmt", "minus"]);
-pub const radix: Item = Item::new(&["std", "fmt", "radix"]);
+/// The digit of each value below the largest base.
+pub const alphabet: Item = Item::new(&["std", "fmt", "alphabet"]);
 /// Around and between the items of a sequence.
 pub const opening: Item = Item::new(&["std", "fmt", "opening"]);
 pub const closing: Item = Item::new(&["std", "fmt", "closing"]);
 pub const separator: Item = Item::new(&["std", "fmt", "separator"]);
+/// Writes `magnitude` in `base`, 2 to 36, after a `-` when `negative`.
+pub const in_base: Item = Item::new(&["std", "fmt", "in_base"]);
 pub const int_format: Item = Item::new(&["std", "fmt", "int_format"]);
+pub const int_hex: Item = Item::new(&["std", "fmt", "int_hex"]);
+pub const int_binary: Item = Item::new(&["std", "fmt", "int_binary"]);
 /// `true` or `false`.
 pub const bool_format: Item = Item::new(&["std", "fmt", "bool_format"]);
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.

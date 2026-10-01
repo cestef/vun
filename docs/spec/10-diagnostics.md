@@ -220,9 +220,10 @@ format := ($spec: Code(&[u8])) {
   as inside a literal it passed, stays there.
 - `std.fmt.parse(format)` reads a format string once: its pieces, or its first problem
   (`fmt.Error`, a `fmt.Problem` and the bytes it covers). `print` takes its format string as code
-  and reports inside it: a problem at the bytes it covers, a count of `{}` and `{?}` that is not
-  the count of arguments at the string, and an argument with no `Format` impl at its `{}`, or no
-  `Debug` impl at its `{?}`, naming its type.
+  and reports inside it: a problem at the bytes it covers, a count of places (`{}`, `{?}`, `{x}`
+  and `{b}`) that is not the count of arguments at the string, and an argument with no impl of
+  the interface its place names (`Format` for `{}`, `Debug` for `{?}`, `Hex` for `{x}`, `Binary`
+  for `{b}`) at that place, naming its type.
 - `#[deprecated(.{ .note = "...", .use = new_fn })]` generates a `Safe` fix that rewrites calls,
   when `new_fn` is a drop-in replacement.
 - A library can attach help to failed interface constraints on its own types

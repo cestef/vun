@@ -1,8 +1,10 @@
 //! Formatting, with format strings read at compile time (spec 03, section 4):
 //! `print(w, "{} args\n", n)` writes the text of the format string with each `{}` replaced by
-//! the next argument, as its `Format` impl writes it, and each `{?}` as its `Debug` impl does.
+//! the next argument, as its `Format` impl writes it. Another specifier between the braces writes
+//! it another way: `{?}` by `Debug`, `{x}` by `Hex` and `{b}` by `Binary`.
 
 ..std.fmt.debug.{ Debug };
+..std.fmt.places.{ Error, Piece, Problem, Spec, holes, parse, pieces, specs };
 
 /// Where bytes are written (spec 02, section 3).
 Writer := interface(($Self: type) -> type { struct {
@@ -28,143 +30,15 @@ Format := interface(($Self: type) -> type { struct {
     format: ($W: Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
 } });
 
-/// How an argument is written, as the bytes between the braces of its place say.
-Spec := enum {
-    /// `{}`: by its `Format` impl.
-    display,
-    /// `{?}`: by its `Debug` impl.
-    debug;
+/// How an integer is written in base 16, with `-` before a negative one.
+Hex := interface(($Self: type) -> type { struct {
+    hex: ($W: Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
+} });
 
-    /// The bytes between the braces.
-    mark := (self: Spec) -> &[u8] {
-        match self {
-            .display => "",
-            .debug => "?",
-        }
-    };
-
-    /// The interface that writes it.
-    interface := (self: Spec) -> &[u8] {
-        match self {
-            .display => "Format",
-            .debug => "Debug",
-        }
-    };
-};
-
-/// Every specifier.
-specs := [Spec.display, Spec.debug];
-
-/// A run of text of a format string, and the argument written after it.
-Piece := struct {
-    text: &[u8],
-    /// The position of the argument; past the last argument for the text that ends the string.
-    arg: usize,
-    /// The bytes of the place that takes the argument; none for the text that ends the string.
-    hole: lang.Range = 0..0,
-    /// How the argument is written.
-    spec: Spec = .display,
-};
-
-/// Opens and closes the place of an argument.
-open := "{"[0];
-close := "}"[0];
-
-/// The place of an argument that starts at `at` in `format`: how the argument is written and how
-/// many bytes the place covers; none where no place starts there.
-hole := (format: &[u8], at: usize) -> Option((Spec, usize)) {
-    for spec in specs {
-        place := "{" ++ spec.mark() ++ "}";
-        if format[at..].starts_with(place) { return .some((spec, place.len())); }
-    }
-    .none
-};
-
-/// The number of arguments `format` takes: its places.
-holes := ($format: &[u8]) -> usize {
-    mut n: usize = 0;
-    mut i: usize = 0;
-    for i < format.len() {
-        if .some((_, len)) = hole(format, i) { n += 1; i += len; } else { i += 1; }
-    }
-    n
-};
-
-/// `format` split at each place of an argument: one piece per argument, then the text after the
-/// last.
-pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
-    mut out: [holes(format) + 1]Piece = [.{ .text = "", .arg = 0 }; holes(format) + 1];
-    mut n: usize = 0;
-    mut start: usize = 0;
-    mut i: usize = 0;
-    for i < format.len() {
-        if .some((spec, len)) = hole(format, i) {
-            out[n] = .{ .text = format[start..i], .arg = n, .hole = i..i + len, .spec = spec };
-            n += 1;
-            i += len;
-            start = i;
-        } else {
-            i += 1;
-        }
-    }
-    out[n] = .{ .text = format[start..], .arg = n };
-    out
-};
-
-/// What is wrong in a format string, whose places of arguments are `{}` and `{?}`.
-Problem := enum {
-    /// A `{` that no `}` closes.
-    unclosed,
-    /// A `{` closed after something that is no specifier.
-    unknown,
-    /// A `}` that closes no `{`.
-    unopened;
-
-    /// The problem, as a report says it.
-    text := (self: Problem) -> &[u8] {
-        match self {
-            .unclosed => "this `{` is not closed",
-            .unknown => "unknown format specifier",
-            .unopened => "this `}` closes no `{`",
-        }
-    };
-
-    /// What to do about it.
-    help := (self: Problem) -> &[u8] {
-        match self {
-            .unclosed => "an argument goes where `{}` or `{?}` is written; close the `{` with a `}`",
-            .unknown => "`{}` writes the next argument as its `Format` impl does, `{?}` as its `Debug` impl does",
-            .unopened => "a `}` only closes a `{`; write `{}` where an argument goes",
-        }
-    };
-};
-
-/// A problem of a format string, and the bytes of the string it covers.
-Error := struct {
-    reason: Problem,
-    at: lang.Range,
-};
-
-/// `format` split at each place of an argument, or its first problem: every `{` starts a place.
-parse := ($format: &[u8]) -> Result([holes(format) + 1]Piece, Error) {
-    mut i: usize = 0;
-    for i < format.len() {
-        if .some((_, len)) = hole(format, i) {
-            i += len;
-        } else if format[i] == open {
-            // Not a place: a `}` closes it after something that is no specifier, or none does.
-            for j in i..format.len() {
-                if format[j] == close { return .err(.{ .reason = .unknown, .at = i..j + 1 }); }
-            }
-            return .err(.{ .reason = .unclosed, .at = i..i + 1 });
-        } else if format[i] == close {
-            return .err(.{ .reason = .unopened, .at = i..i + 1 });
-        } else {
-            i += 1;
-        }
-    }
-    .ok(pieces(format))
-};
+/// How an integer is written in base 2, with `-` before a negative one.
+Binary := interface(($Self: type) -> type { struct {
+    binary: ($W: Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
+} });
 
 /// The decimal digits of `n`, in compile-time memory.
 number := (n: usize) -> &static [u8] {
@@ -198,26 +72,22 @@ print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..arg
             .at = .some(format.span()),
             .msg = "the format string has " ++ counted(holes($format), "`{}`", "`{}`") ++ ", but "
                 ++ counted(lang.meta.items(A).len(), "argument is given", "arguments are given"),
-            .help = .some("pass one argument for each `{}` and `{?}`"),
+            .help = .some("pass one argument for each `{}`, `{?}`, `{x}` and `{b}`"),
         });
     } else {
         $for piece in pieces($format) {
             w.write_all(piece.text)?;
             $if piece.arg < holes($format) {
                 $ty := lang.meta.Unborrowed(lang.meta.items(A)[piece.arg]);
-                $debugging := lang.meta.same(Spec, piece.spec, .debug);
-                $if (debugging and lang.meta.implements(Debug, ty)) or (!debugging and lang.meta.implements(
-                    Format,
-                    ty
-                )) {
-                    $if debugging { args.$(piece.arg).debug(w)?; } else { args.$(piece.arg).format(w)?; }
+                $if lang.meta.implements(piece.spec.interface, ty) {
+                    args.$(piece.arg).$(piece.spec.method)(w)?;
                 } else {
                     $std.diag.error(.{
                         .at = .some(format.within(piece.hole)),
-                        .msg = "`" ++ lang.meta.name_of(lang.meta.items(A)[piece.arg]) ++ "` has no `std.fmt."
-                            ++ piece.spec.interface() ++ "` impl, so it cannot be written here",
+                        .msg = "`" ++ lang.meta.name_of(lang.meta.items(A)[piece.arg]) ++ "` has no `"
+                            ++ piece.spec.name ++ "` impl, so it cannot be written here",
                         .help = .some(
-                            "write an impl of `std.fmt." ++ piece.spec.interface()
+                            "write an impl of `" ++ piece.spec.name
                                 ++ "` for it, or pass a value that has one"
                         ),
                     });
@@ -228,32 +98,52 @@ print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..arg
     .ok(())
 };
 
-/// Room for the decimal digits of the widest integer.
-digits_max := 40;
-zero := "0"[0];
+/// Room for the digits of the widest integer in the smallest base.
+digits_max := 128;
 minus := "-";
-radix := 10;
+/// The digit of each value below the largest base.
+alphabet := "0123456789abcdefghijklmnopqrstuvwxyz";
 /// Around and between the items of a sequence.
 opening := "[";
 closing := "]";
 separator := ", ";
 
+/// Writes `magnitude` in `base`, 2 to 36, after a `-` when `negative`.
+in_base := ($W: Writer, w: &mut W, negative: bool, magnitude: u128, base: Int(2
+        ..=36)) -> Result((), W.Error) {
+            if negative { w.write_all(minus)?; }
+            mut rest: u128 = magnitude;
+            mut digits: [digits_max]u8 = [alphabet[0]; digits_max];
+            mut at: usize = digits_max - 1;
+            digits[at] = alphabet[(rest % base).to(usize)];
+            rest = rest / base;
+            for rest > 0 {
+                at -= 1;
+                digits[at] = alphabet[(rest % base).to(usize)];
+                rest = rest / base;
+            }
+            w.write_all(&digits[at..])
+        };
+
 #[impl(Format(Int))]
 int_format := ($r: lang.Range) -> type { struct {
     /// In decimal, with `-` before a negative value.
     format := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
-        if value.* < 0 { w.write_all(minus)?; }
-        mut rest: u128 = value.*.abs();
-        mut digits: [digits_max]u8 = [zero; digits_max];
-        mut at: usize = digits_max - 1;
-        digits[at] = (zero + rest % radix).to(u8);
-        rest = rest / radix;
-        for rest > 0 {
-            at -= 1;
-            digits[at] = (zero + rest % radix).to(u8);
-            rest = rest / radix;
-        }
-        w.write_all(&digits[at..])
+        in_base(w, value.* < 0, value.*.abs(), 10)
+    };
+} };
+
+#[impl(Hex(Int))]
+int_hex := ($r: lang.Range) -> type { struct {
+    hex := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+        in_base(w, value.* < 0, value.*.abs(), 16)
+    };
+} };
+
+#[impl(Binary(Int))]
+int_binary := ($r: lang.Range) -> type { struct {
+    binary := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+        in_base(w, value.* < 0, value.*.abs(), 2)
     };
 } };
 

@@ -45,3 +45,17 @@ pub const debug_writes_a_struct_with_no_fields_as_braces: Item = Item::new(
 pub const places_of_both_kinds_mix_in_one_format_string: Item = Item::new(
     &["std", "fmt", "tests", "places_of_both_kinds_mix_in_one_format_string"],
 );
+pub const integers_are_written_in_base_16_and_base_2: Item = Item::new(
+    &["std", "fmt", "tests", "integers_are_written_in_base_16_and_base_2"],
+);
+pub const a_negative_integer_has_a_minus_before_its_digits_in_any_base: Item = Item::new(
+    &[
+        "std",
+        "fmt",
+        "tests",
+        "a_negative_integer_has_a_minus_before_its_digits_in_any_base",
+    ],
+);
+pub const the_widest_integers_are_written_in_the_smallest_base: Item = Item::new(
+    &["std", "fmt", "tests", "the_widest_integers_are_written_in_the_smallest_base"],
+);

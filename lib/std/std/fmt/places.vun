@@ -1,0 +1,133 @@
+//! The places of arguments in a format string (spec 03, section 4): `{}`, `{?}`, `{x}` and `{b}`,
+//! each a row of `specs`, read once at compile time into the text between them, or the first
+//! problem.
+
+/// How an argument is written, as the bytes between the braces of its place say: the interface
+/// that writes it, and the method of it that does.
+Spec := struct {
+    /// The bytes between the braces.
+    mark: &[u8],
+    interface: lang.Interface,
+    /// The interface as a report names it.
+    name: &[u8],
+    method: &[u8],
+};
+
+/// Every specifier, the first being that of `{}`.
+specs: [4]Spec = [
+    .{ .mark = "", .interface = std.fmt.Format, .name = "std.fmt.Format", .method = "format" },
+    .{ .mark = "?", .interface = std.fmt.Debug, .name = "std.fmt.Debug", .method = "debug" },
+    .{ .mark = "x", .interface = std.fmt.Hex, .name = "std.fmt.Hex", .method = "hex" },
+    .{ .mark = "b", .interface = std.fmt.Binary, .name = "std.fmt.Binary", .method = "binary" },
+];
+
+/// A run of text of a format string, and the argument written after it.
+Piece := struct {
+    text: &[u8],
+    /// The position of the argument; past the last argument for the text that ends the string.
+    arg: usize,
+    /// The bytes of the place that takes the argument; none for the text that ends the string.
+    hole: lang.Range = 0..0,
+    /// How the argument is written.
+    spec: Spec = specs[0],
+};
+
+/// Opens and closes the place of an argument.
+open := "{"[0];
+close := "}"[0];
+
+/// The place of an argument that starts at `at` in `format`: how the argument is written and how
+/// many bytes the place covers; none where no place starts there.
+hole := (format: &[u8], at: usize) -> Option((Spec, usize)) {
+    for spec in specs {
+        place := "{" ++ spec.mark ++ "}";
+        if format[at..].starts_with(place) { return .some((spec, place.len())); }
+    }
+    .none
+};
+
+/// The number of arguments `format` takes: its places.
+holes := ($format: &[u8]) -> usize {
+    mut n: usize = 0;
+    mut i: usize = 0;
+    for i < format.len() {
+        if .some((_, len)) = hole(format, i) { n += 1; i += len; } else { i += 1; }
+    }
+    n
+};
+
+/// `format` split at each place of an argument: one piece per argument, then the text after the
+/// last.
+pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
+    mut out: [holes(format) + 1]Piece = [.{ .text = "", .arg = 0 }; holes(format) + 1];
+    mut n: usize = 0;
+    mut start: usize = 0;
+    mut i: usize = 0;
+    for i < format.len() {
+        if .some((spec, len)) = hole(format, i) {
+            out[n] = .{ .text = format[start..i], .arg = n, .hole = i..i + len, .spec = spec };
+            n += 1;
+            i += len;
+            start = i;
+        } else {
+            i += 1;
+        }
+    }
+    out[n] = .{ .text = format[start..], .arg = n };
+    out
+};
+
+/// What is wrong in a format string, whose places of arguments are those of `specs`.
+Problem := enum {
+    /// A `{` that no `}` closes.
+    unclosed,
+    /// A `{` closed after something that is no specifier.
+    unknown,
+    /// A `}` that closes no `{`.
+    unopened;
+
+    /// The problem, as a report says it.
+    text := (self: Problem) -> &[u8] {
+        match self {
+            .unclosed => "this `{` is not closed",
+            .unknown => "unknown format specifier",
+            .unopened => "this `}` closes no `{`",
+        }
+    };
+
+    /// What to do about it.
+    help := (self: Problem) -> &[u8] {
+        match self {
+            .unclosed => "an argument goes where `{}` is written; close the `{` with a `}`",
+            .unknown => "`{}` writes the next argument as its `Format` impl does, `{?}` as its `Debug` impl, `{x}` in base 16 and `{b}` in base 2",
+            .unopened => "a `}` only closes a `{`; write `{}` where an argument goes",
+        }
+    };
+};
+
+/// A problem of a format string, and the bytes of the string it covers.
+Error := struct {
+    reason: Problem,
+    at: lang.Range,
+};
+
+/// `format` split at each place of an argument, or its first problem: every `{` starts a place.
+parse := ($format: &[u8]) -> Result([holes(format) + 1]Piece, Error) {
+    mut i: usize = 0;
+    for i < format.len() {
+        if .some((_, len)) = hole(format, i) {
+            i += len;
+        } else if format[i] == open {
+            // Not a place: a `}` closes it after something that is no specifier, or none does.
+            for j in i..format.len() {
+                if format[j] == close { return .err(.{ .reason = .unknown, .at = i..j + 1 }); }
+            }
+            return .err(.{ .reason = .unclosed, .at = i..i + 1 });
+        } else if format[i] == close {
+            return .err(.{ .reason = .unopened, .at = i..i + 1 });
+        } else {
+            i += 1;
+        }
+    }
+    .ok(pieces(format))
+};
