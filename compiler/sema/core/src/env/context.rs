@@ -24,7 +24,8 @@ pub struct Context {
     /// The number of parameters the place has.
     pub arity: usize,
     pub params: Vec<Result<Ty, Unevaluated>>,
-    pub result: Result<Ty, Unevaluated>,
+    /// None where the place says nothing of the result.
+    pub result: Option<Result<Ty, Unevaluated>>,
     pub place: Place,
 }
 
@@ -35,6 +36,8 @@ pub enum Place {
     Annotation,
     /// The requirement of an interface it implements.
     Requirement,
+    /// The parameter of the call it is an argument of.
+    Argument,
 }
 
 impl Place {
@@ -44,6 +47,7 @@ impl Place {
         match self {
             Self::Annotation => "the function type it is annotated with",
             Self::Requirement => "the requirement it implements",
+            Self::Argument => "the parameter it is passed for",
         }
     }
 }
@@ -53,14 +57,25 @@ impl Context {
     /// no parameter there.
     #[must_use]
     pub fn param(&self, index: usize) -> Option<Result<Ty, Unevaluated>> {
-        self.params.get(index).cloned()
+        // What an argument's parameter names that is not known yet is not left to an
+        // instantiation: nothing binds it there, the parameter is just untyped.
+        self.params.get(index).cloned().filter(|p| p.is_ok() || !matches!(self.place, Place::Argument))
+    }
+}
+
+impl Context {
+    /// What a call expects of a function written as an argument: the types of its parameters, and
+    /// its result where the call says it.
+    #[must_use]
+    pub fn passed(params: Vec<Result<Ty, Unevaluated>>, result: Option<Ty>) -> Self {
+        Self { arity: params.len(), params, result: result.map(Ok), place: Place::Argument }
     }
 }
 
 impl From<Signature> for Context {
     fn from(signature: Signature) -> Self {
         let params: Vec<_> = signature.params.into_iter().map(Ok).collect();
-        Self { arity: params.len(), params, result: Ok(signature.result), place: Place::Annotation }
+        Self { arity: params.len(), params, result: Some(Ok(signature.result)), place: Place::Annotation }
     }
 }
 
@@ -75,6 +90,11 @@ impl Env<'_, '_> {
     pub fn context(&self, literal: ExprId) -> Option<Result<Context, Unevaluated>> {
         if !self.leaves_out(literal) {
             return None;
+        }
+        // A closure is typed as part of the body it is written in, which has its signature.
+        let typed = self.types.as_ref().and_then(|found| found.types.get(&literal));
+        if let Some(signature) = typed.and_then(|known| known.ty.signature()) {
+            return Some(Ok(Context::from(signature)));
         }
         let (decl, _) = self.declaration_of(literal);
         let annotation = decl.and_then(|decl| self.parsed.hir.decls[decl].ty);
@@ -144,7 +164,7 @@ impl Env<'_, '_> {
         } else {
             Vec::new()
         };
-        let result = returns.map_or_else(|| Ok(TyKind::unit()), |r| env.ty(r));
+        let result = Some(returns.map_or_else(|| Ok(TyKind::unit()), |r| env.ty(r)));
         Ok(Context { arity: required.len(), params, result, place: Place::Requirement })
     }
 }

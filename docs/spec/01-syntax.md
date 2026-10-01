@@ -173,6 +173,15 @@ place: through a captured borrow, what it points to. The body sees the binders i
 is typed with the body it is written in. A literal with no capture list captures nothing and is a
 plain function value.
 
+A closure written as an argument leaves out the types of its parameters, and its result, when the
+call says them: the parameter it is passed for is a function type, or a `$` parameter it binds,
+`$F: Call((T), R), f: F`, whose constraint gives the parameter types and the result. It is typed
+after the other arguments, so what they fix of the `$` parameters the constraint names is known:
+`xs.map([] (x) { x * 2 })`, `xs.filter([] (x) { x.* > 2 })`. A parameter whose type still depends
+on a `$` parameter the call leaves open, such as the accumulator of `fold(0, ...)`, whose first
+argument has only the exact type of the literal, is written; a result neither written nor said
+is the type of the body.
+
 ### Calls and methods
 
 `f(a, b)` calls `f`. `a.f(b)` is the method form, and has one rule:

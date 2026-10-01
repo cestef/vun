@@ -18,6 +18,7 @@ mod expect;
 mod expected;
 mod gave_up;
 mod held;
+mod hint;
 mod infer;
 mod loops;
 mod methods;
@@ -55,7 +56,7 @@ use vun_hir::visit::Visitor;
 use vun_sema_ty::Ty;
 use vun_sema_ty::trap::Unevaluated;
 
-use crate::env::Env;
+use crate::env::{Context, Env};
 
 /// When a value is known: at compile time, or only at run time. Only run-time integers are
 /// capped at 128 bits (spec 04, rule 5).
@@ -101,6 +102,9 @@ pub struct Typer<'e, 'a, 'db> {
     /// `.name`, `.{ }` (spec 01, section 2); or why the context cannot say, as an annotation
     /// whose type is not known here.
     expected: Map<ExprId, Result<Ty, GaveUp>>,
+    /// What a call expects of a closure written as its argument, where its parameter's type is
+    /// a `$` parameter the closure itself binds.
+    hints: Map<ExprId, Context>,
     /// The result type of the function typed, which `return` values are checked against, or why
     /// it is not known here.
     result: Option<Result<Ty, GaveUp>>,
@@ -139,6 +143,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             locals: Map::default(),
             narrowed: Map::default(),
             expected: Map::default(),
+            hints: Map::default(),
             result: None,
             written: None,
             loops: Vec::new(),

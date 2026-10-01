@@ -10,11 +10,12 @@ use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatId, PatKind};
 use vun_query::Cx;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::ExprRef;
-use vun_sema_ty::{Closure, Signature, TyKind, Value};
+use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{Closure, Signature, Ty, TyKind, Value};
 
 use super::{GaveUp, Known, Stage, Typer};
 use crate::callable::Callable;
-use crate::env::Place;
+use crate::env::{Context, Place};
 use crate::eval::Instantiate;
 
 impl Typer<'_, '_, '_> {
@@ -33,12 +34,17 @@ impl Typer<'_, '_, '_> {
     /// each `$` parameter an instantiation binds, and gives its signature when every type is
     /// known. A `return` or a loop inside belongs to the function; a coroutine function's body
     /// yields what its frame yields and ends with what it returns.
-    pub(super) fn function(&mut self, literal: ExprId, bound: &[Option<Value>]) -> Option<Signature> {
+    pub(super) fn function(
+        &mut self,
+        literal: ExprId,
+        bound: &[Option<Value>],
+        given: Option<Context>,
+    ) -> Option<Signature> {
         let hir = self.hir();
-        let ExprKind::Fn { params, returns, body } = &hir.exprs[literal].kind else { return None };
+        let ExprKind::Fn { returns, body, .. } = &hir.exprs[literal].kind else { return None };
         let (returns, body) = (*returns, *body);
         // Where the place cannot be read here, the instantiations that bind what it names decide.
-        let (context, unread) = match self.env().context(literal) {
+        let (context, unread) = match self.env().context(literal).or_else(|| given.map(Ok)) {
             Some(Ok(context)) => (Some(context), None),
             Some(Err(why)) => {
                 self.unevaluated(literal, &why);
@@ -46,6 +52,67 @@ impl Typer<'_, '_, '_> {
             }
             None => (None, None),
         };
+        let types = self.parameter_types(literal, bound, context.as_ref(), unread.as_ref());
+        let frame =
+            hir.suspends(literal).then(|| self.env().literal_signature(literal, bound).ok()).flatten();
+        // A coroutine's annotation names its interface, not the type its body ends with.
+        let written = if frame.is_some() { None } else { returns };
+        // A closure written as an argument whose parameter says nothing of its result has the
+        // type of its body.
+        let inferred = returns.is_none()
+            && frame.is_none()
+            && context.as_ref().is_some_and(|c| matches!(c.place, Place::Argument) && c.result.is_none());
+        let (signature_result, result, yields) = if let Some(frame) = frame.map(|s| s.result) {
+            let step = self.env().frame_step(frame);
+            (Some(frame), step.map(|(_, r)| r).ok_or(GaveUp::Form), step.map(|(y, _)| y))
+        } else {
+            let result = match returns {
+                Some(r) => self.annotation(r),
+                None if inferred => Err(GaveUp::Form),
+                None => match (&context, &unread) {
+                    (Some(context), _) => {
+                        context.result.clone().unwrap_or(Ok(TyKind::unit())).map_err(GaveUp::Unevaluated)
+                    }
+                    (None, Some(why)) => Err(GaveUp::Unevaluated(why.clone())),
+                    (None, None) => Ok(TyKind::unit()),
+                },
+            };
+            (result.clone().ok(), result, None)
+        };
+        let outer = (
+            self.result.replace(result.clone()),
+            replace(&mut self.written, written),
+            take(&mut self.loops),
+            replace(&mut self.yields, yields),
+            replace(&mut self.framing, yields.is_some().then_some(literal)),
+        );
+        let result = match hir.blocks[body].tail {
+            Some(tail) => self.expecting(tail, result),
+            None => result.ok(),
+        };
+        let found = self.block_value(body, result);
+        if let (Some(found), Some(result)) = (found, result) {
+            let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);
+            self.expect(at, found, result, written);
+        }
+        (self.result, self.written, self.loops, self.yields, self.framing) = outer;
+        let signature_result = if inferred { found.map(|known| known.ty) } else { signature_result };
+        Some(Signature::new(types?, signature_result?))
+    }
+
+    /// Types the parameters of the function literal `literal`, `bound` giving the value of each
+    /// `$` parameter an instantiation binds, and gives their types when every one is known. A
+    /// parameter written without a type has the one `context` gives it; `unread` is why the
+    /// context cannot be read here, when it cannot.
+    fn parameter_types(
+        &mut self,
+        literal: ExprId,
+        bound: &[Option<Value>],
+        context: Option<&Context>,
+        unread: Option<&Unevaluated>,
+    ) -> Option<Vec<Ty>> {
+        let hir = self.hir();
+        let ExprKind::Fn { params, .. } = &hir.exprs[literal].kind else { return None };
         let mut types = Some(Vec::new());
         for (index, param) in params.iter().enumerate() {
             let ty = match param {
@@ -65,15 +132,15 @@ impl Typer<'_, '_, '_> {
                 // `$` parameter written without one takes any value: the function is generic over
                 // it.
                 Entry::One(Param { pat: Some(pat), ty: None, .. }) if !hir.is_comptime(*pat) => {
-                    let given = context.as_ref().and_then(|c| c.param(index));
-                    match (&given, &unread) {
+                    let given = context.and_then(|c| c.param(index));
+                    match (&given, unread) {
                         (Some(Ok(ty)), _) => self.pattern(*pat, Ok(*ty), None),
                         // Where the place is read per instantiation, so is this parameter's type.
                         (Some(Err(why)), _) | (None, Some(why)) => {
                             self.pattern(*pat, Err(GaveUp::Unevaluated(why.clone())), None);
                         }
                         (None, None) => {
-                            self.untyped(*pat, context.as_ref().map(|c| (c.place, c.arity, params.len())));
+                            self.untyped(*pat, literal, context.map(|c| (c.place, c.arity, params.len())));
                         }
                     }
                     given.and_then(Result::ok)
@@ -98,48 +165,13 @@ impl Typer<'_, '_, '_> {
                 _ => types = None,
             }
         }
-        let frame =
-            hir.suspends(literal).then(|| self.env().literal_signature(literal, bound).ok()).flatten();
-        // A coroutine's annotation names its interface, not the type its body ends with.
-        let written = if frame.is_some() { None } else { returns };
-        let (signature_result, result, yields) = if let Some(frame) = frame.map(|s| s.result) {
-            let step = self.env().frame_step(frame);
-            (Some(frame), step.map(|(_, r)| r).ok_or(GaveUp::Form), step.map(|(y, _)| y))
-        } else {
-            let result = match returns {
-                Some(r) => self.annotation(r),
-                None => match (&context, &unread) {
-                    (Some(context), _) => context.result.clone().map_err(GaveUp::Unevaluated),
-                    (None, Some(why)) => Err(GaveUp::Unevaluated(why.clone())),
-                    (None, None) => Ok(TyKind::unit()),
-                },
-            };
-            (result.clone().ok(), result, None)
-        };
-        let outer = (
-            self.result.replace(result.clone()),
-            replace(&mut self.written, written),
-            take(&mut self.loops),
-            replace(&mut self.yields, yields),
-            replace(&mut self.framing, yields.is_some().then_some(literal)),
-        );
-        let result = match hir.blocks[body].tail {
-            Some(tail) => self.expecting(tail, result),
-            None => result.ok(),
-        };
-        let found = self.block_value(body, result);
-        if let (Some(found), Some(result)) = (found, result) {
-            let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);
-            self.expect(at, found, result, written);
-        }
-        (self.result, self.written, self.loops, self.yields, self.framing) = outer;
-        Some(Signature::new(types?, signature_result?))
+        types
     }
 
     /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
     /// caller passes it. `given` is the number of parameters its place gives types to, when it
     /// does: the type this one has is past them.
-    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize, usize)>) {
+    fn untyped(&mut self, pat: PatId, literal: ExprId, given: Option<(Place, usize, usize)>) {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         let name = match hir.pats[pat].kind {
@@ -147,20 +179,32 @@ impl Typer<'_, '_, '_> {
             _ => "x",
         };
         let msg = Msg::new().text("this parameter has no type");
-        let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: u8"));
+        let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: T"));
         let mut d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
         if let Some((place, has, takes)) = given {
             let count = |n: usize| if n == 1 { "1 parameter".to_string() } else { format!("{n} parameters") };
-            let note =
-                format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes));
+            let note = if has == takes {
+                // The place has a parameter here, but what it says names something not known yet.
+                format!(
+                    "{} gives it a type that is not known yet: it names a `$` parameter that the other arguments leave open",
+                    place.describe()
+                )
+            } else {
+                format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes))
+            };
             d = d.note(note);
+        }
+        // A function written where no declaration names it can take its parameters from the call
+        // it is an argument of, written as a closure.
+        if hir.closure_of(literal).is_none() && hir.decl_valued(literal).is_none() {
+            d = d.note("a function written as an argument takes its parameters' types from the call when it is a closure: `[] (x) { ... }`");
         }
         self.diag.error(d);
     }
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of
     /// this one, and the closure's type.
-    pub(super) fn closure(&mut self, captures: &List<ExprId>, func: ExprId) -> Option<Known> {
+    pub(super) fn closure(&mut self, expr: ExprId, captures: &List<ExprId>, func: ExprId) -> Option<Known> {
         let hir = self.hir();
         let mut typed = Some(Vec::new());
         for capture in captures {
@@ -173,7 +217,12 @@ impl Typer<'_, '_, '_> {
                 _ => typed = None,
             }
         }
-        let signature = self.function(func, &[])?;
+        // What the call it is an argument of expects of it, for what it leaves out.
+        let given = self.hints.remove(&expr).or_else(|| {
+            let expected = self.expected(expr)?.callable()?;
+            Some(Context::passed(expected.params.into_iter().map(Ok).collect(), Some(expected.result)))
+        });
+        let signature = self.function(func, &[], given)?;
         let known = Known { ty: signature.ty(), stage: self.stage };
         self.finding().types.insert(func, known);
         let closure = Closure { f: self.env().func(func), captures: typed?, signature };

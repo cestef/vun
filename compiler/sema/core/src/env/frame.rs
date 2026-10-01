@@ -13,7 +13,7 @@ use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Frame, Marker, Param as ParamTy, Signature, Ty, TyKind, Value};
 
-use super::Env;
+use super::{Context, Env};
 use crate::callable::Parameters;
 use crate::eval::Call;
 use crate::member::{Found, MemberType, Members};
@@ -77,8 +77,8 @@ impl Env<'_, '_> {
             }
             Some(value) => value,
             None => match &context {
-                Some(context) => Value::Type(context.result.clone()?),
-                None => Value::Type(TyKind::unit()),
+                Some(Context { result: Some(result), .. }) => Value::Type(result.clone()?),
+                _ => Value::Type(TyKind::unit()),
             },
         };
         let mut signature = self.signature_in(params, None, context.as_ref())?;

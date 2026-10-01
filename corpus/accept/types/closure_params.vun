@@ -1,0 +1,19 @@
+//! A closure written as an argument takes the types of its parameters from what the call expects
+//! of it: a function type, or the `lang.ops.Call` constraint of the `$` parameter it binds, once
+//! the other arguments have fixed what that names. Its result is that constraint's where it
+//! says one, and the type of its body otherwise (spec 01, section 4).
+
+start := std.os.start(main);
+
+evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
+kept := () -> usize { evens(8).map([] (x) { x * 2 }).filter([] (x) { x.* > 2 }).count() };
+summed := () -> u32 { evens(10).fold(0, [] (acc: u32, x) { (acc + x).sat(u32) }) };
+three: Int(kept()..=kept()) = 3;
+twenty: Int(summed()..=summed()) = 20;
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    raw: ?u8 = .some(3);
+    by: u8 = 4;
+    shifted: ?u16 = raw.map([by] (v) -> u16 { v + by });
+    if shifted == .some(7) { .ok } else { .code(1) }
+};

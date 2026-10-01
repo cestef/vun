@@ -20,3 +20,14 @@ impl lang.ops.Eq for Shape {
 impl lang.ops.Ord for Shape {
     cmp := (a) { .equal }; //~ types.untyped_param
 }
+
+// A closure's parameter whose type the call cannot say yet, as `init`'s exact type is not the
+// accumulator's, is written.
+evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
+summed := () -> u32 { evens(10).fold(0, [] (acc: u32, x) { (acc + x).sat(u32) }) };
+unsaid := () -> u32 { evens(10).fold(0, [] (acc, x: u32) { (acc + x).sat(u32) }) }; //~ types.untyped_param
+
+// A function written as an argument without `[]` is not a closure, and takes its parameters'
+// types only from where it is written.
+apply := ($F: lang.ops.Call((u8), u8), f: F, v: u8) -> u8 { f(v) };
+plain := apply((x) { x }, 1); //~ types.untyped_param

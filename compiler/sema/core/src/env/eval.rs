@@ -225,7 +225,7 @@ impl Env<'_, '_> {
             })
             .collect::<Result<_, _>>()?;
         let result = match (returns, context) {
-            (None, Some(context)) => context.result.clone()?,
+            (None, Some(Context { result: Some(result), .. })) => result.clone()?,
             _ => self.result(returns)?,
         };
         Ok(Signature::new(params, result))

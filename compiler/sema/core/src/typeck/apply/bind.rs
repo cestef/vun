@@ -2,7 +2,7 @@
 //! and each bound to its value in the instantiation the call reaches.
 
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
-use vun_hir::tree::ExprId;
+use vun_hir::tree::{ExprId, ExprKind};
 use vun_primitives::Primitive;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::trap::Unevaluated;
@@ -31,15 +31,32 @@ impl Typer<'_, '_, '_> {
         let quotes = f.quotes(self.env()).unwrap_or_default();
         let receiver = callee.receiver.map(|r| (r, Passing::Asked));
         let receiver = receiver.map(|(r, passing)| (Argument::Expr(r), passing));
-        let arguments = receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing)));
-        let types: Vec<Option<Ty>> = arguments
-            .zip(&plan.slots)
-            .map(|((arg, passing), &slot)| {
-                let ty = match arg {
-                    Argument::Expr(arg) => self.typed(arg)?.ty,
-                    Argument::Matched(ty) => ty,
+        let arguments: Vec<_> =
+            receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing))).collect();
+        let is_closure = |this: &Self, arg: &Argument| matches!(arg, Argument::Expr(e) if matches!(this.hir().exprs[*e].kind, ExprKind::Closure { .. }));
+        // A closure written as an argument is typed last: what the other arguments say of the `$`
+        // parameters it is passed for is what its own parameters are.
+        let mut types: Vec<Option<Ty>> = vec![None; arguments.len()];
+        for closures in [false, true] {
+            let inferred = if closures { Unifier::infer(self.env(), f, plan, &types) } else { None };
+            for (i, ((arg, passing), &slot)) in arguments.iter().zip(&plan.slots).enumerate() {
+                if is_closure(self, arg) != closures {
+                    continue;
+                }
+                let ty = match *arg {
+                    Argument::Expr(arg) => {
+                        if closures {
+                            let bound =
+                                Self::bound_by_slot(plan, inferred.as_deref(), f.comptime(self.env()));
+                            if let Some(context) = self.argument_context(f, slot, bound) {
+                                self.hints.insert(arg, context);
+                            }
+                        }
+                        self.typed(arg).map(|known| known.ty)
+                    }
+                    Argument::Matched(ty) => Some(ty),
                 };
-                let ty = match passing {
+                types[i] = ty.and_then(|ty| match passing {
                     Passing::Written => Some(ty),
                     Passing::Asked => {
                         let reached = ty.through_borrows();
@@ -48,11 +65,13 @@ impl Typer<'_, '_, '_> {
                             None => Some(reached),
                         }
                     }
-                };
+                });
                 // An argument for a `Code(T)` parameter is passed as code of its type.
-                if quotes.get(slot) == Some(&true) { ty.map(TyKind::code) } else { ty }
-            })
-            .collect();
+                if quotes.get(slot) == Some(&true) {
+                    types[i] = types[i].map(TyKind::code);
+                }
+            }
+        }
         let values = Unifier::infer(self.env(), f, plan, &types)?;
         if values.iter().any(Option::is_none) {
             let written = args.iter().map(|a| match a {
@@ -65,6 +84,25 @@ impl Typer<'_, '_, '_> {
             return None;
         }
         Some(plan.omitted.iter().copied().zip(values.into_iter().flatten()).collect())
+    }
+
+    /// The values of the `$` parameters inferred so far, by the position of the parameter.
+    fn bound_by_slot(
+        plan: &Plan,
+        inferred: Option<&[Option<Value>]>,
+        comptime: Option<Vec<bool>>,
+    ) -> Vec<Option<Value>> {
+        let mut bound = vec![None; comptime.map_or(0, |c| c.len())];
+        for (&slot, value) in plan.omitted.iter().zip(inferred.into_iter().flatten()) {
+            // The type of a literal, `Int(0..=0)` for `0`, is one the call may still widen.
+            let exact = value.as_ref().and_then(Value::as_type).and_then(|ty| ty.interval());
+            if let Some(entry) = bound.get_mut(slot)
+                && exact.is_none_or(|i| i.lo() != i.hi())
+            {
+                entry.clone_from(value);
+            }
+        }
+        bound
     }
 
     /// The instantiation a call of `f` reaches, each `$` parameter bound to the value of its

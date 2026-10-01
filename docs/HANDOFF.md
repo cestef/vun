@@ -141,7 +141,8 @@ integers drawn by distance from 0 then side), 383 (generic bodies checked per in
 not typed abstractly), 384 (benchmarks, `vun bench`), 386 (simulations; shrinking keeps only
 smaller cases), 387 (coverage, `--cover`, `vun fuzz`) and 388 (the wasm linker), 398 (`{?}`, `{x}`, `{b}`, `Debug`), 399 (a name a spread selects is a
 member), 400 (an array has its slice's impls), 401 (`impl I for T { }`), 402 (aliases for delegation; interface declarations are literals), 403 (a literal takes
-its parameters from its annotation) and 404 (an impl member takes them from its requirement).
+its parameters from its annotation), 404 (an impl member takes them from its requirement) and 405 (a closure
+argument takes them from the call).
 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
@@ -154,11 +155,12 @@ its parameters from its annotation) and 404 (an impl member takes them from its 
   for minutes (decision 402). Declare interfaces as literals; the engine should still not spin.
 - An `impl` member may leave its parameters' types and its result to the requirement
   (decisions 403, 404), including a member of a witness a `#[lang.derive]` function builds and a
-  result naming the witness's own member (`Result(usize, Error)`). Still written: a member with
-  another number of parameters than its requirement (`Concat.concat` lacks `$R`, `Iterate` for a
-  slice takes `&[T]` where the requirement says `Self`), and a coroutine's result. A literal that
-  is an argument takes its parameters from the parameter it is passed for only when it is
-  typed as part of the body it is written in (a closure).
+  result naming the witness's own member (`Result(usize, Error)`); a closure written as an
+  argument may leave them to the call (decision 405). Still written: a member with another
+  number of parameters than its requirement (`Concat.concat` lacks `$R`, `Iterate` for a slice
+  takes `&[T]` where the requirement says `Self`), a coroutine's result, and a function literal
+  written as an argument without `[]`, which is no closure: its signature is part of its
+  identity as a value (`Func`), and an expected one would have to be too.
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and

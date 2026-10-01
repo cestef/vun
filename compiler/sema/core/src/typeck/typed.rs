@@ -161,7 +161,7 @@ impl Query for Typed {
         let hir = &env.parsed.hir;
         let ExprKind::Fn { body, .. } = &hir.exprs[i.f.literal.expr.id].kind else { return None };
         let mut typer = Typer::new(&env, Stage::Run);
-        typer.function(i.f.literal.expr.id, &i.args);
+        typer.function(i.f.literal.expr.id, &i.args, None);
         let mut exprs = Exprs(0);
         exprs.block(hir, *body);
         Some(Arc::new(typer.finish(exprs.0)))
