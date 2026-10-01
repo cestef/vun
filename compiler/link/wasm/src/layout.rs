@@ -15,8 +15,9 @@ use crate::resolve::{Func, Import, Resolved, Seg, Symbols};
 use crate::section::Section;
 use crate::unlinked::Unlinked;
 
-/// The bytes of the stack: `wasm-ld`'s default.
-pub const STACK: u32 = 64 * 1024;
+/// The bytes of the stack: a megabyte, as Rust's wasm targets give it, since `wasm-ld`'s 64 KiB
+/// holds two buffers of a command line's size and no more.
+pub const STACK: u32 = 1024 * 1024;
 /// The alignment of the stack's top and of the heap's start: of anything.
 const ALIGN: u32 = 16;
 

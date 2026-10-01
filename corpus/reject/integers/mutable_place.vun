@@ -1,0 +1,17 @@
+//! A comparison does not narrow a mutable place, since any write would undo it (spec 04, rule 4):
+//! a value that does not fit for that reason is told to bind the place first.
+
+Sink := struct {
+    len: Int(0..=8),
+};
+
+push := (s: &mut Sink) {
+    if s.len == 8 { return; }
+    s.len = s.len + 1; //~ int.does_not_fit "bind it first"
+};
+
+bound := (s: &mut Sink) {
+    len := s.len;
+    if len == 8 { return; }
+    s.len = len + 1;
+};

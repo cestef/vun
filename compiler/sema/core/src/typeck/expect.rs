@@ -59,9 +59,13 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             } else {
                 Msg::new().text("widen ").code(&written).text(" to hold the value")
             };
-            Diagnostic::error(errors::INT_DOES_NOT_FIT, msg)
+            let d = Diagnostic::error(errors::INT_DOES_NOT_FIT, msg)
                 .child(ChildKind::Note, note)
-                .child(ChildKind::Help, help)
+                .child(ChildKind::Help, help);
+            match self.compared_place(at) {
+                Some(place) => d.child(ChildKind::Help, Self::unnarrowed(&place)),
+                None => d,
+            }
         } else {
             let msg = Msg::new().text("expected ").code(&written).text(", found ").ty(found.ty.to_string());
             let d = Diagnostic::error(errors::TYPES_MISMATCH, msg);
@@ -108,12 +112,23 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         })
     }
 
+    /// What to do about the mutable `place`, compared above without being narrowed (spec 04,
+    /// rule 4): a binding of it is narrowed.
+    fn unnarrowed(place: &str) -> Msg {
+        let name = place.rsplit('.').next().unwrap_or(place);
+        Msg::new()
+            .code(place)
+            .text(" is a mutable place, which a comparison does not narrow; bind it first, ")
+            .code(format!("{name} := {place};"))
+            .text(", and use the binding")
+    }
+
     /// The fix taking away the borrow written at `at`, when what it borrows is already accepted
     /// where `expected` is: `&mut into[n..]` where `into[n..]` is the `&mut [u8]` expected.
     fn unborrowing(&self, at: OriginId, expected: Ty) -> Option<Fix> {
         let hir = self.hir();
-        let (_, written) = hir.exprs.iter().find(|(_, e)| e.origin == at)?;
-        let ExprKind::Borrow { operand, .. } = written.kind else { return None };
+        let written = self.written_at(at)?;
+        let ExprKind::Borrow { operand, .. } = hir.exprs[written].kind else { return None };
         let inner = self.found.types.get(&operand)?;
         if !expected.accepts(&inner.ty) {
             return None;

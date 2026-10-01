@@ -42,6 +42,7 @@ mod suspend;
 #[cfg(test)]
 mod tests;
 mod typed;
+mod unnarrowed;
 
 use std::sync::Arc;
 

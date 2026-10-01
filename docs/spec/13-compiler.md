@@ -1055,8 +1055,8 @@ backend's, clang's) and writes the program, as `wasm-ld` does:
 - **What is kept.** The entry, the functions objects export (under the name an object's export
   gives one, else the symbol's) and the symbols objects keep (`NO_STRIP`) are the roots; a
   function, segment or import nothing reaches from them through relocations is left out.
-- **Memory.** The stack comes first, 64 KiB growing down from its top, so overflowing it leaves
-  memory rather than writing over data; then `.rodata`, `.data`, the sections sources name, and
+- **Memory.** The stack comes first, a megabyte growing down from its top, so overflowing it
+  leaves memory (the engine's out-of-bounds trap) rather than writing over data; then `.rodata`, `.data`, the sections sources name, and
   `.bss`, each segment at its alignment. Each section is one data segment, and one holding only
   zeros is not written, memory starting as zeros. Memory is exported as `memory`.
 - **Relocations** are applied in place, as the objects padded their fields; a function whose
