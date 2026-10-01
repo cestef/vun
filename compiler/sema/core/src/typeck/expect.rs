@@ -37,7 +37,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             let note = Msg::new().text("the value is ").ty(found.ty.to_string());
             // A type written as an alias is shown with what it stands for; otherwise it is said.
             let note = if written == expected.to_string() {
-                note.text(", which holds values ").ty(written.clone()).text(" does not")
+                note.text(", which is not within ").ty(written.clone())
             } else {
                 note.text(", and ").code(&written).text(" is ").ty(expected.to_string())
             };
