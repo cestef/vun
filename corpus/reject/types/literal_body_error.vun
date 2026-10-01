@@ -1,0 +1,7 @@
+//! A function written as an argument without a result is typed from its body: an error in the body
+//! is reported once, there, and not again for the parameter types that depended on it.
+
+bump := (raw: ?u8) {
+    bumped := raw.map((x) { x + missing }); //~ names.unresolved
+    _ := bumped;
+};

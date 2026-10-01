@@ -4,10 +4,9 @@
 
 use std::mem::{replace, take};
 
-use vun_diag::{Diagnostic, Msg, errors};
+use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
-use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatId, PatKind};
-use vun_origin::OriginId;
+use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
 use vun_query::Cx;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::ExprRef;
@@ -28,6 +27,9 @@ impl Typer<'_, '_, '_> {
             let expected = self.expected(expr)?.callable()?;
             Some(Context::passed(expected.params.into_iter().map(Ok).collect(), Some(expected.result)))
         });
+        if given.as_ref().is_some_and(|c| self.takes_result(expr, c)) {
+            return self.inferred_literal(expr, given);
+        }
         // The body being typed is not asked for what it is typing: only what the literal's own
         // place says, and the call's.
         let context = self.env().own_context(expr).or_else(|| given.map(Ok));
@@ -40,6 +42,31 @@ impl Typer<'_, '_, '_> {
             f.and_then(|f| f.generic(self.env())).ok_or(why)
         });
         self.known(expr, ty.map(|ty| Known { ty, stage: Stage::Compile }))
+    }
+
+    /// Whether the function literal `expr`, passed as `context` says, is left to give its result
+    /// as its body has it: it writes none and the call fixes none.
+    fn takes_result(&self, expr: ExprId, context: &Context) -> bool {
+        let hir = self.hir();
+        matches!(&hir.exprs[expr].kind, ExprKind::Fn { returns: None, .. })
+            && !hir.suspends(expr)
+            && matches!(context.place, Place::Argument)
+            && context.result.is_none()
+    }
+
+    /// The function literal `expr` as a value, its result the type of its body, as a closure's is.
+    /// The body is typed again on its own, with that signature, and reports there: what this
+    /// finds of it is only its type.
+    fn inferred_literal(&mut self, expr: ExprId, given: Option<Context>) -> Option<Known> {
+        let reported = replace(&mut self.diag, DiagCtxt::new());
+        let signature = self.function(expr, &[], given, true);
+        self.diag = reported;
+        let Some(signature) = signature else {
+            // Its body, typed on its own, reports why.
+            self.give_up(expr, GaveUp::Reported);
+            return None;
+        };
+        Some(Known { ty: signature.ty(), stage: Stage::Compile })
     }
 
     /// Types the function literal `literal`'s parameters and body, `bound` giving the value of
@@ -185,48 +212,6 @@ impl Typer<'_, '_, '_> {
             }
         }
         types
-    }
-
-    /// Reports that a function writing no result, whose result is `result` for that, has a body
-    /// of the type `found`: the type to write is that.
-    fn unwritten_result(&mut self, at: OriginId, found: Known, result: Ty) {
-        let msg =
-            Msg::new().text("expected ").code(result.to_string()).text(", found ").ty(found.ty.to_string());
-        let help = Msg::new()
-            .text("this function writes no result, so it is ")
-            .code(result.to_string())
-            .text("; write the type it gives after its parameters, as ")
-            .code(format!("-> {}", found.ty));
-        self.diag.error(Diagnostic::error(errors::TYPES_MISMATCH, msg).at(at, None).help(help));
-    }
-
-    /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
-    /// caller passes it. `given` is the number of parameters its place gives types to, when it
-    /// does: the type this one has is past them.
-    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize, usize)>) {
-        let hir = self.hir();
-        let origin = hir.pats[pat].origin;
-        let name = match hir.pats[pat].kind {
-            PatKind::Bind(b) => hir.binders[b].name.as_str(),
-            _ => "x",
-        };
-        let msg = Msg::new().text("this parameter has no type");
-        let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: T"));
-        let mut d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
-        if let Some((place, has, takes)) = given {
-            let count = |n: usize| if n == 1 { "1 parameter".to_string() } else { format!("{n} parameters") };
-            let note = if has == takes {
-                // The place has a parameter here, but what it says names something not known yet.
-                format!(
-                    "{} gives it a type that is not known yet: it names a `$` parameter that the other arguments leave open",
-                    place.describe()
-                )
-            } else {
-                format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes))
-            };
-            d = d.note(note);
-        }
-        self.diag.error(d);
     }
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of

@@ -180,8 +180,10 @@ parameter types and the result. It is typed after the other arguments, so what t
 parameters the constraint names is known, and what the call is expected to give does too (`fold(0,
 f)` where a `u32` is expected is `u32`, not the exact type of `0`): `xs.map([] (x) { x * 2 })`,
 `apply((x) { x }, 5)`. A parameter whose type still depends on a `$` parameter the call leaves open
-is written. A result neither written nor said is the type of a closure's body; a function without a
-capture list is `()` as any function is, and the mismatch of its body says what to write.
+is written. A result neither written nor said is the type of the body, for a function without a capture
+list as for a closure; a function written anywhere else is `()` as any function is, and the
+mismatch of its body says what to write. A callable known by its constraint is called in the
+generic body as it is, `f(v)` for `$F: Call((u8), u8), f: F`.
 
 ### Calls and methods
 

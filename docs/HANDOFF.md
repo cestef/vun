@@ -158,8 +158,7 @@ argument takes them from the call).
   result naming the witness's own member (`Result(usize, Error)`); a function written as an
   argument may leave them to the call (decision 405). Still written: a member with another
   number of parameters than its requirement (`Concat.concat` lacks `$R`, `Iterate` for a slice
-  takes `&[T]` where the requirement says `Self`), a coroutine's result, a bare literal's result
-  (only a closure's is the type of its body), and a parameter the call cannot say before the
+  takes `&[T]` where the requirement says `Self`), a coroutine's result, and a parameter the call cannot say before the
   closure is typed (the accumulator of a `fold` nothing expects a result of).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).

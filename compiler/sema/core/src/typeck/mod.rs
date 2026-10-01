@@ -26,6 +26,7 @@ mod names;
 mod narrow;
 pub(crate) mod omitted;
 mod operator;
+mod unwritten;
 
 pub use gave_up::Leaves;
 pub use loops::Iteration;

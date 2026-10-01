@@ -149,10 +149,30 @@ impl Typer<'_, '_, '_> {
         let types = written.iter().map(|&a| Some(self.typed(a)?.ty)).collect::<Option<Vec<_>>>()?;
         let params = TyKind::Tuple(types).intern();
         let args = [Some(Value::Type(params)), None];
-        let method = self.env().made_implemented_by(left.ty.through_borrows(), constructor, &args, name)?;
-        self.check_method(call, name, &method);
-        let args = [Argument::Matched(params)];
-        self.applied(Operation::Expr(call), call, (method.owner, name), callee, left, &args)
+        let ty = left.ty.through_borrows();
+        let owner = if ty.is_required() {
+            // In a generic body, what the interface requires of its parameter.
+            self.env().required(ty)?
+        } else {
+            let method = self.env().made_implemented_by(ty, constructor, &args, name)?;
+            self.check_method(call, name, &method);
+            method.owner
+        };
+        let args = [Argument::Matched(self.passed_as_required(owner, name, params))];
+        self.applied(Operation::Expr(call), call, (owner, name), callee, left, &args)
+    }
+
+    /// The type of the arguments `params` as `member` of `owner` takes them. A requirement
+    /// written `Call((T), R)` takes the one argument `T` as it is, where `(T)` is `T`.
+    fn passed_as_required(&self, owner: Ty, member: Symbol, params: Ty) -> Ty {
+        let taken = self.env().cx.get::<MemberType>(&(owner, member)).ok();
+        let taken = taken.and_then(|k| k.ty.callable()).and_then(|s| s.params.get(1).copied());
+        match (&*params, taken) {
+            (TyKind::Tuple(one), Some(taken)) if one.len() == 1 && !matches!(*taken, TyKind::Tuple(_)) => {
+                one[0]
+            }
+            _ => params,
+        }
     }
 
     /// The call at `site` of `method`, a function of a witness or of an interface's requirements,

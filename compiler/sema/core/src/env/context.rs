@@ -20,7 +20,7 @@ use vun_sema_ty::{Signature, Ty, TyKind};
 use super::Env;
 use crate::callable::Written;
 use crate::decl::TypedDecl;
-use crate::typeck::Typed;
+use crate::typeck::{GaveUp, Typed};
 
 /// The types a place gives the parts of a function literal; why for a part it cannot give here,
 /// such as a result that names a member of a `$` parameter an instantiation binds.
@@ -93,12 +93,13 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn context(&self, literal: ExprId) -> Option<Result<Context, Unevaluated>> {
         self.own_context(literal)
-            .or_else(|| self.placed(literal).map(|signature| Ok(Context::from(signature))))
+            .or_else(|| self.placed(literal).map(|signature| signature.map(Context::from)))
     }
 
     /// What the call a function literal is an argument of says of its signature, as typing the
-    /// body it is written in found: the type it gave the literal.
-    fn placed(&self, literal: ExprId) -> Option<Signature> {
+    /// body it is written in found: the type it gave the literal, or that it gave it none, which
+    /// that body reported the reason for.
+    fn placed(&self, literal: ExprId) -> Option<Result<Signature, Unevaluated>> {
         if !self.leaves_out(literal) {
             return None;
         }
@@ -110,7 +111,11 @@ impl Env<'_, '_> {
             let decl = DeclRef::new(self.file.clone(), hir, hir.enclosing_member(literal)?);
             Arc::clone(&self.cx.get::<TypedDecl>(&(decl, None, Vec::new()))?.found)
         };
-        found.types.get(&literal)?.ty.signature()
+        match found.types.get(&literal) {
+            Some(known) => known.ty.signature().map(Ok),
+            None => (found.gave_up.get(&literal) == Some(&GaveUp::Reported))
+                .then_some(Err(Unevaluated::Unsupported)),
+        }
     }
 
     /// What the place of the function literal `literal` says of its signature without asking

@@ -1,7 +1,6 @@
 //! A function that writes no result returns `()`: a body of another type is a mismatch, which says
-//! what to write. A closure written as an argument is given the type of its body instead.
+//! what to write. A function written as an argument is given the type of its body instead.
 
-bump := (raw: ?u8) {
-    bumped := raw.map((x) { (x + 1).wrap(u8) }); //~ types.mismatch
-    _ := bumped;
+bump := (x: u8) {
+    (x + 1).wrap(u8) //~ types.mismatch
 };

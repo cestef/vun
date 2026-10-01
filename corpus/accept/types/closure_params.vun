@@ -1,8 +1,8 @@
 //! A function written as an argument, a closure or not, takes the types of its parameters from
 //! what the call expects of it: a function type, or the `lang.ops.Call` constraint of the `$`
 //! parameter it binds, once the other arguments, and what the call is expected to give, have fixed
-//! what that names. A closure's result is that constraint's where it says one, and the type of its
-//! body otherwise; a bare function writes it (spec 01, section 4).
+//! what that names. A result is that constraint's where it says one, and the type of the body
+//! otherwise, for a bare function as for a closure (spec 01, section 4).
 
 start := std.os.start(main);
 
@@ -13,6 +13,8 @@ three: Int(kept()..=kept()) = 3;
 twenty: Int(summed()..=summed()) = 20;
 
 twice := (f: (x: u8) -> u8, v: u8) -> u8 { f(f(v)) };
+// A callable known by its `Call` constraint is called in the generic body too.
+apply := ($F: lang.ops.Call((u8), u8), f: F, v: u8) -> u8 { f(v) };
 // At the top of a file, where no body holds the call, too.
 five := twice((x) { x }, 5);
 exact_five: Int(five..=five) = 5;
@@ -23,5 +25,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     shifted: ?u16 = raw.map([by] (v) { v + by });
     doubled := twice((x) { (x * 2).wrap(u8) }, 5);
     bumped := raw.map((x) -> u8 { (x + 1).wrap(u8) });
-    if shifted == .some(7) and doubled == 20 and bumped == .some(4) { .ok } else { .code(1) }
+    applied := apply((x) { (x + 1).wrap(u8) }, 5);
+    bare := raw.map((x) { (x + 1).wrap(u8) });
+    if shifted == .some(7) and doubled == 20 and bumped == .some(4) and bare == bumped and applied == 6 {
+        .ok
+    } else { .code(1) }
 };
