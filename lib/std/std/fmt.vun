@@ -1,7 +1,8 @@
 //! Formatting, with format strings read at compile time (spec 03, section 4):
 //! `print(w, "{} args\n", n)` writes the text of the format string with each `{}` replaced by
 //! the next argument, as its `Format` impl writes it. Another specifier between the braces writes
-//! it another way: `{?}` by `Debug`, `{x}` by `Hex` and `{b}` by `Binary`.
+//! it another way: `{?}` by `Debug`, `{x}` by `Hex` and `{b}` by `Binary`. After a `:` goes where
+//! it sits in a width: `{:>8}` pads on the left to 8 bytes, `{x:0>4}` with `0`, `{:^5}` on both sides.
 
 ..std.fmt.debug.{ Debug };
 ..std.fmt.places.{ Error, Piece, Problem, Spec, holes, parse, pieces, specs };
@@ -80,7 +81,16 @@ print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..arg
             $if piece.arg < holes($format) {
                 $ty := lang.meta.Unborrowed(lang.meta.items(A)[piece.arg]);
                 $if lang.meta.implements(piece.spec.interface, ty) {
-                    args.$(piece.arg).$(piece.spec.method)(w)?;
+                    $if piece.layout.width == 0 {
+                        args.$(piece.arg).$(piece.spec.method)(w)?;
+                    } else {
+                        mut measure: std.fmt.layout.Measure(W) = .{ .len = 0 };
+                        args.$(piece.arg).$(piece.spec.method)(&mut measure)?;
+                        sides := piece.layout.sides(measure.len);
+                        std.fmt.layout.pad(w, piece.layout.fill, sides.0)?;
+                        args.$(piece.arg).$(piece.spec.method)(w)?;
+                        std.fmt.layout.pad(w, piece.layout.fill, sides.1)?;
+                    }
                 } else {
                     $std.diag.error(.{
                         .at = .some(format.within(piece.hole)),

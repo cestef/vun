@@ -16,8 +16,15 @@ pub const Piece: Item = Item::new(&["std", "fmt", "places", "Piece"]);
 /// Opens and closes the place of an argument.
 pub const open: Item = Item::new(&["std", "fmt", "places", "open"]);
 pub const close: Item = Item::new(&["std", "fmt", "places", "close"]);
-/// The place of an argument that starts at `at` in `format`: how the argument is written and how
-/// many bytes the place covers; none where no place starts there.
+pub const colon: Item = Item::new(&["std", "fmt", "places", "colon"]);
+/// The place of an argument that starts at `at` in `format`: a `{`, a specifier, optionally a `:`
+/// and a layout, and the `}` that closes it.
+pub const Place: Item = Item::new(&["std", "fmt", "places", "Place"]);
+/// The specifier that `mark` writes.
+pub const specifier: Item = Item::new(&["std", "fmt", "places", "specifier"]);
+/// The index of the first `byte` in `text`, or its length.
+pub const find: Item = Item::new(&["std", "fmt", "places", "find"]);
+/// The place of an argument that starts at `at` in `format`; none where no place starts there.
 pub const hole: Item = Item::new(&["std", "fmt", "places", "hole"]);
 /// The number of arguments `format` takes: its places.
 pub const holes: Item = Item::new(&["std", "fmt", "places", "holes"]);

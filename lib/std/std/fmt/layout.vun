@@ -1,0 +1,89 @@
+//! The layout of an argument in a format string (spec 03, section 4): after a `:` in its place, an
+//! optional fill and alignment, `<`, `>` or `^`, and a width, as in `{x:0>8}` or `{:^5}`. An
+//! argument shorter than the width is padded with the fill; a longer one is written whole.
+
+/// Where an argument sits in the width it is given.
+Align := enum { start, end, center };
+
+Layout := struct {
+    /// The byte that pads.
+    fill: u8 = space,
+    align: Align = .start,
+    /// The least number of bytes the argument takes; 0 pads nothing.
+    width: usize = 0,
+
+    /// How many fills go before and after an argument of `len` bytes.
+    sides := (self: Layout, len: usize) -> (usize, usize) {
+        room := (self.width - len).sat(usize);
+        before := match self.align {
+            .start => 0,
+            .end => room,
+            .center => room / 2,
+        };
+        (before, (room - before).sat(usize))
+    };
+};
+
+space := 32;
+/// Bounds of the bytes of a decimal digit, and the first.
+digit_first := 48;
+digit_last := 57;
+/// A width has at most this many digits.
+width_digits := 6;
+
+/// The alignment `c` stands for.
+alignment := (c: u8) -> Option(Align) {
+    if c == "<"[0] { return .some(.start); }
+    if c == ">"[0] { return .some(.end); }
+    if c == "^"[0] { return .some(.center); }
+    .none
+};
+
+/// The width `digits` write, none if it is no number of at most `width_digits` digits.
+width_of := (digits: &[u8]) -> Option(usize) {
+    if digits.len() > width_digits { return .none; }
+    mut n: usize = 0;
+    for c in digits {
+        if c < digit_first or c > digit_last { return .none; }
+        n = (n * 10 + (c - digit_first).to(usize)).wrap(usize);
+    }
+    .some(n)
+};
+
+/// The layout the bytes after the `:` of a place say, none if they say none.
+layout_of := (text: &[u8]) -> Option(Layout) {
+    mut layout: Layout = .{};
+    mut rest := text;
+    if rest.len() >= 2 and alignment(rest[1]) != .none {
+        layout.fill = rest[0];
+        rest = rest[1..];
+    }
+    if rest.len() >= 1 and alignment(rest[0]) != .none {
+        if .some(align) = alignment(rest[0]) { layout.align = align; }
+        rest = rest[1..];
+    }
+    if .some(width) = width_of(rest) {
+        layout.width = width;
+        return .some(layout);
+    }
+    .none
+};
+
+/// A writer that takes bytes and keeps none, to find how many an argument writes. It fails as the
+/// writer it stands for does, which it never calls.
+Measure := ($W: std.fmt.Writer) -> type { struct { len: usize } };
+
+impl std.fmt.Writer for Measure($W) {
+    Error: type = W.Error;
+    closed: W.Error = W.closed;
+    write := (self: &mut Measure(W), bytes: &[u8]) -> Result(usize, W.Error) {
+        self.len += bytes.len();
+        .ok(bytes.len())
+    };
+}
+
+/// Writes `fill` `n` times.
+pad := ($W: std.fmt.Writer, w: &mut W, fill: u8, n: usize) -> Result((), W.Error) {
+    for _ in 0..n { w.write_all(&[fill])?; }
+    .ok(())
+};

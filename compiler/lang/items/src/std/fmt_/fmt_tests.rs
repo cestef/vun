@@ -59,3 +59,12 @@ pub const a_negative_integer_has_a_minus_before_its_digits_in_any_base: Item = I
 pub const the_widest_integers_are_written_in_the_smallest_base: Item = Item::new(
     &["std", "fmt", "tests", "the_widest_integers_are_written_in_the_smallest_base"],
 );
+pub const a_width_pads_the_argument_on_the_side_its_alignment_says: Item = Item::new(
+    &["std", "fmt", "tests", "a_width_pads_the_argument_on_the_side_its_alignment_says"],
+);
+pub const a_fill_pads_with_its_byte_and_a_specifier_comes_first: Item = Item::new(
+    &["std", "fmt", "tests", "a_fill_pads_with_its_byte_and_a_specifier_comes_first"],
+);
+pub const an_argument_wider_than_its_width_is_written_whole: Item = Item::new(
+    &["std", "fmt", "tests", "an_argument_wider_than_its_width_is_written_whole"],
+);

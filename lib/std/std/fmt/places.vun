@@ -1,6 +1,6 @@
 //! The places of arguments in a format string (spec 03, section 4): `{}`, `{?}`, `{x}` and `{b}`,
-//! each a row of `specs`, read once at compile time into the text between them, or the first
-//! problem.
+//! each a row of `specs`, then optionally a `:` and a layout (`fmt/layout.vun`), read once at
+//! compile time into the text between them, or the first problem.
 
 /// How an argument is written, as the bytes between the braces of its place say: the interface
 /// that writes it, and the method of it that does.
@@ -30,18 +30,55 @@ Piece := struct {
     hole: lang.Range = 0..0,
     /// How the argument is written.
     spec: Spec = specs[0],
+    /// Where it sits in its width.
+    layout: std.fmt.layout.Layout = .{},
 };
 
 /// Opens and closes the place of an argument.
 open := "{"[0];
 close := "}"[0];
+colon := ":"[0];
 
-/// The place of an argument that starts at `at` in `format`: how the argument is written and how
-/// many bytes the place covers; none where no place starts there.
-hole := (format: &[u8], at: usize) -> Option((Spec, usize)) {
+/// The place of an argument that starts at `at` in `format`: a `{`, a specifier, optionally a `:`
+/// and a layout, and the `}` that closes it.
+Place := struct {
+    spec: Spec,
+    layout: std.fmt.layout.Layout,
+    /// The bytes the place covers.
+    len: usize,
+};
+
+/// The specifier that `mark` writes.
+specifier := (mark: &[u8]) -> Option(Spec) {
     for spec in specs {
-        place := "{" ++ spec.mark ++ "}";
-        if format[at..].starts_with(place) { return .some((spec, place.len())); }
+        if mark == spec.mark { return .some(spec); }
+    }
+    .none
+};
+
+/// The index of the first `byte` in `text`, or its length.
+find := (text: &[u8], byte: u8) -> usize {
+    for i in 0..text.len() {
+        if text[i] == byte { return i; }
+    }
+    text.len()
+};
+
+/// The place of an argument that starts at `at` in `format`; none where no place starts there.
+hole := (format: &[u8], at: usize) -> Option(Place) {
+    if format[at] != open { return .none; }
+    rest := format[at + 1..];
+    n := find(rest, close);
+    if n == rest.len() { return .none; }
+    inner := rest[0..n];
+    cut := find(inner, colon);
+    parsed := if cut == inner.len() { Option(std.fmt.layout.Layout).some(.{}) } else {
+        std.fmt.layout.layout_of(inner[cut + 1..])
+    };
+    if .some(spec) = specifier(inner[0..cut]) {
+        if .some(layout) = parsed {
+            return .some(.{ .spec = spec, .layout = layout, .len = (n + 2).to(usize) });
+        }
     }
     .none
 };
@@ -51,7 +88,7 @@ holes := ($format: &[u8]) -> usize {
     mut n: usize = 0;
     mut i: usize = 0;
     for i < format.len() {
-        if .some((_, len)) = hole(format, i) { n += 1; i += len; } else { i += 1; }
+        if .some(place) = hole(format, i) { n += 1; i += place.len; } else { i += 1; }
     }
     n
 };
@@ -64,10 +101,16 @@ pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
     mut start: usize = 0;
     mut i: usize = 0;
     for i < format.len() {
-        if .some((spec, len)) = hole(format, i) {
-            out[n] = .{ .text = format[start..i], .arg = n, .hole = i..i + len, .spec = spec };
+        if .some(place) = hole(format, i) {
+            out[n] = .{
+                .text = format[start..i],
+                .arg = n,
+                .hole = i..i + place.len,
+                .spec = place.spec,
+                .layout = place.layout,
+            };
             n += 1;
-            i += len;
+            i += place.len;
             start = i;
         } else {
             i += 1;
@@ -90,7 +133,7 @@ Problem := enum {
     text := (self: Problem) -> &[u8] {
         match self {
             .unclosed => "this `{` is not closed",
-            .unknown => "unknown format specifier",
+            .unknown => "unknown format specifier or layout",
             .unopened => "this `}` closes no `{`",
         }
     };
@@ -99,7 +142,7 @@ Problem := enum {
     help := (self: Problem) -> &[u8] {
         match self {
             .unclosed => "an argument goes where `{}` is written; close the `{` with a `}`",
-            .unknown => "`{}` writes the next argument as its `Format` impl does, `{?}` as its `Debug` impl, `{x}` in base 16 and `{b}` in base 2",
+            .unknown => "`{}` writes the next argument as its `Format` impl does, `{?}` as its `Debug` impl, `{x}` in base 16 and `{b}` in base 2; after a `:` goes a layout, such as `{:>8}` or `{x:0>4}`",
             .unopened => "a `}` only closes a `{`; write `{}` where an argument goes",
         }
     };
@@ -115,10 +158,10 @@ Error := struct {
 parse := ($format: &[u8]) -> Result([holes(format) + 1]Piece, Error) {
     mut i: usize = 0;
     for i < format.len() {
-        if .some((_, len)) = hole(format, i) {
-            i += len;
+        if .some(place) = hole(format, i) {
+            i += place.len;
         } else if format[i] == open {
-            // Not a place: a `}` closes it after something that is no specifier, or none does.
+            // Not a place: a `}` closes it after something that is no specifier or layout, or none does.
             for j in i..format.len() {
                 if format[j] == close { return .err(.{ .reason = .unknown, .at = i..j + 1 }); }
             }

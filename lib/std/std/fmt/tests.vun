@@ -120,3 +120,24 @@ the_widest_integers_are_written_in_the_smallest_base := () {
     std.fmt.print(&mut bits, "{b}", wide).expect("room");
     std.testing.assert(bits.len() == 128);
 };
+
+#[test]
+a_width_pads_the_argument_on_the_side_its_alignment_says := () {
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(&mut slab, "[{:>5}] [{:<5}] [{:^5}] [{:5}]", 42, 42, 42, 42).expect("room");
+    std.testing.assert(slab.bytes() == "[   42] [42   ] [ 42  ] [42   ]");
+};
+
+#[test]
+a_fill_pads_with_its_byte_and_a_specifier_comes_first := () {
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(&mut slab, "{x:0>4} {b:*^7} {:->6}", 255, 5, "ab").expect("room");
+    std.testing.assert(slab.bytes() == "00ff **101** ----ab");
+};
+
+#[test]
+an_argument_wider_than_its_width_is_written_whole := () {
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(&mut slab, "{:>2}|{?:>3}", 12345, "abc").expect("room");
+    std.testing.assert(slab.bytes() == "12345|\"abc\"");
+};

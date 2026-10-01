@@ -10,6 +10,8 @@ use crate::Item;
 pub const debug: Item = Item::new(&["std", "fmt", "debug"]);
 /// The namespace `std.fmt.json`.
 pub const json: Item = Item::new(&["std", "fmt", "json"]);
+/// The namespace `std.fmt.layout`.
+pub const layout: Item = Item::new(&["std", "fmt", "layout"]);
 /// The namespace `std.fmt.places`.
 pub const places: Item = Item::new(&["std", "fmt", "places"]);
 /// The namespace `std.fmt.tests`.

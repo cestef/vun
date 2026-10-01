@@ -13,3 +13,5 @@ pub const arg: Item = Item::new(&["std", "fmt", "places", "Piece", "arg"]);
 pub const hole: Item = Item::new(&["std", "fmt", "places", "Piece", "hole"]);
 /// How the argument is written.
 pub const spec: Item = Item::new(&["std", "fmt", "places", "Piece", "spec"]);
+/// Where it sits in its width.
+pub const layout: Item = Item::new(&["std", "fmt", "places", "Piece", "layout"]);

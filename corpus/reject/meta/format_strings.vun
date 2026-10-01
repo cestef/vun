@@ -10,6 +10,8 @@ write := (w: &mut std.os.Stream) {
     std.fmt.print(w, "open {", 1); //~ comptime.reported "this `{` is not closed"
     std.fmt.print(w, "close }", 1); //~ comptime.reported "this `}` closes no `{`"
     std.fmt.print(w, "name {y}", 1); //~ comptime.reported "unknown format specifier"
+    std.fmt.print(w, "{:q}", 1); //~ comptime.reported "unknown format specifier or layout"
+    std.fmt.print(w, "{:>8", 1); //~ comptime.reported "this `{` is not closed"
     std.fmt.print(w, "{}", Color.red); //~ comptime.reported "`Color` has no `std.fmt.Format` impl"
     std.fmt.print(w, "{x}", Color.red); //~ comptime.reported "`Color` has no `std.fmt.Hex` impl"
 };
