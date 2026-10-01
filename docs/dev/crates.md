@@ -26,7 +26,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `conventions`).
 - **Objects** (`compiler/object`): `vun-object` (objects as data, written as ELF through
   `vun-elf` or as Mach-O), `vun-elf` (ELF files as data, written and read, each record declared
-  once per class), `vun-dwarf`.
+  once per class), `vun-pe` (PE files as data, read: sections, exports, imports), `vun-dwarf`.
 - **Front end** (`compiler/front`): `vun-syntax` (with `literal`: `.vun` data read without
   evaluation, and `FromLiteral`, derived by `vun-literal-derive`, reading it as typed values),
   `vun-desugar`, `vun-hir` (the front end as queries).
@@ -80,8 +80,8 @@ Where the code for each part lives. The workspace layout and its layering rules 
   the session, codegen, builds, stacks, compare, `toolchain.rs`: the chosen target equipped with
   the machine's tools, `Session::command` running through the runner), `vun-cli` (the `vun`
   command tree, a shell over the driver), `vun-command` (declarative CLI, completions, JSON
-  output), `vun-doc`, `vun-disasm` (an ELF file's code read back as instructions by yaxpeax, labelled
-  by its symbols, `vun debug disasm`), `vun-lsp` (the server: a table of methods, each a protocol type the server
+  output), `vun-doc`, `vun-disasm` (an ELF or PE file's code read back as instructions by yaxpeax,
+  labelled by its symbols, `vun debug disasm`), `vun-lsp` (the server: a table of methods, each a protocol type the server
   `Answers` or `Hears`), `vun-lsp-protocol` (the protocol's values and methods as types),
   `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
   `corpus`, `lines`, `layers`, `size`, `typeset`).

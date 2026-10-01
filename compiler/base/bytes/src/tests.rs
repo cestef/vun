@@ -44,3 +44,22 @@ fn padded_fields_are_rewritten_in_place() {
     expected.u32(0x0102_0304);
     assert_eq!(out, expected);
 }
+
+#[test]
+fn what_out_writes_in_reads_back_and_every_read_is_checked() {
+    let mut out = Out::default();
+    out.u8(7);
+    out.u16(0x1234);
+    out.u32(0xdead_beef);
+    out.u64(1 << 40);
+    out.str(b"name");
+    let mut input = super::In::at(&out.0, 0);
+    assert_eq!(input.u8(), Ok(7));
+    assert_eq!(input.u16(), Ok(0x1234));
+    assert_eq!(input.u32(), Ok(0xdead_beef));
+    assert_eq!(input.u64(), Ok(1 << 40));
+    assert_eq!(super::In::string(&out.0, input.position()), Ok(&b"name"[..]));
+    assert_eq!(input.take(5), Ok(&b"name\0"[..]));
+    assert_eq!(input.u8(), Err(super::Truncated { at: 1 + out.0.len() as u64, end: out.0.len() as u64 }));
+    assert!(super::In::string(&out.0[..out.0.len() - 1], 15).is_err());
+}

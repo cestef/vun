@@ -73,6 +73,7 @@ vun-asm-arm64 = { path = "compiler/asm/arm64" }
 vun-asm-thumb = { path = "compiler/asm/thumb" }
 vun-object = { path = "compiler/object/core" }
 vun-elf = { path = "compiler/object/elf" }
+vun-pe = { path = "compiler/object/pe" }
 vun-wasm = { path = "compiler/object/wasm" }
 vun-dwarf = { path = "compiler/object/dwarf" }
 vun-backend-wasm = { path = "compiler/back/wasm" }

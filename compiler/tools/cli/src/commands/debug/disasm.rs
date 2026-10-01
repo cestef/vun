@@ -1,4 +1,4 @@
-//! `vun debug disasm <file> [symbol]`: the code of an ELF file read back as instructions, each
+//! `vun debug disasm <file> [symbol]`: the code of an ELF or PE file read back as instructions, each
 //! with its address and bytes, labelled by the file's symbols; with a symbol, the code it labels.
 
 use std::io;
@@ -12,7 +12,7 @@ use vun_term::Shell;
 use super::dump::DUMP;
 
 pub(super) const OBJECT: Param = Param::positional("file")
-    .about("an ELF file: an object, a program or a library")
+    .about("an ELF or PE file: an object, a program or a library")
     .values(Values::Path(PathKind::File));
 pub(super) const SYMBOL: Param =
     Param::positional("symbol").arity(Arity::Optional).about("list only the code this symbol labels");
@@ -38,11 +38,7 @@ pub(super) fn disasm(session: &mut Session, args: &Args, shell: &mut Shell<'_>) 
         Ok(bytes) => bytes,
         Err(e) => return refuse(&e),
     };
-    let file = match vun_elf::File::read(&bytes) {
-        Ok(file) => file,
-        Err(e) => return refuse(&format!("not an ELF file ({e:?})")),
-    };
-    let lines = match vun_disasm::listing(&file, only) {
+    let lines = match vun_disasm::Code::read(&bytes).and_then(|code| vun_disasm::listing(&code, only)) {
         Ok(lines) => lines,
         Err(e) => return refuse(&e),
     };

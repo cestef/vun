@@ -1246,7 +1246,6 @@ dependencies = [
  "vun-disasm",
  "vun-doc",
  "vun-driver",
- "vun-elf",
  "vun-fetch",
  "vun-fmt",
  "vun-fs",
@@ -1357,6 +1356,7 @@ name = "vun-disasm"
 version = "0.1.0"
 dependencies = [
  "vun-elf",
+ "vun-pe",
  "yaxpeax-arch",
  "yaxpeax-arm",
  "yaxpeax-x86",
@@ -2068,6 +2068,13 @@ dependencies = [
  "vun-diag",
  "vun-graph",
  "vun-origin",
+]
+
+[[package]]
+name = "vun-pe"
+version = "0.1.0"
+dependencies = [
+ "vun-bytes",
 ]
 
 [[package]]

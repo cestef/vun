@@ -4,32 +4,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use vun_elf::{File, Kind, Machine, Malformed, Section, SectionFlags, Symbol, SymbolKind};
-
-use crate::Isa;
-
-/// Why a file cannot be listed.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// The file is for a machine whose instructions are not read here.
-    Machine(Machine),
-    /// The file's symbols are malformed.
-    Symbols(Malformed),
-    /// The file has no code labelled by a symbol of this name.
-    Missing(Vec<u8>),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Machine(machine) => write!(f, "no instruction set is read for the machine {machine:?}"),
-            Self::Symbols(why) => write!(f, "the symbols are malformed: {why:?}"),
-            Self::Missing(name) => write!(f, "no code is labelled `{}`", String::from_utf8_lossy(name)),
-        }
-    }
-}
-
-impl std::error::Error for Error {}
+use crate::code::{Code, Error, Part, Symbol};
 
 /// A line of a listing.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,13 +13,15 @@ pub enum Line {
     Section { name: Vec<u8>, address: u64 },
     /// A symbol naming the address that follows.
     Label { address: u64, name: Vec<u8> },
-    /// An instruction, with the bytes it is made of and where it goes if it is a direct branch.
+    /// An instruction, with the bytes it is made of and the place it refers to by its position, if
+    /// it does.
     Inst { address: u64, bytes: Vec<u8>, text: String, target: Option<Target> },
     /// A byte that starts no instruction.
     Data { address: u64, byte: u8 },
 }
 
-/// Where a direct branch goes: an address, and the symbol holding it with the distance past the
+/// Where an instruction refers to by its position, a direct branch's target or an operand relative
+/// to the instruction pointer: an address, and the symbol holding it with the distance past the
 /// symbol's start.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Target {
@@ -88,44 +65,36 @@ impl fmt::Display for Line {
     }
 }
 
-/// The listing of `file`'s code, or of the code `only` labels: the instructions of each
-/// executable section from its start, or from the symbol `only` names to its end (the next
-/// label where it has no size).
+/// The listing of `code`, or of the code `only` labels: the instructions of each section from its
+/// start, or from the symbol `only` names to its end (the next label where it has no size).
 ///
 /// # Errors
-/// Where the file is for a machine whose instructions are not read, its symbols are malformed,
-/// or no code is labelled `only`.
-pub fn listing(file: &File, only: Option<&[u8]>) -> Result<Vec<Line>, Error> {
-    let isa = Isa::of(file.machine).ok_or(Error::Machine(file.machine))?;
-    let symbols = file.symbols().map_err(Error::Symbols)?;
-    // In a relocatable file an address is an offset into a section, which names no one place.
-    let index = (file.kind != Kind::Relocatable).then(|| Index::of(&symbols));
+/// Where no code is labelled `only`.
+pub fn listing(code: &Code, only: Option<&[u8]>) -> Result<Vec<Line>, Error> {
+    // Where a branch goes is named only where addresses are those of a loaded program.
+    let index = code.linked.then(|| Index::of(&code.symbols));
     let mut lines = Vec::new();
-    // Section `k` of the file is `sections[k - 1]`.
-    for (number, section) in (1..).zip(&file.sections) {
-        if !section.flags.contains(SectionFlags::EXEC) {
-            continue;
-        }
-        let labels = Labels::of(section, number, &symbols);
-        let code = section.bytes();
+    for (number, part) in code.parts.iter().enumerate() {
+        let labels = Labels::of(part, number, &code.symbols);
+        let length = part.bytes.len();
         let (start, end) = match only {
-            None => (0, code.len()),
-            Some(name) => match labels.range_of(name, code.len()) {
+            None => (0, length),
+            Some(name) => match labels.range_of(name, length) {
                 Some(range) => range,
                 None => continue,
             },
         };
-        lines.push(Line::Section { name: section.name.clone(), address: section.address });
+        lines.push(Line::Section { name: part.name.clone(), address: part.address });
         let mut at = start;
         while at < end {
             for name in labels.at(at) {
-                lines.push(Line::Label { address: section.address + at as u64, name: name.to_vec() });
+                lines.push(Line::Label { address: part.address + at as u64, name: name.to_vec() });
             }
-            let address = section.address + at as u64;
+            let address = part.address + at as u64;
             // An instruction ends where the next label begins, so that padding between
             // functions never swallows the start of the next one.
-            let rest = &code[at..labels.next_after(at).map_or(end, |next| next.min(end))];
-            if let Some(decoded) = isa.decode(rest) {
+            let rest = &part.bytes[at..labels.next_after(at).map_or(end, |next| next.min(end))];
+            if let Some(decoded) = code.isa.decode(rest) {
                 let len = decoded.len.get().min(rest.len());
                 let target = decoded.target.and_then(|distance| address.checked_add_signed(distance));
                 let target = target.map(|address| Target {
@@ -154,18 +123,13 @@ struct Labels<'a> {
 }
 
 impl<'a> Labels<'a> {
-    /// The symbols of `symbols` placed in the section `number`, `section`, that name code or data
-    /// there.
-    fn of(section: &Section, number: u16, symbols: &'a [Symbol]) -> Self {
+    /// The symbols of `symbols` placed in the part `number`, `part`.
+    fn of(part: &Part, number: usize, symbols: &'a [Symbol]) -> Self {
         let mut labels = Self { by_offset: BTreeMap::new(), sizes: BTreeMap::new() };
-        for symbol in symbols {
-            let names_something =
-                !symbol.name.is_empty() && !matches!(symbol.kind, SymbolKind::Section | SymbolKind::File);
-            let Some(offset) = symbol.value.checked_sub(section.address) else { continue };
-            if symbol.section == number && names_something {
-                labels.by_offset.entry(offset).or_default().push(&symbol.name);
-                labels.sizes.entry(&symbol.name).or_insert(symbol.size);
-            }
+        for symbol in symbols.iter().filter(|s| s.part == Some(number)) {
+            let Some(offset) = symbol.address.checked_sub(part.address) else { continue };
+            labels.by_offset.entry(offset).or_default().push(&symbol.name);
+            labels.sizes.entry(&symbol.name).or_insert(symbol.size);
         }
         labels
     }
@@ -203,13 +167,7 @@ impl<'a> Index<'a> {
     fn of(symbols: &'a [Symbol]) -> Self {
         let mut by_address = BTreeMap::new();
         for symbol in symbols {
-            let placed = (1..SPECIAL).contains(&symbol.section);
-            if placed
-                && !symbol.name.is_empty()
-                && !matches!(symbol.kind, SymbolKind::Section | SymbolKind::File)
-            {
-                by_address.entry(symbol.value).or_insert(symbol);
-            }
+            by_address.entry(symbol.address).or_insert(symbol);
         }
         Self { by_address }
     }
@@ -222,7 +180,3 @@ impl<'a> Index<'a> {
         (past == 0 || past < symbol.size).then(|| (symbol.name.clone(), past))
     }
 }
-
-/// The first section number that is no section: the numbers from it on are special (absolute
-/// symbols, common ones).
-const SPECIAL: u16 = 0xff00;

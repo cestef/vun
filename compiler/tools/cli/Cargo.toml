@@ -23,7 +23,6 @@ vun-diag.workspace = true
 vun-disasm.workspace = true
 vun-doc.workspace = true
 vun-driver.workspace = true
-vun-elf.workspace = true
 vun-fetch.workspace = true
 vun-fmt.workspace = true
 vun-fs.workspace = true

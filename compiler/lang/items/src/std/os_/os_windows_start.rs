@@ -27,3 +27,6 @@ pub const spawn: Item = Item::new(&["std", "os", "windows", "start", "spawn"]);
 pub const join: Item = Item::new(&["std", "os", "windows", "start", "join"]);
 pub const memory: Item = Item::new(&["std", "os", "windows", "start", "memory"]);
 pub const stack: Item = Item::new(&["std", "os", "windows", "start", "stack"]);
+/// The symbol a C compiler for the target refers to where a program uses floating point,
+/// which the C runtime defines.
+pub const float_used: Item = Item::new(&["std", "os", "windows", "start", "float_used"]);

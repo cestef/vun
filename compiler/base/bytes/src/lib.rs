@@ -1,9 +1,13 @@
 //! Binary encodings the object writers share (DWARF sections, wasm modules, symbol tables):
 //! little-endian fixed widths, LEB128, LEB128 padded to a fixed width, which a linker rewrites in
-//! place, and tables of strings each ended by a zero byte.
+//! place, and tables of strings each ended by a zero byte; and reading the fixed widths and strings
+//! back, checked against the end.
 
+mod read;
 #[cfg(test)]
 mod tests;
+
+pub use read::{In, Truncated};
 
 /// Bytes under construction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

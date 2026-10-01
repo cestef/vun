@@ -409,7 +409,7 @@ package's directory, and with none the package around the current directory, its
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
 | `vun debug dump tokens\|cst\|manifest\|plan\|hir\|types\|values\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
-| `vun debug disasm <file> [symbol]` | the code of an ELF file (x86-64 or arm64) as instructions with addresses and bytes, labelled by its symbols, a direct branch with the symbol it goes to; only the code a symbol labels with one |
+| `vun debug disasm <file> [symbol]` | the code of an ELF or PE file (x86, x86-64 or arm64) as instructions with addresses and bytes, labelled by its symbols (a PE file's exports, entry and imports), a direct branch or an operand relative to the instruction pointer with the symbol it refers to; only the code a symbol labels with one |
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
 Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,
