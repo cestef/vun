@@ -1,5 +1,7 @@
-//! `vun fmt [--check] <files>...`: lays out source files as the formatter does (spec 13,
-//! section 5). A file that does not parse is left as it is, its diagnostics reported.
+//! `vun fmt [--check] [paths]...`: lays out source files as the formatter does (spec 13,
+//! section 5). A path is a file, a directory or a package's directory, as for the other commands;
+//! with none, the package around the current directory. A file that does not parse is left as it
+//! is, its diagnostics reported.
 
 use std::io;
 use std::path::Path;
@@ -11,18 +13,20 @@ use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use vun_driver::Session;
+use vun_driver::subject::Subject;
 
-const FILES: Param = Param::positional("files")
+const PATHS: Param = Param::positional("paths")
     .arity(Arity::Many)
-    .about("the source files to lay out")
-    .values(Values::Path(PathKind::File));
+    .about("files, directories or packages to lay out; the package around this directory if none")
+    .values(Values::Path(PathKind::Any));
 const CHECK: Param = Param::flag("check").about("change nothing, and fail when a file would change");
 
 pub(super) const FMT: Command<Session> =
-    Command::run("fmt", "lay out source files as the formatter does", fmt).params(&[FILES, CHECK]).examples(
+    Command::run("fmt", "lay out source files as the formatter does", fmt).params(&[PATHS, CHECK]).examples(
         &[
+            Example { line: "", about: "lay out the package around this directory" },
             Example { line: "main.vun", about: "lay out a file in place" },
-            Example { line: "--check main.vun lib.vun", about: "fail when a file is not laid out" },
+            Example { line: "--check net/ lib.vun", about: "fail when a file is not laid out" },
         ],
     );
 
@@ -66,15 +70,21 @@ impl Status for Laid {
 
 fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let check = args.flag(&CHECK);
+    let named: Vec<&Path> = args.values(&PATHS).map(Path::new).collect();
+    let mut files = Vec::new();
+    for path in if named.is_empty() { vec![None] } else { named.into_iter().map(Some).collect() } {
+        let Some(subject) = session.subject(path)? else { return Ok(session.outcome()) };
+        files.extend(session.files(&subject));
+    }
     let mut pending = false;
-    for path in args.values(&FILES).map(Path::new) {
+    for path in &files {
         let Some(laid) = session.laid_out(path) else { continue };
         let change = if check { Change::Pending } else { Change::Written };
         if change == Change::Written {
             path.put(laid)?;
         }
         pending |= change == Change::Pending;
-        shell.status(&Laid { path: path.display().to_string(), change });
+        shell.status(&Laid { path: Subject::relative(path), change });
     }
     Ok(if pending { Outcome::Failure } else { session.outcome() })
 }

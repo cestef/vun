@@ -38,9 +38,21 @@ smallest := ($F: type, $f: F, sys: &mut std.os.System, failing: std.testing.prop
 
 /// The case replaying the first `len` of `taken`, when it still traps and is smaller than `best`,
 /// as a failing case found by one more shrink than it.
-retried := ($F: type, $f: F, sys: &mut std.os.System, taken: &[std.testing.property.room]u64, len: usize, best: &std.testing.property.Failing) -> ?std.testing.property.Failing {
+retried := (
+    $F: type,
+    $f: F,
+    sys: &mut std.os.System,
+    taken: &[std.testing.property.room]u64,
+    len: usize,
+    best: &std.testing.property.Failing
+) -> ?std.testing.property.Failing {
     mut c := std.testing.property.Choices.replaying(taken, len);
     trap := std.testing.property.attempt(F, f, sys, &mut c, true)?;
-    found: std.testing.property.Failing = .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = (best.shrinks + 1).to(usize) };
+    found: std.testing.property.Failing = .{
+        .taken = c.taken,
+        .len = c.len,
+        .trap = trap,
+        .shrinks = (best.shrinks + 1).to(usize)
+    };
     if found.smaller(best) { .some(found) } else { .none }
 };

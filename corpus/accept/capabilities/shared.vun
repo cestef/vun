@@ -29,5 +29,7 @@ take_ticks := () -> u32 {
     sync.critical([] (cs: &temp sync.Critical) -> u32 { ticks.replace(cs, 0) })
 };
 double_ticks := () {
-    sync.critical([] (cs: &temp sync.Critical) { ticks.update(cs, [] (n: u32) -> u32 { (n * 2).wrap(u32) }); });
+    sync.critical(
+        [] (cs: &temp sync.Critical) { ticks.update(cs, [] (n: u32) -> u32 { (n * 2).wrap(u32) }); }
+    );
 };

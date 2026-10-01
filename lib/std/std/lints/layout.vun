@@ -13,7 +13,11 @@ pub_doc := lang.lint.Lint{
     .doc = std.meta.embed("layout/pub_doc.md"),
     .decl = (cx: &mut lang.lint.Cx, d: lang.lint.Decl) {
         if d.public and !d.documented {
-            cx.report(d.origin, "the public " ++ d.binds.noun() ++ " `" ++ d.name ++ "` has no doc comment", &[]);
+            cx.report(
+                d.origin,
+                "the public " ++ d.binds.noun() ++ " `" ++ d.name ++ "` has no doc comment",
+                &[]
+            );
         }
     },
 };

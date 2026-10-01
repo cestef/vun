@@ -149,7 +149,12 @@ stlxr := _a.Member{ .family = exclusive, .bits = 0x800fc00 };
 /// releases.
 atomics := _a.Family{
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _r_d_w, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+        .{
+            .base = .\or(0x0),
+            .sizes = _access,
+            .args = &[_r_m, _r_d_w, _mem_base_n_rw],
+            .requires = .some(.feature(.lse))
+        },
     ],
 };
 ldadd := _a.Member{ .family = atomics, .bits = 0x38200000 };
@@ -164,7 +169,12 @@ swpal := _a.Member{ .family = atomics, .bits = 0x38e08000 };
 /// `ldadd` discarding what memory held.
 discarding := _a.Family{
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+        .{
+            .base = .\or(0x0),
+            .sizes = _access,
+            .args = &[_r_m, _mem_base_n_rw],
+            .requires = .some(.feature(.lse))
+        },
     ],
 };
 stadd := _a.Member{ .family = discarding, .bits = 0x3820001f };
@@ -174,7 +184,12 @@ staddl := _a.Member{ .family = discarding, .bits = 0x3860001f };
 /// what memory held.
 compare_swaps := _a.Family{
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_r_m_rw, _r_d, _mem_base_n_rw], .requires = .some(.feature(.lse)) },
+        .{
+            .base = .\or(0x0),
+            .sizes = _access,
+            .args = &[_r_m_rw, _r_d, _mem_base_n_rw],
+            .requires = .some(.feature(.lse))
+        },
     ],
 };
 cas := _a.Member{ .family = compare_swaps, .bits = 0x8a07c00 };

@@ -164,7 +164,9 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.open)]
     open_file := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
         ended := std.os.file.Path.of(path)?;
-        .ok(outcome(unsafe open(ended.start(), system.flags.of(mode), std.os.file.created).to(isize))?.to(i32))
+        .ok(
+            outcome(unsafe open(ended.start(), system.flags.of(mode), std.os.file.created).to(isize))?.to(i32)
+        )
     };
 
     #[link.export(std.os.symbols.close)]
@@ -176,7 +178,9 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
-        outcome(unsafe clock_gettime(system.clocks.id(clock), lang.mem.pointer_to(std.os.Timespec, &at)).to(isize))?;
+        outcome(
+            unsafe clock_gettime(system.clocks.id(clock), lang.mem.pointer_to(std.os.Timespec, &at)).to(isize)
+        )?;
         .ok(at.instant())
     };
 
@@ -203,7 +207,11 @@ start := ($main: std.os.Main) -> type { struct {
         mut old := no_signals;
         unsafe {
             sigfillset(lang.mem.pointer_to(Sigset, &all));
-            pthread_sigmask(system.block, lang.mem.pointer_to(Sigset, &all), lang.mem.pointer_to(Sigset, &old));
+            pthread_sigmask(
+                system.block,
+                lang.mem.pointer_to(Sigset, &all),
+                lang.mem.pointer_to(Sigset, &old)
+            );
         }
         me := unsafe pthread_self();
         outer := owner.load(.acquire) != me;
@@ -222,7 +230,11 @@ start := ($main: std.os.Main) -> type { struct {
         set[0] = mask.bits().wrap(system.Word);
         mut old := no_signals;
         unsafe {
-            pthread_sigmask(system.set_mask, lang.mem.pointer_to(Sigset, &set), lang.mem.pointer_to(Sigset, &old));
+            pthread_sigmask(
+                system.set_mask,
+                lang.mem.pointer_to(Sigset, &set),
+                lang.mem.pointer_to(Sigset, &old)
+            );
         }
     };
 

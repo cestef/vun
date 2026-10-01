@@ -11,7 +11,11 @@ _microcontroller: ?_t.Need = .some(.feature(.microcontroller));
 /// microcontroller one's.
 mrs := _t.Instruction{ .forms = &[
     .{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special(.is(.apsr)), .access = .read }] },
-    .{ .base = 0xf3ef8000, .args = &[_r_w, .{ .kind = .special(.any), .access = .read }], .requires = _microcontroller },
+    .{
+        .base = 0xf3ef8000,
+        .args = &[_r_w, .{ .kind = .special(.any), .access = .read }],
+        .requires = _microcontroller
+    },
 ] };
 
 /// A coprocessor's register read into a general one: `mrc p15, 0, r0, c13, c0, 3` reads the
@@ -33,7 +37,11 @@ mrc := _t.Instruction{ .forms = &[
 /// A general register written into a special one, as `mrs` reads them.
 msr := _t.Instruction{ .forms = &[
     .{ .base = 0xf3808800, .args = &[.{ .kind = .special(.is(.apsr)), .access = .write }, _r] },
-    .{ .base = 0xf3808800, .args = &[.{ .kind = .special(.any), .access = .write }, _r], .requires = _microcontroller },
+    .{
+        .base = 0xf3808800,
+        .args = &[.{ .kind = .special(.any), .access = .write }, _r],
+        .requires = _microcontroller
+    },
 ] };
 
 /// Masks interrupts: `cpsid i` sets `primask`, `cpsid f` sets `faultmask`; `cpsie` clears them.

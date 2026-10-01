@@ -178,7 +178,10 @@ System := struct {
     /// Suspends the calling thread for at least `span`.
     pause := (self: &mut System, span: std.time.Duration) -> Result((), Error) { std.os.pause(span) };
     /// Starts a thread running `f`, borrowed until the thread is joined.
-    spawn := (self: &temp mut System, $R: type, $F: lang.ops.Call((), R), f: &mut F) -> Result(std.os.thread.Thread(R, F), Error) {
+    spawn := (self: &temp mut System, $R: type, $F: lang.ops.Call((), R), f: &mut F) -> Result(
+        std.os.thread.Thread(R, F),
+        Error
+    ) {
         std.os.thread.Thread(R, F).spawn(f)
     };
 };

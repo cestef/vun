@@ -12,7 +12,9 @@ Need := ($Feature: type, $Size: type) -> type { enum { feature(Feature), float(S
 /// where their names give one, the `n`th variant
 /// naming register `n * step` of the class (`d1` is the second double-precision register, the
 /// third of its class counted as single-precision ones).
-Registers := ($Class: type, $Size: type) -> type { struct { class: Class, size: ?Size = .none, step: u8 = 1 } };
+Registers := ($Class: type, $Size: type) -> type {
+    struct { class: Class, size: ?Size = .none, step: u8 = 1 }
+};
 
 /// A block of instructions (spec 07, section 6): each statement of `code` calls an instruction of
 /// one instruction set's table, or makes or marks a label. Sema reads the block against that

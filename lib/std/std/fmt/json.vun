@@ -183,7 +183,10 @@ derive := ($T: type) -> type { struct {
 Parts := enum { object, array };
 
 /// Writes the parts of `value`, which is the variant `v` of `T`, `as` says.
-parts := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T, $v: lang.meta.Variant, $as: Parts) -> Result((), W.Error) {
+parts := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T, $v: lang.meta.Variant, $as: Parts) -> Result(
+    (),
+    W.Error
+) {
     object := lang.meta.same(Parts, as, .object);
     w.write_all(if object { object_open } else { array_open })?;
     $for p in v.parts {

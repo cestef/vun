@@ -146,7 +146,11 @@ counted := (n: usize, one: &[u8], many: &[u8]) -> &static [u8] {
 /// with the format string is reported inside it, at the bytes it covers.
 print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..args: A) -> Result((), W.Error) {
     $if .err(bad) = parse($format) {
-        $std.diag.error(.{ .at = .some(format.within(bad.at)), .msg = bad.reason.text(), .help = .some(bad.reason.help()) });
+        $std.diag.error(.{
+            .at = .some(format.within(bad.at)),
+            .msg = bad.reason.text(),
+            .help = .some(bad.reason.help())
+        });
     } else if holes($format) != lang.meta.items(A).len() {
         $std.diag.error(.{
             .at = .some(format.span()),
@@ -163,8 +167,11 @@ print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..arg
                 } else {
                     $std.diag.error(.{
                         .at = .some(format.within(piece.hole)),
-                        .msg = "`" ++ lang.meta.name_of(lang.meta.items(A)[piece.arg]) ++ "` has no `std.fmt.Format` impl, so it cannot be written here",
-                        .help = .some("write an impl of `std.fmt.Format` for it, or pass a value that has one"),
+                        .msg = "`" ++ lang.meta.name_of(lang.meta.items(A)[piece.arg])
+                            ++ "` has no `std.fmt.Format` impl, so it cannot be written here",
+                        .help = .some(
+                            "write an impl of `std.fmt.Format` for it, or pass a value that has one"
+                        ),
                     });
                 }
             }

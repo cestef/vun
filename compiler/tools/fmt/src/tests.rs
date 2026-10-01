@@ -102,3 +102,43 @@ fn a_block_of_instructions_is_written_as_calls() {
         "f := () {\n    unsafe lang.arch.asm({\n        top := here();\n        lea(out(r), mem(in(p).at(rsi), 3));\n        b(ne, top);\n    });\n};\n",
     );
 }
+
+#[test]
+fn a_group_on_a_line_past_the_width_is_broken_one_entry_a_line() {
+    let long = "a".repeat(40);
+    let call = format!("x := f({long}, {long}, {long});\n");
+    let broken = format!("x := f(\n    {long},\n    {long},\n    {long}\n);\n");
+    check(&call, &broken);
+    // A line that fits is left alone.
+    check("x := f(a, b);\n", "x := f(a, b);\n");
+}
+
+#[test]
+fn the_outermost_group_is_broken_first_and_the_inner_ones_only_when_they_still_do_not_fit() {
+    let long = "b".repeat(48);
+    let fits = format!("x := f(g({long}, {long}), h);\n");
+    check(&fits, &format!("x := f(\n    g({long}, {long}),\n    h\n);\n"));
+    let wide = "c".repeat(60);
+    let nested = format!("x := f(g({wide}, {wide}), h);\n");
+    check(&nested, &format!("x := f(\n    g(\n        {wide},\n        {wide}\n    ),\n    h\n);\n"));
+}
+
+#[test]
+fn a_line_with_nothing_to_break_stays_as_it_is() {
+    let name = "d".repeat(130);
+    check(&format!("{name} := 1;\n"), &format!("{name} := 1;\n"));
+}
+
+#[test]
+fn a_call_of_one_group_keeps_its_opening_and_closing_on_the_lines_of_the_group() {
+    let long = "e".repeat(50);
+    let call = format!("x := f(.{{ .a = {long}, .b = {long} }});\n");
+    check(&call, &format!("x := f(.{{\n    .a = {long},\n    .b = {long}\n}});\n"));
+}
+
+#[test]
+fn a_line_without_a_group_to_break_is_continued_before_an_infix_operator() {
+    let long = "g".repeat(45);
+    let sum = format!("x := {long} + {long} + {long};\n");
+    check(&sum, &format!("x := {long} + {long}\n    + {long};\n"));
+}

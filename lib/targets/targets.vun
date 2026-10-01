@@ -25,7 +25,14 @@ c_optimize: &[&[u8]] = &["-O2"];
 /// the `archiver` of its tools: `machine` selects the target machine (instruction set,
 /// floating-point ABI) in every compile and link, which also picks the libraries built for it,
 /// and its links take `link_flags` and, after the objects, `libraries`.
-gnu := ($command: &[u8], $builds_for: lang.target.BuildsFor, $archiver: &[u8], $machine: &[&[u8]], $link_flags: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.CCompiler {
+gnu := (
+    $command: &[u8],
+    $builds_for: lang.target.BuildsFor,
+    $archiver: &[u8],
+    $machine: &[&[u8]],
+    $link_flags: &[&[u8]],
+    $libraries: &[&[u8]]
+) -> lang.target.CCompiler {
     .{
         .command = command,
         .builds_for = builds_for,

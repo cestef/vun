@@ -24,7 +24,17 @@ fd_read: unsafe (fd: i32, iovs: *Ciovec, count: usize, read: *usize) -> u16 = _;
 #[link.symbol("fd_close"), link.library(module), abi.c]
 fd_close: unsafe (fd: i32) -> u16 = _;
 #[link.symbol("path_open"), link.library(module), abi.c]
-path_open: unsafe (dir: i32, lookup: u32, path: *u8, length: usize, open: u16, rights: u64, inherited: u64, flags: u16, fd: *i32) -> u16 = _;
+path_open: unsafe (
+    dir: i32,
+    lookup: u32,
+    path: *u8,
+    length: usize,
+    open: u16,
+    rights: u64,
+    inherited: u64,
+    flags: u16,
+    fd: *i32
+) -> u16 = _;
 #[link.symbol("fd_prestat_get"), link.library(module), abi.c]
 fd_prestat_get: unsafe (fd: i32, prestat: *Prestat) -> u16 = _;
 #[link.symbol("fd_prestat_dir_name"), link.library(module), abi.c]
@@ -146,7 +156,19 @@ open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
                     how := Opening.of(mode);
                     mut fd: i32 = -1;
                     at := lang.mem.items_pointer(u8, rest);
-                    outcome(unsafe path_open(dir, 0, at, rest.len(), how.open, rights, rights, how.flags, std.ptr.to(i32, &fd)))?;
+                    outcome(
+                        unsafe path_open(
+                            dir,
+                            0,
+                            at,
+                            rest.len(),
+                            how.open,
+                            rights,
+                            rights,
+                            how.flags,
+                            std.ptr.to(i32, &fd)
+                        )
+                    )?;
                     return .ok(fd);
                 },
                 .none => {},
@@ -221,11 +243,23 @@ start := ($main: std.os.Main) -> type { struct {
         subscription := Subscription{
             .userdata = 0,
             .tag = 0,
-            .clock = .{ .id = clocks.monotonic.to(u32), .timeout = span.as_nanos(), .precision = 1, .flags = 0 },
+            .clock = .{
+                .id = clocks.monotonic.to(u32),
+                .timeout = span.as_nanos(),
+                .precision = 1,
+                .flags = 0
+            },
         };
         mut event := Event{ .userdata = 0, .error = 0, .kind = 0, .bytes = 0, .flags = 0 };
         mut happened: usize = 0;
-        outcome(unsafe poll_oneoff(std.ptr.to(Subscription, &subscription), std.ptr.to(Event, &event), 1, std.ptr.to(usize, &happened)))
+        outcome(
+            unsafe poll_oneoff(
+                std.ptr.to(Subscription, &subscription),
+                std.ptr.to(Event, &event),
+                1,
+                std.ptr.to(usize, &happened)
+            )
+        )
     };
 
     #[link.export(std.sync.symbols.enter), panic.never]

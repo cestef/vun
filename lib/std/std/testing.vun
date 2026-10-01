@@ -146,7 +146,8 @@ runner := ($ns: lang.meta.Namespace) -> type {
                 .none => return .code(failed),
             };
             match run(ns, sys, &options) {
-                .ok(totals) => if totals.trapped == 0 and totals.falsified == 0 { .ok } else { .code(failed) },
+                .ok(totals) => if totals.trapped == 0 and totals.falsified
+                    == 0 { .ok } else { .code(failed) },
                 .err(_) => .code(failed),
             }
         };
@@ -158,7 +159,14 @@ runner := ($ns: lang.meta.Namespace) -> type {
 /// each to the standard output, then the totals. A test marked `test.ignore` is not run.
 run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) -> Result(Totals, std.os.Error) {
     mut out := sys.stdout();
-    mut totals := Totals{ .passed = 0, .trapped = 0, .falsified = 0, .ignored = 0, .measured = 0, .fuzzed = 0 };
+    mut totals := Totals{
+        .passed = 0,
+        .trapped = 0,
+        .falsified = 0,
+        .ignored = 0,
+        .measured = 0,
+        .fuzzed = 0
+    };
     $for c in std.meta.collect(ns, test) {
         if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
@@ -219,7 +227,12 @@ checked := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opt
         .none => Outcome.passed,
         .some((failing, case)) => {
             std.testing.property.write(F, f, out, &failing)?;
-            Outcome.falsified(.{ .trapped = trapped(failing.trap), .seed = seed, .case = case, .shrinks = failing.shrinks })
+            Outcome.falsified(.{
+                .trapped = trapped(failing.trap),
+                .seed = seed,
+                .case = case,
+                .shrinks = failing.shrinks
+            })
         },
     })
 };

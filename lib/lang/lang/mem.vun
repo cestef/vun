@@ -25,6 +25,10 @@ items_pointer: ($T: type, xs: &[T]) -> *T = _;
 /// stay valid and unchanged for as long as the borrow is used.
 #[panic.never]
 items_at: unsafe ($T: type, p: *T, n: usize) -> &[T] = _;
+/// An exclusive borrow of the `n` items at `p`: the memory must be valid, and nothing else may
+/// reach it, for as long as the borrow is used.
+#[panic.never]
+items_at_mut: unsafe ($T: type, p: *T, n: usize) -> &mut [T] = _;
 
 /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
 Cell: ($T: type) -> type = _;

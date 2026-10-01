@@ -17,7 +17,11 @@ Clock := struct {
 
     /// A clock reading 0, with no task sleeping.
     init := () -> Clock {
-        .{ ._now = std.sync.Atomic(u64).init(0), ._next = std.sync.Atomic(u64).init(never), ._tick = std.task.Event.init() }
+        .{
+            ._now = std.sync.Atomic(u64).init(0),
+            ._next = std.sync.Atomic(u64).init(never),
+            ._tick = std.task.Event.init()
+        }
     };
 
     /// The time the clock reads.

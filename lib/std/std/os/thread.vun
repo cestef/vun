@@ -80,7 +80,9 @@ Thread := ($R: type, $F: lang.ops.Call((), R)) -> type { #[kind.linear] struct {
 
     /// Starts a thread running `f`.
     spawn := (f: &mut F) -> Result(Thread(R, F), std.os.Error) {
-        origin := std.trace.spawning(std.trace.code((f: &mut F) -> Result(Thread(R, F), std.os.Error), Thread(R, F).spawn));
+        origin := std.trace.spawning(
+            std.trace.code((f: &mut F) -> Result(Thread(R, F), std.os.Error), Thread(R, F).spawn)
+        );
         context := Context{ .f = std.ptr.to(F, f), .result = .none, .spawn = origin };
         handle := unsafe std.os.spawn(run, context.bytes(), lang.meta.size(Context))?;
         .ok(.{ ._f = f, ._handle = handle })

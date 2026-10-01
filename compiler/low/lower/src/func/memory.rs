@@ -52,7 +52,7 @@ impl FnLower<'_, '_, '_> {
                 let at = self.at_offset(from, offset);
                 self.b.load(scalar, at, Access::Plain, self.at)
             }
-            Mem::items_at => {
+            Mem::items_at | Mem::items_at_mut => {
                 let (addr, len) = (self.scalar_operand(arg(0)?)?, self.scalar_operand(arg(1)?)?);
                 let Some(dest) = dest else { return Ok(()) };
                 self.b.store(addr, dest, Access::Plain, self.at);

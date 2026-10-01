@@ -24,6 +24,9 @@ pub enum Mem {
     /// A borrow of the `n` items at `p`, as code outside the language hands them over: they must
     /// stay valid and unchanged for as long as the borrow is used.
     items_at,
+    /// An exclusive borrow of the `n` items at `p`: the memory must be valid, and nothing else may
+    /// reach it, for as long as the borrow is used.
+    items_at_mut,
     /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
     Cell,
     /// A cell holding `value`.
@@ -79,6 +82,7 @@ impl Mem {
         Self::len,
         Self::items_pointer,
         Self::items_at,
+        Self::items_at_mut,
         Self::Cell,
         Self::cell,
         Self::cell_pointer,
@@ -117,6 +121,7 @@ impl Mem {
             Self::len => "len",
             Self::items_pointer => "items_pointer",
             Self::items_at => "items_at",
+            Self::items_at_mut => "items_at_mut",
             Self::Cell => "Cell",
             Self::cell => "cell",
             Self::cell_pointer => "cell_pointer",
@@ -156,6 +161,7 @@ impl Mem {
             Self::len => vun_items::lang::mem::len,
             Self::items_pointer => vun_items::lang::mem::items_pointer,
             Self::items_at => vun_items::lang::mem::items_at,
+            Self::items_at_mut => vun_items::lang::mem::items_at_mut,
             Self::Cell => vun_items::lang::mem::Cell,
             Self::cell => vun_items::lang::mem::cell,
             Self::cell_pointer => vun_items::lang::mem::cell_pointer,

@@ -39,7 +39,10 @@ udiv := _t.Instruction{ .forms = &[.{ .base = 0xfbb0f0f0, .args = &[_d_w, _n, _m
 muls := _t.Instruction{ .forms = &[
     .{
         .base = 0x4340,
-        .args = &[.{ .kind = .gpr(.low), .access = .read_write }, .{ .kind = .gpr(.low), .at = 3, .access = .read }],
+        .args = &[
+            .{ .kind = .gpr(.low), .access = .read_write },
+            .{ .kind = .gpr(.low), .at = 3, .access = .read }
+        ],
         .flags = .some(.write),
     },
 ] };

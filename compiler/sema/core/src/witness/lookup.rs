@@ -68,7 +68,12 @@ impl Query for Witnesses {
             if witnesses.iter().any(declared) {
                 continue;
             }
-            let has = |part: Ty| {
+            // Operators and methods reach a value through its borrows, so a borrowed part has
+            // the interface its referent has.
+            let has = |mut part: Ty| {
+                while let Some(referent) = part.borrowed() {
+                    part = referent;
+                }
                 cx.get::<Witnesses>(&(file.clone(), part))
                     .iter()
                     .any(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface))

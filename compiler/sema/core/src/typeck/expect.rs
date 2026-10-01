@@ -115,7 +115,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// What to do about the mutable `place`, compared above without being narrowed (spec 04,
     /// rule 4): a binding of it is narrowed.
     fn unnarrowed(place: &str) -> Msg {
-        let name = place.rsplit('.').next().unwrap_or(place);
+        let name = place.rsplit('.').next().unwrap_or(place).trim_start_matches('_');
         Msg::new()
             .code(place)
             .text(" is a mutable place, which a comparison does not narrow; bind it first, ")

@@ -26,6 +26,7 @@ use vun_sema_ty::Value;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::{Edit, Unevaluated};
+use vun_span::{SourceFiles, SourceMap as _, Span};
 use vun_syntax::make::{Attributes, Expr};
 
 pub use defined::{CheckedLints, DefinedLints};
@@ -268,9 +269,22 @@ impl Lint {
     fn allowing(&self, declared: OriginId) -> Fix {
         let path = Expr::Path(self.path.iter().map(|s| s.as_str().to_owned()).collect());
         let allow = Expr::call(Expr::decl(lang::lint::allow), vec![path, Expr::String(REASON.to_owned())]);
-        let text = [Attributes(vec![allow]).source(), " ".to_owned()].concat();
+        // An attribute is wide: it goes on a line of its own above the declaration, at its indent.
+        let span = OriginTable::global().source_span(declared);
+        let indent = Self::indent_before(span).unwrap_or_default();
+        let separator =
+            if Self::indent_before(span).is_some() { format!("\n{indent}") } else { " ".to_owned() };
+        let text = [Attributes(vec![allow]).source(), separator].concat();
         let msg = Msg::new().text("allow it here, saying why");
-        Fix::insert(msg, Safety::Placeholder, OriginTable::global().source_span(declared), text)
+        Fix::insert(msg, Safety::Placeholder, span, text)
+    }
+
+    /// The indentation of the line `span` starts, when nothing but it precedes `span` there.
+    fn indent_before(span: Span) -> Option<String> {
+        let text = &SourceFiles::global().file(span.file).text;
+        let before = text.get(..usize::try_from(span.range.lo).ok()?)?;
+        let line = before.rsplit('\n').next()?;
+        line.chars().all(|c| c == ' ' || c == '\t').then(|| line.to_owned())
     }
 }
 

@@ -172,11 +172,31 @@ strexd := _t.Instruction{ .forms = &[
 /// Stores registers below the stack pointer, lowest register lowest, and moves it down; `pop`
 /// loads them back and moves it up.
 push := _t.Instruction{ .forms = &[
-    .{ .base = 0xb400, .args = &[.{ .kind = .list(.push), .access = .read }], .reads = &[.sp], .writes = &[.sp] },
-    .{ .base = 0xe92d0000, .args = &[.{ .kind = .list(.wide), .access = .read }], .reads = &[.sp], .writes = &[.sp] },
+    .{
+        .base = 0xb400,
+        .args = &[.{ .kind = .list(.push), .access = .read }],
+        .reads = &[.sp],
+        .writes = &[.sp]
+    },
+    .{
+        .base = 0xe92d0000,
+        .args = &[.{ .kind = .list(.wide), .access = .read }],
+        .reads = &[.sp],
+        .writes = &[.sp]
+    },
 ] };
 
 pop := _t.Instruction{ .forms = &[
-    .{ .base = 0xbc00, .args = &[.{ .kind = .list(.pop), .access = .write }], .reads = &[.sp], .writes = &[.sp] },
-    .{ .base = 0xe8bd0000, .args = &[.{ .kind = .list(.wide_pc), .access = .write }], .reads = &[.sp], .writes = &[.sp] },
+    .{
+        .base = 0xbc00,
+        .args = &[.{ .kind = .list(.pop), .access = .write }],
+        .reads = &[.sp],
+        .writes = &[.sp]
+    },
+    .{
+        .base = 0xe8bd0000,
+        .args = &[.{ .kind = .list(.wide_pc), .access = .write }],
+        .reads = &[.sp],
+        .writes = &[.sp]
+    },
 ] };

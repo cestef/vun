@@ -1,7 +1,9 @@
 //! Writing a laid-out file: its tokens and comments in order, each after the whitespace its place
-//! asks for (spec 13, section 5). Line breaks are the author's; the rest is computed.
+//! asks for (spec 13, section 5). Line breaks are the author's, and those `forced` adds; the rest
+//! is computed. A pass also traces where each token and each group landed, which says what to
+//! break next (the module `wrap`).
 
-use std::fmt;
+use std::collections::BTreeSet;
 
 use vun_grammar::{NodeKind, SEPARATORS, TokenKind};
 use vun_syntax::lexer::TO_LINE_END;
@@ -11,10 +13,35 @@ use vun_syntax::tokens::{TokenId, Tokens};
 use crate::Layout;
 use crate::spacing::{Between, Group, Tok};
 
-/// A group still open, and the indent of the line holding its opener.
+/// A group still open, the indent of the line holding its opener, and its place in the trace.
 struct Open {
     group: Group,
     indent: usize,
+    traced: usize,
+}
+
+/// Where a token landed: the line of the output, and the column its text ends at.
+pub(crate) struct Placed {
+    pub(crate) token: TokenId,
+    pub(crate) line: usize,
+    pub(crate) end: usize,
+}
+
+/// A delimited group as written: its opener and closer, and the tokens starting its entries.
+pub(crate) struct Written {
+    pub(crate) open: TokenId,
+    pub(crate) close: Option<TokenId>,
+    pub(crate) entries: Vec<TokenId>,
+}
+
+/// What a pass wrote, token by token and group by group, in order.
+#[derive(Default)]
+pub(crate) struct Trace {
+    pub(crate) placed: Vec<Placed>,
+    pub(crate) groups: Vec<Written>,
+    /// The infix operators with a right operand, and how many groups were open where each stood:
+    /// where a long line may be continued.
+    pub(crate) infix: Vec<(TokenId, usize)>,
 }
 
 /// The last token written: what spacing reads of it, and what the group it closed, if it closed
@@ -24,9 +51,14 @@ struct Last {
     closed: Option<NodeKind>,
 }
 
-pub(crate) struct Writer<'l, 'a, 'f, 'o> {
+pub(crate) struct Writer<'l, 'a, 'f> {
     layout: &'l Layout<'a>,
-    out: &'f mut fmt::Formatter<'o>,
+    out: &'f mut String,
+    /// The tokens a line break is added before, whatever the author wrote.
+    forced: &'f BTreeSet<TokenId>,
+    trace: Trace,
+    /// The line of the output being written, from 0.
+    at: usize,
     groups: Vec<Open>,
     /// The indent of the line being written.
     indent: usize,
@@ -37,13 +69,24 @@ pub(crate) struct Writer<'l, 'a, 'f, 'o> {
     started: bool,
 }
 
-impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
-    pub(crate) fn new(layout: &'l Layout<'a>, out: &'f mut fmt::Formatter<'o>) -> Self {
-        Self { layout, out, groups: Vec::new(), indent: 0, last: None, line: String::new(), started: false }
+impl<'l, 'a, 'f> Writer<'l, 'a, 'f> {
+    pub(crate) fn new(layout: &'l Layout<'a>, out: &'f mut String, forced: &'f BTreeSet<TokenId>) -> Self {
+        Self {
+            layout,
+            out,
+            forced,
+            trace: Trace::default(),
+            at: 0,
+            groups: Vec::new(),
+            indent: 0,
+            last: None,
+            line: String::new(),
+            started: false,
+        }
     }
 
-    /// Writes the whole file, ending it with one newline.
-    pub(crate) fn file(mut self) -> fmt::Result {
+    /// Writes the whole file, ending it with one newline, and gives what it traced.
+    pub(crate) fn file(mut self) -> Trace {
         let tokens = self.layout.tokens;
         for t in tokens.ids() {
             // The line breaks of the whitespace before each comment and before the token.
@@ -52,7 +95,7 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
                 let text = lexeme.range.of(self.layout.source);
                 match lexeme.kind {
                     TokenKind::Comment => {
-                        self.comment(text.trim_end(), breaks, t)?;
+                        self.comment(text.trim_end(), breaks, t);
                         breaks = 0;
                     }
                     _ => breaks += text.matches('\n').count(),
@@ -61,35 +104,40 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
             if tokens.kind(t) == TokenKind::Eof {
                 break;
             }
-            self.token(t, breaks)?;
+            if self.forced.contains(&t) {
+                breaks = breaks.max(1);
+            }
+            self.token(t, breaks);
         }
-        if self.started { self.out.write_str("\n") } else { Ok(()) }
+        if self.started {
+            self.out.push('\n');
+        }
+        self.trace
     }
 
     /// The comment `text` before the token `next`, after `breaks` line breaks.
-    fn comment(&mut self, text: &str, breaks: usize, next: TokenId) -> fmt::Result {
+    fn comment(&mut self, text: &str, breaks: usize, next: TokenId) {
         if self.started && breaks == 0 {
-            self.put(" ")?;
+            self.put(" ");
         } else {
             // A comment before a closer is inside its group.
             let closes = self.closing(next).is_some();
             let indent =
                 if closes { self.groups.last().map_or(0, |g| g.indent + 1) } else { self.line_indent(next) };
-            self.line(breaks, indent, closes)?;
+            self.line(breaks, indent, closes);
         }
-        self.put(text)?;
+        self.put(text);
         self.started = true;
-        Ok(())
     }
 
     /// Writes `text` on the line being written.
-    fn put(&mut self, text: &str) -> fmt::Result {
+    fn put(&mut self, text: &str) {
         self.line.push_str(text);
-        self.out.write_str(text)
+        self.out.push_str(text);
     }
 
     /// The token `t`, after `breaks` line breaks.
-    fn token(&mut self, t: TokenId, breaks: usize) -> fmt::Result {
+    fn token(&mut self, t: TokenId, breaks: usize) {
         let tokens = self.layout.tokens;
         let roles = &self.layout.roles;
         let tok = Tok { kind: tokens.kind(t), anchor: roles.anchor(t), open: roles.is_open(t) };
@@ -100,38 +148,57 @@ impl<'l, 'a, 'f, 'o> Writer<'l, 'a, 'f, 'o> {
         let text = if TO_LINE_END.contains(&tok.kind) { text.trim_end_matches('\r') } else { text };
         if breaks > 0 && self.started {
             let indent = self.line_indent(t);
-            self.line(breaks, indent, closing.is_some())?;
+            self.line(breaks, indent, closing.is_some());
         } else if let Some(last) = &self.last {
             let between = Between { closing, closed: last.closed };
             // Tokens that would lex as others together stay apart: `2 .5`, `.. =`.
             if last.tok.spaced(tok, &between) || !Tokens::apart(tokens.file(), &self.line, text) {
-                self.put(" ")?;
+                self.put(" ");
             }
         }
-        self.put(text)?;
+        // A token starting an entry of the group it is in is where that group may be broken.
+        if roles.starts_entry(t)
+            && closing.is_none()
+            && let Some(open) = self.groups.last()
+        {
+            self.trace.groups[open.traced].entries.push(t);
+        }
+        if tok.anchor == Some(NodeKind::Infix) && !tok.open {
+            self.trace.infix.push((t, self.groups.len()));
+        }
+        self.put(text);
+        self.trace.placed.push(Placed { token: t, line: self.at, end: self.line.chars().count() });
         self.started = true;
-        let closed = if closing.is_some() { self.groups.pop().and_then(|g| g.group.anchor) } else { None };
+        let closed = match closing {
+            Some(_) => self.groups.pop().and_then(|g| {
+                self.trace.groups[g.traced].close = Some(t);
+                g.group.anchor
+            }),
+            None => None,
+        };
         if let Some(row) = tok.kind.delimiter() {
-            self.groups.push(Open { group: Group { row, anchor: tok.anchor }, indent: self.indent });
+            let traced = self.trace.groups.len();
+            self.trace.groups.push(Written { open: t, close: None, entries: Vec::new() });
+            self.groups.push(Open { group: Group { row, anchor: tok.anchor }, indent: self.indent, traced });
         }
         self.last = Some(Last { tok, closed });
-        Ok(())
     }
 
     /// Starts a new line at `indent`, after a blank one when the source had one, unless it
     /// follows an opening delimiter or `closes` one.
-    fn line(&mut self, breaks: usize, indent: usize, closes: bool) -> fmt::Result {
+    fn line(&mut self, breaks: usize, indent: usize, closes: bool) {
         if !self.started {
-            return Ok(());
+            return;
         }
         let opened = self.last.as_ref().is_some_and(|l| l.tok.kind.opens());
-        self.out.write_str(if breaks > 1 && !opened && !closes { "\n\n" } else { "\n" })?;
+        let blank = breaks > 1 && !opened && !closes;
+        self.out.push_str(if blank { "\n\n" } else { "\n" });
+        self.at += if blank { 2 } else { 1 };
         self.line.clear();
         for _ in 0..indent {
-            self.put(INDENT)?;
+            self.put(INDENT);
         }
         self.indent = indent;
-        Ok(())
     }
 
     /// The group `t` closes, if it closes the innermost one open.

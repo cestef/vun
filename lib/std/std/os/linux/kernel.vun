@@ -187,7 +187,14 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.open)]
     open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
         ended := std.os.file.Path.of(path)?;
-        at := [std.os.linux.cwd.wrap(usize), ended.start().address(), std.os.linux.flags.of(mode).to(usize), std.os.file.created, 0, 0];
+        at := [
+            std.os.linux.cwd.wrap(usize),
+            ended.start().address(),
+            std.os.linux.flags.of(mode).to(usize),
+            std.os.file.created,
+            0,
+            0
+        ];
         .ok(outcome(request(numbers.openat, at))?.to(i32))
     };
 
@@ -200,7 +207,12 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.os.symbols.now)]
     now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
         mut at := std.os.Timespec{ .seconds = 0, .nanos = 0 };
-        outcome(request(numbers.clock_gettime, [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]))?;
+        outcome(
+            request(
+                numbers.clock_gettime,
+                [clock_id(clock), std.ptr.to(std.os.Timespec, &at).address(), 0, 0, 0, 0]
+            )
+        )?;
         .ok(at.instant())
     };
 
@@ -226,7 +238,17 @@ start := ($main: std.os.Main) -> type { struct {
     enter := () -> std.sync.Mask {
         all := every_signal;
         mut old: Sigset = 0;
-        request(numbers.rt_sigprocmask, [block, std.ptr.to(Sigset, &all).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+        request(
+            numbers.rt_sigprocmask,
+            [
+                block,
+                std.ptr.to(Sigset, &all).address(),
+                std.ptr.to(Sigset, &old).address(),
+                sigset_bytes,
+                0,
+                0
+            ]
+        );
         me := request(numbers.gettid, [0, 0, 0, 0, 0, 0]).wrap(usize);
         outer := owner.load(.acquire) != me;
         if outer {
@@ -242,7 +264,17 @@ start := ($main: std.os.Main) -> type { struct {
         }
         set: Sigset = mask.bits().wrap(Sigset);
         mut old: Sigset = 0;
-        request(numbers.rt_sigprocmask, [set_mask, std.ptr.to(Sigset, &set).address(), std.ptr.to(Sigset, &old).address(), sigset_bytes, 0, 0]);
+        request(
+            numbers.rt_sigprocmask,
+            [
+                set_mask,
+                std.ptr.to(Sigset, &set).address(),
+                std.ptr.to(Sigset, &old).address(),
+                sigset_bytes,
+                0,
+                0
+            ]
+        );
     };
 
     /// Gives the core to other threads: what fires an event runs on one of them, or in a
@@ -251,6 +283,8 @@ start := ($main: std.os.Main) -> type { struct {
     sleep := () { request(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.linux.kernel.memory.exports;
-    division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else { struct {} };
+    division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else {
+        struct {}
+    };
     threads := std.os.linux.kernel.thread.exports;
 } };

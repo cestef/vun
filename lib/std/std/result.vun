@@ -26,4 +26,3 @@ result_methods := ($T: type, $E: type) -> type { struct {
     #[panic.never]
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
 } };
-

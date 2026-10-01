@@ -18,12 +18,18 @@ bcond := _t.Instruction{
     .forms = &[
         .{
             .base = 0xf0008000,
-            .args = &[.{ .kind = .cond, .at = 22, .access = .read }, .{ .kind = .target(.cond), .access = .read }],
+            .args = &[
+                .{ .kind = .cond, .at = 22, .access = .read },
+                .{ .kind = .target(.cond), .access = .read }
+            ],
             .flags = .some(.read),
         },
         .{
             .base = 0xd000,
-            .args = &[.{ .kind = .cond, .at = 8, .access = .read }, .{ .kind = .target(.narrow_cond), .access = .read }],
+            .args = &[
+                .{ .kind = .cond, .at = 8, .access = .read },
+                .{ .kind = .target(.narrow_cond), .access = .read }
+            ],
             .flags = .some(.read),
         },
     ],

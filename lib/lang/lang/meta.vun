@@ -12,7 +12,12 @@ TypeOf := ($T: type, $e: Code(T)) -> type { T };
 origin: ($T: type) -> Origin = _;
 /// The struct `T`'s impl of the interface `I` gives, as the impls seen where it is asked see
 /// them: `witness(lang.ops.Add, u8).Output(u8)` is `Int(0..=510)`.
-#[lint.allow(std.lints.naming.case, "it gives an impl, a namespace, which a primitive's annotation cannot say")]
+#[
+    lint.allow(
+        std.lints.naming.case,
+        "it gives an impl, a namespace, which a primitive's annotation cannot say"
+    )
+]
 witness: ($I: lang.Interface, $T: type) -> type = _;
 /// Whether `T` has an impl of the interface `I`, as impls are seen where it is asked: whether
 /// `witness(I, T)` gives one.

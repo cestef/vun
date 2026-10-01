@@ -6,7 +6,19 @@ level: lang.lint.Level = .deny;
 
 /// The type names that keep their conventional lowercase, with the integer widths
 /// (`width_prefixes`): the exemptions of `case`.
-lowercase_types := &["unsigned", "signed", "usize", "isize", "f16", "f32", "f64", "bool", "never", "type", "interface"];
+lowercase_types := &[
+    "unsigned",
+    "signed",
+    "usize",
+    "isize",
+    "f16",
+    "f32",
+    "f64",
+    "bool",
+    "never",
+    "type",
+    "interface"
+];
 /// The letters an integer type's width follows in its lowercase name: `u24`, `i7`.
 width_prefixes := &['u', 'i'];
 

@@ -12,7 +12,9 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     mut past := [&items, beyond] () -> u8 { items[beyond] };
     sum := match sys.spawn(&mut low) {
         .ok(first) => match sys.spawn(&mut high) {
-            .ok(second) => first.join().expect("the first half trapped") + second.join().expect("the second half trapped"),
+            .ok(second) => first.join().expect("the first half trapped") + second.join().expect(
+                "the second half trapped"
+            ),
             .err(_) => first.join().expect("the first half trapped") + high(),
         },
         .err(.unsupported) => return std.os.Exit.of((low() + high()).to(Int(0..=125))),

@@ -29,6 +29,9 @@ pub const items_pointer: Item = Item::new(&["lang", "mem", "items_pointer"]);
 /// A borrow of the `n` items at `p`, as code outside the language hands them over: they must
 /// stay valid and unchanged for as long as the borrow is used.
 pub const items_at: Item = Item::new(&["lang", "mem", "items_at"]);
+/// An exclusive borrow of the `n` items at `p`: the memory must be valid, and nothing else may
+/// reach it, for as long as the borrow is used.
+pub const items_at_mut: Item = Item::new(&["lang", "mem", "items_at_mut"]);
 /// Unsynchronized interior mutability. Only usable in `unsafe` code (spec 07, section 2).
 pub const Cell: Item = Item::new(&["lang", "mem", "Cell"]);
 /// A cell holding `value`.

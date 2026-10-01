@@ -10,7 +10,9 @@ option_methods := ($T: type) -> type { struct {
     #[panic.never]
     unwrap_or := (o: ?T, default: T) -> T { match o { .some(v) => v, .none => default } };
     /// The value, or a trap with `message` when there is none.
-    expect := (o: ?T, $message: &[u8]) -> T { match o { .some(v) => v, .none => lang.panic.fail(.message(message)) } };
+    expect := (o: ?T, $message: &[u8]) -> T {
+        match o { .some(v) => v, .none => lang.panic.fail(.message(message)) }
+    };
     /// The value passed through `f`.
     map := (o: ?T, $U: type, $F: lang.ops.Call((T), U), f: F) -> ?U {
         match o { .some(v) => .some(f(v)), .none => .none }
@@ -21,4 +23,3 @@ option_methods := ($T: type) -> type { struct {
         match o { .some(v) => .ok(v), .none => .err(error) }
     };
 } };
-

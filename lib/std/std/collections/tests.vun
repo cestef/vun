@@ -1,0 +1,67 @@
+//! Tests of `std.collections`.
+
+Fixed: type = std.mem.alloc.Fixed;
+
+#[test]
+a_vec_holds_what_is_pushed := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u32).empty();
+    std.testing.assert(v.is_empty());
+    for i in 0..20 { v.push(Fixed, &mut a, i * 3).expect("room"); }
+    std.testing.assert(v.len() == 20);
+    std.testing.assert(v.capacity() >= 20);
+    std.testing.assert(v.items()[7] == 21);
+    std.testing.assert(v.get(19) == Option(&u32).some(&57));
+    std.testing.assert(v.get(20) == Option(&u32).none);
+    v.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_vec_pops_in_reverse := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u8).empty();
+    v.push(Fixed, &mut a, 1).expect("room");
+    v.push(Fixed, &mut a, 2).expect("room");
+    std.testing.assert(v.pop() == Option(u8).some(2));
+    std.testing.assert(v.pop() == Option(u8).some(1));
+    std.testing.assert(v.pop() == Option(u8).none);
+    v.deinit(Fixed, &mut a);
+};
+
+#[test]
+inserting_and_removing_keep_the_order := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u8).empty();
+    v.extend(Fixed, &mut a, "acd").expect("room");
+    v.insert(Fixed, &mut a, 1, "b"[0]).expect("room");
+    std.testing.assert(v.items() == "abcd");
+    std.testing.assert(v.remove(0) == "a"[0]);
+    std.testing.assert(v.items() == "bcd");
+    std.testing.assert(v.swap_remove(0) == "b"[0]);
+    std.testing.assert(v.items() == "dc");
+    v.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_vec_changes_through_its_items := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u8).empty();
+    v.extend(Fixed, &mut a, "abc").expect("room");
+    v.items_mut()[1] = "X"[0];
+    std.testing.assert(v.items() == "aXc");
+    v.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_vec_fails_when_the_allocator_does := () {
+    mut storage: [32]u8 = [0; 32];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u64).empty();
+    std.testing.assert(v.push(Fixed, &mut a, 1) == Result((), std.mem.alloc.Error).ok(()));
+    std.testing.assert(v.reserve(Fixed, &mut a, 100) == Result((), std.mem.alloc.Error).err(.exhausted));
+    v.deinit(Fixed, &mut a);
+};

@@ -58,7 +58,14 @@ NodeKind := .{
     .structure = [
         .error(.many(.held)),
         .file(
-            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .many(
+                .choice(
+                    .seq(.members, ";"),
+                    .seq(.of(.members, fields), ","),
+                    .of(.members, unterminated),
+                    ";"
+                )
+            ),
             .optional(.of(.members, fields)),
             .token(.eof),
         ),
@@ -73,7 +80,14 @@ NodeKind := .{
         .select(".{", .separated(.names, ","), "}"),
         .namespace(
             ";",
-            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .many(
+                .choice(
+                    .seq(.members, ";"),
+                    .seq(.of(.members, fields), ","),
+                    .of(.members, unterminated),
+                    ";"
+                )
+            ),
             .optional(.of(.members, fields)),
         ),
     ],
@@ -88,7 +102,14 @@ NodeKind := .{
         // Under `$` among members or items, a block holds those: `$for f in fs { x: T, }`.
         .block(
             "{",
-            .many(.choice(.seq(.statements, ";"), .seq(.of(.statements, fields), ","), .of(.statements, unterminated), ";")),
+            .many(
+                .choice(
+                    .seq(.statements, ";"),
+                    .seq(.of(.statements, fields), ","),
+                    .of(.statements, unterminated),
+                    ";"
+                )
+            ),
             .optional(.statements),
             "}",
         ),
@@ -101,7 +122,14 @@ NodeKind := .{
         .\struct(
             "struct",
             "{",
-            .many(.choice(.seq(.members, ";"), .seq(.of(.members, fields), ","), .of(.members, unterminated), ";")),
+            .many(
+                .choice(
+                    .seq(.members, ";"),
+                    .seq(.of(.members, fields), ","),
+                    .of(.members, unterminated),
+                    ";"
+                )
+            ),
             .optional(.of(.members, fields)),
             "}",
         ),

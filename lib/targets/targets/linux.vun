@@ -20,7 +20,13 @@ _Machine := struct {
 /// `flags` when compiling and linking, `link_flags` when linking and, after the objects,
 /// `libraries`.
 #[visible(.within(targets.linux))]
-_on := ($machine: _Machine, $abi: lang.meta.Name, $flags: &[&[u8]], $link_flags: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.Spec {
+_on := (
+    $machine: _Machine,
+    $abi: lang.meta.Name,
+    $flags: &[&[u8]],
+    $link_flags: &[&[u8]],
+    $libraries: &[&[u8]]
+) -> lang.target.Spec {
     $compiler := targets.gnu("cc", .host, "ar", flags, link_flags, libraries);
     .{
         .arch = machine.arch,

@@ -38,7 +38,11 @@ Shadow := struct {
     _map: (bytes: usize) -> usize,
     _unmap: (address: usize, bytes: usize) -> (),
 
-    of := unsafe (directory: std.check.words.Words, map: (bytes: usize) -> usize, unmap: (address: usize, bytes: usize) -> ())
+    of := unsafe (
+        directory: std.check.words.Words,
+        map: (bytes: usize) -> usize,
+        unmap: (address: usize, bytes: usize) -> ()
+    )
         -> Shadow
         {
             .{ ._directory = directory, ._map = map, ._unmap = unmap }
@@ -266,7 +270,13 @@ exports := ($state: () -> State, $end: (status: std.os.Status) -> lang.never) ->
     asm_write := (address: usize, bytes: usize, site: u32) {
         match state().shadow.access(address, bytes) {
             .some(found) => {
-                std.trace.report(#[abi.c] (address: usize, bytes: usize, site: u32) -> (), asm_write, site, .failed(found));
+                std.trace.report(
+                    #[abi.c]
+                    (address: usize, bytes: usize, site: u32) -> (),
+                    asm_write,
+                    site,
+                    .failed(found)
+                );
                 end(std.os.trapped)
             },
             .none => {},
@@ -275,7 +285,13 @@ exports := ($state: () -> State, $end: (status: std.os.Status) -> lang.never) ->
 
     #[link.export(lang.check.symbols.asm_stack), abi.c]
     asm_stack := (site: u32, before: usize, after: usize) -> lang.never {
-        std.trace.report(#[abi.c] (site: u32, before: usize, after: usize) -> lang.never, asm_stack, site, .failed(.stack_moved));
+        std.trace.report(
+            #[abi.c]
+            (site: u32, before: usize, after: usize) -> lang.never,
+            asm_stack,
+            site,
+            .failed(.stack_moved)
+        );
         end(std.os.trapped)
     };
 } };

@@ -111,3 +111,24 @@ build := (b: &mut std.build.Build) {
         [(CASE, Severity::Warning), (DiagId::new("std.lints.style.unused"), Severity::Error)]
     );
 }
+
+#[test]
+fn the_fix_allowing_a_lint_puts_its_attribute_on_the_line_above_at_the_indent() {
+    let fx = Fixture::new("lints-allow-fix");
+    let app = Fixture::manifest("app", 1, "0.1.0");
+    let source = "holder := struct {\n    Wrong := 1;\n};\n";
+    let dir = fx.write("", &app, source);
+    let mut session = fx.session();
+    let file = session.load(&Fixture::file(&dir, &app)).unwrap();
+    session.check(file);
+    let reported = session.diag.sorted(session.origins);
+    let allow = reported
+        .iter()
+        .filter(|d| d.id == CASE)
+        .flat_map(|d| d.fixes.iter())
+        .find(|f| f.msg.to_string().starts_with("allow it here"))
+        .expect("a fix allowing the lint");
+    let [edit] = allow.edits.as_slice() else { panic!("{allow:#?}") };
+    assert!(edit.text.starts_with("#[lang.lint.allow(std.lints.naming.case"), "{}", edit.text);
+    assert!(edit.text.ends_with("\n    "), "{:?}", edit.text);
+}

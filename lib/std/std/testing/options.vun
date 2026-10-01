@@ -40,7 +40,9 @@ Options := struct {
                             .some(number) => number,
                             .none => return .none,
                         };
-                        if given == seed_option { options.seed = .some(n); } else { options.cases = n.sat(usize); }
+                        if given == seed_option { options.seed = .some(n); } else {
+                            options.cases = n.sat(usize);
+                        }
                         after = .none;
                     },
                     .none => if Options.option(arg) {

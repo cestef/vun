@@ -91,7 +91,8 @@ Image := struct {
             at = unsafe at.offset(2);
         }
         for i in 0..count {
-            h := unsafe lang.mem.pointer_at(Header, (headers + i * lang.meta.size(Header)).wrap(usize)).read();
+            h := unsafe lang.mem.pointer_at(Header, (headers + i
+                    * lang.meta.size(Header)).wrap(usize)).read();
             if h.kind == tls_segment {
                 return .{
                     .at = h.address.to(usize),
@@ -125,7 +126,12 @@ Image := struct {
                 (pointer, storage)
             },
         };
-        unsafe lang.mem.copy(u8, lang.mem.pointer_at(u8, storage), lang.mem.pointer_at(u8, self.at), self.stored);
+        unsafe lang.mem.copy(
+            u8,
+            lang.mem.pointer_at(u8, storage),
+            lang.mem.pointer_at(u8, self.at),
+            self.stored
+        );
         pointer
     };
 };

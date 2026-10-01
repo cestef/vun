@@ -78,7 +78,9 @@ gen := ($T: type, c: &mut Choices) -> T {
     $if lang.meta.implements(Arbitrary, T) {
         lang.meta.witness(Arbitrary, T).arbitrary(c)
     } else if lang.meta.variants(T).len() == 0 {
-        $std.diag.error(.{ .msg = "no values of this type are generated: implement `std.testing.Arbitrary` for it" });
+        $std.diag.error(.{
+            .msg = "no values of this type are generated: implement `std.testing.Arbitrary` for it"
+        });
         unsafe lang.hint.unreachable()
     } else {
         derived(T, c)
@@ -149,7 +151,9 @@ int_arbitrary := ($r: lang.Range) -> type { struct {
 } };
 
 /// The tuple of what a case of `f` holds for each of its parameters.
-Args := ($F: type, $f: F) -> type { ($for p in lang.meta.params(F, f) { std.testing.property.lend.Held(p.type) },) };
+Args := ($F: type, $f: F) -> type { (
+    $for p in lang.meta.params(F, f) { std.testing.property.lend.Held(p.type) },
+) };
 
 /// What a case of `f` holds for each of its parameters, read from `c`.
 arguments := ($F: type, $f: F, c: &mut Choices) -> Args(F, f) {
@@ -183,7 +187,9 @@ generated := ($F: type, $f: F, sys: &mut std.os.System, c: &mut Choices, quiet: 
     held := arguments(F, f, c);
     mut case := [held, quiet] () {
         std.os.thread.reporting.set(!quiet);
-        _ = f.call(($for p in lang.meta.params(F, f) { std.testing.property.lend.passed(p.type, &held.$(p.index)) },));
+        _ = f.call((
+            $for p in lang.meta.params(F, f) { std.testing.property.lend.passed(p.type, &held.$(p.index)) },
+        ));
     };
     match sys.spawn(&mut case) {
         .ok(t) => match t.join() {

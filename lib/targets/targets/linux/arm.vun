@@ -11,4 +11,7 @@ _machine: targets.linux._Machine = .{
     .convention = .aapcs_vfp,
 };
 
-kernel := targets.linux._kernel(_machine, &["-march=armv7ve", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]);
+kernel := targets.linux._kernel(
+    _machine,
+    &["-march=armv7ve", "-mthumb", "-mfloat-abi=hard", "-mfpu=vfpv3-d16"]
+);
