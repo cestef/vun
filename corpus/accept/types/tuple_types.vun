@@ -1,0 +1,7 @@
+//! A tuple of types is a type (decision 89), so a declaration holding one is named as a type is,
+//! `()` included, which an impl gives to the type member of its interface.
+
+Pair := (u8, u16);
+Nothing := ();
+
+swap := (p: Pair) -> (u16, u8) { (p.1, p.0) };
