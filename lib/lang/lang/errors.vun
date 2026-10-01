@@ -41,6 +41,7 @@ types := struct {
     slice_value := diag.Diag{};
     bad_index := diag.Diag{};
     pack_position := diag.Diag{};
+    untyped_param := diag.Diag{};
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).

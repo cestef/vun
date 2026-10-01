@@ -14,3 +14,4 @@ pub const arity: Item = Item::new(&["lang", "errors", "types", "arity"]);
 pub const slice_value: Item = Item::new(&["lang", "errors", "types", "slice_value"]);
 pub const bad_index: Item = Item::new(&["lang", "errors", "types", "bad_index"]);
 pub const pack_position: Item = Item::new(&["lang", "errors", "types", "pack_position"]);
+pub const untyped_param: Item = Item::new(&["lang", "errors", "types", "untyped_param"]);

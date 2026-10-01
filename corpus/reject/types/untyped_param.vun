@@ -1,0 +1,4 @@
+//! A function's parameters are typed where they are written: nothing else says what a caller
+//! passes, so a name alone is no parameter (spec 01, section 4).
+
+identity := (x) { x }; //~ types.untyped_param

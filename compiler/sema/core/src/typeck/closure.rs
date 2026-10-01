@@ -6,7 +6,7 @@ use std::mem::{replace, take};
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
-use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
+use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatId, PatKind};
 use vun_query::Cx;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::ExprRef;
@@ -50,6 +50,14 @@ impl Typer<'_, '_, '_> {
                     };
                     self.pattern(*pat, ty.clone(), None);
                     ty.ok()
+                }
+                // A `$` parameter written without a type takes any value: the function is
+                // generic over it.
+                Entry::One(Param { pat: Some(pat), ty: None, .. }) => {
+                    if !matches!(hir.pats[*pat].kind, PatKind::Bind(b) if hir.binders[b].comptime) {
+                        self.untyped(*pat);
+                    }
+                    None
                 }
                 _ => None,
             };
@@ -103,6 +111,21 @@ impl Typer<'_, '_, '_> {
         }
         (self.result, self.written, self.loops, self.yields, self.framing) = outer;
         Some(Signature::new(types?, signature_result?))
+    }
+
+    /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
+    /// caller passes it.
+    fn untyped(&mut self, pat: PatId) {
+        let hir = self.hir();
+        let origin = hir.pats[pat].origin;
+        let name = match hir.pats[pat].kind {
+            PatKind::Bind(b) => hir.binders[b].name.as_str(),
+            _ => "x",
+        };
+        let msg = Msg::new().text("this parameter has no type");
+        let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: u8"));
+        let d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
+        self.diag.error(d);
     }
 
     /// `[captures] (params) -> R { body }`: each capture typed here, the body typed as part of
