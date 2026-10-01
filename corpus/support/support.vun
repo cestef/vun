@@ -55,6 +55,7 @@ Point := struct { x: i32, y: i32 };
 Reg := ($T: type) -> type { struct { raw: T } };
 
 /// Interfaces.
+#[lang.lint.allow(std.lints.naming.case, "a type constructor, whose methods receive its instances")]
 Dyn := ($I: lang.Interface) -> type { struct {
     begin_struct := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
     field := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
@@ -98,6 +99,7 @@ leaders := ($S: type, s: &S) -> u32 { 0 };
 blink := (led: &mut Led, timer: &Timer) -> Async(never) { for {} };
 
 /// A hosted runtime's system capability.
+#[lang.lint.allow(std.lints.naming.case, "the capability is a type, named as std names it")]
 System := struct {
     /// The capability, from what the system left on the stack at the entry point.
     from_stack := unsafe (sp: *usize) -> System { .{} };

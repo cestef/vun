@@ -14,6 +14,7 @@ use vun_mir_passes::places::PlaceStates;
 use vun_origin::Resolve;
 use vun_query::Query;
 use vun_sema::check::Checked;
+use vun_sema::lint::Linted;
 use vun_sema::typeck::Typed;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;
@@ -154,7 +155,8 @@ impl Session {
             self.diag.absorb(&reports);
         }
         // The bodies of other files the program built compiles, a library's included: what is
-        // built is checked, each file parsed and each body typed where the program reaches it.
+        // built is checked, each file parsed and linted and each body typed where the program
+        // reaches it.
         let program = {
             let _timer = REACH.start();
             self.db.get::<Programs>(&(key.clone(), self.roots.checked()))
@@ -165,6 +167,9 @@ impl Session {
         for file in reached {
             if let Some(parsed) = self.db.get::<Parsed>(file) {
                 self.diag.absorb(&parsed.diag);
+            }
+            if let Some(linted) = self.db.get::<Linted>(file) {
+                self.diag.absorb(&linted);
             }
         }
         for body in program.instantiations().filter(|i| i.f.literal.file != key) {
