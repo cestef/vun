@@ -163,6 +163,12 @@ smaller cases), 387 (coverage, `--cover`, `vun fuzz`) and 388 (the wasm linker).
 - `vun-par` callers wait on uneven items (`wait for workers`, longest runs of 2 to 25 ms on
   `am3.wg`). Parse is ~11 MiB/s, the lexer ~145: its profile is flat now (the per-token decision
   over the frames and the specs positions take, rebuilt at each check).
+- A new user's first session (`docs/reports/2026-10-01-new-user.md`) found: `a[..n]` checks
+  clean and fails to build as `backend.unlowered`; a WASI stack overflow is a raw memory fault;
+  `vun run -- file` and `vun test <name>` bind the word to `[path]`; `vun test -q` hides trapped
+  tests; `std.panic.fail(..);` does not end its block; `naming.case` denies `Error := ();` in an
+  impl; `vun test`/`build` skip a lint `vun check` denies. The report lists the diagnostics and
+  missing pieces too.
 
 ## For the owner
 

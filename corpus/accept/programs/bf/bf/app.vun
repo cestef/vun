@@ -1,0 +1,56 @@
+//! `bf <file>`: runs the Brainfuck program in a file, its input read from standard input.
+
+start := std.os.start(main);
+
+/// The largest source and input read.
+limit := 65536;
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut err := sys.stderr();
+    path := match sys.args().get(1) {
+        .some(p) => p,
+        .none => {
+            _ = std.fmt.print(&mut err, "usage: bf <file>\n");
+            return .code(2);
+        },
+    };
+    mut source: [limit]u8 = [0; limit];
+    n := match load(sys, path, &mut source) {
+        .ok(n) => n,
+        .err(_) => {
+            _ = std.fmt.print(&mut err, "bf: cannot read {}\n", path);
+            return .code(1);
+        },
+    };
+    program := match bf.Program.parse(&source[0..n]) {
+        .ok(p) => p,
+        .err(e) => {
+            _ = std.fmt.print(&mut err, "bf: {}\n", e);
+            return .code(1);
+        },
+    };
+    mut input: [limit]u8 = [0; limit];
+    mut stdin := sys.stdin();
+    got := match stdin.read(&mut input) {
+        .ok(k) => k,
+        .err(_) => 0,
+    };
+    mut out := sys.stdout();
+    match program.run(&mut out, &input[0..got]) {
+        .ok(_) => .ok,
+        .err(_) => .code(1),
+    }
+};
+
+/// Reads the file at `path` into `into`, returning how many bytes it holds.
+load := (sys: &mut std.os.System, path: &[u8], into: &mut [u8]) -> Result(usize, std.os.Error) {
+    mut file := sys.open(path, .read)?;
+    mut n: usize = 0;
+    for {
+        k := file.stream().read(into[n..])?;
+        if k == 0 { break; }
+        n += k;
+    }
+    file.close()?;
+    .ok(n)
+};

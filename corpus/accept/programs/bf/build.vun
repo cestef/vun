@@ -1,0 +1,14 @@
+//! bf: a Brainfuck interpreter, written as a first project while trying Vun as a new user
+//! (`docs/reports/2026-10-01-new-user.md`).
+
+package := .{
+    .name = "bf",
+    .id = 0x0000_0000_0000_0022,
+    .version = "0.1.0",
+    .edition = 2026,
+    .include = .{ "build.vun", "bf.vun", "bf" },
+};
+
+build := (b: &mut std.build.Build) {
+    _ = b.program(.{ .root = "bf/app.vun", .target = lang.target.current });
+};

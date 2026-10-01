@@ -1,0 +1,77 @@
+//! Tests of the parser and the interpreter.
+
+/// Bytes written into a fixed buffer, the rest refused.
+Sink := struct {
+    bytes: [256]u8,
+    len: Int(0..=256),
+
+    empty := () -> Sink { .{ .bytes = [0; 256], .len = 0 } };
+    text := (self: &Sink) -> &[u8] { &self.bytes[0..self.len] };
+};
+
+/// Why a sink took no more bytes.
+Full := enum { full };
+
+#[impl(std.fmt.Writer(Sink))]
+sink_writer := struct {
+    Error := Full;
+    closed: Full = .full;
+    write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, Full) {
+        mut n: usize = 0;
+        for n < bytes.len() and self.len < 256 {
+            self.bytes[self.len] = bytes[n];
+            self.len += 1;
+            n += 1;
+        }
+        .ok(n)
+    };
+};
+
+/// What `source` writes given `input`.
+output := (source: &[u8], input: &[u8]) -> Sink {
+    mut sink := Sink.empty();
+    program := match bf.Program.parse(source) {
+        .ok(p) => p,
+        .err(_) => std.panic.fail(.message("the source does not parse")),
+    };
+    _ = program.run(&mut sink, input);
+    sink
+};
+
+#[test]
+hello := () {
+    hi := output("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.", "");
+    std.testing.assert(hi.text() == "Hello World!\n");
+};
+
+#[test]
+echoes_input := () {
+    std.testing.assert(output(",[.,]", "abc").text() == "abc");
+};
+
+#[test]
+cells_wrap := () {
+    // 0 - 1 wraps to 255
+    std.testing.assert(output("-.", "").text() == "\xff");
+};
+
+#[test]
+comments_are_skipped := () {
+    std.testing.assert(output("add one: +++ and print it: .", "").text() == "\x03");
+};
+
+#[test]
+unmatched_close := () {
+    std.testing.assert(match bf.Program.parse("+]") { .err(.unmatched_close(1)) => true, _ => false });
+};
+
+#[test]
+unmatched_open := () {
+    std.testing.assert(match bf.Program.parse("+[[]") { .err(.unmatched_open(1)) => true, _ => false });
+};
+
+/// Any source parses or fails with an error, never traps.
+#[test]
+parse_never_traps := (source: &[u8]) {
+    _ = bf.Program.parse(source);
+};

@@ -31,6 +31,7 @@ Draft 2 of the design. Each file in `spec/` covers one area and can be read on i
 | [dev/commands.md](dev/commands.md) | checks, running, inspecting, cross builds, measuring speed |
 | [dev/crates.md](dev/crates.md) | the compiler's crates by area |
 | [dev/pitfalls.md](dev/pitfalls.md) | traps that cost a session before |
+| [reports/](reports/) | dated reports of sessions trying the toolchain, such as a new user's first project |
 | [HANDOFF.md](HANDOFF.md) | current state, open decisions and next steps |
 
 Conventions in these docs: "must" is a rule the compiler enforces; "lean" marks a tentative

@@ -1,0 +1,111 @@
+//! A Brainfuck interpreter: a program is parsed once, its brackets matched, then run on a tape
+//! of wrapping byte cells.
+
+/// The most instructions a program holds.
+capacity := 4096;
+/// The cells of the tape.
+cells := 30000;
+
+/// The position of an instruction.
+Index := Int(0..capacity);
+/// The position of a cell.
+Cell := Int(0..cells);
+
+/// One instruction; a bracket holds the position of its partner.
+Op := enum { right, left, inc, dec, write, read, open(Index), close(Index) };
+
+/// Why a source is not a program.
+Error := enum {
+    /// A `[` at this instruction that no `]` closes.
+    unmatched_open(Index),
+    /// A `]` at this byte of the source that closes no `[`.
+    unmatched_close(usize),
+    /// More than `capacity` instructions.
+    too_long,
+};
+
+/// A parsed program.
+Program := struct {
+    ops: [capacity]Op,
+    len: Int(0..=capacity),
+
+    /// The instructions of `source`, every byte other than the eight commands a comment.
+    parse := (source: &[u8]) -> Result(Program, Error) {
+        mut p: Program = .{ .ops = [.right; capacity], .len = 0 };
+        mut stack: [capacity]Index = [0; capacity];
+        mut depth: Int(0..=capacity) = 0;
+        for i in 0..source.len() {
+            op: Op = match source[i] {
+                '>' => .right,
+                '<' => .left,
+                '+' => .inc,
+                '-' => .dec,
+                '.' => .write,
+                ',' => .read,
+                '[' => .open(0),
+                ']' => .close(0),
+                _ => continue,
+            };
+            here := p.len;
+            if here == capacity { return .err(.too_long); }
+            match op {
+                .open(_) => {
+                    stack[depth] = here;
+                    depth += 1;
+                    p.ops[here] = op;
+                },
+                .close(_) => {
+                    if depth == 0 { return .err(.unmatched_close(i)); }
+                    depth -= 1;
+                    there := stack[depth];
+                    p.ops[there] = .open(here);
+                    p.ops[here] = .close(there);
+                },
+                _ => { p.ops[here] = op; },
+            }
+            p.len += 1;
+        }
+        if depth > 0 { return .err(.unmatched_open(stack[depth - 1])); }
+        .ok(p)
+    };
+
+    /// Runs the program, reading its input from `input` (0 past its end) and writing its output
+    /// to `out`. Returns how many instructions ran.
+    run := (self: &Program, $W: std.fmt.Writer, out: &mut W, input: &[u8]) -> Result(u64, W.Error) {
+        mut tape: [cells]u8 = [0; cells];
+        mut at: Cell = 0;
+        mut read: usize = 0;
+        mut pc: Int(0..=capacity) = 0;
+        mut steps: u64 = 0;
+        for pc < self.len {
+            match self.ops[pc] {
+                .right => { at = (at + 1) % cells; },
+                .left => { at = (at + cells - 1) % cells; },
+                .inc => { tape[at] +%= 1; },
+                .dec => { tape[at] -%= 1; },
+                .write => { out.write_all(&[tape[at]])?; },
+                .read => {
+                    tape[at] = if read < input.len() { input[read] } else { 0 };
+                    read += 1;
+                },
+                .open(j) => { if tape[at] == 0 { pc = j; } },
+                .close(j) => { if tape[at] != 0 { pc = j; } },
+            }
+            pc += 1;
+            steps +%= 1;
+        }
+        .ok(steps)
+    };
+};
+
+#[impl(std.fmt.Format(Error))]
+error_format := struct {
+    /// What is wrong, and where.
+    format := ($W: std.fmt.Writer, value: &Error, w: &mut W) -> Result((), W.Error) {
+        match value.* {
+            .unmatched_open(at) => std.fmt.print(w, "unmatched `[` at instruction {}", at),
+            .unmatched_close(at) => std.fmt.print(w, "unmatched `]` at byte {}", at),
+            .too_long => std.fmt.print(w, "more than {} instructions", capacity),
+        }
+    };
+};
