@@ -10,6 +10,7 @@ const FORMAT: Param = Param::option("format")
 const FAST: Param = Param::flag("fast").short('f').about("go fast");
 const DEEP: Param = Param::flag("deep").about("look deeper");
 const REST: Param = Param::positional("rest").arity(Arity::Many);
+const MAYBE: Param = Param::positional("maybe").arity(Arity::Optional);
 const KEEP: Param = Param::option("keep").values(Values::Catalog(Catalog {
     names: || vec!["names.duplicate", "names.unresolved"],
     what: "an error",
@@ -35,6 +36,7 @@ const PROGRAM: Program<()> = Program {
                 "print things",
                 &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
+            Command::run("go", "run it too", ok).params(&[MAYBE, REST]),
             Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, TIMES, REST]).aliases(&["x"]),
         ],
     )
@@ -111,7 +113,7 @@ fn values_are_checked_and_words_after_the_end_of_options_are_positional() {
 #[test]
 fn completions_cover_every_command_under_its_aliases() {
     let paths: Vec<_> = PROGRAM.tree().nodes.into_iter().map(|n| n.path).collect();
-    assert_eq!(paths, [vec![], vec!["dump"], vec!["dump", "cst"], vec!["exec"], vec!["x"]]);
+    assert_eq!(paths, [vec![], vec!["dump"], vec!["dump", "cst"], vec!["go"], vec!["exec"], vec!["x"]]);
     for dialect in Dialect::ALL {
         assert!(!PROGRAM.completion(dialect).is_empty());
     }
@@ -172,4 +174,12 @@ fn a_count_is_checked_as_a_whole_number() {
         error("x a.vun --times three"),
         (errors::CLI_INVALID_VALUE, "write a whole number, such as `100`".to_owned())
     );
+}
+
+#[test]
+fn words_after_the_end_of_options_skip_an_optional_positional() {
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("go -- a.bf")) else { panic!("not a run") };
+    assert_eq!((args.value(&MAYBE), args.values(&REST).collect::<Vec<_>>()), (None, ["a.bf"].to_vec()));
+    let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("go . -- a.bf")) else { panic!("not a run") };
+    assert_eq!((args.value(&MAYBE), args.values(&REST).collect::<Vec<_>>()), (Some("."), ["a.bf"].to_vec()));
 }

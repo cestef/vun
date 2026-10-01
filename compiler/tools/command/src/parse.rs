@@ -115,6 +115,14 @@ impl<Cx> Program<Cx> {
             let command = selected.last();
             if word == OPTIONS_END && !options_end {
                 options_end = true;
+                // The words after it are the trailing ones', not an optional path's.
+                while command
+                    .positionals()
+                    .nth(positional)
+                    .is_some_and(|p| p.kind == ParamKind::Positional(Arity::Optional))
+                {
+                    positional += 1;
+                }
                 continue;
             }
             if let Some(option) = Given::of(word).filter(|_| !options_end) {
