@@ -60,6 +60,7 @@ pub mod os_windows_file;
 pub mod os_windows_file_Opening;
 pub mod os_windows_file_Wide;
 pub mod os_windows_kernel32;
+pub mod os_windows_services;
 pub mod os_windows_stack;
 pub mod os_windows_start;
 pub mod os_windows_tests;

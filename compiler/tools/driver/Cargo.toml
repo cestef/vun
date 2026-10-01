@@ -100,6 +100,8 @@ vun-hash.workspace = true
 criterion.workspace = true
 # An independent validator of the programs the wasm linker links.
 wasmparser.workspace = true
+# Reads back the libraries and programs linked for Windows.
+vun-pe.workspace = true
 vun-wasm.workspace = true
 
 [[bench]]

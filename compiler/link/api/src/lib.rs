@@ -46,6 +46,9 @@ pub struct LinkPlan {
     pub kind: Output,
     /// From the target (spec 08, rule 2).
     pub entry: Option<Symbol>,
+    /// The link symbols a library makes available to what loads it: its interface. A program has
+    /// none, the symbols its runtime exports being its own.
+    pub exports: Vec<Symbol>,
     pub regions: Vec<MemoryRegion>,
     pub sections: Vec<SectionPlacement>,
 }

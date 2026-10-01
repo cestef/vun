@@ -7,26 +7,4 @@
 )]
 use crate::Item;
 pub const entry: Item = Item::new(&["std", "os", "windows", "start", "entry"]);
-pub const trap: Item = Item::new(&["std", "os", "windows", "start", "trap"]);
-/// The operations of the checks of unsafe code, for a program built with checks.
-pub const checks: Item = Item::new(&["std", "os", "windows", "start", "checks"]);
-pub const write: Item = Item::new(&["std", "os", "windows", "start", "write"]);
-pub const read: Item = Item::new(&["std", "os", "windows", "start", "read"]);
-pub const open_file: Item = Item::new(&["std", "os", "windows", "start", "open_file"]);
-pub const close: Item = Item::new(&["std", "os", "windows", "start", "close"]);
-pub const now: Item = Item::new(&["std", "os", "windows", "start", "now"]);
-pub const pause: Item = Item::new(&["std", "os", "windows", "start", "pause"]);
-/// A program runs one thread, which nothing interrupts.
-pub const enter: Item = Item::new(&["std", "os", "windows", "start", "enter"]);
-pub const leave: Item = Item::new(&["std", "os", "windows", "start", "leave"]);
-/// Nothing else runs in the program, so there is nothing to wait for.
-pub const sleep: Item = Item::new(&["std", "os", "windows", "start", "sleep"]);
-/// A program runs one thread.
-pub const spawn: Item = Item::new(&["std", "os", "windows", "start", "spawn"]);
-/// No thread was started to join.
-pub const join: Item = Item::new(&["std", "os", "windows", "start", "join"]);
-pub const memory: Item = Item::new(&["std", "os", "windows", "start", "memory"]);
-pub const stack: Item = Item::new(&["std", "os", "windows", "start", "stack"]);
-/// The symbol a C compiler for the target refers to where a program uses floating point,
-/// which the C runtime defines.
-pub const float_used: Item = Item::new(&["std", "os", "windows", "start", "float_used"]);
+pub const services: Item = Item::new(&["std", "os", "windows", "start", "services"]);

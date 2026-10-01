@@ -809,7 +809,10 @@ assembler and its instruction compilers and nothing else:
   oldest release it runs on (`lang.target.Spec.os_version`, `-platform_version`), its sysroot
   (`-syslibroot`) and its C compiler's `libraries` (`System`), into a program `LC_MAIN` enters
   at `_main`; its C compiler is told the release by the option the target names
-  (`lang.target.CCompiler.version_flag`); relocation
+  (`lang.target.CCompiler.version_flag`); code for a shared library is compiled with the flags
+  the target's C compiler names (`lang.target.CCompiler.shared`: `-fPIC` for ELF and Mach-O,
+  none for PE, which is rebased by its relocations), and the link plan lists the symbols a
+  library exports (`LinkPlan::exports`), which `lld-link` is given as `/export:`; relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the
   native backend does not write for its machine is refused (`backend.lacks`): Windows' COFF
   (`windows.x86_64.msvc`) is built through the C backend, clang writing the objects and

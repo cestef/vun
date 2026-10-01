@@ -172,6 +172,7 @@ impl Read for CCompiler {
             archiver: m.string(compiler::archiver)?,
             flags: m.strings(compiler::flags)?,
             optimize: m.strings(compiler::optimize)?,
+            shared: m.strings(compiler::shared)?,
             link_flags: m.strings(compiler::link_flags)?,
             libraries: m.strings(compiler::libraries)?,
             atomics: m.read(compiler::atomics)?,

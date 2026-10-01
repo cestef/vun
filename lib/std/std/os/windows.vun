@@ -81,6 +81,14 @@ start := ($main: std.os.Main) -> type { struct {
         }
     };
 
+    services := std.os.windows.services;
+} };
+
+/// What a program's system provides besides its start, as exports: a trap that ends the process,
+/// the operations of `std.os`, the copies and fills a C compiler calls for, the probe of a large
+/// frame, and the symbol it refers to where code uses floating point. A runtime holds it, and so
+/// does a library, which has no runtime: `services := std.os.windows.services`.
+services := struct {
     #[link.export(lang.panic.symbols.trap)]
     trap := (t: &lang.panic.Trap) -> lang.never {
         if std.os.thread.reporting.get() { std.trace.trapped(t, trap); }
@@ -178,11 +186,9 @@ start := ($main: std.os.Main) -> type { struct {
     memory := std.os.memory.exports;
     stack := std.os.windows.stack.exports;
 
-    /// The symbol a C compiler for the target refers to where a program uses floating point,
-    /// which the C runtime defines.
     #[link.export("_fltused")]
     float_used: i32 = 1;
-} };
+};
 
 /// The command line the system holds, as the units of its text.
 command_line_units := () -> &[u16] {

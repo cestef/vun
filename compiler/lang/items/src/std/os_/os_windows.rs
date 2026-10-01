@@ -52,6 +52,11 @@ pub const argument_bytes: Item = Item::new(&["std", "os", "windows", "argument_b
 pub const utf8_code_page: Item = Item::new(&["std", "os", "windows", "utf8_code_page"]);
 /// The exports of a program whose entry the system calls.
 pub const start: Item = Item::new(&["std", "os", "windows", "start"]);
+/// What a program's system provides besides its start, as exports: a trap that ends the process,
+/// the operations of `std.os`, the copies and fills a C compiler calls for, the probe of a large
+/// frame, and the symbol it refers to where code uses floating point. A runtime holds it, and so
+/// does a library, which has no runtime: `services := std.os.windows.services`.
+pub const services: Item = Item::new(&["std", "os", "windows", "services"]);
 /// The command line the system holds, as the units of its text.
 pub const command_line_units: Item = Item::new(
     &["std", "os", "windows", "command_line_units"],

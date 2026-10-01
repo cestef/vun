@@ -53,6 +53,10 @@ CCompiler := struct {
     flags: &[&[u8]],
     /// The flags a release build adds to `flags`.
     optimize: &[&[u8]],
+    /// The flags a shared library's code adds to `flags`: for code that runs wherever it is
+    /// loaded, none where the object format has no other kind (a PE file is rebased by its
+    /// relocations).
+    shared: &[&[u8]],
     link_flags: &[&[u8]],
     /// The libraries its links take after the objects, found where it finds its own (`gcc`).
     libraries: &[&[u8]],

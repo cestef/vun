@@ -54,6 +54,7 @@ pub(crate) fn target() -> TargetSpec {
                 archiver: name("ar"),
                 flags: Vec::new(),
                 optimize: Vec::new(),
+                shared: Vec::new(),
                 link_flags: Vec::new(),
                 libraries: Vec::new(),
                 atomics: Atomics::None,

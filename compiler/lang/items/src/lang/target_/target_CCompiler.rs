@@ -13,6 +13,10 @@ pub const archiver: Item = Item::new(&["lang", "target", "CCompiler", "archiver"
 pub const flags: Item = Item::new(&["lang", "target", "CCompiler", "flags"]);
 /// The flags a release build adds to `flags`.
 pub const optimize: Item = Item::new(&["lang", "target", "CCompiler", "optimize"]);
+/// The flags a shared library's code adds to `flags`: for code that runs wherever it is
+/// loaded, none where the object format has no other kind (a PE file is rebased by its
+/// relocations).
+pub const shared: Item = Item::new(&["lang", "target", "CCompiler", "shared"]);
 pub const link_flags: Item = Item::new(&["lang", "target", "CCompiler", "link_flags"]);
 /// The libraries its links take after the objects, found where it finds its own (`gcc`).
 pub const libraries: Item = Item::new(&["lang", "target", "CCompiler", "libraries"]);

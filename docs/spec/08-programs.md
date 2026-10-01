@@ -219,8 +219,13 @@ kmod  := linux.module(.{ .init = init, .exit = exit });   // init_module / clean
 A library is a root file with `#[link.export]` declarations and no runtime: built as
 `std.build.Output.shared` or `.static` (a plan's `Options.output`, or `vun build --library
 shared`), it has no entry symbol, and its file is named as its object format names libraries
-(`libcalc.so` and `libcalc.a` on ELF, `calc.wasm` on WebAssembly). A shared library binds to its
-own definitions: its exports are not replaced by another module's.
+(`libcalc.so` and `libcalc.a` on ELF, `calc.dll` and `calc.lib` on PE, `calc.wasm` on
+WebAssembly). A shared library binds to its own definitions: its exports are not replaced by
+another module's, and a PE file names each of them in its export table. A library holds no
+runtime, so where the code its compiler makes assumes what a C runtime defines, the library holds
+what provides it: on Windows `services := std.os.windows.services`, the services of the runtime
+beside its start (the trap, the operations of `std.os`, `memcpy`, `__chkstk`, `_fltused`), which
+a DLL has to define itself because nothing loads a C runtime for it.
 
 ## 3. Typed link symbols in detail
 

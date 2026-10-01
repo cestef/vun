@@ -12,6 +12,7 @@ _clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
         .archiver = "llvm-ar",
         .flags = targets.c_flags ++ machine,
         .optimize = targets.c_optimize,
+        .shared = &[],
         .link_flags = &[],
         .libraries = &["kernel32"],
         .atomics = .gnu,

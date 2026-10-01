@@ -57,6 +57,7 @@ mod lld_link {
     pub(super) const ENTRY: &str = "/entry:";
     pub(super) const NO_ENTRY: &str = "/noentry";
     pub(super) const DLL: &str = "/dll";
+    pub(super) const EXPORT: &str = "/export:";
     pub(super) const LIBPATH: &str = "/libpath:";
     pub(super) const CONSOLE: &str = "/subsystem:console";
     /// The system's libraries are named, so that the C runtime's are not found by default.
@@ -88,6 +89,7 @@ fn coff(plan: &LinkPlan, target: &TargetSpec) -> Vec<Arg> {
     }
     if plan.kind == Output::Shared {
         args.push(lld_link::DLL.into());
+        args.extend(plan.exports.iter().map(|&symbol| joined(lld_link::EXPORT, symbol)));
     }
     let compiler = &target.c.compiler;
     if let Some(root) = compiler.sysroot {

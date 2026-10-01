@@ -58,7 +58,7 @@ build := (b: &mut std.build.Build) {
                   .compiler = .{ .command = \"arm-none-eabi-gcc\", .builds_for = .target, .archiver = \"arm-none-eabi-ar\", \
                   .flags = .{ \"-std=c99\", \"-ffreestanding\", \"-fno-strict-aliasing\", \"-fno-omit-frame-pointer\", \"-march=armv7e-m\", \
                   \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\" }, .optimize = .{ \"-O2\" }, \
-                  .link_flags = .{ \"-march=armv7e-m\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
+                  .shared = .{ \"-fPIC\" }, .link_flags = .{ \"-march=armv7e-m\", \"-mthumb\", \"-mfloat-abi=hard\", \"-mfpu=fpv4-sp-d16\", \
                   \"-nostdlib\", \"-nostartfiles\" }, .libraries = .{ \"gcc\" }, .atomics = .gnu, .attributes = .gnu, \
                   .frame_sizes = .stack_usage, .version_flag = .none, .sysroot = .none } } }";
     assert_eq!(

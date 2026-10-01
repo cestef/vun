@@ -161,7 +161,12 @@ impl Session {
             Profile::Debug => &[][..],
             Profile::Release => &compiler.optimize,
         };
-        let mut args: Vec<Arg> = compiler.flags.iter().chain(optimize).map(|&f| Arg::Text(f)).collect();
+        let shared = match output {
+            vun_link::Output::Shared => &compiler.shared[..],
+            _ => &[],
+        };
+        let mut args: Vec<Arg> =
+            compiler.flags.iter().chain(optimize).chain(shared).map(|&f| Arg::Text(f)).collect();
         let released = target.os_version.zip(compiler.version_flag);
         args.extend(released.map(|(version, flag)| Arg::Text(Symbol::intern(&format!("{flag}{version}")))));
         args.extend(
@@ -169,9 +174,6 @@ impl Session {
         );
         if compiler.frame_sizes == FrameSizes::StackUsage {
             args.push(gcc::STACK_USAGE.into());
-        }
-        if output == vun_link::Output::Shared {
-            args.push(gcc::PIC.into());
         }
         args.extend([
             gcc::COMPILE.into(),
@@ -210,6 +212,7 @@ impl Session {
             kind,
             // A library's exports are its interface: nothing starts it.
             entry: target.entry_symbol.filter(|_| !kind.library()),
+            exports: if kind.library() { compiled.coded.unit.exports().collect() } else { Vec::new() },
             regions: self.memory.clone(),
             sections: self.sections.clone(),
         };

@@ -81,6 +81,18 @@ pub struct Unit {
     pub trace: Option<crate::trace::Trace>,
 }
 
+impl Unit {
+    /// The link symbols the unit exports: its functions' and its data's, in that order.
+    pub fn exports(&self) -> impl Iterator<Item = Symbol> + '_ {
+        let functions = self.functions.iter().map(|(_, f)| f.linkage);
+        let data = self.data.iter().map(|(_, d)| d.linkage);
+        functions.chain(data).filter_map(|linkage| match linkage {
+            Linkage::Export(symbol) => Some(symbol),
+            Linkage::Internal => None,
+        })
+    }
+}
+
 /// A trap site: where it is written, and what it says when its reason is known when compiling
 /// (`lang.panic.fail`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]

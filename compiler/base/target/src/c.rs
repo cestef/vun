@@ -55,6 +55,8 @@ pub struct CCompiler {
     pub libraries: Vec<Symbol>,
     /// The flags a release build adds to `flags`.
     pub optimize: Vec<Symbol>,
+    /// The flags a shared library's code adds to `flags`.
+    pub shared: Vec<Symbol>,
     pub atomics: Atomics,
     pub attributes: Attributes,
     pub frame_sizes: FrameSizes,

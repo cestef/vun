@@ -25,6 +25,9 @@ pub const hosts: Item = Item::new(&["targets", "hosts"]);
 pub const c_flags: Item = Item::new(&["targets", "c_flags"]);
 /// The flags a release build adds for a GCC or Clang driver.
 pub const c_optimize: Item = Item::new(&["targets", "c_optimize"]);
+/// The flags a shared library's code adds for a GCC or Clang driver on a target whose objects are
+/// loaded at any address (ELF, Mach-O): position-independent code.
+pub const c_shared: Item = Item::new(&["targets", "c_shared"]);
 /// A GCC or Clang driver, run as `command`, building for the machine `builds_for` says, beside
 /// the `archiver` of its tools: `machine` selects the target machine (instruction set,
 /// floating-point ABI) in every compile and link, which also picks the libraries built for it,

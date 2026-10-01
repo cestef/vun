@@ -165,6 +165,43 @@ fn a_shared_library_on_wasi_is_a_module_of_its_exports() {
     assert_eq!(String::from_utf8_lossy(&ran.stdout).trim(), "42");
 }
 
+/// A library for Windows, which holds the services its compiler assumes (a library has no
+/// runtime to hold them): two exports, one of them with floating point.
+const WINDOWS_LIBRARY: &str = "\
+services := std.os.windows.services;
+
+#[link.export(\"calc_add\"), abi.c]
+add := (a: i32, b: i32) -> i32 { (a + b).wrap(i32) };
+
+#[link.export(\"calc_scale\"), abi.c]
+scale := (x: f64, by: f64) -> f64 { x * by };
+";
+
+#[test]
+fn a_windows_library_is_a_dll_exporting_its_interface() {
+    let fixture = Fixture::new("link-windows-dll");
+    let path = fixture.root.write("calc.vun", WINDOWS_LIBRARY);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::windows_x86_64::msvc);
+    let file = session.load(&path).unwrap();
+    let _ = session.lir(file);
+    // Where the machine keeps no import libraries, there is nothing to link against.
+    let sysroot = session.target.clone().and_then(Result::ok).and_then(|spec| spec.c.compiler.sysroot);
+    if sysroot.is_none() {
+        return;
+    }
+    session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
+    let built = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    assert_eq!(built.file_name().and_then(|n| n.to_str()), Some("calc.dll"));
+    let image = vun_pe::Image::read(&std::fs::read(built).unwrap()).unwrap();
+    assert!(image.library);
+    assert_eq!(image.entry, 0, "nothing starts a library");
+    let exports: Vec<_> = image.exports.iter().filter_map(|e| e.name.as_deref()).collect();
+    for name in [&b"calc_add"[..], b"calc_scale", b"__chkstk", b"memcpy"] {
+        assert!(exports.contains(&name), "{} is exported: {exports:?}", String::from_utf8_lossy(name));
+    }
+}
+
 /// What a Mach-O file's header starts with: its magic, 64-bit; its processor, arm64; and its
 /// kind, an executable.
 const MACHO_EXECUTABLE: [u32; 3] = [0xfeed_facf, 0x0100_000c, 2];

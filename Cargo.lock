@@ -1426,6 +1426,7 @@ dependencies = [
  "vun-mir-passes",
  "vun-origin",
  "vun-par",
+ "vun-pe",
  "vun-query",
  "vun-reduce",
  "vun-render-annotate",
