@@ -3,7 +3,6 @@ pub mod lint_Binds;
 pub mod lint_Call;
 pub mod lint_Cx;
 pub mod lint_Decl;
-pub mod lint_Fix;
 pub mod lint_Level;
 pub mod lint_Lint;
 pub mod lint_Local;

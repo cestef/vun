@@ -80,6 +80,9 @@ pub const Parts: Item = Item::new(&["lang", "meta", "Parts"]);
 pub const make: Item = Item::new(&["lang", "meta", "make"]);
 /// The item types of the tuple type `T`, in order; none for another type.
 pub const items: Item = Item::new(&["lang", "meta", "items"]);
+/// `T` without the borrows around it, `U` for `&&U`: the type a method called on a value of `T` is
+/// looked up in.
+pub const Unborrowed: Item = Item::new(&["lang", "meta", "Unborrowed"]);
 /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
 /// written in, with its compile-time arguments.
 pub const name_of: Item = Item::new(&["lang", "meta", "name_of"]);

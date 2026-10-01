@@ -1,6 +1,6 @@
 //! The `lang` values lints are read with, each variant by its handle.
 
-use vun_diag::{Safety, Severity};
+use vun_diag::Severity;
 use vun_items::{Item, lang};
 use vun_sema_ty::Value;
 
@@ -66,17 +66,6 @@ impl Binds {
             Self::Variant => lang::lint_Binds::variant,
         }
     }
-}
-
-/// How safe applying a fix is, from the variant `value` of `lang.diag.Safety`.
-pub(super) fn safety(value: &Value) -> Option<Safety> {
-    const ALL: [(Item, Safety); 4] = [
-        (lang::diag_Safety::safe, Safety::Safe),
-        (lang::diag_Safety::r#unsafe, Safety::Unsafe),
-        (lang::diag_Safety::placeholder, Safety::Placeholder),
-        (lang::diag_Safety::display_only, Safety::DisplayOnly),
-    ];
-    variant(value, &ALL)
 }
 
 /// What `value`, a variant, stands for among `table`, by the variant's handle.

@@ -27,7 +27,12 @@ pub const Problem: Item = Item::new(&["std", "fmt", "Problem"]);
 pub const Error: Item = Item::new(&["std", "fmt", "Error"]);
 /// `format` split at each `{}`, or its first problem: every `{` is closed at once by `}`.
 pub const parse: Item = Item::new(&["std", "fmt", "parse"]);
-/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`.
+/// The decimal digits of `n`, in compile-time memory.
+pub const number: Item = Item::new(&["std", "fmt", "number"]);
+/// `n` and what it counts, `1 argument`, `2 arguments`.
+pub const counted: Item = Item::new(&["std", "fmt", "counted"]);
+/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
+/// with the format string is reported inside it, at the bytes it covers.
 pub const print: Item = Item::new(&["std", "fmt", "print"]);
 /// Room for the decimal digits of the widest integer.
 pub const digits_max: Item = Item::new(&["std", "fmt", "digits_max"]);

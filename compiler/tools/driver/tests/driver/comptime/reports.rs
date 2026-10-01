@@ -34,3 +34,37 @@ calls := () {
         .collect();
     assert_eq!(placed, ["{y}", "}", "{"]);
 }
+
+#[test]
+fn a_report_carries_its_help_and_the_fixes_that_replace_what_it_points_at() {
+    let fixture = Fixture::new("comptime-reports-fixes");
+    let text = "\
+format := ($spec: Code(&[u8])) {
+    $if .err(bad) = std.fmt.parse($spec) {
+        $std.diag.error(.{
+            .at = .some(spec.within(bad.at)),
+            .msg = bad.reason.text(),
+            .help = .some(\"write the argument after the string\"),
+            .fixes = &[.{ .msg = \"write `{}`\", .safety = .safe, .text = \"{}\" }],
+        });
+    }
+};
+calls := () { format(\"a {y} b\"); };
+";
+    let file = fixture.root.write("fixes.vun", text);
+    let mut session = fixture.session();
+    let file = session.load(&file).unwrap();
+    session.check(file);
+    let reported = session.diag.sorted(session.origins);
+    let [d] = reported.as_slice() else { panic!("{reported:#?}") };
+    assert_eq!(
+        d.children.iter().map(|c| c.msg.to_string()).collect::<Vec<_>>(),
+        ["write the argument after the string"]
+    );
+    let [fix] = d.fixes.as_slice() else { panic!("{d:#?}") };
+    let [edit] = fix.edits.as_slice() else { panic!("{fix:#?}") };
+    assert_eq!(
+        (edit.span, edit.text.as_str()),
+        (session.origins.source_span(d.primary.as_ref().unwrap().origin), "{}")
+    );
+}

@@ -34,7 +34,7 @@ load := unsafe ($T: type, p: *T, order: lang.mem.Order) -> T {
         });
         _joined(T, low, high)
     } else {
-        $lang.diag.error(_unsupported, .none)
+        $lang.diag.error(.{ .msg = _unsupported })
     }
 };
 
@@ -55,7 +55,7 @@ store := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) {
             pop(r4, r5);
         });
     } else {
-        $lang.diag.error(_unsupported, .none);
+        $lang.diag.error(.{ .msg = _unsupported });
     }
 };
 
@@ -80,7 +80,7 @@ swap := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         });
         _joined(T, old_low, old_high)
     } else {
-        $lang.diag.error(_unsupported, .none)
+        $lang.diag.error(.{ .msg = _unsupported })
     }
 };
 
@@ -116,7 +116,7 @@ compare_swap := unsafe ($T: type, p: *T, expected: T, new: T, order: lang.mem.Or
         });
         _joined(T, old_low, old_high)
     } else {
-        $lang.diag.error(_unsupported, .none)
+        $lang.diag.error(.{ .msg = _unsupported })
     }
 };
 
@@ -143,7 +143,7 @@ add := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         });
         _joined(T, old_low, old_high)
     } else {
-        $lang.diag.error(_unsupported, .none)
+        $lang.diag.error(.{ .msg = _unsupported })
     }
 };
 
@@ -170,6 +170,6 @@ sub := unsafe ($T: type, p: *T, value: T, order: lang.mem.Order) -> T {
         });
         _joined(T, old_low, old_high)
     } else {
-        $lang.diag.error(_unsupported, .none)
+        $lang.diag.error(.{ .msg = _unsupported })
     }
 };

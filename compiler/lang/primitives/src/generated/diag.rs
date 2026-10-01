@@ -3,8 +3,8 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, vun_codec::Encode, vun_codec::Decode)]
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Diag {
-    /// Stops compile-time evaluation with an error saying `message`, shown at `at`, or else at the
-    /// call that led to it from outside the reporting code, with the calls it was reported in
+    /// Stops compile-time evaluation with an error saying `report`, shown where it points, or else at
+    /// the call that led to it from outside the reporting code, with the calls it was reported in
     /// (spec 10, section 3).
     error,
 }

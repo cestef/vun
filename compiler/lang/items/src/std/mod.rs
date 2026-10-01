@@ -30,8 +30,6 @@ mod check_;
 pub use check_::*;
 mod cmp_;
 pub use cmp_::*;
-mod diag_;
-pub use diag_::*;
 mod float_;
 pub use float_::*;
 mod fmt_;

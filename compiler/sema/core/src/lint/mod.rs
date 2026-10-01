@@ -25,7 +25,7 @@ use vun_query::{Cx, Query};
 use vun_sema_ty::Value;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::item::DeclRef;
-use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::trap::{Edit, Unevaluated};
 use vun_syntax::make::{Attributes, Expr};
 
 pub use defined::{CheckedLints, DefinedLints};
@@ -253,13 +253,8 @@ impl Lint {
         let mut d = Diagnostic::new(self.id.clone(), severity, Msg::new().text(msg)).at(at, None);
         let span = OriginTable::global().source_span(at);
         if let Some(Value::Array(fixes)) = report.field(lang::lint_Report::fixes) {
-            for fix in fixes {
-                let safety = fix.field(lang::lint_Fix::safety).and_then(tables::safety);
-                if let (Some(msg), Some(safety), Some(replacing)) =
-                    (text(fix, lang::lint_Fix::msg), safety, text(fix, lang::lint_Fix::text))
-                {
-                    d = d.fix(Fix::replace(Msg::new().text(msg), safety, span, replacing));
-                }
+            for edit in fixes.iter().filter_map(Edit::of) {
+                d = d.fix(edit.fix(span));
             }
         }
         d.source = DiagSource::Lint { group: Cow::Owned(self.group.as_str().to_owned()) };

@@ -54,6 +54,9 @@ pub enum Meta {
     make,
     /// The item types of the tuple type `T`, in order; none for another type.
     items,
+    /// `T` without the borrows around it, `U` for `&&U`: the type a method called on a value of `T` is
+    /// looked up in.
+    Unborrowed,
     /// The name of `T` as diagnostics show it: a `struct` or `enum` literal by the declaration it is
     /// written in, with its compile-time arguments.
     name_of,
@@ -103,6 +106,7 @@ impl Meta {
         Self::Parts,
         Self::make,
         Self::items,
+        Self::Unborrowed,
         Self::name_of,
         Self::params,
         Self::Frame,
@@ -140,6 +144,7 @@ impl Meta {
             Self::Parts => "Parts",
             Self::make => "make",
             Self::items => "items",
+            Self::Unborrowed => "Unborrowed",
             Self::name_of => "name_of",
             Self::params => "params",
             Self::Frame => "Frame",
@@ -178,6 +183,7 @@ impl Meta {
             Self::Parts => vun_items::lang::meta::Parts,
             Self::make => vun_items::lang::meta::make,
             Self::items => vun_items::lang::meta::items,
+            Self::Unborrowed => vun_items::lang::meta::Unborrowed,
             Self::name_of => vun_items::lang::meta::name_of,
             Self::params => vun_items::lang::meta::params,
             Self::Frame => vun_items::lang::meta::Frame,

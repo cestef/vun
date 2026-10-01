@@ -5,9 +5,11 @@
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
-use vun_origin::OriginId;
+use vun_origin::{OriginId, OriginTable};
 
 use crate::Value;
+
+pub use report::{Edit, Report};
 
 /// Why an expression has no value at compile time here.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -68,12 +70,8 @@ pub enum Reason {
     Trap,
     /// `lang.panic.fail` was reached, for its `lang.panic.Reason`.
     Failed(Failure),
-    /// Library code reported an error (`lang.diag.error`): its message, and where it points
-    /// when it names a place.
-    Reported {
-        message: String,
-        at: Option<OriginId>,
-    },
+    /// Library code reported an error (`lang.diag.error`).
+    Reported(Box<Report>),
 }
 
 /// What a reached `lang.panic.fail` says: a variant of `lang.panic.Reason`.
@@ -132,19 +130,11 @@ pub struct Trap {
 }
 
 impl Reason {
-    /// What `lang.diag.error` applied to `args` reports: its message, and its place when the
-    /// optional one holds an origin.
+    /// What `lang.diag.error` applied to `args` reports.
     #[must_use]
     pub fn reported(args: &[Value]) -> Option<Self> {
-        let [message, at] = args else { return None };
-        let at = match at {
-            Value::Variant { payload, .. } => match payload.as_slice() {
-                [Value::Origin(origin)] => Some(*origin),
-                _ => None,
-            },
-            _ => None,
-        };
-        Some(Self::Reported { message: message.text()?, at })
+        let [report] = args else { return None };
+        Some(Self::Reported(Box::new(Report::of(report)?)))
     }
 
     /// What it says.
@@ -163,7 +153,7 @@ impl Reason {
             Self::Unembedded(path) => {
                 return Msg::new().text("the package holds no file ").code(path).text(" beside this one");
             }
-            Self::Reported { message, .. } => return Msg::new().text(message.clone()),
+            Self::Reported(report) => return Msg::new().text(report.message.clone()),
             Self::Failed(failure) => return failure.msg(),
         })
     }
@@ -181,7 +171,7 @@ impl Reason {
             Self::Trap => "follow the calls below to what reached it",
             Self::NoFrame => "ask for the frame of a function that suspends",
             Self::Unembedded(_) => "add the file to the package beside this one, or correct the path",
-            Self::Reported { .. } | Self::Failed(_) => return None,
+            Self::Reported(_) | Self::Failed(_) => return None,
         })
     }
 
@@ -189,7 +179,7 @@ impl Reason {
     /// where the library code reached it.
     fn place(&self) -> Option<OriginId> {
         match self {
-            Self::Reported { at, .. } => *at,
+            Self::Reported(report) => report.at,
             Self::Failed(failure) => failure.place(),
             _ => None,
         }
@@ -261,14 +251,21 @@ impl Trap {
     pub fn report(&self, root: OriginId) -> Diagnostic {
         // A library's report is its own message; a trap says evaluation failed, and why.
         let (id, failed) = match &self.reason {
-            Reason::Reported { .. } => (errors::COMPTIME_REPORTED, false),
+            Reason::Reported(_) => (errors::COMPTIME_REPORTED, false),
             Reason::Budget => (errors::COMPTIME_EXHAUSTED, true),
             _ => (errors::COMPTIME_TRAP, true),
         };
         let msg =
             if failed { Msg::new().text("computing this at compile time failed: ") } else { Msg::new() };
-        // A report naming a place is shown there, the value that needed it labeled.
+        // A report naming a place is shown there, the value that needed it labeled; unless it
+        // names a place in the caller's code, when the code reporting is a library's own and what
+        // it computes is of no use to the reader.
+        let files = OriginTable::global();
+        let elsewhere = |origin: OriginId| files.source_span(origin).file != files.source_span(root).file;
         let mut d = match self.reason.place() {
+            Some(at) if elsewhere(at) && matches!(self.reason, Reason::Reported(_)) => {
+                Diagnostic::error(id, msg.append(self.reason.msg())).at(at, None)
+            }
             Some(at) => Diagnostic::error(id, msg.append(self.reason.msg()))
                 .at(at, None)
                 .label(root, Some(Msg::new().text("while computing this"))),
@@ -276,19 +273,30 @@ impl Trap {
         };
         // Where a library's report or a failed assertion fires is always the library's call of
         // the primitive: not shown.
-        let shown = !matches!(self.reason, Reason::Reported { .. }) && self.reason.place().is_none();
+        let shown = !matches!(self.reason, Reason::Reported(_)) && self.reason.place().is_none();
         if let Some(at) = self.at.filter(|&at| at != root && shown) {
             d = d.label(at, Some(Msg::new().text("it fails here")));
         }
         if let Some(help) = self.reason.help() {
             d = d.help(help);
         }
+        if let Reason::Reported(report) = &self.reason {
+            d = report.advise(d, self.reason.place());
+        }
+        // The calls inside the code that reported are the library's own, not the reader's.
+        let inside = |origin: OriginId| {
+            matches!(self.reason, Reason::Reported(_))
+                && !elsewhere(origin)
+                && self.reason.place().is_some_and(elsewhere)
+        };
         d.trace = self
             .calls
             .iter()
-            .filter(|&&origin| origin != root)
+            .filter(|&&origin| origin != root && !inside(origin))
             .map(|&origin| TraceFrame { msg: "while evaluating this call".into(), origin })
             .collect();
         d
     }
 }
+
+mod report;

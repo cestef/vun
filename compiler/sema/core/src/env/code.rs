@@ -78,7 +78,10 @@ impl<'a, 'db> Env<'a, 'db> {
             let site = hir
                 .enclosing_function(code.expr.expr.id)
                 .map(|f| ExprRef::new(code.expr.file.clone(), hir, f));
-            let types = site.and_then(|f| cx.get::<Typed>(&Instantiation::plain(f)));
+            // A literal's value depends on no types, so typing the function holding it, which may
+            // be what asks for it, is not waited for.
+            let literal = matches!(hir.exprs[code.expr.expr.id].kind, ExprKind::Lit(_));
+            let types = site.filter(|_| !literal).and_then(|f| cx.get::<Typed>(&Instantiation::plain(f)));
             env.typed_by(types.map(|t| Arc::clone(&t.found)))
         };
         Some(env.staging(&code.bound))

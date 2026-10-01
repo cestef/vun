@@ -67,6 +67,13 @@ impl ApplyMeta for Meta {
                     .ok_or_else(|| Unevaluated::trap(Reason::Unembedded(path)))?;
                 Ok(Value::bytes(&bytes))
             }
+            (Self::Unborrowed, [ty]) => {
+                let mut ty = ty.as_type().ok_or(Unevaluated::Unsupported)?;
+                while let Some(pointee) = ty.borrowed() {
+                    ty = pointee;
+                }
+                Ok(Value::Type(ty))
+            }
             (Self::name_of, [ty]) => {
                 Ok(Value::string(&ty.as_type().ok_or(Unevaluated::Unsupported)?.to_string()))
             }

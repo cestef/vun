@@ -71,7 +71,7 @@ place: (at: Label) -> () = _;
 called := ($I: type) -> ($Params: type) -> type {
     ($Params: type) -> type { struct {
         call := (self: &mut I, operands: Params) {
-            lang.diag.error("an instruction runs only inside `lang.arch.asm({ ... })`", .none)
+            lang.diag.error(.{ .msg = "an instruction runs only inside `lang.arch.asm({ ... })`" })
         };
     } }
 };

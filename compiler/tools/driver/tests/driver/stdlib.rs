@@ -48,7 +48,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ",
     );
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
-    assert_eq!(ids, [errors::TYPES_NO_MEMBER], "`P` has no `Format` impl");
+    assert_eq!(ids, [errors::COMPTIME_REPORTED], "`P` has no `Format` impl");
 }
 
 #[test]

@@ -2,9 +2,10 @@
 //! to. Every value hashes by content, so types built from values do too.
 
 use vun_codec::{Decode, Encode};
+use vun_diag::Safety;
 use vun_hir::db::Namespace;
 use vun_intern::Symbol;
-use vun_items::Item;
+use vun_items::{Item, lang};
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
@@ -117,6 +118,19 @@ impl Value {
             _ => None,
         });
         String::from_utf8(bytes.collect::<Option<_>>()?).ok()
+    }
+
+    /// How safe applying a fix is, when this is a variant of `lang.diag.Safety`.
+    #[must_use]
+    pub fn safety(&self) -> Option<Safety> {
+        const ALL: [(Item, Safety); 4] = [
+            (lang::diag_Safety::safe, Safety::Safe),
+            (lang::diag_Safety::r#unsafe, Safety::Unsafe),
+            (lang::diag_Safety::placeholder, Safety::Placeholder),
+            (lang::diag_Safety::display_only, Safety::DisplayOnly),
+        ];
+        let Self::Variant { name, .. } = self else { return None };
+        ALL.iter().find(|(item, _)| item.symbol() == *name).map(|&(_, safety)| safety)
     }
 
     /// The value of the field `field`, by its handle, of this struct value.

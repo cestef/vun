@@ -85,11 +85,7 @@ Call := struct {
 };
 
 /// An edit fixing what a lint reports: the text replacing what the report points at.
-Fix := struct {
-    msg: &[u8],
-    safety: lang.diag.Safety,
-    text: &[u8],
-};
+Fix: type = lang.diag.Fix;
 
 /// What a check reports.
 Report := struct {

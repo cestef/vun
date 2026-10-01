@@ -31,6 +31,8 @@ Piece := struct {
     text: &[u8],
     /// The position of the argument; past the last argument for the text that ends the string.
     arg: usize,
+    /// The bytes of the `{}` that takes the argument; none for the text that ends the string.
+    hole: lang.Range = 0..0,
 };
 
 /// Opens and closes the place of an argument.
@@ -55,7 +57,7 @@ pieces := ($format: &[u8]) -> [holes(format) + 1]Piece {
     mut i: usize = 0;
     for i + 1 < format.len() {
         if format[i] == open and format[i + 1] == close {
-            out[n] = .{ .text = format[start..i], .arg = n };
+            out[n] = .{ .text = format[start..i], .arg = n, .hole = i..i + 2 };
             n += 1;
             i += 2;
             start = i;
@@ -82,6 +84,15 @@ Problem := enum {
             .unclosed => "this `{` is not closed",
             .unknown => "unknown format specifier",
             .unopened => "this `}` closes no `{`",
+        }
+    };
+
+    /// What to do about it.
+    help := (self: Problem) -> &[u8] {
+        match self {
+            .unclosed => "an argument goes where `{}` is written; close the `{` with a `}` right after it",
+            .unknown => "the only specifier is `{}`, which writes the next argument as its `Format` impl does",
+            .unopened => "a `}` only closes a `{`; write `{}` where an argument goes",
         }
     };
 };
@@ -113,16 +124,50 @@ parse := ($format: &[u8]) -> Result([holes(format) + 1]Piece, Error) {
     .ok(pieces(format))
 };
 
-/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`.
-print := ($W: Writer, w: &mut W, $format: &[u8], $A: type, ..args: A) -> Result((), W.Error) {
-    $if .err(bad) = parse(format) {
-        $std.diag.error(.{ .msg = bad.reason.text() });
-    } else if holes(format) != lang.meta.items(A).len() {
-        $std.diag.error(.{ .msg = "the format string takes one argument for each `{}`" });
+/// The decimal digits of `n`, in compile-time memory.
+number := (n: usize) -> &static [u8] {
+    mut out: &static [u8] = &[];
+    mut rest := n;
+    for {
+        out = lang.meta.concat(u8, &["0123456789"[rest % 10]], out);
+        rest = rest / 10;
+        if rest == 0 { break; }
+    }
+    out
+};
+
+/// `n` and what it counts, `1 argument`, `2 arguments`.
+counted := (n: usize, one: &[u8], many: &[u8]) -> &static [u8] {
+    if n == 1 { return number(n) ++ " " ++ one; }
+    number(n) ++ " " ++ many
+};
+
+/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
+/// with the format string is reported inside it, at the bytes it covers.
+print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..args: A) -> Result((), W.Error) {
+    $if .err(bad) = parse($format) {
+        $std.diag.error(.{ .at = .some(format.within(bad.at)), .msg = bad.reason.text(), .help = .some(bad.reason.help()) });
+    } else if holes($format) != lang.meta.items(A).len() {
+        $std.diag.error(.{
+            .at = .some(format.span()),
+            .msg = "the format string has " ++ counted(holes($format), "`{}`", "`{}`") ++ ", but "
+                ++ counted(lang.meta.items(A).len(), "argument is given", "arguments are given"),
+            .help = .some("pass one argument for each `{}`"),
+        });
     } else {
-        $for piece in pieces(format) {
+        $for piece in pieces($format) {
             w.write_all(piece.text)?;
-            $if piece.arg < holes(format) { args.$(piece.arg).format(w)?; }
+            $if piece.arg < holes($format) {
+                $if lang.meta.implements(Format, lang.meta.Unborrowed(lang.meta.items(A)[piece.arg])) {
+                    args.$(piece.arg).format(w)?;
+                } else {
+                    $std.diag.error(.{
+                        .at = .some(format.within(piece.hole)),
+                        .msg = "`" ++ lang.meta.name_of(lang.meta.items(A)[piece.arg]) ++ "` has no `std.fmt.Format` impl, so it cannot be written here",
+                        .help = .some("write an impl of `std.fmt.Format` for it, or pass a value that has one"),
+                    });
+                }
+            }
         }
     }
     .ok(())

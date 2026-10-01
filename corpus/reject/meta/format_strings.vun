@@ -1,0 +1,14 @@
+//! A format string is checked against its arguments, and a report points inside it: at the string
+//! for a count that does not match, at the `{` or `}` for a brace out of place, at the `{}` of an
+//! argument that cannot be written (spec 10, section 3).
+
+Color := enum { red, green };
+
+write := (w: &mut std.os.Stream) {
+    std.fmt.print(w, "{} and {}", 1); //~ comptime.reported "has 2 `{}`, but 1 argument"
+    std.fmt.print(w, "{}", 1, 2); //~ comptime.reported "has 1 `{}`, but 2 arguments"
+    std.fmt.print(w, "open {", 1); //~ comptime.reported "this `{` is not closed"
+    std.fmt.print(w, "close }", 1); //~ comptime.reported "this `}` closes no `{`"
+    std.fmt.print(w, "name {x}", 1); //~ comptime.reported "unknown format specifier"
+    std.fmt.print(w, "{}", Color.red); //~ comptime.reported "`Color` has no `std.fmt.Format` impl"
+};

@@ -195,6 +195,7 @@ format := ($spec: Code(&[u8])) {
         $std.diag.error(.{
             .at = .some(spec.within(bad.at)),               // the bytes inside the literal
             .msg = bad.reason.text(),
+            .help = .some(bad.reason.help()),
             .fixes = &[.{ .msg = "write `{}`", .safety = .safe, .text = "{}" }],
         });
     }
@@ -205,7 +206,8 @@ format := ($spec: Code(&[u8])) {
   `lang.diag.error($message, $at)`); `warn` and `note` do not. A report without `.at` is shown at
   the call that led to it from outside the reporting code, the place it was reported labeled; a
   `$e` is run while typing wherever it surely runs and all it reads is known, and a `$if` or
-  `$for` not decided there runs none of its `$e`. `.fixes` are carried, not shown yet.
+  `$for` not decided there runs none of its `$e`. `.help` is shown under the report, and each of
+  `.fixes` replaces what `.at` points at (`lang.diag.Report`, `lang.diag.Fix`).
 - A report outside any `$` form runs only if the program runs it: it is no error where it is
   written, and a program built that reaches it is refused, the report shown at the call that led
   to it from outside the reporting code as above, with the calls between as frames. A function no
@@ -217,7 +219,9 @@ format := ($spec: Code(&[u8])) {
   reporting function's own code moves to the call that led to it; one placed in the caller's code,
   as inside a literal it passed, stays there.
 - `std.fmt.parse(format)` reads a format string once: its pieces, or its first problem
-  (`fmt.Error`, a `fmt.Problem` and the bytes it covers); `print` reports that problem.
+  (`fmt.Error`, a `fmt.Problem` and the bytes it covers). `print` takes its format string as code
+  and reports inside it: a problem at the bytes it covers, a count of `{}` that is not the count
+  of arguments at the string, and an argument with no `Format` impl at its `{}`, naming its type.
 - `#[deprecated(.{ .note = "...", .use = new_fn })]` generates a `Safe` fix that rewrites calls,
   when `new_fn` is a drop-in replacement.
 - A library can attach help to failed interface constraints on its own types

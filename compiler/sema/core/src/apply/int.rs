@@ -6,8 +6,8 @@ use vun_desugar::Narrowing;
 use vun_primitives::int::Int;
 use vun_sema_int::{Bitwise, Integer, Interval, Shift};
 use vun_sema_ty::Value;
-use vun_sema_ty::trap::Reason;
 use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::trap::{Reason, Report};
 
 use crate::env::Env;
 
@@ -178,6 +178,6 @@ impl ApplyInt for Int {
     }
 
     fn not_unsigned() -> Unevaluated {
-        Unevaluated::trap(Reason::Reported { message: NOT_UNSIGNED.to_owned(), at: None })
+        Unevaluated::trap(Reason::Reported(Box::new(Report::message(NOT_UNSIGNED))))
     }
 }
