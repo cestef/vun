@@ -65,3 +65,88 @@ a_vec_fails_when_the_allocator_does := () {
     std.testing.assert(v.reserve(Fixed, &mut a, 100) == Result((), std.mem.alloc.Error).err(.exhausted));
     v.deinit(Fixed, &mut a);
 };
+
+#[test]
+a_map_gives_back_what_was_put_in := () {
+    mut storage: [8192]u8 = [0; 8192];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(u32, u32).empty();
+    for i in 0..40 { _ = m.insert(Fixed, &mut a, i, i * i).expect("room"); }
+    std.testing.assert(m.len() == 40);
+    std.testing.assert(m.get(&7) == Option(&u32).some(&49));
+    std.testing.assert(m.get(&39) == Option(&u32).some(&1521));
+    std.testing.assert(m.get(&40) == Option(&u32).none);
+    std.testing.assert(m.contains(&0));
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+putting_a_key_again_replaces_its_value := () {
+    mut storage: [2048]u8 = [0; 2048];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(u8, u8).empty();
+    std.testing.assert(m.insert(Fixed, &mut a, 1, 10).expect("room") == Option(u8).none);
+    std.testing.assert(m.insert(Fixed, &mut a, 1, 11).expect("room") == Option(u8).some(10));
+    std.testing.assert(m.len() == 1);
+    std.testing.assert(m.get(&1) == Option(&u8).some(&11));
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_removed_key_is_gone_and_its_slot_is_reused := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(u8, u8).empty();
+    for i in 0..5 { _ = m.insert(Fixed, &mut a, i, i + 100).expect("room"); }
+    std.testing.assert(m.remove(&3) == Option(u8).some(103));
+    std.testing.assert(m.remove(&3) == Option(u8).none);
+    std.testing.assert(!m.contains(&3));
+    std.testing.assert(m.len() == 4);
+    _ = m.insert(Fixed, &mut a, 3, 7).expect("room");
+    std.testing.assert(m.get(&3) == Option(&u8).some(&7));
+    m.deinit(Fixed, &mut a);
+};
+
+Pair := struct { a: u8, b: u8 };
+
+#[test]
+a_map_keys_by_a_struct_without_an_impl := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(Pair, u32).empty();
+    _ = m.insert(Fixed, &mut a, Pair{ .a = 1, .b = 2 }, 5).expect("room");
+    _ = m.insert(Fixed, &mut a, Pair{ .a = 2, .b = 1 }, 6).expect("room");
+    std.testing.assert(m.get(&Pair{ .a = 1, .b = 2 }) == Option(&u32).some(&5));
+    std.testing.assert(m.get(&Pair{ .a = 2, .b = 1 }) == Option(&u32).some(&6));
+    std.testing.assert(m.get(&Pair{ .a = 2, .b = 2 }) == Option(&u32).none);
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_map_keys_by_bytes := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(&[u8], u32).empty();
+    _ = m.insert(Fixed, &mut a, "one", 1).expect("room");
+    _ = m.insert(Fixed, &mut a, "two", 2).expect("room");
+    std.testing.assert(m.get(&"two") == Option(&u32).some(&2));
+    std.testing.assert(m.get(&"three") == Option(&u32).none);
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_map_visits_every_entry_once := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.HashMap(u8, u8).empty();
+    for i in 0..6 { _ = m.insert(Fixed, &mut a, i, 1).expect("room"); }
+    mut seen: usize = 0;
+    mut sum: usize = 0;
+    for (key, value) in m.entries() {
+        seen += 1;
+        sum += key.* + value.*;
+    }
+    std.testing.assert(seen == 6);
+    std.testing.assert(sum == 21);
+    m.deinit(Fixed, &mut a);
+};

@@ -1,0 +1,197 @@
+//! `HashMap(K, V)`: values by key, in open addressing over one buffer an allocator gave: the
+//! states of the slots, then the keys, then the values. Keys are compared by `Eq` and hashed by
+//! `std.hash.Hash`, both derived for the types made of ones that have them. It is linear, as
+//! `Vec` is, and holds no allocator: the one passed to a call that grows it is the one `deinit`
+//! must be given. Keys and values are not dropped: ones owning memory are taken out first.
+
+..std.mem.alloc.{ Allocator };
+
+/// The state of a slot holding nothing yet: no key was ever put in it.
+vacant: u8 = 0;
+/// The state of a slot holding a key and its value.
+live: u8 = 1;
+/// The state of a slot whose key was removed: a search goes on past it.
+deleted: u8 = 2;
+/// The fewest slots a map is made with.
+smallest: usize = 8;
+
+/// Where the parts of the buffer of `cap` slots lie: the keys and the values, in bytes from its
+/// start, and the bytes it takes.
+Plan := struct { keys: usize, values: usize, bytes: usize };
+
+/// `n` rounded up to a multiple of `align`.
+rounded := (n: usize, align: usize) -> usize {
+    over := n % align;
+    if over == 0 { n } else { (n + align - over).sat(usize) }
+};
+
+/// The buffer of `cap` slots of keys of type `K` and values of type `V`.
+plan := ($K: type, $V: type, cap: usize) -> Plan {
+    keys := rounded(cap, lang.meta.align(K));
+    values := rounded((keys + lang.meta.size(K) * cap).sat(usize), lang.meta.align(V));
+    .{ .keys = keys, .values = values, .bytes = (values + lang.meta.size(V) * cap).sat(usize) }
+};
+
+/// The alignment of the buffer of a map of `K` and `V`.
+aligned := ($K: type, $V: type) -> usize {
+    std.cmp.max(usize, 1, std.cmp.max(usize, lang.meta.align(K), lang.meta.align(V)))
+};
+
+HashMap := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
+    _states: *u8,
+    _keys: *K,
+    _values: *V,
+    _cap: usize,
+    _len: usize,
+    _used: usize,
+
+    /// A map holding nothing, which owns no memory yet.
+    empty := () -> HashMap(K, V) {
+        .{
+            ._states = unsafe lang.mem.pointer_at(u8, 1),
+            ._keys = unsafe lang.mem.pointer_at(K, lang.meta.align(K)),
+            ._values = unsafe lang.mem.pointer_at(V, lang.meta.align(V)),
+            ._cap = 0,
+            ._len = 0,
+            ._used = 0,
+        }
+    };
+
+    /// How many keys it holds.
+    #[panic.never]
+    len := (self: &HashMap(K, V)) -> usize { self._len };
+    /// Whether it holds no key.
+    #[panic.never]
+    is_empty := (self: &HashMap(K, V)) -> bool { self._len == 0 };
+    /// How many slots it has.
+    #[panic.never]
+    capacity := (self: &HashMap(K, V)) -> usize { self._cap };
+
+    /// The state of the slot `i`.
+    slot_state := (self: &HashMap(K, V), i: usize) -> u8 { unsafe self._states.offset(i.to(isize)).read() };
+    /// The key in the slot `i`, which is full.
+    key_at := (self: &HashMap(K, V), i: usize) -> &K { unsafe &self._keys.offset(i.to(isize)).* };
+    /// The value in the slot `i`, which is full.
+    value_at := (self: &HashMap(K, V), i: usize) -> &V { unsafe &self._values.offset(i.to(isize)).* };
+
+    /// The slot holding `key`.
+    find := (self: &HashMap(K, V), key: &K) -> ?usize {
+        if self._cap == 0 { return .none; }
+        mask := (self._cap - 1).sat(usize);
+        mut i: usize = std.hash.of(K, key).wrap(usize) & mask;
+        for _ in 0..self._cap {
+            at := self.slot_state(i);
+            if at == vacant { return .none; }
+            if at == live and self.key_at(i) == key { return .some(i); }
+            i = (i + 1).sat(usize) & mask;
+        }
+        .none
+    };
+
+    /// The value of `key`.
+    get := (self: &HashMap(K, V), key: &K) -> ?&V {
+        match self.find(key) {
+            .some(i) => .some(self.value_at(i)),
+            .none => .none,
+        }
+    };
+
+    /// The value of `key`, to change.
+    get_mut := (self: &mut HashMap(K, V), key: &K) -> ?&mut V {
+        match self.find(key) {
+            .some(i) => .some(unsafe &mut self._values.offset(i.to(isize)).*),
+            .none => .none,
+        }
+    };
+
+    /// Whether it holds `key`.
+    contains := (self: &HashMap(K, V), key: &K) -> bool { self.find(key) != Option(usize).none };
+
+    /// Puts the key and value in the first slot a search for the key passes that holds nothing
+    /// live, which `key` is known not to be among.
+    put := (self: &mut HashMap(K, V), key: K, value: V) {
+        mask := (self._cap - 1).sat(usize);
+        mut i: usize = std.hash.of(K, &key).wrap(usize) & mask;
+        for self.slot_state(i) == live { i = (i + 1).sat(usize) & mask; }
+        if self.slot_state(i) == vacant { self._used += 1; }
+        unsafe {
+            self._states.offset(i.to(isize)).write(live);
+            self._keys.offset(i.to(isize)).write(key);
+            self._values.offset(i.to(isize)).write(value);
+        }
+        self._len += 1;
+    };
+
+    /// Moves everything to a buffer of `cap` slots, a power of two that holds it.
+    rehash := (self: &mut HashMap(K, V), $A: Allocator, a: &mut A, cap: usize) -> Result((), A.Error) {
+        laid := plan(K, V, cap);
+        align := aligned(K, V);
+        base := unsafe a.alloc(laid.bytes, align)?;
+        unsafe { lang.mem.fill(u8, base, vacant, cap); }
+        (old_states, old_keys, old_values, old_cap) := (self._states, self._keys, self._values, self._cap);
+        self._states = base;
+        self._keys = unsafe base.offset(laid.keys.to(isize)).cast(K);
+        self._values = unsafe base.offset(laid.values.to(isize)).cast(V);
+        self._cap = cap;
+        self._len = 0;
+        self._used = 0;
+        for i in 0..old_cap {
+            if unsafe old_states.offset(i.to(isize)).read() == live {
+                key := unsafe old_keys.offset(i.to(isize)).read();
+                value := unsafe old_values.offset(i.to(isize)).read();
+                self.put(key, value);
+            }
+        }
+        if old_cap > 0 { a.free(old_states, plan(K, V, old_cap).bytes, align); }
+        .ok(())
+    };
+
+    /// Adds `key` with `value`, growing the buffer when it is three quarters used; the value it
+    /// had before, if it held the key.
+    insert := (self: &mut HashMap(K, V), $A: Allocator, a: &mut A, key: K, value: V) -> Result(?V, A.Error) {
+        if .some(i) = self.find(&key) {
+            slot := unsafe self._values.offset(i.to(isize));
+            before := unsafe slot.read();
+            unsafe { slot.write(value); }
+            return .ok(.some(before));
+        }
+        if ((self._used + 1) * 4).sat(usize) > (self._cap * 3).sat(usize) {
+            wanted := std.cmp.max(usize, smallest, (self._cap * 2).sat(usize));
+            self.rehash(A, a, wanted)?;
+        }
+        self.put(key, value);
+        .ok(.none)
+    };
+
+    /// Takes `key` away, and gives the value it had.
+    remove := (self: &mut HashMap(K, V), key: &K) -> ?V {
+        match self.find(key) {
+            .some(i) => {
+                unsafe { self._states.offset(i.to(isize)).write(deleted); }
+                self._len -= 1;
+                .some(unsafe self._values.offset(i.to(isize)).read())
+            },
+            .none => .none,
+        }
+    };
+
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut HashMap(K, V)) {
+        if self._cap > 0 { unsafe { lang.mem.fill(u8, self._states, vacant, self._cap); } }
+        self._len = 0;
+        self._used = 0;
+    };
+
+    /// Each key with its value, in no order.
+    entries := (self: &HashMap(K, V)) -> std.iter.Iter((&K, &V)) {
+        for i in 0..self._cap {
+            if self.slot_state(i) == live { yield (self.key_at(i), self.value_at(i)); }
+        }
+    };
+
+    /// Gives the buffer back to `a`, which it came from.
+    deinit := (self: HashMap(K, V), $A: Allocator, a: &mut A) {
+        .{ ._states = base, ._keys = _, ._values = _, ._cap = cap, ._len = _, ._used = _ } := self;
+        if cap > 0 { a.free(base, plan(K, V, cap).bytes, aligned(K, V)); }
+    };
+} };

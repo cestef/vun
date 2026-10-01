@@ -6,9 +6,13 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.collections.map`.
+pub const map: Item = Item::new(&["std", "collections", "map"]);
 /// The namespace `std.collections.tests`.
 pub const tests: Item = Item::new(&["std", "collections", "tests"]);
 /// The namespace `std.collections.vec`.
 pub const vec: Item = Item::new(&["std", "collections", "vec"]);
 /// A growable array, whose buffer an allocator gives.
 pub const Vec: Item = Item::new(&["std", "collections", "Vec"]);
+/// Values by key, in open addressing over a buffer an allocator gave.
+pub const HashMap: Item = Item::new(&["std", "collections", "HashMap"]);

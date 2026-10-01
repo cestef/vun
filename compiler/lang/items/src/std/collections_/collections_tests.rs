@@ -22,3 +22,22 @@ pub const a_vec_changes_through_its_items: Item = Item::new(
 pub const a_vec_fails_when_the_allocator_does: Item = Item::new(
     &["std", "collections", "tests", "a_vec_fails_when_the_allocator_does"],
 );
+pub const a_map_gives_back_what_was_put_in: Item = Item::new(
+    &["std", "collections", "tests", "a_map_gives_back_what_was_put_in"],
+);
+pub const putting_a_key_again_replaces_its_value: Item = Item::new(
+    &["std", "collections", "tests", "putting_a_key_again_replaces_its_value"],
+);
+pub const a_removed_key_is_gone_and_its_slot_is_reused: Item = Item::new(
+    &["std", "collections", "tests", "a_removed_key_is_gone_and_its_slot_is_reused"],
+);
+pub const Pair: Item = Item::new(&["std", "collections", "tests", "Pair"]);
+pub const a_map_keys_by_a_struct_without_an_impl: Item = Item::new(
+    &["std", "collections", "tests", "a_map_keys_by_a_struct_without_an_impl"],
+);
+pub const a_map_keys_by_bytes: Item = Item::new(
+    &["std", "collections", "tests", "a_map_keys_by_bytes"],
+);
+pub const a_map_visits_every_entry_once: Item = Item::new(
+    &["std", "collections", "tests", "a_map_visits_every_entry_once"],
+);

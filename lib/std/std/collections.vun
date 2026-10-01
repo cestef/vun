@@ -4,3 +4,6 @@
 
 /// A growable array, whose buffer an allocator gives.
 Vec: ($T: type) -> type = std.collections.vec.Vec;
+
+/// Values by key, in open addressing over a buffer an allocator gave.
+HashMap: ($K: type, $V: type) -> type = std.collections.map.HashMap;
