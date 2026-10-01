@@ -9,5 +9,7 @@ use crate::Item;
 pub const text: Item = Item::new(&["std", "fmt", "Piece", "text"]);
 /// The position of the argument; past the last argument for the text that ends the string.
 pub const arg: Item = Item::new(&["std", "fmt", "Piece", "arg"]);
-/// The bytes of the `{}` that takes the argument; none for the text that ends the string.
+/// The bytes of the place that takes the argument; none for the text that ends the string.
 pub const hole: Item = Item::new(&["std", "fmt", "Piece", "hole"]);
+/// How the argument is written.
+pub const spec: Item = Item::new(&["std", "fmt", "Piece", "spec"]);

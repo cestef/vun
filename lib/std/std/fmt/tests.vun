@@ -1,0 +1,96 @@
+//! Tests of `std.fmt`: the places of arguments in a format string, and debug output.
+
+Point := struct { x: i32, y: i32 };
+
+Empty := struct {};
+
+Shape := enum {
+    dot,
+    line(Point, Point),
+    named(&[u8]),
+};
+
+Segment := struct { from: Point, to: ?Point };
+
+#[test]
+a_place_without_a_specifier_writes_the_argument_as_it_is_formatted := () {
+    mut slab := std.text.Slab(32).empty();
+    std.fmt.print(&mut slab, "{} {}", "text", 7).expect("room");
+    std.testing.assert(slab.bytes() == "text 7");
+};
+
+#[test]
+debug_writes_scalars_as_their_source := () {
+    mut slab := std.text.Slab(32).empty();
+    std.fmt.print(&mut slab, "{?} {?} {?}", 42, -7, true).expect("room");
+    std.testing.assert(slab.bytes() == "42 -7 true");
+};
+
+#[test]
+debug_quotes_and_escapes_text := () {
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(&mut slab, "{?}", "a \"b\"\n\tc\\ \u{1b} \u{e9}").expect("room");
+    std.testing.assert(slab.bytes() == "\"a \\\"b\\\"\\n\\tc\\\\ \\u{1b} \u{e9}\"");
+};
+
+#[test]
+debug_writes_sequences_and_tuples_in_brackets := () {
+    mut slab := std.text.Slab(64).empty();
+    numbers: [3]i32 = [1, 2, 3];
+    std.fmt.print(&mut slab, "{?} {?} {?}", numbers, (1, true), "").expect("room");
+    std.testing.assert(slab.bytes() == "[1, 2, 3] (1, true) \"\"");
+};
+
+#[test]
+debug_writes_options_as_variants := () {
+    mut slab := std.text.Slab(64).empty();
+    some: ?i32 = .some(3);
+    none: ?i32 = .none;
+    std.fmt.print(&mut slab, "{?} {?}", some, none).expect("room");
+    std.testing.assert(slab.bytes() == ".some(3) .none");
+};
+
+#[test]
+debug_writes_a_struct_by_its_fields := () {
+    mut slab := std.text.Slab(128).empty();
+    p: Point = .{ .x = 1, .y = -2 };
+    std.fmt.print(&mut slab, "{?}", p).expect("room");
+    std.testing.assert(slab.bytes() == "Point{ .x = 1, .y = -2 }");
+};
+
+#[test]
+debug_reaches_the_parts_of_parts := () {
+    mut slab := std.text.Slab(256).empty();
+    s: Segment = .{ .from = .{ .x = 0, .y = 0 }, .to = .some(.{ .x = 3, .y = 4 }) };
+    std.fmt.print(&mut slab, "{?}", s).expect("room");
+    std.testing.assert(
+        slab.bytes() == "Segment{ .from = Point{ .x = 0, .y = 0 }, .to = .some(Point{ .x = 3, .y = 4 }) }"
+    );
+};
+
+#[test]
+debug_writes_enum_variants_with_their_parts := () {
+    mut slab := std.text.Slab(128).empty();
+    a: Shape = .dot;
+    b: Shape = .line(.{ .x = 1, .y = 2 }, .{ .x = 3, .y = 4 });
+    c: Shape = .named("box");
+    std.fmt.print(&mut slab, "{?} {?} {?}", a, b, c).expect("room");
+    std.testing.assert(
+        slab.bytes() == ".dot .line(Point{ .x = 1, .y = 2 }, Point{ .x = 3, .y = 4 }) .named(\"box\")"
+    );
+};
+
+#[test]
+debug_writes_a_struct_with_no_fields_as_braces := () {
+    mut slab := std.text.Slab(16).empty();
+    e: Empty = .{};
+    std.fmt.print(&mut slab, "{?}", e).expect("room");
+    std.testing.assert(slab.bytes() == "Empty{}");
+};
+
+#[test]
+places_of_both_kinds_mix_in_one_format_string := () {
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(&mut slab, "{} is {?}, {} is {?}", "a", "a", 1, 1).expect("room");
+    std.testing.assert(slab.bytes() == "a is \"a\", 1 is 1");
+};

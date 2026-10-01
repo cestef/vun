@@ -6,26 +6,38 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.fmt.debug`.
+pub const debug: Item = Item::new(&["std", "fmt", "debug"]);
 /// The namespace `std.fmt.json`.
 pub const json: Item = Item::new(&["std", "fmt", "json"]);
+/// The namespace `std.fmt.tests`.
+pub const tests: Item = Item::new(&["std", "fmt", "tests"]);
 /// Where bytes are written (spec 02, section 3).
 pub const Writer: Item = Item::new(&["std", "fmt", "Writer"]);
 /// How a value is written as text.
 pub const Format: Item = Item::new(&["std", "fmt", "Format"]);
+/// How an argument is written, as the bytes between the braces of its place say.
+pub const Spec: Item = Item::new(&["std", "fmt", "Spec"]);
+/// Every specifier.
+pub const specs: Item = Item::new(&["std", "fmt", "specs"]);
 /// A run of text of a format string, and the argument written after it.
 pub const Piece: Item = Item::new(&["std", "fmt", "Piece"]);
 /// Opens and closes the place of an argument.
 pub const open: Item = Item::new(&["std", "fmt", "open"]);
 pub const close: Item = Item::new(&["std", "fmt", "close"]);
-/// The number of arguments `format` takes: its `{}`.
+/// The place of an argument that starts at `at` in `format`: how the argument is written and how
+/// many bytes the place covers; none where no place starts there.
+pub const hole: Item = Item::new(&["std", "fmt", "hole"]);
+/// The number of arguments `format` takes: its places.
 pub const holes: Item = Item::new(&["std", "fmt", "holes"]);
-/// `format` split at each `{}`: one piece per argument, then the text after the last.
+/// `format` split at each place of an argument: one piece per argument, then the text after the
+/// last.
 pub const pieces: Item = Item::new(&["std", "fmt", "pieces"]);
-/// What is wrong in a format string, whose only brace pair is `{}`.
+/// What is wrong in a format string, whose places of arguments are `{}` and `{?}`.
 pub const Problem: Item = Item::new(&["std", "fmt", "Problem"]);
 /// A problem of a format string, and the bytes of the string it covers.
 pub const Error: Item = Item::new(&["std", "fmt", "Error"]);
-/// `format` split at each `{}`, or its first problem: every `{` is closed at once by `}`.
+/// `format` split at each place of an argument, or its first problem: every `{` starts a place.
 pub const parse: Item = Item::new(&["std", "fmt", "parse"]);
 /// The decimal digits of `n`, in compile-time memory.
 pub const number: Item = Item::new(&["std", "fmt", "number"]);

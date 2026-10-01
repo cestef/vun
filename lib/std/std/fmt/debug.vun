@@ -1,0 +1,154 @@
+//! Debug output, `{?}` in a format string: a value written as the expression that builds it, for a
+//! reader of the program. An integer is its digits, a `bool` `true` or `false`, bytes a quoted
+//! string, other items `[a, b]`, a tuple `(a, b)`, a variant `.name` or `.name(a, b)` and a struct
+//! `Name{ .field = a, .other = b }`, as the compiler shows values. A struct or an enum whose parts
+//! have `Debug` has it without an impl, by `derive_debug`.
+
+/// How a value is written for a reader of the program.
+#[lang.derive(derive_debug)]
+Debug := interface(($Self: type) -> type { struct {
+    debug: ($W: std.fmt.Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
+} });
+
+quote := "\"";
+backslash := "\\";
+/// The first byte that is not a control character, and the one after the last printable.
+printable := 0x20;
+delete := 0x7F;
+hex := "0123456789abcdef";
+/// Around and between the items of a sequence, a tuple and a struct's fields.
+list_open := "[";
+list_close := "]";
+tuple_open := "(";
+tuple_close := ")";
+fields_open := "{ ";
+fields_close := " }";
+fields_empty := "{}";
+separator := ", ";
+dot := ".";
+assign := " = ";
+
+/// Writes `bytes` as a string literal: quoted, `"` and `\` escaped by a backslash, the line feed,
+/// carriage return and tab as `\n`, `\r` and `\t`, other control characters by their code,
+/// `\u{1b}`. Bytes past 127 are the UTF-8 of the text, written as they are.
+quoted := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8]) -> Result((), W.Error) {
+    w.write_all(quote)?;
+    mut start: usize = 0;
+    for i in 0..bytes.len() {
+        b := bytes[i];
+        escape: &[u8] = if b == quote[0] {
+            "\\\""
+        } else if b == backslash[0] {
+            "\\\\"
+        } else if b == 10 {
+            "\\n"
+        } else if b == 13 {
+            "\\r"
+        } else if b == 9 {
+            "\\t"
+        } else {
+            ""
+        };
+        control := b < printable or b == delete;
+        if escape.len() > 0 or control {
+            w.write_all(bytes[start..i])?;
+            if escape.len() > 0 {
+                w.write_all(escape)?;
+            } else {
+                w.write_all("\\u{")?;
+                w.write_all(hex[(b / 16).to(usize)..(b / 16 + 1).to(usize)])?;
+                w.write_all(hex[(b % 16).to(usize)..(b % 16 + 1).to(usize)])?;
+                w.write_all("}")?;
+            }
+            start = i + 1;
+        }
+    }
+    w.write_all(bytes[start..])?;
+    w.write_all(quote)
+};
+
+#[impl(Debug(Int))]
+int_debug := ($r: lang.Range) -> type { struct {
+    debug := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
+} };
+
+#[impl(Debug(bool))]
+bool_debug := struct {
+    debug := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) { value.format(w) };
+};
+
+/// Bytes as a quoted string, any other items as `[a, b]`.
+#[impl(Debug(lang.mem.Slice))]
+slice_debug := ($T: type) -> type { struct {
+    debug := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
+        $if lang.meta.same(type, T, u8) {
+            quoted(w, value)
+        } else {
+            w.write_all(list_open)?;
+            for (i, item) in value.enumerate() {
+                if i > 0 { w.write_all(separator)?; }
+                item.debug(w)?;
+            }
+            w.write_all(list_close)
+        }
+    };
+} };
+
+/// The items of an array, as those of a slice.
+#[impl(Debug(lang.mem.Array))]
+array_debug := ($n: Int(0..), $T: type) -> type { struct {
+    debug := ($W: std.fmt.Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
+        items: &[T] = value;
+        items.debug(w)
+    };
+} };
+
+/// A `Debug` witness for `T` by reflection: a tuple is its items in parentheses, an enum's variant
+/// is `.name`, followed by its parts in parentheses where it has any, and a struct or a record is
+/// its type's name and its fields, each as `.name = value`.
+/// `#[impl(std.fmt.Debug(Line))] line_debug := std.fmt.debug.derive_debug(Line);`
+derive_debug := ($T: type) -> type { struct {
+    debug := ($W: std.fmt.Writer, value: &T, w: &mut W) -> Result((), W.Error) {
+        at := lang.meta.variant(T, value);
+        $for v in lang.meta.variants(T) {
+            if at == v.index {
+                $if v.name.len() == 0 {
+                    $if lang.meta.items(T).len() > 0 { return parts(W, T, w, value, v, .tuple); }
+                    w.write_all(lang.meta.name_of(T))?;
+                    return parts(W, T, w, value, v, .fields);
+                } else {
+                    w.write_all(dot)?;
+                    w.write_all(v.name)?;
+                    $if v.parts.len() > 0 { return parts(W, T, w, value, v, .tuple); }
+                    return .ok(());
+                }
+            }
+        }
+        .ok(())
+    };
+} };
+
+/// How parts are written: by position in parentheses, or by name in braces.
+Parts := enum { tuple, fields };
+
+/// Writes the parts of `value`, which is the variant `v` of `T`, `as` says.
+parts := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T, $v: lang.meta.Variant, $as: Parts) -> Result(
+    (),
+    W.Error
+) {
+    $if v.parts.len() == 0 {
+        w.write_all(fields_empty)
+    } else {
+        w.write_all(if lang.meta.same(Parts, as, .tuple) { tuple_open } else { fields_open })?;
+        $for p in v.parts {
+            if p.index > 0 { w.write_all(separator)?; }
+            $if lang.meta.same(Parts, as, .fields) {
+                w.write_all(dot)?;
+                w.write_all(p.name)?;
+                w.write_all(assign)?;
+            }
+            if .some(part) = lang.meta.part(T, value, v.index, p.index) { part.debug(w)?; }
+        }
+        w.write_all(if lang.meta.same(Parts, as, .tuple) { tuple_close } else { fields_close })
+    }
+};

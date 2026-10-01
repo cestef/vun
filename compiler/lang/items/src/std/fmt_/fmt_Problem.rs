@@ -8,7 +8,7 @@
 use crate::Item;
 /// A `{` that no `}` closes.
 pub const unclosed: Item = Item::new(&["std", "fmt", "Problem", "unclosed"]);
-/// A `{` closed after something other than `}`: a specifier the format does not know.
+/// A `{` closed after something that is no specifier.
 pub const unknown: Item = Item::new(&["std", "fmt", "Problem", "unknown"]);
 /// A `}` that closes no `{`.
 pub const unopened: Item = Item::new(&["std", "fmt", "Problem", "unopened"]);
