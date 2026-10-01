@@ -94,7 +94,7 @@ Not := interface(($Self: type) -> type { struct {
 /// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
 /// fields its parts.
 derive_eq := ($T: type) -> type { struct {
-    eq := (a: &T, b: &T) -> bool {
+    eq := (a, b) {
         at := lang.meta.variant(T, a);
         if at != lang.meta.variant(T, b) { return false; }
         $for v in lang.meta.variants(T) {
@@ -160,7 +160,7 @@ Try := interface(($Self: type) -> type { struct {
 impl Try for Option($T) {
     Value := T;
     Stop := Option(never);
-    branch := (self: Option(T)) -> Branch(T, Option(never)) {
+    branch := (self) {
         match self { .some(v) => .go(v), .none => .stop(.none) }
     };
 }
@@ -170,7 +170,7 @@ impl Try for Option($T) {
 impl Try for Result($T, $E) {
     Value := T;
     Stop := Result(never, E);
-    branch := (self: Result(T, E)) -> Branch(T, Result(never, E)) {
+    branch := (self) {
         match self { .ok(v) => .go(v), .err(e) => .stop(.err(e)) }
     };
 }
@@ -229,7 +229,7 @@ impl Iterate for mem.Slice($T) {
 /// An array value gives each of its items in order.
 impl Iterate for mem.Array($n, $T) {
     Iter := Coroutine(T, ());
-    iter := (self: [n]T) -> Iter {
+    iter := (self) -> Iter {
         mut next: Int(0..=n) = 0;
         for {
             i := next;

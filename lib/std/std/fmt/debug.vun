@@ -96,7 +96,7 @@ impl Debug for lang.mem.Slice($T) {
 /// its type's name and its fields, each as `.name = value`.
 /// `#[impl(std.fmt.Debug(Line))] line_debug := std.fmt.debug.derive_debug(Line);`
 derive_debug := ($T: type) -> type { struct {
-    debug := ($W: std.fmt.Writer, value: &T, w: &mut W) -> Result((), W.Error) {
+    debug := ($W: std.fmt.Writer, value, w) {
         at := lang.meta.variant(T, value);
         $for v in lang.meta.variants(T) {
             if at == v.index {

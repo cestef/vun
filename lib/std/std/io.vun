@@ -48,5 +48,5 @@ Bytes := struct {
 impl Reader for Bytes {
     Error: type = Ended;
     ended: Ended = .ended;
-    read := (self, into) -> Result(usize, Ended) { .ok(self.take(into)) };
+    read := (self, into) { .ok(self.take(into)) };
 }

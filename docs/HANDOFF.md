@@ -153,12 +153,12 @@ its parameters from its annotation) and 404 (an impl member takes them from its 
   made `Witnesses`, `Derives` and the typing of the call a cycle, and `vun fix` on any file spun
   for minutes (decision 402). Declare interfaces as literals; the engine should still not spin.
 - An `impl` member may leave its parameters' types and its result to the requirement
-  (decisions 403, 404). Not yet: a literal that is an argument takes its parameters from the
-  parameter it is passed for (typing records its type but lowering reads the literal's own
-  signature); a member of a witness made by `#[lang.derive]` (`derive_debug`, `derive`), which has
-  no `lang.impl` to read the interface from; the `lang` core impls (`Eq for type`, `Try`,
-  `Iterate`), whose signatures the requirement's own evaluation depends on; a requirement whose
-  result names a witness's own member (`Result(usize, Error)`) still needs the result written.
+  (decisions 403, 404), including a member of a witness a `#[lang.derive]` function builds and a
+  result naming the witness's own member (`Result(usize, Error)`). Still written: a member with
+  another number of parameters than its requirement (`Concat.concat` lacks `$R`, `Iterate` for a
+  slice takes `&[T]` where the requirement says `Self`), and a coroutine's result. A literal that
+  is an argument takes its parameters from the parameter it is passed for only when it is
+  typed as part of the body it is written in (a closure).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and

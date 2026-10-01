@@ -35,12 +35,12 @@ same: ($T: type, $a: T, $b: T) -> bool = _;
 
 /// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
 impl lang.ops.Eq for type {
-    eq := (a: &type, b: &type) -> bool { same(type, a.*, b.*) };
+    eq := (a, b) { same(type, a.*, b.*) };
 }
 
 /// Names are equal when they are one name: `lang.target.current.os == .linux`.
 impl lang.ops.Eq for Name {
-    eq := (a: &Name, b: &Name) -> bool { same(Name, a.*, b.*) };
+    eq := (a, b) { same(Name, a.*, b.*) };
 }
 
 /// A compile-time value of any type, with its type: what a plan records of a record whose type

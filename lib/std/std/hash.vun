@@ -19,7 +19,7 @@ Hash := interface(($Self: type) -> type { struct {
 /// A `Hash` witness for `T` by reflection: the variant it is, then each part of it by its own
 /// `Hash`. A struct is one variant, its fields its parts.
 derive_hash := ($T: type) -> type { struct {
-    hash := ($H: Hasher, value: &T, h: &mut H) {
+    hash := ($H: Hasher, value, h) {
         at := lang.meta.variant(T, value);
         at.hash(h);
         $for v in lang.meta.variants(T) {
@@ -64,7 +64,7 @@ prime: u64 = 0x0000_0100_0000_01b3;
 
 impl Hasher for Fnv {
     write := (self, bytes) { self.mix(bytes); };
-    finish := (self) -> u64 { self.mixed() };
+    finish := (self) { self.mixed() };
 }
 
 /// An integer, by the bytes of its type, least significant first.

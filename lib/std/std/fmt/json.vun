@@ -138,7 +138,7 @@ impl Json for Option($T) {
 /// by it and holds its part, or the array of its parts.
 /// `#[impl(std.fmt.json.Json(Line))] line_json := std.fmt.json.derive(Line);`
 derive := ($T: type) -> type { struct {
-    json := ($W: std.fmt.Writer, value: &T, w: &mut W) -> Result((), W.Error) {
+    json := ($W: std.fmt.Writer, value, w) {
         at := lang.meta.variant(T, value);
         $for v in lang.meta.variants(T) {
             if at == v.index {

@@ -31,7 +31,7 @@ stored := ($T: type, held: &Stored(T)) -> &T {
 /// A shared borrow is lent what the case stores for its target.
 impl Lent for lang.mem.Ref($T) {
     Holder := Stored(T);
-    lend := (held) -> &T { stored(T, held) };
+    lend := (held) { stored(T, held) };
 }
 
 /// The first `len` of `items`: what a case stores for a slice, generated as any struct is.
@@ -40,7 +40,7 @@ Prefix := ($T: type) -> type { struct { items: [longest]T, len: Int(0..=longest)
 /// A slice is stored as a prefix.
 impl Store for lang.mem.Slice($T) {
     Holder := Prefix(T);
-    view := (held) -> &[T] { &held.items[0..held.len] };
+    view := (held) { &held.items[0..held.len] };
 }
 
 /// What a case holds for a parameter of type `T`: what it lends, or the argument itself.

@@ -73,7 +73,7 @@ impl Typer<'_, '_, '_> {
                             self.pattern(*pat, Err(GaveUp::Unevaluated(why.clone())), None);
                         }
                         (None, None) => {
-                            self.untyped(*pat, context.as_ref().map(|c| (c.place, c.params.len())));
+                            self.untyped(*pat, context.as_ref().map(|c| (c.place, c.arity, params.len())));
                         }
                     }
                     given.and_then(Result::ok)
@@ -139,7 +139,7 @@ impl Typer<'_, '_, '_> {
     /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
     /// caller passes it. `given` is the number of parameters its place gives types to, when it
     /// does: the type this one has is past them.
-    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize)>) {
+    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize, usize)>) {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         let name = match hir.pats[pat].kind {
@@ -149,9 +149,11 @@ impl Typer<'_, '_, '_> {
         let msg = Msg::new().text("this parameter has no type");
         let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: u8"));
         let mut d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
-        if let Some((place, count)) = given {
-            let takes = if count == 1 { "1 parameter".to_string() } else { format!("{count} parameters") };
-            d = d.note(format!("{} has {takes}, so none gives this one a type", place.describe()));
+        if let Some((place, has, takes)) = given {
+            let count = |n: usize| if n == 1 { "1 parameter".to_string() } else { format!("{n} parameters") };
+            let note =
+                format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes));
+            d = d.note(note);
         }
         self.diag.error(d);
     }

@@ -76,7 +76,7 @@ Measure := ($W: std.fmt.Writer) -> type { struct { len: usize } };
 impl std.fmt.Writer for Measure($W) {
     Error: type = W.Error;
     closed: W.Error = W.closed;
-    write := (self, bytes) -> Result(usize, W.Error) {
+    write := (self, bytes) {
         self.len += bytes.len();
         .ok(bytes.len())
     };

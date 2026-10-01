@@ -15,3 +15,8 @@ Shape := struct { sides: u8 };
 impl lang.ops.Eq for Shape {
     eq := (a, b, c) { a.sides == b.sides }; //~ types.untyped_param
 }
+
+// A member with another number of parameters than its requirement is given none of its types.
+impl lang.ops.Ord for Shape {
+    cmp := (a) { .equal }; //~ types.untyped_param
+}

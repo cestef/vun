@@ -97,5 +97,5 @@ Slab := ($n: Int(0..)) -> type { struct {
 impl std.fmt.Writer for Slab($n) {
     Error: type = Full;
     closed: Full = .full;
-    write := (self, more) -> Result(usize, Full) { .ok(self.append(more)) };
+    write := (self, more) { .ok(self.append(more)) };
 }

@@ -105,7 +105,7 @@ derived := ($T: type, c: &mut Choices) -> T {
 /// A float of `lang.Float(bits)`: its encoding chosen whole, so the least choice is `0.0` and a
 /// smaller positive choice a smaller positive float.
 impl Arbitrary for lang.Float($bits) {
-    arbitrary := (c) -> lang.Float(bits) {
+    arbitrary := (c) {
         encoding := c.draw(((1 << bits) - 1).sat(u64));
         lang.float.from_bits(lang.Float(bits), encoding.wrap(lang.float.Bits(lang.Float(bits))))
     };
@@ -113,7 +113,7 @@ impl Arbitrary for lang.Float($bits) {
 
 /// An array of `n` items, each generated in turn.
 impl Arbitrary for lang.mem.Array($n, $T) {
-    arbitrary := (c) -> [n]T {
+    arbitrary := (c) {
         $if n == 0 {
             []
         } else {
@@ -132,7 +132,7 @@ Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
 /// magnitude, and shrinking the distance keeps the side. A range of more than 2^64 integers has
 /// only the 2^64 on each side nearest 0 chosen.
 impl Arbitrary for Int($r) {
-    arbitrary := (c) -> Int(r) {
+    arbitrary := (c) {
         // Of a type holding it alone, so that adding an offset from it spans `r` exactly.
         $at := 0.sat(Int(r));
         $nearest := at.to(Int(at..=at));

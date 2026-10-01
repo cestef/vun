@@ -51,7 +51,7 @@ _tree := ($n: usize, $T: type, xs: &[n]T, $start: usize, $len: Int(1..)) -> T {
 
 impl lang.ops.Add for lang.simd.Vector($n, $T) {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Add, T).Output(lang.simd.Lane(R))) };
-    add := ($R: type, a, b) -> Output(R) {
+    add := ($R: type, a, b) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
         lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] + y[i] }])
     };
@@ -59,7 +59,7 @@ impl lang.ops.Add for lang.simd.Vector($n, $T) {
 
 impl lang.ops.Sub for lang.simd.Vector($n, $T) {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Sub, T).Output(lang.simd.Lane(R))) };
-    sub := ($R: type, a, b) -> Output(R) {
+    sub := ($R: type, a, b) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
         lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] - y[i] }])
     };
@@ -67,7 +67,7 @@ impl lang.ops.Sub for lang.simd.Vector($n, $T) {
 
 impl lang.ops.Mul for lang.simd.Vector($n, $T) {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Mul, T).Output(lang.simd.Lane(R))) };
-    mul := ($R: type, a, b) -> Output(R) {
+    mul := ($R: type, a, b) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
         lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] * y[i] }])
     };
@@ -75,7 +75,7 @@ impl lang.ops.Mul for lang.simd.Vector($n, $T) {
 
 impl lang.ops.Div for lang.simd.Vector($n, $T) {
     Output := ($R: type) -> type { Vector(n, lang.meta.witness(lang.ops.Div, T).Output(lang.simd.Lane(R))) };
-    div := ($R: type, a, b) -> Output(R) {
+    div := ($R: type, a, b) {
         (x, y) := (lang.simd.lanes(n, T, a), lang.simd.lanes(n, lang.simd.Lane(R), b));
         lang.simd.of(n, lang.simd.Lane(Output(R)), [$for i in 0..n { x[i] / y[i] }])
     };

@@ -36,7 +36,7 @@ Ordering := enum { less, equal, greater };
 
 /// Conditions are equal when both hold or neither does.
 impl lang.ops.Eq for bool {
-    eq := (a: &bool, b: &bool) -> bool {
+    eq := (a, b) {
         match a.* {
             .true => b.*,
             .false => match b.* { .true => .false, .false => .true },
