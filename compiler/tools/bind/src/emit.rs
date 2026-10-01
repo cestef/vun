@@ -16,6 +16,12 @@ fn item(name: String, value: Expr) -> Item {
     Item { doc: Vec::new(), attrs: Vec::new(), mutable: false, name, ty: None, value }
 }
 
+/// An alias of the type `value`: annotated `type`, which is how a binding is known to bind one
+/// (spec 10, section 5).
+fn alias_of(name: String, value: Expr) -> Item {
+    Item { ty: Some(Expr::local("type")), ..item(name, value) }
+}
+
 impl Binder<'_> {
     /// The Vun file binding the header named `header`.
     pub(crate) fn file(&mut self, header: &str) -> File {
@@ -97,7 +103,7 @@ impl Binder<'_> {
         let mut made = Vec::new();
         let ty = match self.bound(decl) {
             Some(name) => {
-                made.push(item(name.clone(), int));
+                made.push(alias_of(name.clone(), int));
                 Expr::local(&name)
             }
             None => int,
@@ -120,7 +126,7 @@ impl Binder<'_> {
             self.ty(under, Position::Field).map(|t| t.unwrap_or(Expr::Unit))
         };
         match ty {
-            Ok(ty) => Some(item(self.bound(decl)?, ty)),
+            Ok(ty) => Some(alias_of(self.bound(decl)?, ty)),
             Err(why) => {
                 self.skip(decl, Reason::Unsupported(why));
                 None
