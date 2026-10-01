@@ -48,5 +48,5 @@ Bytes := struct {
 impl Reader for Bytes {
     Error: type = Ended;
     ended: Ended = .ended;
-    read := (self: &mut Bytes, into: &mut [u8]) -> Result(usize, Ended) { .ok(self.take(into)) };
+    read := (self, into) -> Result(usize, Ended) { .ok(self.take(into)) };
 }

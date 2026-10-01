@@ -1,0 +1,36 @@
+//! A member of an impl that leaves out the types of its parameters, or its result, has them from
+//! the requirement it implements, with the `Self` the impl is for and the `$` parameters it binds:
+//! for a type, for the types a constructor makes, and with a `$` parameter a call infers from the
+//! arguments (spec 02, section 3).
+
+start := std.os.start(main);
+
+Shape := struct { sides: u8 };
+
+impl lang.ops.Eq for Shape {
+    eq := (a, b) { a.sides == b.sides };
+}
+
+impl std.fmt.Format for Shape {
+    format := ($W: std.fmt.Writer, value, w) { std.fmt.print(w, "shape of {}", value.sides) };
+}
+
+Wrapper := ($T: type) -> type { struct { inner: T } };
+
+impl lang.ops.Eq for Wrapper($T) {
+    eq := (a, b) { a.inner == b.inner };
+}
+
+impl std.fmt.Format for Wrapper($T) {
+    format := ($W: std.fmt.Writer, value, w) { value.inner.format(w) };
+}
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut slab := std.text.Slab(64).empty();
+    s: Shape = .{ .sides = 3 };
+    t: Shape = .{ .sides = 3 };
+    w: Wrapper(u8) = .{ .inner = 5 };
+    v: Wrapper(u8) = .{ .inner = 6 };
+    std.fmt.print(&mut slab, "{} {}", s, w).expect("room");
+    if s == t and w != v and slab.bytes() == "shape of 3 5" { .ok } else { .code(1) }
+};

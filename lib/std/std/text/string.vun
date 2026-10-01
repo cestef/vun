@@ -80,7 +80,7 @@ Writing := ($A: type) -> type { struct {
 impl std.fmt.Writer for Writing($A) {
     Error: type = Failed(A.Error);
     closed: Failed(A.Error) = .closed;
-    write := (self: &mut Writing(A), bytes: &[u8]) -> Result(usize, Failed(A.Error)) {
+    write := (self, bytes) -> Result(usize, Failed(A.Error)) {
         match self.append(bytes) {
             .ok(_) => .ok(bytes.len()),
             .err(e) => .err(.allocation(e)),

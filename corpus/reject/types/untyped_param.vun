@@ -8,3 +8,10 @@ identity := (x) { x }; //~ types.untyped_param
 // is a mismatch with it.
 more: (a: u8) -> u8 = (a, b) { a }; //~ types.untyped_param
 fewer: (a: u8, b: u8) -> u8 = (a) { a }; //~ types.mismatch
+
+// A member of an impl has the types its requirement gives its parameters, as many as it has.
+Shape := struct { sides: u8 };
+
+impl lang.ops.Eq for Shape {
+    eq := (a, b, c) { a.sides == b.sides }; //~ types.untyped_param
+}

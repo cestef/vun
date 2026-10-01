@@ -131,6 +131,13 @@ impl Writer for Uart {
   `impl I for T = value;` makes the witness a value, as a derived one is:
   `impl Hash for Point = std.hash.derive_hash(Point);`. An `_` among the arguments of the
   interface is written as in the attribute: `impl lang.ops.Call(_, ()) for Instruction = ...;`.
+- A member leaves out what its interface already says: the type of a run-time parameter, and the
+  result. `format := ($W: Writer, value, w) { ... }` has `value: &Self` and `w: &mut W` and the
+  result of the requirement `format`, with `Self` the type the impl is for and `W` the member's
+  own `$` parameter, so a call infers `$W` from its argument as it does for the requirement. The
+  same holds for a function literal that is the value of a declaration annotated with a function
+  type, `add: (a: u16, b: u16) -> u16 = (a, b) { ... }`. A parameter past what the type gives is
+  still untyped, and the report says how many it does.
 - These stand for `#[impl(I(T))]` on a declaration of that struct, or, with parameters, on a
   function of them returning it, `($r) -> type { struct { members } }`, the attribute form below,
   which says the same:

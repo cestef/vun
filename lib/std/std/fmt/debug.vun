@@ -77,7 +77,7 @@ impl Debug for bool {
 
 /// Bytes as a quoted string, any other items as `[a, b]`.
 impl Debug for lang.mem.Slice($T) {
-    debug := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
+    debug := ($W: std.fmt.Writer, value, w) {
         $if lang.meta.same(type, T, u8) {
             quoted(w, value)
         } else {

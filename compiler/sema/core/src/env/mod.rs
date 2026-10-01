@@ -11,6 +11,7 @@ mod attr;
 mod call;
 mod code;
 mod condition;
+mod context;
 mod eval;
 mod frame;
 mod generated;
@@ -27,6 +28,7 @@ use std::sync::Arc;
 
 pub use code::Quoting;
 pub use condition::Selected;
+pub use context::{Context, Place};
 pub use frame::Extents;
 pub use passing::Passed;
 pub use path::ItemSite;

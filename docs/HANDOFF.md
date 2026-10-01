@@ -140,7 +140,8 @@ code, failing arguments as typed lines), 381 (a name in a pattern always binds;
 integers drawn by distance from 0 then side), 383 (generic bodies checked per instantiation,
 not typed abstractly), 384 (benchmarks, `vun bench`), 386 (simulations; shrinking keeps only
 smaller cases), 387 (coverage, `--cover`, `vun fuzz`) and 388 (the wasm linker), 398 (`{?}`, `{x}`, `{b}`, `Debug`), 399 (a name a spread selects is a
-member), 400 (an array has its slice's impls), 401 (`impl I for T { }`) and 402 (aliases for delegation; interface declarations are literals).
+member), 400 (an array has its slice's impls), 401 (`impl I for T { }`), 402 (aliases for delegation; interface declarations are literals), 403 (a literal takes
+its parameters from its annotation) and 404 (an impl member takes them from its requirement).
 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
@@ -151,13 +152,13 @@ member), 400 (an array has its slice's impls), 401 (`impl I for T { }`) and 402 
   interface declared by a call (`Debug: lang.Interface = Rendering("debug")` under `#[lang.derive]`)
   made `Witnesses`, `Derives` and the typing of the call a cycle, and `vun fix` on any file spun
   for minutes (decision 402). Declare interfaces as literals; the engine should still not spin.
-- An `impl` member restates its requirement's signature (`($W: Writer, value: &Self, w: &mut W)
-  -> Result((), W.Error)`). Taking it from the interface is no desugar: the requirement is in
-  another file, and a function literal takes no parameter or result type from the type it is
-  written against today (`f: (x: i32) -> i32 = (x) { x }` is `backend.unlowered`, `x` "known only
-  when the program runs"). It needs typing function literals by the function type expected of
-  them, then the requirement's inferred `$` parameters (`$W`) as implicit parameters of the
-  literal, which instances, call plans and MIR would carry (decision 401).
+- An `impl` member may leave its parameters' types and its result to the requirement
+  (decisions 403, 404). Not yet: a literal that is an argument takes its parameters from the
+  parameter it is passed for (typing records its type but lowering reads the literal's own
+  signature); a member of a witness made by `#[lang.derive]` (`derive_debug`, `derive`), which has
+  no `lang.impl` to read the interface from; the `lang` core impls (`Eq for type`, `Try`,
+  `Iterate`), whose signatures the requirement's own evaluation depends on; a requirement whose
+  result names a witness's own member (`Result(usize, Error)`) still needs the result written.
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and

@@ -17,14 +17,14 @@ Narrow := interface(($Self: type) -> type { struct {
 } });
 
 impl Narrow for Int($r) {
-    to := (x: Int(r), $T: type) -> T { lang.int.to(r, x, T) };
+    to := (x, $T: type) -> T { lang.int.to(r, x, T) };
     #[panic.never]
-    wrap := (x: Int(r), $T: type) -> T { lang.int.wrap(r, x, T) };
+    wrap := (x, $T: type) -> T { lang.int.wrap(r, x, T) };
     #[panic.never]
-    sat := (x: Int(r), $T: type) -> T { lang.int.sat(r, x, T) };
+    sat := (x, $T: type) -> T { lang.int.sat(r, x, T) };
     /// A value that fits is its own wrap, which cannot trap.
     #[panic.never]
-    try_to := (x: Int(r), $T: type) -> ?T {
+    try_to := (x, $T: type) -> ?T {
         if lang.int.fits(r, x, T) { .some(lang.int.wrap(r, x, T)) } else { .none }
     };
 }

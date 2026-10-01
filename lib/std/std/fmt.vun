@@ -137,33 +137,33 @@ in_base := ($W: Writer, w: &mut W, negative: bool, magnitude: u128, base: Int(2
 
 /// In decimal, with `-` before a negative value.
 impl Format for Int($r) {
-    format := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+    format := ($W: Writer, value, w) {
         in_base(w, value.* < 0, value.*.abs(), 10)
     };
 }
 
 impl Hex for Int($r) {
-    hex := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+    hex := ($W: Writer, value, w) {
         in_base(w, value.* < 0, value.*.abs(), 16)
     };
 }
 
 impl Binary for Int($r) {
-    binary := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
+    binary := ($W: Writer, value, w) {
         in_base(w, value.* < 0, value.*.abs(), 2)
     };
 }
 
 /// `true` or `false`.
 impl Format for bool {
-    format := ($W: Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
+    format := ($W: Writer, value, w) {
         if value.* { w.write_all("true") } else { w.write_all("false") }
     };
 }
 
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
 impl Format for lang.mem.Slice($T) {
-    format := ($W: Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
+    format := ($W: Writer, value, w) {
         $if lang.meta.same(type, T, u8) {
             w.write_all(value)
         } else {

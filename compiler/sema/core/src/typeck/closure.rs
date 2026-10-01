@@ -14,6 +14,7 @@ use vun_sema_ty::{Closure, Signature, TyKind, Value};
 
 use super::{GaveUp, Known, Stage, Typer};
 use crate::callable::Callable;
+use crate::env::Place;
 use crate::eval::Instantiate;
 
 impl Typer<'_, '_, '_> {
@@ -36,7 +37,15 @@ impl Typer<'_, '_, '_> {
         let hir = self.hir();
         let ExprKind::Fn { params, returns, body } = &hir.exprs[literal].kind else { return None };
         let (returns, body) = (*returns, *body);
-        let context = self.env().context_signature(literal);
+        // Where the place cannot be read here, the instantiations that bind what it names decide.
+        let (context, unread) = match self.env().context(literal) {
+            Some(Ok(context)) => (Some(context), None),
+            Some(Err(why)) => {
+                self.unevaluated(literal, &why);
+                (None, Some(why))
+            }
+            None => (None, None),
+        };
         let mut types = Some(Vec::new());
         for (index, param) in params.iter().enumerate() {
             let ty = match param {
@@ -52,19 +61,22 @@ impl Typer<'_, '_, '_> {
                     self.pattern(*pat, ty.clone(), None);
                     ty.ok()
                 }
-                // A `$` parameter written without a type takes any value: the function is
-                // generic over it. Any other has the type its place gives it, if it does.
-                Entry::One(Param { pat: Some(pat), ty: None, .. }) => {
-                    let given = context
-                        .as_ref()
-                        .and_then(|c| c.params.get(index).copied())
-                        .filter(|_| !hir.is_comptime(*pat));
-                    if let Some(ty) = given {
-                        self.pattern(*pat, Ok(ty), None);
-                    } else if !hir.is_comptime(*pat) {
-                        self.untyped(*pat);
+                // A run-time parameter written without a type has the type its place gives it. A
+                // `$` parameter written without one takes any value: the function is generic over
+                // it.
+                Entry::One(Param { pat: Some(pat), ty: None, .. }) if !hir.is_comptime(*pat) => {
+                    let given = context.as_ref().and_then(|c| c.param(index));
+                    match (&given, &unread) {
+                        (Some(Ok(ty)), _) => self.pattern(*pat, Ok(*ty), None),
+                        // Where the place is read per instantiation, so is this parameter's type.
+                        (Some(Err(why)), _) | (None, Some(why)) => {
+                            self.pattern(*pat, Err(GaveUp::Unevaluated(why.clone())), None);
+                        }
+                        (None, None) => {
+                            self.untyped(*pat, context.as_ref().map(|c| (c.place, c.params.len())));
+                        }
                     }
-                    given
+                    given.and_then(Result::ok)
                 }
                 _ => None,
             };
@@ -96,7 +108,11 @@ impl Typer<'_, '_, '_> {
         } else {
             let result = match returns {
                 Some(r) => self.annotation(r),
-                None => Ok(context.as_ref().map_or_else(TyKind::unit, |c| c.result)),
+                None => match (&context, &unread) {
+                    (Some(context), _) => context.result.clone().map_err(GaveUp::Unevaluated),
+                    (None, Some(why)) => Err(GaveUp::Unevaluated(why.clone())),
+                    (None, None) => Ok(TyKind::unit()),
+                },
             };
             (result.clone().ok(), result, None)
         };
@@ -121,8 +137,9 @@ impl Typer<'_, '_, '_> {
     }
 
     /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
-    /// caller passes it.
-    fn untyped(&mut self, pat: PatId) {
+    /// caller passes it. `given` is the number of parameters its place gives types to, when it
+    /// does: the type this one has is past them.
+    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize)>) {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         let name = match hir.pats[pat].kind {
@@ -131,7 +148,11 @@ impl Typer<'_, '_, '_> {
         };
         let msg = Msg::new().text("this parameter has no type");
         let help = Msg::new().text("write its type after its name, as ").code(format!("{name}: u8"));
-        let d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
+        let mut d = Diagnostic::error(errors::TYPES_UNTYPED_PARAM, msg).at(origin, None).help(help);
+        if let Some((place, count)) = given {
+            let takes = if count == 1 { "1 parameter".to_string() } else { format!("{count} parameters") };
+            d = d.note(format!("{} has {takes}, so none gives this one a type", place.describe()));
+        }
         self.diag.error(d);
     }
 

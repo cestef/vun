@@ -159,7 +159,16 @@ pub trait Parameters {
 
 impl Parameters for Func {
     fn written<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Written<'a, 'db>> {
-        Some(Written { env: Env::inside(cx, self, [])?, expr: self.literal.expr.id })
+        let env = Env::inside(cx, self, [])?;
+        let expr = self.literal.expr.id;
+        // A member of a witness that leaves its parameters' types out has them written by the
+        // requirement it implements.
+        if env.omits_param_types(expr)
+            && let Some(Ok(asked)) = env.asked(expr)
+        {
+            return Some(asked);
+        }
+        Some(Written { env, expr })
     }
 
     fn comptime(&self, cx: &Cx<'_>) -> Option<Vec<bool>> {

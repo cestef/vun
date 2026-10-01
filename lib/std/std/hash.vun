@@ -63,13 +63,13 @@ offset: u64 = 0xcbf2_9ce4_8422_2325;
 prime: u64 = 0x0000_0100_0000_01b3;
 
 impl Hasher for Fnv {
-    write := (self: &mut Fnv, bytes: &[u8]) { self.mix(bytes); };
-    finish := (self: &Fnv) -> u64 { self.mixed() };
+    write := (self, bytes) { self.mix(bytes); };
+    finish := (self) -> u64 { self.mixed() };
 }
 
 /// An integer, by the bytes of its type, least significant first.
 impl Hash for Int($r) {
-    hash := ($H: Hasher, value: &Int(r), h: &mut H) {
+    hash := ($H: Hasher, value, h) {
         mut rest: u128 = value.*.wrap(u128);
         for _ in 0..lang.meta.size(Int(r)) {
             h.write(&[rest.wrap(u8)]);
@@ -80,7 +80,7 @@ impl Hash for Int($r) {
 
 /// `false` as a zero byte and `true` as a one.
 impl Hash for bool {
-    hash := ($H: Hasher, value: &bool, h: &mut H) {
+    hash := ($H: Hasher, value, h) {
         if value.* { h.write("\x01"); } else { h.write("\x00"); }
     };
 }
@@ -88,7 +88,7 @@ impl Hash for bool {
 /// The items of a slice: their number, then bytes as they are and any other items each by its
 /// own `Hash`.
 impl Hash for lang.mem.Slice($T) {
-    hash := ($H: Hasher, value: &[T], h: &mut H) {
+    hash := ($H: Hasher, value, h) {
         value.len().hash(h);
         $if lang.meta.same(type, T, u8) {
             h.write(value);

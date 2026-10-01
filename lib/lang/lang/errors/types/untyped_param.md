@@ -6,7 +6,8 @@ A function literal's parameters are typed where they are written: nothing else s
 passes, so a run-time parameter written as a name alone, `x`, has no type to be checked against or
 computed with. A `$` parameter is generic over its value and needs none, and a literal that is
 the value of a declaration annotated with a function type takes the types of the parameters it
-has in common with that type, and its result, from it.
+has in common with that type, and its result, from it, and so does a member of an impl, from the
+requirement of its interface.
 
 ## Example
 

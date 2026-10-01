@@ -71,7 +71,7 @@ impl Json for Int($r) {
 /// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has
 /// and a JSON number does not: an infinity is `"inf"` or `"-inf"`, a NaN `"nan"`.
 impl Json for lang.Float($bits) {
-    json := ($W: std.fmt.Writer, value: &lang.Float(bits), w: &mut W) -> Result((), W.Error) {
+    json := ($W: std.fmt.Writer, value, w) {
         $F := lang.Float(bits);
         $fraction := lang.float.fraction_bits(F);
         $top := (1 << (bits - fraction - 1)) - 1;
@@ -103,14 +103,14 @@ impl Json for lang.Float($bits) {
 }
 
 impl Json for bool {
-    json := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
+    json := ($W: std.fmt.Writer, value, w) {
         w.write_all(if value.* { "true" } else { "false" })
     };
 }
 
 /// Bytes as a string, any other items as an array.
 impl Json for lang.mem.Slice($T) {
-    json := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
+    json := ($W: std.fmt.Writer, value, w) {
         $if lang.meta.same(type, T, u8) {
             string(w, value)
         } else {
@@ -125,7 +125,7 @@ impl Json for lang.mem.Slice($T) {
 }
 
 impl Json for Option($T) {
-    json := ($W: std.fmt.Writer, value: &?T, w: &mut W) -> Result((), W.Error) {
+    json := ($W: std.fmt.Writer, value, w) {
         match value {
             .some(v) => v.json(w),
             .none => w.write_all(null),

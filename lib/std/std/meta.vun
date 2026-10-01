@@ -15,9 +15,9 @@ Quoted := interface(($Self: type) -> type { struct {
 } });
 
 impl Quoted for lang.meta.Code($T) {
-    source := (c: &Code(T)) -> &[u8] { lang.meta.source(T, c) };
-    span := (c: &Code(T)) -> lang.meta.Origin { lang.meta.span(T, c) };
-    within := (c: &Code(T), $bytes: lang.Range) -> lang.meta.Origin { lang.meta.within(T, c, bytes) };
+    source := (c) -> &[u8] { lang.meta.source(T, c) };
+    span := (c) -> lang.meta.Origin { lang.meta.span(T, c) };
+    within := (c, $bytes: lang.Range) -> lang.meta.Origin { lang.meta.within(T, c, bytes) };
 }
 
 /// The name of the variant of its type `T` that `v` is, as declared.

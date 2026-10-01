@@ -60,7 +60,7 @@ impl Env<'_, '_> {
             return Err(Unevaluated::Unsupported);
         };
         let declared = returns.map(|r| self.eval(r)).transpose()?;
-        let context = self.context_signature(literal);
+        let context = self.context(literal).transpose()?;
         let result = match declared {
             Some(Value::Interface(interface)) if hir.suspends(literal) => {
                 let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
@@ -76,22 +76,14 @@ impl Env<'_, '_> {
                 Value::Type(TyKind::Frame(Box::new(frame)).intern())
             }
             Some(value) => value,
-            None => Value::Type(context.as_ref().map_or_else(TyKind::unit, |c| c.result)),
+            None => match &context {
+                Some(context) => Value::Type(context.result.clone()?),
+                None => Value::Type(TyKind::unit()),
+            },
         };
         let mut signature = self.signature_in(params, None, context.as_ref())?;
         signature.result = result.as_type().ok_or(Unevaluated::Unsupported)?;
         Ok(self.literal_markers(literal).into_iter().fold(signature, Signature::with))
-    }
-
-    /// The signature the declaration `literal` is the value of annotates (`f: (x: u8) -> u8 =
-    /// (x) { ... }`), if its type is a function type: what a parameter written without a type
-    /// and a result not written are. A literal with another number of parameters takes the types
-    /// of those the annotation has, and is a mismatch with the annotation for the rest.
-    #[must_use]
-    pub fn context_signature(&self, literal: ExprId) -> Option<Signature> {
-        let decl = self.declaration_of(literal).0?;
-        let annotation = self.parsed.hir.decls[decl].ty?;
-        self.ty(annotation).ok()?.signature()
     }
 
     /// The markers of the function literal `literal`: its attributes and its declaration's that
