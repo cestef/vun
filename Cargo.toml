@@ -106,6 +106,7 @@ vun-http = { path = "compiler/pkg/http" }
 vun-fmt = { path = "compiler/tools/fmt" }
 vun-doc = { path = "compiler/tools/doc" }
 vun-reduce = { path = "compiler/tools/reduce" }
+vun-disasm = { path = "compiler/tools/disasm" }
 vun-bind = { path = "compiler/tools/bind" }
 vun-clang = { path = "compiler/tools/clang" }
 vun-command = { path = "compiler/tools/command" }
@@ -144,9 +145,10 @@ num-bigint = "0.5"
 libfuzzer-sys = "0.4"
 # Doc comments are Markdown, rendered into the pages `vun doc` writes.
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
-# Tests only: an independent decoder checking the x86-64 assembler's table.
+# An independent decoder: it checks the x86-64 assembler's table, and `vun debug disasm` reads code
+# back with it (decision 408).
 yaxpeax-x86 = { version = "2", default-features = false, features = ["std", "fmt"] }
-# Tests only: an independent AArch64 decoder checking the arm64 assembler's table, and its traits.
+# An independent AArch64 decoder, as the x86-64 one is, and the traits both have.
 yaxpeax-arm = { version = "0.5", default-features = false, features = ["std", "fmt"] }
 yaxpeax-arch = { version = "0.3", default-features = false }
 # Tests only: an independent parser validating the modules of the wasm backend.

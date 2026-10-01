@@ -151,6 +151,7 @@ without `node`, `TREE_SITTER_JS_RUNTIME=native` loads `grammar.js` with its buil
 ```sh
 cargo run -q -p vun-cli -- run|build [--release] [--backend b] [--target t] [--trace off|sites|calls] <file>
 cargo run -q -p vun-cli -- debug dump tokens|cst|manifest|plan|hir|types|values|mir|layout|program|lir|code|frames <file>
+cargo run -q -p vun-cli -- debug disasm <elf> [symbol]   # an ELF file's code as instructions (yaxpeax-x86, yaxpeax-arm)
 cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, as std.testing.runner runs them
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases

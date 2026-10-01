@@ -1,0 +1,17 @@
+[package]
+name = "vun-disasm"
+description = "Machine code read back as text: the instructions of an ELF file's code, labelled by its symbols."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-elf.workspace = true
+yaxpeax-arch = { workspace = true }
+yaxpeax-arm = { workspace = true }
+yaxpeax-x86 = { workspace = true }

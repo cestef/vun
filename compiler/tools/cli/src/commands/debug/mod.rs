@@ -4,6 +4,7 @@
 
 mod compare;
 mod coverage;
+mod disasm;
 mod dump;
 mod queries;
 mod reduce;
@@ -41,6 +42,9 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         |s, args, shell| shell.document(DUMP, "coverage".to_owned(), |out| coverage::coverage(s, args, out)),
     )
     .params(&[FILE]),
+    Command::run("disasm", "the code of an ELF file read back as instructions", disasm::disasm)
+        .params(&[disasm::OBJECT, disasm::SYMBOL])
+        .examples(disasm::EXAMPLES),
     Command::run(
         "queries",
         "what the queries saved beside a root file hold, largest first",

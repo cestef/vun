@@ -14,3 +14,4 @@ pub const bind_skipped: Item = Item::new(&["lang", "errors", "tool", "bind_skipp
 pub const nothing_to_reduce: Item = Item::new(
     &["lang", "errors", "tool", "nothing_to_reduce"],
 );
+pub const disasm_failed: Item = Item::new(&["lang", "errors", "tool", "disasm_failed"]);

@@ -224,6 +224,7 @@ tool := struct {
     bind_failed := diag.Diag{};
     bind_skipped := diag.Diag{};
     nothing_to_reduce := diag.Diag{};
+    disasm_failed := diag.Diag{};
 };
 
 /// The toolchains installed side by side, and releases (spec 12, section 6).
