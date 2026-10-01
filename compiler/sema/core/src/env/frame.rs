@@ -60,7 +60,7 @@ impl Env<'_, '_> {
             return Err(Unevaluated::Unsupported);
         };
         let declared = returns.map(|r| self.eval(r)).transpose()?;
-        let context = self.context_signature(literal, params.len());
+        let context = self.context_signature(literal);
         let result = match declared {
             Some(Value::Interface(interface)) if hir.suspends(literal) => {
                 let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
@@ -84,14 +84,14 @@ impl Env<'_, '_> {
     }
 
     /// The signature the declaration `literal` is the value of annotates (`f: (x: u8) -> u8 =
-    /// (x) { ... }`), if its type is a function type of `arity` parameters: what a parameter
-    /// written without a type and a result not written are.
+    /// (x) { ... }`), if its type is a function type: what a parameter written without a type
+    /// and a result not written are. A literal with another number of parameters takes the types
+    /// of those the annotation has, and is a mismatch with the annotation for the rest.
     #[must_use]
-    pub fn context_signature(&self, literal: ExprId, arity: usize) -> Option<Signature> {
+    pub fn context_signature(&self, literal: ExprId) -> Option<Signature> {
         let decl = self.declaration_of(literal).0?;
         let annotation = self.parsed.hir.decls[decl].ty?;
-        let signature = self.ty(annotation).ok()?.signature()?;
-        (signature.params.len() == arity).then_some(signature)
+        self.ty(annotation).ok()?.signature()
     }
 
     /// The markers of the function literal `literal`: its attributes and its declaration's that

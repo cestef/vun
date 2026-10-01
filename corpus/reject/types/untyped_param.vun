@@ -3,6 +3,8 @@
 
 identity := (x) { x }; //~ types.untyped_param
 
-// The annotation of what it is the value of gives a parameter its type only where it takes as
-// many parameters as the literal has.
-two: (a: u8, b: u8) -> u8 = (a) { a }; //~ types.untyped_param
+// The annotation of what it is the value of gives a parameter its type where it has that
+// position; a parameter past the ones it has is untyped, and a literal taking fewer parameters
+// is a mismatch with it.
+more: (a: u8) -> u8 = (a, b) { a }; //~ types.untyped_param
+fewer: (a: u8, b: u8) -> u8 = (a) { a }; //~ types.mismatch

@@ -5,8 +5,8 @@ A parameter of a function has no type.
 A function literal's parameters are typed where they are written: nothing else says what a caller
 passes, so a run-time parameter written as a name alone, `x`, has no type to be checked against or
 computed with. A `$` parameter is generic over its value and needs none, and a literal that is
-the value of a declaration annotated with a function type of as many parameters takes its
-parameters' types, and its result, from that type.
+the value of a declaration annotated with a function type takes the types of the parameters it
+has in common with that type, and its result, from it.
 
 ## Example
 
