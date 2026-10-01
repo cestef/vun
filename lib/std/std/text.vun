@@ -1,9 +1,58 @@
-//! Text (decision 43): bytes held and written. `Slab(n)` keeps up to `n` bytes inline, with no
-//! allocator; text is UTF-8 in `&[u8]`. Formatting is `std.fmt`, readers and writers are `std.io`,
-//! maps are `std.collections`.
+//! Text (decision 43): bytes held, written and cut. `Slab(n)` keeps up to `n` bytes inline, with no
+//! allocator; text is UTF-8 in `&[u8]`, whose bytes `ascii` classifies and whose code points `utf8`
+//! reads. Formatting is `std.fmt`, readers and writers are `std.io`, maps are `std.collections`.
 
 /// Bytes of text a program grows, in a buffer an allocator gave.
 String: type = std.text.string.String;
+
+newline := "\n";
+carriage_return := "\r"[0];
+
+/// `text` without the white space before its first other byte.
+trim_start := (text: &[u8]) -> &[u8] {
+    mut at: usize = 0;
+    for at < text.len() and std.text.ascii.is_space(text[at]) { at += 1; }
+    text[at..]
+};
+
+/// `text` without the white space after its last other byte.
+trim_end := (text: &[u8]) -> &[u8] {
+    mut end := text.len();
+    for end > 0 and std.text.ascii.is_space(text[end - 1]) { end -= 1; }
+    text[0..end]
+};
+
+/// `text` without the white space around it.
+trim := (text: &[u8]) -> &[u8] { trim_end(trim_start(text)) };
+
+/// The lines of `text`, each without its line feed, or its carriage return and line feed; the
+/// last has no line end, and `text` ending with one has no empty line after it.
+lines := (text: &[u8]) -> std.iter.Iter(&[u8]) {
+    mut rest: &[u8] = text;
+    for rest.len() > 0 {
+        mut line: &[u8] = rest;
+        match rest.find(newline) {
+            .some(at) => {
+                line = rest[0..at];
+                rest = rest[(at + newline.len()).sat(usize)..];
+            },
+            .none => { rest = rest[rest.len()..]; },
+        }
+        if line.len() > 0 and line[line.len() - 1] == carriage_return {
+            line = line[0..line.len() - 1];
+        }
+        yield line;
+    }
+};
+
+/// Whether `a` and `b` are the same text, the case of ASCII letters aside.
+eq_ignore_case := (a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() { return false; }
+    for i in 0..a.len() {
+        if std.text.ascii.to_lower(a[i]) != std.text.ascii.to_lower(b[i]) { return false; }
+    }
+    true
+};
 
 /// Why a `Slab` took no more bytes.
 Full := enum { full };

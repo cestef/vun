@@ -25,3 +25,32 @@ pub const a_string_is_written_to_as_any_writer: Item = Item::new(
 pub const a_string_copies_the_text_it_is_made_from: Item = Item::new(
     &["std", "text", "tests", "a_string_copies_the_text_it_is_made_from"],
 );
+pub const ascii_bytes_are_classified: Item = Item::new(
+    &["std", "text", "tests", "ascii_bytes_are_classified"],
+);
+pub const ascii_digits_have_values_in_a_radix: Item = Item::new(
+    &["std", "text", "tests", "ascii_digits_have_values_in_a_radix"],
+);
+pub const ascii_letters_change_case: Item = Item::new(
+    &["std", "text", "tests", "ascii_letters_change_case"],
+);
+pub const white_space_is_trimmed_from_text: Item = Item::new(
+    &["std", "text", "tests", "white_space_is_trimmed_from_text"],
+);
+pub const text_is_cut_into_lines: Item = Item::new(
+    &["std", "text", "tests", "text_is_cut_into_lines"],
+);
+pub const utf8_sequences_are_decoded: Item = Item::new(
+    &["std", "text", "tests", "utf8_sequences_are_decoded"],
+);
+/// Whether `text` starts with a code point.
+pub const decodes: Item = Item::new(&["std", "text", "tests", "decodes"]);
+pub const bytes_that_are_not_utf8_are_not_decoded: Item = Item::new(
+    &["std", "text", "tests", "bytes_that_are_not_utf8_are_not_decoded"],
+);
+pub const text_is_read_as_code_points: Item = Item::new(
+    &["std", "text", "tests", "text_is_read_as_code_points"],
+);
+pub const code_points_are_written_as_utf8: Item = Item::new(
+    &["std", "text", "tests", "code_points_are_written_as_utf8"],
+);

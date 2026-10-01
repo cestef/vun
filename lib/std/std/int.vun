@@ -49,19 +49,21 @@ int_methods := ($r: lang.Range) -> type { struct {
         }
         v
     };
-    /// The integer the decimal digits `text` write; `.none` for an empty text, one holding
-    /// anything but digits, or a number outside `Int(r)` or past `u64`.
+    /// The integer the decimal digits `text` write, after a `-` when it is below zero; `.none` for
+    /// an empty text, one holding anything else, or a number outside `Int(r)` or past `u64`.
     parse := (text: &[u8]) -> ?Int(r) {
-        if text.len() == 0 { return .none; }
+        negative := text.len() > 0 and text[0] == "-"[0];
+        digits := if negative { text[1..] } else { text };
+        if digits.len() == 0 { return .none; }
         mut n: u64 = 0;
-        for i in 0..text.len() {
-            d := text[i];
+        for i in 0..digits.len() {
+            d := digits[i];
             if d < "0"[0] or d > "9"[0] { return .none; }
             n = match (n * 10 + (d - "0"[0])).try_to(u64) {
                 .some(next) => next,
                 .none => return .none,
             };
         }
-        n.try_to(Int(r))
+        if negative { (0 - n).try_to(Int(r)) } else { n.try_to(Int(r)) }
     };
 } };

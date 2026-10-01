@@ -6,12 +6,29 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.text.ascii`.
+pub const ascii: Item = Item::new(&["std", "text", "ascii"]);
 /// The namespace `std.text.string`.
 pub const string: Item = Item::new(&["std", "text", "string"]);
 /// The namespace `std.text.tests`.
 pub const tests: Item = Item::new(&["std", "text", "tests"]);
+/// The namespace `std.text.utf8`.
+pub const utf8: Item = Item::new(&["std", "text", "utf8"]);
 /// Bytes of text a program grows, in a buffer an allocator gave.
 pub const String: Item = Item::new(&["std", "text", "String"]);
+pub const newline: Item = Item::new(&["std", "text", "newline"]);
+pub const carriage_return: Item = Item::new(&["std", "text", "carriage_return"]);
+/// `text` without the white space before its first other byte.
+pub const trim_start: Item = Item::new(&["std", "text", "trim_start"]);
+/// `text` without the white space after its last other byte.
+pub const trim_end: Item = Item::new(&["std", "text", "trim_end"]);
+/// `text` without the white space around it.
+pub const trim: Item = Item::new(&["std", "text", "trim"]);
+/// The lines of `text`, each without its line feed, or its carriage return and line feed; the
+/// last has no line end, and `text` ending with one has no empty line after it.
+pub const lines: Item = Item::new(&["std", "text", "lines"]);
+/// Whether `a` and `b` are the same text, the case of ASCII letters aside.
+pub const eq_ignore_case: Item = Item::new(&["std", "text", "eq_ignore_case"]);
 /// Why a `Slab` took no more bytes.
 pub const Full: Item = Item::new(&["std", "text", "Full"]);
 /// Up to `n` bytes held inline: written to as any writer, read back as a slice.

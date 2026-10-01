@@ -1,0 +1,31 @@
+//! Tests of `std.int`: integers read from text.
+
+#[test]
+decimal_text_is_read_as_an_integer := () {
+    std.testing.assert(u8.parse("42") == Option(u8).some(42));
+    std.testing.assert(i32.parse("42") == Option(i32).some(42));
+    std.testing.assert(u64.parse("18446744073709551615") == Option(u64).some(18446744073709551615));
+    std.testing.assert(u8.parse("007") == Option(u8).some(7));
+};
+
+#[test]
+a_minus_makes_a_signed_integer_negative := () {
+    std.testing.assert(i32.parse("-42") == Option(i32).some(-42));
+    std.testing.assert(i8.parse("-128") == Option(i8).some(-128));
+    std.testing.assert(i64.parse("-9223372036854775808") == Option(i64).some(-9223372036854775808));
+    std.testing.assert(i32.parse("-0") == Option(i32).some(0));
+};
+
+#[test]
+text_that_is_no_integer_of_the_type_is_not_read := () {
+    std.testing.assert(u8.parse("") == Option(u8).none);
+    std.testing.assert(i32.parse("-") == Option(i32).none);
+    std.testing.assert(i32.parse("4x") == Option(i32).none);
+    std.testing.assert(i32.parse("+4") == Option(i32).none);
+    std.testing.assert(i32.parse(" 4") == Option(i32).none);
+    std.testing.assert(u8.parse("256") == Option(u8).none);
+    std.testing.assert(i8.parse("128") == Option(i8).none);
+    std.testing.assert(i8.parse("-129") == Option(i8).none);
+    std.testing.assert(u8.parse("-1") == Option(u8).none);
+    std.testing.assert(u64.parse("18446744073709551616") == Option(u64).none);
+};

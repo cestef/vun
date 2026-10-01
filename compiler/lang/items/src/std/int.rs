@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.int.tests`.
+pub const tests: Item = Item::new(&["std", "int", "tests"]);
 /// Bringing a value into a narrower type.
 pub const Narrow: Item = Item::new(&["std", "int", "Narrow"]);
 pub const int_narrow: Item = Item::new(&["std", "int", "int_narrow"]);

@@ -65,3 +65,121 @@ a_string_copies_the_text_it_is_made_from := () {
     std.testing.assert(s.is_empty());
     s.deinit(Fixed, &mut a);
 };
+
+#[test]
+ascii_bytes_are_classified := () {
+    std.testing.assert(std.text.ascii.is_digit("7"[0]));
+    std.testing.assert(!std.text.ascii.is_digit("a"[0]));
+    std.testing.assert(std.text.ascii.is_alpha("q"[0]) and std.text.ascii.is_alpha("Q"[0]));
+    std.testing.assert(!std.text.ascii.is_alpha("_"[0]));
+    std.testing.assert(std.text.ascii.is_alnum("9"[0]) and !std.text.ascii.is_alnum(" "[0]));
+    std.testing.assert(std.text.ascii.is_space(" "[0]) and std.text.ascii.is_space("\n"[0]));
+    std.testing.assert(!std.text.ascii.is_space("x"[0]));
+    std.testing.assert(!std.text.ascii.is_alpha(200));
+};
+
+#[test]
+ascii_digits_have_values_in_a_radix := () {
+    std.testing.assert(std.text.ascii.digit("7"[0], 10) == Option(u8).some(7));
+    std.testing.assert(std.text.ascii.digit("a"[0], 16) == Option(u8).some(10));
+    std.testing.assert(std.text.ascii.digit("F"[0], 16) == Option(u8).some(15));
+    std.testing.assert(std.text.ascii.digit("a"[0], 10) == Option(u8).none);
+    std.testing.assert(std.text.ascii.digit("8"[0], 8) == Option(u8).none);
+    std.testing.assert(std.text.ascii.digit("-"[0], 16) == Option(u8).none);
+    std.testing.assert(std.text.ascii.is_digit_of("z"[0], 36));
+};
+
+#[test]
+ascii_letters_change_case := () {
+    std.testing.assert(std.text.ascii.to_upper("a"[0]) == "A"[0]);
+    std.testing.assert(std.text.ascii.to_lower("Z"[0]) == "z"[0]);
+    std.testing.assert(std.text.ascii.to_upper("3"[0]) == "3"[0]);
+    std.testing.assert(std.text.ascii.to_lower(200) == 200);
+    std.testing.assert(std.text.eq_ignore_case("Hello", "hELLO"));
+    std.testing.assert(!std.text.eq_ignore_case("Hello", "Help"));
+    std.testing.assert(!std.text.eq_ignore_case("Hello", "Hell"));
+};
+
+#[test]
+white_space_is_trimmed_from_text := () {
+    std.testing.assert(std.text.trim("  a b \n") == "a b");
+    std.testing.assert(std.text.trim_start("  a ") == "a ");
+    std.testing.assert(std.text.trim_end("  a ") == "  a");
+    std.testing.assert(std.text.trim("   ") == "");
+    std.testing.assert(std.text.trim("") == "");
+    std.testing.assert(std.text.trim("x") == "x");
+};
+
+#[test]
+text_is_cut_into_lines := () {
+    mut seen: usize = 0;
+    for line in std.text.lines("one\ntwo\r\n\nfour") {
+        if seen == 0 { std.testing.assert(line == "one"); }
+        if seen == 1 { std.testing.assert(line == "two"); }
+        if seen == 2 { std.testing.assert(line == ""); }
+        if seen == 3 { std.testing.assert(line == "four"); }
+        seen += 1;
+    }
+    std.testing.assert(seen == 4);
+    mut ended: usize = 0;
+    for _ in std.text.lines("a\nb\n") { ended += 1; }
+    std.testing.assert(ended == 2);
+    mut none: usize = 0;
+    for _ in std.text.lines("") { none += 1; }
+    std.testing.assert(none == 0);
+};
+
+#[test]
+utf8_sequences_are_decoded := () {
+    std.testing.assert(std.text.utf8.decode("a") == Option((u32, usize)).some((0x61, 1)));
+    std.testing.assert(std.text.utf8.decode("\u{e9}") == Option((u32, usize)).some((0xE9, 2)));
+    std.testing.assert(std.text.utf8.decode("\u{20ac}") == Option((u32, usize)).some((0x20AC, 3)));
+    std.testing.assert(std.text.utf8.decode("\u{1f600}") == Option((u32, usize)).some((0x1F600, 4)));
+    std.testing.assert(std.text.utf8.decode("") == Option((u32, usize)).none);
+};
+
+/// Whether `text` starts with a code point.
+decodes := (text: &[u8]) -> bool { std.text.utf8.decode(text) != Option((u32, usize)).none };
+
+#[test]
+bytes_that_are_not_utf8_are_not_decoded := () {
+    // A byte that cannot start a sequence, one that is cut short, one that is not a continuation,
+    // a code point written longer than it needs, a surrogate and one past the last code point.
+    std.testing.assert(!decodes(&[0x80]));
+    std.testing.assert(!decodes(&[0xE2, 0x82]));
+    std.testing.assert(!decodes(&[0xE2, 0x41, 0xAC]));
+    std.testing.assert(!decodes(&[0xC0, 0x80]));
+    std.testing.assert(!decodes(&[0xED, 0xA0, 0x80]));
+    std.testing.assert(!decodes(&[0xF4, 0x90, 0x80, 0x80]));
+    std.testing.assert(std.text.utf8.is_valid("h\u{e9}llo \u{1f600}"));
+    std.testing.assert(!std.text.utf8.is_valid(&[0x68, 0xFF]));
+};
+
+#[test]
+text_is_read_as_code_points := () {
+    mut n: usize = 0;
+    mut sum: u32 = 0;
+    for cp in std.text.utf8.chars("a\u{e9}\u{20ac}") {
+        n += 1;
+        sum = (sum + cp).wrap(u32);
+    }
+    std.testing.assert(n == 3);
+    std.testing.assert(sum == 0x61 + 0xE9 + 0x20AC);
+    mut replaced: usize = 0;
+    for cp in std.text.utf8.chars(&[0x61, 0xFF, 0x62]) {
+        if cp == std.text.utf8.replacement { replaced += 1; }
+    }
+    std.testing.assert(replaced == 1);
+};
+
+#[test]
+code_points_are_written_as_utf8 := () {
+    std.testing.assert(std.text.utf8.Encoded.of(0x61).text() == "a");
+    std.testing.assert(std.text.utf8.Encoded.of(0xE9).text() == "\u{e9}");
+    std.testing.assert(std.text.utf8.Encoded.of(0x20AC).text() == "\u{20ac}");
+    std.testing.assert(std.text.utf8.Encoded.of(0x1F600).text() == "\u{1f600}");
+    std.testing.assert(std.text.utf8.Encoded.of(0xD800).text() == "\u{fffd}");
+    mut slab := std.text.Slab(8).empty();
+    std.testing.assert(std.text.utf8.write(&mut slab, 0x20AC) == Result((), std.text.Full).ok(()));
+    std.testing.assert(slab.bytes() == "\u{20ac}");
+};

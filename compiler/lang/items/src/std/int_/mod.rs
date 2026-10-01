@@ -2,3 +2,4 @@
 pub mod int_Narrow;
 pub mod int_int_methods;
 pub mod int_int_narrow;
+pub mod int_tests;

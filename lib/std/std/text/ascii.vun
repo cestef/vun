@@ -1,0 +1,53 @@
+//! ASCII bytes (decision 43): which class a byte is of, its other case and the digit it writes.
+//! Bytes past 127 are in no class and stay as they are.
+
+// The bytes of the characters the classes are bounded by, plain integers: their exact values are
+// what proves the arithmetic on a byte of a class stays in a `u8`.
+/// `0` and `9`.
+zero := 0x30;
+nine := 0x39;
+/// `a` and `z`.
+lower_a := 0x61;
+lower_z := 0x7A;
+/// `A` and `Z`.
+upper_a := 0x41;
+upper_z := 0x5A;
+/// The space.
+space := 0x20;
+/// The distance between a letter and its other case.
+case_gap := lower_a - upper_a;
+
+/// `0` to `9`.
+is_digit := (b: u8) -> bool { b >= zero and b <= nine };
+/// `a` to `z`.
+is_lower := (b: u8) -> bool { b >= lower_a and b <= lower_z };
+/// `A` to `Z`.
+is_upper := (b: u8) -> bool { b >= upper_a and b <= upper_z };
+/// A letter of either case.
+is_alpha := (b: u8) -> bool { is_lower(b) or is_upper(b) };
+/// A letter or a digit.
+is_alnum := (b: u8) -> bool { is_alpha(b) or is_digit(b) };
+/// A digit of `radix`, 2 to 36, whose digits past 9 are letters of either case.
+is_digit_of := (b: u8, radix: u8) -> bool { digit(b, radix) != Option(u8).none };
+/// Space, tab, line feed, vertical tab, form feed or carriage return.
+is_space := (b: u8) -> bool { b == space or (b >= 9 and b <= 13) };
+
+/// The value of the digit `b` writes in `radix`, 2 to 36; none for any other byte. Each class is
+/// compared inline, which is what proves the arithmetic of its digit stays in a `u8`.
+digit := (b: u8, radix: u8) -> Option(u8) {
+    value: u8 = if b >= zero and b <= nine {
+        b - zero
+    } else if b >= lower_a and b <= lower_z {
+        b - lower_a + 10
+    } else if b >= upper_a and b <= upper_z {
+        b - upper_a + 10
+    } else {
+        return .none;
+    };
+    if value < radix { .some(value) } else { .none }
+};
+
+/// `b` as a capital, when it is a letter.
+to_upper := (b: u8) -> u8 { if b >= lower_a and b <= lower_z { b - case_gap } else { b } };
+/// `b` as a small letter, when it is a letter.
+to_lower := (b: u8) -> u8 { if b >= upper_a and b <= upper_z { b + case_gap } else { b } };
