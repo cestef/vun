@@ -36,3 +36,10 @@ a_result_is_compared_to_what_a_parse_gives := () {
     std.testing.assert(ok == Result(u8, Shape).ok(3));
     std.testing.assert(ok != Result(u8, Shape).err(.dot));
 };
+
+#[test]
+tuples_and_the_unit_are_equal_by_their_items := () {
+    std.testing.assert((1, true) == (1, true));
+    std.testing.assert((1, true) != (1, false));
+    std.testing.assert(() == ());
+};

@@ -100,8 +100,10 @@ derive_eq := ($T: type) -> type { struct {
         $for v in lang.meta.variants(T) {
             if at == v.index {
                 $for p in v.parts {
-                    if lang.meta.part(T, a, v.index, p.index) != lang.meta.part(T, b, v.index, p.index) {
-                        return false;
+                    if .some(x) = lang.meta.part(T, a, v.index, p.index) {
+                        if .some(y) = lang.meta.part(T, b, v.index, p.index) {
+                            if x != y { return false; }
+                        }
                     }
                 }
             }

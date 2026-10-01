@@ -22,13 +22,3 @@ option_methods := ($T: type) -> type { struct {
     };
 } };
 
-/// Options are equal when both are `.none`, or both hold equal values.
-#[impl(lang.ops.Eq(Option))]
-option_eq := ($T: type) -> type { struct {
-    eq := (a: &?T, b: &?T) -> bool {
-        match a {
-            .some(x) => match b { .some(y) => x == y, .none => false },
-            .none => match b { .some(_) => false, .none => true },
-        }
-    };
-} };

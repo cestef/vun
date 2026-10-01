@@ -1,0 +1,28 @@
+//! Tests of `std.text`: a slab written to as any writer, read back as bytes.
+
+#[test]
+a_slab_holds_what_was_written_to_it := () {
+    mut slab := std.text.Slab(16).empty();
+    _ = std.fmt.print(&mut slab, "{} and {}", 42, true);
+    std.testing.assert(slab.bytes() == "42 and true");
+    std.testing.assert(slab.len() == 11);
+};
+
+#[test]
+a_slab_takes_no_more_than_it_has_room_for := () {
+    mut slab := std.text.Slab(4).empty();
+    std.testing.assert(slab.append("abcdef") == 4);
+    std.testing.assert(slab.bytes() == "abcd");
+    std.testing.assert(slab.push(1) == Result((), std.text.Full).err(.full));
+    result := std.fmt.print(&mut slab, "x");
+    std.testing.assert(result == Result((), std.text.Full).err(.full));
+};
+
+#[test]
+a_cleared_slab_is_empty_again := () {
+    mut slab := std.text.Slab(4).empty();
+    _ = slab.append("ab");
+    slab.clear();
+    std.testing.assert(slab.len() == 0);
+    std.testing.assert(slab.push(7) == Result((), std.text.Full).ok(()));
+};

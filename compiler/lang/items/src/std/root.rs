@@ -26,6 +26,8 @@ pub const hash: Item = Item::new(&["std", "hash"]);
 pub const hw: Item = Item::new(&["std", "hw"]);
 /// The namespace `std.int`.
 pub const int: Item = Item::new(&["std", "int"]);
+/// The namespace `std.io`.
+pub const io: Item = Item::new(&["std", "io"]);
 /// The namespace `std.iter`.
 pub const iter: Item = Item::new(&["std", "iter"]);
 /// The namespace `std.lints`.

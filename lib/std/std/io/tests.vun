@@ -1,0 +1,27 @@
+//! Tests of `std.io`: a reader of a slice.
+
+#[test]
+a_reader_of_bytes_gives_them_in_order := () {
+    mut reader := std.io.Bytes.of("hello world");
+    mut head: [5]u8 = [0; 5];
+    std.testing.assert(reader.read(&mut head) == Result(usize, std.io.Ended).ok(5));
+    std.testing.assert(&head[0..5] == "hello");
+    std.testing.assert(reader.rest() == " world");
+};
+
+#[test]
+reading_exactly_fails_when_the_bytes_run_out := () {
+    mut reader := std.io.Bytes.of("abc");
+    mut four: [4]u8 = [0; 4];
+    std.testing.assert(reader.read_exact(&mut four) == Result((), std.io.Ended).err(.ended));
+    mut again := std.io.Bytes.of("abc");
+    mut three: [3]u8 = [0; 3];
+    std.testing.assert(again.read_exact(&mut three) == Result((), std.io.Ended).ok(()));
+};
+
+#[test]
+a_reader_at_its_end_reads_nothing := () {
+    mut reader := std.io.Bytes.of("");
+    mut room: [2]u8 = [0; 2];
+    std.testing.assert(reader.read(&mut room) == Result(usize, std.io.Ended).ok(0));
+};

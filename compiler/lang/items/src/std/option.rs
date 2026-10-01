@@ -7,5 +7,3 @@
 )]
 use crate::Item;
 pub const option_methods: Item = Item::new(&["std", "option", "option_methods"]);
-/// Options are equal when both are `.none`, or both hold equal values.
-pub const option_eq: Item = Item::new(&["std", "option", "option_eq"]);

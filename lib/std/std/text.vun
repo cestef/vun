@@ -1,3 +1,50 @@
-//! Text (decision 43): `Str`, a borrowed UTF-8-checked `&[u8]`; growable buffers; an interner;
-//! conversion from literals checked at compile time. Formatting is `std.fmt`, maps are
-//! `std.collections`.
+//! Text (decision 43): bytes held and written. `Slab(n)` keeps up to `n` bytes inline, with no
+//! allocator; text is UTF-8 in `&[u8]`. Formatting is `std.fmt`, readers and writers are `std.io`,
+//! maps are `std.collections`.
+
+/// Why a `Slab` took no more bytes.
+Full := enum { full };
+
+/// Up to `n` bytes held inline: written to as any writer, read back as a slice.
+Slab := ($n: Int(0..)) -> type { struct {
+    _bytes: [n]u8,
+    _len: Int(0..=n),
+
+    /// A slab holding nothing.
+    empty := () -> Slab(n) { .{ ._bytes = [0; n], ._len = 0 } };
+    /// How many bytes it holds at most.
+    capacity := (self: &Slab(n)) -> usize { n };
+    /// How many bytes it holds.
+    len := (self: &Slab(n)) -> usize { self._len };
+    /// The bytes it holds.
+    bytes := (self: &Slab(n)) -> &[u8] { &self._bytes[0..self._len] };
+    /// Holds nothing again.
+    clear := (self: &mut Slab(n)) { self._len = 0; };
+    /// Appends as many of `more` as there is room for, and gives how many.
+    append := (self: &mut Slab(n), more: &[u8]) -> usize {
+        mut taken: usize = 0;
+        for taken < more.len() {
+            used := self._len;
+            if used == n { break; }
+            self._bytes[used] = more[taken];
+            self._len = used + 1;
+            taken += 1;
+        }
+        taken
+    };
+    /// Appends `byte`, or fails when there is no room.
+    push := (self: &mut Slab(n), byte: u8) -> Result((), Full) {
+        used := self._len;
+        if used == n { return .err(.full); }
+        self._bytes[used] = byte;
+        self._len = used + 1;
+        .ok(())
+    };
+} };
+
+#[impl(std.fmt.Writer(Slab))]
+slab_writer := ($n: Int(0..)) -> type { struct {
+    Error: type = Full;
+    closed: Full = .full;
+    write := (self: &mut Slab(n), more: &[u8]) -> Result(usize, Full) { .ok(self.append(more)) };
+} };

@@ -1,6 +1,6 @@
-//! Derived witnesses (spec 02, section 3): an interface marked `#[derive(f)]` gives a struct or an
-//! enum with no impl of it the witness `f(T)`, when every part of it, every field and the payload
-//! of every variant, has the interface too. `f` builds the witness by reflection, as
+//! Derived witnesses (spec 02, section 3): an interface marked `#[derive(f)]` gives a struct, an
+//! enum, a tuple or a record with no impl of it the witness `f(T)`, when every part of it, every
+//! field and the payload of every variant, has the interface too. `f` builds the witness by reflection, as
 //! `lang.ops.derive_eq` does for `lang.ops.Eq`.
 
 use std::sync::Arc;
@@ -77,23 +77,25 @@ impl Env<'_, '_> {
 }
 
 impl Witness {
-    /// The witness `derive` gives `ty`, a struct or an enum whose every part has the interface
-    /// among `witnessed`, the interfaces of the parts' own witnesses.
+    /// The witness `derive` gives `ty`, when `has` holds for every part of it.
     pub(super) fn derived(cx: &Cx<'_>, derive: &Derive, ty: Ty, has: impl Fn(Ty) -> bool) -> Option<Self> {
-        let TyKind::Nominal(nominal) = &*ty else { return None };
-        if nominal.kind == NominalKind::Empty {
-            return None;
-        }
-        let members = cx.get::<Members>(&ty)?;
-        if !members.complete {
-            return None;
-        }
-        let fields = members.fields.iter().map(|f| f.ty.as_ref());
-        let payloads = members.variants.iter().flat_map(|v| v.payload.iter().map(Result::as_ref));
-        for part in fields.chain(payloads) {
-            if !has(*part.ok()?) {
-                return None;
+        // The parts of a struct or an enum, of a tuple (the unit among them) and of a record.
+        let parts: Vec<Ty> = match &*ty {
+            TyKind::Nominal(nominal) if nominal.kind != NominalKind::Empty => {
+                let members = cx.get::<Members>(&ty)?;
+                if !members.complete {
+                    return None;
+                }
+                let fields = members.fields.iter().map(|f| f.ty.as_ref());
+                let payloads = members.variants.iter().flat_map(|v| v.payload.iter().map(Result::as_ref));
+                fields.chain(payloads).map(|part| part.ok().copied()).collect::<Option<_>>()?
             }
+            TyKind::Tuple(items) => items.to_vec(),
+            TyKind::Record(fields) => fields.iter().map(|(_, ty)| *ty).collect(),
+            _ => return None,
+        };
+        if !parts.into_iter().all(has) {
+            return None;
         }
         let env = Env::of(cx, &derive.decl.file)?;
         let witness = env.apply(derive.with.clone(), vec![Value::Type(ty)]).ok()?.as_type()?;

@@ -74,6 +74,8 @@ pub const Args: Item = Item::new(&["std", "os", "Args"]);
 pub const args_iterate: Item = Item::new(&["std", "os", "args_iterate"]);
 /// A byte stream the system holds open: standard output, a file, a socket.
 pub const Stream: Item = Item::new(&["std", "os", "Stream"]);
+/// Reads into `into`, returning how many bytes it read: 0 at the stream's end.
+pub const stream_reader: Item = Item::new(&["std", "os", "stream_reader"]);
 pub const stream_writer: Item = Item::new(&["std", "os", "stream_writer"]);
 /// A program's `main`, which a runtime calls with the one `System`.
 pub const Main: Item = Item::new(&["std", "os", "Main"]);

@@ -39,6 +39,7 @@ pub mod os_linux_kernel_tls_Image;
 pub mod os_linux_kernel_tls_Layout;
 pub mod os_linux_kernel_tls_Variant;
 pub mod os_macos;
+pub mod os_stream_reader;
 pub mod os_stream_writer;
 pub mod os_symbols;
 pub mod os_thread;

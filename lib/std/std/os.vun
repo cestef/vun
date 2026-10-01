@@ -127,6 +127,8 @@ Error := enum {
     interrupted,
     /// A stream that took no more bytes.
     closed,
+    /// A stream that ended before all the bytes asked for were read.
+    ended,
     /// Something the system does not offer, as threads on a system running one.
     unsupported,
     number(i32),
@@ -224,8 +226,16 @@ Stream := struct {
     of := unsafe (number: i32) -> Stream { .{ ._fd = number } };
     /// The number the system knows it by.
     fd := (self: &Stream) -> i32 { self._fd };
-    /// Reads into `bytes`, returning how many bytes it read: 0 at the stream's end.
-    read := (self: &mut Stream, bytes: &mut [u8]) -> Result(usize, Error) { std.os.read(self._fd, bytes) };
+};
+
+/// Reads into `into`, returning how many bytes it read: 0 at the stream's end.
+#[impl(std.io.Reader(Stream))]
+stream_reader := struct {
+    Error: type = std.os.Error;
+    ended: std.os.Error = .ended;
+    read := (self: &mut Stream, into: &mut [u8]) -> Result(usize, std.os.Error) {
+        std.os.read(self.fd(), into)
+    };
 };
 
 #[impl(std.fmt.Writer(Stream))]

@@ -21,3 +21,6 @@ pub const types_with_derived_parts_are_derived_too: Item = Item::new(
 pub const a_result_is_compared_to_what_a_parse_gives: Item = Item::new(
     &["std", "cmp", "tests", "a_result_is_compared_to_what_a_parse_gives"],
 );
+pub const tuples_and_the_unit_are_equal_by_their_items: Item = Item::new(
+    &["std", "cmp", "tests", "tuples_and_the_unit_are_equal_by_their_items"],
+);

@@ -22,6 +22,8 @@ pub const path: Item = Item::new(&["std", "os", "Error", "path"]);
 pub const interrupted: Item = Item::new(&["std", "os", "Error", "interrupted"]);
 /// A stream that took no more bytes.
 pub const closed: Item = Item::new(&["std", "os", "Error", "closed"]);
+/// A stream that ended before all the bytes asked for were read.
+pub const ended: Item = Item::new(&["std", "os", "Error", "ended"]);
 /// Something the system does not offer, as threads on a system running one.
 pub const unsupported: Item = Item::new(&["std", "os", "Error", "unsupported"]);
 pub const number: Item = Item::new(&["std", "os", "Error", "number"]);

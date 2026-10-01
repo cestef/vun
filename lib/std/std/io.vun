@@ -1,0 +1,53 @@
+//! Moving bytes: `Reader`, where bytes come from, and `Writer` (`std.fmt.Writer`), where they go;
+//! a reader over a borrowed slice. Streams of the system are readers and writers
+//! (`std.os.Stream`), and so are the buffers of `std.text`.
+
+/// Where bytes are written: `std.fmt.Writer`.
+Writer: lang.Interface = std.fmt.Writer;
+
+/// Where bytes are read from (spec 02, section 3).
+Reader := interface(($Self: type) -> type { struct {
+    Error: type = _;
+    /// The error of a reader that ended before `read_exact` had all it was asked for.
+    ended: Error = _;
+    /// Reads into `into` as many bytes as there are at hand, at least one unless `into` is empty
+    /// or the reader has ended, and gives how many: 0 at the end.
+    read: (self: &mut Self, into: &mut [u8]) -> Result(usize, Error) = _;
+    /// Fills `into`, or fails with `ended` once a read gives none.
+    read_exact := (self: &mut Self, into: &mut [u8]) -> Result((), Error) {
+        mut filled: usize = 0;
+        for filled < into.len() {
+            n := self.read(into[filled..])?;
+            if n == 0 { return .err(ended); }
+            filled += n;
+        }
+        .ok(())
+    };
+} });
+
+/// Why a reader of memory gave no more bytes.
+Ended := enum { ended };
+
+/// Bytes read from a slice, in order.
+Bytes := struct {
+    _rest: &[u8],
+
+    /// A reader of `bytes`, which it borrows for as long as it lives.
+    of := (bytes: &[u8]) -> Bytes { .{ ._rest = bytes } };
+    /// The bytes not read yet.
+    rest := (self: &Bytes) -> &[u8] { self._rest };
+    /// Moves the bytes at the front of what is left into `into`, as many as it holds.
+    take := (self: &mut Bytes, into: &mut [u8]) -> usize {
+        n := std.cmp.min(usize, into.len(), self._rest.len());
+        for i in 0..n { into[i] = self._rest[i]; }
+        self._rest = self._rest[n..];
+        n
+    };
+};
+
+#[impl(Reader(Bytes))]
+bytes_reader := struct {
+    Error: type = Ended;
+    ended: Ended = .ended;
+    read := (self: &mut Bytes, into: &mut [u8]) -> Result(usize, Ended) { .ok(self.take(into)) };
+};

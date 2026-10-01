@@ -7,5 +7,3 @@
 )]
 use crate::Item;
 pub const result_methods: Item = Item::new(&["std", "result", "result_methods"]);
-/// Results are equal when both hold equal values, or both equal errors.
-pub const result_eq: Item = Item::new(&["std", "result", "result_eq"]);
