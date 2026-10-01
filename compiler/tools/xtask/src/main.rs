@@ -38,6 +38,7 @@ const OVER_BUDGET: DiagId = DiagId::new("xtask.size.over_budget");
 const UNMEASURED: DiagId = DiagId::new("xtask.size.unmeasured");
 
 const PROGRAM: Program<DiagCtxt> = Program {
+    defaults: vun_command::undefaulted,
     configure: vun_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
     root: Command::group("cargo xtask", "Repository automation.", task::COMMANDS),

@@ -12,6 +12,7 @@ mod help;
 mod param;
 mod parse;
 mod run;
+mod settings;
 
 use std::io;
 use std::process::ExitCode;
@@ -26,12 +27,28 @@ pub use param::{
 };
 pub use parse::{Detail, Request, Selected};
 pub use run::{Context, Diagnostics, HumanSink};
+pub use settings::{Setting, Settings};
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
     pub root: Command<Cx>,
+    /// Gives the options the command line and the environment leave out the values the project
+    /// gives them, before `configure` applies them.
+    pub defaults: Defaults<Cx>,
     /// Applies the options a command takes to the context, before the command runs.
     pub configure: Configure<Cx>,
+}
+
+/// Fills the options a command line left out from what the context knows of the project; an
+/// invalid value is a usage error.
+pub type Defaults<Cx> = fn(&mut Cx, &Selected<'_, Cx>, &mut Args) -> Result<(), Box<Diagnostic>>;
+
+/// A [`Defaults`] for programs whose commands have no project.
+///
+/// # Errors
+/// Never.
+pub fn undefaulted<Cx>(_: &mut Cx, _: &Selected<'_, Cx>, _: &mut Args) -> Result<(), Box<Diagnostic>> {
+    Ok(())
 }
 
 /// Reads options into the context; an invalid value is a usage error.
@@ -131,7 +148,8 @@ impl<Cx> Command<Cx> {
         self.children().iter().find(|c| c.answers(word))
     }
 
-    pub(crate) fn positionals(&self) -> impl Iterator<Item = &Param> {
+    /// Its positional parameters, in order.
+    pub fn positionals(&self) -> impl Iterator<Item = &Param> {
         self.params.iter().filter(|p| p.is_positional())
     }
 }

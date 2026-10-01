@@ -66,6 +66,8 @@ Action := enum {
     test_on(Tested),
     /// The lint levels.
     lints(lang.meta.Any),
+    /// The values of the options of commands.
+    commands(lang.meta.Any),
 };
 /// A dependency by its name in `package.deps`, and the parameters it is built with.
 Needed := struct { name: lang.meta.Name, params: lang.meta.Any };
@@ -108,6 +110,11 @@ Build := struct {
     /// The level of each lint for the package: pairs of a lint and a level, such as
     /// `.{ .{ std.lints.pedantic, .warn } }`.
     lints := (self: &mut Build, $L: type, levels: L) { self._record(.lints(lang.meta.any(L, levels))); };
+
+    /// The values the options of commands take where neither the command line nor the environment
+    /// gives one, by command and option: `.{ .fmt = .{ .width = 100 }, .fuzz = .{ .cases = 5000 } }`.
+    /// An option taking several values takes a tuple of them, a flag `true`.
+    commands := (self: &mut Build, $S: type, settings: S) { self._record(.commands(lang.meta.any(S, settings))); };
 
     /// Records `action` as a new step, after every step recorded.
     _record := (self: &mut Build, action: Action) -> Step {

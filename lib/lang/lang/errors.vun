@@ -208,6 +208,7 @@ plan := struct {
     unsupported := diag.Diag{};
     nothing_to_run := diag.Diag{};
     ambiguous_run := diag.Diag{};
+    unknown_setting := diag.Diag{};
 };
 
 /// Running a namespace's tests through `std.testing.runner` (spec 11).

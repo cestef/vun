@@ -12,3 +12,5 @@ pub const flash: Item = Item::new(&["std", "build", "Action", "flash"]);
 pub const test_on: Item = Item::new(&["std", "build", "Action", "test_on"]);
 /// The lint levels.
 pub const lints: Item = Item::new(&["std", "build", "Action", "lints"]);
+/// The values of the options of commands.
+pub const commands: Item = Item::new(&["std", "build", "Action", "commands"]);

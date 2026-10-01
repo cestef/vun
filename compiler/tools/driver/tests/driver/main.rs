@@ -44,6 +44,7 @@ mod replace;
 mod runtime;
 mod select;
 mod sequences;
+mod settings;
 mod sim;
 mod staged;
 mod stdlib;

@@ -58,6 +58,8 @@ impl Session {
                 Action::Dep { .. } => Pending::Parameters,
                 Action::Flash { .. } => Pending::Flash,
                 Action::TestOn { .. } => Pending::Tests,
+                // Read by the commands it sets the options of, not carried out.
+                Action::Commands(_) => continue,
                 Action::Lints(_) => Pending::Lints,
             };
             let msg = Msg::new()

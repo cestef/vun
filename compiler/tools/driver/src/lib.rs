@@ -23,6 +23,7 @@ mod queries;
 mod reduce;
 mod registry;
 mod session;
+mod settings;
 pub mod setup;
 mod shared;
 mod shell;

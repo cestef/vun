@@ -14,3 +14,6 @@ pub const nothing_to_run: Item = Item::new(
     &["lang", "errors", "plan", "nothing_to_run"],
 );
 pub const ambiguous_run: Item = Item::new(&["lang", "errors", "plan", "ambiguous_run"]);
+pub const unknown_setting: Item = Item::new(
+    &["lang", "errors", "plan", "unknown_setting"],
+);

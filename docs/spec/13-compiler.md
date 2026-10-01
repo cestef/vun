@@ -482,9 +482,9 @@ each term may end at. Dumps print each child's field.
 
 **The formatter.** `vun fmt` (`vun-fmt`) changes whitespace only: a file's tokens, comments
 included, are the same before and after, and formatting twice changes nothing. It keeps the line
-breaks the author wrote, adds those a line needs to fit 110 columns, and computes everything else
-from the CST and the grammar's tables, so the syntax is never stated a second time and there is no
-option:
+breaks the author wrote, adds those a line needs to fit its width (110 columns, or what `--width`,
+`VUN_FMT_WIDTH` or the package's `b.commands` say), and computes everything else from the CST and
+the grammar's tables, so the syntax is never stated a second time:
 
 - *Lines.* At most one blank line in a row; none at the start of the file, after an opening
   delimiter or before its closer; the file ends with one newline.
@@ -500,7 +500,7 @@ option:
   line that does not start an entry (an item, a statement, a member, a variant, an argument, a
   field, an arm, or what docs and attributes mark) continues one and is indented one level more;
   a raw string line continues the one above at its indent.
-- *Width.* A line past 110 columns (`vun_fmt::MAX_WIDTH`) has the outermost group on it that holds
+- *Width.* A line past the width (`vun_fmt::WIDTH`, 110, unless asked another) has the outermost group on it that holds
   the first column past the width broken, one entry a line, its closer on a line of its own as
   the line holding its opener; a group holding one group that closes with it is not broken, that
   one is (`f(.{` and `})`). A line with no group to break is continued before its last infix

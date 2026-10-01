@@ -8,3 +8,4 @@ pub const PLAN_UNREAD: DiagId = DiagId::new("lang.errors.plan.unread");
 pub const PLAN_UNSUPPORTED: DiagId = DiagId::new("lang.errors.plan.unsupported");
 pub const PLAN_NOTHING_TO_RUN: DiagId = DiagId::new("lang.errors.plan.nothing_to_run");
 pub const PLAN_AMBIGUOUS_RUN: DiagId = DiagId::new("lang.errors.plan.ambiguous_run");
+pub const PLAN_UNKNOWN_SETTING: DiagId = DiagId::new("lang.errors.plan.unknown_setting");

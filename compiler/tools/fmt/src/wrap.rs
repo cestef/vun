@@ -1,4 +1,4 @@
-//! Lines that are too long (spec 13, section 5): a group on one that runs past `MAX_WIDTH` is
+//! Lines that are too long (spec 13, section 5): a group on one that runs past the width is
 //! broken, one entry a line, outermost first; a line with no group to break is continued before
 //! an infix operator. What is still too long is looked at again.
 
@@ -8,17 +8,18 @@ use vun_syntax::tokens::TokenId;
 
 use crate::write::{Trace, Written};
 
-/// The most columns a line has unless it cannot be broken: a string, a name, a comment.
-pub const MAX_WIDTH: usize = 110;
+/// The most columns a line has unless it cannot be broken, a string, a name or a comment, when no
+/// other is asked for.
+pub const WIDTH: usize = 110;
 
-/// Adds to `forced` the tokens to break before, so that what a pass left past `MAX_WIDTH` is
+/// Adds to `forced` the tokens to break before, so that what a pass left past `width` is
 /// broken, a line at a time: the outermost group on it that holds the first token past the
 /// width, or else its last infix operator that starts within it, of the fewest groups. Whether
 /// any was added.
-pub(crate) fn explode(trace: &Trace, forced: &mut BTreeSet<TokenId>) -> bool {
+pub(crate) fn explode(trace: &Trace, forced: &mut BTreeSet<TokenId>, width: usize) -> bool {
     let mut changed = false;
     let mut seen = BTreeSet::new();
-    for over in trace.placed.iter().filter(|p| p.end > MAX_WIDTH) {
+    for over in trace.placed.iter().filter(|p| p.end > width) {
         if !seen.insert(over.line) {
             continue;
         }
@@ -26,7 +27,7 @@ pub(crate) fn explode(trace: &Trace, forced: &mut BTreeSet<TokenId>) -> bool {
         let first = trace
             .placed
             .iter()
-            .find(|p| p.line == over.line && p.end > MAX_WIDTH)
+            .find(|p| p.line == over.line && p.end > width)
             .map_or(over.token, |p| p.token);
         let breakable = |g: &&Written| {
             !g.entries.is_empty() && g.entries.iter().chain(g.close.iter()).any(|t| !forced.contains(t))
@@ -38,7 +39,7 @@ pub(crate) fn explode(trace: &Trace, forced: &mut BTreeSet<TokenId>) -> bool {
             for &t in group.entries.iter().chain(group.close.iter()) {
                 changed |= forced.insert(t);
             }
-        } else if let Some(operator) = continued(trace, over.line, first, forced) {
+        } else if let Some(operator) = continued(trace, over.line, first, forced, width) {
             changed |= forced.insert(operator);
         }
     }
@@ -68,7 +69,13 @@ fn hug<'t>(trace: &'t Trace, group: &'t Written, forced: &BTreeSet<TokenId>) -> 
 
 /// The infix operator to start a new line with: of those on `line` that stand outside the most
 /// groups, the last one whose line would begin within the width.
-fn continued(trace: &Trace, line: usize, first: TokenId, forced: &BTreeSet<TokenId>) -> Option<TokenId> {
+fn continued(
+    trace: &Trace,
+    line: usize,
+    first: TokenId,
+    forced: &BTreeSet<TokenId>,
+    width: usize,
+) -> Option<TokenId> {
     let position = |token: TokenId| trace.placed.iter().position(|p| p.token == token);
     let usable: Vec<(TokenId, usize)> = trace
         .infix
@@ -78,7 +85,7 @@ fn continued(trace: &Trace, line: usize, first: TokenId, forced: &BTreeSet<Token
         .filter(|&(token, _)| position(token).is_some_and(|i| trace.placed[i].line == line && i > 0))
         .filter(|&(token, _)| {
             position(token)
-                .is_some_and(|i| trace.placed[i - 1].line == line && trace.placed[i - 1].end <= MAX_WIDTH)
+                .is_some_and(|i| trace.placed[i - 1].line == line && trace.placed[i - 1].end <= width)
         })
         .collect();
     let depth = usable.iter().map(|&(_, depth)| depth).min()?;

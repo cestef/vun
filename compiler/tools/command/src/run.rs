@@ -112,8 +112,9 @@ impl<Cx> Program<Cx> {
             Request::Version => shell
                 .result(&Version { name: self.root.name, version: self.version })
                 .map(|()| Outcome::Success),
-            Request::Run(selected, args) => match selected.last().action {
+            Request::Run(selected, mut args) => match selected.last().action {
                 Action::Run(run) => {
+                    (self.defaults)(cx, &selected, &mut args).map_err(usage)?;
                     (self.configure)(cx, &args).map_err(usage)?;
                     run(cx, &args, shell)
                 }

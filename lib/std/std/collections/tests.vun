@@ -126,7 +126,7 @@ a_map_keys_by_a_struct_without_an_impl := () {
 a_map_keys_by_bytes := () {
     mut storage: [4096]u8 = [0; 4096];
     mut a := Fixed.init(&mut storage);
-    mut m := std.collections.HashMap(&[u8], u32).empty();
+    mut m := std.collections.HashMap(&static [u8], u32).empty();
     _ = m.insert(Fixed, &mut a, "one", 1).expect("room");
     _ = m.insert(Fixed, &mut a, "two", 2).expect("room");
     std.testing.assert(m.get(&"two") == Option(&u32).some(&2));

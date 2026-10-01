@@ -25,6 +25,7 @@ fn ok(_: &mut (), _: &Args, shell: &mut Shell<'_>) -> std::io::Result<Outcome> {
 }
 
 const PROGRAM: Program<()> = Program {
+    defaults: crate::undefaulted,
     configure: crate::unconfigured,
     version: "1.0",
     root: Command::group(
@@ -182,4 +183,41 @@ fn words_after_the_end_of_options_skip_an_optional_positional() {
     assert_eq!((args.value(&MAYBE), args.values(&REST).collect::<Vec<_>>()), (None, ["a.bf"].to_vec()));
     let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv("go . -- a.bf")) else { panic!("not a run") };
     assert_eq!((args.value(&MAYBE), args.values(&REST).collect::<Vec<_>>()), (Some("."), ["a.bf"].to_vec()));
+}
+
+#[test]
+fn settings_fill_the_options_the_command_line_leaves_out() {
+    use crate::{Setting, Settings};
+    let setting = |option: &str, values: &[&str]| Setting {
+        command: "dump".into(),
+        option: option.into(),
+        values: values.iter().map(|v| (*v).to_owned()).collect(),
+    };
+    // `dump` is a group; settings are by the last command selected, here `cst`.
+    let settings = Settings::new(vec![
+        Setting { command: "cst".into(), option: "format".into(), values: vec!["short".into()] },
+        Setting { command: "cst".into(), option: "fast".into(), values: vec!["true".into()] },
+        setting("format", &["json"]),
+    ]);
+    let Ok(Request::Run(selected, mut args)) = PROGRAM.parse(&argv("dump cst a.vun")) else {
+        panic!("not a run")
+    };
+    args.defaulted(&selected, &settings).unwrap();
+    assert_eq!((args.value(&FORMAT), args.flag(&FAST)), (Some("short"), true));
+    // A value on the command line wins.
+    let Ok(Request::Run(selected, mut args)) = PROGRAM.parse(&argv("dump cst a.vun --format json")) else {
+        panic!("not a run")
+    };
+    args.defaulted(&selected, &settings).unwrap();
+    assert_eq!(args.value(&FORMAT), Some("json"));
+    // A value that is not a choice is a usage error.
+    let bad = Settings::new(vec![Setting {
+        command: "cst".into(),
+        option: "format".into(),
+        values: vec!["xml".into()],
+    }]);
+    let Ok(Request::Run(selected, mut args)) = PROGRAM.parse(&argv("dump cst a.vun")) else {
+        panic!("not a run")
+    };
+    assert_eq!(args.defaulted(&selected, &bad).unwrap_err().id, errors::CLI_INVALID_VALUE);
 }

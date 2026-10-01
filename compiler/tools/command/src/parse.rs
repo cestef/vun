@@ -85,6 +85,12 @@ impl<'p, Cx> Selected<'p, Cx> {
         std::iter::once((OWN, own)).chain(sets).chain([global]).collect()
     }
 
+    /// Whether the last command accepts an option named `name`.
+    #[must_use]
+    pub fn accepts(&self, name: &str) -> bool {
+        self.options().any(|p| p.name == name)
+    }
+
     /// Every option the last command accepts.
     pub fn options(&self) -> impl Iterator<Item = &'p Param> {
         self.sections().into_iter().flat_map(|(_, params)| params)
@@ -257,5 +263,6 @@ fn usage_error(id: DiagId, msg: Msg, help: Msg) -> Box<Diagnostic> {
 }
 
 mod given;
+mod settings;
 #[cfg(test)]
 mod tests;

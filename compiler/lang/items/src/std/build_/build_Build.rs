@@ -22,3 +22,7 @@ pub const test_on: Item = Item::new(&["std", "build", "Build", "test_on"]);
 /// The level of each lint for the package: pairs of a lint and a level, such as
 /// `.{ .{ std.lints.pedantic, .warn } }`.
 pub const lints: Item = Item::new(&["std", "build", "Build", "lints"]);
+/// The values the options of commands take where neither the command line nor the environment
+/// gives one, by command and option: `.{ .fmt = .{ .width = 100 }, .fuzz = .{ .cases = 5000 } }`.
+/// An option taking several values takes a tuple of them, a flag `true`.
+pub const commands: Item = Item::new(&["std", "build", "Build", "commands"]);

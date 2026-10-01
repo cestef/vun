@@ -8,7 +8,7 @@ Research notes, section 2, has the survey. The short version of what is copied a
 | minimal version selection, new major = new package | Go | deterministic, no solver, explainable |
 | sorted line-per-entry integrity file | Go (`go.sum`) | conflict-free merges |
 | toolchain pin with automatic download | Go, rustup | reproducible builds from a checkout |
-| one unconfigurable formatter | gofmt, zig fmt | no style debates |
+| one formatter, whose one option is the width of a line | gofmt, zig fmt | few style debates |
 | API-computed version bumps | Elm, cargo-semver-checks | semver that means something |
 | deferred logging | defmt | logs cost an index and packed bytes on the device |
 | flashing and debugging as libraries | probe-rs, espflash | one CLI, no external runner |
@@ -131,6 +131,14 @@ build := (b: &mut std.build.Build) {
   declares it is `plan.unread`.
 - Everything configurable in a project is configured here, in Vun: dependencies, targets, memory
   maps, lints, profiles, flash methods, test targets. There is no second configuration format.
+- **Commands.** `b.commands(.{ .fmt = .{ .width = 100 }, .fuzz = .{ .cases = 5000 } })` gives the
+  options of commands the values to use where neither the command line nor the environment gives
+  one: a section for each command, a field for each of its options, named as `--help` names them
+  (a number, a name, a string, a tuple of them for an option taking several, `true` for a flag).
+  Any option of a command naming a path (`fmt`, `check`, `build`, `run`, `test`, `fuzz`, ...) can
+  be set, so no default is fixed in the toolchain; the package around the path the command is
+  given, or this directory, is the one read. A section or a field that is no command or option
+  is `plan.unknown_setting`, a value an option does not take its usual usage error.
 
 ## 3. Dependencies
 
@@ -439,7 +447,8 @@ read that declaration.
 
 ### Conventions enforced by tools
 
-- **fmt** has no configuration; output is stable within an edition.
+- **fmt** has one option, the width of a line (`--width`, `VUN_FMT_WIDTH`, or `b.commands`); output is
+  stable within an edition for the same width.
 - **Lints** and naming and organization rules are spec 10, configured in `build.vun`.
 - **Editions** are per package; `vun fix --edition` migrates.
 - **API diff.** `vun pkg api diff` compares the public API (reflection over non-underscored

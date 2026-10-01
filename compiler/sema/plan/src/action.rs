@@ -32,6 +32,8 @@ pub enum Action {
     },
     /// The lint levels, as recorded.
     Lints(Value),
+    /// The values of the options of commands, as recorded.
+    Commands(Value),
 }
 
 /// A program's options (`std.build.Options`).
@@ -99,6 +101,8 @@ impl Read for Action {
             Ok(Self::TestOn { program: Built::read(m()?.get(tested::program)?)?.0 })
         } else if *name == action::lints.symbol() {
             Ok(Self::Lints(payload.clone()))
+        } else if *name == action::commands.symbol() {
+            Ok(Self::Commands(payload.clone()))
         } else {
             Err(Unread::Record)
         }

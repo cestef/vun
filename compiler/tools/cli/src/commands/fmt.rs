@@ -19,16 +19,21 @@ const PATHS: Param = Param::positional("paths")
     .arity(Arity::Many)
     .about("files, directories or packages to lay out; the package around this directory if none")
     .values(Values::Path(PathKind::Any));
+const WIDTH: Param = Param::option("width")
+    .about("the most columns a line has where it can be broken")
+    .values(Values::Count)
+    .env("VUN_FMT_WIDTH");
 const CHECK: Param = Param::flag("check").about("change nothing, and fail when a file would change");
 
 pub(super) const FMT: Command<Session> =
-    Command::run("fmt", "lay out source files as the formatter does", fmt).params(&[PATHS, CHECK]).examples(
-        &[
+    Command::run("fmt", "lay out source files as the formatter does", fmt)
+        .params(&[PATHS, CHECK, WIDTH])
+        .examples(&[
             Example { line: "", about: "lay out the package around this directory" },
             Example { line: "main.vun", about: "lay out a file in place" },
             Example { line: "--check net/ lib.vun", about: "fail when a file is not laid out" },
-        ],
-    );
+            Example { line: "--width 100 main.vun", about: "break lines past 100 columns" },
+        ]);
 
 /// What laying out a file changed.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -70,6 +75,7 @@ impl Status for Laid {
 
 fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let check = args.flag(&CHECK);
+    let width = args.count(&WIDTH).and_then(|w| usize::try_from(w).ok()).unwrap_or(vun_fmt::WIDTH);
     let named: Vec<&Path> = args.values(&PATHS).map(Path::new).collect();
     let mut files = Vec::new();
     for path in if named.is_empty() { vec![None] } else { named.into_iter().map(Some).collect() } {
@@ -78,7 +84,7 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     }
     let mut pending = false;
     for path in &files {
-        let Some(laid) = session.laid_out(path) else { continue };
+        let Some(laid) = session.laid_out(path, width) else { continue };
         let change = if check { Change::Pending } else { Change::Written };
         if change == Change::Written {
             path.put(laid)?;
@@ -92,11 +98,11 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
 trait Formatted {
     /// The file at `path` laid out, when that changes it; `None` when it is laid out already, or
     /// does not read or parse, which is reported.
-    fn laid_out(&mut self, path: &Path) -> Option<String>;
+    fn laid_out(&mut self, path: &Path, width: usize) -> Option<String>;
 }
 
 impl Formatted for Session {
-    fn laid_out(&mut self, path: &Path) -> Option<String> {
+    fn laid_out(&mut self, path: &Path, width: usize) -> Option<String> {
         let text = self.read(path)?;
         let file = self.sources.add(path.display().to_string(), text);
         let errors = self.diag.error_count();
@@ -106,7 +112,7 @@ impl Formatted for Session {
             return None;
         }
         let text = self.text(file);
-        let laid = Layout::new(&tokens, &cst, text).to_string();
+        let laid = Layout::new(&tokens, &cst, text).width(width).to_string();
         (laid != text).then_some(laid)
     }
 }
