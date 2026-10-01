@@ -221,6 +221,10 @@ the arguments of the constraint that parameter is declared with. A function or c
 that interface's requirement itself: `f.call((a, b))` is `f(a, b)`, so code holding the arguments
 as a tuple calls with them (decision 361).
 
+A call checks each such bound against the type bound to the parameter: a type with an impl of the
+interface, and for `Call` a function or closure taking what the call passes and giving what it
+expects, reported as `types.no_impl` at the argument (decision 406).
+
 A function with `$` parameters has no function type: its signature depends on the `$` arguments
 of a call. Named as a value, it is of its own type, whose only value it is, and that type exists
 at compile time only; calling it instantiates it (decision 359). It is accepted where a function

@@ -6,6 +6,7 @@ use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;
 
 mod bind;
+mod bounds;
 
 use vun_diag::Msg;
 use vun_sema_int::Interval;
@@ -92,6 +93,10 @@ impl Typer<'_, '_, '_> {
             }
             _ => None,
         };
+        if let Some(instantiation) = &instantiation {
+            let inferred: Vec<usize> = inferred.iter().flatten().map(|&(slot, _)| slot).collect();
+            self.check_bounds(call, instantiation, &slots[receiver..], args, &inferred);
+        }
         // A generic instantiation's typing reports a trap in its own signature, which the call
         // takes with the rest of its reports.
         let absorbed = instantiation.as_ref().filter(|i| i.generic(self.env().cx)).and_then(|i| {

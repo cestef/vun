@@ -123,6 +123,48 @@ impl Env<'_, '_> {
     }
 }
 
+impl Env<'_, '_> {
+    /// Whether `ty` meets the bound `interface` puts on a `$` parameter: it has an impl of it, or
+    /// of the interface its constructor makes with the same arguments, a function or closure
+    /// type calling as `lang.ops.Call` says, where a parameter list written `(T)` is the one
+    /// parameter `T`. Where the call infers other `$` parameters a result may name, as `U` of
+    /// `Call((T), U)`, they came from what the call expects, and `result` says whether the result is
+    /// checked at all. What a generic body knows only by an interface is left
+    /// to it.
+    #[must_use]
+    pub fn satisfies(&self, ty: Ty, interface: &Func, result: bool) -> bool {
+        if ty.is_required() || self.witness(interface, ty).is_some() {
+            return true;
+        }
+        let Some(made) = &interface.within else { return false };
+        let Some(have) = self.implemented(ty, &Value::Fn(made.f.clone())) else { return false };
+        let calls =
+            CALLS.first().and_then(|row| self.item(row.parent()?).ok()) == Some(Value::Fn(made.f.clone()));
+        let fits = |position: usize, want: &Value, have: &Value| match (calls, position, want, have) {
+            // A function taking more than the call passes, or giving less than it expects, serves.
+            (true, 0, Value::Type(want), Value::Type(have)) => Self::callable_with(*want, *have),
+            (true, 1, Value::Type(want), Value::Type(have)) => !result || want.accepts(have),
+            _ => want == have,
+        };
+        made.args.len() == have.len()
+            && made
+                .args
+                .iter()
+                .zip(&have)
+                .enumerate()
+                .all(|(i, (want, have))| want.as_ref().is_none_or(|want| fits(i, want, have)))
+    }
+
+    /// Whether a function taking the parameter types `have` can be passed the ones `want` lists,
+    /// where a list written `(T)` is the one parameter `T`.
+    fn callable_with(want: Ty, have: Ty) -> bool {
+        let TyKind::Tuple(have) = &*have else { return false };
+        let single = [want];
+        let want = if let TyKind::Tuple(items) = &*want { items.as_slice() } else { &single };
+        want.len() == have.len() && want.iter().zip(have).all(|(w, h)| h.accepts(w))
+    }
+}
+
 /// The impls declared in a file, in source order: in any namespace of it, including `struct`
 /// bodies.
 pub struct Impls;
