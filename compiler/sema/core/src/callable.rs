@@ -202,6 +202,17 @@ impl Written<'_, '_> {
             .collect()
     }
 
+    /// The expression of the result type, when the function writes one.
+    #[must_use]
+    pub fn returns(&self) -> Option<ExprId> {
+        let (ExprKind::Fn { returns, .. } | ExprKind::FnType { returns, .. }) =
+            &self.env.parsed.hir.exprs[self.expr].kind
+        else {
+            return None;
+        };
+        *returns
+    }
+
     /// The parameter gathering the arguments after the others, when it has one: the last, a
     /// rest pattern `..args: P` in a function literal, `..P` in a function type.
     #[must_use]

@@ -155,12 +155,12 @@ argument takes them from the call).
   for minutes (decision 402). Declare interfaces as literals; the engine should still not spin.
 - An `impl` member may leave its parameters' types and its result to the requirement
   (decisions 403, 404), including a member of a witness a `#[lang.derive]` function builds and a
-  result naming the witness's own member (`Result(usize, Error)`); a closure written as an
+  result naming the witness's own member (`Result(usize, Error)`); a function written as an
   argument may leave them to the call (decision 405). Still written: a member with another
   number of parameters than its requirement (`Concat.concat` lacks `$R`, `Iterate` for a slice
-  takes `&[T]` where the requirement says `Self`), a coroutine's result, and a function literal
-  written as an argument without `[]`, which is no closure: its signature is part of its
-  identity as a value (`Func`), and an expected one would have to be too.
+  takes `&[T]` where the requirement says `Self`), a coroutine's result, a bare literal's result
+  (only a closure's is the type of its body), and a parameter the call cannot say before the
+  closure is typed (the accumulator of a `fold` nothing expects a result of).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and

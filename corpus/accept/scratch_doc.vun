@@ -1,0 +1,2 @@
+twice := ($F: lang.ops.Call((u8), u8), f: F, v: u8) -> u8 { f(f(v)) };
+four := twice([] (x) { (x * 2).wrap(u8) }, 1);

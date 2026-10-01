@@ -76,7 +76,7 @@ impl Env<'_, '_> {
                 None => o.ty(),
             })
             .collect();
-        let inferred = Unifier::infer(self, &f, &plan, &types).ok_or(Unevaluated::Unsupported)?;
+        let inferred = Unifier::infer(self, &f, &plan, &types, None).ok_or(Unevaluated::Unsupported)?;
         let mut args: Vec<Option<Value>> = vec![None; plan.slots.len() + plan.omitted.len()];
         for (&slot, operand) in plan.slots.iter().zip(operands) {
             args[slot] = Some(operand.value);

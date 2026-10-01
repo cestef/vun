@@ -55,12 +55,26 @@ impl Env<'_, '_> {
         literal: ExprId,
         args: &[Option<Value>],
     ) -> Result<Signature, Unevaluated> {
+        let context = self.context(literal).transpose()?;
+        self.literal_signature_in(literal, args, context.as_ref())
+    }
+
+    /// The signature of the function literal `literal` as `literal_signature` gives it, within
+    /// `context`, what its place says of what it leaves out.
+    ///
+    /// # Errors
+    /// As [`Self::signature`].
+    pub fn literal_signature_in(
+        &self,
+        literal: ExprId,
+        args: &[Option<Value>],
+        context: Option<&Context>,
+    ) -> Result<Signature, Unevaluated> {
         let hir = &self.parsed.hir;
         let ExprKind::Fn { params, returns, .. } = &hir.exprs[literal].kind else {
             return Err(Unevaluated::Unsupported);
         };
         let declared = returns.map(|r| self.eval(r)).transpose()?;
-        let context = self.context(literal).transpose()?;
         let result = match declared {
             Some(Value::Interface(interface)) if hir.suspends(literal) => {
                 let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
@@ -76,12 +90,12 @@ impl Env<'_, '_> {
                 Value::Type(TyKind::Frame(Box::new(frame)).intern())
             }
             Some(value) => value,
-            None => match &context {
+            None => match context {
                 Some(Context { result: Some(result), .. }) => Value::Type(result.clone()?),
                 _ => Value::Type(TyKind::unit()),
             },
         };
-        let mut signature = self.signature_in(params, None, context.as_ref())?;
+        let mut signature = self.signature_in(params, None, context)?;
         signature.result = result.as_type().ok_or(Unevaluated::Unsupported)?;
         Ok(self.literal_markers(literal).into_iter().fold(signature, Signature::with))
     }

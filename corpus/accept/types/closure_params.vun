@@ -1,19 +1,27 @@
-//! A closure written as an argument takes the types of its parameters from what the call expects
-//! of it: a function type, or the `lang.ops.Call` constraint of the `$` parameter it binds, once
-//! the other arguments have fixed what that names. Its result is that constraint's where it
-//! says one, and the type of its body otherwise (spec 01, section 4).
+//! A function written as an argument, a closure or not, takes the types of its parameters from
+//! what the call expects of it: a function type, or the `lang.ops.Call` constraint of the `$`
+//! parameter it binds, once the other arguments, and what the call is expected to give, have fixed
+//! what that names. A closure's result is that constraint's where it says one, and the type of its
+//! body otherwise; a bare function writes it (spec 01, section 4).
 
 start := std.os.start(main);
 
 evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
 kept := () -> usize { evens(8).map([] (x) { x * 2 }).filter([] (x) { x.* > 2 }).count() };
-summed := () -> u32 { evens(10).fold(0, [] (acc: u32, x) { (acc + x).sat(u32) }) };
+summed := () -> u32 { evens(10).fold(0, [] (acc, x) { (acc + x).sat(u32) }) };
 three: Int(kept()..=kept()) = 3;
 twenty: Int(summed()..=summed()) = 20;
+
+twice := (f: (x: u8) -> u8, v: u8) -> u8 { f(f(v)) };
+// At the top of a file, where no body holds the call, too.
+five := twice((x) { x }, 5);
+exact_five: Int(five..=five) = 5;
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     raw: ?u8 = .some(3);
     by: u8 = 4;
-    shifted: ?u16 = raw.map([by] (v) -> u16 { v + by });
-    if shifted == .some(7) { .ok } else { .code(1) }
+    shifted: ?u16 = raw.map([by] (v) { v + by });
+    doubled := twice((x) { (x * 2).wrap(u8) }, 5);
+    bumped := raw.map((x) -> u8 { (x + 1).wrap(u8) });
+    if shifted == .some(7) and doubled == 20 and bumped == .some(4) { .ok } else { .code(1) }
 };

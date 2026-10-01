@@ -10,13 +10,17 @@
 use std::sync::Arc;
 
 use vun_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
+use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::Node;
+use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Signature, Ty, TyKind};
 
 use super::Env;
 use crate::callable::Written;
+use crate::decl::TypedDecl;
+use crate::typeck::Typed;
 
 /// The types a place gives the parts of a function literal; why for a part it cannot give here,
 /// such as a result that names a member of a `$` parameter an instantiation binds.
@@ -88,6 +92,31 @@ impl Env<'_, '_> {
     /// mismatch with the annotation for the rest.
     #[must_use]
     pub fn context(&self, literal: ExprId) -> Option<Result<Context, Unevaluated>> {
+        self.own_context(literal)
+            .or_else(|| self.placed(literal).map(|signature| Ok(Context::from(signature))))
+    }
+
+    /// What the call a function literal is an argument of says of its signature, as typing the
+    /// body it is written in found: the type it gave the literal.
+    fn placed(&self, literal: ExprId) -> Option<Signature> {
+        if !self.leaves_out(literal) {
+            return None;
+        }
+        let hir = &self.parsed.hir;
+        let found = if let Some(function) = hir.enclosing_function(literal) {
+            let enclosing = Instantiation::plain(ExprRef::new(self.file.clone(), hir, function));
+            Arc::clone(&self.cx.get::<Typed>(&enclosing)?.found)
+        } else {
+            let decl = DeclRef::new(self.file.clone(), hir, hir.enclosing_member(literal)?);
+            Arc::clone(&self.cx.get::<TypedDecl>(&(decl, None, Vec::new()))?.found)
+        };
+        found.types.get(&literal)?.ty.signature()
+    }
+
+    /// What the place of the function literal `literal` says of its signature without asking
+    /// the body it is written in: what a body being typed asks for the functions inside it.
+    #[must_use]
+    pub fn own_context(&self, literal: ExprId) -> Option<Result<Context, Unevaluated>> {
         if !self.leaves_out(literal) {
             return None;
         }
@@ -108,7 +137,7 @@ impl Env<'_, '_> {
 
     /// Whether the function literal `literal` leaves out what its place could give: a parameter
     /// written without a type, or its result.
-    fn leaves_out(&self, literal: ExprId) -> bool {
+    pub(crate) fn leaves_out(&self, literal: ExprId) -> bool {
         let ExprKind::Fn { returns, .. } = &self.parsed.hir.exprs[literal].kind else { return false };
         returns.is_none() || self.omits_param_types(literal)
     }

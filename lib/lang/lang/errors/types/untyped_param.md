@@ -7,7 +7,7 @@ passes, so a run-time parameter written as a name alone, `x`, has no type to be 
 computed with. A `$` parameter is generic over its value and needs none, and a literal that is
 the value of a declaration annotated with a function type takes the types of the parameters it
 has in common with that type, and its result, from it, and so does a member of an impl, from the
-requirement of its interface, and a closure written as an argument, from the call.
+requirement of its interface, and a function written as an argument, from the call.
 
 ## Example
 
@@ -29,10 +29,10 @@ Or annotate the declaration the literal is the value of with a function type:
 identity: (x: u8) -> u8 = (x) { x };
 ```
 
-Or write it as a closure, which takes the types of its parameters from the call it is an
-argument of:
+Or write it as an argument of a call that says them, a function type or a `lang.ops.Call`
+constraint:
 
 ```vun
-twice := ($F: lang.ops.Call((u8), u8), f: F, v: u8) -> u8 { f(f(v)) };
-four := twice([] (x) { (x * 2).wrap(u8) }, 1);
+twice := (f: (x: u8) -> u8, v: u8) -> u8 { f(f(v)) };
+four := twice((x) { (x * 2).wrap(u8) }, 1);
 ```

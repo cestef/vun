@@ -27,20 +27,23 @@ impl Typer<'_, '_, '_> {
         callee: &Callee,
         args: &[Argument],
     ) -> Option<Vec<(usize, Value)>> {
+        let expected = self.expected(call);
         let modes = f.modes(self.env()).unwrap_or_default();
         let quotes = f.quotes(self.env()).unwrap_or_default();
         let receiver = callee.receiver.map(|r| (r, Passing::Asked));
         let receiver = receiver.map(|(r, passing)| (Argument::Expr(r), passing));
         let arguments: Vec<_> =
             receiver.into_iter().chain(args.iter().map(|&a| (a, callee.passing))).collect();
-        let is_closure = |this: &Self, arg: &Argument| matches!(arg, Argument::Expr(e) if matches!(this.hir().exprs[*e].kind, ExprKind::Closure { .. }));
+        // A function written here: a closure, or a literal without captures.
+        let is_written = |this: &Self, arg: &Argument| matches!(arg, Argument::Expr(e) if matches!(this.hir().exprs[*e].kind, ExprKind::Closure { .. } | ExprKind::Fn { .. }));
         // A closure written as an argument is typed last: what the other arguments say of the `$`
         // parameters it is passed for is what its own parameters are.
         let mut types: Vec<Option<Ty>> = vec![None; arguments.len()];
         for closures in [false, true] {
-            let inferred = if closures { Unifier::infer(self.env(), f, plan, &types) } else { None };
+            let inferred =
+                if closures { Unifier::infer(self.env(), f, plan, &types, expected) } else { None };
             for (i, ((arg, passing), &slot)) in arguments.iter().zip(&plan.slots).enumerate() {
-                if is_closure(self, arg) != closures {
+                if is_written(self, arg) != closures {
                     continue;
                 }
                 let ty = match *arg {
@@ -72,7 +75,7 @@ impl Typer<'_, '_, '_> {
                 }
             }
         }
-        let values = Unifier::infer(self.env(), f, plan, &types)?;
+        let values = Unifier::infer(self.env(), f, plan, &types, expected)?;
         if values.iter().any(Option::is_none) {
             let written = args.iter().map(|a| match a {
                 Argument::Expr(e) => Some(*e),

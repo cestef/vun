@@ -52,11 +52,17 @@ pub(crate) struct Unifier<'e, 'a, 'db> {
 impl Unifier<'_, '_, '_> {
     /// Infers the omitted parameters of `plan` for a call of `f` whose written arguments have
     /// the types `args`; each is `None` when nothing determines it.
+    ///
+    /// `expected` is the type the call is expected to have, which its callee's result type is
+    /// matched against as one more source: a `$` parameter the result names is at least as wide
+    /// as what the context takes (`fold(0, f)` where a `u32` is expected is `u32`, not `0`'s
+    /// exact type).
     pub(crate) fn infer(
         env: &Env<'_, '_>,
         f: &Callable,
         plan: &Plan,
         args: &[Option<Ty>],
+        expected: Option<Ty>,
     ) -> Option<Vec<Option<Value>>> {
         let written = f.written(env)?;
         let params = written.params()?;
@@ -66,6 +72,11 @@ impl Unifier<'_, '_, '_> {
             if let (Some(ty), Some(annotation)) = (arg, params[slot].1) {
                 unifier.unify(annotation, &Value::Type(ty));
             }
+        }
+        if let Some(expected) = expected
+            && let Some(returns) = written.returns()
+        {
+            unifier.unify(returns, &Value::Type(expected));
         }
         // A parameter found to be a type may fix others through its constraint: `U` in
         // `$F: Call((T), U)` from the signature of the function or closure `F` is.

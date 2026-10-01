@@ -7,6 +7,7 @@ use std::mem::{replace, take};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
 use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatId, PatKind};
+use vun_origin::OriginId;
 use vun_query::Cx;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::ExprRef;
@@ -22,7 +23,18 @@ impl Typer<'_, '_, '_> {
     /// The function literal `expr` as a value: of its signature's type, or of its own when it has
     /// `$` parameters.
     pub(super) fn literal(&mut self, expr: ExprId) -> Option<Known> {
-        let signature = self.env().literal_signature(expr, &[]).map(|s| s.ty());
+        // What the call it is an argument of expects of it, for what it leaves out.
+        let given = self.hints.remove(&expr).or_else(|| {
+            let expected = self.expected(expr)?.callable()?;
+            Some(Context::passed(expected.params.into_iter().map(Ok).collect(), Some(expected.result)))
+        });
+        // The body being typed is not asked for what it is typing: only what the literal's own
+        // place says, and the call's.
+        let context = self.env().own_context(expr).or_else(|| given.map(Ok));
+        let signature = match context.transpose() {
+            Ok(context) => self.env().literal_signature_in(expr, &[], context.as_ref()).map(|s| s.ty()),
+            Err(why) => Err(why),
+        };
         let ty = signature.or_else(|why| {
             let f = self.evaluating().eval(expr).ok().and_then(Callable::of);
             f.and_then(|f| f.generic(self.env())).ok_or(why)
@@ -39,12 +51,14 @@ impl Typer<'_, '_, '_> {
         literal: ExprId,
         bound: &[Option<Value>],
         given: Option<Context>,
+        inline: bool,
     ) -> Option<Signature> {
         let hir = self.hir();
         let ExprKind::Fn { returns, body, .. } = &hir.exprs[literal].kind else { return None };
         let (returns, body) = (*returns, *body);
         // Where the place cannot be read here, the instantiations that bind what it names decide.
-        let (context, unread) = match self.env().context(literal).or_else(|| given.map(Ok)) {
+        let place = if inline { self.env().own_context(literal) } else { self.env().context(literal) };
+        let (context, unread) = match place.or_else(|| given.map(Ok)) {
             Some(Ok(context)) => (Some(context), None),
             Some(Err(why)) => {
                 self.unevaluated(literal, &why);
@@ -62,6 +76,7 @@ impl Typer<'_, '_, '_> {
         let inferred = returns.is_none()
             && frame.is_none()
             && context.as_ref().is_some_and(|c| matches!(c.place, Place::Argument) && c.result.is_none());
+        let coroutine = frame.is_some();
         let (signature_result, result, yields) = if let Some(frame) = frame.map(|s| s.result) {
             let step = self.env().frame_step(frame);
             (Some(frame), step.map(|(_, r)| r).ok_or(GaveUp::Form), step.map(|(y, _)| y))
@@ -93,7 +108,11 @@ impl Typer<'_, '_, '_> {
         let found = self.block_value(body, result);
         if let (Some(found), Some(result)) = (found, result) {
             let at = hir.blocks[body].tail.map_or(hir.blocks[body].origin, |t| hir.exprs[t].origin);
-            self.expect(at, found, result, written);
+            if returns.is_none() && !coroutine && !result.accepts(&found.ty) {
+                self.unwritten_result(at, found, result);
+            } else {
+                self.expect(at, found, result, written);
+            }
         }
         (self.result, self.written, self.loops, self.yields, self.framing) = outer;
         let signature_result = if inferred { found.map(|known| known.ty) } else { signature_result };
@@ -140,7 +159,7 @@ impl Typer<'_, '_, '_> {
                             self.pattern(*pat, Err(GaveUp::Unevaluated(why.clone())), None);
                         }
                         (None, None) => {
-                            self.untyped(*pat, literal, context.map(|c| (c.place, c.arity, params.len())));
+                            self.untyped(*pat, context.map(|c| (c.place, c.arity, params.len())));
                         }
                     }
                     given.and_then(Result::ok)
@@ -168,10 +187,23 @@ impl Typer<'_, '_, '_> {
         types
     }
 
+    /// Reports that a function writing no result, whose result is `result` for that, has a body
+    /// of the type `found`: the type to write is that.
+    fn unwritten_result(&mut self, at: OriginId, found: Known, result: Ty) {
+        let msg =
+            Msg::new().text("expected ").code(result.to_string()).text(", found ").ty(found.ty.to_string());
+        let help = Msg::new()
+            .text("this function writes no result, so it is ")
+            .code(result.to_string())
+            .text("; write the type it gives after its parameters, as ")
+            .code(format!("-> {}", found.ty));
+        self.diag.error(Diagnostic::error(errors::TYPES_MISMATCH, msg).at(at, None).help(help));
+    }
+
     /// Reports the parameter bound by `pat` as written without a type: nothing else says what a
     /// caller passes it. `given` is the number of parameters its place gives types to, when it
     /// does: the type this one has is past them.
-    fn untyped(&mut self, pat: PatId, literal: ExprId, given: Option<(Place, usize, usize)>) {
+    fn untyped(&mut self, pat: PatId, given: Option<(Place, usize, usize)>) {
         let hir = self.hir();
         let origin = hir.pats[pat].origin;
         let name = match hir.pats[pat].kind {
@@ -193,11 +225,6 @@ impl Typer<'_, '_, '_> {
                 format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes))
             };
             d = d.note(note);
-        }
-        // A function written where no declaration names it can take its parameters from the call
-        // it is an argument of, written as a closure.
-        if hir.closure_of(literal).is_none() && hir.decl_valued(literal).is_none() {
-            d = d.note("a function written as an argument takes its parameters' types from the call when it is a closure: `[] (x) { ... }`");
         }
         self.diag.error(d);
     }
@@ -222,7 +249,7 @@ impl Typer<'_, '_, '_> {
             let expected = self.expected(expr)?.callable()?;
             Some(Context::passed(expected.params.into_iter().map(Ok).collect(), Some(expected.result)))
         });
-        let signature = self.function(func, &[], given)?;
+        let signature = self.function(func, &[], given, true)?;
         let known = Known { ty: signature.ty(), stage: self.stage };
         self.finding().types.insert(func, known);
         let closure = Closure { f: self.env().func(func), captures: typed?, signature };
