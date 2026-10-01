@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.cmp.tests`.
+pub const tests: Item = Item::new(&["std", "cmp", "tests"]);
 /// The smaller of `a` and `b`, `a` when equal.
 pub const min: Item = Item::new(&["std", "cmp", "min"]);
 /// The larger of `a` and `b`, `a` when equal.

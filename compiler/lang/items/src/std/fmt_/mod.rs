@@ -5,6 +5,7 @@ pub mod fmt_Piece;
 pub mod fmt_Problem;
 pub mod fmt_Writer;
 pub mod fmt_array_format;
+pub mod fmt_bool_format;
 pub mod fmt_int_format;
 pub mod fmt_json;
 pub mod fmt_json_Json;

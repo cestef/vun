@@ -20,6 +20,8 @@ pub const diag: Item = Item::new(&["std", "diag"]);
 pub const float: Item = Item::new(&["std", "float"]);
 /// The namespace `std.fmt`.
 pub const fmt: Item = Item::new(&["std", "fmt"]);
+/// The namespace `std.hash`.
+pub const hash: Item = Item::new(&["std", "hash"]);
 /// The namespace `std.hw`.
 pub const hw: Item = Item::new(&["std", "hw"]);
 /// The namespace `std.int`.
