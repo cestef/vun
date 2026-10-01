@@ -1,11 +1,12 @@
-//! Forms typed by what their context expects (spec 01, section 2): `.name` is a member of the
-//! expected type (a variant, a variant's constructor, or a declaration of its namespace, or for
-//! a type provided from outside, of the namespace declaring it).
+//! What the context of a form expects of it (spec 01, section 2): the type it says, passed on to
+//! the parts, and the forms typed by it: `.name` is a member of the expected type (a variant, a
+//! variant's constructor, or a declaration of its namespace, or for a type provided from outside,
+//! of the namespace declaring it).
 
-use vun_hir::tree::ExprId;
+use vun_hir::tree::{BlockId, ExprId};
 use vun_intern::Symbol;
 use vun_sema_ty::item::Declared;
-use vun_sema_ty::{Signature, TyKind, Value};
+use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
 use super::{GaveUp, Known, Stage, Typer};
 use crate::member::{Found, MemberType, Members};
@@ -54,6 +55,38 @@ impl Typer<'_, '_, '_> {
             | TyKind::Frame(_)
             | TyKind::Param(_)
             | TyKind::Generic(_) => None,
+        }
+    }
+
+    /// The type the context of `expr` expects, if it says.
+    pub(super) fn expected(&self, expr: ExprId) -> Option<Ty> {
+        self.expected.get(&expr)?.as_ref().ok().copied()
+    }
+
+    /// The type `part` of `expr` is expected to have, as `derive` finds it from the type
+    /// expected of `expr`; when that is not known here, neither is the part's, for the same
+    /// reason.
+    pub(super) fn expected_of(
+        &mut self,
+        expr: ExprId,
+        part: ExprId,
+        derive: impl FnOnce(Ty) -> Option<Ty>,
+    ) -> Option<Ty> {
+        let expected = self.expected.get(&expr).cloned()?;
+        self.expecting(part, expected).and_then(derive)
+    }
+
+    /// The type `part` is expected to have, as `expected` says; when it is not known here, why
+    /// is recorded for `part`.
+    pub(super) fn expecting(&mut self, part: ExprId, expected: Result<Ty, GaveUp>) -> Option<Ty> {
+        expected.map_err(|why| self.expected.insert(part, Err(why))).ok()
+    }
+
+    /// The type the tail of `block`, the value of `expr`, is expected to have: that of `expr`.
+    pub(super) fn tail_expected(&mut self, expr: ExprId, block: BlockId) -> Option<Ty> {
+        match self.hir().blocks[block].tail {
+            Some(tail) => self.expected_of(expr, tail, Some),
+            None => self.expected(expr),
         }
     }
 }

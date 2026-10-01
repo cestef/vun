@@ -5,6 +5,7 @@
 //! Function bodies are typed one at a time ([`Typed`]); the value of a declaration outside a body
 //! is typed where it is checked, and by [`crate::decl::DeclType`] where it is named.
 
+mod absent;
 mod apply;
 mod asm;
 mod block;
@@ -206,38 +207,6 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
         vun_trace::tracing::debug!(at = %node.origin.located(), form = node.kind.name(), why = %why.msg(), "typing gave up");
         self.gave_ups += 1;
         self.finding().gave_up.insert(expr, why);
-    }
-
-    /// The type the context of `expr` expects, if it says.
-    fn expected(&self, expr: ExprId) -> Option<Ty> {
-        self.expected.get(&expr)?.as_ref().ok().copied()
-    }
-
-    /// The type `part` of `expr` is expected to have, as `derive` finds it from the type
-    /// expected of `expr`; when that is not known here, neither is the part's, for the same
-    /// reason.
-    fn expected_of(
-        &mut self,
-        expr: ExprId,
-        part: ExprId,
-        derive: impl FnOnce(Ty) -> Option<Ty>,
-    ) -> Option<Ty> {
-        let expected = self.expected.get(&expr).cloned()?;
-        self.expecting(part, expected).and_then(derive)
-    }
-
-    /// The type `part` is expected to have, as `expected` says; when it is not known here, why
-    /// is recorded for `part`.
-    fn expecting(&mut self, part: ExprId, expected: Result<Ty, GaveUp>) -> Option<Ty> {
-        expected.map_err(|why| self.expected.insert(part, Err(why))).ok()
-    }
-
-    /// The type the tail of `block`, the value of `expr`, is expected to have: that of `expr`.
-    fn tail_expected(&mut self, expr: ExprId, block: BlockId) -> Option<Ty> {
-        match self.hir().blocks[block].tail {
-            Some(tail) => self.expected_of(expr, tail, Some),
-            None => self.expected(expr),
-        }
     }
 }
 
