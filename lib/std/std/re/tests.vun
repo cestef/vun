@@ -1,0 +1,38 @@
+//! Tests of `std.re`: patterns with wildcards found in bytes, and hex dumps.
+
+#[test]
+a_pattern_is_bytes_and_wildcards := () {
+    p := std.re.Pattern(8).parse("48 8B ?? 05 ?").expect("a pattern");
+    std.testing.assert(p.len() == 5);
+    std.testing.assert(p.matches(&[0x48, 0x8b, 0x00, 0x05, 0xff]));
+    std.testing.assert(p.matches(&[0x48, 0x8b, 0x7f, 0x05, 0x00, 0x00]));
+    std.testing.assert(!p.matches(&[0x48, 0x8c, 0x00, 0x05, 0x00]));
+    std.testing.assert(!p.matches(&[0x48, 0x8b, 0x00]));
+};
+
+#[test]
+a_pattern_is_found_where_it_first_matches := () {
+    p := std.re.Pattern(4).parse("de ad ?? ef").expect("a pattern");
+    bytes: [10]u8 = [0, 0xde, 0xad, 0xde, 0xad, 0x01, 0xef, 0, 0, 0];
+    std.testing.assert(p.find(&bytes) == Option(usize).some(3));
+    std.testing.assert(p.find(&bytes[4..]) == Option(usize).none);
+    std.testing.assert(p.find(&bytes[0..3]) == Option(usize).none);
+};
+
+#[test]
+text_that_is_no_pattern_is_not_parsed := () {
+    std.testing.assert(std.re.Pattern(4).parse("") == Option(std.re.Pattern(4)).none);
+    std.testing.assert(std.re.Pattern(4).parse("4") == Option(std.re.Pattern(4)).none);
+    std.testing.assert(std.re.Pattern(4).parse("zz") == Option(std.re.Pattern(4)).none);
+    std.testing.assert(std.re.Pattern(4).parse("123") == Option(std.re.Pattern(4)).none);
+    std.testing.assert(std.re.Pattern(2).parse("00 11 22") == Option(std.re.Pattern(2)).none);
+};
+
+#[test]
+bytes_are_dumped_a_line_of_sixteen_at_a_time := () {
+    mut out := std.text.Slab(512).empty();
+    bytes: [20]u8 = [0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x76, 0x75, 0x6e, 0x21, 0x0a, 0, 1, 2, 3, 0xff, 0x41, 0x42, 0x7e];
+    std.re.hexdump(&mut out, &bytes, 0x1000).expect("room");
+    expected := "00001000  48 65 6c 6c 6f 2c 20 76  75 6e 21 0a 00 01 02 03  |Hello, vun!.....|\n00001010  ff 41 42 7e                                       |.AB~|\n";
+    std.testing.assert(out.bytes() == expected);
+};

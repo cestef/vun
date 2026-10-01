@@ -48,6 +48,8 @@ pub const panic: Item = Item::new(&["std", "panic"]);
 pub const prelude: Item = Item::new(&["std", "prelude"]);
 /// The namespace `std.ptr`.
 pub const ptr: Item = Item::new(&["std", "ptr"]);
+/// The namespace `std.re`.
+pub const re: Item = Item::new(&["std", "re"]);
 /// The namespace `std.result`.
 pub const result: Item = Item::new(&["std", "result"]);
 /// The namespace `std.seq`.

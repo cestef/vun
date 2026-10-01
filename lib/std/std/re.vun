@@ -1,0 +1,11 @@
+//! Tools for reading binaries, which a program of its own builds on: byte patterns with
+//! wildcards (`Pattern`), as a reverse engineer writes them, and a hex dump of bytes (`hexdump`).
+
+/// A pattern of up to `n` bytes, each a byte to match or any byte.
+Pattern: ($n: Int(1..)) -> type = std.re.pattern.Pattern;
+
+/// Writes `bytes` to `w` as a hex dump, a line of 16 of them at a time, each line with the address
+/// of its first byte, counted from `base`, the bytes in hexadecimal and their ASCII.
+hexdump := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8], base: u64) -> Result((), W.Error) {
+    std.re.dump.write(W, w, bytes, base)
+};

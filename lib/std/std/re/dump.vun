@@ -1,0 +1,28 @@
+//! The hex dump `std.re.hexdump` writes: the bytes of a run, a line of 16 at a time.
+
+/// How many bytes a line holds.
+line := 16;
+
+/// Whether `b` is a byte a dump writes as itself: printable ASCII; any other is a dot.
+shown := (b: u8) -> bool { b >= 0x20 and b < 0x7f };
+
+/// Writes `bytes` to `w` as a dump counted from `base`.
+write := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8], base: u64) -> Result((), W.Error) {
+    mut at: usize = 0;
+    for at < bytes.len() {
+        end := std.cmp.min(usize, (at + line).sat(usize), bytes.len());
+        row := bytes[at..end];
+        std.fmt.print(w, "{x:0>8} ", (base + at).to(u64))?;
+        for i in 0..line {
+            if i == 8 { std.fmt.print(w, " ")?; }
+            if i < row.len() { std.fmt.print(w, " {x:0>2}", row[i])?; } else { std.fmt.print(w, "   ")?; }
+        }
+        std.fmt.print(w, "  |")?;
+        for b in row {
+            w.write_all(if shown(b.*) { &[b.*] } else { "." })?;
+        }
+        std.fmt.print(w, "|\n")?;
+        at = end;
+    }
+    .ok(())
+};

@@ -1,0 +1,54 @@
+//! Byte patterns as a reverse engineer writes them: hexadecimal bytes separated by spaces, with
+//! `?` or `??` for a byte that may be any, as in `48 8B ?? 05`.
+
+/// A pattern of up to `n` bytes.
+Pattern := ($n: Int(1..)) -> type { struct {
+    _bytes: [n]u8,
+    /// Whether each byte of the pattern must match, or any byte does.
+    _exact: [n]bool,
+    _len: Int(0..=n),
+
+    /// The pattern `text` writes; none for an empty text, for a token that is neither a byte nor
+    /// a wildcard, and for more than `n` bytes.
+    parse := (text: &[u8]) -> ?Pattern(n) {
+        mut bytes: [n]u8 = [0; n];
+        mut exact: [n]bool = [false; n];
+        mut count: usize = 0;
+        for token in text.split(" ") {
+            if token.len() == 0 { continue; }
+            if count == n { return .none; }
+            if token != "?" and token != "??" {
+                if token.len() != 2 { return .none; }
+                high := std.text.ascii.digit(token[0], 16)?;
+                low := std.text.ascii.digit(token[1], 16)?;
+                bytes[count] = (high * 16 + low).to(u8);
+                exact[count] = true;
+            }
+            count += 1;
+        }
+        if count == 0 { return .none; }
+        .some(.{ ._bytes = bytes, ._exact = exact, ._len = count.to(Int(0..=n)) })
+    };
+
+    /// How many bytes it matches.
+    len := (self: &Pattern(n)) -> usize { self._len };
+
+    /// Whether `bytes` start with what it matches: not where they are fewer.
+    matches := (self: &Pattern(n), bytes: &[u8]) -> bool {
+        if bytes.len() < self._len { return false; }
+        for i in 0..self._len {
+            if self._exact[i] and bytes[i] != self._bytes[i] { return false; }
+        }
+        true
+    };
+
+    /// Where it first matches in `bytes`: none where it never does.
+    find := (self: &Pattern(n), bytes: &[u8]) -> ?usize {
+        if bytes.len() < self._len { return .none; }
+        last := (bytes.len() - self._len).sat(usize);
+        for at in 0..=last {
+            if self.matches(bytes[at..]) { return .some(at); }
+        }
+        .none
+    };
+} };
