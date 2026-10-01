@@ -65,7 +65,7 @@ member := ($W: std.fmt.Writer, w: &mut W, first: bool, name: &[u8]) -> Result(()
 };
 
 impl Json for Int($r) {
-    json := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
+    json := lang.meta.witness(std.fmt.Format, Int(r)).format;
 }
 
 /// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has

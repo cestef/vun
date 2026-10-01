@@ -68,11 +68,11 @@ quoted := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8]) -> Result((), W.Error) {
 };
 
 impl Debug for Int($r) {
-    debug := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
+    debug := lang.meta.witness(std.fmt.Format, Int(r)).format;
 }
 
 impl Debug for bool {
-    debug := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) { value.format(w) };
+    debug := lang.meta.witness(std.fmt.Format, bool).format;
 }
 
 /// Bytes as a quoted string, any other items as `[a, b]`.
