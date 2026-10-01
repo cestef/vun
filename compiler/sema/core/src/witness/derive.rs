@@ -90,7 +90,7 @@ impl Witness {
                 let payloads = members.variants.iter().flat_map(|v| v.payload.iter().map(Result::as_ref));
                 fields.chain(payloads).map(|part| part.ok().copied()).collect::<Option<_>>()?
             }
-            TyKind::Tuple(items) => items.to_vec(),
+            TyKind::Tuple(items) => items.clone(),
             TyKind::Record(fields) => fields.iter().map(|(_, ty)| *ty).collect(),
             _ => return None,
         };
