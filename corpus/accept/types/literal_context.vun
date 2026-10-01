@@ -1,0 +1,15 @@
+//! A function literal that is the value of an annotated declaration takes what it leaves out from
+//! the annotation: the type of a parameter written without one, and its result (spec 02,
+//! section 3).
+
+add: (a: u16, b: u16) -> u16 = (a, b) { (a + b).wrap(u16) };
+Op := (x: u8) -> bool;
+is_even: Op = (x) { x % 2 == 0 };
+tick: () -> u8 = () { 7 };
+pair: (a: u8) -> (u8, u8) = (a) { (a, a) };
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    ok := add(1, 2) == 3 and is_even(4) and !is_even(5) and tick() == 7 and pair(2).1 == 2;
+    if ok { .ok } else { .code(1) }
+};

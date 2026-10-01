@@ -36,6 +36,7 @@ impl Typer<'_, '_, '_> {
         let hir = self.hir();
         let ExprKind::Fn { params, returns, body } = &hir.exprs[literal].kind else { return None };
         let (returns, body) = (*returns, *body);
+        let context = self.env().context_signature(literal, params.len());
         let mut types = Some(Vec::new());
         for (index, param) in params.iter().enumerate() {
             let ty = match param {
@@ -52,12 +53,15 @@ impl Typer<'_, '_, '_> {
                     ty.ok()
                 }
                 // A `$` parameter written without a type takes any value: the function is
-                // generic over it.
+                // generic over it. Any other has the type its place gives it, if it does.
                 Entry::One(Param { pat: Some(pat), ty: None, .. }) => {
-                    if !matches!(hir.pats[*pat].kind, PatKind::Bind(b) if hir.binders[b].comptime) {
+                    let given = context.as_ref().map(|c| c.params[index]).filter(|_| !hir.is_comptime(*pat));
+                    if let Some(ty) = given {
+                        self.pattern(*pat, Ok(ty), None);
+                    } else if !hir.is_comptime(*pat) {
                         self.untyped(*pat);
                     }
-                    None
+                    given
                 }
                 _ => None,
             };
@@ -89,7 +93,7 @@ impl Typer<'_, '_, '_> {
         } else {
             let result = match returns {
                 Some(r) => self.annotation(r),
-                None => Ok(TyKind::unit()),
+                None => Ok(context.as_ref().map_or_else(TyKind::unit, |c| c.result)),
             };
             (result.clone().ok(), result, None)
         };

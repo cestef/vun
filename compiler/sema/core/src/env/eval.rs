@@ -199,18 +199,41 @@ impl Env<'_, '_> {
     /// Returns why a parameter or result type has no value here, such as a type naming a `$`
     /// parameter, known only per instantiation.
     pub fn signature(&self, params: &List<Param>, returns: Option<ExprId>) -> Result<Signature, Unevaluated> {
+        self.signature_in(params, returns, None)
+    }
+
+    /// The signature `params -> returns` declares within `context`, the signature its place asks
+    /// of it: a parameter written without a type has the type `context` gives its position, and
+    /// a result not written is `context`'s.
+    ///
+    /// # Errors
+    /// As [`Self::signature`].
+    pub fn signature_in(
+        &self,
+        params: &List<Param>,
+        returns: Option<ExprId>,
+        context: Option<&Signature>,
+    ) -> Result<Signature, Unevaluated> {
         let params = params
             .iter()
-            .map(|param| match param {
+            .enumerate()
+            .map(|(index, param)| match param {
                 // `$W: Writer`: a parameter constrained by an interface holds a type.
                 Entry::One(Param { pat, ty: Some(t), .. }) => match self.eval(*t) {
                     Ok(Value::Interface(_)) => Ok(TyKind::of_types()),
                     _ => self.param_type(*pat, self.ty(*t)?),
                 },
+                Entry::One(Param { pat: Some(pat), ty: None, .. }) if !self.parsed.hir.is_comptime(*pat) => {
+                    context.and_then(|c| c.params.get(index)).copied().ok_or(Unevaluated::Unsupported)
+                }
                 _ => Err(Unevaluated::Unsupported),
             })
             .collect::<Result<_, _>>()?;
-        Ok(Signature::new(params, self.result(returns)?))
+        let result = match (returns, context) {
+            (None, Some(context)) => context.result,
+            _ => self.result(returns)?,
+        };
+        Ok(Signature::new(params, result))
     }
 
     /// The type a function's signature gives the parameter `pat` annotated `ty`: a pack's,

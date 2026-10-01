@@ -66,6 +66,12 @@ impl Hir {
         self.member_decl(binder).is_none() && self.spread_of(binder).is_none()
     }
 
+    /// Whether `pat` binds a `$` parameter.
+    #[must_use]
+    pub fn is_comptime(&self, pat: PatId) -> bool {
+        matches!(self.pats[pat].kind, PatKind::Bind(b) if self.binders[b].comptime)
+    }
+
     /// The namespace among whose members `binder` is declared; `None` for a local.
     #[must_use]
     pub fn member_ns(&self, binder: BinderId) -> Option<NsId> {

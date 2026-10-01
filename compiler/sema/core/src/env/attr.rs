@@ -1,7 +1,7 @@
 //! Attributes as data (spec 02, section 5): an attribute the compiler acts on is a call of a
 //! `lang` primitive, found by its value, never by its name.
 
-use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
+use vun_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind};
 use vun_primitives::Primitive;
 use vun_sema_ty::{Marker, Signature, Value};
 
@@ -13,10 +13,18 @@ impl Env<'_, '_> {
     /// the declaration whose value it is.
     #[must_use]
     pub fn attrs_of(&self, literal: ExprId) -> Vec<ExprId> {
+        let (decl, mut attrs) = self.declaration_of(literal);
+        attrs.extend(decl.into_iter().flat_map(|d| &self.parsed.hir.decls[d].attrs));
+        attrs
+    }
+
+    /// The declaration the literal `literal` is the value of, and the attributes written on it
+    /// on the way: up through the attributes and marker prefixes around it, as in
+    /// `#[panic.never] of := unsafe (...) { ... }`.
+    #[must_use]
+    pub fn declaration_of(&self, literal: ExprId) -> (Option<DeclId>, Vec<ExprId>) {
         let hir = &self.parsed.hir;
         let mut attrs = Vec::new();
-        // Up through the attributes and marker prefixes around it, as in
-        // `#[panic.never] of := unsafe (...) { ... }`, to the declaration it is the value of.
         let mut value = literal;
         while let Some(wrapper) = hir.wrapper_of(value) {
             match &hir.exprs[wrapper].kind {
@@ -26,10 +34,7 @@ impl Env<'_, '_> {
             }
             value = wrapper;
         }
-        if let Some(decl) = hir.decl_valued(value) {
-            attrs.extend(&hir.decls[decl].attrs);
-        }
-        attrs
+        (hir.decl_valued(value), attrs)
     }
 
     /// The arguments of the attribute `primitive` among `attrs`, evaluated: `#[layout.bits(u32)]`

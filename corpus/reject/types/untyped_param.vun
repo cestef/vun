@@ -2,3 +2,7 @@
 //! passes, so a name alone is no parameter (spec 01, section 4).
 
 identity := (x) { x }; //~ types.untyped_param
+
+// The annotation of what it is the value of gives a parameter its type only where it takes as
+// many parameters as the literal has.
+two: (a: u8, b: u8) -> u8 = (a) { a }; //~ types.untyped_param
