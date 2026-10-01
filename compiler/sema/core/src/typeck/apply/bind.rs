@@ -12,6 +12,7 @@ use super::{Argument, Callee, Passing};
 use crate::callable::Callable;
 use crate::callable::Parameters;
 use crate::env::Quoting;
+use crate::eval::Instantiate;
 use crate::typeck::omitted::{Plan, Unifier};
 use crate::typeck::{Stage, Typer};
 
@@ -95,6 +96,23 @@ impl Typer<'_, '_, '_> {
             }
         }
         Instantiation { args: values, f }
+    }
+
+    /// The signature of the instantiation `instantiation` that the call at `call` reaches. A trap
+    /// in it is reported with the rest of the instantiation's when `absorbed`; why else it has no
+    /// signature is counted, as reading an unbound `$` parameter is.
+    pub(super) fn signature_of(
+        &mut self,
+        call: ExprId,
+        instantiation: &Instantiation,
+        absorbed: bool,
+    ) -> Option<Signature> {
+        let signature = instantiation.signature(self.env().cx);
+        if absorbed {
+            signature.map_err(|why| self.unevaluated(call, &why)).ok()
+        } else {
+            self.reported(call, signature).ok()
+        }
     }
 }
 

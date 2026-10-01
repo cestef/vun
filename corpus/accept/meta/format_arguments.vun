@@ -1,0 +1,14 @@
+//! An argument of `print` is written as its impl says whatever it is: a string literal, which
+//! typing gives the type of a borrow though its value is its bytes, an empty one, a tuple, and a
+//! struct by `{?}`, which derives its `Debug` from the parts (spec 03, section 4).
+
+start := std.os.start(main);
+
+Point := struct { x: i32, y: i32 };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut slab := std.text.Slab(96).empty();
+    p: Point = .{ .x = 1, .y = -2 };
+    std.fmt.print(&mut slab, "{} {} {?} {?} {?}", "ab", "", "c\n", (1, true), p).expect("room");
+    if slab.bytes() == "ab  \"c\\n\" (1, true) Point{ .x = 1, .y = -2 }" { .ok } else { .code(1) }
+};

@@ -16,7 +16,6 @@ use super::omitted::Plan;
 use super::{Known, Reported, Stage, Typer};
 use crate::callable::Callable;
 use crate::callable::Generic;
-use crate::eval::Instantiate;
 
 /// How a call's arguments are passed.
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
@@ -104,10 +103,7 @@ impl Typer<'_, '_, '_> {
             .signature
             .clone()
             .filter(|_| inferred.is_none())
-            .or_else(|| {
-                let signature = instantiation?.signature(self.env().cx);
-                if absorbed.is_some() { signature.ok() } else { self.reported(call, signature).ok() }
-            })
+            .or_else(|| self.signature_of(call, instantiation.as_ref()?, absorbed.is_some()))
             .or_else(|| {
                 let Some(Callable::Primitive(p)) = callee.f else { return None };
                 let signature =

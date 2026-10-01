@@ -264,15 +264,23 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         self.blocks[self.current].stmts.push(Stmt { place, value, origin });
     }
 
-    /// The value of `expr`; a temporary holding it has its type, so that checks know its kind.
+    /// The value of `expr`; a temporary holding it has its type, so that checks know its kind. A
+    /// constant typed as a borrow that its value is not, a string literal's, whose value is its
+    /// bytes, is held in a temporary of that type, so every operand has the type typing found.
     fn operand(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         let operand = self.value(expr)?;
-        if let Operand::Place(Place { local, projection }) = &operand
-            && projection.is_empty()
-            && self.locals[*local].name.is_none()
-            && let Some(ty) = self.type_of(expr)
-        {
-            self.locals[*local].ty = Some(ty);
+        let ty = self.type_of(expr);
+        match (&operand, ty) {
+            (Operand::Place(Place { local, projection }), Some(ty))
+                if projection.is_empty() && self.locals[*local].name.is_none() =>
+            {
+                self.locals[*local].ty = Some(ty);
+            }
+            (Operand::Const(value), Some(ty)) if ty.borrowed().is_some() && value.ty() != Some(ty) => {
+                let origin = self.env.parsed.hir.exprs[expr].origin;
+                return Ok(self.typed_temp(Rvalue::Use(operand), Some(ty), origin));
+            }
+            _ => {}
         }
         Ok(operand)
     }

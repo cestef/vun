@@ -173,7 +173,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
 
     /// Traces an evaluation for `expr` that gave no value, where it is written and why, and
     /// counts one that read an unbound `$` parameter.
-    fn unevaluated(&mut self, expr: ExprId, why: &Unevaluated) {
+    pub(super) fn unevaluated(&mut self, expr: ExprId, why: &Unevaluated) {
         self.unbound += usize::from(matches!(why, Unevaluated::Unbound));
         vun_trace::tracing::trace!(at = %self.hir().exprs[expr].origin.located(), ?why, "unevaluated");
     }
