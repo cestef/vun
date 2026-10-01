@@ -1,0 +1,23 @@
+//! An interface is how a type joins in.
+
+start := std.os.start(main);
+
+Point := struct { x: i32, y: i32 };
+
+// `{}` asks for `std.fmt.Format`. Nothing about it is special: `std.fmt` declares
+// it in vun, and this is how a type provides one.
+impl std.fmt.Format for Point {
+    format := ($W: std.fmt.Writer, value: &Point, w: &mut W) -> Result((), W.Error) {
+        std.fmt.print(w, "point")
+    };
+}
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    p := Point{ .x = 3, .y = -4 };
+
+    // `{?}` asks for `Debug`, which comes from the fields when you write nothing.
+    std.fmt.print(&mut out, "{?}\n", p);
+    std.fmt.print(&mut out, "{}\n", p);
+    .ok
+};

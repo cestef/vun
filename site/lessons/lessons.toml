@@ -17,6 +17,17 @@ hint = "6 * 9 is 54. Bind `answer` to something else."
 expect = { output = "the answer is 42\n" }
 
 [[lesson]]
+id = "printing"
+title = "printing"
+text = """
+The format string is read while compiling, so a mistake in it is an error before the program \
+exists. `{}` writes a value the usual way; `{x}` writes it in hex, `{b}` in binary and `{?}` as the \
+code that builds it. After a `:` goes where it sits: a fill, `<`, `^` or `>`, and a width."""
+task = "Make the last line show `n` in binary, 8 digits wide, padded with zeros: `11001010`."
+hint = "The mark is `b`. A fill and a width go after the colon, as in `{x:0>4}`: pad with `0`, on the left, to 4."
+expect = { output = "decimal: 202\nhex:     ca\ndebug:   .some(202)\npadded:  [   202]\nbinary:  11001010\n" }
+
+[[lesson]]
 id = "loops"
 title = "loops"
 text = """
@@ -42,9 +53,10 @@ id = "narrowing"
 title = "narrowing"
 text = """
 Narrowing is the only way a number can go wrong, so you always write it: `to` traps when the value \
-does not fit, `wrap` is modulo, `sat` clamps, and `try_to` gives an optional."""
+does not fit, `wrap` is modulo, `sat` clamps, and `try_to` gives an optional. A comparison tells \
+the compiler something too: inside `if big < 256`, `big` is known to fit."""
 task = "The last line traps. Run it, then make the program end normally."
-hint = "`to` is the one that traps. `try_to` returns a `?u8`, which a `match` opens with `.some` and `.none`."
+hint = "Put the line that traps under `if big < 256 { }`."
 expect = { exit = 0 }
 
 [[lesson]]
@@ -55,17 +67,18 @@ An enum is one of several variants, and a variant can carry data. A `match` has 
 variant, so adding one makes the compiler walk you through each `match` that needs it."""
 task = "`empty` was just added. Run it to see what the `match` forgot, and handle it: an empty shape has no area."
 hint = "A variant without data is matched as `.empty`. What is its area?"
-expect = { output = "75\n12\n15\n0\n" }
+expect = { output = ".circle(5) has area 75\n.rect(3, 4) has area 12\n.tri(6, 5) has area 15\n.empty has area 0\n" }
 
 [[lesson]]
 id = "errors"
 title = "errors"
 text = """
 There are no exceptions. A function that can fail returns a `Result`, and a trailing `?` hands the \
-error straight back to the caller. Errors are plain enums, so you match on them like anything else."""
-task = "`abc` is not a number. Give that error its own message: `not a number`."
-hint = "Replace the `.err(_)` arm with one for `.not_a_number`."
-expect = { output = "42\nnothing to double\nnot a number\n" }
+error straight back to the caller. Errors are plain enums, so you match on them, or print them with \
+`{?}`."""
+task = "`5000` is a number, only a big one. Make it `.err(.too_big)` instead of `.err(.not_a_number)`."
+hint = "Parse into a wider range, then compare: after `if n > 1000 { return ... }` the compiler knows `n` is small enough for the `u16`."
+expect = { output = ".ok(42)\n.err(.empty)\n.err(.not_a_number)\n.err(.too_big)\n" }
 
 [[lesson]]
 id = "borrows"
@@ -86,8 +99,19 @@ A type is a value, so a function can take one and return one: `Pair(u8)` is an o
 marks what has to be known while compiling. That is all generics are: there is no separate \
 feature."""
 task = "Print the larger of `-5` and `-2` as well, with the same `larger`."
-hint = "`larger` takes the type it works on first: `larger(i32, ...)`."
-expect = { output = "42\n-2\n" }
+hint = "Make another pair, of `i32`, and pass it to `larger`: it is read from the pair which type it works on."
+expect = { output = "Pair(u8){ .a = 7, .b = 42 }\n42\n-2\n" }
+
+[[lesson]]
+id = "interfaces"
+title = "interfaces"
+text = """
+An interface is a set of functions a type provides, and `impl I for T { }` is how it joins in. `{}` \
+asks for `std.fmt.Format`, which `std` declares in vun like anything else; `{?}` asks for `Debug`, \
+which comes from a struct's fields when you write nothing."""
+task = "Make `{}` print a `Point` as `(3, -4)`: write the body of `format`, reading `value.x` and `value.y`."
+hint = "`std.fmt.print(w, \"...\", ...)` writes to the writer `w` it was given, and gives back the `Result` `format` returns."
+expect = { output = "Point{ .x = 3, .y = -4 }\n(3, -4)\n" }
 
 [[lesson]]
 id = "iterators"
@@ -99,6 +123,17 @@ and no allocator involved."""
 task = "Yield only the even numbers."
 hint = "`yield` is a statement like any other. Put it under an `if`."
 expect = { output = "2\n4\n6\n8\n10\n" }
+
+[[lesson]]
+id = "memory"
+title = "memory"
+text = """
+Nothing allocates unless you hold an allocator, and an allocator is a value. `Fixed` hands out \
+bytes of a buffer you own, a `Vec` grows through whichever one you pass it, and running out is an \
+error you can read, not a crash. Nothing is freed behind your back: `deinit` is yours to call."""
+task = "The 64 bytes run out after 8 squares. Make the buffer big enough for all 20."
+hint = "A `u32` is 4 bytes, and while a `Vec` grows it briefly needs the old buffer and the new one. Try 256."
+expect = { output = "[0, 1, 4, 9, 16, 25, 36, 49, 64, 81, 100, 121, 144, 169, 196, 225, 256, 289, 324, 361]\n" }
 
 [[lesson]]
 id = "compile"

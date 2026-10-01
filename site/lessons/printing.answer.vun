@@ -1,0 +1,21 @@
+//! The format string is read while compiling.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    n: u8 = 202;
+    maybe: ?u8 = .some(n);
+
+    // `{}` writes a value the usual way. Another mark writes it another way:
+    // `{x}` is hex, `{?}` is the value as the code that builds it.
+    std.fmt.print(&mut out, "decimal: {}\n", n);
+    std.fmt.print(&mut out, "hex:     {x}\n", n);
+    std.fmt.print(&mut out, "debug:   {?}\n", maybe);
+
+    // After a `:` goes where it sits: a fill, then `<`, `^` or `>`, then a width.
+    std.fmt.print(&mut out, "padded:  [{:>6}]\n", n);
+
+    std.fmt.print(&mut out, "binary:  {b:0>8}\n", n);
+    .ok
+};

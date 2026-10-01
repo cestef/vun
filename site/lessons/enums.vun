@@ -16,8 +16,9 @@ area := (s: Shape) -> u32 {
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
     shapes: [4]Shape = [.circle(5), .rect(3, 4), .tri(6, 5), .empty];
-    for s in shapes {
-        std.fmt.print(&mut out, "{}\n", area(s));
+    // `&shapes` lends the array to the loop, and `s.*` reads an item.
+    for s in &shapes {
+        std.fmt.print(&mut out, "{?} has area {}\n", s.*, area(s.*));
     }
     .ok
 };

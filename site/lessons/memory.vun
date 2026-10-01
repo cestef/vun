@@ -1,0 +1,29 @@
+//! Memory comes from an allocator you hold.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+
+    // An allocator is a value too. This one hands out bytes of `storage`.
+    mut storage: [64]u8 = [0; 64];
+    mut arena := std.mem.alloc.Fixed.init(&mut storage);
+
+    // A `Vec` grows through the allocator it is passed, and running out is an
+    // error to read, not a crash.
+    mut squares := std.collections.Vec(u32).empty();
+    for i in 0..20 {
+        match squares.push(std.mem.alloc.Fixed, &mut arena, i * i) {
+            .ok(_) => {},
+            .err(e) => {
+                std.fmt.print(&mut out, "out of memory at {}: {?}\n", i, e);
+                break;
+            },
+        }
+    }
+    std.fmt.print(&mut out, "{?}\n", squares.items());
+
+    // Nothing is freed behind your back.
+    squares.deinit(std.mem.alloc.Fixed, &mut arena);
+    .ok
+};

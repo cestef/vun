@@ -5,14 +5,16 @@ start := std.os.start(main);
 // A function from a type to a type: `Pair(u8)` is a struct of two `u8`s.
 Pair := ($T: type) -> type { struct { a: T, b: T } };
 
-// `$` marks what is known at compile time, here which `T` this is.
+// `$` marks what is known while compiling, here which `T` this is. A call can
+// leave it out: it is read from the arguments.
 larger := ($T: type, p: Pair(T)) -> T { if p.a > p.b { p.a } else { p.b } };
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
     bytes := Pair(u8){ .a = 7, .b = 42 };
-    std.fmt.print(&mut out, "{}\n", larger(u8, bytes));
+    std.fmt.print(&mut out, "{?}\n", bytes);
+    std.fmt.print(&mut out, "{}\n", larger(bytes));
     ints := Pair(i32){ .a = -5, .b = -2 };
-    std.fmt.print(&mut out, "{}\n", larger(i32, ints));
+    std.fmt.print(&mut out, "{}\n", larger(ints));
     .ok
 };
