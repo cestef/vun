@@ -1,0 +1,6 @@
+//! A call with a run-time argument is typed by its signature: the function's value is known only
+//! when it is called.
+
+bits := (x: u8) -> Int(1..) { (x + 1).to(Int(1..)) };
+
+one: Int(1..=1) = bits(0); //~ int.does_not_fit

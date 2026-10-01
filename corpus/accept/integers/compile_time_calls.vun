@@ -1,0 +1,12 @@
+//! A call of a function whose parameters are all `$` ones is known when compiling, and an
+//! integer it gives has the type of its value alone, as a literal does (spec 04, rule 5).
+
+bits := ($T: type) -> Int(1..) { (8 * lang.meta.size(T)).to(Int(1..)) };
+
+sixteen: Int(16..=16) = bits(u16);
+
+/// `16 - n` is `Int(1..=16)`, so the amount shifted by is within a `u16`'s width and no check
+/// guards it.
+rotate := (x: u16, n: Int(0..16)) -> u16 {
+    (x << n) | (x >> ((bits(u16) - n) % bits(u16)))
+};

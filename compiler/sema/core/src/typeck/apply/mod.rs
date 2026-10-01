@@ -154,13 +154,15 @@ impl Typer<'_, '_, '_> {
             }
         }
         // A call that folds is known when compiling, and an integer it gives has the type of its
-        // value alone, as a literal does (spec 04): `size(T) * 8` is `64` for `f64`.
+        // value alone, as a literal does (spec 04): `size(T) * 8` is `64` for `f64`, and so is a
+        // function of `$` parameters computing it.
         if callee.f.as_ref().is_some_and(|f| f.folds(self.env())) {
-            let ty = match self.evaluating().eval(call) {
-                Ok(Value::Int(n)) if signature.result.interval().is_some() => {
-                    TyKind::int(&Interval::singleton(n))
-                }
-                _ => signature.result,
+            let ty = match signature.result.interval() {
+                Some(_) => match self.evaluating().eval(call) {
+                    Ok(Value::Int(n)) => TyKind::int(&Interval::singleton(n)),
+                    _ => signature.result,
+                },
+                None => signature.result,
             };
             return Some(Applied { known: Known { ty, stage: Stage::Compile }, inferred, pack: None });
         }

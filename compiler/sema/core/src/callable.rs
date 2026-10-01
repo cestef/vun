@@ -116,11 +116,13 @@ impl Callable {
         self.comptime(env)?.contains(&true).then(|| TyKind::Generic(Box::new(self.value())).intern())
     }
 
-    /// Whether a call of it is known when compiling, whatever runs: a primitive whose parameters
-    /// are all `$` ones, whose value nothing at run time changes.
+    /// Whether a call of it is known when compiling, whatever runs: one whose parameters are all
+    /// `$` ones, so that nothing at run time changes its value. A primitive without parameters
+    /// is such a call; a function needs a `$` parameter to be, or a call of it is a run-time one.
     #[must_use]
     pub fn folds(&self, env: &Env<'_, '_>) -> bool {
-        matches!(self, Self::Primitive(_)) && self.comptime(env).is_some_and(|c| c.iter().all(|&c| c))
+        self.comptime(env)
+            .is_some_and(|c| (matches!(self, Self::Primitive(_)) || !c.is_empty()) && c.iter().all(|&c| c))
     }
 
     /// The borrow mode each parameter's annotation writes: see [`Written::modes`].
