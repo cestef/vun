@@ -108,6 +108,7 @@ export class Editor {
       EditorState.languageData.of(() => [{commentTokens: {line: '//'}}]),
       highlighting,
       theme,
+      EditorView.lineWrapping,
       EditorView.updateListener.of((update) => update.docChanged && changed(update.state.doc.toString())),
     ];
     this.view = new EditorView({parent, state: EditorState.create({doc: code, extensions})});

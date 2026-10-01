@@ -1,5 +1,6 @@
 # The playground's language server waits on shared memory, which only a page isolated across
-# origins has (the format of Cloudflare Pages and Netlify).
+# origins has (the format of Cloudflare Pages and Netlify). GitHub Pages sends no headers: there
+# `coi.js`, a service worker the playground registers, puts them on the page's responses.
 /*
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp

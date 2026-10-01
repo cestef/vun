@@ -1,0 +1,41 @@
+//! The world is a value.
+
+start := std.os.start(main);
+
+// A function can only touch what it is handed. `load` is given `sys`, so it
+// can open files; a function that was not given it could not.
+load := (
+    sys: &mut std.os.System,
+    path: &[u8],
+    into: &mut [32]u8,
+) -> Result(usize, std.os.Error) {
+    mut file := sys.open(path, .read)?;
+    n := file.stream().read(into)?;
+    file.close()?;
+    .ok(n)
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+
+    // The playground's files live in memory: write one...
+    mut note := match sys.open("note.txt", .write) {
+        .ok(file) => file,
+        .err(_) => return .code(1),
+    };
+    std.fmt.print(note.stream(), "remember the milk\n");
+    note.close();
+
+    // ...and read it back. A file that is not there is an error you match.
+    mut buf: [32]u8 = [0; 32];
+    match load(sys, "note.txt", &mut buf) {
+        .ok(n) => std.fmt.print(&mut out, "{} bytes: {}", n, &buf[0..n]),
+        .err(_) => std.fmt.print(&mut out, "could not read it\n"),
+    };
+    match load(sys, "gone.txt", &mut buf) {
+        .ok(_) => std.fmt.print(&mut out, "found it?\n"),
+        .err(.missing) => std.fmt.print(&mut out, "gone.txt is missing\n"),
+        .err(_) => std.fmt.print(&mut out, "some other error\n"),
+    };
+    .ok
+};

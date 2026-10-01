@@ -1,0 +1,23 @@
+//! Enums, and a `match` that covers every case.
+
+start := std.os.start(main);
+
+// Variants can carry data. `empty` is the one just added.
+Shape := enum { circle(u8), rect(u8, u8), tri(u8, u8), empty };
+
+area := (s: Shape) -> u32 {
+    match s {
+        .circle(r) => r * r * 3,
+        .rect(w, h) => w * h,
+        .tri(b, h) => b * h / 2,
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    shapes: [4]Shape = [.circle(5), .rect(3, 4), .tri(6, 5), .empty];
+    for s in shapes {
+        std.fmt.print(&mut out, "{}\n", area(s));
+    }
+    .ok
+};

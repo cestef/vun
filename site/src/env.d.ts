@@ -12,9 +12,10 @@ declare module 'virtual:toolchain' {
   export default id;
 }
 
-declare module 'virtual:examples' {
-  const examples: {name: string; code: string}[];
-  export default examples;
+declare module 'virtual:lessons' {
+  import type {Lesson} from './play/lessons';
+  const lessons: Lesson[];
+  export default lessons;
 }
 
 declare module '*.vun?raw' {

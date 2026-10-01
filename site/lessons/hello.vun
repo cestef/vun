@@ -1,0 +1,15 @@
+//! A program is a few bindings.
+
+// The runtime is a function you call, with your `main`.
+start := std.os.start(main);
+
+// `name := value` binds a name. Numbers, functions and types are all values.
+answer := 6 * 9;
+
+// `sys` is the program's way out to the world. Nothing is ambient, so
+// printing means asking `sys` for its standard output.
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "the answer is {}\n", answer);
+    .ok
+};

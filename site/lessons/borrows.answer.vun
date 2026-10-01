@@ -1,0 +1,18 @@
+//! Borrows are scoped.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    mut n: u32 = 1;
+
+    // `&mut n` borrows `n` exclusively, for as long as the borrow is used.
+    // `.*` reaches what a borrow points at.
+    a := &mut n;
+    a.* += 1;
+    b := &mut n;
+    b.* += 1;
+
+    std.fmt.print(&mut out, "{}\n", n);
+    .ok
+};

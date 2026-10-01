@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:lessons": "node --no-warnings --experimental-strip-types scripts/lessons.ts",
+    "try": "node --no-warnings --experimental-strip-types scripts/try.ts"
   },
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "^0.4.2",

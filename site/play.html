@@ -18,18 +18,38 @@
     </header>
 
     <main class="playground">
-      <div class="tools">
-        <div class="examples" role="tablist" data-examples></div>
-        <button type="button" class="helix" data-helix aria-pressed="false">helix</button>
-        <button type="button" class="share" data-share>share</button>
-        <button type="button" class="run" data-run disabled><span data-run-label>run</span><kbd>ctrl ↵</kbd></button>
-      </div>
-      <div class="panes">
-        <section class="pane source" data-editor></section>
-        <section class="pane output">
-          <div class="report" data-output></div>
-          <p class="status" data-status>loading the compiler</p>
+      <aside class="guide" data-guide aria-label="guide">
+        <div class="steps" role="tablist" data-guide-steps></div>
+        <h1 data-guide-title></h1>
+        <div class="text" data-guide-text></div>
+        <section class="task" data-guide-task>
+          <p class="goal"><span class="check" aria-hidden="true"></span><span data-guide-goal></span></p>
+          <div class="expected" data-guide-expected hidden></div>
+          <p class="hint" data-guide-hint hidden></p>
         </section>
+        <div class="aids">
+          <button type="button" data-guide-hint-button>hint</button>
+          <button type="button" data-guide-answer title="put the answer in the editor; undo brings your code back">answer</button>
+          <button type="button" data-guide-reset title="start the lesson over">reset</button>
+          <span class="space"></span>
+          <button type="button" data-guide-previous aria-label="previous lesson">&lsaquo;</button>
+          <button type="button" class="next" data-guide-next>next &rsaquo;</button>
+        </div>
+      </aside>
+
+      <div class="stage">
+        <div class="tools">
+          <button type="button" class="helix" data-helix aria-pressed="false">helix</button>
+          <button type="button" class="share" data-share>share</button>
+          <button type="button" class="run" data-run disabled><span data-run-label>run</span><kbd>ctrl ↵</kbd></button>
+        </div>
+        <div class="panes">
+          <section class="pane source" data-editor></section>
+          <section class="pane output">
+            <div class="report" data-output></div>
+            <p class="status" data-status>loading the compiler</p>
+          </section>
+        </div>
       </div>
     </main>
     <script type="module" src="/src/play/main.ts"></script>

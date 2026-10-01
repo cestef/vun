@@ -1,0 +1,130 @@
+# The guide of the playground, a tour of the language in small steps. A lesson is a program
+# (`<id>.vun`) and the same program answered (`<id>.answer.vun`), with what to say about them. It is
+# done when a run ends as `expect` says: `output` (the program's, whitespace at the ends aside),
+# `exit` (0 where unsaid), or `error` (the compiler refusing with that diagnostic). A lesson with no
+# `expect` is free play. `pnpm check:lessons` runs every program through the compiler, so a lesson
+# keeps true as the language moves: the first must not be done as it stands, the second must be.
+
+[[lesson]]
+id = "hello"
+title = "hello"
+text = """
+Everything in vun is a binding: `name := value`. Even `main` is one, bound to a function. It is \
+handed `sys`, the program's way out to the world: nothing is ambient, so printing means asking \
+`sys` for its standard output."""
+task = "Make it print `the answer is 42`, then run it."
+hint = "6 * 9 is 54. Bind `answer` to something else."
+expect = { output = "the answer is 42\n" }
+
+[[lesson]]
+id = "loops"
+title = "loops"
+text = """
+`for` is the only loop: over a range like this one, `for cond { }` while something holds, or \
+`for { }` forever. `if` is an expression, and `%` is the remainder."""
+task = "Multiples of 5 print `buzz`, and multiples of 15 print `fizzbuzz`."
+hint = "Test 15 first: an `else if` chain stops at the first test that holds."
+expect = { output = "1\n2\nfizz\n4\nbuzz\nfizz\n7\n8\nfizz\nbuzz\n11\nfizz\n13\n14\nfizzbuzz\n" }
+
+[[lesson]]
+id = "ranges"
+title = "integers are ranges"
+text = """
+Every integer type is a range: `u8` is `Int(0..=255)`. Arithmetic is exact, so `a * 2` is \
+`Int(0..=510)` and can never overflow. What the compiler will not do is squeeze that into a `u8` \
+for you."""
+task = "Run it and read the error, then make it build and print `400`."
+hint = "The result can reach 510: give `double` a result type that holds every value."
+expect = { output = "400\n" }
+
+[[lesson]]
+id = "narrowing"
+title = "narrowing"
+text = """
+Narrowing is the only way a number can go wrong, so you always write it: `to` traps when the value \
+does not fit, `wrap` is modulo, `sat` clamps, and `try_to` gives an optional."""
+task = "The last line traps. Run it, then make the program end normally."
+hint = "`to` is the one that traps. `try_to` returns a `?u8`, which a `match` opens with `.some` and `.none`."
+expect = { exit = 0 }
+
+[[lesson]]
+id = "enums"
+title = "enums"
+text = """
+An enum is one of several variants, and a variant can carry data. A `match` has to cover every \
+variant, so adding one makes the compiler walk you through each `match` that needs it."""
+task = "`empty` was just added. Run it to see what the `match` forgot, and handle it: an empty shape has no area."
+hint = "A variant without data is matched as `.empty`. What is its area?"
+expect = { output = "75\n12\n15\n0\n" }
+
+[[lesson]]
+id = "errors"
+title = "errors"
+text = """
+There are no exceptions. A function that can fail returns a `Result`, and a trailing `?` hands the \
+error straight back to the caller. Errors are plain enums, so you match on them like anything else."""
+task = "`abc` is not a number. Give that error its own message: `not a number`."
+hint = "Replace the `.err(_)` arm with one for `.not_a_number`."
+expect = { output = "42\nnothing to double\nnot a number\n" }
+
+[[lesson]]
+id = "borrows"
+title = "borrows"
+text = """
+`&x` borrows, `&mut x` borrows exclusively, and `.*` reaches what a borrow points at. A borrow lasts \
+until its last use, and while an exclusive one is live nothing else can reach the place. There are \
+no lifetime annotations: the compiler reads your code."""
+task = "The two `&mut` borrows of `n` overlap. Reorder the lines so it builds and prints `3`."
+hint = "Finish with `a` before you borrow `n` again."
+expect = { output = "3\n" }
+
+[[lesson]]
+id = "types"
+title = "types are values"
+text = """
+A type is a value, so a function can take one and return one: `Pair(u8)` is an ordinary call. `$` \
+marks what has to be known while compiling. That is all generics are: there is no separate \
+feature."""
+task = "Print the larger of `-5` and `-2` as well, with the same `larger`."
+hint = "`larger` takes the type it works on first: `larger(i32, ...)`."
+expect = { output = "42\n-2\n" }
+
+[[lesson]]
+id = "iterators"
+title = "iterators"
+text = """
+A function with `yield` is a coroutine: calling it gives something `for` can loop over, and `yield` \
+hands a value out and pauses on the spot. Its state is a frame of a fixed size, so there is no heap \
+and no allocator involved."""
+task = "Yield only the even numbers."
+hint = "`yield` is a statement like any other. Put it under an `if`."
+expect = { output = "2\n4\n6\n8\n10\n" }
+
+[[lesson]]
+id = "compile"
+title = "compile time"
+text = """
+`$` means one stage earlier. `$fact(20)` runs `fact` while compiling, and the program only holds the \
+result. Compile time and run time share one semantics, so an overflow is the same trap, reported as \
+a compile error."""
+task = "21! does not fit a `u64`, and the compiler finds out before the program exists. Ask for 20."
+hint = "Read the error: it points at the `$` call."
+expect = { output = "3628800\n2432902008176640000\n" }
+
+[[lesson]]
+id = "world"
+title = "the world is a value"
+text = """
+Files, clocks, standard output: all of it hangs off `sys`, a value you pass on, so a function that is \
+not given it cannot touch the world. Failure is a value too: a file that is not there is `.missing`, \
+which you can match."""
+task = "Make the note say `buy bread` (keep the newline) and run it."
+hint = "The text is the string that `std.fmt.print(note.stream(), ...)` writes."
+expect = { output = "10 bytes: buy bread\ngone.txt is missing\n" }
+
+[[lesson]]
+id = "sandbox"
+title = "your turn"
+text = """
+That is the tour. This is a program of your own: write anything. The link button shares it, and the \
+[specification](https://github.com/cestef/vun/tree/main/docs/spec) has the rest."""

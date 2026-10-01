@@ -1,0 +1,29 @@
+//! Failure is a value: `Result`, and `?`.
+
+start := std.os.start(main);
+
+Error := enum { empty, not_a_number };
+
+// A `Result(T, E)` is `.ok(T)` or `.err(E)`. A trailing `?` hands an error
+// straight back to the caller, and otherwise gives the value.
+double := (text: &[u8]) -> Result(u16, Error) {
+    if text.len() == 0 { return .err(.empty); }
+    n := Int(0..=1000).parse(text).ok_or(Error.not_a_number)?;
+    .ok(n * 2)
+};
+
+show := (out: &mut std.os.Stream, text: &[u8]) {
+    match double(text) {
+        .ok(n) => std.fmt.print(out, "{}\n", n),
+        .err(.empty) => std.fmt.print(out, "nothing to double\n"),
+        .err(_) => std.fmt.print(out, "error\n"),
+    };
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    show(&mut out, "21");
+    show(&mut out, "");
+    show(&mut out, "abc");
+    .ok
+};

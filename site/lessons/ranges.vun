@@ -1,0 +1,13 @@
+//! Integers are ranges.
+
+start := std.os.start(main);
+
+// A `u8` is `Int(0..=255)`, and arithmetic is exact:
+// `a * 2` is `Int(0..=510)`.
+double := (a: u8) -> u8 { a * 2 };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "{}\n", double(200));
+    .ok
+};

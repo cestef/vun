@@ -1,0 +1,19 @@
+//! `$` runs code while compiling.
+
+start := std.os.start(main);
+
+fact := (n: u8) -> u64 {
+    mut total: u64 = 1;
+    for i in 1..=n { total *= i; }
+    total
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    // At run time, like any call.
+    std.fmt.print(&mut out, "{}\n", fact(10));
+    // `$` is one stage earlier: the compiler runs `fact` and the program only
+    // holds the answer. Same language, same rules.
+    std.fmt.print(&mut out, "{}\n", $fact(20));
+    .ok
+};

@@ -1,0 +1,20 @@
+//! A function that yields is an iterator.
+
+start := std.os.start(main);
+
+// `yield` hands a value out and pauses right there. The function is a
+// coroutine, which `for` loops over, and its state is a frame of a fixed
+// size: no heap.
+numbers := (limit: u32) -> Iter(u32) {
+    for i in 1..=limit {
+        if i % 2 == 0 { yield i; }
+    }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    for n in numbers(10) {
+        std.fmt.print(&mut out, "{}\n", n);
+    }
+    .ok
+};

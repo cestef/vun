@@ -1,0 +1,19 @@
+//! Narrowing is explicit.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    big: u32 = 300;
+
+    // Going to a smaller type is a choice, and you name it.
+    std.fmt.print(&mut out, "wrap: {}\n", big.wrap(u8)); // modulo 256
+    std.fmt.print(&mut out, "sat:  {}\n", big.sat(u8)); // the nearest end
+
+    // `try_to` gives an optional: the value, or nothing.
+    match big.try_to(u8) {
+        .some(v) => std.fmt.print(&mut out, "fits: {}\n", v),
+        .none => std.fmt.print(&mut out, "300 does not fit in a u8\n"),
+    };
+    .ok
+};

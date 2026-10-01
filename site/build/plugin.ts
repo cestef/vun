@@ -3,7 +3,7 @@
 // - `virtual:brand.css`: the schemes of `palette.toml` and `cards/code/colors.toml` as custom
 //   properties, light by default, dark when the system asks and the page does not say light.
 // - `virtual:highlight`: the grammar and themes the playground highlights with.
-// - `virtual:examples`: the programs the playground offers, from the corpus.
+// - `virtual:lessons`: the guide of the playground, a tour of the language in `site/lessons`.
 // - `virtual:toolchain`: the build of the compiler served, by the hash of its bytes.
 // - `play/vun.wasm` and `play/library.json`: the compiler built for WASI and the library it
 //   compiles against, which the playground runs in the browser. The compiler is built with
@@ -15,6 +15,7 @@ import {parse} from 'smol-toml';
 import type {Plugin} from 'vite';
 
 import {highlighting} from './highlight';
+import {lessons} from './lessons';
 import {REPOSITORY_DIR, bytes, files, source} from './source';
 
 type Table = Record<string, Record<string, string>>;
@@ -36,13 +37,6 @@ function brand(): string {
   ].join('\n');
 }
 
-// The corpus programs offered, each a hosted program the WASI target builds and runs.
-const EXAMPLES = ['hello', 'tour', 'files', 'clocks'];
-
-function examples() {
-  return EXAMPLES.map((name) => ({name, code: source(`corpus/accept/programs/${name}.vun`)}));
-}
-
 const COMPILER = 'target/wasm32-wasip1/dist/vun.wasm';
 // How many hexadecimal digits of the compiler's hash name its build.
 const BUILD_DIGITS = 16;
@@ -51,7 +45,7 @@ const MODULES: Record<string, () => string> = {
   toolchain: () => `export default ${JSON.stringify(createHash('sha256').update(bytes(COMPILER)).digest('hex').slice(0, BUILD_DIGITS))};`,
   'brand.css': brand,
   highlight: () => `export default ${JSON.stringify(highlighting())};`,
-  examples: () => `export default ${JSON.stringify(examples())};`,
+  lessons: () => `export default ${JSON.stringify(lessons())};`,
 };
 
 const LIBRARY = 'lib';
@@ -67,7 +61,7 @@ const TYPES: Record<string, string> = {'.wasm': 'application/wasm', '.json': 'ap
 const PREFIX = 'virtual:';
 
 // The directories a change in which makes the virtual modules again.
-const WATCHED = ['assets/', 'corpus/accept/programs/', 'editors/vscode/syntaxes/', 'target/wasm32-wasip1/dist/'];
+const WATCHED = ['assets/', 'site/lessons/', 'editors/vscode/syntaxes/', 'target/wasm32-wasip1/dist/'];
 
 export function site(): Plugin {
   let base = '/';
