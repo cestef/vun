@@ -135,7 +135,7 @@ Feature := enum {
 };
 
 /// What a form, or a width of it, needs of a processor beyond Thumb.
-Need := lang.arch.Need(Feature, Size);
+Need: type = lang.arch.Need(Feature, Size);
 
 /// Where control goes after a form.
 Flow := enum {
@@ -204,7 +204,7 @@ Family := struct { forms: &[Form(Word)] };
 Mnemonic := struct { instructions: &[lang.meta.Name] };
 
 /// What an enum of registers names, written as its attribute.
-Registers := lang.arch.Registers(Class, Size);
+Registers: type = lang.arch.Registers(Class, Size);
 
 /// Each instruction is called in a block with the operands it takes (spec 07, section 6).
 #[impl(lang.ops.Call(_, ())(Instruction))]

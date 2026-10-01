@@ -12,8 +12,8 @@ fn branches_run_at_compile_time_and_join_their_types() {
         "\
 max := ($a: Int(0..=100), $b: Int(0..=100)) -> Int(0..=100) { if a > b { a } else { b } };
 pick := ($n: u8) -> u8 { if n == 1 and !(n > 5) or n == 7 { 10 } else { 20 } };
-Low := Int(0..=max(3, 70));
-Picked := Int(0..=pick(1) + pick(2));
+Low: type = Int(0..=max(3, 70));
+Picked: type = Int(0..=pick(1) + pick(2));
 low: Low = 71;
 picked: Picked = 30;
 join := (x: u8, y: u16) -> u8 { if x < 3 { x } else { y } };
@@ -51,10 +51,10 @@ root := ($n: u8) -> u8 {
 };
 wrap := ($n: u8) -> u8 { mut x: u8 = n; x +%= 250; x };
 early := ($n: u8) -> u8 { if n > 3 { return 1; } 2 };
-Sum := Int(0..=sum(4));
-Root := Int(0..=root(20));
-Wrap := Int(0..=wrap(10));
-Early := Int(0..=early(9));
+Sum: type = Int(0..=sum(4));
+Root: type = Int(0..=root(20));
+Wrap: type = Int(0..=wrap(10));
+Early: type = Int(0..=early(9));
 sum_fits: Sum = 10;
 sum_over: Sum = 11;
 root_over: Root = 6;
@@ -77,7 +77,7 @@ fn a_compile_time_trap_is_reported_at_its_root_with_the_calls_it_fired_in() {
         "\
 half := ($n: Int(0..=9)) -> Int(0..=10) { 10 / n };
 twice := ($n: Int(0..=9)) -> Int(0..=20) { half(n) + half(n) };
-Small := Int(0..=twice(0));
+Small: type = Int(0..=twice(0));
 ",
     );
     let mut session = fixture.session();

@@ -8,7 +8,7 @@ System := struct {
 Stdout := struct {};
 #[impl(std.fmt.Writer(Stdout))]
 stdout_writer := struct {
-    Error := Errno;
+    Error: type = Errno;
     closed: Errno = .{ .code = Errno.pipe };
     write := (self: &mut Stdout, bytes: &[u8]) -> Result(usize, Errno) { .ok(bytes.len()) };
 };

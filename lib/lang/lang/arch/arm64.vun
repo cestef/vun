@@ -143,7 +143,7 @@ Arg := struct {
 Feature := enum { lse };
 
 /// What a form needs of a processor beyond Armv8.0.
-Need := lang.arch.Need(Feature, Size);
+Need: type = lang.arch.Need(Feature, Size);
 
 /// A width a form is defined at, the bits it sets in the word, and the type a call writes before
 /// its operands to select it, where the mnemonic names the width apart (`ldr(u8, ...)` is `ldrb`).
@@ -183,7 +183,7 @@ Family := struct { forms: &[Form(Word)] };
 Mnemonic := struct { instructions: &[lang.meta.Name] };
 
 /// What an enum of registers names, written as its attribute.
-Registers := lang.arch.Registers(Class, Size);
+Registers: type = lang.arch.Registers(Class, Size);
 
 /// Each instruction is called in a block with the operands it takes (spec 07, section 6).
 #[impl(lang.ops.Call(_, ())(Instruction))]

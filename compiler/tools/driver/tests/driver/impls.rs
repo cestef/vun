@@ -68,7 +68,7 @@ wrong := (x: u32) -> u8 { x.wrap(u16) };
 half := ($x: u32) -> u8 { (x / 2).to(u8) };
 low: u8 = half(100);
 high: u8 = half(1000);
-Wrapped := Int(0..=300.wrap(u8));
+Wrapped: type = Int(0..=300.wrap(u8));
 wrapped: Wrapped = 45;
 ",
     );
@@ -123,7 +123,7 @@ count := () -> usize {
     mut c: Counter = .{ .calls = 0 };
     (c(1, true) + c() + c(2) + c.calls).wrap(usize)
 };
-Six := Int(0..=count());
+Six: type = Int(0..=count());
 fits: Six = 6;
 over: Six = 7;
 wrong := () -> bool {

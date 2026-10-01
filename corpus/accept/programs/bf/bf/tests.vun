@@ -14,7 +14,7 @@ Full := enum { full };
 
 #[impl(std.fmt.Writer(Sink))]
 sink_writer := struct {
-    Error := Full;
+    Error: type = Full;
     closed: Full = .full;
     write := (self: &mut Sink, bytes: &[u8]) -> Result(usize, Full) {
         mut n: usize = 0;

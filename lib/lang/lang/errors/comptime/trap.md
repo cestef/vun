@@ -11,7 +11,7 @@ where the trap fired, and lists each call it fired in (spec 03, section 7).
 
 ```vun
 half := ($n: u8) -> u8 { 10 / n };
-Small := Int(0..=half(0)); //~ comptime.trap
+Small: type = Int(0..=half(0)); //~ comptime.trap
 ```
 
 ## Fix
@@ -21,5 +21,5 @@ division is no trap site:
 
 ```vun
 half := ($n: Int(1..=255)) -> u8 { 10 / n };
-Small := Int(0..=half(2));
+Small: type = Int(0..=half(2));
 ```

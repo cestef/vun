@@ -1,6 +1,6 @@
 start := std.os.start(main);
 
-V := lang.simd.Vector(4, f32);
+V: type = lang.simd.Vector(4, f32);
 
 saxpy := ($N: usize, a: f32, x: &[N]f32, y: &mut [N]f32) {
     $for i in lang.simd.chunks(N, 4) {

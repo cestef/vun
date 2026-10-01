@@ -12,7 +12,7 @@ Writer := interface(($Self: type) -> type { struct {
 
 #[impl(Writer(Uart))]
 uart_writer := struct {
-    Error := uart.Error;
+    Error: type = uart.Error;
     write := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { self.send(bytes) };
 };
 

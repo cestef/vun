@@ -18,18 +18,18 @@ test := struct {
 };
 
 /// How a type's values are generated for property tests its own way (spec 11, section 2).
-Arbitrary := std.testing.property.Arbitrary;
+Arbitrary: lang.Interface = std.testing.property.Arbitrary;
 /// The choices generated values are read from.
-Choices := std.testing.property.Choices;
+Choices: type = std.testing.property.Choices;
 /// A value of a type read from choices: by its `Arbitrary`, or by reflection.
 gen := std.testing.property.gen;
 /// The loop of a benchmark.
-Bench := std.testing.bench.Bench;
+Bench: type = std.testing.bench.Bench;
 /// A simulation, and its clock.
-Sim := std.testing.sim.Sim;
-Clock := std.testing.sim.Clock;
+Sim: type = std.testing.sim.Sim;
+Clock: type = std.testing.sim.Clock;
 /// How a run is asked for.
-Options := std.testing.options.Options;
+Options: type = std.testing.options.Options;
 
 /// A test that is not run, and why.
 Ignored := struct {

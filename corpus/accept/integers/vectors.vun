@@ -1,6 +1,6 @@
 //! SIMD is a type, not a mode (spec 04, section 3).
 
-V := lang.simd.Vector(8, f32);
+V: type = lang.simd.Vector(8, f32);
 
 saxpy := ($N: usize, a: f32, x: &[N]f32, y: &mut [N]f32) {
     $for i in lang.simd.chunks(N, 8) {

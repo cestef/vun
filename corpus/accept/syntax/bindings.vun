@@ -13,4 +13,4 @@ spread := (xs: &[u32]) -> u32 {
 };
 
 uart := mydrivers.serial.uart;
-Baud := uart.Baud;
+Baud: type = uart.Baud;

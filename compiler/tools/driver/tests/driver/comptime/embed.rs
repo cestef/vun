@@ -18,13 +18,13 @@ fn a_file_of_the_package_is_embedded_as_its_bytes_and_any_other_traps() {
         &manifest,
         "\
 table := std.meta.embed(\"data/table.txt\");
-Len := Int(0..=table.len());
+Len: type = Int(0..=table.len());
 long: Len = 6;
-First := Int(0..=table[0]);
+First: type = Int(0..=table[0]);
 first: First = 98;
-Missing := Int(0..=std.meta.embed(\"data/absent.txt\").len());
+Missing: type = Int(0..=std.meta.embed(\"data/absent.txt\").len());
 missing: Missing = 0;
-Outside := Int(0..=std.meta.embed(\"../outside.txt\").len());
+Outside: type = Int(0..=std.meta.embed(\"../outside.txt\").len());
 outside: Outside = 0;
 ",
     );

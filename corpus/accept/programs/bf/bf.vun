@@ -7,9 +7,9 @@ capacity := 4096;
 cells := 30000;
 
 /// The position of an instruction.
-Index := Int(0..capacity);
+Index: type = Int(0..capacity);
 /// The position of a cell.
-Cell := Int(0..cells);
+Cell: type = Int(0..cells);
 
 /// One instruction; a bracket holds the position of its partner.
 Op := enum { right, left, inc, dec, write, read, open(Index), close(Index) };

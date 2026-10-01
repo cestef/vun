@@ -18,7 +18,7 @@ Block := ($registers: &[Register]) -> type {
     };
     Regs
 };
-Timer := Block(&[.{ .name = \"cr1\", .reset = 5 }, .{ .name = \"arr\", .reset = 9 }]);
+Timer: type = Block(&[.{ .name = \"cr1\", .reset = 5 }, .{ .name = \"arr\", .reset = 9 }]);
 method := (t: &mut Timer) -> bool { t.reset_arr() };
 field := (t: Timer) -> bool { t.cr1 };
 ",

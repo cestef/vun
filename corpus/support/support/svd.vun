@@ -6,4 +6,4 @@ Device := struct {
     peripheral := (self: &Device, name: &[u8]) -> Peripheral { .{ .registers = &[] } };
 };
 parse := ($text: &[u8]) -> Device { .{} };
-bits := ($r: Register) -> type { lang.int.unsigned(r.width) };
+Bits := ($r: Register) -> type { lang.int.unsigned(r.width) };

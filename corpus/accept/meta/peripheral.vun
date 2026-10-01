@@ -15,7 +15,7 @@ Block := ($registers: &[Register]) -> type {
     Regs
 };
 
-Timer := Block(&[
+Timer: type = Block(&[
     .{ .name = "cr1", .offset = 0x00, .reset = 0 },
     .{ .name = "arr", .offset = 0x2c, .reset = 0xffff },
 ]);

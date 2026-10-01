@@ -67,7 +67,7 @@ Header32 := struct {
 };
 
 /// The program headers of the target's ELF files.
-Header := $if lang.meta.size(usize) == 8 { Header64 } else { Header32 };
+Header: type = $if lang.meta.size(usize) == 8 { Header64 } else { Header32 };
 
 /// What each thread's storage starts as: the bytes stored at `at`, then zeros up to `bytes`, the
 /// block aligned to `align`.

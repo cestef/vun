@@ -3,7 +3,7 @@
 //! are visible in every corpus file; its children (`serde`, `svd`, ...) stand for packages.
 
 /// Memory and files.
-Own := std.mem.Own;
+Own: type = std.mem.Own;
 Alloc := struct {
     create := (self: &mut Alloc, $T: type) -> Result(Own(T), Error) { .err(.oom) };
     destroy := (self: &mut Alloc, $T: type, o: Own(T)) { o.into_raw(); };

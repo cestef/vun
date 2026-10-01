@@ -12,7 +12,7 @@ fn compile_time_calls_nest_past_the_host_stack() {
         "deep.vun",
         "\
 count := (n: u32) -> u32 { if n == 0 { 0 } else { (count(n - 1) + 1).wrap(u32) } };
-Deep := Int(0..=count(12000));
+Deep: type = Int(0..=count(12000));
 fits: Deep = 12000;
 over: Deep = 12001;
 ",

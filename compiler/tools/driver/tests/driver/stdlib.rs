@@ -94,7 +94,7 @@ short := ($n: u8) -> Short(n) { [0; n - 10] };
 three := () { _ = short(3); };
 div := ($n: u8) -> [10 / n]u8 { [0; 10 / n] };
 zero := () { _ = div(0); };
-Seven := Short(3);
+Seven: type = Short(3);
 seven: Seven = [];
 ",
     );

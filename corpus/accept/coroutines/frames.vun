@@ -5,7 +5,7 @@ counter := (limit: u8) -> Iter(u8) {
     for i in 0..limit { yield i; }
 };
 
-Counter := std.meta.Frame(counter);
+Counter: type = std.meta.Frame(counter);
 
 /// Reports `msg` unless `holds`.
 require := ($holds: bool, $msg: &[u8]) -> u8 {

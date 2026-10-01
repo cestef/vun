@@ -51,7 +51,7 @@ Xmm := enum {
 };
 
 /// What an enum of registers names, written as its attribute.
-Registers := lang.arch.Registers(Class, Size);
+Registers: type = lang.arch.Registers(Class, Size);
 
 /// What an operand position takes. A register or memory operand without a width of its own has
 /// the instruction's.
@@ -110,7 +110,7 @@ Operand := struct { kind: Kind, access: Access };
 Feature := enum {};
 
 /// What a form needs of a processor beyond x86-64's baseline.
-Need := lang.arch.Need(Feature, Size);
+Need: type = lang.arch.Need(Feature, Size);
 
 /// A prefix before REX: `lock`, `rep`, or the mandatory prefix of an SSE instruction.
 Prefix := enum { none, lock, rep, p66, f2, f3 };

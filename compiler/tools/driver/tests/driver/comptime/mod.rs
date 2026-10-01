@@ -80,17 +80,17 @@ fn compile_time_calls_build_and_read_values() {
 Pair := struct { a: u8, b: u8 = 5 };
 make := ($x: u8) -> Pair { .{ .a = x } };
 swap := ($p: Pair) -> Pair { Pair{ .a = p.b, .b = p.a } };
-Big := Int(0..=swap(make(3)).a);
+Big: type = Int(0..=swap(make(3)).a);
 big: Big = 6;
 second := ($xs: [3]u8) -> u8 { xs[1] };
-Second := Int(0..=second([1, 9, 2]));
+Second: type = Int(0..=second([1, 9, 2]));
 two: Second = 10;
 Register := struct { name: &[u8], offset: u16 };
 regs: &[Register] = &[.{ .name = \"cr1\", .offset = 0 }, .{ .name = \"arr\", .offset = 0x2c }];
-Offset := Int(0..=regs[1].offset);
+Offset: type = Int(0..=regs[1].offset);
 offset: Offset = 45;
 pairs := .{ Pair{ .a = 1 }, Pair{ .a = 7 } };
-Seventh := Int(0..=pairs.1.a);
+Seventh: type = Int(0..=pairs.1.a);
 seventh: Seventh = 8;
 ",
     );

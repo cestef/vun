@@ -256,7 +256,7 @@ Chain := struct {
 
 /// What a thread keeps of the calls that spawned it, which its backtrace names past its own:
 /// their chain where the table describes calls, else nothing.
-Spawn := $if lang.trace.current == .calls { Chain } else { struct {} };
+Spawn: type = $if lang.trace.current == .calls { Chain } else { struct {} };
 
 /// The calls spawning a thread, past the last returning into the function at `from`, which
 /// spawns it.

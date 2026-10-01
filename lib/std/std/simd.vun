@@ -2,7 +2,7 @@
 //! `lang.simd.Vector(n, T)`, lane by lane over the array of its lanes. An operator's lanes have
 //! the type the same operator gives their lanes (`u8` lanes sum to `Int(0..=510)` lanes).
 
-Vector := lang.simd.Vector;
+Vector: ($lanes: usize, $T: type) -> type = lang.simd.Vector;
 
 /// The order a reduction combines lanes in: each run of `width` lanes as a balanced tree of
 /// pairs, then the runs' results in lane order. A width of 1 combines every lane in order.

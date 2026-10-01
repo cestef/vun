@@ -60,7 +60,7 @@ system := of(lang.target.current.os);
 errno_location: unsafe () -> *i32 = _;
 
 /// A signal set as the C library lays it out, and the one holding no signal.
-Sigset := [system.words]system.Word;
+Sigset: type = [system.words]system.Word;
 no_signals: Sigset = [0; system.words];
 #[link.symbol("sigfillset"), abi.c, panic.never]
 sigfillset: unsafe (set: *Sigset) -> i32 = _;

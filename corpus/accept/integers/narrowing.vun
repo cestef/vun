@@ -15,7 +15,7 @@ parse_digit := (c: u8) -> ?Int(0..=9) {
     (c - '0').try_to(Int(0..=9))
 };
 
-Level := Int(0..8);
+Level: type = Int(0..8);
 
 brighter := (l: Level) -> Level { (l + 1).sat(Level) };
 

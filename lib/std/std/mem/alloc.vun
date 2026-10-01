@@ -47,7 +47,7 @@ Fixed := struct {
 
 #[impl(Allocator(Fixed))]
 fixed_allocator := struct {
-    Error := std.mem.alloc.Error;
+    Error: type = std.mem.alloc.Error;
     /// `size` bytes aligned to `align`, from what the buffer has left.
     alloc := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
         self.take(size, align)

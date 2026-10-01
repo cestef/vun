@@ -71,7 +71,7 @@ request := (number: usize, args: [6]usize) -> isize {
 block: usize = 0;
 set_mask: usize = 2;
 /// The kernel's signal set: 64 bits, a bit per signal from 1 up.
-Sigset := u64;
+Sigset: type = u64;
 sigset_bytes: usize = 8;
 every_signal: Sigset = 0xffff_ffff_ffff_ffff;
 

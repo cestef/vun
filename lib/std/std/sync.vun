@@ -77,7 +77,7 @@ Shared := ($T: type) -> type { struct {
     };
 } };
 
-Order := lang.mem.Order;
+Order: type = lang.mem.Order;
 
 /// A value accessed atomically. Adding and subtracting wrap within `T`; each returns the value
 /// held before, as `swap` and `compare_swap` do.

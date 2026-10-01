@@ -20,7 +20,7 @@ first := 0x4002_0000;
 stride := 0x400;
 
 /// A port, by its letter's place: A to I.
-Index := Int(0..9);
+Index: type = Int(0..9);
 
 /// The mode of a pin, two bits of `moder` each.
 Mode := enum {

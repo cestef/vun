@@ -10,7 +10,7 @@ its own body, so a loop that never ends is an error rather than a compiler that 
 
 ```vun
 spin := ($n: u8) -> u8 { for { } };
-Stuck := Int(0..=spin(1)); //~ comptime.exhausted
+Stuck: type = Int(0..=spin(1)); //~ comptime.exhausted
 ```
 
 ## Fix
@@ -23,5 +23,5 @@ spin := ($n: u8) -> u8 {
     for i < n { i += 1; }
     i
 };
-Stuck := Int(0..=spin(1));
+Stuck: type = Int(0..=spin(1));
 ```

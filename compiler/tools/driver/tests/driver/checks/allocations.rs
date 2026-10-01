@@ -64,7 +64,7 @@ far: usize = 1 << 40;
 
 #[impl(std.mem.alloc.Allocator(Reuse))]
 reuse_allocator := struct {{
-    Error := std.mem.alloc.Error;
+    Error: type = std.mem.alloc.Error;
     alloc := (self: &mut Reuse, size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {{
         mut at := self.freed;
         if at != 0 {{

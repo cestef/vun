@@ -16,7 +16,7 @@ four := (a: [4]u8) -> bool { a.len() };
 tail := (xs: &[u8], k: u8) -> &[u8] { xs[k..] };
 part := (xs: &[u8]) -> u8 { xs[1..3] };
 upto := (n: u8) -> bool { 0..n };
-Digit := Int(0..10);
+Digit: type = Int(0..10);
 digit: Digit = 9;
 ",
     );
