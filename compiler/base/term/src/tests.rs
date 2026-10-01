@@ -102,6 +102,38 @@ fn statuses_are_lines_for_people_and_json_for_programs() {
     assert_eq!((vun_data::json::parse(out.trim()).unwrap(), err), (Done(1).json(), String::new()));
 }
 
+struct Broke;
+
+impl Record for Broke {
+    fn kind(&self) -> &'static str {
+        "broke"
+    }
+    fn text(&self) -> Text {
+        Text::from("it")
+    }
+    fn fields(&self) -> vun_data::Object<'static> {
+        vun_data::Object::new()
+    }
+}
+
+impl Status for Broke {
+    fn verb(&self) -> Verb {
+        Verb::failed("Failed")
+    }
+}
+
+#[test]
+fn quiet_hides_progress_but_not_failures() {
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    {
+        let mut shell = Shell::plain(&mut out, &mut err);
+        shell.verbosity = Verbosity::Quiet;
+        shell.status(&Done(1));
+        shell.status(&Broke);
+    }
+    assert_eq!(String::from_utf8(err).unwrap(), "      Failed it\n");
+}
+
 #[test]
 fn units_read_as_cargo_shows_them() {
     use std::time::Duration;

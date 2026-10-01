@@ -129,9 +129,10 @@ impl Shell<'_> {
     }
 
     /// Reports progress, unless quiet: a status line on standard error, or a JSON line on
-    /// standard output. Best-effort: a closed stream does not fail the command.
+    /// standard output. A failure is a result, not progress, and is reported even when quiet.
+    /// Best-effort: a closed stream does not fail the command.
     pub fn status(&mut self, status: &dyn Status) {
-        if self.verbosity == Verbosity::Quiet {
+        if self.verbosity == Verbosity::Quiet && !status.verb().is_failure() {
             return;
         }
         let _ = match self.format() {

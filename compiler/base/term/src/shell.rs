@@ -143,6 +143,12 @@ impl Verb {
         Self { word, style: Style::Warning }
     }
 
+    /// Whether it reports something that failed.
+    #[must_use]
+    pub fn is_failure(self) -> bool {
+        self.style == Style::Error
+    }
+
     /// A line under a status line, aligned past the verb column.
     #[must_use]
     pub fn under(text: Text) -> Text {
