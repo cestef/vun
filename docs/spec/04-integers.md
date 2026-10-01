@@ -43,6 +43,14 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    primitives `lang.int.to`, `wrap`, `sat` and `fits`. `lang.int.count(r)` is how many integers a bounded range holds
    (256 for `0..=255`), `lang.int.least(r)` and `lang.int.greatest(r)` are its ends (-128 and 127
    for `-128..128`), and `Int(r).parse(text)` reads decimal digits into `?Int(r)`.
+
+   The storage of an integer is read and written as bytes and as bits by methods of `Int(r)`
+   (`std.int.bytes`, `std.int.bits`): `to_le` and `to_be` give the bytes of the storage,
+   `from_le` and `from_be` read an integer from them, `swap_bytes` reverses them,
+   `rotate_left` and `rotate_right` move the bits around the word, and `count_ones`,
+   `leading_zeros` and `trailing_zeros` count them. A signed integer is its two's complement,
+   so each is defined for every `Int(r)` alike, by the unsigned word as wide as its storage
+   (`std.int.Word(r)` of `std.int.width(r)` bits).
 4. **Comparisons narrow.** Where a comparison of an immutable binding is known to hold, the
    binding has the narrowed range: in `if i < n { a } else { b }`, `i` is `Int(lo..n.max)` in `a`
    and `Int(n.min..=hi)` in `b`. The same holds for `==` and `!=` at a bound, for conditions joined
@@ -55,7 +63,10 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    range. A `for` loop nothing leaves has the empty type.
 5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error; narrow an
    intermediate. Compile-time-only values have no cap: literals, immutable namespace members,
-   `$` parameters and bindings, operands of `$e`, and operations on those alone.
+   `$` parameters and bindings, operands of `$e`, calls of functions whose parameters are all
+   `$` ones, and operations on those alone. An integer such a call gives has the type of its
+   value alone, as a literal does: `bits(u16)` for `bits := ($T: type) -> Int(1..) { ... }` is
+   `Int(16..=16)`, not `Int(1..)`.
 6. **Division and remainder** by a divisor whose range contains 0 is a trap site; by one whose range
    excludes 0 (`Int(1..)`, a literal, a compile-time value) it is not.
 7. **Storage** is the smallest of 8, 16, 32, 64 or 128 bits that holds the range directly, with no

@@ -1,0 +1,52 @@
+//! Integers as the bits of their storage (spec 04, rule 8): rotating them and counting them. A
+//! signed value is its two's complement, so every `Int(r)` is rotated and counted by its word.
+
+impl Int($r) {
+    /// The value with its bits moved `n` places toward the most significant end, those leaving it
+    /// coming back at the other.
+    rotate_left := (x: Int(r), n: Int(0..std.int.width(r))) -> Int(r) {
+        $bits := std.int.width(r);
+        word := x.wrap(std.int.Word(r));
+        ((word << n) | (word >> ((bits - n) % bits))).wrap(Int(r))
+    };
+
+    /// The value with its bits moved `n` places toward the least significant end, those leaving
+    /// it coming back at the other.
+    rotate_right := (x: Int(r), n: Int(0..std.int.width(r))) -> Int(r) {
+        $bits := std.int.width(r);
+        x.rotate_left((bits - n) % bits)
+    };
+
+    /// How many of the bits of the value's storage are set.
+    count_ones := (x: Int(r)) -> Int(0..=std.int.width(r)) {
+        $bits := std.int.width(r);
+        word := x.wrap(std.int.Word(r));
+        mut count: Int(0..=bits) = 0;
+        for i in 0..bits {
+            if (word >> i) & 1 == 1 { count += 1; }
+        }
+        count
+    };
+
+    /// How many bits of the value's storage are zero before the first that is set, from the
+    /// most significant end: all of them where none is.
+    leading_zeros := (x: Int(r)) -> Int(0..=std.int.width(r)) {
+        $bits := std.int.width(r);
+        word := x.wrap(std.int.Word(r));
+        for i in 0..bits {
+            if (word >> (bits - 1 - i)) & 1 == 1 { return i; }
+        }
+        bits
+    };
+
+    /// How many bits of the value's storage are zero before the first that is set, from the
+    /// least significant end: all of them where none is.
+    trailing_zeros := (x: Int(r)) -> Int(0..=std.int.width(r)) {
+        $bits := std.int.width(r);
+        word := x.wrap(std.int.Word(r));
+        for i in 0..bits {
+            if (word >> i) & 1 == 1 { return i; }
+        }
+        bits
+    };
+}

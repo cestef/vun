@@ -16,6 +16,13 @@ Narrow := interface(($Self: type) -> type { struct {
     try_to: (x: Self, $T: type) -> ?T = _;
 } });
 
+/// How many bits the storage of `Int(r)` has.
+width := ($r: lang.Range) -> Int(1..) { (8 * lang.meta.size(Int(r))).to(Int(1..)) };
+
+/// The unsigned integer as wide as the storage of `Int(r)`, whose bits a signed value shares
+/// as its two's complement.
+Word := ($r: lang.Range) -> type { lang.int.unsigned(width(r)) };
+
 impl Narrow for Int($r) {
     to := (x, $T: type) { lang.int.to(r, x, T) };
     #[panic.never]
