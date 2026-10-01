@@ -24,7 +24,7 @@ field := (t: Timer) -> bool { t.cr1 };
 ",
     );
     let found = |ty: &str| (errors::TYPES_MISMATCH, format!("expected `bool`, found `{ty}`"));
-    assert_eq!(fixture.reported(&file), [found("Int(0..2^32)"), found("Int(0..2^32)")]);
+    assert_eq!(fixture.reported(&file), [found("u32"), found("u32")]);
 }
 
 #[test]

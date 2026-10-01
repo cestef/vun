@@ -23,7 +23,7 @@ h: (u8) -> u8 = (x: u8) -> u8 { x };
         reported(app),
         [
             "types.mismatch: expected `(u8) -> u8`, found `Int(3..=3)`",
-            "types.mismatch: expected `(u8) -> u8`, found `(Int(0..=255)) -> Int(0..=9)`",
+            "types.mismatch: expected `(u8) -> u8`, found `(u8) -> Int(0..=9)`",
         ]
     );
 }

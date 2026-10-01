@@ -23,10 +23,10 @@ arm := (c: bool, x: u8, y: u16) -> u8 { if c { x } else { y } };
     assert_eq!(
         fixture.reported(&file),
         [
-            found("Int(0..=255)"),
-            found("&Int(0..=255)"),
-            found("Int(0..=255)"),
-            found("Int(0..=65535)"),
+            found("u8"),
+            found("&u8"),
+            found("u8"),
+            found("u16"),
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned()),
         ]
     );

@@ -152,7 +152,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     // Each argument is the bytes the system passed.
     let found = fixture.reported(&file);
     assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
-    assert!(found[0].1.ends_with("found `&[Int(0..=255)]`"), "{found:?}");
+    assert!(found[0].1.ends_with("found `&[u8]`"), "{found:?}");
 }
 
 #[test]

@@ -7,7 +7,7 @@ use vun_desugar::{Borrow, MODE_SEPARATOR};
 use vun_desugar::{COMPOUND, Narrowing};
 use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
 use vun_grammar::TokenKind;
-use vun_hir::tree::ExprId;
+use vun_hir::tree::{ExprId, ExprKind};
 use vun_intern::Symbol;
 use vun_items::Item;
 use vun_origin::OriginId;
@@ -34,8 +34,13 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         // Integers that do not fit are their own diagnostic (spec 04, rule 2).
         let d = if expected.interval().is_some() && found.ty.interval().is_some() {
             let msg = Msg::new().text("value does not fit the type ").code(&written);
-            let note = Msg::new().text("the value is ").ty(found.ty.to_string()).text(", and ");
-            let note = note.code(&written).text(" is ").ty(expected.to_string());
+            let note = Msg::new().text("the value is ").ty(found.ty.to_string());
+            // A type written as an alias is shown with what it stands for; otherwise it is said.
+            let note = if written == expected.to_string() {
+                note.text(", which holds values ").ty(written.clone()).text(" does not")
+            } else {
+                note.text(", and ").code(&written).text(" is ").ty(expected.to_string())
+            };
             // A run-time value can be narrowed; a constant only fits a wider type.
             let help = if found.stage == Stage::Run {
                 // The compound assignments that narrow without trapping, from the table `compound`.
@@ -60,7 +65,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         } else {
             let msg = Msg::new().text("expected ").code(&written).text(", found ").ty(found.ty.to_string());
             let d = Diagnostic::error(errors::TYPES_MISMATCH, msg);
-            match Self::conversion(at, found.ty, expected) {
+            match self.conversion(at, found.ty, expected) {
                 Some(fix) => d.fix(fix),
                 None if because.is_some() => d.help("change the value, or the type it is expected to have"),
                 None => d,
@@ -75,8 +80,9 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     }
 
     /// The fix making the value written at `at`, of type `found`, one of `expected`, when a
-    /// borrow does: borrowing it, or reading through the borrow it is.
-    fn conversion(at: OriginId, found: Ty, expected: Ty) -> Option<Fix> {
+    /// borrow does: borrowing it, taking away a borrow written around what already is the borrow
+    /// expected, or reading through the borrow it is.
+    fn conversion(&self, at: OriginId, found: Ty, expected: Ty) -> Option<Fix> {
         let span = OriginTable::global().source_span(at);
         if let Some((mode, _, borrowed)) = expected.borrowing()
             && borrowed.accepts(&found)
@@ -91,12 +97,33 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             return Some(Fix::insert(msg, safety, span, prefix).preferred());
         }
         let borrowed = found.borrowed()?;
+        if let Some(fix) = self.unborrowing(at, expected) {
+            return Some(fix);
+        }
         expected.accepts(&borrowed).then(|| {
             let deref = TokenKind::DotStar.text().unwrap_or_default();
             let end = Span::new(span.file, span.range.hi, span.range.hi);
             let msg = Msg::new().text("read the value it borrows: ").code(deref);
             Fix::insert(msg, Safety::Unsafe, end, deref).preferred()
         })
+    }
+
+    /// The fix taking away the borrow written at `at`, when what it borrows is already accepted
+    /// where `expected` is: `&mut into[n..]` where `into[n..]` is the `&mut [u8]` expected.
+    fn unborrowing(&self, at: OriginId, expected: Ty) -> Option<Fix> {
+        let hir = self.hir();
+        let (_, written) = hir.exprs.iter().find(|(_, e)| e.origin == at)?;
+        let ExprKind::Borrow { operand, .. } = written.kind else { return None };
+        let inner = self.found.types.get(&operand)?;
+        if !expected.accepts(&inner.ty) {
+            return None;
+        }
+        let table = OriginTable::global();
+        let (span, operand_span) = (table.source_span(at), table.source_span(hir.exprs[operand].origin));
+        let prefix = Span::new(span.file, span.range.lo, operand_span.range.lo);
+        let msg =
+            Msg::new().text("it is already ").ty(inner.ty.to_string()).text(", so take the borrow away");
+        Some(Fix::replace(msg, Safety::Safe, prefix, "").preferred())
     }
 
     /// The type `expr` denotes, reporting a trap that fires while evaluating it.

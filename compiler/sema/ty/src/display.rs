@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use vun_sema_int::{Extended, Integer};
+use vun_sema_int::{Extended, Integer, Interval};
 
 use super::{Nominal, NominalKind, TyKind, Value};
 use crate::call::Instantiation;
@@ -12,6 +12,9 @@ use crate::ops::Endpoints;
 impl fmt::Display for TyKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(range) = self.interval() {
+            if let Some((signed, bits)) = Width::of(&range) {
+                return write!(f, "{}{bits}", if signed { 'i' } else { 'u' });
+            }
             // A range ending just below a power of two reads as the half-open range to it:
             // `Int(0..2^64)`.
             let past = range.hi().finite().map(|hi| hi + &Integer::from(1));
@@ -169,6 +172,31 @@ impl fmt::Display for Bound<'_> {
             },
             Extended::NegInf | Extended::PosInf => f.write_str("_"),
         }
+    }
+}
+
+/// The integer types named by their width, `u8` to `i128`: the range holding exactly the values of
+/// that many bits, signed or not.
+struct Width;
+
+impl Width {
+    const BITS: [u32; 5] = [8, 16, 32, 64, 128];
+
+    /// Whether `range` is the whole of a width: `(signed, bits)`.
+    fn of(range: &Interval) -> Option<(bool, u32)> {
+        let one = Integer::from(1);
+        let (Extended::Finite(lo), Extended::Finite(hi)) = (range.lo(), range.hi()) else { return None };
+        Self::BITS.into_iter().find_map(|bits| {
+            let unsigned = Integer::power_of_two(bits);
+            let signed = Integer::power_of_two(bits - 1);
+            if *lo == Integer::zero() && *hi == &unsigned - &one {
+                Some((false, bits))
+            } else if &(&Integer::zero() - &signed) == lo && *hi == &signed - &one {
+                Some((true, bits))
+            } else {
+                None
+            }
+        })
     }
 }
 

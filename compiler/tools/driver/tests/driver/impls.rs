@@ -23,8 +23,8 @@ sides := (s: Square) -> bool { s.sides() };
     assert_eq!(
         fixture.reported(&file),
         [
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..2^64)`".to_owned()),
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u64`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u8`".to_owned()),
         ]
     );
 }
@@ -50,9 +50,9 @@ Again := struct {};
     assert_eq!(
         fixture.reported(&file),
         [
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=65535)`".to_owned()),
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned()),
-            (errors::IMPL_DUPLICATE, "a second impl of `First(Pair(Int(0..=255)))`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u16`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u8`".to_owned()),
+            (errors::IMPL_DUPLICATE, "a second impl of `First(Pair(u8))`".to_owned()),
         ]
     );
 }
@@ -99,10 +99,7 @@ first := (p: Pair(u8)) -> bool { p.first() };
 mapped := (r: Result(u8, u8)) -> Result(u8, bool) { r.map_err((e: u8) -> bool { true }) };
 ",
     );
-    assert_eq!(
-        fixture.reported(&file),
-        [(errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned())]
-    );
+    assert_eq!(fixture.reported(&file), [(errors::TYPES_MISMATCH, "expected `bool`, found `u8`".to_owned())]);
 }
 
 #[test]
@@ -136,7 +133,7 @@ wrong := () -> bool {
         fixture.reported(&file),
         [
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `Six`".to_owned()),
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..2^64)`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u64`".to_owned()),
         ]
     );
 }

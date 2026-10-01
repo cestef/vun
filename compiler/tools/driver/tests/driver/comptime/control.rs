@@ -25,7 +25,7 @@ head := (x: u8) -> u8 { if x { 1 } else { 2 } };
         [
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `Low`".to_owned()),
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned()),
-            (errors::TYPES_MISMATCH, "expected `bool`, found `Int(0..=255)`".to_owned()),
+            (errors::TYPES_MISMATCH, "expected `bool`, found `u8`".to_owned()),
         ]
     );
 }
@@ -132,7 +132,7 @@ wrong := ($x: u8) -> Result(u16, u16) { v := parse(x)?; .ok(v) };
     let found = fixture.reported(&file);
     let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT, errors::INT_DOES_NOT_FIT, errors::TYPES_MISMATCH]);
-    assert_eq!(found[2].1, "expected `Result(u16, u16)`, found `Result(never, Int(0..=255))`");
+    assert_eq!(found[2].1, "expected `Result(u16, u16)`, found `Result(never, u8)`");
 }
 
 #[test]

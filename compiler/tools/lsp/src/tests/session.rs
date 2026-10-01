@@ -58,7 +58,7 @@ fn an_open_document_is_checked_hovered_and_followed_per_version() {
         assert_eq!((published[0].version, published[0].diagnostics.len()), (Some(2), 0));
 
         let hover = client.request::<r::Hover>(&at(uri, 2, 16)).unwrap().unwrap();
-        assert!(hover.contents.value.contains("Int(0..=255)") && hover.contents.value.contains("The limit."));
+        assert!(hover.contents.value.contains("u8") && hover.contents.value.contains("The limit."));
         let definition = client.request::<r::Definition>(&at(uri, 2, 16)).unwrap().unwrap();
         assert_eq!((&definition.uri, definition.range.start.line), (uri, 1));
     });

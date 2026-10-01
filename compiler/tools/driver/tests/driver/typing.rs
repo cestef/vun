@@ -26,7 +26,7 @@ fits := (x: u8) -> Int(0..=510) { add(x, x) + x };
         [
             "int.does_not_fit: value does not fit the type `u8`",
             "int.does_not_fit: value does not fit the type `u8`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `u8`",
             "int.does_not_fit: value does not fit the type `u8`",
             "types.mismatch: expected `u8`, found `()`",
         ]
@@ -63,7 +63,7 @@ constant := () -> Point { Point.origin };
         reported("typing", app),
         [
             "int.does_not_fit: value does not fit the type `u8`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `u8`",
             "types.no_member: no member `z` in `Point`",
             "int.does_not_fit: value does not fit the type `u8`",
         ]
@@ -92,12 +92,12 @@ test := (c: Color) -> u8 { if .blue(n) = c { n } else { 0 } };
         [
             "types.no_member: no member `purple` in `Color`",
             "int.does_not_fit: value does not fit the type `u8`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `u8`",
             "types.no_member: no member `yellow` in `Color`",
             "types.no_member: no member `z` in `Point`",
             "int.does_not_fit: value does not fit the type `u8`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
-            "int.does_not_fit: value does not fit the type `Int(0..=255)`",
+            "int.does_not_fit: value does not fit the type `u8`",
+            "int.does_not_fit: value does not fit the type `u8`",
         ]
     );
 }

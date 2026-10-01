@@ -28,7 +28,7 @@ frame := () -> u8 { three() };
         [
             fit("Int(0..=sum())"),
             fit("Int(0..=total())"),
-            fit("Int(0..=255)"),
+            fit("u8"),
             found("()", "Int(5..=5)"),
             found("u8", "three.Frame"),
         ]

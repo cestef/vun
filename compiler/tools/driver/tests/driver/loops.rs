@@ -22,11 +22,11 @@ test := (o: ?u8) { mut c := o; for .some(v) = c { _: bool = v; c = .none; } };
         fixture.reported(&file),
         [
             found("Int(0..=254)"),
-            found("&Int(0..=65535)"),
-            found("Int(0..=255)"),
+            found("&u16"),
+            found("u8"),
             found("Int(3..=3)"),
             (errors::INT_DOES_NOT_FIT, "value does not fit the type `u8`".to_owned()),
-            found("Int(0..=255)"),
+            found("u8"),
         ]
     );
 }
