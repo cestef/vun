@@ -198,11 +198,11 @@ impl Walk<'_, '_, '_> {
         }
     }
 
-    /// What the declaration `id` binds (spec 10, section 5): a type, an interface, a tuple of
-    /// types or a function giving a type, unless what it gives is a namespace, a struct of
-    /// declarations alone; any other value. One annotated `type` or `lang.Interface` binds a
-    /// type, as `()` does there; an unannotated tuple of types binds a type; a primitive, `= _`,
-    /// binds what the annotation of its declaration says. `None` for one whose value is not known, which lints do not guess.
+    /// What the declaration `id` binds (spec 10, section 5): a type, an interface or a function
+    /// giving one, unless what it gives is a namespace, a struct of declarations alone; any
+    /// other value. One annotated `type` or `lang.Interface` binds a type, as `()` does there; a
+    /// primitive, `= _`, binds what the annotation of its declaration says. `None` for one whose
+    /// value is not known, which lints do not guess.
     fn binds(&self, id: DeclId) -> Option<Binds> {
         let hir = self.hir();
         if hir.decls[id].ty.is_some_and(|t| self.types(t)) {
@@ -216,8 +216,6 @@ impl Walk<'_, '_, '_> {
                 _ => true,
             },
             Value::Interface(_) => true,
-            // A tuple of types is a type (decision 89), unless an annotation says it is a value.
-            tuple @ Value::Tuple(_) => hir.decls[id].ty.is_none() && tuple.as_type().is_some(),
             Value::Fn(f) => Literal::of(cx, &f.literal).is_some_and(|l| l.gives_type()),
             Value::Primitive(p) => {
                 Callable::Primitive(p).written(self.env).is_some_and(|w| Literal::from(w).gives_type())
