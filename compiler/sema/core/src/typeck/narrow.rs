@@ -122,16 +122,11 @@ impl Typer<'_, '_, '_> {
         }
     }
 
-    /// Whether `block` never falls through: a statement or its tail leaves it.
+    /// Whether `block` never falls through: a statement or its tail was typed `lang.never`, as a
+    /// `return`, a `break`, a `continue` or a call of a function that never returns are.
     pub(super) fn leaves(&self, block: BlockId) -> bool {
-        let hir = self.hir();
-        let b = &hir.blocks[block];
-        let leaving = |e: ExprId| {
-            matches!(
-                hir.exprs[e].kind,
-                ExprKind::Return(_) | ExprKind::Break { .. } | ExprKind::Continue { .. }
-            )
-        };
+        let b = &self.hir().blocks[block];
+        let leaving = |e: ExprId| self.found.types.get(&e).is_some_and(|known| known.ty.is_empty());
         b.stmts.iter().any(|s| matches!(s, Entry::One(Stmt::Expr(e)) if leaving(*e)))
             || b.tail.is_some_and(leaving)
     }

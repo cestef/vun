@@ -1,0 +1,14 @@
+//! A block whose statement has the type `lang.never` does not fall through, as one ending in a
+//! `return` does (spec 02): the call of a function that never returns, with its `;`.
+
+pick := (x: u8) -> u8 {
+    match x {
+        0 => { std.panic.fail(.message("zero")); },
+        n => n,
+    }
+};
+
+first := (x: u8) -> u8 {
+    if x == 0 { std.panic.fail(.message("zero")); }
+    x
+};
