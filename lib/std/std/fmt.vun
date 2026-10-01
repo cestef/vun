@@ -202,6 +202,14 @@ int_format := ($r: lang.Range) -> type { struct {
     };
 } };
 
+/// `true` or `false`.
+#[impl(Format(bool))]
+bool_format := struct {
+    format := ($W: Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
+        if value.* { w.write_all("true") } else { w.write_all("false") }
+    };
+};
+
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
 #[impl(Format(lang.mem.Slice))]
 slice_format := ($T: type) -> type { struct {

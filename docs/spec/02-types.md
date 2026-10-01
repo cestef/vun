@@ -231,7 +231,14 @@ through its borrows as `.` reaches a value. Integer, float and vector operators 
 functions are `_`, provided by the compiler: `lang.int.ops` gives `add := lang.int.add`, whose
 signature carries spec 04's rules through range primitives (`Int(lang.int.sum(a, b))`). A
 compound assignment and a literal or range pattern are operators too. User types implement the
-same interfaces and dispatch statically; `std.cmp.derive_eq(T)` derives `Eq` by reflection.
+same interfaces and dispatch statically.
+
+**Derived impls.** An interface marked `#[derive(f)]` gives a struct or an enum with no impl of it
+the witness `f(T)`, when every part of it, each field and the payload of each variant, has the
+interface too; `f` builds the witness by reflection. `Eq` and `std.hash.Hash` are marked, so
+`a == b` compares structs and enums by their parts, and they are hashed by them, without an impl
+(`lang.ops.derive_eq`, `std.hash.derive_hash`). An impl written for the type takes the place of the
+derived one, and a type with a part lacking the interface has none: `types.no_impl`.
 
 ## 5. Attributes
 

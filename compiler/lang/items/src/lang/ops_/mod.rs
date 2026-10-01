@@ -23,6 +23,7 @@ pub mod ops_array_iterate;
 pub mod ops_bounds_iterate;
 pub mod ops_by_cmp;
 pub mod ops_coroutine_iterate;
+pub mod ops_derive_eq;
 pub mod ops_option_try;
 pub mod ops_result_try;
 pub mod ops_slice_iterate;

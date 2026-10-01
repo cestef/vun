@@ -13,7 +13,7 @@ use vun_sema_ty::call::{Func, Instance};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Conformance, ImplDecl, Impls, Unmet};
+use super::{Conformance, Derive, Derives, ImplDecl, Impls, Unmet};
 use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::eval::Call;
@@ -57,8 +57,25 @@ impl Query for Witnesses {
             TyKind::Nominal(nominal) => Some(&nominal.literal.file),
             _ => None,
         };
-        let impls = env.impl_files(home).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
-        impls.filter_map(|decl| Witness::of(cx, decl, *ty)).collect()
+        let files = env.impl_files(home);
+        let impls = files.iter().flat_map(|f| cx.get::<Impls>(f).to_vec());
+        let mut witnesses: Vec<Witness> = impls.filter_map(|decl| Witness::of(cx, decl, *ty)).collect();
+        // An interface a type has no impl of may derive one from the type's parts.
+        let derives: Vec<Derive> = files.iter().flat_map(|f| cx.get::<Derives>(f).to_vec()).collect();
+        for derive in derives {
+            let declared =
+                |w: &Witness| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface);
+            if witnesses.iter().any(declared) {
+                continue;
+            }
+            let has = |part: Ty| {
+                cx.get::<Witnesses>(&(file.clone(), part))
+                    .iter()
+                    .any(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface))
+            };
+            witnesses.extend(Witness::derived(cx, &derive, *ty, has));
+        }
+        witnesses.into()
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

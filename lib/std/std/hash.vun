@@ -1,0 +1,112 @@
+//! Hashing: a value feeds its parts to a `Hasher`, which answers a `u64`. Values that are equal
+//! (`lang.ops.Eq`) hash equal. A struct or an enum whose parts can be hashed can be hashed
+//! without an impl, by `derive_hash`; `Fnv` is a hasher for tables.
+
+/// Where the bytes of a value are mixed into a hash.
+Hasher := interface(($Self: type) -> type { struct {
+    /// Mixes `bytes` in.
+    write: (self: &mut Self, bytes: &[u8]) = _;
+    /// The hash of everything written, which stays the hasher's.
+    finish: (self: &Self) -> u64 = _;
+} });
+
+/// How a value is fed to a hasher.
+#[lang.derive(derive_hash)]
+Hash := interface(($Self: type) -> type { struct {
+    hash: ($H: Hasher, value: &Self, h: &mut H) = _;
+} });
+
+/// A `Hash` witness for `T` by reflection: the variant it is, then each part of it by its own
+/// `Hash`. A struct is one variant, its fields its parts.
+derive_hash := ($T: type) -> type { struct {
+    hash := ($H: Hasher, value: &T, h: &mut H) {
+        at := lang.meta.variant(T, value);
+        at.hash(h);
+        $for v in lang.meta.variants(T) {
+            if at == v.index {
+                $for p in v.parts {
+                    if .some(part) = lang.meta.part(T, value, v.index, p.index) { part.hash(h); }
+                }
+            }
+        }
+    };
+} };
+
+/// The hash of `value`.
+of := ($T: type, value: &T) -> u64 {
+    mut h := Fnv.init();
+    value.hash(&mut h);
+    h.finish()
+};
+
+/// FNV-1a over the bytes written, its result mixed for the low bits of a table's index.
+Fnv := struct {
+    _state: u64,
+
+    /// A hasher that has written nothing.
+    init := () -> Fnv { .{ ._state = offset } };
+    /// Mixes `bytes` in.
+    mix := (self: &mut Fnv, bytes: &[u8]) {
+        for b in bytes { self._state = ((self._state ^ b.*) * prime).wrap(u64); }
+    };
+    /// The hash of everything mixed in, whose low bits depend on every byte.
+    mixed := (self: &Fnv) -> u64 {
+        mut x := self._state;
+        x = ((x ^ (x >> 30)) * 0xbf58_476d_1ce4_e5b9).wrap(u64);
+        x = ((x ^ (x >> 27)) * 0x94d0_49bb_1331_11eb).wrap(u64);
+        x ^ (x >> 31)
+    };
+};
+
+/// FNV's 64-bit offset basis and prime.
+offset: u64 = 0xcbf2_9ce4_8422_2325;
+prime: u64 = 0x0000_0100_0000_01b3;
+
+#[impl(Hasher(Fnv))]
+fnv_hasher := struct {
+    write := (self: &mut Fnv, bytes: &[u8]) { self.mix(bytes); };
+    finish := (self: &Fnv) -> u64 { self.mixed() };
+};
+
+/// An integer, by the bytes of its type, least significant first.
+#[impl(Hash(Int))]
+int_hash := ($r: lang.Range) -> type { struct {
+    hash := ($H: Hasher, value: &Int(r), h: &mut H) {
+        mut rest: u128 = value.*.wrap(u128);
+        for _ in 0..lang.meta.size(Int(r)) {
+            h.write(&[rest.wrap(u8)]);
+            rest = rest >> 8;
+        }
+    };
+} };
+
+/// `false` as a zero byte and `true` as a one.
+#[impl(Hash(bool))]
+bool_hash := struct {
+    hash := ($H: Hasher, value: &bool, h: &mut H) {
+        if value.* { h.write("\x01"); } else { h.write("\x00"); }
+    };
+};
+
+/// The items of a slice: their number, then bytes as they are and any other items each by its
+/// own `Hash`.
+#[impl(Hash(lang.mem.Slice))]
+slice_hash := ($T: type) -> type { struct {
+    hash := ($H: Hasher, value: &[T], h: &mut H) {
+        value.len().hash(h);
+        $if lang.meta.same(type, T, u8) {
+            h.write(value);
+        } else {
+            for item in value { item.hash(h); }
+        }
+    };
+} };
+
+/// The items of an array, as those of a slice.
+#[impl(Hash(lang.mem.Array))]
+array_hash := ($n: Int(0..), $T: type) -> type { struct {
+    hash := ($H: Hasher, value: &[n]T, h: &mut H) {
+        items: &[T] = value;
+        items.hash(h);
+    };
+} };

@@ -1,0 +1,38 @@
+//! Tests of `std.cmp` and of the equality types derive from their parts (`lang.ops.Eq`).
+
+Point := struct { x: i32, y: i32 };
+Shape := enum { dot, line(Point), pair(Point, Point) };
+Mixed := struct { shape: Shape, tag: ?u8, ok: bool };
+
+#[test]
+structs_are_equal_by_their_fields := () {
+    std.testing.assert(Point{ .x = 1, .y = 2 } == Point{ .x = 1, .y = 2 });
+    std.testing.assert(Point{ .x = 1, .y = 2 } != Point{ .x = 1, .y = 3 });
+};
+
+#[test]
+enums_are_equal_by_variant_and_payload := () {
+    p := Point{ .x = 1, .y = 2 };
+    q := Point{ .x = 4, .y = 2 };
+    std.testing.assert(Shape.dot == Shape.dot);
+    std.testing.assert(Shape.dot != Shape.line(p));
+    std.testing.assert(Shape.line(p) == Shape.line(p));
+    std.testing.assert(Shape.line(p) != Shape.line(q));
+    std.testing.assert(Shape.pair(p, q) != Shape.line(p));
+};
+
+#[test]
+types_with_derived_parts_are_derived_too := () {
+    a := Mixed{ .shape = .line(Point{ .x = 0, .y = 0 }), .tag = .some(1), .ok = true };
+    b := Mixed{ .shape = .line(Point{ .x = 0, .y = 0 }), .tag = .some(1), .ok = true };
+    c := Mixed{ .shape = .line(Point{ .x = 0, .y = 0 }), .tag = .none, .ok = true };
+    std.testing.assert(a == b);
+    std.testing.assert(a != c);
+};
+
+#[test]
+a_result_is_compared_to_what_a_parse_gives := () {
+    ok: Result(u8, Shape) = .ok(3);
+    std.testing.assert(ok == Result(u8, Shape).ok(3));
+    std.testing.assert(ok != Result(u8, Shape).err(.dot));
+};

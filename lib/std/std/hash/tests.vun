@@ -1,0 +1,38 @@
+//! Tests of `std.hash`: equal values hash equal, different ones almost never do, and types hash by
+//! their parts without an impl.
+
+Point := struct { x: i32, y: i32 };
+Shape := enum { dot, line(Point) };
+
+#[test]
+integers_hash_by_value := () {
+    std.testing.assert(std.hash.of(u32, &7) == std.hash.of(u32, &7));
+    std.testing.assert(std.hash.of(u32, &7) != std.hash.of(u32, &8));
+    std.testing.assert(std.hash.of(i32, &-1) != std.hash.of(i32, &1));
+};
+
+#[test]
+bytes_hash_by_content_and_length := () {
+    a: [3]u8 = [1, 2, 3];
+    b: [3]u8 = [1, 2, 3];
+    c: [3]u8 = [1, 2, 4];
+    std.testing.assert(std.hash.of([3]u8, &a) == std.hash.of([3]u8, &b));
+    std.testing.assert(std.hash.of([3]u8, &a) != std.hash.of([3]u8, &c));
+    std.testing.assert(std.hash.of(&[u8], &"ab") != std.hash.of(&[u8], &"abc"));
+};
+
+#[test]
+structs_and_enums_hash_by_their_parts := () {
+    p := Point{ .x = 1, .y = 2 };
+    std.testing.assert(std.hash.of(Point, &p) == std.hash.of(Point, &Point{ .x = 1, .y = 2 }));
+    std.testing.assert(std.hash.of(Point, &p) != std.hash.of(Point, &Point{ .x = 2, .y = 1 }));
+    std.testing.assert(std.hash.of(Shape, &Shape.line(p)) == std.hash.of(Shape, &Shape.line(p)));
+    std.testing.assert(std.hash.of(Shape, &Shape.dot) != std.hash.of(Shape, &Shape.line(p)));
+};
+
+#[test]
+options_hash_by_their_variant := () {
+    some: ?u8 = .some(0);
+    none: ?u8 = .none;
+    std.testing.assert(std.hash.of(?u8, &some) != std.hash.of(?u8, &none));
+};

@@ -32,7 +32,12 @@ pub const Shr: Item = Item::new(&["lang", "ops", "Shr"]);
 pub const Neg: Item = Item::new(&["lang", "ops", "Neg"]);
 /// `~a` (spec 04, rule 8).
 pub const Not: Item = Item::new(&["lang", "ops", "Not"]);
-/// `a == b` and `a != b`.
+/// An `Eq` witness for `T` by reflection (spec 03, section 6): two values are equal when they are
+/// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
+/// fields its parts.
+pub const derive_eq: Item = Item::new(&["lang", "ops", "derive_eq"]);
+/// `a == b` and `a != b`. A struct or an enum whose parts have it is equal by its parts without
+/// an impl: `derive_eq`.
 pub const Eq: Item = Item::new(&["lang", "ops", "Eq"]);
 /// `a < b`, `a <= b`, `a > b` and `a >= b`: a partial order, in which two values may be
 /// unordered, every comparison of them false (a float NaN is unordered with every value).

@@ -25,6 +25,9 @@ pub enum Lang {
     /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
     /// section 3).
     r#impl,
+    /// `#[derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
+    /// built by reflection, when every part of it has the interface too (spec 02, section 3).
+    derive,
     /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to
     /// `scope` (spec 01, section 7).
     visible,
@@ -42,6 +45,7 @@ impl Lang {
         Self::Interface,
         Self::interface,
         Self::r#impl,
+        Self::derive,
         Self::visible,
     ];
     /// The declaration's name.
@@ -58,6 +62,7 @@ impl Lang {
             Self::Interface => "Interface",
             Self::interface => "interface",
             Self::r#impl => "impl",
+            Self::derive => "derive",
             Self::visible => "visible",
         }
     }
@@ -75,6 +80,7 @@ impl Lang {
             Self::Interface => vun_items::lang::Interface,
             Self::interface => vun_items::lang::interface,
             Self::r#impl => vun_items::lang::r#impl,
+            Self::derive => vun_items::lang::derive,
             Self::visible => vun_items::lang::visible,
         }
     }

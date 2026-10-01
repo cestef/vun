@@ -83,6 +83,9 @@ Attribute := ($on: &[Place]) -> type { struct {} };
 /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
 /// section 3).
 impl: ($witness: type) -> Attribute(&[Place.decls]) = _;
+/// `#[derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
+/// built by reflection, when every part of it has the interface too (spec 02, section 3).
+derive: ($witness: ($T: type) -> type) -> Attribute(&[Place.decls]) = _;
 /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to
 /// `scope` (spec 01, section 7).
 visible: ($scope: scope.Scope) -> Attribute(&[Place.decls, Place.fields]) = _;

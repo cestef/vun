@@ -90,7 +90,29 @@ Not := interface(($Self: type) -> type { struct {
     not: (a: Self) -> Output = _;
 } });
 
-/// `a == b` and `a != b`.
+/// An `Eq` witness for `T` by reflection (spec 03, section 6): two values are equal when they are
+/// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
+/// fields its parts.
+derive_eq := ($T: type) -> type { struct {
+    eq := (a: &T, b: &T) -> bool {
+        at := lang.meta.variant(T, a);
+        if at != lang.meta.variant(T, b) { return false; }
+        $for v in lang.meta.variants(T) {
+            if at == v.index {
+                $for p in v.parts {
+                    if lang.meta.part(T, a, v.index, p.index) != lang.meta.part(T, b, v.index, p.index) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    };
+} };
+
+/// `a == b` and `a != b`. A struct or an enum whose parts have it is equal by its parts without
+/// an impl: `derive_eq`.
+#[lang.derive(derive_eq)]
 Eq := interface(($Self: type) -> type { struct {
     eq: (a: &Self, b: &Self) -> bool = _;
     ne := (a: &Self, b: &Self) -> bool { !eq(a, b) };

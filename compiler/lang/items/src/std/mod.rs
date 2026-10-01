@@ -28,8 +28,6 @@ mod build_;
 pub use build_::*;
 mod check_;
 pub use check_::*;
-mod cmp_;
-pub use cmp_::*;
 mod float_;
 pub use float_::*;
 mod fmt_;

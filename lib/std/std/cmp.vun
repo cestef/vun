@@ -10,22 +10,6 @@ max := ($T: type, a: T, b: T) -> T { if b > a { b } else { a } };
 #[panic.never]
 clamp := ($T: type, x: T, lo: T, hi: T) -> T { if x < lo { lo } else if x > hi { hi } else { x } };
 
-/// An `Eq` witness for `T` by reflection (spec 03, section 6): two values are equal when they are
-/// the same variant and each part of it is equal, by its own `Eq`. A struct is one variant, its
-/// fields its parts. `#[impl(lang.ops.Eq(Point))] point_eq := std.cmp.derive_eq(Point);`
-derive_eq := ($T: type) -> type { struct {
-    eq := (a: &T, b: &T) -> bool {
-        at := lang.meta.variant(T, a);
-        if at != lang.meta.variant(T, b) { return false; }
-        $for v in lang.meta.variants(T) {
-            if at == v.index {
-                $for p in v.parts {
-                    if lang.meta.part(T, a, v.index, p.index) != lang.meta.part(T, b, v.index, p.index) {
-                        return false;
-                    }
-                }
-            }
-        }
-        true
-    };
-} };
+/// An `Eq` witness for `T` by reflection: two values are equal when they are the same variant and
+/// each part of it is equal. Types with `Eq` parts have it without an impl (`lang.ops.Eq`).
+derive_eq := lang.ops.derive_eq;

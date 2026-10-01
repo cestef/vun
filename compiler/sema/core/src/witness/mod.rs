@@ -9,12 +9,14 @@
 //! value as methods, found by the same lookup (decision 102).
 
 mod conformance;
+mod derive;
 mod lookup;
 mod requirement;
 
 use std::sync::Arc;
 
 pub use conformance::{Conformance, Shortfall, Unmet};
+pub use derive::{Derive, Derives};
 pub use lookup::{Method, Required, Witness, Witnesses};
 pub use requirement::{Implemented, Implementing, Requirement};
 use vun_codec::{Decode, Encode};
