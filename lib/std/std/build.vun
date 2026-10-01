@@ -114,7 +114,9 @@ Build := struct {
     /// The values the options of commands take where neither the command line nor the environment
     /// gives one, by command and option: `.{ .fmt = .{ .width = 100 }, .fuzz = .{ .cases = 5000 } }`.
     /// An option taking several values takes a tuple of them, a flag `true`.
-    commands := (self: &mut Build, $S: type, settings: S) { self._record(.commands(lang.meta.any(S, settings))); };
+    commands := (self: &mut Build, $S: type, settings: S) {
+        self._record(.commands(lang.meta.any(S, settings)));
+    };
 
     /// Records `action` as a new step, after every step recorded.
     _record := (self: &mut Build, action: Action) -> Step {

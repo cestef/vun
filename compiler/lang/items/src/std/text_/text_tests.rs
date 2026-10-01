@@ -15,3 +15,13 @@ pub const a_slab_takes_no_more_than_it_has_room_for: Item = Item::new(
 pub const a_cleared_slab_is_empty_again: Item = Item::new(
     &["std", "text", "tests", "a_cleared_slab_is_empty_again"],
 );
+pub const Fixed: Item = Item::new(&["std", "text", "tests", "Fixed"]);
+pub const a_string_grows_as_text_is_pushed: Item = Item::new(
+    &["std", "text", "tests", "a_string_grows_as_text_is_pushed"],
+);
+pub const a_string_is_written_to_as_any_writer: Item = Item::new(
+    &["std", "text", "tests", "a_string_is_written_to_as_any_writer"],
+);
+pub const a_string_copies_the_text_it_is_made_from: Item = Item::new(
+    &["std", "text", "tests", "a_string_copies_the_text_it_is_made_from"],
+);

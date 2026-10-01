@@ -1,0 +1,59 @@
+//! Tests of `std.seq`: looking in a slice and cutting it.
+
+#[test]
+a_slice_starts_and_ends_with_what_it_does := () {
+    std.testing.assert("hello".starts_with("he"));
+    std.testing.assert(!"hello".starts_with("lo"));
+    std.testing.assert("hello".ends_with("llo"));
+    std.testing.assert(!"hello".ends_with("hel"));
+    std.testing.assert("hello".starts_with(""));
+    std.testing.assert(!"he".starts_with("hello"));
+};
+
+#[test]
+items_and_runs_of_items_are_found := () {
+    std.testing.assert("hello".index_of(&"l"[0]) == Option(usize).some(2));
+    std.testing.assert("hello".index_of(&"z"[0]) == Option(usize).none);
+    std.testing.assert("hello".contains(&"o"[0]));
+    std.testing.assert("hello world".find("o w") == Option(usize).some(4));
+    std.testing.assert("hello".find("") == Option(usize).some(0));
+    std.testing.assert("hello".find("lloo") == Option(usize).none);
+    std.testing.assert("abcabc".find("cab") == Option(usize).some(2));
+};
+
+#[test]
+a_slice_is_cut_at_the_first_separator := () {
+    if .some((before, after)) = "key=value=more".split_once("=") {
+        std.testing.assert(before == "key");
+        std.testing.assert(after == "value=more");
+    } else {
+        std.testing.assert(false);
+    }
+    std.testing.assert("nokey".split_once("=") == Option((&[u8], &[u8])).none);
+};
+
+#[test]
+a_slice_is_split_into_the_runs_between_separators := () {
+    mut seen: usize = 0;
+    for part in "a,bb,,c".split(",") {
+        if seen == 0 { std.testing.assert(part == "a"); }
+        if seen == 1 { std.testing.assert(part == "bb"); }
+        if seen == 2 { std.testing.assert(part == ""); }
+        if seen == 3 { std.testing.assert(part == "c"); }
+        seen += 1;
+    }
+    std.testing.assert(seen == 4);
+    mut whole: usize = 0;
+    for part in "abc".split(",") {
+        std.testing.assert(part == "abc");
+        whole += 1;
+    }
+    std.testing.assert(whole == 1);
+};
+
+#[test]
+the_ends_of_a_slice_are_its_first_and_last_items := () {
+    std.testing.assert("abc".first() == Option(&u8).some(&"a"[0]));
+    std.testing.assert("abc".last() == Option(&u8).some(&"c"[0]));
+    std.testing.assert("".first() == Option(&u8).none);
+};

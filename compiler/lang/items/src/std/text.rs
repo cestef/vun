@@ -6,8 +6,12 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.text.string`.
+pub const string: Item = Item::new(&["std", "text", "string"]);
 /// The namespace `std.text.tests`.
 pub const tests: Item = Item::new(&["std", "text", "tests"]);
+/// Bytes of text a program grows, in a buffer an allocator gave.
+pub const String: Item = Item::new(&["std", "text", "String"]);
 /// Why a `Slab` took no more bytes.
 pub const Full: Item = Item::new(&["std", "text", "Full"]);
 /// Up to `n` bytes held inline: written to as any writer, read back as a slice.

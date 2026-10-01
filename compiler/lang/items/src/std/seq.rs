@@ -6,6 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.seq.search`.
+pub const search: Item = Item::new(&["std", "seq", "search"]);
+/// The namespace `std.seq.tests`.
+pub const tests: Item = Item::new(&["std", "seq", "tests"]);
 /// A run of items.
 pub const Sequence: Item = Item::new(&["std", "seq", "Sequence"]);
 pub const slice_sequence: Item = Item::new(&["std", "seq", "slice_sequence"]);

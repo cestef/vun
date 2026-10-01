@@ -26,3 +26,42 @@ a_cleared_slab_is_empty_again := () {
     std.testing.assert(slab.len() == 0);
     std.testing.assert(slab.push(7) == Result((), std.text.Full).ok(()));
 };
+
+Fixed: type = std.mem.alloc.Fixed;
+
+#[test]
+a_string_grows_as_text_is_pushed := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.text.String.empty();
+    s.push_str(Fixed, &mut a, "hello").expect("room");
+    s.push(Fixed, &mut a, ","[0]).expect("room");
+    std.testing.assert(s.as_text() == "hello,");
+    std.testing.assert(s.len() == 6);
+    s.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_string_is_written_to_as_any_writer := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.text.String.empty();
+    {
+        mut w := s.writer(Fixed, &mut a);
+        std.fmt.print(&mut w, "{} + {} = {}", 1, 2, 3).expect("room");
+    }
+    std.testing.assert(s.as_text() == "1 + 2 = 3");
+    s.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_string_copies_the_text_it_is_made_from := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.text.String.from(Fixed, &mut a, "copy").expect("room");
+    std.testing.assert(s.as_text() == "copy");
+    std.testing.assert(s.pop() == Option(u8).some("y"[0]));
+    s.clear();
+    std.testing.assert(s.is_empty());
+    s.deinit(Fixed, &mut a);
+};

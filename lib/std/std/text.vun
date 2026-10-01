@@ -2,6 +2,9 @@
 //! allocator; text is UTF-8 in `&[u8]`. Formatting is `std.fmt`, readers and writers are `std.io`,
 //! maps are `std.collections`.
 
+/// Bytes of text a program grows, in a buffer an allocator gave.
+String: type = std.text.string.String;
+
 /// Why a `Slab` took no more bytes.
 Full := enum { full };
 

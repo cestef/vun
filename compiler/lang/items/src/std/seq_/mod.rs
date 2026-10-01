@@ -2,5 +2,9 @@
 pub mod seq_Sequence;
 pub mod seq_array_eq;
 pub mod seq_array_sequence;
+pub mod seq_search;
+pub mod seq_search_array_search;
+pub mod seq_search_slice_search;
 pub mod seq_slice_eq;
 pub mod seq_slice_sequence;
+pub mod seq_tests;

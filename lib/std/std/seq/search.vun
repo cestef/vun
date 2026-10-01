@@ -1,0 +1,102 @@
+//! Looking in a slice and cutting it (spec 05): methods of every `[T]` and `[n]T` whose items
+//! have `==`, text among them, by impls without an interface.
+
+#[impl(lang.mem.Slice)]
+slice_search := ($T: type) -> type { struct {
+    /// The first item, none in an empty slice.
+    first := (xs: &[T]) -> Option(&T) { if xs.len() == 0 { .none } else { .some(&xs[0]) } };
+    /// The last item, none in an empty slice.
+    last := (xs: &[T]) -> Option(&T) {
+        n := xs.len();
+        if n == 0 { .none } else { .some(&xs[n - 1]) }
+    };
+
+    /// Whether `prefix` is the start of it.
+    starts_with := (xs: &[T], prefix: &[T]) -> bool {
+        n := prefix.len();
+        if n > xs.len() { return false; }
+        for i in 0..n {
+            if xs[i] != prefix[i] { return false; }
+        }
+        true
+    };
+
+    /// Whether `suffix` is the end of it.
+    ends_with := (xs: &[T], suffix: &[T]) -> bool {
+        n := suffix.len();
+        if n > xs.len() { return false; }
+        from := xs.len() - n;
+        for i in 0..n {
+            if xs[from + i] != suffix[i] { return false; }
+        }
+        true
+    };
+
+    /// Where `item` first is.
+    index_of := (xs: &[T], item: &T) -> Option(usize) {
+        for i in 0..xs.len() {
+            if xs[i] == item { return .some(i); }
+        }
+        .none
+    };
+
+    /// Whether `item` is in it.
+    contains := (xs: &[T], item: &T) -> bool { xs.index_of(item) != Option(usize).none };
+
+    /// Where the items of `needle` first are, in order: 0 for an empty one, none if they are not.
+    find := (xs: &[T], needle: &[T]) -> Option(usize) {
+        n := needle.len();
+        if n > xs.len() { return .none; }
+        start := xs.len() - n;
+        for i in 0..=start {
+            end := (i + n).sat(usize);
+            if xs[i..end] == needle { return .some(i); }
+        }
+        .none
+    };
+
+    /// The items before and after the first `sep`, which is not in either.
+    split_once := (xs: &[T], sep: &[T]) -> Option((&[T], &[T])) {
+        match xs.find(sep) {
+            .some(at) => .some((xs[0..at], xs[(at + sep.len()).sat(usize)..])),
+            .none => .none,
+        }
+    };
+
+    /// The items before the position `at` and those from it.
+    split_at := (xs: &[T], at: usize) -> (&[T], &[T]) { (xs[0..at], xs[at..]) };
+
+    /// The runs of items between occurrences of `sep`, which an empty slice never splits.
+    split := (xs: &[T], sep: &[T]) -> std.iter.Iter(&[T]) {
+        n := sep.len();
+        mut rest: &[T] = xs;
+        for n > 0 {
+            match rest.find(sep) {
+                .some(at) => {
+                    yield rest[0..at];
+                    rest = rest[(at + n).sat(usize)..];
+                },
+                .none => break,
+            }
+        }
+        yield rest;
+    };
+} };
+
+/// The same of an array, which is looked in as the slice of its items is.
+#[impl(lang.mem.Array)]
+array_search := ($n: Int(0..), $T: type) -> type { struct {
+    first := (xs: &[n]T) -> Option(&T) { as_items(n, T, xs).first() };
+    last := (xs: &[n]T) -> Option(&T) { as_items(n, T, xs).last() };
+    starts_with := (xs: &[n]T, prefix: &[T]) -> bool { as_items(n, T, xs).starts_with(prefix) };
+    ends_with := (xs: &[n]T, suffix: &[T]) -> bool { as_items(n, T, xs).ends_with(suffix) };
+    index_of := (xs: &[n]T, item: &T) -> Option(usize) { as_items(n, T, xs).index_of(item) };
+    contains := (xs: &[n]T, item: &T) -> bool { as_items(n, T, xs).contains(item) };
+    find := (xs: &[n]T, needle: &[T]) -> Option(usize) { as_items(n, T, xs).find(needle) };
+    split_once := (xs: &[n]T, sep: &[T]) -> Option((&[T], &[T])) { as_items(n, T, xs).split_once(sep) };
+    split_at := (xs: &[n]T, at: usize) -> (&[T], &[T]) { as_items(n, T, xs).split_at(at) };
+    split := (xs: &[n]T, sep: &[T]) -> std.iter.Iter(&[T]) { yield ..as_items(n, T, xs).split(sep); };
+} };
+
+/// The items of the array `xs` as a slice.
+as_items := ($n: Int(0..), $T: type, xs: &[n]T) -> &[T] { xs };

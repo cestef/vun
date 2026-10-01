@@ -1,0 +1,90 @@
+//! `String`: bytes of text a program grows, in a buffer an allocator gave. Like `Vec`, which it
+//! holds, it is linear, and each call that grows it is passed the allocator, which `deinit` must be
+//! given back. Text is UTF-8 in `&[u8]`; a string keeps whatever bytes were put in it.
+
+..std.mem.alloc.{ Allocator };
+
+/// Why writing to a string failed: its allocator gave no room, or a write was refused.
+Failed := ($E: type) -> type { enum { allocation(E), closed } };
+
+String := struct {
+    _bytes: std.collections.Vec(u8),
+
+    /// A string holding nothing, which owns no memory yet.
+    empty := () -> String { .{ ._bytes = std.collections.Vec(u8).empty() } };
+
+    /// A string holding a copy of `text`.
+    from := ($A: Allocator, a: &mut A, text: &[u8]) -> Result(String, A.Error) {
+        mut s := String.empty();
+        match s.push_str(A, a, text) {
+            .ok(_) => .ok(s),
+            .err(e) => {
+                s.deinit(A, a);
+                .err(e)
+            },
+        }
+    };
+
+    /// How many bytes it holds.
+    #[panic.never]
+    len := (self: &String) -> usize { self._bytes.len() };
+    /// Whether it holds none.
+    #[panic.never]
+    is_empty := (self: &String) -> bool { self._bytes.is_empty() };
+    /// How many bytes it has room for before it grows.
+    #[panic.never]
+    capacity := (self: &String) -> usize { self._bytes.capacity() };
+    /// The text it holds.
+    as_text := (self: &String) -> &[u8] { self._bytes.items() };
+
+    /// Adds `byte` after the last.
+    push := (self: &mut String, $A: Allocator, a: &mut A, byte: u8) -> Result((), A.Error) {
+        self._bytes.push(A, a, byte)
+    };
+
+    /// Adds the bytes of `text` after the last.
+    push_str := (self: &mut String, $A: Allocator, a: &mut A, text: &[u8]) -> Result((), A.Error) {
+        self._bytes.extend(A, a, text)
+    };
+
+    /// Takes the last byte away.
+    pop := (self: &mut String) -> ?u8 { self._bytes.pop() };
+    /// Keeps the first `n` bytes.
+    truncate := (self: &mut String, n: usize) { self._bytes.truncate(n); };
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut String) { self._bytes.clear(); };
+
+    /// A writer appending to it, growing it with `a`.
+    writer := (self: &mut String, $A: Allocator, a: &mut A) -> Writing(A) { Writing(A).of(self, a) };
+
+    /// Gives the buffer back to `a`, which it came from.
+    deinit := (self: String, $A: Allocator, a: &mut A) {
+        .{ ._bytes = bytes } := self;
+        bytes.deinit(A, a);
+    };
+};
+
+/// What writes to a string: it and the allocator that grows it, both borrowed while it is used.
+Writing := ($A: type) -> type { struct {
+    _into: &mut String,
+    _alloc: &mut A,
+
+    /// A writer appending to `into`, growing it with `a`.
+    of := (into: &mut String, a: &mut A) -> Writing(A) { .{ ._into = into, ._alloc = a } };
+    /// Appends `bytes`.
+    append := (self: &mut Writing(A), bytes: &[u8]) -> Result((), A.Error) {
+        self._into.push_str(A, self._alloc, bytes)
+    };
+} };
+
+#[impl(std.fmt.Writer(Writing))]
+writing_writer := ($A: type) -> type { struct {
+    Error: type = Failed(A.Error);
+    closed: Failed(A.Error) = .closed;
+    write := (self: &mut Writing(A), bytes: &[u8]) -> Result(usize, Failed(A.Error)) {
+        match self.append(bytes) {
+            .ok(_) => .ok(bytes.len()),
+            .err(e) => .err(.allocation(e)),
+        }
+    };
+} };
