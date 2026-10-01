@@ -27,7 +27,7 @@ impl Env<'_, '_> {
             // A `$` local that is never assigned has the value of its declaration, fixed by
             // the call evaluated in, such as `$Regs := struct { ... }`; only a declaration
             // binding the name alone holds the whole value.
-            Some(Res::Binder(b)) if hir.binders[b].comptime && hir.member_decl(b).is_none() => {
+            Some(Res::Binder(b)) if hir.binders[b].comptime && hir.is_local(b) => {
                 self.eval(self.declared(b).ok_or_else(|| self.unknown(b))?)
             }
             // So does any local holding a value that exists at compile time only, such as
@@ -59,7 +59,7 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn declared(&self, binder: BinderId) -> Option<ExprId> {
         let hir = &self.parsed.hir;
-        if hir.binders[binder].mutable || hir.member_decl(binder).is_some() {
+        if hir.binders[binder].mutable || !hir.is_local(binder) {
             return None;
         }
         let decl = hir.decl_of(binder)?;

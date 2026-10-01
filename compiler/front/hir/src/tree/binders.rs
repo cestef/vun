@@ -59,6 +59,13 @@ impl Hir {
         self.index().member[binder].map(|(_, decl)| decl)
     }
 
+    /// Whether `binder` is a local, bound by a body: not a member of a namespace, declared in it
+    /// or selected by a spread.
+    #[must_use]
+    pub fn is_local(&self, binder: BinderId) -> bool {
+        self.member_decl(binder).is_none() && self.spread_of(binder).is_none()
+    }
+
     /// The namespace among whose members `binder` is declared; `None` for a local.
     #[must_use]
     pub fn member_ns(&self, binder: BinderId) -> Option<NsId> {

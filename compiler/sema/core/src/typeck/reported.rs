@@ -103,9 +103,7 @@ impl Reads {
             Some(Res::Binder(b)) => Some((e, b)),
             _ => None,
         });
-        binders.find(|&(_, b)| {
-            !hir.binders[b].comptime && hir.member_decl(b).is_none() && !reads.bound.contains(&b)
-        })
+        binders.find(|&(_, b)| !hir.binders[b].comptime && hir.is_local(b) && !reads.bound.contains(&b))
     }
 }
 
