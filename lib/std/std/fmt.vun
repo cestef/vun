@@ -171,12 +171,3 @@ slice_format := ($T: type) -> type { struct {
         }
     };
 } };
-
-/// The items of an array, as those of a slice; a string literal is a borrow of an array of bytes.
-#[impl(Format(lang.mem.Array))]
-array_format := ($n: Int(0..), $T: type) -> type { struct {
-    format := ($W: Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
-        items: &[T] = value;
-        items.format(w)
-    };
-} };

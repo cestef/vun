@@ -44,10 +44,9 @@ pub const value: Item = Item::new(&["lang", "meta", "value"]);
 pub const append: Item = Item::new(&["lang", "meta", "append"]);
 /// The items of `a` followed by those of `b`, in compile-time memory.
 pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
-/// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4).
+/// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4). An array is
+/// concatenated as the slice of its items: a string literal is a borrow of one.
 pub const slice_concat: Item = Item::new(&["lang", "meta", "slice_concat"]);
-/// `a ++ b` on an array, as on the slice of its items: a string literal is a borrow of one.
-pub const array_concat: Item = Item::new(&["lang", "meta", "array_concat"]);
 /// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, an item
 /// of a variant's payload, named by its position (`0`, `1`, ...), or a parameter of a function,
 /// a part of the tuple a call passes.

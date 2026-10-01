@@ -7,7 +7,3 @@
 )]
 use crate::Item;
 pub const slice_search: Item = Item::new(&["std", "seq", "search", "slice_search"]);
-/// The same of an array, which is looked in as the slice of its items is.
-pub const array_search: Item = Item::new(&["std", "seq", "search", "array_search"]);
-/// The items of the array `xs` as a slice.
-pub const as_items: Item = Item::new(&["std", "seq", "search", "as_items"]);

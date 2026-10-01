@@ -109,8 +109,8 @@ impl Env<'_, '_> {
         if let Some(args) = ty.implements(constructor) {
             return Some(args);
         }
-        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        let made = witnesses.iter().filter_map(|w| w.decl.contract.as_ref()?.made());
+        let tiers = Witnesses::tiers(self.cx, &self.file, ty);
+        let made = tiers.iter().flat_map(|tier| tier.iter()).filter_map(|w| w.decl.contract.as_ref()?.made());
         if let Some(made) = made.into_iter().find(|made| Value::Fn(made.f.clone()) == *constructor) {
             return Some(made.args);
         }

@@ -131,14 +131,6 @@ slice_json := ($T: type) -> type { struct {
     };
 } };
 
-#[impl(Json(lang.mem.Array))]
-array_json := ($n: Int(0..), $T: type) -> type { struct {
-    json := ($W: std.fmt.Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
-        items: &[T] = value;
-        items.json(w)
-    };
-} };
-
 #[impl(Json(Option))]
 option_json := ($T: type) -> type { struct {
     json := ($W: std.fmt.Writer, value: &?T, w: &mut W) -> Result((), W.Error) {

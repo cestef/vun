@@ -94,15 +94,6 @@ slice_debug := ($T: type) -> type { struct {
     };
 } };
 
-/// The items of an array, as those of a slice.
-#[impl(Debug(lang.mem.Array))]
-array_debug := ($n: Int(0..), $T: type) -> type { struct {
-    debug := ($W: std.fmt.Writer, value: &[n]T, w: &mut W) -> Result((), W.Error) {
-        items: &[T] = value;
-        items.debug(w)
-    };
-} };
-
 /// A `Debug` witness for `T` by reflection: a tuple is its items in parentheses, an enum's variant
 /// is `.name`, followed by its parts in parentheses where it has any, and a struct or a record is
 /// its type's name and its fields, each as `.name = value`.

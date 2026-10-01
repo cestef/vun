@@ -57,3 +57,18 @@ the_ends_of_a_slice_are_its_first_and_last_items := () {
     std.testing.assert("abc".last() == Option(&u8).some(&"c"[0]));
     std.testing.assert("".first() == Option(&u8).none);
 };
+
+#[test]
+an_array_has_the_methods_of_the_slice_of_its_items := () {
+    items: [3]u8 = [7, 8, 9];
+    // Its own length, and the slice's search, cutting and enumeration.
+    std.testing.assert(items.len() == 3);
+    std.testing.assert(items.contains(&8));
+    std.testing.assert(items.starts_with(&[7, 8]));
+    std.testing.assert(items.find(&[8, 9]) == Option(usize).some(1));
+    mut sum: usize = 0;
+    for (i, item) in items.enumerate() { sum += i + item.*.to(usize); }
+    std.testing.assert(sum == 0 + 7 + 1 + 8 + 2 + 9);
+    // Its own equality, of arrays of one length.
+    std.testing.assert(items == [7, 8, 9]);
+};

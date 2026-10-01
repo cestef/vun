@@ -21,3 +21,6 @@ pub const a_slice_is_split_into_the_runs_between_separators: Item = Item::new(
 pub const the_ends_of_a_slice_are_its_first_and_last_items: Item = Item::new(
     &["std", "seq", "tests", "the_ends_of_a_slice_are_its_first_and_last_items"],
 );
+pub const an_array_has_the_methods_of_the_slice_of_its_items: Item = Item::new(
+    &["std", "seq", "tests", "an_array_has_the_methods_of_the_slice_of_its_items"],
+);

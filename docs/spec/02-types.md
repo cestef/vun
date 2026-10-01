@@ -152,6 +152,10 @@ uart_writer := struct {
   as above, so `#[impl(Result)]` on `($T: type, $E: type) -> type { struct { map_err := ... } }`
   gives every result `map_err`. It registers no pair, so the orphan rule does not apply: any
   package may add methods to any type, and the collision rule above keeps lookup unambiguous.
+- An array has the impls of the slice of its items, as a borrow of an array is a borrow of its
+  items (spec 01, section 4): `xs.contains(&3)` and `{?}` of a `[3]u8` need no impl of their own.
+  An impl for the array serves first: a name it declares, or an interface it implements, shadows
+  the slice's, so `lang.mem.Array` has its own `Eq` (arrays of one length) and `Sequence.len`.
 - The impls a file sees are those of its package and of the packages it depends on, directly or
   not; the orphan rule places every impl of a pair in one of them. A type's impls are also looked
   up in the package declaring it, so a generic body instantiated with a type from a package it

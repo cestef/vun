@@ -2,7 +2,6 @@
 pub mod hash_Fnv;
 pub mod hash_Hash;
 pub mod hash_Hasher;
-pub mod hash_array_hash;
 pub mod hash_bool_hash;
 pub mod hash_derive_hash;
 pub mod hash_fnv_hasher;

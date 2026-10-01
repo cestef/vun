@@ -7,7 +7,3 @@
 )]
 use crate::Item;
 pub const len: Item = Item::new(&["std", "seq", "array_sequence", "len"]);
-/// A pointer to the first item, for passing the items to code outside the language.
-pub const ptr: Item = Item::new(&["std", "seq", "array_sequence", "ptr"]);
-/// A borrow of each item with its position, from 0.
-pub const enumerate: Item = Item::new(&["std", "seq", "array_sequence", "enumerate"]);

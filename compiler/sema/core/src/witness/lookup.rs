@@ -74,8 +74,9 @@ impl Query for Witnesses {
                 while let Some(referent) = part.borrowed() {
                     part = referent;
                 }
-                cx.get::<Witnesses>(&(file.clone(), part))
+                Self::tiers(cx, file, part)
                     .iter()
+                    .flat_map(|tier| tier.iter())
                     .any(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface))
             };
             witnesses.extend(Witness::derived(cx, &derive, *ty, has));
@@ -85,6 +86,17 @@ impl Query for Witnesses {
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
         Arc::from([])
+    }
+}
+
+impl Witnesses {
+    /// The witnesses `ty` has, in tiers, the nearest first: its own, then, for an array, those
+    /// of the slice of its items (spec 05, section 1). An array is read as its items, as a borrow
+    /// of it is a borrow of them, so it has the impls of that slice; what it has of itself serves
+    /// first, a method or an interface it declares shadowing the slice's.
+    pub(crate) fn tiers(cx: &Cx<'_>, file: &FileRef, ty: Ty) -> Vec<Arc<[Witness]>> {
+        let items = ty.as_array().map(|(_, items)| TyKind::slice(items));
+        std::iter::once(ty).chain(items).map(|ty| cx.get::<Witnesses>(&(file.clone(), ty))).collect()
     }
 }
 
@@ -207,9 +219,10 @@ impl Env<'_, '_> {
     /// The struct `ty`'s impl of `interface` gives, through the impls this file sees.
     #[must_use]
     pub fn witness(&self, interface: &Func, ty: Ty) -> Option<Ty> {
-        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        witnesses
+        let tiers = Witnesses::tiers(self.cx, &self.file, ty);
+        tiers
             .iter()
+            .flat_map(|tier| tier.iter())
             .find(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == *interface))
             .map(|w| w.ty)
     }
@@ -220,9 +233,10 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn implemented_by(&self, ty: Ty, interface: Item, function: Symbol) -> Option<Method> {
         let Ok(Value::Interface(interface)) = self.item(interface) else { return None };
-        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        witnesses
+        let tiers = Witnesses::tiers(self.cx, &self.file, ty);
+        tiers
             .iter()
+            .flat_map(|tier| tier.iter())
             .filter(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
             .find_map(|w| w.method(self.cx, function))
     }
@@ -244,8 +258,9 @@ impl Env<'_, '_> {
             made.len() == args.len() && made.iter().zip(args).all(|(m, a)| a.as_ref().is_none_or(|a| a == m))
         };
         let made = |c: &super::Contract| c.made().is_some_and(|i| i.f == constructor && fits(&i.args));
-        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        let concrete = witnesses.iter().filter(|w| w.decl.contract.as_ref().is_some_and(made));
+        let tiers = Witnesses::tiers(self.cx, &self.file, ty);
+        let concrete =
+            tiers.iter().flat_map(|tier| tier.iter()).filter(|w| w.decl.contract.as_ref().is_some_and(made));
         if let Some(method) = concrete.into_iter().find_map(|w| w.method(self.cx, function)) {
             return Some(method);
         }
@@ -260,11 +275,13 @@ impl Env<'_, '_> {
             .find_map(|w| w.method(self.cx, function))
     }
 
-    /// Every method `name` that `ty` has through the impls this file sees: more than one is a
-    /// collision.
+    /// Every method `name` that `ty` has through the impls this file sees, in the nearest tier
+    /// that has one: more than one is a collision.
     #[must_use]
     pub fn methods(&self, ty: Ty, name: Symbol) -> Vec<Method> {
-        let witnesses = self.cx.get::<Witnesses>(&(self.file.clone(), ty));
-        witnesses.iter().filter_map(|w| w.method(self.cx, name)).collect()
+        let tiers = Witnesses::tiers(self.cx, &self.file, ty);
+        let mut methods =
+            tiers.iter().map(|tier| tier.iter().filter_map(|w| w.method(self.cx, name)).collect());
+        methods.find(|found: &Vec<Method>| !found.is_empty()).unwrap_or_default()
     }
 }

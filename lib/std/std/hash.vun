@@ -101,12 +101,3 @@ slice_hash := ($T: type) -> type { struct {
         }
     };
 } };
-
-/// The items of an array, as those of a slice.
-#[impl(Hash(lang.mem.Array))]
-array_hash := ($n: Int(0..), $T: type) -> type { struct {
-    hash := ($H: Hasher, value: &[n]T, h: &mut H) {
-        items: &[T] = value;
-        items.hash(h);
-    };
-} };

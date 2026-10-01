@@ -47,5 +47,3 @@ pub const int_binary: Item = Item::new(&["std", "fmt", "int_binary"]);
 pub const bool_format: Item = Item::new(&["std", "fmt", "bool_format"]);
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
 pub const slice_format: Item = Item::new(&["std", "fmt", "slice_format"]);
-/// The items of an array, as those of a slice; a string literal is a borrow of an array of bytes.
-pub const array_format: Item = Item::new(&["std", "fmt", "array_format"]);

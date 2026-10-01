@@ -1,5 +1,5 @@
-//! Looking in a slice and cutting it (spec 05): methods of every `[T]` and `[n]T` whose items
-//! have `==`, text among them, by impls without an interface.
+//! Looking in a slice and cutting it (spec 05): methods of every `[T]`, and so of every `[n]T`,
+//! whose items have `==`, text among them, by an impl without an interface.
 
 #[impl(lang.mem.Slice)]
 slice_search := ($T: type) -> type { struct {
@@ -82,21 +82,3 @@ slice_search := ($T: type) -> type { struct {
         yield rest;
     };
 } };
-
-/// The same of an array, which is looked in as the slice of its items is.
-#[impl(lang.mem.Array)]
-array_search := ($n: Int(0..), $T: type) -> type { struct {
-    first := (xs: &[n]T) -> Option(&T) { as_items(n, T, xs).first() };
-    last := (xs: &[n]T) -> Option(&T) { as_items(n, T, xs).last() };
-    starts_with := (xs: &[n]T, prefix: &[T]) -> bool { as_items(n, T, xs).starts_with(prefix) };
-    ends_with := (xs: &[n]T, suffix: &[T]) -> bool { as_items(n, T, xs).ends_with(suffix) };
-    index_of := (xs: &[n]T, item: &T) -> Option(usize) { as_items(n, T, xs).index_of(item) };
-    contains := (xs: &[n]T, item: &T) -> bool { as_items(n, T, xs).contains(item) };
-    find := (xs: &[n]T, needle: &[T]) -> Option(usize) { as_items(n, T, xs).find(needle) };
-    split_once := (xs: &[n]T, sep: &[T]) -> Option((&[T], &[T])) { as_items(n, T, xs).split_once(sep) };
-    split_at := (xs: &[n]T, at: usize) -> (&[T], &[T]) { as_items(n, T, xs).split_at(at) };
-    split := (xs: &[n]T, sep: &[T]) -> std.iter.Iter(&[T]) { yield ..as_items(n, T, xs).split(sep); };
-} };
-
-/// The items of the array `xs` as a slice.
-as_items := ($n: Int(0..), $T: type, xs: &[n]T) -> &[T] { xs };

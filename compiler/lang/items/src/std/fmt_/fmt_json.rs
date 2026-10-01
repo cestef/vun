@@ -38,7 +38,6 @@ pub const float_json: Item = Item::new(&["std", "fmt", "json", "float_json"]);
 pub const bool_json: Item = Item::new(&["std", "fmt", "json", "bool_json"]);
 /// Bytes as a string, any other items as an array.
 pub const slice_json: Item = Item::new(&["std", "fmt", "json", "slice_json"]);
-pub const array_json: Item = Item::new(&["std", "fmt", "json", "array_json"]);
 pub const option_json: Item = Item::new(&["std", "fmt", "json", "option_json"]);
 /// A `Json` witness for `T` by reflection: a struct or a record is an object of its fields, each
 /// by its own `Json`, a tuple an array of its items; an enum's variant is its name, or, holding parts, an object whose one member is named
