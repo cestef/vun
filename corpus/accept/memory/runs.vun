@@ -1,0 +1,24 @@
+//! A run of items, `xs[a..b]`, reads as the borrow it is typed as when `xs` is a borrow, and is
+//! storage like any other place when `xs` is an array (spec 01, section 4). Whatever follows the
+//! run, an operand, a receiver, an argument or another index, finds it with the type typing gave.
+
+start := std.os.start(main);
+
+first := (xs: &[u8]) -> u8 { xs[0] };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs: &[u8] = "hello";
+    if xs[1..3] != "el" { return .code(1); }
+    if xs[1..3].len() != 2 { return .code(2); }
+    if first(xs[1..3]) != "e"[0] { return .code(3); }
+    ys := xs[1..4];
+    if ys.len() != 3 { return .code(4); }
+    if xs[1..4][1..2] != "l" { return .code(5); }
+    arr: [4]u8 = [1, 2, 3, 4];
+    if arr[1..3].len() != 2 { return .code(6); }
+    // Items that are borrows are read as they are, not borrowed again.
+    refs: [2]&[u8] = ["ab", "cd"];
+    if refs[1] != "cd" { return .code(7); }
+    if refs[1].len() != 2 { return .code(8); }
+    .ok
+};

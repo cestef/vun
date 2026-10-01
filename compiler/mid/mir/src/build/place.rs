@@ -65,7 +65,8 @@ impl Builder<'_, '_, '_> {
                 // An integer index names one item; bounds name the run of items they cover.
                 let typed = self.typed().ok_or(Unbuilt::at(origin))?;
                 let known = typed.types.get(index).map(|k| k.ty);
-                if !known.is_some_and(|t| t.interval().is_some() || t.bounds().is_some()) {
+                let run = known.is_some_and(|t| t.bounds().is_some());
+                if !run && known.is_none_or(|t| t.interval().is_none()) {
                     return Err(Unbuilt::at(origin));
                 }
                 let place = self.through_borrows(*object)?;
@@ -83,7 +84,16 @@ impl Builder<'_, '_, '_> {
                 {
                     self.locals[index].ty = Some(TyKind::int(&Interval::singleton(n)));
                 }
-                Ok(place.project(Projection::Index(index)))
+                let place = place.project(Projection::Index(index));
+                // Typing reads a run through a borrow as a borrow of it (spec 01, section 4): a
+                // value, held like any other, so every place has the type typing found for it.
+                let ty = self.type_of(expr);
+                match ty.and_then(|t| t.borrowing()) {
+                    Some((mode, ..)) if run => {
+                        Ok(Place::of(self.typed_local(Rvalue::Ref { mode, place }, ty, origin)))
+                    }
+                    _ => Ok(place),
+                }
             }
             // Through a struct owning its target, `.*` goes through its `#[kind.owns]` field.
             ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
@@ -100,20 +110,14 @@ impl Builder<'_, '_, '_> {
         }
     }
 
-    /// The value of the place `expr`, copied out of it; a path to a constant is its value. A run
-    /// of items reached through a borrow, `xs[a..b]`, is borrowed again in the same mode.
+    /// The value of the place `expr`, copied out of it; a path to a constant is its value.
     pub(super) fn read(&mut self, expr: ExprId) -> Result<Operand, Unbuilt> {
         if let Ok(value) = self.env().eval(expr) {
             return Ok(Operand::Const(value));
         }
         let origin = self.env.parsed.hir.exprs[expr].origin;
         let place = self.place(expr)?;
-        let run = matches!(self.env.parsed.hir.exprs[expr].kind, ExprKind::Index { .. });
-        let borrow = self.type_of(expr).and_then(|t| t.borrowing());
-        match borrow {
-            Some((mode, ..)) if run => Ok(self.temp(Rvalue::Ref { mode, place }, origin)),
-            _ => Ok(self.temp(Rvalue::Use(Operand::Place(place)), origin)),
-        }
+        Ok(self.temp(Rvalue::Use(Operand::Place(place)), origin))
     }
 
     /// `&mode operand`: a borrow of the place `operand`, or, for a type, the borrow type. A
@@ -147,13 +151,7 @@ impl Builder<'_, '_, '_> {
         let Some(ty) = self.typed().and_then(|t| t.types.get(&object).map(|k| k.ty)) else {
             return Ok(place);
         };
-        // A run of items through a borrow, `xs[a..b]`, reads as a borrow of the run, whose place
-        // is the run itself: the first borrow is already gone through.
-        let run = place.ty(self.env.cx, &self.locals).is_some_and(|t| Some(t) == ty.borrowed());
-        for (i, hop) in self.env().reach(ty, name).0.into_iter().enumerate() {
-            if run && i == 0 && !matches!(hop, Hop::Owner(_)) {
-                continue;
-            }
+        for hop in self.env().reach(ty, name).0 {
             if let Hop::Owner(field) = hop {
                 place = place.project(Projection::Field(field));
             }

@@ -42,7 +42,9 @@ impl Env<'_, '_> {
                 // A member of a namespace or of a type is a declaration, never a method of the
                 // namespace or of `type`.
                 let declared = matches!(object, Value::Namespace(_) | Value::Type(_));
-                let ty = if declared { None } else { object.ty().or(ty) };
+                // The type typing found is the declared one, `[u8]`; a value's own is only what its
+                // items have in common, `[Int(97..=98)]`.
+                let ty = if declared { None } else { ty.or_else(|| object.ty()) };
                 // A field holds a value, which the call calls with no receiver.
                 let field = ty
                     .and_then(|t| self.cx.get::<Members>(&t))
