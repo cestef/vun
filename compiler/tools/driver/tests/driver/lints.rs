@@ -70,6 +70,23 @@ timer := struct { start := (self: &timer) {}; };
 }
 
 #[test]
+fn an_alias_of_a_type_is_annotated_to_bind_one() {
+    let reported = linted(
+        "lints-alias",
+        "\
+Index := Int(0..9);
+Small: type = Int(0..9);
+Nothing: type = ();
+unit := ();
+Kind := interface(($Self: type) -> type { struct {} });
+Callback := (x: u8) -> u8;
+",
+    );
+    // Only `Index`, a name written like a type that nothing says is one.
+    assert_eq!(reported, vec![(CASE, Severity::Error)]);
+}
+
+#[test]
 fn a_build_sets_the_levels_of_lints_and_groups() {
     let fx = Fixture::new("lints-levels");
     fx.root.write(

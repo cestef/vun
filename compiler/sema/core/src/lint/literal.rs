@@ -1,10 +1,13 @@
 //! The literals a declaration's value comes from, read where they are written: whether what a
 //! struct or a function literal gives is a namespace or a type (spec 10, section 5).
 
+use vun_desugar::MARKERS;
 use vun_hir::tree::{Entry, ExprId, ExprKind, Member};
+use vun_primitives::Primitive;
+use vun_primitives::lang::Lang;
 use vun_query::Cx;
-use vun_sema_ty::TyKind;
 use vun_sema_ty::item::ExprRef;
+use vun_sema_ty::{TyKind, Value};
 
 use crate::callable::{Callable, Written};
 use crate::env::Env;
@@ -28,8 +31,44 @@ impl<'a, 'db> Literal<'a, 'db> {
         Some(Self { env: Env::of(cx, &at.file)?, at: at.clone() })
     }
 
+    /// The literal written at `at` without the attributes and markers before it:
+    /// `#[kind.linear] struct { .. }`, `unsafe (..) -> T`.
+    pub(super) fn written(cx: &'a Cx<'db>, at: &ExprRef) -> Option<Self> {
+        let literal = Self::of(cx, at)?;
+        let hir = &literal.env.parsed.hir;
+        let mut expr = at.expr.id;
+        loop {
+            match &hir.exprs[expr].kind {
+                ExprKind::Attributed { inner, .. } => expr = *inner,
+                ExprKind::Prefix { op, operand, .. } if MARKERS.iter().any(|row| row.token == *op) => {
+                    expr = *operand;
+                }
+                _ => break,
+            }
+        }
+        let at = ExprRef::new(at.file.clone(), hir, expr);
+        Some(Self { at, ..literal })
+    }
+
     fn kind(&self) -> &ExprKind {
         &self.env.parsed.hir.exprs[self.at.expr.id].kind
+    }
+
+    /// Whether this literal, a declaration's value, is a type or an interface by how it is
+    /// written: a `struct` that is no namespace, an `enum`, a function type, a call of
+    /// `interface`, or a function literal giving one. A name, a call or a tuple of types is not:
+    /// it is annotated `type` to bind one (spec 10, section 5).
+    pub(super) fn is_type(&self) -> bool {
+        match self.kind() {
+            ExprKind::Struct(_) => !self.namespace(),
+            ExprKind::Call { callee, .. } => {
+                let interface = Value::Primitive(Primitive::Lang(Lang::interface));
+                self.env.eval(*callee).is_ok_and(|v| v == interface)
+            }
+            ExprKind::Enum { .. } | ExprKind::FnType { .. } => true,
+            ExprKind::Fn { .. } => self.gives_type(),
+            _ => false,
+        }
     }
 
     /// Whether this struct literal is a namespace: declarations or spreads of them, no field, and

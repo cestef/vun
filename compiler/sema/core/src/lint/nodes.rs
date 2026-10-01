@@ -12,14 +12,12 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lint::Lint;
-use vun_sema_ty::item::DeclRef;
-use vun_sema_ty::{TyKind, Value};
+use vun_sema_ty::Value;
+use vun_sema_ty::item::ExprRef;
 
 use super::literal::Literal;
 use super::locals::{Bound, Locals};
 use super::tables::Binds;
-use crate::callable::Callable;
-use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::visible::Reach;
 
@@ -128,9 +126,8 @@ impl Walk<'_, '_, '_> {
                 let binder = &walk.hir().binders[b];
                 let (name, origin) = (binder.name, binder.origin);
                 walk.public &= walk.seen(name, &walk.hir().decls[id].attrs);
-                if let Some(binds) = walk.binds(id) {
-                    walk.push(Kind::Decl { name, binds, public: walk.public, documented }, origin);
-                }
+                let binds = walk.binds(id);
+                walk.push(Kind::Decl { name, binds, public: walk.public, documented }, origin);
             }
             if let Some(value) = value {
                 walk.value(value);
@@ -198,31 +195,18 @@ impl Walk<'_, '_, '_> {
         }
     }
 
-    /// What the declaration `id` binds (spec 10, section 5): a type, an interface or a function
-    /// giving one, unless what it gives is a namespace, a struct of declarations alone; any
-    /// other value. One annotated `type` or `lang.Interface` binds a type, as `()` does there; a
-    /// primitive, `= _`, binds what the annotation of its declaration says. `None` for one whose
-    /// value is not known, which lints do not guess.
-    fn binds(&self, id: DeclId) -> Option<Binds> {
+    /// What the declaration `id` binds (spec 10, section 5), by how it is written: a type when
+    /// annotated `type`, `lang.Interface` or a function type giving one, or when its value is a
+    /// `struct` that is no namespace, an `enum`, a function type, an `interface` or a function
+    /// literal giving a type. Any other value, an alias of a type included, is annotated to bind
+    /// one. A primitive, `= _`, binds what the annotation of its declaration says.
+    fn binds(&self, id: DeclId) -> Binds {
         let hir = self.hir();
-        if hir.decls[id].ty.is_some_and(|t| self.types(t)) {
-            return Some(Binds::Type);
-        }
-        let cx = self.env.cx;
-        let decl = DeclRef::new(self.env.file.clone(), hir, id);
-        let gives = match cx.get::<DeclValue>(&decl).ok()? {
-            Value::Type(ty) => match &*ty {
-                TyKind::Nominal(n) => !Literal::of(cx, &n.literal).is_some_and(|l| l.namespace()),
-                _ => true,
-            },
-            Value::Interface(_) => true,
-            Value::Fn(f) => Literal::of(cx, &f.literal).is_some_and(|l| l.gives_type()),
-            Value::Primitive(p) => {
-                Callable::Primitive(p).written(self.env).is_some_and(|w| Literal::from(w).gives_type())
-            }
-            _ => false,
-        };
-        Some(if gives { Binds::Type } else { Binds::Value })
+        let d = &hir.decls[id];
+        let literal = |e: ExprId| Literal::written(self.env.cx, &ExprRef::new(self.env.file.clone(), hir, e));
+        let annotated = d.ty.and_then(literal).is_some_and(|l| l.gives_type());
+        let written = d.value.and_then(literal).is_some_and(|l| l.is_type());
+        if annotated || written { Binds::Type } else { Binds::Value }
     }
 
     /// Whether a local named `name` in the namespace walked hides a constant from outside the file.

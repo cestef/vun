@@ -9,6 +9,15 @@ ring_buffer := struct { len: usize };    // reported: the type `ring_buffer` sho
 RingBuffer := struct { len: usize };
 ```
 
+A binding is a type by how it is written: a `struct`, an `enum`, an `interface`, a function type
+or a function literal giving a type, or one annotated `type` or `lang.Interface`. A name or a call
+that gives a type is a value, so an alias is annotated to bind one:
+
+```vun
+Index: type = Int(0..9);
+Error: type = ();
+```
+
 The built-in type names keep their conventional lowercase (`u8`, `bool`, `type`, ...): they are
 listed in `std.lints.naming.lowercase_types`. Allow the lint where a name mirrors one written
 elsewhere, and say why:

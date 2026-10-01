@@ -141,7 +141,13 @@ Case := enum {
             .pascal => "`PascalCase`",
             .snake => "`snake_case`",
         };
-        "the " ++ binds.noun() ++ " `" ++ name.text ++ "` should be named in " ++ style
+        message := "the " ++ binds.noun() ++ " `" ++ name.text ++ "` should be named in " ++ style;
+        // A value written like a type is most likely an alias, which is annotated to bind one.
+        alias := match binds { .value => Case.pascal.holds(name), _ => false };
+        if self == .snake and alias {
+            return message ++ ", or annotated `: type` if it names a type";
+        }
+        message
     };
 };
 
@@ -149,9 +155,9 @@ Case := enum {
 case_eq := std.cmp.derive_eq(Case);
 
 /// The letters and digits of a name, as byte ranges.
-Upper := Int('A'..='Z');
-Lower := Int('a'..='z');
-Digit := Int('0'..='9');
+Upper: type = Int('A'..='Z');
+Lower: type = Int('a'..='z');
+Digit: type = Int('0'..='9');
 _separator := '_';
 /// From an uppercase letter to its lowercase.
 _shift := 'a' - 'A';

@@ -310,7 +310,12 @@ project, extensible by libraries with the mechanism of section 4.
 
 ### Naming (`std.lints.naming.*`)
 
-Case is decided by what a binding is, which compile-time evaluation knows exactly:
+Case is decided by how a binding is written, never by evaluating it: a binding is a type when it
+is annotated `type`, `lang.Interface` or a function type giving one, or when its value is a
+`struct`, an `enum`, a function type, an `interface` or a function literal giving a type. A name
+or a call that happens to give a type is a value, so an alias is annotated to bind one:
+`Index: type = Int(0..9);`, `Error: type = Full;`, and `()` or `(u8, u16)` are values unless
+annotated.
 
 | Binding | Case | Examples |
 |---------|------|----------|
