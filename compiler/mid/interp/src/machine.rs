@@ -172,10 +172,11 @@ impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
                 Value::Variant { name, .. } => self.env.decide(name == *variant),
                 _ => Err(Unevaluated::Unsupported),
             },
-            // `execute` ends a binding's scope without a value.
-            // Code spliced at run time reads what only a call site holds, and machine
-            // instructions run on the machine alone.
-            Rvalue::Splice { .. } | Rvalue::Asm(_) => Err(Unevaluated::Runtime),
+            // Code spliced is evaluated where it was written, and has the value of that, or the
+            // reason it has none: what only a call site holds at run time is `Runtime`.
+            Rvalue::Splice { code } => self.env.splice(Value::Code(code.clone())),
+            // Machine instructions run on the machine alone.
+            Rvalue::Asm(_) => Err(Unevaluated::Runtime),
             Rvalue::Dead => Err(Unevaluated::Unsupported),
             Rvalue::Call { callee, args } => self.call(callee, args),
         }

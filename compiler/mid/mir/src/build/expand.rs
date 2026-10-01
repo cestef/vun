@@ -18,14 +18,15 @@ use crate::remap::Remap;
 use crate::{Aggregate, Body, Local, Mir, Operand, Rvalue, TerminatorKind};
 
 impl Builder<'_, '_, '_> {
-    /// `$c` at run time for the code `c`: its value at compile time where it has one, a splice
-    /// that the call site expanding this body builds where it reads what only that site holds,
-    /// and otherwise the evaluation, which stops as it did here when run.
+    /// `$c` at run time for the code `c` (spec 03, section 4): its value at compile time where it
+    /// has one, and otherwise the code, a splice that the call site expanding this body builds
+    /// where it is written, and runs when it does. A trap the code fires when computed at
+    /// compile time is the exception: it is reported here, as the evaluation stopped.
     pub(super) fn spliced(&mut self, expr: ExprId, code: Code, origin: OriginId) -> Operand {
         match self.env().eval(expr) {
             Ok(value) => Operand::Const(value),
-            Err(Unevaluated::Runtime) => self.temp(Rvalue::Splice { code }, origin),
-            Err(_) => self.temp(self.comptime(expr, None), origin),
+            Err(Unevaluated::Trapped(_)) => self.temp(self.comptime(expr, None), origin),
+            Err(_) => self.temp(Rvalue::Splice { code }, origin),
         }
     }
 

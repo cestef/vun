@@ -116,6 +116,11 @@ fn compile_time_bindings_of_staged_loops_run_with_their_steps_types() {
 }
 
 #[test]
+fn code_with_no_value_at_compile_time_runs_where_it_is_spliced() {
+    assert_eq!(status("backend-spliced-unrun", &program("spliced_unrun.vun")), Some(5));
+}
+
+#[test]
 fn borrowed_constants_and_placed_fields_run_through_each_backend() {
     assert_eq!(status("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
 }

@@ -1,0 +1,28 @@
+//! Code spliced at run time runs where it is spliced when it has no value at compile time (spec
+//! 03, section 4): the condition of `assert` is a call with no arguments, which keeps a borrow in
+//! a struct and writes through it, a form compile-time evaluation does not run yet, so the program checks it when it
+//! runs. Exits with status 5.
+
+start := std.os.start(main);
+
+Cursor := struct {
+    rest: &mut [u8],
+    at: usize,
+
+    put := (self: &mut Cursor, byte: u8) {
+        self.rest[self.at] = byte;
+        self.at += 1;
+    };
+};
+
+filled := () -> bool {
+    mut bytes: [4]u8 = [0; 4];
+    mut cursor := Cursor{ .rest = &mut bytes, .at = 0 };
+    cursor.put(7);
+    cursor.at == 1
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    std.testing.assert(filled());
+    std.os.Exit.of(5)
+};
