@@ -1,8 +1,9 @@
 //! The functions of C's `string.h` a freestanding C program must provide, which a C compiler
-//! calls for copies and fills of its own. Copies and fills are written in assembly: a loop in
-//! Vun would be read back by the C compiler as a call of the function it is.
+//! calls for copies and fills of its own: a runtime with no C library holds them. Copies and
+//! fills are written in assembly: a loop in Vun would be read back by the C compiler as a call of
+//! the function it is.
 
-/// The exports, which a runtime holds: `memory := std.os.linux.kernel.memory.exports`.
+/// The exports, which a runtime holds: `memory := std.os.memory.exports`.
 exports := struct {
     #[link.export("memcpy"), abi.c]
     copy := (to: *u8, from: *u8, bytes: usize) -> *u8 {

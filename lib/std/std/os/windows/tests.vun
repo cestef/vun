@@ -1,0 +1,67 @@
+//! Tests of `std.os.windows`: a command line split into the arguments a program is given.
+
+/// The arguments of the command line `line`, each followed by `|`, and how many there are.
+arguments := (line: &[u8], out: &mut std.text.Slab(256)) -> usize {
+    mut units: [128]u16 = [0; 128];
+    n := std.text.utf16.from_utf8(line, &mut units).expect("fits");
+    mut bytes: [256]u8 = [0; 256];
+    mut starts: [16]usize = [0; 16];
+    count := std.os.windows.command_line.split(&units[0..n], &mut bytes, &mut starts).expect("splits");
+    for k in 0..count {
+        mut end := starts[k];
+        for bytes[end] != 0 { end += 1; }
+        _ = out.append(&bytes[starts[k]..end]);
+        _ = out.append("|");
+    }
+    count
+};
+
+/// Whether `line` is split into the arguments `expected` names, each followed by `|`.
+splits_to := (line: &[u8], expected: &[u8]) -> bool {
+    mut out := std.text.Slab(256).empty();
+    _ = arguments(line, &mut out);
+    out.bytes() == expected
+};
+
+#[test]
+a_command_line_is_split_at_spaces_and_tabs := () {
+    std.testing.assert(splits_to("app one  two\tthree", "app|one|two|three|"));
+    std.testing.assert(splits_to("  app  ", "app|"));
+    std.testing.assert(splits_to("", ""));
+};
+
+#[test]
+quotes_protect_what_is_inside := () {
+    std.testing.assert(splits_to("\"C:\\Program Files\\app.exe\" a", "C:\\Program Files\\app.exe|a|"));
+    std.testing.assert(splits_to("app \"abc\" d e", "app|abc|d|e|"));
+    std.testing.assert(splits_to("app d\"e f\"g h", "app|de fg|h|"));
+    std.testing.assert(splits_to("app \"\"", "app||"));
+};
+
+#[test]
+backslashes_matter_only_before_a_quote := () {
+    std.testing.assert(splits_to("app a\\\\b d\"e f\"g h", "app|a\\\\b|de fg|h|"));
+    std.testing.assert(splits_to("app a\\\\\\\"b c d", "app|a\\\"b|c|d|"));
+    std.testing.assert(splits_to("app a\\\\\\\\\"b c\" d e", "app|a\\\\b c|d|e|"));
+};
+
+#[test]
+two_quotes_in_a_stretch_are_one_quote := () {
+    std.testing.assert(splits_to("app a\"b\"\" c d", "app|ab\" c d|"));
+};
+
+#[test]
+the_programs_name_has_no_escapes := () {
+    std.testing.assert(splits_to("\"a\\\" b", "a\\|b|"));
+};
+
+#[test]
+a_command_line_that_does_not_fit_is_not_split := () {
+    mut bytes: [4]u8 = [0; 4];
+    mut starts: [1]usize = [0; 1];
+    one: [3]u16 = [0x61, 0x20, 0x62];
+    std.testing.assert(std.os.windows.command_line.split(&one, &mut bytes, &mut starts) == Option(usize).none);
+    mut few: [1]u8 = [0; 1];
+    mut many: [4]usize = [0; 4];
+    std.testing.assert(std.os.windows.command_line.split(&one, &mut few, &mut many) == Option(usize).none);
+};

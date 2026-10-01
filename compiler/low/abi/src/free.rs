@@ -4,7 +4,7 @@ use vun_lir::{Record, Scalar};
 
 use crate::bank::{Bank, Span};
 use crate::record::{Class, Piece};
-use crate::{Carrier, Floats, Loc, Part, Rest, Rules, Short, Split, Stack};
+use crate::{Carrier, Floats, Loc, Part, Rest, Rules, Short, Slots, Split, Stack};
 
 /// What a call has left to place values in.
 pub(crate) struct Free<'r, I: 'static, F: 'static> {
@@ -26,7 +26,7 @@ impl<'r, I: Copy, F: Copy> Free<'r, I, F> {
             rules,
             ints: Bank::new(ints, Span::Words(rules.word)),
             floats: Bank::new(floats, span),
-            stack: 0,
+            stack: rules.shadow,
             packed: packed && rules.stack == Stack::Packed,
         }
     }
@@ -48,6 +48,12 @@ impl<'r, I: Copy, F: Copy> Free<'r, I, F> {
         let regs = regs.collect();
         self.ints.claim(ints.start, ints.units);
         self.floats.claim(floats.start, floats.units);
+        if self.rules.slots == Slots::Shared {
+            // The value's position counts in both classes.
+            let at = self.ints.position().max(self.floats.position());
+            self.ints.advance(at);
+            self.floats.advance(at);
+        }
         Ok(regs)
     }
 

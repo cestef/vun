@@ -1,0 +1,40 @@
+//! The stack probe a Windows program provides. Windows commits a thread's stack a page at a time,
+//! as the thread touches the guard page below what it has committed, so a function with a frame
+//! of more than a page touches each page of it in order first: it calls `__chkstk` with the size
+//! of its frame in `rax`, and the call leaves every register but `r10`, `r11` and the flags as
+//! they were. The frame itself is taken by the caller after it.
+
+/// The page the probe steps by.
+page := 0x1000;
+
+/// The exports, which a runtime holds: `stack := std.os.windows.stack.exports`.
+exports := if lang.target.current.arch == .x86_64 {
+    struct {
+        #[link.export("__chkstk"), abi.naked]
+        probe := () {
+            unsafe lang.arch.asm({
+                ..lang.arch.x86_64.names;
+                last := label();
+                push(rcx);
+                push(rax);
+                cmp(rax, page);
+                lea(rcx, mem(rsp, 24));
+                j(b, last);
+                top := here();
+                sub(rcx, page);
+                \test(mem(rcx), rcx);
+                sub(rax, page);
+                cmp(rax, page);
+                j(a, top);
+                place(last);
+                sub(rcx, rax);
+                \test(mem(rcx), rcx);
+                pop(rax);
+                pop(rcx);
+                ret();
+            });
+        };
+    }
+} else {
+    struct {}
+};

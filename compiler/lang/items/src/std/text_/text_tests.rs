@@ -54,3 +54,20 @@ pub const text_is_read_as_code_points: Item = Item::new(
 pub const code_points_are_written_as_utf8: Item = Item::new(
     &["std", "text", "tests", "code_points_are_written_as_utf8"],
 );
+/// Whether two runs of units are the same.
+pub const same: Item = Item::new(&["std", "text", "tests", "same"]);
+pub const code_points_are_written_as_one_utf16_unit_or_a_pair: Item = Item::new(
+    &["std", "text", "tests", "code_points_are_written_as_one_utf16_unit_or_a_pair"],
+);
+pub const utf16_units_are_read_back_as_code_points: Item = Item::new(
+    &["std", "text", "tests", "utf16_units_are_read_back_as_code_points"],
+);
+pub const text_is_turned_from_utf8_to_utf16_and_back: Item = Item::new(
+    &["std", "text", "tests", "text_is_turned_from_utf8_to_utf16_and_back"],
+);
+pub const text_that_is_no_utf8_or_does_not_fit_is_not_turned: Item = Item::new(
+    &["std", "text", "tests", "text_that_is_no_utf8_or_does_not_fit_is_not_turned"],
+);
+pub const a_code_point_is_read_back_as_it_was_written: Item = Item::new(
+    &["std", "text", "tests", "a_code_point_is_read_back_as_it_was_written"],
+);

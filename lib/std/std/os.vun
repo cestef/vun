@@ -260,7 +260,13 @@ Runtime := struct {
 };
 
 /// The runtimes of the systems `std` knows, each declared by its system's namespace.
-runtimes := [std.os.linux.runtime, std.os.linux.gnu, std.os.macos.runtime, std.os.wasi.runtime];
+runtimes := [
+    std.os.linux.runtime,
+    std.os.linux.gnu,
+    std.os.macos.runtime,
+    std.os.wasi.runtime,
+    std.os.windows.runtime,
+];
 
 /// The runtime of the targets of `target`'s system and ABI.
 runtime := ($target: lang.target.Spec) -> Runtime {

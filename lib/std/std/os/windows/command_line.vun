@@ -1,0 +1,99 @@
+//! The command line of a Windows process: one string of UTF-16, which a program splits into its
+//! arguments itself. The rules are the C runtime's, as Microsoft documents them:
+//!
+//! - The program's name is up to the first space or tab, or, when it starts with a double quote,
+//!   up to the next one; nothing in it is escaped.
+//! - The other arguments are separated by spaces and tabs, which a double quote protects: a
+//!   quote starts a quoted stretch and the next one ends it, neither being part of the argument,
+//!   and two quotes together inside a stretch are one quote of the argument.
+//! - Backslashes are themselves, except before a double quote: a run of them there stands for
+//!   half as many, and if the run is odd the quote is one of the argument, else it starts or
+//!   ends a stretch.
+
+space := 0x20;
+tab := 0x09;
+quote := 0x22;
+backslash := 0x5C;
+
+/// Where an argument's text is written.
+Sink := struct {
+    _bytes: &mut [u8],
+    _at: usize,
+
+    /// A sink writing to the front of `bytes`.
+    of := (bytes: &mut [u8]) -> Sink { .{ ._bytes = bytes, ._at = 0 } };
+    /// How many bytes it has written.
+    len := (self: &Sink) -> usize { self._at };
+    /// Writes `cp` in UTF-8; none where it does not fit.
+    put := (self: &mut Sink, cp: u32) -> Option(()) {
+        text := std.text.utf8.Encoded.of(cp).text();
+        if self._at + text.len() > self._bytes.len() { return .none; }
+        for i in 0..text.len() { self._bytes[self._at + i] = text[i]; }
+        self._at += text.len();
+        .some(())
+    };
+};
+
+/// Whether `cp` separates arguments.
+separates := (cp: u32) -> bool { cp == space or cp == tab };
+
+/// `rest` without the separators before its first other unit.
+skip := (rest: &[u16]) -> &[u16] {
+    mut at: usize = 0;
+    for at < rest.len() and separates(rest[at].to(u32)) { at += 1; }
+    rest[at..]
+};
+
+/// How many units from the start of `rest` are `unit`.
+run := (rest: &[u16], unit: u32) -> usize {
+    mut n: usize = 0;
+    for n < rest.len() and rest[n].to(u32) == unit { n += 1; }
+    n
+};
+
+/// Splits `line` into arguments written to `bytes`, each followed by a zero byte, with where each
+/// starts in `starts`; how many there are. None where `line` is not UTF-16, or `bytes` or
+/// `starts` is too short.
+split := (line: &[u16], bytes: &mut [u8], starts: &mut [usize]) -> Option(usize) {
+    mut sink := Sink.of(bytes);
+    mut count: usize = 0;
+    mut rest: &[u16] = skip(line);
+    for rest.len() > 0 {
+        if count == starts.len() { return .none; }
+        starts[count] = sink.len();
+        // The program's name has no escapes: a quote ends it, else a separator does.
+        mut quoted := false;
+        escapes := count > 0;
+        for rest.len() > 0 {
+            (cp, len) := std.text.utf16.decode(rest)?;
+            if !quoted and separates(cp) { break; }
+            if cp == backslash and escapes {
+                slashes := run(rest, backslash);
+                ahead := rest[slashes..];
+                quote_next := ahead.len() > 0 and ahead[0].to(u32) == quote;
+                for _ in 0..(if quote_next { slashes / 2 } else { slashes }) { sink.put(backslash)?; }
+                // An odd run leaves its last backslash to escape the quote that follows.
+                if quote_next and slashes % 2 == 1 {
+                    sink.put(quote)?;
+                    rest = ahead[1..];
+                } else {
+                    rest = ahead;
+                }
+                continue;
+            }
+            rest = rest[len..];
+            if cp != quote {
+                sink.put(cp)?;
+            } else if quoted and rest.len() > 0 and rest[0].to(u32) == quote and escapes {
+                sink.put(quote)?;
+                rest = rest[1..];
+            } else {
+                quoted = !quoted;
+            }
+        }
+        sink.put(0)?;
+        count += 1;
+        rest = skip(rest);
+    }
+    .some(count)
+};

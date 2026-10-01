@@ -12,6 +12,8 @@ pub const ascii: Item = Item::new(&["std", "text", "ascii"]);
 pub const string: Item = Item::new(&["std", "text", "string"]);
 /// The namespace `std.text.tests`.
 pub const tests: Item = Item::new(&["std", "text", "tests"]);
+/// The namespace `std.text.utf16`.
+pub const utf16: Item = Item::new(&["std", "text", "utf16"]);
 /// The namespace `std.text.utf8`.
 pub const utf8: Item = Item::new(&["std", "text", "utf8"]);
 /// Bytes of text a program grows, in a buffer an allocator gave.

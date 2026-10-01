@@ -12,6 +12,8 @@ mod floats;
 mod machine;
 mod name;
 mod run;
+#[cfg(test)]
+mod tests;
 mod threads;
 mod trace;
 
@@ -37,6 +39,7 @@ pub enum Convention {
     Sysv,
     Aapcs64,
     DarwinArm64,
+    Win64,
     Lp64d,
     AapcsVfp,
     Aapcs,
@@ -205,17 +208,20 @@ impl Output {
         let file = match (self, named) {
             (Self::Shared, Some(l)) => l.shared.file(name),
             (Self::Static, Some(l)) => l.archive.file(name),
+            (Self::Executable, Some(Libraries { program: Some(program), .. })) => program.file(name),
             _ => name.to_owned(),
         };
         dir.join(file)
     }
 }
 
-/// How an object format names its libraries, shared and static.
+/// How an object format names its libraries, shared and static, and its programs where it gives
+/// them an extension.
 struct Libraries {
     format: Name,
     shared: Naming,
     archive: Naming,
+    program: Option<Naming>,
 }
 
 /// A prefix before a program's name, and an extension after it.
@@ -235,8 +241,18 @@ const fn named(prefix: &'static str, extension: &'static str) -> Naming {
 }
 
 const LIBRARIES: [Libraries; 4] = [
-    Libraries { format: Name("elf"), shared: named("lib", "so"), archive: named("lib", "a") },
-    Libraries { format: Name("macho"), shared: named("lib", "dylib"), archive: named("lib", "a") },
-    Libraries { format: Name("coff"), shared: named("", "dll"), archive: named("", "lib") },
-    Libraries { format: Name("wasm"), shared: named("", "wasm"), archive: named("lib", "a") },
+    Libraries { format: Name("elf"), shared: named("lib", "so"), archive: named("lib", "a"), program: None },
+    Libraries {
+        format: Name("macho"),
+        shared: named("lib", "dylib"),
+        archive: named("lib", "a"),
+        program: None,
+    },
+    Libraries {
+        format: Name("coff"),
+        shared: named("", "dll"),
+        archive: named("", "lib"),
+        program: Some(named("", "exe")),
+    },
+    Libraries { format: Name("wasm"), shared: named("", "wasm"), archive: named("lib", "a"), program: None },
 ];

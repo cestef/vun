@@ -18,7 +18,7 @@ mod rules;
 mod thread;
 
 pub use convention::{Convention, Registers};
-pub use rules::{Floats, Large, Pair, Records, Rules, Short, Split, Stack, Variadic};
+pub use rules::{Floats, Large, Pair, Records, Rules, Short, Slots, Split, Stack, Variadic};
 pub use thread::{Access, Thread};
 
 /// A register a value travels in: a general one, or a floating-point one.

@@ -14,6 +14,8 @@ pub const linux: Item = Item::new(&["targets", "linux"]);
 pub const macos: Item = Item::new(&["targets", "macos"]);
 /// The namespace `targets.wasi`.
 pub const wasi: Item = Item::new(&["targets", "wasi"]);
+/// The namespace `targets.windows`.
+pub const windows: Item = Item::new(&["targets", "windows"]);
 /// The targets a build is for unless told otherwise: the first whose `arch` and `os` are the
 /// machine running the toolchain's.
 pub const hosts: Item = Item::new(&["targets", "hosts"]);
@@ -31,10 +33,14 @@ pub const gnu: Item = Item::new(&["targets", "gnu"]);
 /// The backends of a target the native backend generates code for: it for debug builds, and C
 /// wherever the others are missing.
 pub const native_first: Item = Item::new(&["targets", "native_first"]);
+/// The backends of a target only C reaches, whatever the profile.
+pub const c_only: Item = Item::new(&["targets", "c_only"]);
 /// The backends of a target reached through C: Cranelift or LLVM first, C wherever they are
 /// missing.
 pub const through_c: Item = Item::new(&["targets", "through_c"]);
 /// The C types where `long` and addresses are 64 bits (LP64), built by `compiler`.
 pub const lp64: Item = Item::new(&["targets", "lp64"]);
+/// The C types where `long` is 32 bits and addresses are 64 (LLP64), built by `compiler`.
+pub const llp64: Item = Item::new(&["targets", "llp64"]);
 /// The C types where `int`, `long` and addresses are 32 bits (ILP32), built by `compiler`.
 pub const ilp32: Item = Item::new(&["targets", "ilp32"]);

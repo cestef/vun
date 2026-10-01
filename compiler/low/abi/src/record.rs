@@ -67,6 +67,10 @@ impl Rules {
     /// and no homogeneous aggregate.
     pub(crate) fn pieces(&self, record: &Record, limit: u64) -> Result<Option<Vec<Piece>>, Unpassable> {
         let classes = record.fields.iter().map(|&(_, s)| self.field(s)).collect::<Result<Vec<_>, _>>()?;
+        if self.records == Records::Whole {
+            let whole = matches!(record.size, 1 | 2 | 4 | 8) && record.size <= limit;
+            return Ok(whole.then(|| vec![Piece { class: Class::Int, offset: 0, bytes: record.size }]));
+        }
         if let Records::Homogeneous { max } = self.records
             && let Some(pieces) = self.homogeneous(record, &classes, max)
         {
@@ -78,6 +82,7 @@ impl Rules {
         match self.records {
             Records::Eightbytes => self.eightbytes(record, &classes).map(Some),
             Records::Homogeneous { .. } => Ok(Some(self.words(record))),
+            Records::Whole => unreachable!("whole records are placed above"),
         }
     }
 

@@ -1,0 +1,42 @@
+//! The functions of `kernel32` the runtime calls, each by its link symbol (spec 08, section 3):
+//! the system's own, which a program of this runtime links by name and no C runtime stands
+//! between. A handle is a `usize`, a `BOOL` an `i32`, a `DWORD` a `u32`.
+
+#[link.symbol("GetStdHandle"), abi.c]
+get_std_handle: unsafe (which: u32) -> usize = _;
+#[link.symbol("WriteFile"), abi.c]
+write_file: unsafe (handle: usize, bytes: *u8, count: u32, written: *u32, overlapped: usize) -> i32 = _;
+#[link.symbol("ReadFile"), abi.c]
+read_file: unsafe (handle: usize, bytes: *u8, count: u32, read: *u32, overlapped: usize) -> i32 = _;
+#[link.symbol("CreateFileW"), abi.c]
+create_file: unsafe (
+    path: *u16,
+    access: u32,
+    share: u32,
+    security: usize,
+    disposition: u32,
+    attributes: u32,
+    template: usize
+) -> usize = _;
+#[link.symbol("CloseHandle"), abi.c]
+close_handle: unsafe (handle: usize) -> i32 = _;
+#[link.symbol("GetLastError"), abi.c]
+get_last_error: unsafe () -> u32 = _;
+#[link.symbol("ExitProcess"), abi.c]
+exit_process: unsafe (status: u32) -> lang.never = _;
+#[link.symbol("QueryPerformanceCounter"), abi.c]
+query_performance_counter: unsafe (ticks: *u64) -> i32 = _;
+#[link.symbol("QueryPerformanceFrequency"), abi.c]
+query_performance_frequency: unsafe (ticks_per_second: *u64) -> i32 = _;
+#[link.symbol("GetSystemTimePreciseAsFileTime"), abi.c]
+get_system_time_precise_as_file_time: unsafe (time: *u64) -> () = _;
+#[link.symbol("Sleep"), abi.c]
+sleep: unsafe (milliseconds: u32) -> () = _;
+#[link.symbol("GetCommandLineW"), abi.c]
+get_command_line: unsafe () -> *u16 = _;
+#[link.symbol("SetConsoleOutputCP"), abi.c]
+set_console_output_cp: unsafe (code_page: u32) -> i32 = _;
+#[link.symbol("VirtualAlloc"), abi.c]
+virtual_alloc: unsafe (address: usize, bytes: usize, kind: u32, protection: u32) -> usize = _;
+#[link.symbol("VirtualFree"), abi.c]
+virtual_free: unsafe (address: usize, bytes: usize, kind: u32) -> i32 = _;

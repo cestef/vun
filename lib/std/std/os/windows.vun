@@ -1,0 +1,193 @@
+//! Windows (spec 08, section 2): a runtime calling `kernel32` itself, with no C runtime, for
+//! programs that run one thread. A file number is a handle (`file`), the command line is split
+//! into arguments by the C runtime's rules (`command_line`), and the system's errors are the
+//! ones `std.os.Error` names, or its own number.
+
+/// Windows runs programs through a runtime calling the system itself.
+runtime: std.os.Runtime = .{ .os = .windows, .abi = .msvc, .start = std.os.windows.start };
+
+/// The error Windows reports as `code` (`GetLastError`).
+error := (code: u32) -> std.os.Error {
+    match code {
+        2 | 3 => .missing,
+        5 => .denied,
+        80 | 183 => .exists,
+        123 | 161 | 206 => .path,
+        267 => .not_directory,
+        _ => .number(code.wrap(i32)),
+    }
+};
+
+/// What a call that reports success as a non-zero `ok` gives: `value`, or the error it set.
+outcome := (ok: i32) -> Result((), std.os.Error) {
+    if ok != 0 { .ok(()) } else { .err(error(unsafe std.os.windows.kernel32.get_last_error())) }
+};
+
+/// The errors a read ends a stream with: the other end of a pipe closed, or the end of a file
+/// reached past its last byte.
+broken_pipe: u32 = 109;
+handle_eof: u32 = 38;
+
+/// `VirtualAlloc`'s `MEM_COMMIT | MEM_RESERVE`, `PAGE_READWRITE`, and `VirtualFree`'s `MEM_RELEASE`.
+reserve_and_commit: u32 = 0x3000;
+read_write: u32 = 0x04;
+release: u32 = 0x8000;
+
+/// Private memory of `bytes`, backed only where touched.
+reserve := (bytes: usize) -> usize {
+    unsafe std.os.windows.kernel32.virtual_alloc(0, bytes, reserve_and_commit, read_write)
+};
+
+/// Gives back the memory reserved at `address`.
+unmap := (address: usize, bytes: usize) {
+    unsafe { std.os.windows.kernel32.virtual_free(address, 0, release); }
+};
+
+/// The state of the checks of unsafe code, mapped the first time a check needs it.
+state := () -> std.check.State { std.check.mapped(reserve, unmap) };
+
+/// Ends the process with `code`, 0 where it succeeded.
+exit := (code: Int(0..=125)) -> lang.never { unsafe std.os.windows.kernel32.exit_process(code.to(u32)) };
+
+/// Ends the process with the failure `status`.
+end := (status: std.os.Status) -> lang.never { exit(status) };
+
+/// The most arguments, and bytes of them, a program starts with: `entry` holds them in its frame,
+/// which lasts as long as the program. A program started with more exits trapped.
+arguments := 256;
+argument_bytes := 8192;
+
+/// The code page of UTF-8, which a console is set to so that it writes the program's text as it is.
+utf8_code_page: u32 = 65001;
+
+/// The exports of a program whose entry the system calls.
+start := ($main: std.os.Main) -> type { struct {
+    #[link.export("mainCRTStartup"), abi.c]
+    entry := () -> lang.never {
+        unsafe { std.os.windows.kernel32.set_console_output_cp(utf8_code_page); }
+        line := command_line_units();
+        mut starts: [arguments]usize = [0; arguments];
+        mut bytes: [argument_bytes]u8 = [0; argument_bytes];
+        match std.os.windows.command_line.split(line, &mut bytes, &mut starts) {
+            .some(count) => {
+                mut values: [arguments]usize = [0; arguments];
+                base := std.ptr.to([argument_bytes]u8, &bytes).address();
+                for k in 0..count { values[k] = (base + starts[k]).wrap(usize); }
+                at := unsafe std.ptr.to([arguments]usize, &values).cast(*u8);
+                mut sys := unsafe std.os.System.claim(std.os.Args.of(count, at));
+                exit(main(&mut sys).status())
+            },
+            .none => end(std.os.trapped),
+        }
+    };
+
+    #[link.export(lang.panic.symbols.trap)]
+    trap := (t: &lang.panic.Trap) -> lang.never {
+        if std.os.thread.reporting.get() { std.trace.trapped(t, trap); }
+        end(std.os.trapped)
+    };
+
+    /// The operations of the checks of unsafe code, for a program built with checks.
+    checks := if lang.check.current.len() > 0 { std.check.exports(state, end) } else { struct {} };
+
+    #[link.export(std.os.symbols.write)]
+    write := (fd: i32, bytes: &[u8]) -> Result(usize, std.os.Error) {
+        mut written: u32 = 0;
+        count := bytes.len().sat(u32);
+        at := lang.mem.items_pointer(u8, bytes);
+        ok := unsafe std.os.windows.kernel32.write_file(
+            std.os.windows.file.handle(fd), at, count, std.ptr.to(u32, &written), 0
+        );
+        outcome(ok)?;
+        .ok(written.to(usize))
+    };
+
+    #[link.export(std.os.symbols.read)]
+    read := (fd: i32, bytes: &mut [u8]) -> Result(usize, std.os.Error) {
+        mut got: u32 = 0;
+        count := bytes.len().sat(u32);
+        at := lang.mem.items_pointer(u8, bytes);
+        ok := unsafe std.os.windows.kernel32.read_file(
+            std.os.windows.file.handle(fd), at, count, std.ptr.to(u32, &got), 0
+        );
+        match outcome(ok) {
+            .ok(_) => .ok(got.to(usize)),
+            .err(.number(n)) if n == broken_pipe.to(i32) or n == handle_eof.to(i32) => .ok(0),
+            .err(e) => .err(e),
+        }
+    };
+
+    #[link.export(std.os.symbols.open)]
+    open_file := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
+        wide := std.os.windows.file.Wide.of(path)?;
+        how := std.os.windows.file.Opening.of(mode);
+        handle := unsafe std.os.windows.kernel32.create_file(
+            wide.start(),
+            how.access,
+            std.os.windows.file.share_all,
+            0,
+            how.disposition,
+            std.os.windows.file.normal,
+            0
+        );
+        if handle == std.os.windows.file.invalid {
+            return .err(error(unsafe std.os.windows.kernel32.get_last_error()));
+        }
+        .ok(std.os.windows.file.number(handle))
+    };
+
+    #[link.export(std.os.symbols.close)]
+    close := (fd: i32) -> Result((), std.os.Error) {
+        outcome(unsafe std.os.windows.kernel32.close_handle(std.os.windows.file.handle(fd)))
+    };
+
+    #[link.export(std.os.symbols.now)]
+    now := (clock: std.time.Clock) -> Result(std.time.Instant, std.os.Error) {
+        match clock {
+            .monotonic => std.os.windows.clock.monotonic(),
+            .real => std.os.windows.clock.real(),
+        }
+    };
+
+    #[link.export(std.os.symbols.pause)]
+    pause := (span: std.time.Duration) -> Result((), std.os.Error) { std.os.windows.clock.pause(span) };
+
+    /// A program runs one thread, which nothing interrupts.
+    #[link.export(std.sync.symbols.enter), panic.never]
+    enter := () -> std.sync.Mask { unsafe std.sync.Mask.of(0, false) };
+
+    #[link.export(std.sync.symbols.leave), panic.never]
+    leave := (mask: std.sync.Mask) {};
+
+    /// Nothing else runs in the program, so there is nothing to wait for.
+    #[link.export(std.task.symbols.sleep)]
+    sleep := () {};
+
+    /// A program runs one thread.
+    #[link.export(std.os.symbols.spawn)]
+    spawn := unsafe (thread: std.os.thread.Start, context: *u8, bytes: usize) -> Result(usize, std.os.Error) {
+        .err(.unsupported)
+    };
+
+    /// No thread was started to join.
+    #[link.export(std.os.symbols.join)]
+    join := unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended {
+        lang.panic.fail(.message("a program runs one thread, so none is joined"))
+    };
+
+    memory := std.os.memory.exports;
+    stack := std.os.windows.stack.exports;
+
+    /// The symbol a C compiler for the target refers to where a program uses floating point,
+    /// which the C runtime defines.
+    #[link.export("_fltused")]
+    float_used: i32 = 1;
+} };
+
+/// The command line the system holds, as the units of its text.
+command_line_units := () -> &[u16] {
+    first := unsafe std.os.windows.kernel32.get_command_line();
+    mut n: usize = 0;
+    for unsafe first.offset(n.to(isize)).read() != 0 { n += 1; }
+    unsafe lang.mem.items_at(u16, first, n)
+};

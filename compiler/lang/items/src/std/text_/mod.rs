@@ -7,5 +7,7 @@ pub mod text_string_Failed;
 pub mod text_string_String;
 pub mod text_string_Writing;
 pub mod text_tests;
+pub mod text_utf16;
+pub mod text_utf16_Encoded;
 pub mod text_utf8;
 pub mod text_utf8_Encoded;

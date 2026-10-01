@@ -22,6 +22,13 @@ pub struct Rules {
     pub split: Split,
     pub stack: Stack,
     pub variadic: Variadic,
+    pub slots: Slots,
+    /// The bytes at the start of the stack arguments that the caller leaves for the callee to
+    /// save registers in, whatever the call passes.
+    pub shadow: u64,
+    /// The most limbs of a word a C integer has: 2 where the machine has a type of twice a
+    /// register's width (`__int128`), 1 where it has none.
+    pub integer_limbs: u8,
 }
 
 /// How a record small enough to travel in registers does.
@@ -34,6 +41,9 @@ pub enum Records {
     /// aggregate); any other record a word per general register (AAPCS64, section 6.8.2; AAPCS,
     /// section 6.1.2.1).
     Homogeneous { max: usize },
+    /// Whole in one general register, as the integer its bytes make whatever its fields are,
+    /// when it is 1, 2, 4 or 8 bytes; any other record is large (Microsoft x64).
+    Whole,
 }
 
 /// What becomes of a record larger than [`Rules::in_registers`].
@@ -109,6 +119,20 @@ pub enum Variadic {
     /// As the base standard passes them, fixed arguments and result too: floats in general
     /// registers (AAPCS, section 6.5).
     Core,
+    /// As fixed ones, but a float among them travels as the integer of its bits, in the general
+    /// register of its position, where the callee saves the general registers (Microsoft x64).
+    Integer,
+}
+
+/// How the registers of the classes are counted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Slots {
+    /// Each class counts its own: the second float is in the second floating-point register
+    /// whatever integers came before it (System V, AAPCS).
+    Banks,
+    /// The classes count together, by position: the third value is in the third register of its
+    /// class, and the third of the other class goes unused (Microsoft x64).
+    Shared,
 }
 
 impl Rules {
@@ -126,6 +150,30 @@ impl Rules {
         split: Split::Never,
         stack: Stack::Words,
         variadic: Variadic::FloatCount,
+        slots: Slots::Banks,
+        shadow: 0,
+        integer_limbs: 2,
+    };
+
+    /// The Microsoft x64 convention: four registers by position in either class, the stack
+    /// above 32 bytes the callee saves them in, a record of a power of two up to a word in a
+    /// register and any other by reference, and no integer wider than a register.
+    pub const WIN64: Self = Self {
+        word: 8,
+        stack_align: 16,
+        records: Records::Whole,
+        in_registers: 8,
+        returned: 8,
+        large: Large::Address,
+        short: Short::Keeps,
+        pair: Pair::Any,
+        floats: Floats::Next,
+        split: Split::Never,
+        stack: Stack::Words,
+        variadic: Variadic::Integer,
+        slots: Slots::Shared,
+        shadow: 32,
+        integer_limbs: 1,
     };
 
     /// The rules a call of `signature` follows: a variadic one under [`Variadic::Core`] passes
@@ -152,6 +200,9 @@ impl Rules {
         split: Split::Never,
         stack: Stack::Words,
         variadic: Variadic::Fixed,
+        slots: Slots::Banks,
+        shadow: 0,
+        integer_limbs: 2,
     };
 
     /// Apple's variant of AAPCS64, on macOS and iOS: a C call's scalars packed on the stack, a
@@ -175,6 +226,9 @@ impl Rules {
         split: Split::WhileStackEmpty,
         stack: Stack::Words,
         variadic: Variadic::Core,
+        slots: Slots::Banks,
+        shadow: 0,
+        integer_limbs: 2,
     };
 
     /// AAPCS's base standard, floats in general registers (the soft-float EABI).
@@ -191,6 +245,7 @@ impl Rules {
             Named::DarwinArm64 => Some(&Self::DARWIN_ARM64),
             Named::AapcsVfp => Some(&Self::AAPCS_VFP),
             Named::Aapcs => Some(&Self::AAPCS),
+            Named::Win64 => Some(&Self::WIN64),
             Named::Lp64d | Named::Ilp32 | Named::Wasm32 => None,
         }
     }

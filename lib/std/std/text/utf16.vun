@@ -1,0 +1,79 @@
+//! UTF-16, as Windows spells text: units of 16 bits, a code point past U+FFFF written as a pair of
+//! surrogates. Text in a program is UTF-8 (decision 43); these read and write the units a system
+//! call takes, and turn one into the other.
+
+/// The surrogates that start a pair (high) and end it (low), by their first and last units.
+high_first := 0xD800;
+high_last := 0xDBFF;
+low_first := 0xDC00;
+low_last := 0xDFFF;
+/// The first code point written as a pair, and how many values each surrogate holds of it.
+pair_first := 0x10000;
+pair_span := 0x400;
+
+/// The units a code point is written as.
+Encoded := struct {
+    _units: [2]u16,
+    _len: usize,
+
+    /// `cp` in UTF-16; `std.text.utf8.replacement` where it is a surrogate or past
+    /// `std.text.utf8.max`.
+    of := (cp: u32) -> Encoded {
+        if !std.text.utf8.is_scalar(cp) { return Encoded.of(std.text.utf8.replacement); }
+        if cp < pair_first {
+            .{ ._units = [cp.wrap(u16), 0], ._len = 1 }
+        } else {
+            rest := cp - pair_first;
+            high := high_first + rest / pair_span;
+            low := low_first + rest % pair_span;
+            .{ ._units = [high.wrap(u16), low], ._len = 2 }
+        }
+    };
+
+    /// The units.
+    units := (self: &Encoded) -> &[u16] { &self._units[0..self._len] };
+};
+
+/// The code point `text` starts with and how many units it takes; none for an empty text, and for
+/// a surrogate with no partner: a low one first, or a high one not followed by a low one.
+decode := (text: &[u16]) -> Option((u32, usize)) {
+    if text.len() == 0 { return .none; }
+    first := text[0].to(u32);
+    if first < high_first or first > low_last { return .some((first, 1)); }
+    if first > high_last or text.len() < 2 { return .none; }
+    second := text[1].to(u32);
+    if second < low_first or second > low_last { return .none; }
+    .some((pair_first + (first - high_first) * pair_span + (second - low_first), 2))
+};
+
+/// The UTF-16 of the UTF-8 `text`, written to the front of `into`, and how many units that is;
+/// none where `text` is not UTF-8 or `into` is too short for it.
+from_utf8 := (text: &[u8], into: &mut [u16]) -> Option(usize) {
+    mut rest: &[u8] = text;
+    mut at: usize = 0;
+    for rest.len() > 0 {
+        (cp, len) := std.text.utf8.decode(rest)?;
+        units := Encoded.of(cp).units();
+        if at + units.len() > into.len() { return .none; }
+        for i in 0..units.len() { into[at + i] = units[i]; }
+        at += units.len();
+        rest = rest[len..];
+    }
+    .some(at)
+};
+
+/// The UTF-8 of the UTF-16 `text`, written to the front of `into`, and how many bytes that is;
+/// none where `text` is not UTF-16 or `into` is too short for it.
+to_utf8 := (text: &[u16], into: &mut [u8]) -> Option(usize) {
+    mut rest: &[u16] = text;
+    mut at: usize = 0;
+    for rest.len() > 0 {
+        (cp, len) := decode(rest)?;
+        bytes := std.text.utf8.Encoded.of(cp).text();
+        if at + bytes.len() > into.len() { return .none; }
+        for i in 0..bytes.len() { into[at + i] = bytes[i]; }
+        at += bytes.len();
+        rest = rest[len..];
+    }
+    .some(at)
+};

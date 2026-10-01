@@ -4,7 +4,7 @@ use vun_lir::{AbiType, Conv, Record, Signature};
 
 use crate::free::Free;
 use crate::record::{Class, Piece};
-use crate::{Carrier, Convention, Large, Loc, Part, Passing, Ret, Rules, Unpassable, Variadic};
+use crate::{Carrier, Convention, Floats, Large, Loc, Part, Passing, Ret, Rules, Unpassable, Variadic};
 
 impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
     /// Where a call of `signature` under `convention` passes its values and gets its result. The
@@ -29,10 +29,11 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             Conv::Naked => return Err(Unpassable::Naked),
         };
         let rules = &convention.rules.calling(signature);
-        // C's integers are at most two registers wide.
+        // C's integers are as wide as the machine has types of.
         let passed = signature.params.iter().chain(&signature.result);
+        let widest = rules.integer_limbs;
         if let Some(&AbiType::Wide { limb, limbs, .. }) =
-            passed.into_iter().find(|p| c && matches!(p, AbiType::Wide { limbs, .. } if *limbs > 2))
+            passed.into_iter().find(|p| c && matches!(p, AbiType::Wide { limbs, .. } if *limbs > widest))
         {
             return Err(Unpassable::Integer(limb.bytes(rules.pointer_bits()) * u64::from(limbs)));
         }
@@ -68,11 +69,17 @@ impl<I: Copy, F: Copy> Passing<Carrier<I, F>> {
             (Ret::Memory, None) => free.one(Class::Int, rules.word),
             _ => None,
         };
+        // A float among the variadic arguments travels as an integer where the rules say so.
+        let integers = Rules { floats: Floats::Core, ..*rules };
         let mut params = Vec::new();
         for (i, param) in signature.params.iter().enumerate() {
             if signature.variadic == Some(i) && rules.variadic == Variadic::Stack {
                 free.spill();
             }
+            let rules = match signature.variadic {
+                Some(first) if i >= first && rules.variadic == Variadic::Integer => &integers,
+                _ => rules,
+            };
             let loc = match param {
                 &AbiType::Wide { limb, limbs, .. } => {
                     params.extend(free.wide(limb.bytes(bits), limbs));

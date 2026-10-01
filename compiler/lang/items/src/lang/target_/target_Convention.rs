@@ -14,6 +14,10 @@ pub const aapcs64: Item = Item::new(&["lang", "target", "Convention", "aapcs64"]
 pub const darwin_arm64: Item = Item::new(
     &["lang", "target", "Convention", "darwin_arm64"],
 );
+/// The Microsoft x64 convention: four arguments in registers shared by both banks, a shadow
+/// space of four words above the return address, and a record of 1, 2, 4 or 8 bytes in a
+/// register, any other by reference.
+pub const win64: Item = Item::new(&["lang", "target", "Convention", "win64"]);
 /// The RISC-V convention for 64-bit integers and double-precision floats in registers.
 pub const lp64d: Item = Item::new(&["lang", "target", "Convention", "lp64d"]);
 /// The procedure call standard for 32-bit ARM, floats in VFP registers (hard-float EABI).

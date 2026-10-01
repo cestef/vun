@@ -1,6 +1,7 @@
 mod aapcs;
 mod clang;
 mod variadic;
+mod win64;
 
 use vun_lir::{AbiType, Conv, Ext, Record, Scalar, Signature};
 
@@ -15,6 +16,22 @@ pub(super) const SYSV: Convention<u8, u8> = Convention {
         float_args: &[0, 1, 2, 3, 4, 5, 6, 7],
         int_results: &[0, 1],
         float_results: &[0, 1],
+        result_address: None,
+        preserved: &[],
+        reserved: &[],
+    },
+    thread: None,
+};
+
+/// Microsoft x64, its registers numbered as the oracle reads them: the families `rcx`, `rdx`, `r8`
+/// and `r9` are 3, 2, 4 and 5 among System V's argument registers, and `xmm0` to `xmm3` are 0 to 3.
+pub(super) const WIN64: Convention<u8, u8> = Convention {
+    rules: &Rules::WIN64,
+    registers: Registers {
+        int_args: &[3, 2, 4, 5],
+        float_args: &[0, 1, 2, 3],
+        int_results: &[0],
+        float_results: &[0],
         result_address: None,
         preserved: &[],
         reserved: &[],

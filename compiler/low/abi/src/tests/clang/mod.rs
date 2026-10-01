@@ -9,7 +9,7 @@ use std::process::Command;
 use vun_lir::{AbiType, Conv, Ext, Scalar, Signature};
 
 use super::aapcs::{SOFT, VFP};
-use super::{AAPCS64, DARWIN, SYSV};
+use super::{AAPCS64, DARWIN, SYSV, WIN64};
 use crate::{Carrier, Convention, Loc, Passing, Ret, Rules};
 use syntax::{Dest, Syntax};
 
@@ -52,6 +52,15 @@ const CASES_64: &[&[C]] = &[
     &[D, D, D, D, D, D, D, D, C::Float, C::Float],
     &[L, L, L, L, L, L, L, L, C::Char, C::Int128, C::Char],
 ];
+/// On Microsoft x64: the position of a value deciding its register in either class, and the fifth
+/// and later values on the stack above the 32 bytes of shadow space.
+const CASES_WIN64: &[&[C]] = &[
+    &[L, D, L, D, L, D, L, D],
+    &[C::Char, C::Short, C::Int, L, L, C::Float, D],
+    &[D, D, D, D, D, D],
+    &[C::Float, C::Int, D, L, C::Float, C::Char],
+    &[L, L, L, L, L, L, L, L, C::Char],
+];
 /// On 32-bit Arm: floats backfilling, a double closing the VFP registers on the stack, pairs of
 /// words at even registers or aligned on the stack, closing the rest.
 const CASES_32: &[&[C]] = &[
@@ -61,13 +70,20 @@ const CASES_32: &[&[C]] = &[
     &[C::Int, L, C::Int, C::Int, L, C::Short],
 ];
 
-const TARGETS: [Target; 5] = [
+const TARGETS: [Target; 6] = [
     Target {
         triple: "x86_64-linux-gnu",
         flags: &[],
         convention: &SYSV,
         syntax: Syntax::Att,
         cases: CASES_64,
+    },
+    Target {
+        triple: "x86_64-pc-windows-msvc",
+        flags: &[],
+        convention: &WIN64,
+        syntax: Syntax::Att,
+        cases: CASES_WIN64,
     },
     Target {
         triple: "aarch64-linux-gnu",

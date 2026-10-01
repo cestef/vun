@@ -811,7 +811,9 @@ assembler and its instruction compilers and nothing else:
   at `_main`; its C compiler is told the release by the option the target names
   (`lang.target.CCompiler.version_flag`); relocation
   kinds are the framework's, each format and machine numbers them. A target whose format the
-  native backend does not write for its machine is refused (`backend.lacks`). ELF itself is
+  native backend does not write for its machine is refused (`backend.lacks`): Windows' COFF
+  (`windows.x86_64.msvc`) is built through the C backend, clang writing the objects and
+  `lld-link` linking them, until it is written. ELF itself is
   `vun-elf`'s: a file as data (its class, kind and machine, sections with their contents,
   segments by what each covers, symbol and relocation tables, each machine's relocation numbers),
   each record ELF lays out declared once with its fields' order per class, from which the file

@@ -1,0 +1,40 @@
+//! The system's clocks and sleep, in the units `std.time` keeps.
+
+/// The 100-nanosecond intervals of the system's real clock between 1601-01-01, where it starts,
+/// and 1970-01-01, where `std.time.Clock.real` does.
+unix_epoch: u64 = 116_444_736_000_000_000;
+nanos_per_interval := 100;
+
+/// Milliseconds in a sleep, at the most one less than `INFINITE`, which `Sleep` takes for ever.
+longest_sleep: u64 = 0xFFFF_FFFE;
+
+/// The monotonic clock: counts of the performance counter, in nanoseconds.
+monotonic := () -> Result(std.time.Instant, std.os.Error) {
+    mut ticks: u64 = 0;
+    mut per_second: u64 = 0;
+    unsafe {
+        std.os.windows.kernel32.query_performance_counter(std.ptr.to(u64, &ticks));
+        std.os.windows.kernel32.query_performance_frequency(std.ptr.to(u64, &per_second));
+    }
+    // The frequency is fixed at boot and never zero.
+    nanos := ticks * std.time.nanos_per_second / per_second.to(Int(1..=0xFFFF_FFFF_FFFF_FFFF));
+    .ok(std.time.Instant.at(nanos.to(u64)))
+};
+
+/// The real clock: the system's time of day, in nanoseconds since 1970.
+real := () -> Result(std.time.Instant, std.os.Error) {
+    mut intervals: u64 = 0;
+    unsafe { std.os.windows.kernel32.get_system_time_precise_as_file_time(std.ptr.to(u64, &intervals)); }
+    .ok(std.time.Instant.at(((intervals - unix_epoch) * nanos_per_interval).to(u64)))
+};
+
+/// Suspends the calling thread for at least `span`, in whole milliseconds.
+pause := (span: std.time.Duration) -> Result((), std.os.Error) {
+    mut left: u64 = ((span.as_nanos() + std.time.nanos_per_milli - 1) / std.time.nanos_per_milli).to(u64);
+    for left > 0 {
+        now := std.cmp.min(u64, left, longest_sleep);
+        unsafe { std.os.windows.kernel32.sleep(now.to(u32)); }
+        left -= now;
+    }
+    .ok(())
+};

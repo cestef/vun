@@ -360,6 +360,11 @@ tools := .{
             .runner = .{ "qemu-aarch64", "-L", "/usr/aarch64-linux-gnu" },
         },
         .{ .target = macos.arm64.darwin, .sysroot = "/opt/sdk/MacOSX.sdk" },
+        .{
+            .target = windows.x86_64.msvc,
+            .sysroot = "/opt/winlibs",           // the directory holding `kernel32.lib`
+            .runner = .{ "wine64" },
+        },
     },
 };
 ```
@@ -368,7 +373,7 @@ Each entry names a target by its path in the package `targets`, as `--target` do
 chosen target is the one an entry names, `.compiler` replaces its C compiler, `.flags` are added
 to every run of it (compiling and linking), `.sysroot` is the directory of the target system's
 headers and libraries its tools build against (`lang.target.CCompiler.sysroot`: the C compiler's
-`--sysroot`, `ld64.lld`'s `-syslibroot`, an SDK for macOS), and `vun run`, `vun debug compare` and the backend
+`--sysroot`, `ld64.lld`'s `-syslibroot`, an SDK for macOS, `lld-link`'s `/libpath:` for Windows), and `vun run`, `vun debug compare` and the backend
 tests run programs through `.runner`, the program and its arguments after it. An entry naming no
 target is an error (`target.unchosen`); a machine without the file builds with the targets' tools.
 

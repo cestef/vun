@@ -82,11 +82,24 @@ the row whose `os` is `lang.target.current.os`.
 runtime of the target being built for. Each system's namespace declares its row,
 `std.os.Runtime { os, abi, start }` (`std.os.linux.runtime` is the kernel runtime for
 `linux`/`kernel`, `std.os.linux.gnu` the C library's for `linux`/`gnu`, `std.os.wasi.runtime` WASI
-preview 1's for `wasi`/`p1`), and `std.os.runtime` takes
+preview 1's for `wasi`/`p1`, `std.os.windows.runtime` the one calling `kernel32` for
+`windows`/`msvc`), and `std.os.runtime` takes
 the row matching `lang.target.current`'s system and ABI; a target none matches fails when
 compiling. So no program, and nothing in `std` but a runtime, is tied to a C library: `std.os`
 reaches the system through typed link symbols each runtime exports (`std.os.symbols.write`, beside
 `lang.panic.symbols.trap` and `std.sync.symbols.enter`).
+
+**Windows.** A program for `windows.x86_64.msvc` is a PE file linked by `lld-link` against the
+import libraries in the target's sysroot (`kernel32.lib`, which the machine's tools file names:
+the Windows SDK's, xwin's or mingw-w64's) and calls `kernel32` itself, with no C runtime, through
+the typed imports of `std.os.windows.kernel32`. It runs one thread (`lang.target.Spec.threads` is
+`one`, `spawn` is `unsupported`). A file number is a handle, which a 64-bit system uses the low 32
+bits of, and 0, 1 and 2 are the standard streams, no handle being one of them (handles are
+multiples of 4); paths are UTF-8 in the program and UTF-16 to the system (`std.text.utf16`); the
+command line is one UTF-16 string that the program splits as the C runtime does
+(`std.os.windows.command_line`); a console is set to UTF-8 at the start. The runtime provides the
+functions a freestanding C compiler calls (`std.os.memory`, and `__chkstk`, which probes the
+pages of a large frame in order, `std.os.windows.stack`).
 
 **Clocks.** `std.time` holds spans of time (`Duration`, to the nanosecond) and readings of a clock
 (`Instant`, nanoseconds since the clock's start); `Clock` is `monotonic` (never goes back, from an

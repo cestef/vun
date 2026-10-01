@@ -183,3 +183,55 @@ code_points_are_written_as_utf8 := () {
     std.testing.assert(std.text.utf8.write(&mut slab, 0x20AC) == Result((), std.text.Full).ok(()));
     std.testing.assert(slab.bytes() == "\u{20ac}");
 };
+
+/// Whether two runs of units are the same.
+same := (units: &[u16], expected: &[u16]) -> bool { units == expected };
+
+#[test]
+code_points_are_written_as_one_utf16_unit_or_a_pair := () {
+    std.testing.assert(same(std.text.utf16.Encoded.of(0x41).units(), &[0x41]));
+    std.testing.assert(same(std.text.utf16.Encoded.of(0xE9).units(), &[0xE9]));
+    std.testing.assert(same(std.text.utf16.Encoded.of(0xFFFF).units(), &[0xFFFF]));
+    std.testing.assert(same(std.text.utf16.Encoded.of(0x1F600).units(), &[0xD83D, 0xDE00]));
+    std.testing.assert(same(std.text.utf16.Encoded.of(0x10FFFF).units(), &[0xDBFF, 0xDFFF]));
+    std.testing.assert(same(std.text.utf16.Encoded.of(0xD800).units(), &[0xFFFD]));
+};
+
+#[test]
+utf16_units_are_read_back_as_code_points := () {
+    std.testing.assert(std.text.utf16.decode(&[0x41, 0x42]) == Option((u32, usize)).some((0x41, 1)));
+    std.testing.assert(std.text.utf16.decode(&[0xD83D, 0xDE00]) == Option((u32, usize)).some((0x1F600, 2)));
+    std.testing.assert(std.text.utf16.decode(&[]) == Option((u32, usize)).none);
+    std.testing.assert(std.text.utf16.decode(&[0xDC00]) == Option((u32, usize)).none);
+    std.testing.assert(std.text.utf16.decode(&[0xD83D]) == Option((u32, usize)).none);
+    std.testing.assert(std.text.utf16.decode(&[0xD83D, 0x41]) == Option((u32, usize)).none);
+};
+
+#[test]
+text_is_turned_from_utf8_to_utf16_and_back := () {
+    mut units: [16]u16 = [0; 16];
+    n := std.text.utf16.from_utf8("a\u{e9}\u{1F600}", &mut units).expect("fits");
+    std.testing.assert(n == 4);
+    std.testing.assert(same(&units[0..n], &[0x61, 0xE9, 0xD83D, 0xDE00]));
+    mut bytes: [16]u8 = [0; 16];
+    m := std.text.utf16.to_utf8(&units[0..n], &mut bytes).expect("fits");
+    std.testing.assert(&bytes[0..m] == "a\u{e9}\u{1F600}");
+};
+
+#[test]
+text_that_is_no_utf8_or_does_not_fit_is_not_turned := () {
+    mut units: [2]u16 = [0; 2];
+    std.testing.assert(std.text.utf16.from_utf8(&[0xFF], &mut units) == Option(usize).none);
+    std.testing.assert(std.text.utf16.from_utf8("abc", &mut units) == Option(usize).none);
+    mut bytes: [2]u8 = [0; 2];
+    std.testing.assert(std.text.utf16.to_utf8(&[0xDC00], &mut bytes) == Option(usize).none);
+    std.testing.assert(std.text.utf16.to_utf8(&[0x20AC], &mut bytes) == Option(usize).none);
+};
+
+#[test]
+a_code_point_is_read_back_as_it_was_written := (cp: Int(0..=0x10FFFF)) {
+    if !std.text.utf8.is_scalar(cp.to(u32)) { return; }
+    encoded := std.text.utf16.Encoded.of(cp.to(u32));
+    read := std.text.utf16.decode(encoded.units());
+    std.testing.assert(read == Option((u32, usize)).some((cp.to(u32), encoded.units().len())));
+};

@@ -1,0 +1,21 @@
+//! Windows: a namespace per architecture, holding a target per ABI. A program is a PE file linked
+//! by `lld-link` against the import libraries of the system in the target's sysroot (its tools
+//! file's `sysroot`: the directory holding `kernel32.lib`, as the Windows SDK, xwin or
+//! mingw-w64 lay it out), and calls `kernel32` itself, with no C runtime (`std.os.windows`).
+
+/// Clang, or any clang `machine` names the target to (its triple), building C for it and leaving
+/// the link to `lld-link`: its GNU options, and `kernel32` linked after the objects.
+#[visible(.within(targets.windows))]
+_clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
+    .{
+        .command = "clang",
+        .archiver = "llvm-ar",
+        .flags = targets.c_flags ++ machine,
+        .optimize = targets.c_optimize,
+        .link_flags = &[],
+        .libraries = &["kernel32"],
+        .atomics = .gnu,
+        .attributes = .gnu,
+        .frame_sizes = .none,
+    }
+};

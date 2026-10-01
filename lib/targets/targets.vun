@@ -51,6 +51,9 @@ gnu := (
 /// wherever the others are missing.
 native_first: lang.target.Backends = .{ .debug = &[.native, .cranelift, .c], .release = &[.llvm, .c] };
 
+/// The backends of a target only C reaches, whatever the profile.
+c_only: lang.target.Backends = .{ .debug = &[.c], .release = &[.c] };
+
 /// The backends of a target reached through C: Cranelift or LLVM first, C wherever they are
 /// missing.
 through_c: lang.target.Backends = .{ .debug = &[.cranelift, .c], .release = &[.llvm, .c] };
@@ -61,6 +64,18 @@ lp64 := ($compiler: lang.target.CCompiler) -> lang.target.C {
         .short = .{ .bits = 16, .align = 2 },
         .int = .{ .bits = 32, .align = 4 },
         .long = .{ .bits = 64, .align = 8 },
+        .long_long = .{ .bits = 64, .align = 8 },
+        .pointer_align = 8,
+        .compiler = compiler,
+    }
+};
+
+/// The C types where `long` is 32 bits and addresses are 64 (LLP64), built by `compiler`.
+llp64 := ($compiler: lang.target.CCompiler) -> lang.target.C {
+    .{
+        .short = .{ .bits = 16, .align = 2 },
+        .int = .{ .bits = 32, .align = 4 },
+        .long = .{ .bits = 32, .align = 4 },
         .long_long = .{ .bits = 64, .align = 8 },
         .pointer_align = 8,
         .compiler = compiler,

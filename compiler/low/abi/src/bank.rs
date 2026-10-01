@@ -93,6 +93,17 @@ impl<R: Copy> Bank<R> {
         self.regs.len().saturating_sub(start)
     }
 
+    /// The register after the last taken: where the next value starts.
+    pub(crate) fn position(&self) -> usize {
+        self.next
+    }
+
+    /// Moves the start of the next value to register `to`, if it is past it, leaving the
+    /// registers before it untaken but out of reach: a position the other class used.
+    pub(crate) fn advance(&mut self, to: usize) {
+        self.next = self.next.max(to);
+    }
+
     /// Leaves no register to later values.
     pub(crate) fn close(&mut self) {
         self.next = self.regs.len();

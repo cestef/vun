@@ -1,7 +1,8 @@
 //! lld: one program per object format it links, each a flavor with its own command line. The
 //! wasm flavor, `wasm-ld`, links the wasm backend's objects (spec 13, section 8.4); the Mach-O
 //! flavor, `ld64.lld`, links macOS programs against the system's libraries in the target's
-//! sysroot, an SDK. ELF and COFF are still to come.
+//! sysroot, an SDK; the COFF flavor, `lld-link`, links Windows programs against the import
+//! libraries in the sysroot. ELF is still to come.
 
 mod flavor;
 

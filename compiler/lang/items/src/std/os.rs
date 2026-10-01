@@ -14,10 +14,14 @@ pub const libc: Item = Item::new(&["std", "os", "libc"]);
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
 /// The namespace `std.os.macos`.
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
+/// The namespace `std.os.memory`.
+pub const memory: Item = Item::new(&["std", "os", "memory"]);
 /// The namespace `std.os.thread`.
 pub const thread: Item = Item::new(&["std", "os", "thread"]);
 /// The namespace `std.os.wasi`.
 pub const wasi: Item = Item::new(&["std", "os", "wasi"]);
+/// The namespace `std.os.windows`.
+pub const windows: Item = Item::new(&["std", "os", "windows"]);
 /// A status a process ends with, besides success: what every system passes on unchanged. A shell
 /// reads 126 and 127 as a program that could not run and 128 plus `n` as one killed by signal
 /// `n`, and WASI's `proc_exit` refuses 126 and above.

@@ -10,8 +10,6 @@ use crate::Item;
 pub const calls: Item = Item::new(&["std", "os", "linux", "kernel", "calls"]);
 /// The namespace `std.os.linux.kernel.division`.
 pub const division: Item = Item::new(&["std", "os", "linux", "kernel", "division"]);
-/// The namespace `std.os.linux.kernel.memory`.
-pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "memory"]);
 /// The namespace `std.os.linux.kernel.thread`.
 pub const thread: Item = Item::new(&["std", "os", "linux", "kernel", "thread"]);
 /// The namespace `std.os.linux.kernel.tls`.

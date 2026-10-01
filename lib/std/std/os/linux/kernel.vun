@@ -282,7 +282,7 @@ start := ($main: std.os.Main) -> type { struct {
     #[link.export(std.task.symbols.sleep)]
     sleep := () { request(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
-    memory := std.os.linux.kernel.memory.exports;
+    memory := std.os.memory.exports;
     division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else {
         struct {}
     };

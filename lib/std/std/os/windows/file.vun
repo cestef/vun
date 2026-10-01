@@ -1,0 +1,77 @@
+//! Files as the system hands them out: handles, which a `std.os` file number stands for, the
+//! modes `std.os.file.Mode` asks for in the system's words, and paths in UTF-16.
+
+/// `GetStdHandle`'s arguments for the three standard streams, as `DWORD`s: -10, -11 and -12.
+standard_handles: [3]u32 = [0xFFFF_FFF6, 0xFFFF_FFF5, 0xFFFF_FFF4];
+
+/// What `CreateFileW` returns where it failed: -1 as a handle.
+invalid: usize = 0xFFFF_FFFF_FFFF_FFFF;
+
+/// The handle the file number `fd` stands for: the standard streams are 0, 1 and 2, which no
+/// handle is (handles are multiples of 4), and any other number is a handle, of which a 64-bit
+/// system uses the low 32 bits alone, sign extended.
+handle := (fd: i32) -> usize {
+    if fd >= 0 and fd <= 2 {
+        return unsafe std.os.windows.kernel32.get_std_handle(standard_handles[fd.to(usize)]);
+    }
+    fd.to(isize).wrap(usize)
+};
+
+/// The file number for a handle `CreateFileW` returned.
+number := (opened: usize) -> i32 { opened.wrap(isize).wrap(i32) };
+
+/// Access, in `CreateFileW`'s words.
+read_access: u32 = 0x8000_0000;
+write_access: u32 = 0x4000_0000;
+append_access: u32 = 0x0000_0004;
+/// What to do about a file there already is or is not: only an existing one, a new one in the
+/// place of any, or one made where there is none.
+open_existing: u32 = 3;
+create_always: u32 = 2;
+open_always: u32 = 4;
+/// Other processes may read, write and delete the file meanwhile, as they may a POSIX file.
+share_all: u32 = 7;
+/// The attributes of a file that has no others.
+normal: u32 = 0x80;
+
+/// How `CreateFileW` opens a file for a mode.
+Opening := struct {
+    access: u32,
+    disposition: u32,
+
+    of := (mode: std.os.file.Mode) -> Opening {
+        match mode {
+            .read => .{ .access = read_access, .disposition = open_existing },
+            .write => .{ .access = write_access, .disposition = create_always },
+            .append => .{ .access = append_access, .disposition = open_always },
+            .update => .{ .access = read_access | write_access, .disposition = open_existing },
+        }
+    };
+};
+
+/// The longest path, in UTF-16 units, the runtime opens: the same bytes `std.os.file.path_max`
+/// gives other systems.
+path_max := std.os.file.path_max;
+
+/// A path in UTF-16, and a zero unit after it.
+Wide := struct {
+    _units: [path_max + 1]u16,
+
+    /// `path` in UTF-16; `.path` where it is too long, is no UTF-8 or holds a zero byte.
+    of := (path: &[u8]) -> Result(Wide, std.os.Error) {
+        mut wide := Wide{ ._units = [0; path_max + 1] };
+        for b in path {
+            if b.* == 0 { return .err(.path); }
+        }
+        match std.text.utf16.from_utf8(path, &mut wide._units[0..path_max]) {
+            .some(n) => {
+                wide._units[n] = 0;
+                .ok(wide)
+            },
+            .none => .err(.path),
+        }
+    };
+
+    /// The address of its first unit.
+    start := (self: &Wide) -> *u16 { unsafe std.ptr.to([path_max + 1]u16, &self._units).cast(u16) };
+};
