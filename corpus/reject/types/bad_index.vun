@@ -1,0 +1,10 @@
+//! Indexing takes an integer or bounds; `..n` is a pack, not a range, and the help writes the
+//! start.
+
+prefix := (xs: &[u8], n: usize) -> &[u8] {
+    xs[..n] //~ types.bad_index "cannot index"
+};
+
+item := (xs: &[u8]) -> u8 {
+    xs[true] //~ types.bad_index "cannot index"
+};

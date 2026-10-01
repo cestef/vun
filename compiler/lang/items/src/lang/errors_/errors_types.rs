@@ -12,4 +12,5 @@ pub const no_impl: Item = Item::new(&["lang", "errors", "types", "no_impl"]);
 pub const cannot_infer: Item = Item::new(&["lang", "errors", "types", "cannot_infer"]);
 pub const arity: Item = Item::new(&["lang", "errors", "types", "arity"]);
 pub const slice_value: Item = Item::new(&["lang", "errors", "types", "slice_value"]);
+pub const bad_index: Item = Item::new(&["lang", "errors", "types", "bad_index"]);
 pub const pack_position: Item = Item::new(&["lang", "errors", "types", "pack_position"]);

@@ -39,6 +39,7 @@ types := struct {
     cannot_infer := diag.Diag{};
     arity := diag.Diag{};
     slice_value := diag.Diag{};
+    bad_index := diag.Diag{};
     pack_position := diag.Diag{};
 };
 

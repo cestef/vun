@@ -8,4 +8,5 @@ pub const TYPES_NO_IMPL: DiagId = DiagId::new("lang.errors.types.no_impl");
 pub const TYPES_CANNOT_INFER: DiagId = DiagId::new("lang.errors.types.cannot_infer");
 pub const TYPES_ARITY: DiagId = DiagId::new("lang.errors.types.arity");
 pub const TYPES_SLICE_VALUE: DiagId = DiagId::new("lang.errors.types.slice_value");
+pub const TYPES_BAD_INDEX: DiagId = DiagId::new("lang.errors.types.bad_index");
 pub const TYPES_PACK_POSITION: DiagId = DiagId::new("lang.errors.types.pack_position");
