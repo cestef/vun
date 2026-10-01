@@ -33,4 +33,3 @@ pub const eq_ignore_case: Item = Item::new(&["std", "text", "eq_ignore_case"]);
 pub const Full: Item = Item::new(&["std", "text", "Full"]);
 /// Up to `n` bytes held inline: written to as any writer, read back as a slice.
 pub const Slab: Item = Item::new(&["std", "text", "Slab"]);
-pub const slab_writer: Item = Item::new(&["std", "text", "slab_writer"]);

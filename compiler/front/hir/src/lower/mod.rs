@@ -6,12 +6,14 @@
 
 mod control;
 mod exprs;
+mod implementation;
 mod members;
 mod pats;
 
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable, Via};
+use vun_span::Span;
 use vun_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use vun_syntax::tokens::Tokens;
 
@@ -67,6 +69,11 @@ impl<'a> Lower<'a, '_> {
     /// The origin of `n`: inside the declaration being lowered, or in the file.
     fn origin(&mut self, n: NodeId) -> OriginId {
         let span = self.source.cst.span(n, self.source.tokens);
+        self.origin_at(span)
+    }
+
+    /// The origin of `span`, as `origin` makes it for a node.
+    fn origin_at(&mut self, span: Span) -> OriginId {
         let origin = match self.declaration {
             Some(declaration) => self.origins.inside(declaration, span),
             None => self.origins.source(span),
@@ -95,6 +102,16 @@ impl<'a> Lower<'a, '_> {
         lower: impl FnOnce(&mut Self) -> T,
     ) -> (T, OriginId) {
         let name = name.filter(|&p| self.kind(p) == NodeKind::Name).map(|p| self.symbol(p));
+        self.declared(n, name, lower)
+    }
+
+    /// As `declaring`, for a declaration named `name` if it has one.
+    fn declared<T>(
+        &mut self,
+        n: NodeId,
+        name: Option<Symbol>,
+        lower: impl FnOnce(&mut Self) -> T,
+    ) -> (T, OriginId) {
         let origin = match name {
             Some(name) => {
                 let span = self.source.cst.span(n, self.source.tokens);

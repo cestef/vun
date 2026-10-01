@@ -5,8 +5,7 @@ Iter := ($T: type) -> lang.Interface { lang.Coroutine(T, ()) };
 
 /// What every iterator can be turned into or summed up as: methods of each coroutine frame that
 /// yields `T`, by an impl without an interface over `lang.Coroutine`. Each consumes the frame.
-#[impl(lang.Coroutine)]
-iter_methods := ($Self: type, $T: type, $R: type) -> type { struct {
+impl lang.Coroutine($Self, $T, $R) {
     /// Each item with its position, from 0.
     enumerate := (self: Self) -> Iter((usize, T)) {
         mut at: usize = 0;
@@ -69,4 +68,4 @@ iter_methods := ($Self: type, $T: type, $R: type) -> type { struct {
         for _ in self { n += 1; }
         n
     };
-} };
+}

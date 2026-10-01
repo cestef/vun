@@ -28,8 +28,7 @@ Event := struct {
 /// two tasks joins their waits, in the frames of the tasks waiting, and allocates nothing.
 Wait := enum { on(&Event), either(&Wait, &Wait) };
 
-#[impl(Wait)]
-wait_ready := struct {
+impl Wait {
     /// Whether an event the wait names fired. The marks stay for the tasks to take.
     ready := (self: &Wait) -> bool {
         match self {
@@ -37,7 +36,7 @@ wait_ready := struct {
             .either(a, b) => a.ready() or b.ready(),
         }
     };
-};
+}
 
 Async := ($R: type) -> lang.Interface { lang.Coroutine(Wait, R) };
 

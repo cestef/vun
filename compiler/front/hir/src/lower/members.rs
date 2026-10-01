@@ -21,6 +21,9 @@ impl Lower<'_, '_> {
         let (inner, doc, attrs) = self.annotations(n);
         match self.kind(inner) {
             NodeKind::Binding | NodeKind::TypedBinding => Some(Member::Decl(self.decl(inner, doc, attrs))),
+            NodeKind::Implementation | NodeKind::Extension | NodeKind::Delegation => {
+                Some(Member::Decl(self.implementation(inner, doc, attrs)))
+            }
             NodeKind::Field => Some(Member::Field(self.field(inner, doc, attrs))),
             NodeKind::Spread => Some(Member::Spread(self.spread(inner))),
             _ => None,

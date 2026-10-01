@@ -4,5 +4,3 @@ pub mod mem_alloc;
 pub mod mem_alloc_Allocator;
 pub mod mem_alloc_Error;
 pub mod mem_alloc_Fixed;
-pub mod mem_alloc_fixed_allocator;
-pub mod mem_cell_methods;

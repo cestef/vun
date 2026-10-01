@@ -84,12 +84,6 @@ pub const Family: Item = Item::new(&["lang", "arch", "arm64", "Family"]);
 pub const Mnemonic: Item = Item::new(&["lang", "arch", "arm64", "Mnemonic"]);
 /// What an enum of registers names, written as its attribute.
 pub const Registers: Item = Item::new(&["lang", "arch", "arm64", "Registers"]);
-/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
-pub const instruction_call: Item = Item::new(
-    &["lang", "arch", "arm64", "instruction_call"],
-);
-pub const member_call: Item = Item::new(&["lang", "arch", "arm64", "member_call"]);
-pub const mnemonic_call: Item = Item::new(&["lang", "arch", "arm64", "mnemonic_call"]);
 /// The names a block of instructions is written with, spread first in it
 /// (`lang.arch.asm({ ..lang.arch.arm64.names; ... })`): the operand forms, the registers at each
 /// width, the conditions, the named choices and the instructions.

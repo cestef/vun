@@ -10,7 +10,6 @@ use crate::Item;
 pub const least: Item = Item::new(&["std", "testing", "bench", "least"]);
 /// What a measured benchmark reports: how many times its body ran, and how long that took.
 pub const Measured: Item = Item::new(&["std", "testing", "bench", "Measured"]);
-pub const measured_json: Item = Item::new(&["std", "testing", "bench", "measured_json"]);
 /// The loop of a benchmark: `for b.loop() { ... }`, set up once before it.
 pub const Bench: Item = Item::new(&["std", "testing", "bench", "Bench"]);
 /// What became of the benchmark `f`, run on a thread of its own, measured or once as a test.

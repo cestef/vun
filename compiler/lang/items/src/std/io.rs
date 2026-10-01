@@ -16,4 +16,3 @@ pub const Reader: Item = Item::new(&["std", "io", "Reader"]);
 pub const Ended: Item = Item::new(&["std", "io", "Ended"]);
 /// Bytes read from a slice, in order.
 pub const Bytes: Item = Item::new(&["std", "io", "Bytes"]);
-pub const bytes_reader: Item = Item::new(&["std", "io", "bytes_reader"]);

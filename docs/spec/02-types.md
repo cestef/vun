@@ -112,6 +112,30 @@ writer that takes no more.
 ### Conformance
 
 ```vun
+impl Writer for Uart {
+    Error := uart.Error;
+    closed: uart.Error = .stopped;
+    write := (self: &mut Uart, bytes: &[u8]) -> Result(usize, uart.Error) { ... };
+}
+```
+
+- `impl I for T { members }` declares the **witness** of the interface `I` for `T`: its members
+  are the struct the witness is. It binds no name (`std.meta.witness(Writer, Uart)` returns the
+  struct), and what is reported of it points at its head, `impl Writer for Uart`. `T` is a type,
+  or a type constructor with the parameters it binds, each written `$name` as a function's
+  compile-time parameters are, and named so in the members: `impl Narrow for Int($r)` covers
+  every `Int(r)`. A target binds every argument that way, or none (`impl Eq for Pair(u8)` is an
+  impl for that type). `impl` is a word only here, before a name: `impl := 1` and `#[impl(...)]`
+  are as they were.
+- `impl T { members }`, with no interface, adds the methods to `T` (below, `#[impl(T)]`), and
+  `impl I for T = value;` makes the witness a value, as a derived one is:
+  `impl Hash for Point = std.hash.derive_hash(Point);`. An `_` among the arguments of the
+  interface is written as in the attribute: `impl lang.ops.Call(_, ()) for Instruction = ...;`.
+- These stand for `#[impl(I(T))]` on a declaration of that struct, or, with parameters, on a
+  function of them returning it, `($r) -> type { struct { members } }`, the attribute form below,
+  which says the same:
+
+```vun
 #[impl(Writer(Uart))]
 uart_writer := struct {
     Error := uart.Error;

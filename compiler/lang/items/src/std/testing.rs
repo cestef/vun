@@ -55,15 +55,6 @@ pub const Argued: Item = Item::new(&["std", "testing", "Argued"]);
 pub const Argument: Item = Item::new(&["std", "testing", "Argument"]);
 /// A test run: its name, as declared, and what became of it.
 pub const Ran: Item = Item::new(&["std", "testing", "Ran"]);
-pub const line_json: Item = Item::new(&["std", "testing", "line_json"]);
-pub const ran_json: Item = Item::new(&["std", "testing", "ran_json"]);
-pub const outcome_json: Item = Item::new(&["std", "testing", "outcome_json"]);
-pub const ignored_json: Item = Item::new(&["std", "testing", "ignored_json"]);
-pub const falsified_json: Item = Item::new(&["std", "testing", "falsified_json"]);
-pub const trapped_json: Item = Item::new(&["std", "testing", "trapped_json"]);
-pub const totals_json: Item = Item::new(&["std", "testing", "totals_json"]);
-pub const site_json: Item = Item::new(&["std", "testing", "site_json"]);
-pub const place_json: Item = Item::new(&["std", "testing", "place_json"]);
 /// The status of a run in which a test trapped.
 pub const failed: Item = Item::new(&["std", "testing", "failed"]);
 /// The exports of the program running the tests of `ns`.
@@ -82,7 +73,6 @@ pub const checked: Item = Item::new(&["std", "testing", "checked"]);
 /// What kind of test a test is, by its parameters (spec 11, section 1): a property takes
 /// arguments generated from choices, a fuzz target's and a simulation's included.
 pub const Kind: Item = Item::new(&["std", "testing", "Kind"]);
-pub const kind_eq: Item = Item::new(&["std", "testing", "kind_eq"]);
 /// The kind of the test `f`.
 pub const kind: Item = Item::new(&["std", "testing", "kind"]);
 /// Whether the one parameter of `f` is a `T`.

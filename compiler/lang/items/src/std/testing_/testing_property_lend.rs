@@ -18,16 +18,8 @@ pub const Store: Item = Item::new(&["std", "testing", "property", "lend", "Store
 pub const Stored: Item = Item::new(&["std", "testing", "property", "lend", "Stored"]);
 /// A borrow of what `held` stores, as a `&T`.
 pub const stored: Item = Item::new(&["std", "testing", "property", "lend", "stored"]);
-/// A shared borrow is lent what the case stores for its target.
-pub const ref_lent: Item = Item::new(
-    &["std", "testing", "property", "lend", "ref_lent"],
-);
 /// The first `len` of `items`: what a case stores for a slice, generated as any struct is.
 pub const Prefix: Item = Item::new(&["std", "testing", "property", "lend", "Prefix"]);
-/// A slice is stored as a prefix.
-pub const slice_store: Item = Item::new(
-    &["std", "testing", "property", "lend", "slice_store"],
-);
 /// What a case holds for a parameter of type `T`: what it lends, or the argument itself.
 pub const Held: Item = Item::new(&["std", "testing", "property", "lend", "Held"]);
 /// The argument a case passes for a parameter of type `T` from what it holds for it.

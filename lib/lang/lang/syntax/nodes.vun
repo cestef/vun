@@ -77,6 +77,43 @@ NodeKind := .{
         .typed_binding(.optional(.\mut), .pattern, ":", .type, .optional("=", .value)),
         .field(.optional(.\mut), .pattern, ":", .type, .optional("=", .value)),
         .spread("..", .source, .optional(.select)),
+        // `impl Format for Int($r) { format := ...; }`: the members of the witness of an interface
+        // for a type, written once (spec 02, section 3).
+        .implementation(
+            "impl",
+            .interface,
+            "for",
+            .target,
+            "{",
+            .many(
+                .choice(
+                    .seq(.members, ";"),
+                    .seq(.of(.members, fields), ","),
+                    .of(.members, unterminated),
+                    ";"
+                )
+            ),
+            .optional(.of(.members, fields)),
+            "}",
+        ),
+        // `impl Option($T) { map := ...; }`: methods a type has, with no interface.
+        .extension(
+            "impl",
+            .target,
+            "{",
+            .many(
+                .choice(
+                    .seq(.members, ";"),
+                    .seq(.of(.members, fields), ","),
+                    .of(.members, unterminated),
+                    ";"
+                )
+            ),
+            .optional(.of(.members, fields)),
+            "}",
+        ),
+        // `impl Json for Line = std.fmt.json.derive(Line);`: a witness that is a value.
+        .delegation("impl", .interface, "for", .target, "=", .value),
         .select(".{", .separated(.names, ","), "}"),
         .namespace(
             ";",
@@ -173,59 +210,14 @@ NodeKind := .{
     ],
 };
 
-/// Kinds that are never operands: they stand only in the fields that name them, hold them or
-/// admit them.
-parts := [
-    .\mut, .qualifier, .mode, .raw_string_line, .select, .namespace, .returns, .guard, .label, .binding,
-    .typed_binding, .field, .assign, .spread, .field_init, .param, .test, .in, .arm, .module_doc, .staged,
-];
-
-/// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
-/// and patterns.
-admits := [
-    .{
-        .fields = &[.statements],
-        .kinds = &[.binding, .typed_binding, .field, .assign, .spread, .module_doc, .staged],
-    },
-    .{ .fields = &[.items, .values, .args, .fields, .variants], .kinds = &[.field_init, .staged] },
-    .{ .fields = &[.params], .kinds = &[.param] },
-    .{ .fields = &[.head, .condition], .kinds = &[.test, .\in] },
-    // A pattern may bind the whole value it matches: `n := .some(x) => n`.
-    .{ .fields = &[.pattern], .kinds = &[.binding] },
-    // What `defer` runs may be an assignment, looser than any operator: `defer x.* = 0`.
-    .{ .fields = &[.body], .kinds = &[.assign] },
-];
-
-/// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
-holds := [
-    .{ .fields = &[.members], .kinds = &[.binding, .typed_binding, .field, .spread, .module_doc, .staged] },
-    .{ .fields = &[.arms], .kinds = &[.arm, .staged] },
-    .{ .fields = &[.otherwise], .kinds = &[.block, .\if] },
-    .{ .fields = &[.names], .kinds = &[.name] },
-];
-
-/// Kinds that may spell the same source, which the parser tells apart by what follows them or
-/// what they hold, each listed before those it is preferred to where several fit: `()` is a tuple,
-/// `() {}` a function. Editor grammars that try each keep the preferred.
-preferred := [
-    &[.paren, .tuple, .fn_type],
-    &[.tuple, .fn_type],
-    &[.\fn, .tuple, .fn_type],
-    &[.typed_binding, .field],
-    &[.array, .closure],
-    &[.closure, .array_type],
-    &[.assign, .field_init],
-    &[.spread, .prefix],
-    &[.staged, .prefix],
-    &[.block, .typed_lit],
-];
-
 /// Kinds of the entries of a list ended by `,`, and of a member list's last entry without one.
 fields := [.field];
 
 /// Kinds of entries of a list needing no `;` after them: module docs, blocks and the forms ending
 /// with one.
-unterminated := [.module_doc, .block, .\if, .\for, .\match, .labeled, .staged];
+unterminated := [
+    .module_doc, .block, .\if, .\for, .\match, .labeled, .staged, .implementation, .extension,
+];
 
 /// What a list's entry made at compile time is: a loop or a choice.
 staged_forms := [.\for, .\if];
@@ -235,24 +227,3 @@ labeled_bodies := [.\for, .block];
 
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 member_names := [.name, .int, .paren];
-
-/// Kinds that end with the kind of their last child when written with one of the tokens listed:
-/// `unsafe {}` is unterminated as a block is, `.$(e)` names a member as `.(e)` would, and
-/// `#[a] x: T,` is a field as `x: T,` is.
-transparent := [
-    .{ .kind = .prefix, .tokens = &[.dollar, .\unsafe] },
-    .{ .kind = .doc, .tokens = &[.doc_comment] },
-    .{ .kind = .attr, .tokens = &[.hash_l_bracket] },
-];
-
-/// How tightly the forms whose productions begin or end with an operand hold it, loosest first, as
-/// the parser nests them (spec 01, section 6); `infix` stands for the levels of the table `infix`.
-/// Editor grammars resolve by it what the parser decides by nesting.
-precedence := [
-    &[.doc, .attr, .binding, .typed_binding, .field, .assign, .field_init, .param, .test, .in, .arm, .\defer],
-    &[.\if, .\for, .\match],
-    &[.\return, .\break, .\yield, .labeled, .returns, .guard],
-    &[.infix],
-    &[.prefix, .spread, .array_type],
-    &[.member, .call, .index, .postfix, .dot_name, .closure, .qualifier, .mode],
-];

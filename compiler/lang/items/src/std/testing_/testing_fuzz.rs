@@ -11,7 +11,6 @@ pub const kept: Item = Item::new(&["std", "testing", "fuzz", "kept"]);
 /// What fuzzing a test did when no case trapped: how many cases ran, how many streams it kept,
 /// and how many flags of the map they set.
 pub const Fuzzed: Item = Item::new(&["std", "testing", "fuzz", "Fuzzed"]);
-pub const fuzzed_json: Item = Item::new(&["std", "testing", "fuzz", "fuzzed_json"]);
 /// A stream of choices kept: those a case took.
 pub const Stream: Item = Item::new(&["std", "testing", "fuzz", "Stream"]);
 /// Fuzzes the test `f`, a property, over `runs` cases from `seed`, each on a thread of its own:

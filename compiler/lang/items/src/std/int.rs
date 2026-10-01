@@ -10,5 +10,3 @@ use crate::Item;
 pub const tests: Item = Item::new(&["std", "int", "tests"]);
 /// Bringing a value into a narrower type.
 pub const Narrow: Item = Item::new(&["std", "int", "Narrow"]);
-pub const int_narrow: Item = Item::new(&["std", "int", "int_narrow"]);
-pub const int_methods: Item = Item::new(&["std", "int", "int_methods"]);

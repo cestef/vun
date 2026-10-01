@@ -2,5 +2,4 @@
 pub mod io_Bytes;
 pub mod io_Ended;
 pub mod io_Reader;
-pub mod io_bytes_reader;
 pub mod io_tests;

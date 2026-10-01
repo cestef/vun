@@ -163,9 +163,6 @@ Case := enum {
     };
 };
 
-#[impl(lang.ops.Eq(Case))]
-case_eq := std.cmp.derive_eq(Case);
-
 /// The letters and digits of a name, as byte ranges.
 Upper: type = Int('A'..='Z');
 Lower: type = Int('a'..='z');

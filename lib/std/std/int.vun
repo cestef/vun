@@ -16,8 +16,7 @@ Narrow := interface(($Self: type) -> type { struct {
     try_to: (x: Self, $T: type) -> ?T = _;
 } });
 
-#[impl(Narrow(Int))]
-int_narrow := ($r: lang.Range) -> type { struct {
+impl Narrow for Int($r) {
     to := (x: Int(r), $T: type) -> T { lang.int.to(r, x, T) };
     #[panic.never]
     wrap := (x: Int(r), $T: type) -> T { lang.int.wrap(r, x, T) };
@@ -28,10 +27,9 @@ int_narrow := ($r: lang.Range) -> type { struct {
     try_to := (x: Int(r), $T: type) -> ?T {
         if lang.int.fits(r, x, T) { .some(lang.int.wrap(r, x, T)) } else { .none }
     };
-} };
+}
 
-#[impl(Int)]
-int_methods := ($r: lang.Range) -> type { struct {
+impl Int($r) {
     /// The absolute value, whose range is the magnitude of `r`: `i32` gives `Int(0..=2^31)`.
     #[panic.never]
     abs := (x: Int(r)) -> Int(lang.int.magnitude(r)) { lang.int.abs(r, x) };
@@ -66,4 +64,4 @@ int_methods := ($r: lang.Range) -> type { struct {
         }
         if negative { (0 - n).try_to(Int(r)) } else { n.try_to(Int(r)) }
     };
-} };
+}

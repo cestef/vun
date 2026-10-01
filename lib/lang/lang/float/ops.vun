@@ -1,49 +1,41 @@
 //! Floats' operators (spec 02, section 4): the impls of `lang.ops` for every float type, over
 //! the constructor `lang.Float`, as the primitives of `lang.float`.
 
-#[impl(lang.ops.Add(lang.Float))]
-float_add := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.Add for lang.Float($bits) {
     Output := ($R: type) -> type { lang.Float(bits) };
     add := lang.float.add;
-} };
+}
 
-#[impl(lang.ops.Sub(lang.Float))]
-float_sub := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.Sub for lang.Float($bits) {
     Output := ($R: type) -> type { lang.Float(bits) };
     sub := lang.float.sub;
-} };
+}
 
-#[impl(lang.ops.Mul(lang.Float))]
-float_mul := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.Mul for lang.Float($bits) {
     Output := ($R: type) -> type { lang.Float(bits) };
     mul := lang.float.mul;
-} };
+}
 
-#[impl(lang.ops.Div(lang.Float))]
-float_div := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.Div for lang.Float($bits) {
     Output := ($R: type) -> type { lang.Float(bits) };
     div := lang.float.div;
-} };
+}
 
-#[impl(lang.ops.Rem(lang.Float))]
-float_rem := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.Rem for lang.Float($bits) {
     Output := ($R: type) -> type { lang.Float(bits) };
     rem := lang.float.rem;
-} };
+}
 
-#[impl(lang.ops.Neg(lang.Float))]
-float_neg := ($bits: Int(1..)) -> type { struct { Output := lang.Float(bits); neg := lang.float.neg; } };
+impl lang.ops.Neg for lang.Float($bits) { Output := lang.Float(bits); neg := lang.float.neg; }
 
 /// IEEE equality: a NaN equals nothing.
-#[impl(lang.ops.Eq(lang.Float))]
-float_eq := ($bits: Int(1..)) -> type { struct { eq := lang.float.equal; ne := lang.float.unequal; } };
+impl lang.ops.Eq for lang.Float($bits) { eq := lang.float.equal; ne := lang.float.unequal; }
 
 /// IEEE comparisons, false with a NaN: floats are ordered partially. IEEE `totalOrder` is
 /// `lang.float.total_order`, not an `Ord`, so that `<` and `cmp` never disagree.
-#[impl(lang.ops.PartialOrd(lang.Float))]
-float_partial_ord := ($bits: Int(1..)) -> type { struct {
+impl lang.ops.PartialOrd for lang.Float($bits) {
     lt := lang.float.less;
     le := lang.float.less_equal;
     gt := lang.float.greater;
     ge := lang.float.greater_equal;
-} };
+}

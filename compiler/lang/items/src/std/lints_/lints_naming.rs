@@ -25,7 +25,6 @@ pub const case: Item = Item::new(&["std", "lints", "naming", "case"]);
 pub const Spelling: Item = Item::new(&["std", "lints", "naming", "Spelling"]);
 /// How the words of a name are written.
 pub const Case: Item = Item::new(&["std", "lints", "naming", "Case"]);
-pub const case_eq: Item = Item::new(&["std", "lints", "naming", "case_eq"]);
 /// The letters and digits of a name, as byte ranges.
 pub const Upper: Item = Item::new(&["std", "lints", "naming", "Upper"]);
 pub const Lower: Item = Item::new(&["std", "lints", "naming", "Lower"]);

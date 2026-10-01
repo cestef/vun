@@ -40,10 +40,3 @@ pub const closing: Item = Item::new(&["std", "fmt", "closing"]);
 pub const separator: Item = Item::new(&["std", "fmt", "separator"]);
 /// Writes `magnitude` in `base`, 2 to 36, after a `-` when `negative`.
 pub const in_base: Item = Item::new(&["std", "fmt", "in_base"]);
-pub const int_format: Item = Item::new(&["std", "fmt", "int_format"]);
-pub const int_hex: Item = Item::new(&["std", "fmt", "int_hex"]);
-pub const int_binary: Item = Item::new(&["std", "fmt", "int_binary"]);
-/// `true` or `false`.
-pub const bool_format: Item = Item::new(&["std", "fmt", "bool_format"]);
-/// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
-pub const slice_format: Item = Item::new(&["std", "fmt", "slice_format"]);

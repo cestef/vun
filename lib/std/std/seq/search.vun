@@ -1,8 +1,7 @@
 //! Looking in a slice and cutting it (spec 05): methods of every `[T]`, and so of every `[n]T`,
 //! whose items have `==`, text among them, by an impl without an interface.
 
-#[impl(lang.mem.Slice)]
-slice_search := ($T: type) -> type { struct {
+impl lang.mem.Slice($T) {
     /// The first item, none in an empty slice.
     first := (xs: &[T]) -> Option(&T) { if xs.len() == 0 { .none } else { .some(&xs[0]) } };
     /// The last item, none in an empty slice.
@@ -81,4 +80,4 @@ slice_search := ($T: type) -> type { struct {
         }
         yield rest;
     };
-} };
+}

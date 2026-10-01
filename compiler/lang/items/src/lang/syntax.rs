@@ -14,3 +14,5 @@ pub const editors: Item = Item::new(&["lang", "syntax", "editors"]);
 pub const grammar: Item = Item::new(&["lang", "syntax", "grammar"]);
 /// The namespace `lang.syntax.nodes`.
 pub const nodes: Item = Item::new(&["lang", "syntax", "nodes"]);
+/// The namespace `lang.syntax.tables`.
+pub const tables: Item = Item::new(&["lang", "syntax", "tables"]);

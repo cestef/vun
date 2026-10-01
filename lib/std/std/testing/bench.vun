@@ -13,9 +13,6 @@ Measured := struct {
     nanos: u64,
 };
 
-#[impl(std.fmt.json.Json(Measured))]
-measured_json := std.fmt.json.derive(Measured);
-
 /// The loop of a benchmark: `for b.loop() { ... }`, set up once before it.
 Bench := struct {
     /// Whether it is measured, rather than run once as a test.

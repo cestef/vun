@@ -143,6 +143,40 @@ fn literals() {
 }
 
 #[test]
+fn impls_name_an_interface_and_a_target() {
+    assert_eq!(
+        first("impl Format for bool { f := 1; }"),
+        "(Implementation'impl Format for bool { (Binding':= f 1) ; })"
+    );
+    // A target binds the parameters of its constructor with `$`, as a function does.
+    assert_eq!(
+        first("impl a.Format for Int($r) {}"),
+        "(Implementation'impl (Member'. a Format) for (Call'( Int (Prefix'$ r) )) { })"
+    );
+    // The body is a body, not a literal of the target's type, even empty.
+    assert_eq!(first("impl I for T {}"), "(Implementation'impl I for T { })");
+    // Without an interface it adds methods to a type; with `=` the witness is a value.
+    assert_eq!(
+        first("impl Option($T) { f := 1; }"),
+        "(Extension'impl (Call'( Option (Prefix'$ T) )) { (Binding':= f 1) ; })"
+    );
+    assert_eq!(first("impl T {}"), "(Extension'impl T { })");
+    assert_eq!(first("impl I for T = d(T);"), "(Delegation'impl I for T = (Call'( d T )))");
+    // A body ends the declaration: no `;` follows it.
+    assert_eq!(first("impl I for T {} x := 1;"), "(Implementation'impl I for T { })");
+}
+
+#[test]
+fn impl_is_a_name_elsewhere() {
+    assert_eq!(first("impl := 1;"), "(Binding':= impl 1)");
+    assert_eq!(first("impl: u8 = 2;"), "(TypedBinding': impl u8 = 2)");
+    assert_eq!(
+        first("#[impl(Hash(Fnv))] x := 1;"),
+        "(Attr'#[ (Call'( impl (Call'( Hash Fnv )) )) ] (Binding':= x 1))"
+    );
+}
+
+#[test]
 fn heads_end_at_the_body() {
     assert_eq!(
         first("f := () { if a == B { c } else if d { e } };"),

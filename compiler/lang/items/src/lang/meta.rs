@@ -29,10 +29,6 @@ pub const inside: Item = Item::new(&["lang", "meta", "inside"]);
 /// Whether `a` and `b` are one compile-time value: two types made by the same constructor from
 /// the same arguments, one name.
 pub const same: Item = Item::new(&["lang", "meta", "same"]);
-/// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
-pub const type_eq: Item = Item::new(&["lang", "meta", "type_eq"]);
-/// Names are equal when they are one name: `lang.target.current.os == .linux`.
-pub const name_eq: Item = Item::new(&["lang", "meta", "name_eq"]);
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
 pub const Any: Item = Item::new(&["lang", "meta", "Any"]);
@@ -44,9 +40,6 @@ pub const value: Item = Item::new(&["lang", "meta", "value"]);
 pub const append: Item = Item::new(&["lang", "meta", "append"]);
 /// The items of `a` followed by those of `b`, in compile-time memory.
 pub const concat: Item = Item::new(&["lang", "meta", "concat"]);
-/// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4). An array is
-/// concatenated as the slice of its items: a string literal is a borrow of one.
-pub const slice_concat: Item = Item::new(&["lang", "meta", "slice_concat"]);
 /// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, an item
 /// of a variant's payload, named by its position (`0`, `1`, ...), or a parameter of a function,
 /// a part of the tuple a call passes.

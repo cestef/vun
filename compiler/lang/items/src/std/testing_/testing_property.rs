@@ -33,24 +33,8 @@ pub const r#gen: Item = Item::new(&["std", "testing", "property", "gen"]);
 /// A value of the struct or enum type `T` read from `c`: a variant, the first for the least
 /// choice, so that shrinking moves towards it, then each of its parts.
 pub const derived: Item = Item::new(&["std", "testing", "property", "derived"]);
-/// A float of `lang.Float(bits)`: its encoding chosen whole, so the least choice is `0.0` and a
-/// smaller positive choice a smaller positive float.
-pub const float_arbitrary: Item = Item::new(
-    &["std", "testing", "property", "float_arbitrary"],
-);
-/// An array of `n` items, each generated in turn.
-pub const array_arbitrary: Item = Item::new(
-    &["std", "testing", "property", "array_arbitrary"],
-);
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 pub const Generated: Item = Item::new(&["std", "testing", "property", "Generated"]);
-/// An integer of `Int(r)`: its distance from the integer of the range nearest 0, then, where both
-/// sides hold that distance, which side, above first. A smaller choice is an integer of smaller
-/// magnitude, and shrinking the distance keeps the side. A range of more than 2^64 integers has
-/// only the 2^64 on each side nearest 0 chosen.
-pub const int_arbitrary: Item = Item::new(
-    &["std", "testing", "property", "int_arbitrary"],
-);
 /// The tuple of what a case of `f` holds for each of its parameters.
 pub const Args: Item = Item::new(&["std", "testing", "property", "Args"]);
 /// What a case of `f` holds for each of its parameters, read from `c`.

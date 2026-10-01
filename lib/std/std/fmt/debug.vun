@@ -67,19 +67,16 @@ quoted := ($W: std.fmt.Writer, w: &mut W, bytes: &[u8]) -> Result((), W.Error) {
     w.write_all(quote)
 };
 
-#[impl(Debug(Int))]
-int_debug := ($r: lang.Range) -> type { struct {
+impl Debug for Int($r) {
     debug := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
-} };
+}
 
-#[impl(Debug(bool))]
-bool_debug := struct {
+impl Debug for bool {
     debug := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) { value.format(w) };
-};
+}
 
 /// Bytes as a quoted string, any other items as `[a, b]`.
-#[impl(Debug(lang.mem.Slice))]
-slice_debug := ($T: type) -> type { struct {
+impl Debug for lang.mem.Slice($T) {
     debug := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
         $if lang.meta.same(type, T, u8) {
             quoted(w, value)
@@ -92,7 +89,7 @@ slice_debug := ($T: type) -> type { struct {
             w.write_all(list_close)
         }
     };
-} };
+}
 
 /// A `Debug` witness for `T` by reflection: a tuple is its items in parentheses, an enum's variant
 /// is `.name`, followed by its parts in parentheses where it has any, and a struct or a record is

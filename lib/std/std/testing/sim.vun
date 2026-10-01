@@ -66,8 +66,6 @@ never: u64 = 0xFFFF_FFFF_FFFF_FFFF;
 /// How a simulation's run ended: every task finished, the tasks left wait on events nothing will
 /// fire, or the clock reached the limit.
 Ended := enum { done, stalled, timed_out };
-#[impl(lang.ops.Eq(Ended))]
-ended_eq := std.cmp.derive_eq(Ended);
 
 /// A simulation: what chooses which ready task runs next.
 Sim := struct {

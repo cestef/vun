@@ -34,16 +34,14 @@ inside: (inner: Namespace, outer: Namespace) -> bool = _;
 same: ($T: type, $a: T, $b: T) -> bool = _;
 
 /// Types are equal when they are one type (spec 02, section 1: `Pair(u16)` is one type).
-#[impl(lang.ops.Eq(type))]
-type_eq := struct {
+impl lang.ops.Eq for type {
     eq := (a: &type, b: &type) -> bool { same(type, a.*, b.*) };
-};
+}
 
 /// Names are equal when they are one name: `lang.target.current.os == .linux`.
-#[impl(lang.ops.Eq(Name))]
-name_eq := struct {
+impl lang.ops.Eq for Name {
     eq := (a: &Name, b: &Name) -> bool { same(Name, a.*, b.*) };
-};
+}
 
 /// A compile-time value of any type, with its type: what a plan records of a record whose type
 /// each call infers (spec 03, section 7). It exists at compile time only.
@@ -59,11 +57,10 @@ concat: ($T: type, a: &[T], b: &[T]) -> &static [T] = _;
 
 /// `a ++ b` on sequences, at compile time: the items of both (spec 02, section 4). An array is
 /// concatenated as the slice of its items: a string literal is a borrow of one.
-#[impl(lang.ops.Concat(lang.mem.Slice))]
-slice_concat := ($T: type) -> type { struct {
+impl lang.ops.Concat for lang.mem.Slice($T) {
     Output := ($R: type) -> type { &static [T] };
     concat := (a: &[T], b: &[T]) -> &static [T] { lang.meta.concat(T, a, b) };
-} };
+}
 
 /// A part of a value, as reflection gives it (spec 03, section 6): a field of a struct, an item
 /// of a variant's payload, named by its position (`0`, `1`, ...), or a parameter of a function,

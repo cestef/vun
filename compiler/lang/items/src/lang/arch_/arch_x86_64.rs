@@ -70,11 +70,6 @@ pub const Instruction: Item = Item::new(&["lang", "arch", "x86_64", "Instruction
 pub const Member: Item = Item::new(&["lang", "arch", "x86_64", "Member"]);
 /// Instructions sharing their forms but for a few bytes, each a `Member` declared after it.
 pub const Family: Item = Item::new(&["lang", "arch", "x86_64", "Family"]);
-/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
-pub const instruction_call: Item = Item::new(
-    &["lang", "arch", "x86_64", "instruction_call"],
-);
-pub const member_call: Item = Item::new(&["lang", "arch", "x86_64", "member_call"]);
 /// The names a block of instructions is written with, spread first in it
 /// (`lang.arch.asm({ ..lang.arch.x86_64.names; ... })`): the operand forms, the registers at each
 /// width, the conditions, the named choices and the instructions.

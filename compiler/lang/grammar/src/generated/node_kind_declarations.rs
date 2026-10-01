@@ -55,6 +55,88 @@ pub(super) const SPREAD_SLOTS: &[NodeSlot] = &[
     NodeSlot::new(NodeField::Source, Count::One, None),
     NodeSlot::new(NodeField::Select, Count::Optional, Some(NodeKind::Select)),
 ];
+pub(super) const IMPLEMENTATION: &[NodeTerm] = &[
+    NodeTerm::Word(&["impl"]),
+    NodeTerm::Field(NodeField::Interface),
+    NodeTerm::Token(&[TokenKind::For]),
+    NodeTerm::Field(NodeField::Target),
+    NodeTerm::Token(&[TokenKind::LBrace]),
+    NodeTerm::Many(
+        &[
+            NodeTerm::Choice(
+                &[
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Of(NodeField::Members, FIELDS),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Of(NodeField::Members, UNTERMINATED),
+                    NodeTerm::Token(&[TokenKind::Semi]),
+                ],
+            ),
+        ],
+    ),
+    NodeTerm::Optional(&[NodeTerm::Of(NodeField::Members, FIELDS)]),
+    NodeTerm::Token(&[TokenKind::RBrace]),
+];
+pub(super) const IMPLEMENTATION_SLOTS: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Interface, Count::One, None),
+    NodeSlot::new(NodeField::Target, Count::One, None),
+    NodeSlot::new(NodeField::Members, Count::Many, None),
+];
+pub(super) const EXTENSION: &[NodeTerm] = &[
+    NodeTerm::Word(&["impl"]),
+    NodeTerm::Field(NodeField::Target),
+    NodeTerm::Token(&[TokenKind::LBrace]),
+    NodeTerm::Many(
+        &[
+            NodeTerm::Choice(
+                &[
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Field(NodeField::Members),
+                            NodeTerm::Token(&[TokenKind::Semi]),
+                        ],
+                    ),
+                    NodeTerm::Sequence(
+                        &[
+                            NodeTerm::Of(NodeField::Members, FIELDS),
+                            NodeTerm::Token(&[TokenKind::Comma]),
+                        ],
+                    ),
+                    NodeTerm::Of(NodeField::Members, UNTERMINATED),
+                    NodeTerm::Token(&[TokenKind::Semi]),
+                ],
+            ),
+        ],
+    ),
+    NodeTerm::Optional(&[NodeTerm::Of(NodeField::Members, FIELDS)]),
+    NodeTerm::Token(&[TokenKind::RBrace]),
+];
+pub(super) const EXTENSION_SLOTS: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Target, Count::One, None),
+    NodeSlot::new(NodeField::Members, Count::Many, None),
+];
+pub(super) const DELEGATION: &[NodeTerm] = &[
+    NodeTerm::Word(&["impl"]),
+    NodeTerm::Field(NodeField::Interface),
+    NodeTerm::Token(&[TokenKind::For]),
+    NodeTerm::Field(NodeField::Target),
+    NodeTerm::Token(&[TokenKind::Eq]),
+    NodeTerm::Field(NodeField::Value),
+];
+pub(super) const DELEGATION_SLOTS: &[NodeSlot] = &[
+    NodeSlot::new(NodeField::Interface, Count::One, None),
+    NodeSlot::new(NodeField::Target, Count::One, None),
+    NodeSlot::new(NodeField::Value, Count::One, None),
+];
 pub(super) const SELECT: &[NodeTerm] = &[
     NodeTerm::Token(&[TokenKind::DotLBrace]),
     NodeTerm::Separated(

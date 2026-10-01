@@ -12,4 +12,3 @@ pub const Error: Item = Item::new(&["std", "mem", "alloc", "Error"]);
 /// An allocator handing out the bytes of one buffer in order, freeing nothing until it is
 /// dropped as a whole.
 pub const Fixed: Item = Item::new(&["std", "mem", "alloc", "Fixed"]);
-pub const fixed_allocator: Item = Item::new(&["std", "mem", "alloc", "fixed_allocator"]);

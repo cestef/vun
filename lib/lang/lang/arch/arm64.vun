@@ -186,12 +186,9 @@ Mnemonic := struct { instructions: &[lang.meta.Name] };
 Registers: type = lang.arch.Registers(Class, Size);
 
 /// Each instruction is called in a block with the operands it takes (spec 07, section 6).
-#[impl(lang.ops.Call(_, ())(Instruction))]
-instruction_call := lang.arch.called(Instruction);
-#[impl(lang.ops.Call(_, ())(Member))]
-member_call := lang.arch.called(Member);
-#[impl(lang.ops.Call(_, ())(Mnemonic))]
-mnemonic_call := lang.arch.called(Mnemonic);
+impl lang.ops.Call(_, ()) for Instruction = lang.arch.called(Instruction);
+impl lang.ops.Call(_, ()) for Member = lang.arch.called(Member);
+impl lang.ops.Call(_, ()) for Mnemonic = lang.arch.called(Mnemonic);
 
 /// The names a block of instructions is written with, spread first in it
 /// (`lang.arch.asm({ ..lang.arch.arm64.names; ... })`): the operand forms, the registers at each

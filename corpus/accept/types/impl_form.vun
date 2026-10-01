@@ -1,0 +1,49 @@
+//! `impl I for T { members }` writes the witness of an interface for a type: the target names a
+//! type, or a type constructor and the parameters it binds with `$` (spec 02, section 3). Without
+//! `I for` it adds methods to the type, and with `= value` the witness is the value. What each
+//! stands for is `#[impl(I(T))]` on a declaration, so it conforms, registers and is found alike.
+
+start := std.os.start(main);
+
+Point := struct { x: i32 };
+
+Boxed := ($T: type) -> type { struct { v: T } };
+
+/// A type's own witness.
+impl std.fmt.Format for Point {
+    format := ($W: std.fmt.Writer, value: &Point, w: &mut W) -> Result((), W.Error) {
+        value.x.format(w)
+    };
+}
+
+/// A constructor's: the witness of every `Boxed(T)`, `T` bound where the target binds it.
+impl std.fmt.Format for Boxed($T) {
+    format := ($W: std.fmt.Writer, value: &Boxed(T), w: &mut W) -> Result((), W.Error) {
+        w.write_all("[")?;
+        value.v.format(w)?;
+        w.write_all("]")
+    };
+}
+
+/// Without an interface, methods of every `Boxed(T)`.
+impl Boxed($T) {
+    get := (self: &Boxed(T)) -> T { self.v };
+}
+
+/// A witness that is a value, as a derived one is.
+impl std.hash.Hash for Point = std.hash.derive_hash(Point);
+
+/// A name `impl` of its own is still a name.
+impl: u8 = 1;
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut slab := std.text.Slab(32).empty();
+    p: Point = .{ .x = 7 };
+    b: Boxed(i32) = .{ .v = 5 };
+    std.fmt.print(&mut slab, "{} {}", p, b).expect("room");
+    mut hashed := std.hash.Fnv.init();
+    p.hash(&mut hashed);
+    if slab.bytes() == "7 [5]" and b.get() == 5 and hashed.finish() != 0 and impl == 1 { .ok } else {
+        .code(1)
+    }
+};

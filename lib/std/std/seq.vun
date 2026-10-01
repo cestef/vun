@@ -7,8 +7,7 @@ Sequence := interface(($Self: type) -> type { struct {
     len: (xs: &Self) -> usize = _;
 } });
 
-#[impl(Sequence(lang.mem.Slice))]
-slice_sequence := ($T: type) -> type { struct {
+impl Sequence for lang.mem.Slice($T) {
     #[panic.never]
     len := (xs: &[T]) -> usize { lang.mem.len(T, xs) };
     /// A pointer to the first item, for passing the items to code outside the language.
@@ -16,19 +15,17 @@ slice_sequence := ($T: type) -> type { struct {
     ptr := (xs: &[T]) -> *T { lang.mem.items_pointer(T, xs) };
     /// A borrow of each item with its position, from 0.
     enumerate := (xs: &[T]) -> std.iter.Iter((usize, &T)) { yield ..xs.iter().enumerate(); };
-} };
+}
 
 /// An array has the length it is declared with; its other methods are those of the slice of its
 /// items.
-#[impl(Sequence(lang.mem.Array))]
-array_sequence := ($n: Int(0..), $T: type) -> type { struct {
+impl Sequence for lang.mem.Array($n, $T) {
     #[panic.never]
     len := (xs: &[n]T) -> usize { n };
-} };
+}
 
 /// Slices are equal when they hold as many items, equal in order.
-#[impl(lang.ops.Eq(lang.mem.Slice))]
-slice_eq := ($T: type) -> type { struct {
+impl lang.ops.Eq for lang.mem.Slice($T) {
     eq := (a: &[T], b: &[T]) -> bool {
         if a.len() != b.len() { return false; }
         for i in 0..a.len() {
@@ -36,15 +33,14 @@ slice_eq := ($T: type) -> type { struct {
         }
         true
     };
-} };
+}
 
 /// Arrays are equal when their items are, in order.
-#[impl(lang.ops.Eq(lang.mem.Array))]
-array_eq := ($n: Int(0..), $T: type) -> type { struct {
+impl lang.ops.Eq for lang.mem.Array($n, $T) {
     eq := (a: &[n]T, b: &[n]T) -> bool {
         for i in 0..n {
             if a[i] != b[i] { return false; }
         }
         true
     };
-} };
+}

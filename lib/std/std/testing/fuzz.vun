@@ -15,9 +15,6 @@ Fuzzed := struct {
     flags: usize,
 };
 
-#[impl(std.fmt.json.Json(Fuzzed))]
-fuzzed_json := std.fmt.json.derive(Fuzzed);
-
 /// A stream of choices kept: those a case took.
 Stream := struct {
     taken: [std.testing.property.room]u64,

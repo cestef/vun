@@ -6,10 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// How a value is written as JSON.
+/// How a value is written as JSON. A struct, an enum, a tuple or a record whose parts have it has
+/// it without an impl, as `derive(T)` writes it.
 pub const Json: Item = Item::new(&["std", "fmt", "json", "Json"]);
-/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct, an enum, a tuple or a record
-/// without one, as `derive(T)` writes it.
+/// Writes `value` as JSON to `w`.
 pub const write: Item = Item::new(&["std", "fmt", "json", "write"]);
 pub const quote: Item = Item::new(&["std", "fmt", "json", "quote"]);
 pub const backslash: Item = Item::new(&["std", "fmt", "json", "backslash"]);
@@ -31,14 +31,6 @@ pub const null: Item = Item::new(&["std", "fmt", "json", "null"]);
 pub const string: Item = Item::new(&["std", "fmt", "json", "string"]);
 /// Writes the member name `name` of an object, after a comma unless it is the `first`.
 pub const member: Item = Item::new(&["std", "fmt", "json", "member"]);
-pub const int_json: Item = Item::new(&["std", "fmt", "json", "int_json"]);
-/// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has
-/// and a JSON number does not: an infinity is `"inf"` or `"-inf"`, a NaN `"nan"`.
-pub const float_json: Item = Item::new(&["std", "fmt", "json", "float_json"]);
-pub const bool_json: Item = Item::new(&["std", "fmt", "json", "bool_json"]);
-/// Bytes as a string, any other items as an array.
-pub const slice_json: Item = Item::new(&["std", "fmt", "json", "slice_json"]);
-pub const option_json: Item = Item::new(&["std", "fmt", "json", "option_json"]);
 /// A `Json` witness for `T` by reflection: a struct or a record is an object of its fields, each
 /// by its own `Json`, a tuple an array of its items; an enum's variant is its name, or, holding parts, an object whose one member is named
 /// by it and holds its part, or the array of its parts.

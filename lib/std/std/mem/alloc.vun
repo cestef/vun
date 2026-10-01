@@ -45,8 +45,7 @@ Fixed := struct {
     destroy := (self: &mut Fixed, $T: type, o: Own(T)) { o.into_raw(); };
 };
 
-#[impl(Allocator(Fixed))]
-fixed_allocator := struct {
+impl Allocator for Fixed {
     Error: type = std.mem.alloc.Error;
     /// `size` bytes aligned to `align`, from what the buffer has left.
     alloc := (self: &mut Fixed, size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
@@ -54,4 +53,4 @@ fixed_allocator := struct {
     };
     /// Nothing: a fixed allocator reuses no bytes until it is dropped as a whole.
     free := (self: &mut Fixed, p: *u8, size: usize, align: usize) {};
-};
+}

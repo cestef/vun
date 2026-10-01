@@ -5,19 +5,16 @@
 //! value as its variant's name, or, where the variant holds parts, as an object naming it; a type
 //! of these without a `Json` of its own is written as `derive(T)` writes it.
 
-/// How a value is written as JSON.
+/// How a value is written as JSON. A struct, an enum, a tuple or a record whose parts have it has
+/// it without an impl, as `derive(T)` writes it.
+#[lang.derive(derive)]
 Json := interface(($Self: type) -> type { struct {
     json: ($W: std.fmt.Writer, value: &Self, w: &mut W) -> Result((), W.Error) = _;
 } });
 
-/// Writes `value` as JSON to `w`: by its `Json`, or, for a struct, an enum, a tuple or a record
-/// without one, as `derive(T)` writes it.
+/// Writes `value` as JSON to `w`.
 write := ($W: std.fmt.Writer, $T: type, w: &mut W, value: &T) -> Result((), W.Error) {
-    $if lang.meta.variants(T).len() == 0 or lang.meta.implements(Json, T) {
-        value.json(w)
-    } else {
-        derive(T).json(value, w)
-    }
+    value.json(w)
 };
 
 quote := "\"";
@@ -67,15 +64,13 @@ member := ($W: std.fmt.Writer, w: &mut W, first: bool, name: &[u8]) -> Result(()
     w.write_all(colon)
 };
 
-#[impl(Json(Int))]
-int_json := ($r: lang.Range) -> type { struct {
+impl Json for Int($r) {
     json := ($W: std.fmt.Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) { value.format(w) };
-} };
+}
 
 /// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has
 /// and a JSON number does not: an infinity is `"inf"` or `"-inf"`, a NaN `"nan"`.
-#[impl(Json(lang.Float))]
-float_json := ($bits: Int(1..)) -> type { struct {
+impl Json for lang.Float($bits) {
     json := ($W: std.fmt.Writer, value: &lang.Float(bits), w: &mut W) -> Result((), W.Error) {
         $F := lang.Float(bits);
         $fraction := lang.float.fraction_bits(F);
@@ -105,18 +100,16 @@ float_json := ($bits: Int(1..)) -> type { struct {
         power.format(w)?;
         w.write_all(quote)
     };
-} };
+}
 
-#[impl(Json(bool))]
-bool_json := struct {
+impl Json for bool {
     json := ($W: std.fmt.Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
         w.write_all(if value.* { "true" } else { "false" })
     };
-};
+}
 
 /// Bytes as a string, any other items as an array.
-#[impl(Json(lang.mem.Slice))]
-slice_json := ($T: type) -> type { struct {
+impl Json for lang.mem.Slice($T) {
     json := ($W: std.fmt.Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
         $if lang.meta.same(type, T, u8) {
             string(w, value)
@@ -129,17 +122,16 @@ slice_json := ($T: type) -> type { struct {
             w.write_all(array_close)
         }
     };
-} };
+}
 
-#[impl(Json(Option))]
-option_json := ($T: type) -> type { struct {
+impl Json for Option($T) {
     json := ($W: std.fmt.Writer, value: &?T, w: &mut W) -> Result((), W.Error) {
         match value {
             .some(v) => v.json(w),
             .none => w.write_all(null),
         }
     };
-} };
+}
 
 /// A `Json` witness for `T` by reflection: a struct or a record is an object of its fields, each
 /// by its own `Json`, a tuple an array of its items; an enum's variant is its name, or, holding parts, an object whose one member is named

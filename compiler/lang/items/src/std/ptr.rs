@@ -6,6 +6,5 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const ptr_methods: Item = Item::new(&["std", "ptr", "ptr_methods"]);
 /// A pointer to what `r` borrows.
 pub const to: Item = Item::new(&["std", "ptr", "to"]);

@@ -14,7 +14,6 @@ pub const never: Item = Item::new(&["std", "testing", "sim", "never"]);
 /// How a simulation's run ended: every task finished, the tasks left wait on events nothing will
 /// fire, or the clock reached the limit.
 pub const Ended: Item = Item::new(&["std", "testing", "sim", "Ended"]);
-pub const ended_eq: Item = Item::new(&["std", "testing", "sim", "ended_eq"]);
 /// A simulation: what chooses which ready task runs next.
 pub const Sim: Item = Item::new(&["std", "testing", "sim", "Sim"]);
 /// Runs the simulation `f` with the choices `c`, on a thread of its own, reporting a trap unless

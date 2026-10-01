@@ -10,8 +10,10 @@ use super::*;
 pub enum Context {
     /// After the pattern of a `for`.
     ForPattern,
+    /// Where a declaration starts and a name follows, as `impl` in `impl Format for Int($r) { }`.
+    Declaration,
 }
 impl Context {
     /// Every variant, in the order declared.
-    pub const ALL: &[Self] = &[Self::ForPattern];
+    pub const ALL: &[Self] = &[Self::ForPattern, Self::Declaration];
 }

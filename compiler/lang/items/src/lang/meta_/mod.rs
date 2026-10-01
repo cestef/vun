@@ -2,6 +2,3 @@
 pub mod meta_Decl;
 pub mod meta_Field;
 pub mod meta_Variant;
-pub mod meta_name_eq;
-pub mod meta_slice_concat;
-pub mod meta_type_eq;

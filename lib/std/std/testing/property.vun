@@ -104,17 +104,15 @@ derived := ($T: type, c: &mut Choices) -> T {
 
 /// A float of `lang.Float(bits)`: its encoding chosen whole, so the least choice is `0.0` and a
 /// smaller positive choice a smaller positive float.
-#[impl(Arbitrary(lang.Float))]
-float_arbitrary := ($bits: Int(1..)) -> type { struct {
+impl Arbitrary for lang.Float($bits) {
     arbitrary := (c: &mut Choices) -> lang.Float(bits) {
         encoding := c.draw(((1 << bits) - 1).sat(u64));
         lang.float.from_bits(lang.Float(bits), encoding.wrap(lang.float.Bits(lang.Float(bits))))
     };
-} };
+}
 
 /// An array of `n` items, each generated in turn.
-#[impl(Arbitrary(lang.mem.Array))]
-array_arbitrary := ($n: Int(0..), $T: type) -> type { struct {
+impl Arbitrary for lang.mem.Array($n, $T) {
     arbitrary := (c: &mut Choices) -> [n]T {
         $if n == 0 {
             []
@@ -124,7 +122,7 @@ array_arbitrary := ($n: Int(0..), $T: type) -> type { struct {
             items
         }
     };
-} };
+}
 
 /// A generator a parameter names with `#[test.gen(g)]`, making what a case holds for it.
 Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
@@ -133,8 +131,7 @@ Generated := ($T: type) -> type { struct { with: (c: &mut Choices) -> T } };
 /// sides hold that distance, which side, above first. A smaller choice is an integer of smaller
 /// magnitude, and shrinking the distance keeps the side. A range of more than 2^64 integers has
 /// only the 2^64 on each side nearest 0 chosen.
-#[impl(Arbitrary(Int))]
-int_arbitrary := ($r: lang.Range) -> type { struct {
+impl Arbitrary for Int($r) {
     arbitrary := (c: &mut Choices) -> Int(r) {
         // Of a type holding it alone, so that adding an offset from it spans `r` exactly.
         $at := 0.sat(Int(r));
@@ -148,7 +145,7 @@ int_arbitrary := ($r: lang.Range) -> type { struct {
         offset: Offset = if up { distance.to(Offset) } else { (-distance).to(Offset) };
         nearest + offset
     };
-} };
+}
 
 /// The tuple of what a case of `f` holds for each of its parameters.
 Args := ($F: type, $f: F) -> type { (

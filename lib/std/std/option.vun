@@ -1,7 +1,6 @@
 //! Options: methods of every `?T`, by an impl without an interface.
 
-#[impl(Option)]
-option_methods := ($T: type) -> type { struct {
+impl Option($T) {
     #[panic.never]
     is_some := (o: &?T) -> bool { match o { .some(_) => true, .none => false } };
     #[panic.never]
@@ -22,4 +21,4 @@ option_methods := ($T: type) -> type { struct {
     ok_or := (o: ?T, $E: type, error: E) -> Result(T, E) {
         match o { .some(v) => .ok(v), .none => .err(error) }
     };
-} };
+}

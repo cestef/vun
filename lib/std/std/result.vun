@@ -1,8 +1,7 @@
 //! Results (spec 07, section 3): methods of every `Result(T, E)`, by an impl without an
 //! interface.
 
-#[impl(Result)]
-result_methods := ($T: type, $E: type) -> type { struct {
+impl Result($T, $E) {
     #[panic.never]
     is_ok := (r: &Result(T, E)) -> bool { match r { .ok(_) => true, .err(_) => false } };
     #[panic.never]
@@ -25,4 +24,4 @@ result_methods := ($T: type, $E: type) -> type { struct {
     /// The value, dropping the error.
     #[panic.never]
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
-} };
+}

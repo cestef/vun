@@ -10,3 +10,7 @@ use crate::Item;
 pub const for_pattern: Item = Item::new(
     &["lang", "syntax", "grammar", "Context", "for_pattern"],
 );
+/// Where a declaration starts and a name follows, as `impl` in `impl Format for Int($r) { }`.
+pub const declaration: Item = Item::new(
+    &["lang", "syntax", "grammar", "Context", "declaration"],
+);

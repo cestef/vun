@@ -125,39 +125,34 @@ in_base := ($W: Writer, w: &mut W, negative: bool, magnitude: u128, base: Int(2
             w.write_all(&digits[at..])
         };
 
-#[impl(Format(Int))]
-int_format := ($r: lang.Range) -> type { struct {
-    /// In decimal, with `-` before a negative value.
+/// In decimal, with `-` before a negative value.
+impl Format for Int($r) {
     format := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
         in_base(w, value.* < 0, value.*.abs(), 10)
     };
-} };
+}
 
-#[impl(Hex(Int))]
-int_hex := ($r: lang.Range) -> type { struct {
+impl Hex for Int($r) {
     hex := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
         in_base(w, value.* < 0, value.*.abs(), 16)
     };
-} };
+}
 
-#[impl(Binary(Int))]
-int_binary := ($r: lang.Range) -> type { struct {
+impl Binary for Int($r) {
     binary := ($W: Writer, value: &Int(r), w: &mut W) -> Result((), W.Error) {
         in_base(w, value.* < 0, value.*.abs(), 2)
     };
-} };
+}
 
 /// `true` or `false`.
-#[impl(Format(bool))]
-bool_format := struct {
+impl Format for bool {
     format := ($W: Writer, value: &bool, w: &mut W) -> Result((), W.Error) {
         if value.* { w.write_all("true") } else { w.write_all("false") }
     };
-};
+}
 
 /// The items of a slice: bytes as they are, any other items as `[a, b]`, each by its own `Format`.
-#[impl(Format(lang.mem.Slice))]
-slice_format := ($T: type) -> type { struct {
+impl Format for lang.mem.Slice($T) {
     format := ($W: Writer, value: &[T], w: &mut W) -> Result((), W.Error) {
         $if lang.meta.same(type, T, u8) {
             w.write_all(value)
@@ -170,4 +165,4 @@ slice_format := ($T: type) -> type { struct {
             w.write_all(closing)
         }
     };
-} };
+}

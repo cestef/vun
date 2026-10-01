@@ -36,18 +36,6 @@ pub const Count: Item = Item::new(&["lang", "syntax", "nodes", "Count"]);
 /// one or anchored at an absent token, are recovery's shapes: they fit their kind's fields, not
 /// its production.
 pub const NodeKind: Item = Item::new(&["lang", "syntax", "nodes", "NodeKind"]);
-/// Kinds that are never operands: they stand only in the fields that name them, hold them or
-/// admit them.
-pub const parts: Item = Item::new(&["lang", "syntax", "nodes", "parts"]);
-/// Fields holding the kinds listed besides any operand: the entries of lists, the forms of heads
-/// and patterns.
-pub const admits: Item = Item::new(&["lang", "syntax", "nodes", "admits"]);
-/// Fields holding only the kinds listed: files and `struct` bodies hold declarations.
-pub const holds: Item = Item::new(&["lang", "syntax", "nodes", "holds"]);
-/// Kinds that may spell the same source, which the parser tells apart by what follows them or
-/// what they hold, each listed before those it is preferred to where several fit: `()` is a tuple,
-/// `() {}` a function. Editor grammars that try each keep the preferred.
-pub const preferred: Item = Item::new(&["lang", "syntax", "nodes", "preferred"]);
 /// Kinds of the entries of a list ended by `,`, and of a member list's last entry without one.
 pub const fields: Item = Item::new(&["lang", "syntax", "nodes", "fields"]);
 /// Kinds of entries of a list needing no `;` after them: module docs, blocks and the forms ending
@@ -61,11 +49,3 @@ pub const labeled_bodies: Item = Item::new(
 );
 /// What names a member after `.`: a name, an index, or `$` and the value naming it (`.$(f.name)`).
 pub const member_names: Item = Item::new(&["lang", "syntax", "nodes", "member_names"]);
-/// Kinds that end with the kind of their last child when written with one of the tokens listed:
-/// `unsafe {}` is unterminated as a block is, `.$(e)` names a member as `.(e)` would, and
-/// `#[a] x: T,` is a field as `x: T,` is.
-pub const transparent: Item = Item::new(&["lang", "syntax", "nodes", "transparent"]);
-/// How tightly the forms whose productions begin or end with an operand hold it, loosest first, as
-/// the parser nests them (spec 01, section 6); `infix` stands for the levels of the table `infix`.
-/// Editor grammars resolve by it what the parser decides by nesting.
-pub const precedence: Item = Item::new(&["lang", "syntax", "nodes", "precedence"]);

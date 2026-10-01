@@ -11,4 +11,3 @@ pub const Failed: Item = Item::new(&["std", "text", "string", "Failed"]);
 pub const String: Item = Item::new(&["std", "text", "string", "String"]);
 /// What writes to a string: it and the allocator that grows it, both borrowed while it is used.
 pub const Writing: Item = Item::new(&["std", "text", "string", "Writing"]);
-pub const writing_writer: Item = Item::new(&["std", "text", "string", "writing_writer"]);

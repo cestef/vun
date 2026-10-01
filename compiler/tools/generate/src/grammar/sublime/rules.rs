@@ -50,6 +50,10 @@ impl Scoped<'_> {
             let word = Pattern::words([text.as_str()]);
             match recognized {
                 Recognized::ForPattern => Rule::of(word, Scope::Contextual),
+                // A name follows it, which `impl(` of an attribute or `impl` itself, a name, lacks.
+                Recognized::Declaration => {
+                    Rule::of(word.before(&Pattern::space().then(Pattern::raw(IDENT))), Scope::Contextual)
+                }
             }
         });
         rules.collect()

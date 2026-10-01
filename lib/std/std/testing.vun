@@ -114,25 +114,6 @@ Ran := struct {
     outcome: Outcome,
 };
 
-#[impl(std.fmt.json.Json(Line))]
-line_json := std.fmt.json.derive(Line);
-#[impl(std.fmt.json.Json(Ran))]
-ran_json := std.fmt.json.derive(Ran);
-#[impl(std.fmt.json.Json(Outcome))]
-outcome_json := std.fmt.json.derive(Outcome);
-#[impl(std.fmt.json.Json(Ignored))]
-ignored_json := std.fmt.json.derive(Ignored);
-#[impl(std.fmt.json.Json(Falsified))]
-falsified_json := std.fmt.json.derive(Falsified);
-#[impl(std.fmt.json.Json(Trapped))]
-trapped_json := std.fmt.json.derive(Trapped);
-#[impl(std.fmt.json.Json(Totals))]
-totals_json := std.fmt.json.derive(Totals);
-#[impl(std.fmt.json.Json(std.trace.Site))]
-site_json := std.fmt.json.derive(std.trace.Site);
-#[impl(std.fmt.json.Json(std.trace.Place))]
-place_json := std.fmt.json.derive(std.trace.Place);
-
 /// The status of a run in which a test trapped.
 failed: std.os.Status = 1;
 
@@ -240,8 +221,6 @@ checked := ($F: type, $f: F, name: &[u8], sys: &mut std.os.System, options: &Opt
 /// What kind of test a test is, by its parameters (spec 11, section 1): a property takes
 /// arguments generated from choices, a fuzz target's and a simulation's included.
 Kind := enum { unit, benchmark, property };
-#[impl(lang.ops.Eq(Kind))]
-kind_eq := std.cmp.derive_eq(Kind);
 
 /// The kind of the test `f`.
 kind := ($F: type, $f: F) -> Kind {

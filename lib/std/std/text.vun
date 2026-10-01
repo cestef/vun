@@ -94,9 +94,8 @@ Slab := ($n: Int(0..)) -> type { struct {
     };
 } };
 
-#[impl(std.fmt.Writer(Slab))]
-slab_writer := ($n: Int(0..)) -> type { struct {
+impl std.fmt.Writer for Slab($n) {
     Error: type = Full;
     closed: Full = .full;
     write := (self: &mut Slab(n), more: &[u8]) -> Result(usize, Full) { .ok(self.append(more)) };
-} };
+}

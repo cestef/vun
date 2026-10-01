@@ -22,11 +22,3 @@ pub const Fnv: Item = Item::new(&["std", "hash", "Fnv"]);
 /// FNV's 64-bit offset basis and prime.
 pub const offset: Item = Item::new(&["std", "hash", "offset"]);
 pub const prime: Item = Item::new(&["std", "hash", "prime"]);
-pub const fnv_hasher: Item = Item::new(&["std", "hash", "fnv_hasher"]);
-/// An integer, by the bytes of its type, least significant first.
-pub const int_hash: Item = Item::new(&["std", "hash", "int_hash"]);
-/// `false` as a zero byte and `true` as a one.
-pub const bool_hash: Item = Item::new(&["std", "hash", "bool_hash"]);
-/// The items of a slice: their number, then bytes as they are and any other items each by its
-/// own `Hash`.
-pub const slice_hash: Item = Item::new(&["std", "hash", "slice_hash"]);

@@ -1,5 +1,5 @@
 //! The grammar of Vun, defined once with `nodes.vun`, which holds the kinds of nodes and their
-//! productions: its tokens and tables. Generates the Rust `vun-grammar` crate, `lang.syntax`, the
+//! productions, and `tables.vun`, the tables that say how they nest: its tokens and tables. Generates the Rust `vun-grammar` crate, `lang.syntax`, the
 //! formatter's tables and the editor grammars (spec 13, section 5).
 //!
 //! `cargo gen` reads both files as literal data. Into Rust it translates each declaration by shape,
@@ -117,6 +117,8 @@ TokenKind := .{
 Context := enum {
     /// After the pattern of a `for`.
     for_pattern,
+    /// Where a declaration starts and a name follows, as `impl` in `impl Format for Int($r) { }`.
+    declaration,
 };
 
 /// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
@@ -138,6 +140,7 @@ Assoc := enum {
 /// Words that are keywords only in one context.
 contextual := [
     .{ .text = "in", .context = .for_pattern },
+    .{ .text = "impl", .context = .declaration },
 ];
 
 /// How the formatter spaces tokens where a table says (spec 13, section 5).

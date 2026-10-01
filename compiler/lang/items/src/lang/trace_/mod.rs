@@ -5,5 +5,4 @@ pub mod trace_Origin;
 pub mod trace_Site;
 pub mod trace_Table;
 pub mod trace_Text;
-pub mod trace_detail_eq;
 pub mod trace_symbols;

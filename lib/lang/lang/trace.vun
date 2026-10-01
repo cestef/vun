@@ -14,10 +14,9 @@ Detail := enum {
 };
 
 /// Details are equal when they are one detail.
-#[impl(lang.ops.Eq(Detail))]
-detail_eq := struct {
+impl lang.ops.Eq for Detail {
     eq := (a: &Detail, b: &Detail) -> bool { lang.meta.same(Detail, a.*, b.*) };
-};
+}
 
 /// The detail the program is built with (`std.build.Options.trace`, `--trace`), known when
 /// compiling, as `lang.check.current` is.

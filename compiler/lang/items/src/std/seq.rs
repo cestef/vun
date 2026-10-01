@@ -12,11 +12,3 @@ pub const search: Item = Item::new(&["std", "seq", "search"]);
 pub const tests: Item = Item::new(&["std", "seq", "tests"]);
 /// A run of items.
 pub const Sequence: Item = Item::new(&["std", "seq", "Sequence"]);
-pub const slice_sequence: Item = Item::new(&["std", "seq", "slice_sequence"]);
-/// An array has the length it is declared with; its other methods are those of the slice of its
-/// items.
-pub const array_sequence: Item = Item::new(&["std", "seq", "array_sequence"]);
-/// Slices are equal when they hold as many items, equal in order.
-pub const slice_eq: Item = Item::new(&["std", "seq", "slice_eq"]);
-/// Arrays are equal when their items are, in order.
-pub const array_eq: Item = Item::new(&["std", "seq", "array_eq"]);

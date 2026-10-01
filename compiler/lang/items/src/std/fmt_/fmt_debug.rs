@@ -29,10 +29,6 @@ pub const assign: Item = Item::new(&["std", "fmt", "debug", "assign"]);
 /// carriage return and tab as `\n`, `\r` and `\t`, other control characters by their code,
 /// `\u{1b}`. Bytes past 127 are the UTF-8 of the text, written as they are.
 pub const quoted: Item = Item::new(&["std", "fmt", "debug", "quoted"]);
-pub const int_debug: Item = Item::new(&["std", "fmt", "debug", "int_debug"]);
-pub const bool_debug: Item = Item::new(&["std", "fmt", "debug", "bool_debug"]);
-/// Bytes as a quoted string, any other items as `[a, b]`.
-pub const slice_debug: Item = Item::new(&["std", "fmt", "debug", "slice_debug"]);
 /// A `Debug` witness for `T` by reflection: a tuple is its items in parentheses, an enum's variant
 /// is `.name`, followed by its parts in parentheses where it has any, and a struct or a record is
 /// its type's name and its fields, each as `.name = value`.

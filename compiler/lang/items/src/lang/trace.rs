@@ -8,8 +8,6 @@
 use crate::Item;
 /// How much of its code a program's table describes, and so what a trap reports.
 pub const Detail: Item = Item::new(&["lang", "trace", "Detail"]);
-/// Details are equal when they are one detail.
-pub const detail_eq: Item = Item::new(&["lang", "trace", "detail_eq"]);
 /// The detail the program is built with (`std.build.Options.trace`, `--trace`), known when
 /// compiling, as `lang.check.current` is.
 pub const current: Item = Item::new(&["lang", "trace", "current"]);

@@ -2,8 +2,7 @@
 //! Creating a pointer and reading its address are safe; the rest is `unsafe` to call, and each
 //! body vouches for the primitive it calls.
 
-#[impl(lang.mem.Ptr)]
-ptr_methods := ($T: type) -> type { struct {
+impl lang.mem.Ptr($T) {
     #[panic.never]
     address := (p: *T) -> usize { lang.mem.address(T, p) };
     #[panic.never]
@@ -14,7 +13,7 @@ ptr_methods := ($T: type) -> type { struct {
     read := unsafe (p: *T) -> T { unsafe lang.mem.read(T, p) };
     #[panic.never]
     write := unsafe (p: *T, value: T) { unsafe lang.mem.write(T, p, value) };
-} };
+}
 
 /// A pointer to what `r` borrows.
 #[panic.never]

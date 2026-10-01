@@ -124,6 +124,10 @@
         "scope": "keyword.other.vun"
       },
       {
+        "match": "\\b(?:impl)\\b(?=\\s*[A-Za-z_][A-Za-z0-9_]*)",
+        "scope": "keyword.other.vun"
+      },
+      {
         "match": "\\b(?:continue|return|struct|unsafe|match|break|yield|defer|else|enum|mut|for|and|if|or)\\b",
         "scope": "keyword.control.vun"
       }

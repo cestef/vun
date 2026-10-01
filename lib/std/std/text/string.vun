@@ -77,8 +77,7 @@ Writing := ($A: type) -> type { struct {
     };
 } };
 
-#[impl(std.fmt.Writer(Writing))]
-writing_writer := ($A: type) -> type { struct {
+impl std.fmt.Writer for Writing($A) {
     Error: type = Failed(A.Error);
     closed: Failed(A.Error) = .closed;
     write := (self: &mut Writing(A), bytes: &[u8]) -> Result(usize, Failed(A.Error)) {
@@ -87,4 +86,4 @@ writing_writer := ($A: type) -> type { struct {
             .err(e) => .err(.allocation(e)),
         }
     };
-} };
+}

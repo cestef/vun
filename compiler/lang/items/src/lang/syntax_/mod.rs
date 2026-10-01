@@ -14,3 +14,4 @@ pub mod syntax_grammar_Context;
 pub mod syntax_grammar_Spacing;
 pub mod syntax_nodes;
 pub mod syntax_nodes_Count;
+pub mod syntax_tables;
