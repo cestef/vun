@@ -10,12 +10,12 @@
 use std::sync::Arc;
 
 use vun_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
-use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::call::Staging;
+use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::item::Node;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::trap::Unevaluated;
-use vun_sema_ty::{Signature, Ty, TyKind};
+use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
 use super::Env;
 use crate::callable::Written;
@@ -30,6 +30,9 @@ pub struct Context {
     pub params: Vec<Result<Ty, Unevaluated>>,
     /// None where the place says nothing of the result.
     pub result: Option<Result<Ty, Unevaluated>>,
+    /// The interface the result names where it names one, which is no type: a coroutine function
+    /// leaving its result out has the frame of the interface (`Iterate`'s `Iter`).
+    pub interface: Option<Func>,
     pub place: Place,
 }
 
@@ -72,14 +75,20 @@ impl Context {
     /// its result where the call says it.
     #[must_use]
     pub fn passed(params: Vec<Result<Ty, Unevaluated>>, result: Option<Ty>) -> Self {
-        Self { arity: params.len(), params, result: result.map(Ok), place: Place::Argument }
+        Self { arity: params.len(), params, result: result.map(Ok), interface: None, place: Place::Argument }
     }
 }
 
 impl From<Signature> for Context {
     fn from(signature: Signature) -> Self {
         let params: Vec<_> = signature.params.into_iter().map(Ok).collect();
-        Self { arity: params.len(), params, result: Some(Ok(signature.result)), place: Place::Annotation }
+        Self {
+            arity: params.len(),
+            params,
+            result: Some(Ok(signature.result)),
+            interface: None,
+            place: Place::Annotation,
+        }
     }
 }
 
@@ -198,7 +207,11 @@ impl Env<'_, '_> {
         } else {
             Vec::new()
         };
+        let interface = returns.and_then(|r| match env.eval(r) {
+            Ok(Value::Interface(interface)) => Some(interface),
+            _ => None,
+        });
         let result = Some(returns.map_or_else(|| Ok(TyKind::unit()), |r| env.ty(r)));
-        Ok(Context { arity: required.len(), params, result, place: Place::Requirement })
+        Ok(Context { arity: required.len(), params, result, interface, place: Place::Requirement })
     }
 }

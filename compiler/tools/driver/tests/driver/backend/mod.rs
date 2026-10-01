@@ -116,6 +116,11 @@ fn compile_time_bindings_of_staged_loops_run_with_their_steps_types() {
 }
 
 #[test]
+fn an_iterate_impl_leaves_the_result_of_a_coroutine_to_its_requirement() {
+    assert_eq!(status("backend-iterated", &program("iterated.vun")), Some(10 + 1));
+}
+
+#[test]
 fn code_with_no_value_at_compile_time_runs_where_it_is_spliced() {
     assert_eq!(status("backend-spliced-unrun", &program("spliced_unrun.vun")), Some(5));
 }

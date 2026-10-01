@@ -1,0 +1,26 @@
+//! Types a `for` iterates, whose `Iterate` impls leave the result of `iter` to their requirement
+//! (decision 404): the arguments of a program, and a countdown. Exits with the sum of the
+//! countdown from 4 and the number of arguments, 10 + 1.
+
+start := std.os.start(main);
+
+Countdown := struct { from: u8 };
+
+impl lang.ops.Iterate for Countdown {
+    Iter: lang.Interface = std.iter.Iter(u8);
+    iter := (self) {
+        mut n: u8 = self.from;
+        for n > 0 {
+            yield n;
+            n -= 1;
+        }
+    };
+}
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut total: u8 = 0;
+    countdown := Countdown{ .from = 4 };
+    for n in countdown { total += n; }
+    for _ in sys.args() { total += 1; }
+    std.os.Exit.of(total % 126)
+};

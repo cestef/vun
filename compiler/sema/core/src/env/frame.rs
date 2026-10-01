@@ -75,6 +75,11 @@ impl Env<'_, '_> {
             return Err(Unevaluated::Unsupported);
         };
         let declared = returns.map(|r| self.eval(r)).transpose()?;
+        // A result left out names the interface of the requirement, where that names one.
+        let declared = match (declared, context.and_then(|c| c.interface.clone())) {
+            (None, Some(interface)) if hir.suspends(literal) => Some(Value::Interface(interface)),
+            (declared, _) => declared,
+        };
         let result = match declared {
             Some(Value::Interface(interface)) if hir.suspends(literal) => {
                 let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
@@ -95,8 +100,8 @@ impl Env<'_, '_> {
                 _ => Value::Type(TyKind::unit()),
             },
         };
-        let mut signature = self.signature_in(params, None, context)?;
-        signature.result = result.as_type().ok_or(Unevaluated::Unsupported)?;
+        let result = result.as_type().ok_or(Unevaluated::Unsupported)?;
+        let signature = Signature::new(self.params_in(params, context)?, result);
         Ok(self.literal_markers(literal).into_iter().fold(signature, Signature::with))
     }
 
