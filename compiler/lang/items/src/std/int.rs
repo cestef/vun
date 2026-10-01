@@ -6,7 +6,16 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.int.bits`.
+pub const bits: Item = Item::new(&["std", "int", "bits"]);
+/// The namespace `std.int.bytes`.
+pub const bytes: Item = Item::new(&["std", "int", "bytes"]);
 /// The namespace `std.int.tests`.
 pub const tests: Item = Item::new(&["std", "int", "tests"]);
 /// Bringing a value into a narrower type.
 pub const Narrow: Item = Item::new(&["std", "int", "Narrow"]);
+/// How many bits the storage of `Int(r)` has.
+pub const width: Item = Item::new(&["std", "int", "width"]);
+/// The unsigned integer as wide as the storage of `Int(r)`, whose bits a signed value shares
+/// as its two's complement.
+pub const Word: Item = Item::new(&["std", "int", "Word"]);

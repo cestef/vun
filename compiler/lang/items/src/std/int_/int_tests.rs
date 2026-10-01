@@ -15,3 +15,27 @@ pub const a_minus_makes_a_signed_integer_negative: Item = Item::new(
 pub const text_that_is_no_integer_of_the_type_is_not_read: Item = Item::new(
     &["std", "int", "tests", "text_that_is_no_integer_of_the_type_is_not_read"],
 );
+pub const bytes_are_given_in_either_order: Item = Item::new(
+    &["std", "int", "tests", "bytes_are_given_in_either_order"],
+);
+pub const a_signed_value_gives_its_twos_complement: Item = Item::new(
+    &["std", "int", "tests", "a_signed_value_gives_its_twos_complement"],
+);
+pub const bytes_are_read_in_either_order: Item = Item::new(
+    &["std", "int", "tests", "bytes_are_read_in_either_order"],
+);
+pub const swapping_bytes_reverses_them: Item = Item::new(
+    &["std", "int", "tests", "swapping_bytes_reverses_them"],
+);
+pub const bytes_given_are_bytes_read: Item = Item::new(
+    &["std", "int", "tests", "bytes_given_are_bytes_read"],
+);
+pub const bits_rotate_around_the_word: Item = Item::new(
+    &["std", "int", "tests", "bits_rotate_around_the_word"],
+);
+pub const bits_are_counted: Item = Item::new(
+    &["std", "int", "tests", "bits_are_counted"],
+);
+pub const a_rotation_is_undone_by_the_other: Item = Item::new(
+    &["std", "int", "tests", "a_rotation_is_undone_by_the_other"],
+);
