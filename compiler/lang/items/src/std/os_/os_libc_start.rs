@@ -27,3 +27,4 @@ pub const sleep: Item = Item::new(&["std", "os", "libc", "start", "sleep"]);
 /// Starts a thread through the C library, its context copied into memory mapped for it.
 pub const spawn: Item = Item::new(&["std", "os", "libc", "start", "spawn"]);
 pub const join: Item = Item::new(&["std", "os", "libc", "start", "join"]);
+pub const library: Item = Item::new(&["std", "os", "libc", "start", "library"]);

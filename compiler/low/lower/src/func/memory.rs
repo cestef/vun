@@ -68,6 +68,12 @@ impl FnLower<'_, '_, '_> {
                 let address = self.int_operand(arg(0)?, word)?;
                 self.b.cast(CastOp::IntToPtr, address, Scalar::Ptr, self.at)
             }
+            // A function is the address of its code, as a pointer is of what it points to.
+            Mem::function_at => {
+                ty.signature().ok_or_else(unsupported)?;
+                let address = self.int_operand(arg(0)?, word)?;
+                self.b.cast(CastOp::IntToPtr, address, Scalar::Ptr, self.at)
+            }
             // `n` items of the pointee past the address, `n` signed.
             Mem::offset => {
                 let stride = self.stride(ty.pointee().ok_or_else(unsupported)?)?;

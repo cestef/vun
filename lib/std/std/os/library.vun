@@ -1,0 +1,55 @@
+//! Libraries a hosted program loads as it runs (spec 08, section 2): shared objects the system
+//! finds by path or name, whose functions the program calls once it has their addresses. The
+//! system names a library by a number, as it does a file.
+
+/// The link symbols of this namespace's declarations, which a runtime exports.
+symbols := struct {
+    load := "vun_os_load";
+    symbol := "vun_os_symbol";
+    unload := "vun_os_unload";
+};
+
+/// Loads the library at `path`, or the one the system finds by that name, returning the number it
+/// knows it by.
+#[link.symbol(symbols.load)]
+load: (path: &[u8]) -> Result(usize, std.os.Error) = _;
+
+/// The address of what the library `library` exports as `name`.
+#[link.symbol(symbols.symbol)]
+symbol: (library: usize, name: &[u8]) -> Result(usize, std.os.Error) = _;
+
+/// Gives back the library `library`, whose code and data are gone with it.
+#[link.symbol(symbols.unload)]
+unload: (library: usize) -> Result((), std.os.Error) = _;
+
+/// A library loaded for as long as the value lives, until `close`.
+Library := struct {
+    _handle: usize,
+
+    /// The library the system knows as `handle`, which it must have loaded and nothing else
+    /// unloads.
+    of := unsafe (handle: usize) -> Library { .{ ._handle = handle } };
+
+    /// What it exports as `name`, a function of type `F`: the code there must be written to `F`'s
+    /// signature and calling convention (`#[abi.c]` for C's), and the function must not be called
+    /// after `close`.
+    function := unsafe (self: &Library, $F: type, name: &[u8]) -> Result(F, std.os.Error) {
+        address := symbol(self._handle, name)?;
+        .ok(unsafe lang.mem.function_at(F, address))
+    };
+
+    /// Unloads it.
+    close := (self: Library) -> Result((), std.os.Error) { unload(self._handle) };
+};
+
+/// The exports of a runtime whose system loads no library: a program built with it loads none.
+unsupported := struct {
+    #[link.export(symbols.load)]
+    load_library := (path: &[u8]) -> Result(usize, std.os.Error) { .err(.unsupported) };
+
+    #[link.export(symbols.symbol)]
+    find := (library: usize, name: &[u8]) -> Result(usize, std.os.Error) { .err(.unsupported) };
+
+    #[link.export(symbols.unload)]
+    unload_library := (library: usize) -> Result((), std.os.Error) { .err(.unsupported) };
+};

@@ -49,3 +49,12 @@ pub const virtual_alloc: Item = Item::new(
 pub const virtual_free: Item = Item::new(
     &["std", "os", "windows", "kernel32", "virtual_free"],
 );
+pub const load_library: Item = Item::new(
+    &["std", "os", "windows", "kernel32", "load_library"],
+);
+pub const get_proc_address: Item = Item::new(
+    &["std", "os", "windows", "kernel32", "get_proc_address"],
+);
+pub const free_library: Item = Item::new(
+    &["std", "os", "windows", "kernel32", "free_library"],
+);

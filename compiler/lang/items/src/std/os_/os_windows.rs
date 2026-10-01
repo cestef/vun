@@ -14,6 +14,8 @@ pub const command_line: Item = Item::new(&["std", "os", "windows", "command_line
 pub const file: Item = Item::new(&["std", "os", "windows", "file"]);
 /// The namespace `std.os.windows.kernel32`.
 pub const kernel32: Item = Item::new(&["std", "os", "windows", "kernel32"]);
+/// The namespace `std.os.windows.library`.
+pub const library: Item = Item::new(&["std", "os", "windows", "library"]);
 /// The namespace `std.os.windows.stack`.
 pub const stack: Item = Item::new(&["std", "os", "windows", "stack"]);
 /// The namespace `std.os.windows.tests`.

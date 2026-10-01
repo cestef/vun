@@ -40,6 +40,10 @@ pub enum Mem {
     /// The pointer holding `address`, as code outside the language hands one over (a mapping, a
     /// device's registers): what it points to must be a `T` wherever it is used.
     pointer_at,
+    /// The function of type `F` at `address`, as code outside the language hands one over (a symbol
+    /// a loaded library exports): the code there must be written to `F`'s signature and calling
+    /// convention wherever the function is called.
+    function_at,
     /// The pointer `n` items of `T` past `p`.
     offset,
     /// `p` as a pointer to a `U`.
@@ -89,6 +93,7 @@ impl Mem {
         Self::pointer_to,
         Self::address,
         Self::pointer_at,
+        Self::function_at,
         Self::offset,
         Self::cast,
         Self::read,
@@ -128,6 +133,7 @@ impl Mem {
             Self::pointer_to => "pointer_to",
             Self::address => "address",
             Self::pointer_at => "pointer_at",
+            Self::function_at => "function_at",
             Self::offset => "offset",
             Self::cast => "cast",
             Self::read => "read",
@@ -168,6 +174,7 @@ impl Mem {
             Self::pointer_to => vun_items::lang::mem::pointer_to,
             Self::address => vun_items::lang::mem::address,
             Self::pointer_at => vun_items::lang::mem::pointer_at,
+            Self::function_at => vun_items::lang::mem::function_at,
             Self::offset => vun_items::lang::mem::offset,
             Self::cast => vun_items::lang::mem::cast,
             Self::read => vun_items::lang::mem::read,

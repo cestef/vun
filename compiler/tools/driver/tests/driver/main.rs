@@ -27,6 +27,7 @@ mod library;
 mod link;
 mod lints;
 mod lir;
+mod loading;
 mod loops;
 mod markers;
 mod mir;

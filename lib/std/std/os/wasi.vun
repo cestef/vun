@@ -283,4 +283,6 @@ start := ($main: std.os.Main) -> type { struct {
     join := unsafe (thread: usize, context: *u8, bytes: usize) -> std.os.thread.Ended {
         lang.panic.fail(.message("a module runs one thread, so none is joined"))
     };
+
+    library := std.os.library.unsupported;
 } };

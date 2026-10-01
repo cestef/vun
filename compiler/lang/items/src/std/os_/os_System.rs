@@ -15,6 +15,8 @@ pub const stdout: Item = Item::new(&["std", "os", "System", "stdout"]);
 pub const stderr: Item = Item::new(&["std", "os", "System", "stderr"]);
 /// Opens the file at `path` in `mode`.
 pub const open: Item = Item::new(&["std", "os", "System", "open"]);
+/// Loads the library at `path`, or the one the system finds by that name.
+pub const load: Item = Item::new(&["std", "os", "System", "load"]);
 /// Reads `clock`.
 pub const now: Item = Item::new(&["std", "os", "System", "now"]);
 /// Suspends the calling thread for at least `span`.

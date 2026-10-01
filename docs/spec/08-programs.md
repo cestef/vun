@@ -133,6 +133,17 @@ itself; arm64's and Arm's above a header of 16 or 8 bytes), sets the main thread
 it starts (`arch_prctl`, `tpidr_el0`, `set_tls`), and each thread it starts sets its own as the
 first thing it does, the block placed in the thread's mapping.
 
+**Libraries.** `System.load(path)` loads a shared library as the program runs and gives a
+`std.os.library.Library`, which names the file or the library the system finds by that name.
+`unsafe library.function(F, name)` is what it exports as `name`, as a function of the type `F`,
+`#[abi.c]` for C's: made of its address (`lang.mem.function_at`), so its code must be written to
+`F`, and it must not be called after `close`, which unloads the library. A runtime reaches the
+loader through `std.os.library.symbols.{load, symbol, unload}`: the C library's calls `dlopen`
+(`RTLD_NOW` and `RTLD_LOCAL`, as `std.os.libc.System.load` numbers them), `dlsym` and `dlclose`, and
+the Windows runtime `LoadLibraryW`, `GetProcAddress` and `FreeLibrary`; the kernel runtime and
+WASI's, which load nothing, report `Error.unsupported`. A library the loader does not find or
+cannot load, or a name it does not hold, is `Error.unresolved`.
+
 **Files and errors.** `System.open(path, mode)` gives a `std.os.file.File` (`Mode`: `read`,
 `write` creating or emptying, `append` creating, `update`), whose `stream()` is read
 (`Stream.read`, 0 at the end) and written as any `Stream`, and `close` ends it; `System.stdin()`

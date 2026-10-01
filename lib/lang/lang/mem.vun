@@ -49,6 +49,11 @@ address: ($T: type, p: *T) -> usize = _;
 /// device's registers): what it points to must be a `T` wherever it is used.
 #[panic.never]
 pointer_at: unsafe ($T: type, address: usize) -> *T = _;
+/// The function of type `F` at `address`, as code outside the language hands one over (a symbol
+/// a loaded library exports): the code there must be written to `F`'s signature and calling
+/// convention wherever the function is called.
+#[panic.never]
+function_at: unsafe ($F: type, address: usize) -> F = _;
 /// The pointer `n` items of `T` past `p`.
 #[panic.never]
 offset: unsafe ($T: type, p: *T, n: isize) -> *T = _;

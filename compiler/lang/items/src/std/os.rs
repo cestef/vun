@@ -10,6 +10,8 @@ use crate::Item;
 pub const file: Item = Item::new(&["std", "os", "file"]);
 /// The namespace `std.os.libc`.
 pub const libc: Item = Item::new(&["std", "os", "libc"]);
+/// The namespace `std.os.library`.
+pub const library: Item = Item::new(&["std", "os", "library"]);
 /// The namespace `std.os.linux`.
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
 /// The namespace `std.os.macos`.

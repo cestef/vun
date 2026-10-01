@@ -35,6 +35,9 @@ System := struct {
     set_mask: i32,
     /// `flags` for `mmap` of private memory reserved, not backed until touched.
     reserve: i32,
+    /// `flags` for `dlopen`: every symbol bound at load, visible to the library's own loads alone
+    /// (`RTLD_NOW | RTLD_LOCAL`).
+    load: i32,
     clocks: std.os.Clocks,
     /// The error the system reports as a number.
     error: (i32) -> std.os.Error,
@@ -279,4 +282,6 @@ start := ($main: std.os.Main) -> type { struct {
         unmap(held.mapped, held.bytes);
         ended
     };
+
+    library := std.os.libc.library.exports;
 } };

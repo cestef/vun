@@ -1,0 +1,26 @@
+//! Loading libraries through `kernel32`: the exports a runtime holds,
+//! `library := std.os.windows.library.exports`. A module's number is its handle, the address it
+//! is loaded at; the loader reports a failure as an error number, which none here is told apart
+//! by, so each is `unresolved`.
+
+/// The exports, which a runtime holds, and a library with the services of the system.
+exports := struct {
+    #[link.export(std.os.library.symbols.load)]
+    load_library := (path: &[u8]) -> Result(usize, std.os.Error) {
+        wide := std.os.windows.file.Wide.of(path)?;
+        module := unsafe std.os.windows.kernel32.load_library(wide.start());
+        if module == 0 { .err(.unresolved) } else { .ok(module) }
+    };
+
+    #[link.export(std.os.library.symbols.symbol)]
+    find := (library: usize, name: &[u8]) -> Result(usize, std.os.Error) {
+        ended := std.os.file.Path.of(name)?;
+        address := unsafe std.os.windows.kernel32.get_proc_address(library, ended.start());
+        if address == 0 { .err(.unresolved) } else { .ok(address) }
+    };
+
+    #[link.export(std.os.library.symbols.unload)]
+    unload_library := (library: usize) -> Result((), std.os.Error) {
+        if unsafe std.os.windows.kernel32.free_library(library) != 0 { .ok(()) } else { .err(.unresolved) }
+    };
+};

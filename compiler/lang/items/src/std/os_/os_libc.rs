@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.os.libc.library`.
+pub const library: Item = Item::new(&["std", "os", "libc", "library"]);
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const read: Item = Item::new(&["std", "os", "libc", "read"]);
 /// C's `open` is variadic, its permissions read only with `O_CREAT`: passed always.

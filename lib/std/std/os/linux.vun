@@ -36,6 +36,7 @@ c: std.os.libc.System = .{
     .block = 0,
     .set_mask = 2,
     .reserve = 0x4022,
+    .load = 2,
     .clocks = clocks,
     .error = error,
     .flags = flags,

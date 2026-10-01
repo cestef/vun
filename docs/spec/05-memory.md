@@ -151,7 +151,9 @@ tied to arguments, so no interprocedural analysis is needed.
   address are safe. Dereferencing, offsetting and casting (`lang.mem.read`, `write`, `offset`,
   `cast`, `copy`, `fill`) are `unsafe`; `std.ptr` gives them as methods of `*T`. Making one of
   an address that code outside the language hands over (`lang.mem.pointer_at`: a mapping, a
-  device's registers) is `unsafe` too.
+  device's registers) is `unsafe` too, as is making a function of the address of code that
+  outside hands over (`lang.mem.function_at(F, address)`: a symbol a loaded library exports),
+  which must be written to the signature and calling convention of the function type `F`.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
   `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them. An atomic access of an integer wider than
   an address runs as `lang.mem.soft`'s (`#[lower.soft]`): on Thumb, exclusive loads and stores of

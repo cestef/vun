@@ -131,6 +131,8 @@ Error := enum {
     ended,
     /// Something the system does not offer, as threads on a system running one.
     unsupported,
+    /// A library the loader found none of, or could not load, or a name it holds none of.
+    unresolved,
     number(i32),
 };
 
@@ -170,6 +172,13 @@ System := struct {
     open := (self: &mut System, path: &[u8], mode: std.os.file.Mode) -> Result(std.os.file.File, Error) {
         match std.os.open(path, mode) {
             .ok(fd) => .ok(unsafe std.os.file.File.of(fd)),
+            .err(e) => .err(e),
+        }
+    };
+    /// Loads the library at `path`, or the one the system finds by that name.
+    load := (self: &mut System, path: &[u8]) -> Result(std.os.library.Library, Error) {
+        match std.os.library.load(path) {
+            .ok(handle) => .ok(unsafe std.os.library.Library.of(handle)),
             .err(e) => .err(e),
         }
     };

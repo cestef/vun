@@ -17,6 +17,9 @@ pub const block: Item = Item::new(&["std", "os", "libc", "System", "block"]);
 pub const set_mask: Item = Item::new(&["std", "os", "libc", "System", "set_mask"]);
 /// `flags` for `mmap` of private memory reserved, not backed until touched.
 pub const reserve: Item = Item::new(&["std", "os", "libc", "System", "reserve"]);
+/// `flags` for `dlopen`: every symbol bound at load, visible to the library's own loads alone
+/// (`RTLD_NOW | RTLD_LOCAL`).
+pub const load: Item = Item::new(&["std", "os", "libc", "System", "load"]);
 pub const clocks: Item = Item::new(&["std", "os", "libc", "System", "clocks"]);
 /// The error the system reports as a number.
 pub const error: Item = Item::new(&["std", "os", "libc", "System", "error"]);

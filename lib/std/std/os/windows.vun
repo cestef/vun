@@ -185,6 +185,7 @@ services := struct {
 
     memory := std.os.memory.exports;
     stack := std.os.windows.stack.exports;
+    library := std.os.windows.library.exports;
 
     #[link.export("_fltused")]
     float_used: i32 = 1;

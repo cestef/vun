@@ -45,6 +45,10 @@ pub const address: Item = Item::new(&["lang", "mem", "address"]);
 /// The pointer holding `address`, as code outside the language hands one over (a mapping, a
 /// device's registers): what it points to must be a `T` wherever it is used.
 pub const pointer_at: Item = Item::new(&["lang", "mem", "pointer_at"]);
+/// The function of type `F` at `address`, as code outside the language hands one over (a symbol
+/// a loaded library exports): the code there must be written to `F`'s signature and calling
+/// convention wherever the function is called.
+pub const function_at: Item = Item::new(&["lang", "mem", "function_at"]);
 /// The pointer `n` items of `T` past `p`.
 pub const offset: Item = Item::new(&["lang", "mem", "offset"]);
 /// `p` as a pointer to a `U`.

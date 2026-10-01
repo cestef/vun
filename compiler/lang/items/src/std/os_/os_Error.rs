@@ -26,4 +26,6 @@ pub const closed: Item = Item::new(&["std", "os", "Error", "closed"]);
 pub const ended: Item = Item::new(&["std", "os", "Error", "ended"]);
 /// Something the system does not offer, as threads on a system running one.
 pub const unsupported: Item = Item::new(&["std", "os", "Error", "unsupported"]);
+/// A library the loader found none of, or could not load, or a name it holds none of.
+pub const unresolved: Item = Item::new(&["std", "os", "Error", "unresolved"]);
 pub const number: Item = Item::new(&["std", "os", "Error", "number"]);
