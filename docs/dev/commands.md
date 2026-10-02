@@ -13,6 +13,7 @@ cargo xtask size              # the distributed binary against its budget (20 Mi
 VUN_QUERY_CHECK=1 cargo nextest run -p vun-driver   # after query, sema or MIR changes
 VUN_BLESS=1 cargo nextest run -p vun-syntax         # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120   # after lexer or parser changes
+cd fuzz && cargo +nightly fuzz run pe -- -max_len=65536       # after changes to the ELF or PE readers or the disassembler (targets elf, pe, disasm)
 cargo xtask typeset           # whitepaper PDF and README card, with typst; reads the generated editor grammar
 ```
 

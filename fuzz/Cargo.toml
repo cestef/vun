@@ -16,13 +16,16 @@ workspace = true
 [dependencies]
 libfuzzer-sys.workspace = true
 vun-diag.workspace = true
+vun-disasm.workspace = true
 vun-driver.workspace = true
+vun-elf.workspace = true
 vun-fmt.workspace = true
 vun-grammar.workspace = true
 vun-hir.workspace = true
 vun-lir.workspace = true
 vun-lir-passes.workspace = true
 vun-origin.workspace = true
+vun-pe.workspace = true
 vun-query.workspace = true
 vun-regalloc = { workspace = true, features = ["sample"] }
 vun-render-annotate.workspace = true
@@ -100,6 +103,27 @@ bench = false
 [[bin]]
 name = "uri"
 path = "fuzz_targets/uri.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "elf"
+path = "fuzz_targets/elf.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pe"
+path = "fuzz_targets/pe.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "disasm"
+path = "fuzz_targets/disasm.rs"
 test = false
 doc = false
 bench = false
