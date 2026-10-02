@@ -15,6 +15,22 @@ pub struct Part {
     pub bytes: Vec<u8>,
 }
 
+impl Part {
+    /// The code `bytes` loaded at `address`.
+    ///
+    /// # Errors
+    /// Where it ends past the end of the address space, so that no address in it overflows.
+    pub fn loaded(name: &[u8], address: u64, bytes: Vec<u8>) -> Result<Self, Error> {
+        if address.checked_add(bytes.len() as u64).is_none() {
+            let name = String::from_utf8_lossy(name);
+            return Err(Error::Malformed(format!(
+                "the section {name} reaches past the end of the address space"
+            )));
+        }
+        Ok(Self { name: name.to_vec(), address, bytes })
+    }
+}
+
 /// A name for a place.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Symbol {

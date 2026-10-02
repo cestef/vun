@@ -73,9 +73,16 @@ impl fmt::Display for Line {
 pub fn listing(code: &Code, only: Option<&[u8]>) -> Result<Vec<Line>, Error> {
     // Where a branch goes is named only where addresses are those of a loaded program.
     let index = code.linked.then(|| Index::of(&code.symbols));
+    // The symbols each part holds, found once: a program has thousands of both.
+    let mut placed: Vec<Vec<&Symbol>> = vec![Vec::new(); code.parts.len()];
+    for symbol in &code.symbols {
+        if let Some(held) = symbol.part.and_then(|number| placed.get_mut(number)) {
+            held.push(symbol);
+        }
+    }
     let mut lines = Vec::new();
-    for (number, part) in code.parts.iter().enumerate() {
-        let labels = Labels::of(part, number, &code.symbols);
+    for (part, held) in code.parts.iter().zip(&placed) {
+        let labels = Labels::of(part, held);
         let length = part.bytes.len();
         let (start, end) = match only {
             None => (0, length),
@@ -123,10 +130,10 @@ struct Labels<'a> {
 }
 
 impl<'a> Labels<'a> {
-    /// The symbols of `symbols` placed in the part `number`, `part`.
-    fn of(part: &Part, number: usize, symbols: &'a [Symbol]) -> Self {
+    /// The symbols `held` by the part `part`.
+    fn of(part: &Part, held: &[&'a Symbol]) -> Self {
         let mut labels = Self { by_offset: BTreeMap::new(), sizes: BTreeMap::new() };
-        for symbol in symbols.iter().filter(|s| s.part == Some(number)) {
+        for &symbol in held {
             let Some(offset) = symbol.address.checked_sub(part.address) else { continue };
             labels.by_offset.entry(offset).or_default().push(&symbol.name);
             labels.sizes.entry(&symbol.name).or_insert(symbol.size);
@@ -150,7 +157,7 @@ impl<'a> Labels<'a> {
         let (&start, _) = self.by_offset.iter().find(|(_, names)| names.contains(&name))?;
         let size = self.sizes.get(name).copied().unwrap_or(0);
         let end = if size > 0 {
-            start + size
+            start.saturating_add(size)
         } else {
             self.by_offset.range(start + 1..).next().map_or(length as u64, |(&next, _)| next)
         };

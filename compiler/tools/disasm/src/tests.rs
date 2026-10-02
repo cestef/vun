@@ -229,3 +229,19 @@ fn code_is_read_from_the_format_its_first_bytes_name() {
     assert!(matches!(Code::read(b"\x7fELF"), Err(Error::Malformed(_))));
     assert!(matches!(Code::read(b"MZ"), Err(Error::Malformed(_))));
 }
+
+#[test]
+fn code_loaded_past_the_end_of_the_address_space_is_refused() {
+    let mut file = program();
+    file.sections[0].address = u64::MAX - 2;
+    assert!(matches!(Code::of_elf(&file), Err(Error::Malformed(_))));
+}
+
+#[test]
+fn a_symbol_sized_past_the_end_of_the_address_space_labels_to_the_end_of_the_code() {
+    let file = object(Machine::X86_64, &X86, &[(b"f", 2, u64::MAX)]);
+    let listed = shown(&list(&file, Some(b"f")).unwrap());
+    // The section, the label, and the three instructions from the label to the end of the code.
+    assert_eq!(listed.len(), 5, "{listed:?}");
+    assert!(listed[4].ends_with("ret"), "{listed:?}");
+}

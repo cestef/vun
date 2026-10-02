@@ -18,12 +18,12 @@ impl Code {
             Machine::Arm64 => Isa::Arm64,
             other => return Err(Error::Machine(other.to_string())),
         };
-        let parts: Vec<Part> = image
+        let parts = image
             .sections
             .iter()
             .filter(|s| s.executable())
-            .map(|s| Part { name: s.name.clone(), address: s.address, bytes: s.data.clone() })
-            .collect();
+            .map(|s| Part::loaded(&s.name, s.address, s.data.clone()))
+            .collect::<Result<Vec<Part>, _>>()?;
         let inside = |address: u64| {
             parts.iter().position(|p| (p.address..p.address + p.bytes.len() as u64).contains(&address))
         };

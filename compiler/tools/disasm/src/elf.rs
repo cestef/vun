@@ -22,11 +22,7 @@ impl Code {
         for (number, section) in (1..).zip(&file.sections) {
             if section.flags.contains(SectionFlags::EXEC) {
                 part_of[number] = Some(parts.len());
-                parts.push(Part {
-                    name: section.name.clone(),
-                    address: section.address,
-                    bytes: section.bytes().to_vec(),
-                });
+                parts.push(Part::loaded(&section.name, section.address, section.bytes().to_vec())?);
             }
         }
         let symbols = file.symbols().map_err(|e| Error::Malformed(e.to_string()))?;
