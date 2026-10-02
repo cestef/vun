@@ -9,7 +9,7 @@ measure := ($T: Shape, v: T) { _ = v; };
 apply := ($F: lang.ops.Call((u8), u8), f: F) { _ = f; };
 
 go := () {
-    measure(Square { .side = 2 }); //~ types.no_impl
+    measure(Square{ .side = 2 }); //~ types.no_impl
     apply((x: bool) -> u8 { 1 }); //~ types.no_impl
     apply((x: u8) -> u16 { 1 }); //~ types.no_impl
     apply((x: u8, y: u8) -> u8 { x }); //~ types.no_impl

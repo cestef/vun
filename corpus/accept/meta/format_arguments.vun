@@ -12,5 +12,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     p: Point = .{ .x = 1, .y = -2 };
     std.fmt.print(&mut slab, "{} {} {?} {?} {?}", "ab", "", "c\n", (1, true), p).expect("room");
     std.fmt.print(&mut slab, " [{:>4}] [{x:0>3}]", "ab", 10).expect("room");
-    if slab.bytes() == "ab  \"c\\n\" (1, true) Point{ .x = 1, .y = -2 } [  ab] [00a]" { .ok } else { .code(1) }
+    if slab.bytes() == "ab  \"c\\n\" (1, true) Point{ .x = 1, .y = -2 } [  ab] [00a]" { .ok } else {
+        .code(1)
+    }
 };
