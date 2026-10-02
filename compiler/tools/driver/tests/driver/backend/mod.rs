@@ -237,6 +237,12 @@ fn memory_operations_run_whether_their_value_is_kept_or_not() {
 }
 
 #[test]
+fn a_call_of_a_function_of_dollar_parameters_alone_gives_its_integer_at_compile_time() {
+    // The number of checks that fail: 0 when all hold.
+    assert_eq!(status("backend-compile-time-calls", &program("compile_time_calls.vun")), Some(0));
+}
+
+#[test]
 fn data_aligned_past_every_c_type_is_aligned() {
     assert_eq!(status("backend-aligned", &program("aligned.vun")), Some(7));
 }

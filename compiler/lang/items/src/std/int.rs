@@ -12,6 +12,8 @@ pub const bits: Item = Item::new(&["std", "int", "bits"]);
 pub const bytes: Item = Item::new(&["std", "int", "bytes"]);
 /// The namespace `std.int.tests`.
 pub const tests: Item = Item::new(&["std", "int", "tests"]);
+/// The types that are integers: every `Int(r)`, and so what narrowing brings a value into.
+pub const Integer: Item = Item::new(&["std", "int", "Integer"]);
 /// Bringing a value into a narrower type.
 pub const Narrow: Item = Item::new(&["std", "int", "Narrow"]);
 /// How many bits the storage of `Int(r)` has.

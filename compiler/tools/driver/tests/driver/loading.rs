@@ -137,5 +137,7 @@ fn only_a_function_type_is_made_of_an_address() {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     let refused = session.lir(file).as_ref().as_ref().expect_err("an integer is no function").clone();
-    assert_eq!(refused.diagnostic().id, errors::BACKEND_UNLOWERED);
+    let d = refused.diagnostic();
+    assert_eq!(d.id, errors::BACKEND_UNLOWERED);
+    assert!(d.message.to_string().contains("`i32` is no function type"), "{}", d.message);
 }

@@ -40,7 +40,8 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    - `x.try_to(T)`: returns `?T`.
 
    They are the impl of `std.int.Narrow` for every `Int(r)` (spec 02, section 3), over the
-   primitives `lang.int.to`, `wrap`, `sat` and `fits`. `lang.int.count(r)` is how many integers a bounded range holds
+   primitives `lang.int.to`, `wrap`, `sat` and `fits`; the type `T` is bound by `std.int.Integer`,
+   which every `Int(r)` implements, so `x.wrap(bool)` is `types.no_impl` where it is written. `lang.int.count(r)` is how many integers a bounded range holds
    (256 for `0..=255`), `lang.int.least(r)` and `lang.int.greatest(r)` are its ends (-128 and 127
    for `-128..128`), and `Int(r).parse(text)` reads decimal digits into `?Int(r)`.
 

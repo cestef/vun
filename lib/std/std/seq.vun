@@ -12,7 +12,7 @@ impl Sequence for lang.mem.Slice($T) {
     len := (xs) { lang.mem.len(T, xs) };
     /// A pointer to the first item, for passing the items to code outside the language.
     #[panic.never]
-    ptr := (xs) { lang.mem.items_pointer(T, xs) };
+    ptr := (xs: &[T]) -> *T { lang.mem.items_pointer(T, xs) };
     /// A borrow of each item with its position, from 0.
     enumerate := (xs: &[T]) -> std.iter.Iter((usize, &T)) { yield ..xs.iter().enumerate(); };
 }

@@ -1,0 +1,18 @@
+start := std.os.start(main);
+
+/// A function of `$` parameters alone: a call of it is known when compiling, so its integer needs
+/// no run-time storage, which `Int(1..)` has none of.
+bits := ($T: type) -> Int(1..) { (8 * lang.meta.size(T)).to(Int(1..)) };
+
+/// `16 - n` is `Int(1..=16)`, so the amount shifted by is within a `u16`'s width.
+rotate := (x: u16, n: Int(0..16)) -> u16 { (x << n) | (x >> ((bits(u16) - n) % bits(u16))) };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    // One argument, the program's name: the amounts are 1 and 4, not known to the compiler.
+    n: Int(0..16) = sys.args().len().sat(Int(0..16));
+    mut failed: Int(0..=4) = 0;
+    if rotate(0x8001, n) != 0x0003 { failed +|= 1; }
+    if rotate(0x1234, (4 * n).sat(Int(0..16))) != 0x2341 { failed +|= 1; }
+    if rotate(0xabcd, 0) != 0xabcd { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

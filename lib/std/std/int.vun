@@ -1,19 +1,24 @@
 //! Integer methods (spec 04, section 3): narrowing to another integer type, an impl for every
 //! `Int(r)` over the primitives of `lang.int`.
 
+/// The types that are integers: every `Int(r)`, and so what narrowing brings a value into.
+Integer := interface(($Self: type) -> type { struct {} });
+
+impl Integer for Int($r) {}
+
 /// Bringing a value into a narrower type.
 Narrow := interface(($Self: type) -> type { struct {
     /// Traps when the value is outside `T`.
-    to: (x: Self, $T: type) -> T = _;
+    to: (x: Self, $T: Integer) -> T = _;
     /// Reduces the value modulo the size of `T`.
     #[panic.never]
-    wrap: (x: Self, $T: type) -> T = _;
+    wrap: (x: Self, $T: Integer) -> T = _;
     /// Clamps the value to the bounds of `T`.
     #[panic.never]
-    sat: (x: Self, $T: type) -> T = _;
+    sat: (x: Self, $T: Integer) -> T = _;
     /// `.none` when the value is outside `T`.
     #[panic.never]
-    try_to: (x: Self, $T: type) -> ?T = _;
+    try_to: (x: Self, $T: Integer) -> ?T = _;
 } });
 
 /// How many bits the storage of `Int(r)` has.
@@ -24,14 +29,14 @@ width := ($r: lang.Range) -> Int(1..) { (8 * lang.meta.size(Int(r))).to(Int(1..)
 Word := ($r: lang.Range) -> type { lang.int.unsigned(width(r)) };
 
 impl Narrow for Int($r) {
-    to := (x, $T: type) { lang.int.to(r, x, T) };
+    to := (x, $T: Integer) { lang.int.to(r, x, T) };
     #[panic.never]
-    wrap := (x, $T: type) { lang.int.wrap(r, x, T) };
+    wrap := (x, $T: Integer) { lang.int.wrap(r, x, T) };
     #[panic.never]
-    sat := (x, $T: type) { lang.int.sat(r, x, T) };
+    sat := (x, $T: Integer) { lang.int.sat(r, x, T) };
     /// A value that fits is its own wrap, which cannot trap.
     #[panic.never]
-    try_to := (x, $T: type) {
+    try_to := (x, $T: Integer) {
         if lang.int.fits(r, x, T) { .some(lang.int.wrap(r, x, T)) } else { .none }
     };
 }

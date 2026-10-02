@@ -46,12 +46,13 @@ enum Target {
 
 impl<'a, 'db> Env<'a, 'db> {
     /// Where the interface writes the type of the requirement the function literal `literal`
-    /// implements, if it is a member of a witness: why it is not known here, when the requirement
-    /// names what the impl binds and no instantiation does.
+    /// implements, if it is a member of a witness the interface requires something of: why it is
+    /// not known here, when the requirement names what the impl binds and no instantiation does.
+    /// A member the interface does not name is asked nothing: its types are its own.
     #[must_use]
     pub fn asked(&self, literal: ExprId) -> Option<Result<Written<'a, 'db>, Unevaluated>> {
         let witnessed = self.witnessed(literal)?;
-        Some(self.requirement(&witnessed))
+        self.requirement(&witnessed).transpose()
     }
 
     /// The witness `literal` is a member of, if it is.
@@ -105,8 +106,8 @@ impl<'a, 'db> Env<'a, 'db> {
     }
 
     /// The function type the interface of `witnessed` writes for the requirement of the member's
-    /// name, in the environment it is evaluated in.
-    fn requirement(&self, witnessed: &Witnessed) -> Result<Written<'a, 'db>, Unevaluated> {
+    /// name, in the environment it is evaluated in; none for a member the interface names none of.
+    fn requirement(&self, witnessed: &Witnessed) -> Result<Option<Written<'a, 'db>>, Unevaluated> {
         let hir = &self.parsed.hir;
         let interface = match &witnessed.interface {
             Source::Expr(interface) => self.eval(*interface)?,
@@ -139,7 +140,7 @@ impl<'a, 'db> Env<'a, 'db> {
             return Err(Unevaluated::Unsupported);
         };
         let members = self.cx.get::<Members>(&requirements).ok_or(Unevaluated::Unsupported)?;
-        let Found::Decl(required) = members.find(witnessed.name) else { return Err(Unevaluated::Absent) };
+        let Found::Decl(required) = members.find(witnessed.name) else { return Ok(None) };
         let env = Self::defining(self.cx, made, instance.as_ref()).ok_or(Unevaluated::Absent)?;
         let env = env.staging(&required.staged);
         let their_hir = &env.parsed.hir;
@@ -148,7 +149,7 @@ impl<'a, 'db> Env<'a, 'db> {
             expr = operand;
         }
         match their_hir.exprs[expr].kind {
-            ExprKind::FnType { .. } => Ok(Written { env, expr }),
+            ExprKind::FnType { .. } => Ok(Some(Written { env, expr })),
             _ => Err(Unevaluated::Unsupported),
         }
     }

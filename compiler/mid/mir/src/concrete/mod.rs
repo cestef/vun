@@ -151,8 +151,8 @@ impl Body {
 
     /// Rewrites the calls known when compiling: a variant's constructor builds the variant, a
     /// primitive whose parameters are all `$` ones, given constants, is its value, which nothing
-    /// at run time changes, and a primitive marked `lower.by(f)` is a call of `f`. Gives whether
-    /// any changed.
+    /// at run time changes, as is the integer a function of `$` parameters alone gives, and a
+    /// primitive marked `lower.by(f)` is a call of `f`. Gives whether any changed.
     fn fold(&mut self, env: &Env<'_, '_>) -> bool {
         let mut changed = false;
         for (_, block) in self.blocks.iter_mut() {
@@ -168,6 +168,11 @@ impl Body {
                             let f = Self::lowered_by(env, *p, args)?;
                             Some(Rvalue::Call { callee: Operand::Const(f), args: args.clone() })
                         })
+                    }
+                    // A function of `$` parameters alone, as typing took it: an integer it gives is
+                    // its value, whatever runs.
+                    Value::Fn(_) => {
+                        Self::known_integer(env, callee, args).map(|v| Rvalue::Use(Operand::Const(v)))
                     }
                     _ => None,
                 };
@@ -198,6 +203,23 @@ impl Body {
         let target = env.cx.get::<TargetOf>(&())?;
         let lacked = args.iter().any(|a| matches!(a, Operand::Const(value) if !target.computes(value)));
         if lacked { function(Lower::soft) } else { None }
+    }
+
+    /// The integer the function `callee` gives for `args`, when every parameter of it is a `$`
+    /// one and every argument a constant: a call typing knew when compiling
+    /// ([`Callable::folds`]) and typed by its value.
+    fn known_integer(env: &Env<'_, '_>, callee: &Value, args: &[Operand]) -> Option<Value> {
+        if !Callable::of(callee.clone())?.folds(env) {
+            return None;
+        }
+        let args: Vec<Value> = args
+            .iter()
+            .map(|a| match a {
+                Operand::Const(v) => Some(v.clone()),
+                Operand::Place(_) => None,
+            })
+            .collect::<Option<_>>()?;
+        env.apply(callee.clone(), args).ok().filter(|v| matches!(v, Value::Int(_)))
     }
 
     /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one

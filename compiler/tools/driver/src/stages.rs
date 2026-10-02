@@ -155,8 +155,8 @@ impl Session {
             self.diag.absorb(&reports);
         }
         // The bodies of other files the program built compiles, a library's included: what is
-        // built is checked, each file parsed and linted and each body typed where the program
-        // reaches it.
+        // built is checked, each file parsed, resolved and linted and each body typed where the
+        // program reaches it.
         let program = {
             let _timer = REACH.start();
             self.db.get::<Programs>(&(key.clone(), self.roots.checked()))
@@ -165,8 +165,14 @@ impl Session {
         let reached: BTreeSet<&FileRef> =
             program.instantiations().map(|i| &i.f.literal.file).filter(|&f| *f != key).collect();
         for file in reached {
+            let mut parsed_clean = true;
             if let Some(parsed) = self.db.get::<Parsed>(file) {
+                parsed_clean = parsed.diag.error_count() == 0;
                 self.diag.absorb(&parsed.diag);
+            }
+            // A name left unresolved by a syntax error is its consequence, not a report of its own.
+            if let Some(named) = self.db.get::<FileNames>(file).filter(|_| parsed_clean) {
+                self.diag.absorb(&named.diag);
             }
             if let Some(linted) = self.db.get::<Linted>(file) {
                 self.diag.absorb(&linted);

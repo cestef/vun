@@ -9,7 +9,7 @@ use vun_mir::Unready;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_sema_ty::Ty;
-use vun_sema_ty::trap::{Reason, Trap};
+use vun_sema_ty::trap::{Reason, Trap, Unevaluated};
 use vun_target::Convention;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -43,6 +43,8 @@ pub enum Why {
     Reported(Reason),
     /// A function marked with a calling convention of another architecture.
     Convention(Convention),
+    /// An address made into a value of a type that is no function type (`lang.mem.function_at`).
+    NotAFunction(Ty),
 }
 
 /// What lowering does not handle yet.
@@ -86,6 +88,7 @@ impl fmt::Display for Unlowered {
             Why::Convention(c) => {
                 write!(f, "the calling convention `{c:?}` is not one of the target's architecture")
             }
+            Why::NotAFunction(ty) => write!(f, "`{ty}` is no function type"),
             Why::Unavailable(Needed::Float(bits)) => write!(
                 f,
                 "the instruction needs a floating-point unit computing {bits}-bit floats, which the \
@@ -112,6 +115,7 @@ impl Why {
             Self::Unavailable(_) => "unavailable instruction",
             Self::Reported(_) => "reported",
             Self::Convention(_) => "convention",
+            Self::NotAFunction(_) => "not a function",
         }
     }
 }
@@ -136,6 +140,9 @@ impl Why {
                 .append(needed.msg())
                 .text(", which the target's processor lacks"),
             Self::Reported(_) => Msg::new().text("library code reached here reports an error"),
+            Self::NotAFunction(ty) => {
+                Msg::new().ty(ty.to_string()).text(" is no function type, which an address is made into")
+            }
             Self::Convention(c) => Msg::new()
                 .text("the calling convention ")
                 .code(format!("{c:?}").to_lowercase())
@@ -151,6 +158,11 @@ impl Why {
             }
             Self::Untargeted => Some(Msg::new().text("choose a target with ").code("--target")),
             Self::Convention(_) => Some(Msg::new().text("use ").code("#[abi.c]").text(", the target's own")),
+            Self::NotAFunction(_) => Some(
+                Msg::new()
+                    .text("give the signature and convention of the function, as ")
+                    .code("#[abi.c] (i32) -> i32"),
+            ),
             Self::Recursive => Some(Msg::new().text("await the call through a pointer to its frame")),
             Self::Unready(Unready::Untyped { .. }) => Some(
                 Msg::new()
@@ -221,6 +233,11 @@ impl Unlowered {
         let mut d = match &self.why {
             Why::Reported(reason) => {
                 let trap = Trap { reason: reason.clone(), at: Some(self.at), calls: Vec::new() };
+                trap.report(self.calls.last().copied().unwrap_or(self.at))
+            }
+            // A trap a `$` form fired in library code the program reaches, such as an error the
+            // library reports for what the target lacks, is shown as it is reported at compile time.
+            Why::Unready(Unready::Unevaluated { why: Unevaluated::Trapped(trap), .. }) => {
                 trap.report(self.calls.last().copied().unwrap_or(self.at))
             }
             // What typing says, where it applies, rather than what it left unknown.

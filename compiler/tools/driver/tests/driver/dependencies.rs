@@ -18,3 +18,15 @@ fn a_syntax_error_in_a_dependency_the_program_reaches_is_reported() {
         "{reported:?}"
     );
 }
+
+#[test]
+fn a_name_that_leads_nowhere_in_a_dependency_the_program_reaches_is_reported_as_one() {
+    let fx = Fixture::new("dependency-names");
+    let lib = Fixture::manifest("lib", 1, "1.0.0");
+    fx.write("lib", &lib, "broken := (x: u8) -> u8 { missing(x) };\n");
+    let mut app = Fixture::manifest("app", 2, "0.1.0");
+    app.deps.push(Fixture::local("lib", "../lib"));
+    let dir = fx.write("app", &app, "code := () -> u8 { lib.broken(1) };\n");
+    // Not as a form typing gave up on, which is reported as a compiler bug.
+    assert_eq!(fx.check(&Fixture::file(&dir, &app)), [errors::NAMES_UNRESOLVED]);
+}

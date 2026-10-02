@@ -8,7 +8,7 @@ use vun_primitives::mem::Mem;
 use vun_sema_ty::{Ty, Value as Constant};
 
 use super::FnLower;
-use crate::unlowered::{Form, Unlowered};
+use crate::unlowered::{Form, Unlowered, Why};
 
 /// The orders of `lang.mem.Order`, as LIR's.
 const ORDERS: [(vun_items::Item, Order); 5] = [
@@ -70,7 +70,7 @@ impl FnLower<'_, '_, '_> {
             }
             // A function is the address of its code, as a pointer is of what it points to.
             Mem::function_at => {
-                ty.signature().ok_or_else(unsupported)?;
+                ty.signature().ok_or(Unlowered::new(self.at, Why::NotAFunction(ty)))?;
                 let address = self.int_operand(arg(0)?, word)?;
                 self.b.cast(CastOp::IntToPtr, address, Scalar::Ptr, self.at)
             }

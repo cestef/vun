@@ -140,3 +140,22 @@ small := (x: u8) -> u8 { assert(x < 10); x };
     let failure = Failure::Assertion { source: "x < 10".into(), at: site.at };
     assert_eq!(site.msg, Some(failure.msg()));
 }
+
+/// An atomic access of a 64-bit integer, which a processor reaching one word cannot make.
+const WIDE_ATOMIC: &str = "\
+#[link.export(\"bump\"), abi.c]
+bump := (p: *u64) -> u64 { unsafe lang.mem.atomic_add(u64, p, 1, .relaxed) };
+";
+
+#[test]
+fn what_library_code_reports_for_a_target_is_shown_as_it_reports_it() {
+    let fixture = Fixture::new("lir-library-report");
+    let path = fixture.root.write("bump.vun", WIDE_ATOMIC);
+    let mut session = fixture.session();
+    session.choice = vun_sema::target::Choice::of(vun_items::targets::bare_riscv32imc::ilp32);
+    let file = session.load(&path).unwrap();
+    let refused = session.lir(file).as_ref().as_ref().expect_err("riscv32 has no 64-bit atomics").clone();
+    let d = refused.diagnostic();
+    assert_eq!(d.id, vun_diag::errors::COMPTIME_REPORTED);
+    assert_eq!(d.message.to_string(), "no atomic access of an integer wider than an address on this target");
+}

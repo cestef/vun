@@ -21,6 +21,15 @@ impl lang.ops.Ord for Shape {
     cmp := (a) { .equal }; //~ types.untyped_param
 }
 
+// A member the interface requires nothing of has no requirement to take its types from.
+Sided := interface(($Self: type) -> type { struct { sides: (s: &Self) -> u8 = _; } });
+Square := struct { side: u8 };
+
+impl Sided for Square {
+    sides := (s) { 4 };
+    area := (s) -> u8 { 1 }; //~ types.untyped_param
+}
+
 // A closure's parameter whose type neither the arguments nor what is expected of the call say,
 // as the accumulator of a `fold` whose result is not used as anything, is written.
 evens := (limit: u32) -> Iter(u32) { for i in 0..limit { if i % 2 == 0 { yield i; } } };
