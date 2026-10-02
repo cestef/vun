@@ -63,3 +63,31 @@ fn what_out_writes_in_reads_back_and_every_read_is_checked() {
     assert_eq!(input.u8(), Err(super::Truncated { at: 1 + out.0.len() as u64, end: out.0.len() as u64 }));
     assert!(super::In::string(&out.0[..out.0.len() - 1], 15).is_err());
 }
+
+#[test]
+fn a_name_is_ended_by_a_zero_within_the_longest_a_reader_copies() {
+    use super::{In, NAME_MAX};
+    let mut table = vec![0u8];
+    table.extend(b"short\0");
+    assert_eq!(In::name(&table, 1), Some(&b"short"[..]));
+    assert_eq!(In::name(&table, 0), Some(&b""[..]), "the empty string");
+    assert_eq!(In::name(&table, 7), None, "past the table");
+    assert_eq!(In::name(&table, u64::MAX), None);
+    let mut long = vec![b'a'; NAME_MAX];
+    long.push(0);
+    assert_eq!(In::name(&long, 0).map(<[u8]>::len), Some(NAME_MAX));
+    let mut longer = vec![b'a'; NAME_MAX + 1];
+    longer.push(0);
+    assert_eq!(In::name(&longer, 0), None, "one byte past the longest");
+    assert_eq!(In::name(&longer[..NAME_MAX], 0), None, "no zero ends it");
+}
+
+#[test]
+fn copies_are_spent_until_none_are_left() {
+    use super::{Copies, Overspent};
+    let mut copies = Copies::of(10);
+    assert_eq!(copies.spend(4), Ok(()));
+    assert_eq!(copies.spend(6), Ok(()));
+    assert_eq!(copies.spend(1), Err(Overspent));
+    assert_eq!(copies.spend(0), Ok(()));
+}

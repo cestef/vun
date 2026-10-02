@@ -18,6 +18,39 @@ impl fmt::Display for Truncated {
 
 impl std::error::Error for Truncated {}
 
+/// The longest name a reader of object files copies out of a table of strings. Compilers cut their
+/// names well below it (MSVC's decorated names at 4096 characters), and a table whose entries all
+/// pointed into one long string would otherwise cost memory, and the scan for each name's end time,
+/// by the square of the file's size.
+pub const NAME_MAX: usize = 1 << 12;
+
+/// What a reader of an object file may still copy out of it. A well-formed file holds the bytes of
+/// its sections once each, so a reader copies no more than the file's length, however many
+/// sections, or entries of a table, point at the same bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Copies(u64);
+
+/// A reader asked to copy more than its [`Copies`] allowed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Overspent;
+
+impl Copies {
+    /// The copies of `n` bytes.
+    #[must_use]
+    pub const fn of(n: u64) -> Self {
+        Self(n)
+    }
+
+    /// Takes `n` bytes of what may be copied.
+    ///
+    /// # Errors
+    /// Where fewer are left.
+    pub fn spend(&mut self, n: u64) -> Result<(), Overspent> {
+        self.0 = self.0.checked_sub(n).ok_or(Overspent)?;
+        Ok(())
+    }
+}
+
 /// Bytes read from an offset on.
 #[derive(Clone, Copy, Debug)]
 pub struct In<'a> {
@@ -111,5 +144,16 @@ impl<'a> In<'a> {
         let rest = usize::try_from(at).ok().and_then(|at| bytes.get(at..)).ok_or(Truncated { at, end })?;
         let length = rest.iter().position(|&b| b == 0).ok_or(Truncated { at: end + 1, end })?;
         Ok(&rest[..length])
+    }
+
+    /// The name at `at` of a table of strings: ended by a zero byte, and at most [`NAME_MAX`]
+    /// long. None where `at` is past the table, no zero ends the name within that, or it is
+    /// longer.
+    #[must_use]
+    pub fn name(bytes: &'a [u8], at: u64) -> Option<&'a [u8]> {
+        let rest = usize::try_from(at).ok().and_then(|at| bytes.get(at..))?;
+        let window = &rest[..rest.len().min(NAME_MAX + 1)];
+        let length = window.iter().position(|&b| b == 0)?;
+        Some(&window[..length])
     }
 }

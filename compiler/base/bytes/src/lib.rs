@@ -7,7 +7,7 @@ mod read;
 #[cfg(test)]
 mod tests;
 
-pub use read::{In, Truncated};
+pub use read::{Copies, In, NAME_MAX, Overspent, Truncated};
 
 /// Bytes under construction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
