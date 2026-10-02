@@ -10,7 +10,7 @@ use crate::common::Fixture;
 
 mod run;
 
-pub(crate) use run::{BACKENDS, build, run, status, status_on};
+pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_on};
 
 /// The test program `name`, a file of `programs/` beside these tests, which
 /// `vun debug compare` runs as the tests do.

@@ -8,6 +8,7 @@ use vun_sema::target::Choice;
 use vun_target::{Name, Output};
 use vun_tool::Executable;
 
+use crate::backend;
 use crate::common::Fixture;
 
 /// The program each linker links: it exits with 3.
@@ -186,17 +187,14 @@ scale := (x: f64, by: f64) -> f64 { x * by };
 #[test]
 fn a_windows_library_is_a_dll_exporting_its_interface() {
     let fixture = Fixture::new("link-windows-dll");
-    let path = fixture.root.write("calc.vun", WINDOWS_LIBRARY);
-    let mut session = fixture.session();
-    session.choice = Choice::of(targets::windows_x86_64::msvc);
-    let file = session.load(&path).unwrap();
-    let _ = session.lir(file);
+    let (mut session, file) =
+        backend::on(&fixture, "calc.vun", WINDOWS_LIBRARY, targets::windows_x86_64::msvc);
     // Where the machine keeps no import libraries, there is nothing to link against.
     let sysroot = session.target.clone().and_then(Result::ok).and_then(|spec| spec.c.compiler.sysroot);
     if sysroot.is_none() {
         return;
     }
-    session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
+    backend::sharing(&mut session);
     let built = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert_eq!(built.file_name().and_then(|n| n.to_str()), Some("calc.dll"));
     let image = vun_pe::Image::read(&std::fs::read(built).unwrap()).unwrap();

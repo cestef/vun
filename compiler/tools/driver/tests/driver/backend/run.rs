@@ -1,11 +1,12 @@
 //! Building and running programs through each backend and target, as the tests of code
 //! generation and of the runtimes do (what `vun debug compare` shows).
 
-use vun_driver::Codegen;
 use vun_driver::compare::Ran;
+use vun_driver::{Codegen, Session};
 use vun_items::{Item, targets};
 use vun_sema::target::Choice;
-use vun_target::Name;
+use vun_span::FileId;
+use vun_target::{Name, Output};
 
 use crate::common::Fixture;
 
@@ -29,6 +30,22 @@ pub(crate) fn build(name: &str, source: &str, backend: Name) -> (Fixture, std::p
 pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Output {
     let (_fixture, program) = build(name, source, backend);
     std::process::Command::new(program).output().unwrap()
+}
+
+/// A session on `target` with `source` written as `name` in `fixture` and loaded. Choosing the
+/// target equips the session with the machine's tools for it, its runner and sysroot among them.
+pub(crate) fn on(fixture: &Fixture, name: &str, source: &str, target: Item) -> (Session, FileId) {
+    let path = fixture.root.write(name, source);
+    let mut session = fixture.session();
+    session.choice = Choice::of(target);
+    let file = session.load(&path).unwrap();
+    let _ = session.lir(file);
+    (session, file)
+}
+
+/// Makes `session` build shared libraries through the C backend: what a program loads as it runs.
+pub(crate) fn sharing(session: &mut Session) {
+    session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
 }
 
 /// The targets every program here runs on besides the machine's own, where the machine runs

@@ -4,11 +4,8 @@
 use std::path::Path;
 
 use vun_diag::errors;
-use vun_driver::Codegen;
 use vun_driver::compare::Ran;
 use vun_items::{Item, targets};
-use vun_sema::target::Choice;
-use vun_target::Output;
 
 use crate::backend;
 use crate::common::Fixture;
@@ -71,24 +68,16 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 /// library's file; none where the machine does not run the target's programs.
 fn loaded(name: &str, target: Item, services: &str, path: impl Fn(&Path) -> String) -> Option<i32> {
     let fixture = Fixture::new(name);
-    let source = fixture.root.write("calc.vun", library(services));
-    let mut session = fixture.session();
-    session.choice = Choice::of(target);
-    let calc = session.load(&source).unwrap();
-    // Choosing the target equips it with the machine's tools.
-    let _ = session.lir(calc);
+    let (mut session, calc) = backend::on(&fixture, "calc.vun", &library(services), target);
     let native =
         cfg!(all(target_os = "linux", target_arch = "x86_64")) && target == targets::linux_x86_64::gnu;
     if !native && session.runner().is_empty() {
         return None;
     }
-    session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
+    backend::sharing(&mut session);
     let built = session.build(calc, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let loader = LOADER.replace("PATH", &format!("{:?}", path(&built)));
-    let main = fixture.root.write("main.vun", loader);
-    let mut session = fixture.session();
-    session.choice = Choice::of(target);
-    let file = session.load(&main).unwrap();
+    let (mut session, file) = backend::on(&fixture, "main.vun", &loader, target);
     let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let statuses: Vec<_> = runs.iter().map(|r| (r.backend, r.output.status.code())).collect();
     assert!(Ran::agree(&runs), "the backends disagree: {statuses:?}");

@@ -5,10 +5,13 @@
 use vun_diag::errors;
 use vun_driver::Codegen;
 use vun_items::targets;
+use vun_link::{LinkPlan, Linker};
+use vun_link_lld::LldLinker;
 use vun_sema::target::Choice;
 use vun_target::Output;
 use vun_tool::Executable;
 
+use crate::backend;
 use crate::common::Fixture;
 use crate::link::run_with_library;
 
@@ -119,30 +122,29 @@ int mainCRTStartup(void) {
 
 #[test]
 fn a_windows_library_is_called_by_c_under_each_convention_of_its_architecture() {
-    let (Some(clang), Some(linker)) = (Executable::search("clang"), Executable::search("lld-link")) else {
+    if Executable::search("clang").is_none() || Executable::search("lld-link").is_none() {
         return;
-    };
-    for (name, target, triple) in [
-        ("conv-x86", targets::windows_x86::msvc, "i686-pc-windows-msvc"),
-        ("conv-x86-64", targets::windows_x86_64::msvc, "x86_64-pc-windows-msvc"),
-    ] {
+    }
+    for (name, target) in
+        [("conv-x86", targets::windows_x86::msvc), ("conv-x86-64", targets::windows_x86_64::msvc)]
+    {
         let fixture = Fixture::new(name);
-        let path = fixture.root.write("conv.vun", WINDOWS_LIBRARY);
-        let mut session = fixture.session();
-        session.choice = Choice::of(target);
-        let file = session.load(&path).unwrap();
-        let _ = session.lir(file);
-        let sysroot = session.target.clone().and_then(Result::ok).and_then(|spec| spec.c.compiler.sysroot);
-        let Some(sysroot) = sysroot.filter(|_| !session.runner().is_empty()) else { continue };
-        session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
+        let (mut session, file) = backend::on(&fixture, "conv.vun", WINDOWS_LIBRARY, target);
+        let Some(spec) = session.target.clone().and_then(Result::ok) else { continue };
+        if spec.c.compiler.sysroot.is_none() || session.runner().is_empty() {
+            continue;
+        }
+        backend::sharing(&mut session);
         let library = session.build(file, None).unwrap_or_else(|_| panic!("{name}: {:#?}", session.diag));
-        // The program is beside the library, where the system looks for it first.
+        // The program is beside the library, where the system looks for it first. It is compiled as
+        // the target's C is, and linked as its programs are.
         let dir = library.parent().unwrap();
         let source = fixture.root.write("user.c", WINDOWS_USER);
         let object = dir.join("user.o");
-        let compiled = std::process::Command::new(&clang)
-            .args(["-ffreestanding", "-c"])
-            .arg(format!("--target={triple}"))
+        let c = &spec.c.compiler;
+        let compiled = std::process::Command::new(c.command.as_str())
+            .args(c.flags.iter().map(|flag| flag.as_str()))
+            .arg("-c")
             .arg(&source)
             .arg("-o")
             .arg(&object)
@@ -150,16 +152,18 @@ fn a_windows_library_is_called_by_c_under_each_convention_of_its_architecture() 
             .unwrap();
         assert!(compiled.success(), "{name}");
         let program = dir.join("user.exe");
-        let machine = if name == "conv-x86" { "x86" } else { "x64" };
-        let joined = std::process::Command::new(&linker)
-            .args([format!("/machine:{machine}"), "/subsystem:console".into(), "/nodefaultlib".into()])
-            .args(["/entry:mainCRTStartup".to_string(), format!("/libpath:{sysroot}")])
-            .arg(&object)
-            .arg("kernel32.lib")
-            .arg(format!("/out:{}", program.display()))
-            .status()
-            .unwrap();
-        assert!(joined.success(), "{name}");
+        let plan = LinkPlan {
+            inputs: vec![object],
+            output: program.clone(),
+            kind: Output::Executable,
+            entry: spec.entry_symbol,
+            exports: Vec::new(),
+            regions: Vec::new(),
+            sections: Vec::new(),
+        };
+        LldLinker
+            .link(&plan, &spec, &mut session.diag)
+            .unwrap_or_else(|_| panic!("{name}: {:#?}", session.diag));
         let status = session.command(&program).current_dir(dir).status().unwrap();
         assert_eq!(status.code(), Some(121), "{name}");
     }
