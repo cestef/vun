@@ -164,16 +164,16 @@ impl Body {
                         parts: args.clone(),
                     }),
                     Value::Primitive(p) => {
-                        Self::known(env, *p, args).map(|v| Rvalue::Use(Operand::Const(v))).or_else(|| {
+                        Self::known(env, callee, args).map(|v| Rvalue::Use(Operand::Const(v))).or_else(|| {
                             let f = Self::lowered_by(env, *p, args)?;
                             Some(Rvalue::Call { callee: Operand::Const(f), args: args.clone() })
                         })
                     }
                     // A function of `$` parameters alone, as typing took it: an integer it gives is
                     // its value, whatever runs.
-                    Value::Fn(_) => {
-                        Self::known_integer(env, callee, args).map(|v| Rvalue::Use(Operand::Const(v)))
-                    }
+                    Value::Fn(_) => Self::known(env, callee, args)
+                        .filter(|v| matches!(v, Value::Int(_)))
+                        .map(|v| Rvalue::Use(Operand::Const(v))),
                     _ => None,
                 };
                 if let Some(folded) = folded {
@@ -205,34 +205,21 @@ impl Body {
         if lacked { function(Lower::soft) } else { None }
     }
 
-    /// The integer the function `callee` gives for `args`, when every parameter of it is a `$`
-    /// one and every argument a constant: a call typing knew when compiling
-    /// ([`Callable::folds`]) and typed by its value.
-    fn known_integer(env: &Env<'_, '_>, callee: &Value, args: &[Operand]) -> Option<Value> {
+    /// The value the primitive or function `callee` gives for `args`, when every parameter of it is
+    /// a `$` one and every argument a constant: a call typing knew when compiling
+    /// ([`Callable::folds`]).
+    fn known(env: &Env<'_, '_>, callee: &Value, args: &[Operand]) -> Option<Value> {
         if !Callable::of(callee.clone())?.folds(env) {
             return None;
         }
-        let args: Vec<Value> = args
+        let args = args
             .iter()
             .map(|a| match a {
                 Operand::Const(v) => Some(v.clone()),
                 Operand::Place(_) => None,
             })
             .collect::<Option<_>>()?;
-        env.apply(callee.clone(), args).ok().filter(|v| matches!(v, Value::Int(_)))
-    }
-
-    /// The value of the primitive `p` applied to `args`, when every parameter of it is a `$` one
-    /// and every argument a constant.
-    fn known(env: &Env<'_, '_>, p: Primitive, args: &[Operand]) -> Option<Value> {
-        if !Callable::Primitive(p).folds(env) {
-            return None;
-        }
-        let args = args.iter().map(|a| match a {
-            Operand::Const(v) => Some(v.clone()),
-            Operand::Place(_) => None,
-        });
-        env.apply(Value::Primitive(p), args.collect::<Option<_>>()?).ok()
+        env.apply(callee.clone(), args).ok()
     }
 
     /// The constant each local holds throughout the body: written once, whole, with a constant,
