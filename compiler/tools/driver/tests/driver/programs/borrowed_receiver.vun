@@ -1,0 +1,32 @@
+start := std.os.start(main);
+
+Digit: type = Int(48..=57);
+
+/// `b` borrows a byte, and the methods taking their receiver by value are found through the
+/// borrow and called with the byte.
+digits := (text: &[u8]) -> usize {
+    mut count: usize = 0;
+    for b in text {
+        if b.try_to(Digit) != .none { count += 1; }
+    }
+    count
+};
+
+widest := (text: &[u8]) -> u16 {
+    mut most: u16 = 0;
+    for b in text {
+        wide := b.wrap(u16);
+        if wide > most { most = wide; }
+    }
+    most
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut failed: Int(0..=3) = 0;
+    if digits("a1b22c") != 3 { failed +|= 1; }
+    if widest("abc") != 99 { failed +|= 1; }
+    // A detail of the trace compares at run time.
+    detail: lang.trace.Detail = if sys.args().len() > 5 { .calls } else { .sites };
+    if detail != .sites { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

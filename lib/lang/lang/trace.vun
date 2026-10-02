@@ -15,7 +15,12 @@ Detail := enum {
 
 /// Details are equal when they are one detail.
 impl lang.ops.Eq for Detail {
-    eq := (a, b) { lang.meta.same(Detail, a.*, b.*) };
+    eq := (a, b) {
+        match (a.*, b.*) {
+            (.off, .off) | (.sites, .sites) | (.calls, .calls) => true,
+            _ => false,
+        }
+    };
 }
 
 /// The detail the program is built with (`std.build.Options.trace`, `--trace`), known when

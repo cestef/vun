@@ -245,7 +245,19 @@ impl Builder<'_, '_, '_> {
                 let place = self.reached(receiver, name)?;
                 Ok(Receiver::Borrowed { mode, place, origin })
             }
+            // A value receiver is the value a borrow reaches, where the receiver is one: the
+            // method is found through the borrow (`b.try_to(T)` of a `b` borrowing a `u8`).
+            None if first.is_none_or(|t| t.borrowing().is_none()) && self.is_borrow(receiver) => {
+                let origin = self.env.parsed.hir.exprs[receiver].origin;
+                let place = self.through_borrows(receiver)?;
+                Ok(Receiver::Value(self.temp(Rvalue::Use(Operand::Place(place)), origin)))
+            }
             None => self.operand(receiver).map(Receiver::Value),
         }
+    }
+
+    /// Whether the value `expr` is a borrow, as typing found it.
+    fn is_borrow(&self, expr: ExprId) -> bool {
+        self.typed().and_then(|t| t.types.get(&expr).map(|k| k.ty)).is_some_and(|t| t.borrowed().is_some())
     }
 }

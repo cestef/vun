@@ -243,6 +243,12 @@ fn a_call_of_a_function_of_dollar_parameters_alone_gives_its_integer_at_compile_
 }
 
 #[test]
+fn a_method_taking_its_receiver_by_value_is_called_through_a_borrow() {
+    // The number of checks that fail: 0 when all hold.
+    assert_eq!(status("backend-borrowed-receiver", &program("borrowed_receiver.vun")), Some(0));
+}
+
+#[test]
 fn data_aligned_past_every_c_type_is_aligned() {
     assert_eq!(status("backend-aligned", &program("aligned.vun")), Some(7));
 }
