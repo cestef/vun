@@ -117,7 +117,14 @@ impl Typer<'_, '_, '_> {
         let expected = self.expected(expr).and_then(|t| t.as_array().map(|(_, elem)| elem));
         let item = self.typed_as(value, expected);
         self.typed(count);
-        let Ok(Value::Int(len)) = self.evaluating().eval(count) else { return None };
+        let len = match self.evaluating().eval(count) {
+            Ok(Value::Int(len)) => len,
+            Ok(_) => return None,
+            Err(why) => {
+                self.needed_when_compiling(count, &why);
+                return None;
+            }
+        };
         let item = item?;
         Some(Known { ty: TyKind::array(len, item.ty), stage: item.stage })
     }

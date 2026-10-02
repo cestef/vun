@@ -97,7 +97,9 @@ the typed imports of `std.os.windows.kernel32`. It runs one thread (`lang.target
 bits of, and 0, 1 and 2 are the standard streams, no handle being one of them (handles are
 multiples of 4); paths are UTF-8 in the program and UTF-16 to the system (`std.text.utf16`); the
 command line is one UTF-16 string that the program splits as the C runtime does
-(`std.os.windows.command_line`); a console is set to UTF-8 at the start. The runtime provides the
+(`std.os.windows.command_line`) into every argument the longest command line the system gives
+(32767 units) can hold, a surrogate without its partner being U+FFFD as invalid UTF-8 is, and the
+real clock set before 1970 reads as the epoch; a console is set to UTF-8 at the start. The runtime provides the
 functions a freestanding C compiler calls (`std.os.memory`, and `__chkstk`, which probes the
 pages of a large frame in order, `std.os.windows.stack`).
 

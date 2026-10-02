@@ -54,7 +54,7 @@ impl TypedBody {
             let ExprKind::Prefix { operand, .. } = hir.exprs[expr].kind else { continue };
             let surely = clean && self.types.contains_key(&operand);
             if surely && let Some((read, local)) = Reads::local(&here, operand) {
-                diag.error(Self::runtime(hir, local, hir.exprs[read].origin));
+                diag.error(Self::runtime(hir, local, hir.exprs[read].origin, true));
                 continue;
             }
             if let Err(stopped) = here.eval(operand)
@@ -70,23 +70,23 @@ impl TypedBody {
 }
 
 impl TypedBody {
-    /// The report of a `$` form reading, at `origin`, the local `local`, which its body computes
-    /// when it runs: what `$` asks for cannot wait for that.
-    fn runtime(hir: &Hir, local: BinderId, origin: OriginId) -> Diagnostic {
+    /// The report of a form reading, at `origin`, the local `local`, which its body computes when
+    /// it runs, though the form is needed when compiling: what `$` asks for, which `dollar` says
+    /// it is, cannot wait for that, nor can an array's length.
+    pub(super) fn runtime(hir: &Hir, local: BinderId, origin: OriginId, dollar: bool) -> Diagnostic {
         let name = hir.binders[local].name;
         let msg = Msg::new().code(name.as_str()).text(" is known only when the program runs");
-        let help = Msg::new()
-            .text("bind it with ")
-            .code("$")
-            .text(" to know it when compiling, or compute this without ")
-            .code("$");
+        let mut help = Msg::new().text("bind it with ").code("$").text(" to know it when compiling");
+        if dollar {
+            help = help.text(", or compute this without ").code("$");
+        }
         Diagnostic::error(errors::COMPTIME_RUNTIME, msg).at(origin, None).child(ChildKind::Help, help)
     }
 }
 
 /// The names an expression reads, and the binders it introduces itself.
 #[derive(Default)]
-struct Reads {
+pub(super) struct Reads {
     names: Vec<ExprId>,
     bound: Vec<BinderId>,
 }
@@ -94,7 +94,7 @@ struct Reads {
 impl Reads {
     /// The first local `expr` reads that its body computes when it runs (bound without `$`, by
     /// the body rather than by `expr` itself or a namespace), and the name reading it.
-    fn local(env: &Env<'_, '_>, expr: ExprId) -> Option<(ExprId, BinderId)> {
+    pub(super) fn local(env: &Env<'_, '_>, expr: ExprId) -> Option<(ExprId, BinderId)> {
         let hir = &env.parsed.hir;
         let mut reads = Self::default();
         reads.expr(hir, expr);

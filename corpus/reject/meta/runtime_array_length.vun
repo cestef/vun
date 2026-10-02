@@ -1,0 +1,12 @@
+//! An array's length is needed when compiling, so it cannot be a local the body computes when it
+//! runs, written in the type of a local or in a repeated value.
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n := 4;
+    a: [n]u8 = [0; 4]; //~ comptime.runtime
+    b := [0; n]; //~ comptime.runtime
+    $m := 4;
+    c: [m]u8 = [0; m];
+    _ = (a, b, c);
+    .ok
+};

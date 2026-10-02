@@ -293,6 +293,8 @@ generators that observe their own output, which is what makes impls and memoizat
   an error, `comptime.unsupported`, since what `$` asks for cannot wait for run time; so is one
   that reads a local or parameter its body computes when it runs (`comptime.runtime`), even one
   whose value is a constant: a local is known when compiling only where it is bound with `$`.
+  The length of an array, in its type or in a repeated value, is needed when compiling too, and
+  reads no local its body computes when it runs.
   Statements, and so a `mut $` local, and exclusive borrows run only inside a compile-time call,
   in the evaluator: a `$` form using one outside a call is `comptime.unsupported`. A `$` form
   inside another is part of it, run when it runs, never on its own.

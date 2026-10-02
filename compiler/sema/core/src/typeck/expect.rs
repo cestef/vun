@@ -15,7 +15,8 @@ use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
 use vun_span::Span;
 
-use super::{GaveUp, Known, Stage, Typer};
+use super::reported::Reads;
+use super::{GaveUp, Known, Stage, TypedBody, Typer};
 use crate::env::Env;
 
 impl<'a, 'db> Typer<'_, 'a, 'db> {
@@ -145,7 +146,22 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// or is not a type, which the check of the file reports.
     pub(super) fn annotation(&mut self, expr: ExprId) -> Result<Ty, GaveUp> {
         let evaluated = self.known_value(expr, None);
+        if let Err(why) = &evaluated {
+            self.needed_when_compiling(expr, why);
+        }
         self.reported(expr, evaluated).map_err(GaveUp::Unevaluated)?.as_type().ok_or(GaveUp::Reported)
+    }
+
+    /// Reports `expr`, which is needed when compiling (an annotation, the length of an array), if
+    /// it stopped, for `why`, because it reads a local its body computes when it runs.
+    pub(super) fn needed_when_compiling(&mut self, expr: ExprId, why: &Unevaluated) {
+        if !matches!(why, Unevaluated::Runtime) {
+            return;
+        }
+        let hir = self.hir();
+        if let Some((read, local)) = Reads::local(&self.evaluating(), expr) {
+            self.diag.error(TypedBody::runtime(hir, local, hir.exprs[read].origin, false));
+        }
     }
 
     /// The value at compile time of `expr`, an annotation or a `$` argument, as a value of `ty`
