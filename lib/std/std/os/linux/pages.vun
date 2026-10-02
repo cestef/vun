@@ -1,0 +1,108 @@
+//! Pages as Linux's `mprotect` takes them, and as `/proc/self/maps` describes them: a line per
+//! mapped range, its ends in hex and `rwxp` for what it allows, before whatever else it holds.
+
+/// `PROT_READ`, `PROT_WRITE` and `PROT_EXEC`.
+read_bit: u32 = 1;
+write_bit: u32 = 2;
+execute_bit: u32 = 4;
+
+/// `access` as `mprotect`'s `prot`.
+of_access := (access: std.os.pages.Access) -> u32 {
+    (if access.read { read_bit } else { 0 }) | (if access.write { write_bit } else { 0 })
+        | (if access.execute { execute_bit } else { 0 })
+};
+
+/// The most bytes of a line of `/proc/self/maps` this reads before it knows whether `address` is
+/// inside it: `lo-hi rwxp`, 16 hex digits for each of a 64-bit address at most.
+prefix_max := 48;
+/// The most bytes read from the file in one call.
+chunk_bytes := 256;
+
+/// The range of `/proc/self/maps` that holds `address`, read a chunk at a time so neither a line
+/// nor the file is ever held whole; `.unmapped` where no line does.
+query := (address: usize) -> Result(std.os.pages.Region, std.os.Error) {
+    fd := std.os.open("/proc/self/maps", .read)?;
+    found := scan(fd, address);
+    _ = std.os.close(fd);
+    found
+};
+
+/// Reads `fd` a chunk at a time, matching `address` against the range of each line in turn.
+scan := (fd: i32, address: usize) -> Result(std.os.pages.Region, std.os.Error) {
+    mut prefix: [prefix_max]u8 = [0; prefix_max];
+    mut filled: usize = 0;
+    mut skipping: bool = false;
+    mut chunk: [chunk_bytes]u8 = [0; chunk_bytes];
+    for {
+        got := std.os.read(fd, &mut chunk)?;
+        if got == 0 { return .err(.unmapped); }
+        for i in 0..got {
+            b := chunk[i];
+            if b == "\n"[0] {
+                if filled > 0 {
+                    match line(&prefix[0..filled], address) {
+                        .some(region) => return .ok(region),
+                        .none => {},
+                    }
+                }
+                filled = 0;
+                skipping = false;
+            } else if !skipping {
+                if filled < prefix_max {
+                    prefix[filled] = b;
+                    filled += 1;
+                } else {
+                    skipping = true;
+                }
+            }
+        }
+    }
+};
+
+/// Whether `b` is an ASCII hex digit, lowercase as the kernel writes them.
+is_hex := (b: u8) -> bool { (b >= "0"[0] and b <= "9"[0]) or (b >= "a"[0] and b <= "f"[0]) };
+
+/// The value of the hex digit `b`; 0 where it is not one, which `is_hex` must have ruled out.
+hex_value := (b: u8) -> usize {
+    match b {
+        "0"[0] => 0, "1"[0] => 1, "2"[0] => 2, "3"[0] => 3, "4"[0] => 4,
+        "5"[0] => 5, "6"[0] => 6, "7"[0] => 7, "8"[0] => 8, "9"[0] => 9,
+        "a"[0] => 10, "b"[0] => 11, "c"[0] => 12, "d"[0] => 13, "e"[0] => 14, "f"[0] => 15,
+        _ => 0,
+    }
+};
+
+/// The hex digits of `text` from `i` on, as far as they go: the address they write, and where
+/// they end; `.none` past `u64`, as no address of this process is.
+hex := (text: &[u8], start: usize) -> ?(usize, usize) {
+    mut i: usize = start;
+    mut n: usize = 0;
+    for i < text.len() and is_hex(text[i]) {
+        n = match (n * 16 + hex_value(text[i])).try_to(usize) {
+            .some(next) => next,
+            .none => return .none,
+        };
+        i += 1;
+    }
+    if i == start { .none } else { .some((n, i)) }
+};
+
+/// The range and access `text`, the start of a line of `/proc/self/maps`, holds: `lo-hi rwxp`;
+/// `.none` where it is not `address`'s, or does not read this way.
+line := (text: &[u8], address: usize) -> ?std.os.pages.Region {
+    (lo, after_lo) := hex(text, 0)?;
+    if after_lo >= text.len() or text[after_lo] != "-"[0] { return .none; }
+    (hi, after_hi) := hex(text, after_lo + 1)?;
+    if after_hi + 5 > text.len() or text[after_hi] != " "[0] { return .none; }
+    if address < lo or address >= hi { return .none; }
+    perms := text[after_hi + 1..after_hi + 5];
+    .some(.{
+        .base = lo,
+        .bytes = (hi - lo).wrap(usize),
+        .access = .{
+            .read = perms[0] == "r"[0],
+            .write = perms[1] == "w"[0],
+            .execute = perms[2] == "x"[0],
+        },
+    })
+};

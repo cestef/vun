@@ -1,0 +1,47 @@
+//! The pages of the process's own address space (spec 08, section 2): what a range of them
+//! allows, and the range an address is mapped within. An address passed here must be one the
+//! system gave the process: through a library it loaded, its own code and data, or memory it
+//! mapped.
+
+/// The link symbols of this namespace's declarations, which a runtime exports.
+symbols := struct {
+    protect := "vun_os_protect";
+    query := "vun_os_query";
+};
+
+/// What a range of pages allows: reading it, writing it, and running it as code. A system that
+/// takes the three separately may still deny some combinations of them: Windows gives writing no
+/// words of its own without reading too, so asking for it there reads as well.
+Access := struct { read: bool, write: bool, execute: bool };
+
+/// Access to no page, to read a page, to read and write one, to read and run one as code, and to
+/// read, write and run one.
+none: Access = .{ .read = false, .write = false, .execute = false };
+read_only: Access = .{ .read = true, .write = false, .execute = false };
+read_write: Access = .{ .read = true, .write = true, .execute = false };
+read_execute: Access = .{ .read = true, .write = false, .execute = true };
+read_write_execute: Access = .{ .read = true, .write = true, .execute = true };
+
+/// A mapped range of the process's own address space, and what it allows.
+Region := struct { base: usize, bytes: usize, access: Access };
+
+/// Changes what the `bytes` of pages holding `address` allow to `access`: every one of them must
+/// be mapped already, as code outside the language mapped them or this did.
+#[link.symbol(symbols.protect)]
+protect: unsafe (address: usize, bytes: usize, access: Access) -> Result((), std.os.Error) = _;
+
+/// The mapped range of the process's own address space that holds `address`, and what it allows;
+/// `.unmapped` where none does.
+#[link.symbol(symbols.query)]
+query: (address: usize) -> Result(Region, std.os.Error) = _;
+
+/// The exports of a runtime whose system gives a process no control of its own pages.
+unsupported := struct {
+    #[link.export(symbols.protect)]
+    protect_pages := unsafe (address: usize, bytes: usize, access: Access) -> Result((), std.os.Error) {
+        .err(.unsupported)
+    };
+
+    #[link.export(symbols.query)]
+    query_pages := (address: usize) -> Result(Region, std.os.Error) { .err(.unsupported) };
+};

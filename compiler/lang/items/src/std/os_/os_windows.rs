@@ -16,6 +16,8 @@ pub const file: Item = Item::new(&["std", "os", "windows", "file"]);
 pub const kernel32: Item = Item::new(&["std", "os", "windows", "kernel32"]);
 /// The namespace `std.os.windows.library`.
 pub const library: Item = Item::new(&["std", "os", "windows", "library"]);
+/// The namespace `std.os.windows.pages`.
+pub const pages: Item = Item::new(&["std", "os", "windows", "pages"]);
 /// The namespace `std.os.windows.stack`.
 pub const stack: Item = Item::new(&["std", "os", "windows", "stack"]);
 /// The namespace `std.os.windows.tests`.

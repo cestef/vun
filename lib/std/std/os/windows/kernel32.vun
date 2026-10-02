@@ -41,6 +41,10 @@ set_console_output_cp: unsafe (code_page: u32) -> i32 = _;
 virtual_alloc: unsafe (address: usize, bytes: usize, kind: u32, protection: u32) -> usize = _;
 #[link.symbol("VirtualFree"), abi.stdcall]
 virtual_free: unsafe (address: usize, bytes: usize, kind: u32) -> i32 = _;
+#[link.symbol("VirtualProtect"), abi.stdcall]
+virtual_protect: unsafe (address: usize, bytes: usize, access: u32, old: *u32) -> i32 = _;
+#[link.symbol("VirtualQuery"), abi.stdcall]
+virtual_query: unsafe (address: usize, info: *u8, length: usize) -> usize = _;
 #[link.symbol("LoadLibraryW"), abi.stdcall]
 load_library: unsafe (path: *u16) -> usize = _;
 #[link.symbol("GetProcAddress"), abi.stdcall]

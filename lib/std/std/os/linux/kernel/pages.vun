@@ -1,0 +1,22 @@
+//! `std.os.pages`'s exports for the kernel runtime: `mprotect` by raw system call, and a query of
+//! `/proc/self/maps`, which `std.os.linux.pages` reads needing no system call of its own.
+
+/// The exports, which the runtime holds: `pages := std.os.linux.kernel.pages.exports`.
+exports := struct {
+    #[link.export(std.os.pages.symbols.protect)]
+    protect := unsafe (
+        address: usize, bytes: usize, access: std.os.pages.Access
+    ) -> Result((), std.os.Error) {
+        prot := std.os.linux.pages.of_access(access).to(usize);
+        at := std.os.linux.kernel.request(
+            std.os.linux.kernel.numbers.mprotect, [address, bytes, prot, 0, 0, 0]
+        );
+        std.os.linux.kernel.outcome(at)?;
+        .ok(())
+    };
+
+    #[link.export(std.os.pages.symbols.query)]
+    query := (address: usize) -> Result(std.os.pages.Region, std.os.Error) {
+        std.os.linux.pages.query(address)
+    };
+};

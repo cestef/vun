@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.os.linux.kernel`.
 pub const kernel: Item = Item::new(&["std", "os", "linux", "kernel"]);
+/// The namespace `std.os.linux.pages`.
+pub const pages: Item = Item::new(&["std", "os", "linux", "pages"]);
 /// Linux runs static programs through a runtime calling the kernel itself, with no C library.
 pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);
 /// Linux with the GNU C library runs programs through the C library's runtime.

@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.os.libc.library`.
 pub const library: Item = Item::new(&["std", "os", "libc", "library"]);
+/// The namespace `std.os.libc.pages`.
+pub const pages: Item = Item::new(&["std", "os", "libc", "pages"]);
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const read: Item = Item::new(&["std", "os", "libc", "read"]);
 /// C's `open` is variadic, its permissions read only with `O_CREAT`: passed always.
@@ -16,6 +18,7 @@ pub const close: Item = Item::new(&["std", "os", "libc", "close"]);
 pub const exit: Item = Item::new(&["std", "os", "libc", "exit"]);
 pub const mmap: Item = Item::new(&["std", "os", "libc", "mmap"]);
 pub const munmap: Item = Item::new(&["std", "os", "libc", "munmap"]);
+pub const mprotect: Item = Item::new(&["std", "os", "libc", "mprotect"]);
 pub const clock_gettime: Item = Item::new(&["std", "os", "libc", "clock_gettime"]);
 pub const nanosleep: Item = Item::new(&["std", "os", "libc", "nanosleep"]);
 /// What the C library of a system lays out its own way: each system declares its row

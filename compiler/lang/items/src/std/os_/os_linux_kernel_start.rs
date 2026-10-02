@@ -39,3 +39,4 @@ pub const division: Item = Item::new(
 pub const threads: Item = Item::new(
     &["std", "os", "linux", "kernel", "start", "threads"],
 );
+pub const pages: Item = Item::new(&["std", "os", "linux", "kernel", "start", "pages"]);

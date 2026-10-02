@@ -164,6 +164,28 @@ services := struct {
     #[link.export(std.os.symbols.pause)]
     pause := (span: std.time.Duration) -> Result((), std.os.Error) { std.os.windows.clock.pause(span) };
 
+    #[link.export(std.os.pages.symbols.protect)]
+    protect_pages := unsafe (
+        address: usize, bytes: usize, access: std.os.pages.Access
+    ) -> Result((), std.os.Error) {
+        mut old: u32 = 0;
+        outcome(
+            unsafe std.os.windows.kernel32.virtual_protect(
+                address, bytes, std.os.windows.pages.of_access(access), std.ptr.to(u32, &old)
+            )
+        )
+    };
+
+    #[link.export(std.os.pages.symbols.query)]
+    query_pages := (address: usize) -> Result(std.os.pages.Region, std.os.Error) {
+        mut info: [48]u8 = [0; 48];
+        written := unsafe std.os.windows.kernel32.virtual_query(
+            address, std.ptr.to([48]u8, &info).cast(u8), 48
+        );
+        if written == 0 { return .err(error(unsafe std.os.windows.kernel32.get_last_error())); }
+        std.os.windows.pages.region_of(&info[0..written])
+    };
+
     /// A program runs one thread, which nothing interrupts.
     #[link.export(std.sync.symbols.enter), panic.never]
     enter := () -> std.sync.Mask { unsafe std.sync.Mask.of(0, false) };

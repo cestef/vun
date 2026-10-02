@@ -1,0 +1,60 @@
+//! Pages as `VirtualProtect` and `VirtualQuery` take and give them: `PAGE_*`'s eight kinds of
+//! access, and the fields of `MEMORY_BASIC_INFORMATION` past `AllocationBase`, which a pointer's
+//! width places: `AllocationProtect` is padded to keep `RegionSize` a pointer's width aligned, so
+//! the longest a pointer is wide places every field from it on.
+
+/// `PAGE_NOACCESS`, `PAGE_READONLY`, `PAGE_READWRITE`, `PAGE_WRITECOPY`, `PAGE_EXECUTE`,
+/// `PAGE_EXECUTE_READ`, `PAGE_EXECUTE_READWRITE` and `PAGE_EXECUTE_WRITECOPY`.
+no_access: u32 = 0x01;
+read_only: u32 = 0x02;
+read_write: u32 = 0x04;
+write_copy: u32 = 0x08;
+execute: u32 = 0x10;
+execute_read: u32 = 0x20;
+execute_read_write: u32 = 0x40;
+execute_write_copy: u32 = 0x80;
+
+/// `MEM_FREE`: no page of the process's own, between what it has mapped.
+free: u32 = 0x10000;
+
+/// `access` in `VirtualProtect`'s words: writing with no reading asks to read as well, which
+/// Windows gives no kind of its own.
+of_access := (access: std.os.pages.Access) -> u32 {
+    read := access.read or access.write;
+    if access.execute {
+        if access.write { execute_read_write } else if read { execute_read } else { execute }
+    } else {
+        if access.write { read_write } else if read { read_only } else { no_access }
+    }
+};
+
+/// What `VirtualProtect` or `VirtualQuery` reported as `protect`: the copy-on-write kinds read as
+/// the kinds they copy from, `PAGE_READWRITE` and `PAGE_EXECUTE_READWRITE`.
+access_of := (protect: u32) -> std.os.pages.Access {
+    bits := protect & 0xff;
+    read := bits == read_only or bits == read_write or bits == write_copy or bits == execute_read
+        or bits == execute_read_write or bits == execute_write_copy;
+    write := bits == read_write or bits == write_copy or bits == execute_read_write
+        or bits == execute_write_copy;
+    execute_bit := bits == execute or bits == execute_read or bits == execute_read_write
+        or bits == execute_write_copy;
+    .{ .read = read, .write = write, .execute = execute_bit }
+};
+
+/// Where `MEMORY_BASIC_INFORMATION`'s fields are, a pointer's width placing them: `BaseAddress`
+/// and `AllocationBase` are a pointer's width each, `AllocationProtect` a `DWORD` padded to the
+/// next, then `RegionSize` a pointer's width, `State` a `DWORD`, and `Protect` the one after it.
+region_size_at := 3 * lang.meta.size(usize);
+state_at := 4 * lang.meta.size(usize);
+protect_at := 4 * lang.meta.size(usize) + 4;
+
+/// What `VirtualQuery` wrote to `info`, which must hold at least `protect_at + 4` bytes;
+/// `.unmapped` where it found no page of the process's own there (`MEM_FREE`).
+region_of := (info: &[u8]) -> Result(std.os.pages.Region, std.os.Error) {
+    if u32.from_le(info[state_at..]) == free { return .err(.unmapped); }
+    .ok(.{
+        .base = usize.from_le(info[0..]),
+        .bytes = usize.from_le(info[region_size_at..]),
+        .access = access_of(u32.from_le(info[protect_at..])),
+    })
+};

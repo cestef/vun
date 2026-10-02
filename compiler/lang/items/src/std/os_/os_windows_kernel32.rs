@@ -49,6 +49,12 @@ pub const virtual_alloc: Item = Item::new(
 pub const virtual_free: Item = Item::new(
     &["std", "os", "windows", "kernel32", "virtual_free"],
 );
+pub const virtual_protect: Item = Item::new(
+    &["std", "os", "windows", "kernel32", "virtual_protect"],
+);
+pub const virtual_query: Item = Item::new(
+    &["std", "os", "windows", "kernel32", "virtual_query"],
+);
 pub const load_library: Item = Item::new(
     &["std", "os", "windows", "kernel32", "load_library"],
 );

@@ -288,4 +288,5 @@ start := ($main: std.os.Main) -> type { struct {
         struct {}
     };
     threads := std.os.linux.kernel.thread.exports;
+    pages := std.os.linux.kernel.pages.exports;
 } };

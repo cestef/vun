@@ -17,6 +17,8 @@ exit: unsafe (status: i32) -> lang.never = _;
 mmap: unsafe (address: usize, bytes: usize, protection: i32, flags: i32, fd: i32, offset: isize) -> usize = _;
 #[link.symbol("munmap"), abi.c]
 munmap: unsafe (address: usize, bytes: usize) -> i32 = _;
+#[link.symbol("mprotect"), abi.c]
+mprotect: unsafe (address: usize, bytes: usize, protection: i32) -> i32 = _;
 #[link.symbol("clock_gettime"), abi.c]
 clock_gettime: unsafe (clock: i32, at: *std.os.Timespec) -> i32 = _;
 #[link.symbol("nanosleep"), abi.c]
@@ -284,4 +286,5 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     library := std.os.libc.library.exports;
+    pages := std.os.libc.pages.exports;
 } };

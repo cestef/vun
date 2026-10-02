@@ -17,6 +17,12 @@ pub const open_file: Item = Item::new(
 pub const close: Item = Item::new(&["std", "os", "windows", "services", "close"]);
 pub const now: Item = Item::new(&["std", "os", "windows", "services", "now"]);
 pub const pause: Item = Item::new(&["std", "os", "windows", "services", "pause"]);
+pub const protect_pages: Item = Item::new(
+    &["std", "os", "windows", "services", "protect_pages"],
+);
+pub const query_pages: Item = Item::new(
+    &["std", "os", "windows", "services", "query_pages"],
+);
 /// A program runs one thread, which nothing interrupts.
 pub const enter: Item = Item::new(&["std", "os", "windows", "services", "enter"]);
 pub const leave: Item = Item::new(&["std", "os", "windows", "services", "leave"]);

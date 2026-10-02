@@ -35,6 +35,7 @@ mod mir;
 mod mutation;
 mod namespaces;
 mod narrowing;
+mod pages;
 mod patterns;
 mod persist;
 mod places;

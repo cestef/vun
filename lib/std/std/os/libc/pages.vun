@@ -1,0 +1,26 @@
+//! `std.os.pages`'s exports for a runtime on top of the C library: `mprotect`, and a query of
+//! `/proc/self/maps` where the system is Linux's, which gives a process no other way to its own.
+
+/// The exports, which a runtime holds: `pages := std.os.libc.pages.exports`.
+exports := struct {
+    /// `PROT_READ`, `PROT_WRITE` and `PROT_EXEC` are the same number on every system here.
+    #[link.export(std.os.pages.symbols.protect)]
+    protect := unsafe (
+        address: usize, bytes: usize, access: std.os.pages.Access
+    ) -> Result((), std.os.Error) {
+        bits := std.os.linux.pages.of_access(access);
+        at := unsafe std.os.libc.mprotect(address, bytes, bits.to(i32)).to(isize);
+        std.os.libc.outcome(at)?;
+        .ok(())
+    };
+
+    /// `/proc/self/maps` is Linux's; macOS gives a process no way to read its own map.
+    #[link.export(std.os.pages.symbols.query)]
+    query := (address: usize) -> Result(std.os.pages.Region, std.os.Error) {
+        $if lang.target.current.os == .linux {
+            std.os.linux.pages.query(address)
+        } else {
+            .err(.unsupported)
+        }
+    };
+};

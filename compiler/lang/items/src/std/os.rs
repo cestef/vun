@@ -18,6 +18,8 @@ pub const linux: Item = Item::new(&["std", "os", "linux"]);
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
 /// The namespace `std.os.memory`.
 pub const memory: Item = Item::new(&["std", "os", "memory"]);
+/// The namespace `std.os.pages`.
+pub const pages: Item = Item::new(&["std", "os", "pages"]);
 /// The namespace `std.os.thread`.
 pub const thread: Item = Item::new(&["std", "os", "thread"]);
 /// The namespace `std.os.wasi`.

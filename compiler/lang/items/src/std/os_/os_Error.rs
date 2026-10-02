@@ -28,4 +28,6 @@ pub const ended: Item = Item::new(&["std", "os", "Error", "ended"]);
 pub const unsupported: Item = Item::new(&["std", "os", "Error", "unsupported"]);
 /// A library the loader found none of, or could not load, or a name it holds none of.
 pub const unresolved: Item = Item::new(&["std", "os", "Error", "unresolved"]);
+/// No page of the process's own address space at the address asked of `std.os.pages`.
+pub const unmapped: Item = Item::new(&["std", "os", "Error", "unmapped"]);
 pub const number: Item = Item::new(&["std", "os", "Error", "number"]);
