@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use vun_bytes::{In, Truncated};
+use vun_bytes::{Copies, In, NAME_MAX, Overspent, Truncated};
 
 use crate::{Image, Machine, Section, SectionFlags};
 
@@ -20,6 +20,15 @@ pub enum Malformed {
     Magic(u16),
     /// A table lies where no section is loaded.
     Rva(u64),
+    /// An address, or the end of a section, is past the end of the address space.
+    Address(u64),
+    /// A name loaded at this offset has no end within the longest the readers copy.
+    Name(u64),
+    /// The file has more sections than the format allows.
+    Sections(u16),
+    /// The file shares bytes a well-formed one holds once each: sections over the same bytes of
+    /// the file, or imports in the same slots.
+    Overlap,
 }
 
 impl fmt::Display for Malformed {
@@ -30,6 +39,10 @@ impl fmt::Display for Malformed {
             Self::Signature => f.write_str("the file has no PE signature where its DOS header points"),
             Self::Magic(magic) => write!(f, "{magic:#x} is no optional header magic"),
             Self::Rva(rva) => write!(f, "{rva:#x} is loaded in no section"),
+            Self::Address(rva) => write!(f, "{rva:#x} is past the end of the address space"),
+            Self::Name(rva) => write!(f, "the name at {rva:#x} has no end within {NAME_MAX} bytes"),
+            Self::Sections(count) => write!(f, "{count} sections are more than {SECTIONS_MAX}"),
+            Self::Overlap => f.write_str("the file shares bytes between sections or import slots"),
         }
     }
 }
@@ -46,8 +59,10 @@ const PE32: u16 = 0x010b;
 const PE32_PLUS: u16 = 0x020b;
 /// `IMAGE_FILE_DLL`, among the file header's characteristics.
 const DLL: u16 = 0x2000;
-/// Bytes of a section header, and of the file header after the signature.
+/// Bytes of a section header.
 const SECTION_HEADER: u64 = 40;
+/// The most sections a file has: the loader refuses more.
+const SECTIONS_MAX: u16 = 96;
 
 /// The data directories of an image: the tables its optional header points to.
 #[derive(Clone, Copy, Debug, Default)]
@@ -74,6 +89,9 @@ impl Image {
         }
         let machine = Machine::of(input.u16()?);
         let count = input.u16()?;
+        if count > SECTIONS_MAX {
+            return Err(Malformed::Sections(count));
+        }
         // The time stamp, and the symbol table, which a program has no use of.
         input.take(12)?;
         let optional_size = u64::from(input.u16()?);
@@ -86,41 +104,56 @@ impl Image {
             library,
             wide,
             base,
-            entry: if entry == 0 { 0 } else { base + entry },
+            entry: 0,
             sections: Vec::new(),
             exports: Vec::new(),
             imports: Vec::new(),
         };
+        image.entry = if entry == 0 { 0 } else { image.address(entry)? };
+        let mut copies = Copies::of(bytes.len() as u64);
         for _ in 0..count {
-            image.sections.push(section(bytes, &mut input, base)?);
+            image.sections.push(section(bytes, &mut input, base, &mut copies)?);
         }
         image.exports = image.exports_at(directories.export)?;
         image.imports = image.imports_at(directories.import)?;
         Ok(image)
     }
 
-    /// The `n` bytes loaded at the offset `rva` of the image, which a section holds.
-    pub(crate) fn at_rva(&self, rva: u64, n: u64) -> Result<&[u8], Malformed> {
-        let address = self.base + rva;
+    /// Where the offset `rva` of the image is loaded.
+    pub(crate) fn address(&self, rva: u64) -> Result<u64, Malformed> {
+        self.base.checked_add(rva).ok_or(Malformed::Address(rva))
+    }
+
+    /// The section holding the offset `rva` of the image, and how far into it that is.
+    fn loaded(&self, rva: u64) -> Result<(&Section, u64), Malformed> {
+        let address = self.address(rva)?;
         let section = self
             .sections
             .iter()
-            .find(|s| (s.address..s.address + s.size).contains(&address))
+            .find(|s| address >= s.address && address - s.address < s.size)
             .ok_or(Malformed::Rva(rva))?;
-        let from = usize::try_from(address - section.address).map_err(|_| Malformed::Rva(rva))?;
-        let to = usize::try_from(address - section.address + n).map_err(|_| Malformed::Rva(rva))?;
+        Ok((section, address - section.address))
+    }
+
+    /// The `n` bytes loaded at the offset `rva` of the image, which a section holds.
+    pub(crate) fn at_rva(&self, rva: u64, n: u64) -> Result<&[u8], Malformed> {
+        // A table of nothing is where nothing says: a library exporting by ordinal alone has no
+        // names, and its table of them may be anywhere, or nowhere.
+        if n == 0 {
+            return Ok(&[]);
+        }
+        let (section, from) = self.loaded(rva)?;
+        let bounds = usize::try_from(from)
+            .ok()
+            .zip(usize::try_from(from.checked_add(n).ok_or(Malformed::Rva(rva))?).ok());
+        let (from, to) = bounds.ok_or(Malformed::Rva(rva))?;
         section.data.get(from..to).ok_or(Malformed::Rva(rva))
     }
 
-    /// The zero-ended string loaded at the offset `rva`.
+    /// The zero-ended name loaded at the offset `rva`.
     pub(crate) fn string_at_rva(&self, rva: u64) -> Result<&[u8], Malformed> {
-        let address = self.base + rva;
-        let section = self
-            .sections
-            .iter()
-            .find(|s| (s.address..s.address + s.size).contains(&address))
-            .ok_or(Malformed::Rva(rva))?;
-        Ok(In::string(&section.data, address - section.address)?)
+        let (section, from) = self.loaded(rva)?;
+        In::name(&section.data, from).ok_or(Malformed::Name(rva))
     }
 }
 
@@ -153,7 +186,7 @@ fn optional_header(bytes: &[u8], at: u64) -> Result<(bool, u64, u64, Directories
 }
 
 /// The section header `input` is at, and the section it describes.
-fn section(bytes: &[u8], input: &mut In<'_>, base: u64) -> Result<Section, Malformed> {
+fn section(bytes: &[u8], input: &mut In<'_>, base: u64, copies: &mut Copies) -> Result<Section, Malformed> {
     let header = input.position();
     let raw_name = input.array::<8>()?;
     let size = u64::from(input.u32()?);
@@ -166,6 +199,19 @@ fn section(bytes: &[u8], input: &mut In<'_>, base: u64) -> Result<Section, Malfo
     let name = raw_name.iter().take_while(|&&b| b != 0).copied().collect();
     // What the file holds: at most the section's raw size, and no more than it is loaded as.
     let held = if size == 0 { raw_size } else { raw_size.min(size) };
-    let data = In::at(bytes, raw).take(held)?.to_vec();
-    Ok(Section { name, address: base + rva, size: size.max(held), data, flags })
+    let data = In::at(bytes, raw).take(held)?;
+    copies.spend(held)?;
+    // Every address in the section, and its end, is one.
+    let size = size.max(held);
+    let address = base
+        .checked_add(rva)
+        .filter(|address| address.checked_add(size).is_some())
+        .ok_or(Malformed::Address(rva))?;
+    Ok(Section { name, address, size, data: data.to_vec(), flags })
+}
+
+impl From<Overspent> for Malformed {
+    fn from(Overspent: Overspent) -> Self {
+        Self::Overlap
+    }
 }

@@ -154,3 +154,92 @@ fn bytes_that_are_no_pe_file_are_refused() {
     assert_eq!(Image::read(&bytes), Err(Malformed::Magic(0x050b)));
     assert!(matches!(Image::read(&image(false)[..0x300]), Err(Malformed::Truncated(_))));
 }
+
+/// Where the fixture's headers keep what the tests change: the file header's count of sections,
+/// the optional header's base, the import directory, and the two section headers (a section
+/// header's virtual size, raw size and raw offset are its 8th, 16th and 20th bytes).
+const SECTION_COUNT: usize = 0x46;
+const BASE_AT: usize = 0x70;
+const IMPORT_DIRECTORY: usize = 0xd0;
+const TEXT_HEADER: usize = 0x148;
+const DATA_HEADER: usize = TEXT_HEADER + 40;
+
+fn put32(bytes: &mut [u8], at: usize, value: u32) {
+    put(bytes, at, &value.to_le_bytes());
+}
+
+#[test]
+fn a_library_exporting_by_ordinal_alone_has_no_names_to_find() {
+    let mut bytes = image(true);
+    // Its export directory counts no names, and says no place for the table of them or of their
+    // ordinals.
+    let directory = DATA_RAW as usize;
+    for at in [24, 32, 36] {
+        put32(&mut bytes, directory + at, 0);
+    }
+    let exports = Image::read(&bytes).unwrap().exports;
+    let names: Vec<_> = exports.iter().map(|e| (e.ordinal, e.name.clone())).collect();
+    assert_eq!(names, [(1, None), (2, None)]);
+}
+
+#[test]
+fn addresses_past_the_end_of_the_address_space_are_refused() {
+    let mut bytes = image(false);
+    put(&mut bytes, BASE_AT, &(u64::MAX - 0x10).to_le_bytes());
+    assert_eq!(Image::read(&bytes), Err(Malformed::Address(u64::from(TEXT_RVA))));
+    // A section that starts inside the space and ends past it.
+    let mut bytes = image(false);
+    put(&mut bytes, BASE_AT, &(u64::MAX - 0x1100).to_le_bytes());
+    put32(&mut bytes, 0x58 + 16, 0);
+    assert_eq!(Image::read(&bytes), Err(Malformed::Address(u64::from(DATA_RVA))));
+}
+
+#[test]
+fn a_file_of_more_sections_than_the_loader_takes_is_refused() {
+    let mut bytes = image(false);
+    put(&mut bytes, SECTION_COUNT, &97u16.to_le_bytes());
+    assert_eq!(Image::read(&bytes), Err(Malformed::Sections(97)));
+}
+
+#[test]
+fn sections_over_the_same_bytes_of_the_file_are_refused() {
+    let mut bytes = image(false);
+    // The code is the whole file: it and the data hold more than the file does.
+    let length = u32::try_from(bytes.len()).unwrap();
+    put32(&mut bytes, TEXT_HEADER + 8, length);
+    put32(&mut bytes, TEXT_HEADER + 16, length);
+    put32(&mut bytes, TEXT_HEADER + 20, 0);
+    assert_eq!(Image::read(&bytes), Err(Malformed::Overlap));
+}
+
+#[test]
+fn a_name_with_no_end_is_refused() {
+    let mut bytes = image(false);
+    // `main` is followed by letters to the end of the section.
+    let name = DATA_RAW as usize + 0x60;
+    let end = bytes.len();
+    bytes[name..end].fill(b'a');
+    assert_eq!(Image::read(&bytes), Err(Malformed::Name(u64::from(DATA_RVA) + 0x60)));
+}
+
+#[test]
+fn imports_sharing_their_slots_are_refused() {
+    let mut bytes = image(false);
+    // Grow the data section by 0xe00 bytes of zeros; in them, twenty descriptors with the same
+    // table of a hundred ordinals and the same slots, then the zero descriptor.
+    bytes.resize(bytes.len() + 0xe00, 0);
+    put32(&mut bytes, DATA_HEADER + 8, 0x1000);
+    put32(&mut bytes, DATA_HEADER + 16, 0x1000);
+    let data = DATA_RAW as usize;
+    for k in 0..20 {
+        let descriptor = data + 0x200 + 20 * k;
+        put32(&mut bytes, descriptor, DATA_RVA + 0x400);
+        put32(&mut bytes, descriptor + 12, DATA_RVA + 0x110);
+        put32(&mut bytes, descriptor + 16, DATA_RVA + 0x800);
+    }
+    for n in 0..100 {
+        put(&mut bytes, data + 0x400 + 8 * n, &((1u64 << 63) | 7).to_le_bytes());
+    }
+    put32(&mut bytes, IMPORT_DIRECTORY, DATA_RVA + 0x200);
+    assert_eq!(Image::read(&bytes), Err(Malformed::Overlap));
+}

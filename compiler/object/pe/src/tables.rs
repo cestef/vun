@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use vun_bytes::In;
+use vun_bytes::{Copies, In};
 
 use crate::headers::Malformed;
 use crate::{Export, Image, Import};
@@ -41,13 +41,17 @@ impl Image {
             if target == 0 {
                 continue;
             }
+            let ordinal = u32::try_from(index)
+                .ok()
+                .and_then(|index| ordinal_base.checked_add(index))
+                .ok_or(Malformed::Address(target))?;
             // An address inside the directory names the function that stands for this one.
             let forwarder =
                 (rva..rva + size).contains(&target).then(|| self.string_at_rva(target)).transpose()?;
             exports.push(Export {
                 name: u16::try_from(index).ok().and_then(|i| by_ordinal.get(&i).cloned()),
-                ordinal: ordinal_base + u32::try_from(index).map_err(|_| Malformed::Rva(rva))?,
-                address: self.base + target,
+                ordinal,
+                address: self.address(target)?,
                 forwarder: forwarder.map(<[u8]>::to_vec),
             });
         }
@@ -61,6 +65,8 @@ impl Image {
         }
         let (word, ordinal_bit) = if self.wide { (8, ORDINAL_64) } else { (4, ORDINAL_32) };
         let mut imports = Vec::new();
+        // A slot is a place of the image of its own, so there are no more than it holds words.
+        let mut slots_left = Copies::of(self.sections.iter().map(|s| s.data.len() as u64).sum());
         for k in 0.. {
             let mut descriptor = In::at(self.at_rva(rva + k * IMPORT_DESCRIPTOR, IMPORT_DESCRIPTOR)?, 0);
             let lookup = u64::from(descriptor.u32()?);
@@ -79,7 +85,8 @@ impl Image {
                 if value == 0 {
                     break;
                 }
-                let slot = self.base + slots + i * word;
+                slots_left.spend(word)?;
+                let slot = self.address(slots + i * word)?;
                 imports.push(if value & ordinal_bit != 0 {
                     Import {
                         library: library.clone(),
