@@ -2,17 +2,26 @@
 //! holds, each report at its lint's level, unless `#[lint.allow]` silences it.
 
 use vun_build::layout::MANIFEST;
-use vun_diag::{DiagId, Severity};
+use vun_diag::{DiagId, Severity, errors};
+use vun_sema::lint::{Level, LintLevels};
 
 use crate::common::Fixture;
 
 /// The id and severity of what checking `source`, the root file of a package `app`, reports.
 fn linted(name: &str, source: &str) -> Vec<(DiagId, Severity)> {
+    linted_at(name, source, &[])
+}
+
+/// The same, with the lint levels `levels` given on the command line.
+fn linted_at(name: &str, source: &str, levels: &[(&str, Level)]) -> Vec<(DiagId, Severity)> {
     let fx = Fixture::new(name);
     let app = Fixture::manifest("app", 1, "0.1.0");
     let dir = fx.write("", &app, source);
     let mut session = fx.session();
     let file = session.load(&Fixture::file(&dir, &app)).unwrap();
+    let package = session.file_ref(file).package;
+    let pairs = levels.iter().map(|(id, level)| (DiagId::owned((*id).to_owned()), *level));
+    session.add_lint_levels(LintLevels::of(pairs).scoped_to([package]));
     session.check(file);
     session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect()
 }
@@ -131,4 +140,80 @@ fn the_fix_allowing_a_lint_puts_its_attribute_on_the_line_above_at_the_indent() 
     let [edit] = allow.edits.as_slice() else { panic!("{allow:#?}") };
     assert!(edit.text.starts_with("#[lang.lint.allow(std.lints.naming.case"), "{}", edit.text);
     assert!(edit.text.ends_with("\n    "), "{:?}", edit.text);
+}
+
+#[test]
+fn a_local_allow_silences_the_lint_naming_it() {
+    let reported = linted(
+        "lints-local-allow",
+        "\
+keep := () -> u8 {
+    #[lang.lint.allow(std.lints.style.unused, \"read through the debugger\")]
+    x := 1;
+    y := 2;
+    0
+};
+",
+    );
+    let unused = (DiagId::new("std.lints.style.unused"), Severity::Warning);
+    assert_eq!(reported, [unused]);
+}
+
+#[test]
+fn the_command_line_sets_the_level_of_a_lint() {
+    let reported = linted_at(
+        "lints-cli-level",
+        "WriteAll := () -> u8 { 0 };\n",
+        &[("std.lints.naming.case", Level::Warn)],
+    );
+    assert_eq!(reported, [(CASE, Severity::Warning)]);
+}
+
+#[test]
+fn an_expected_lint_that_does_not_report_warns() {
+    let reported = linted_at(
+        "lints-expect-silent",
+        "f := () -> u8 { 0 };\n",
+        &[("std.lints.style.unused", Level::Expect)],
+    );
+    assert_eq!(reported, [(errors::LINT_UNFULFILLED, Severity::Warning)]);
+}
+
+#[test]
+fn an_expected_lint_that_reports_does_not_also_warn() {
+    let reported = linted_at(
+        "lints-expect-fired",
+        "f := () -> u8 { x := 1; 0 };\n",
+        &[("std.lints.style.unused", Level::Expect)],
+    );
+    assert_eq!(reported, [(DiagId::new("std.lints.style.unused"), Severity::Warning)]);
+}
+
+#[test]
+fn a_dependency_s_lint_reports_at_most_warn() {
+    let fx = Fixture::new("lints-dep-cap");
+    let lib = Fixture::manifest("lintlib", 2, "0.1.0");
+    fx.write(
+        "lintlib",
+        &lib,
+        "\
+#[lint.define]
+no_magic := lang.lint.Lint{
+    .group = .restriction,
+    .default = .some(.deny),
+    .decl = (cx: &mut lang.lint.Cx, d: lang.lint.Decl) {
+        cx.report(d.origin, \"no magic here\", &[]);
+    },
+};
+",
+    );
+    let mut app = Fixture::manifest("app", 1, "0.1.0");
+    app.deps.push(Fixture::local("lintlib", "../lintlib"));
+    let dir = fx.write("app", &app, "answer := 42;\n");
+    let mut session = fx.session();
+    let file = session.load(&Fixture::file(&dir, &app)).unwrap();
+    session.check(file);
+    let reported: Vec<_> =
+        session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect();
+    assert_eq!(reported, [(DiagId::new("lintlib.no_magic"), Severity::Warning)]);
 }

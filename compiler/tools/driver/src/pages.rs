@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use vun_diag::{DiagId, errors};
-use vun_sema::lint::CheckedLints;
+use vun_sema::lint::{Checked, CheckedLints};
 
 use crate::Session;
 
@@ -30,6 +30,16 @@ impl Session {
 
     /// The lints a loose file is checked with, each with its `doc` if it has one.
     pub fn lints(&mut self) -> Arc<Vec<(DiagId, Option<String>)>> {
+        Arc::new(self.checked_lints().lints.clone())
+    }
+
+    /// The groups the lints a loose file is checked with name, by id: `std.lints.naming`.
+    pub fn lint_groups(&mut self) -> Arc<Vec<DiagId>> {
+        Arc::new(self.checked_lints().groups.clone())
+    }
+
+    /// The lints and groups a loose file is checked with.
+    fn checked_lints(&mut self) -> Arc<Checked> {
         let loose = self.loose();
         let package = self.publish(loose);
         self.db.get::<CheckedLints>(&package)

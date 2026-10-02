@@ -11,6 +11,7 @@ use vun_items::lang;
 use vun_primitives::Primitive;
 use vun_primitives::lint::Lint;
 use vun_query::{Cx, Query};
+use vun_sema_ty::Value;
 use vun_sema_ty::item::DeclRef;
 
 use crate::decl::DeclValue;
@@ -46,13 +47,22 @@ impl Query for DefinedLints {
 }
 
 /// The lints a package is checked with, its own and those of the packages it depends on: each
-/// lint's id, and its `doc` if it has one.
+/// lint's id and its `doc` if it has one, and the id of each group they name.
 pub struct CheckedLints;
+
+/// What checking a package is configured by: the lints it sees, and their groups.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Checked {
+    /// Each lint's id, with its `doc` if it has one.
+    pub lints: Vec<(DiagId, Option<String>)>,
+    /// Each group's id, `std.lints.<group>`.
+    pub groups: Vec<DiagId>,
+}
 
 impl Query for CheckedLints {
     const NAME: &'static str = "checked_lints";
     type Key = PackageId;
-    type Value = Arc<Vec<(DiagId, Option<String>)>>;
+    type Value = Arc<Checked>;
 
     fn compute(cx: &Cx<'_>, package: &PackageId) -> Self::Value {
         let data = cx.get::<Package>(package);
@@ -61,12 +71,22 @@ impl Query for CheckedLints {
         packages.sort();
         packages.dedup();
         let defined = packages.iter().flat_map(|p| cx.get::<DefinedLints>(p).as_ref().clone());
-        let lints = defined.filter_map(|decl| {
-            let id = super::Lint::id_of(&super::Lint::path(cx, &decl)?);
+        let mut lints = Vec::new();
+        let mut groups = Vec::new();
+        for decl in defined {
+            let Some(id) = super::Lint::path(cx, &decl).map(|path| super::Lint::id_of(&path)) else {
+                continue;
+            };
             let value = cx.get::<DeclValue>(&decl).ok();
             let doc = value.as_ref().and_then(|v| v.field(lang::lint_Lint::doc)?.text());
-            Some((id, doc))
-        });
-        Arc::new(lints.collect())
+            if let Some(Value::Name(group)) = value.as_ref().and_then(|v| v.field(lang::lint_Lint::group)) {
+                let group = super::Lint::group_id(*group);
+                if !groups.contains(&group) {
+                    groups.push(group);
+                }
+            }
+            lints.push((id, doc));
+        }
+        Arc::new(Checked { lints, groups })
     }
 }

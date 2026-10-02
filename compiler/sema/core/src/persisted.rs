@@ -15,7 +15,7 @@ use crate::fuel::Callee;
 use crate::kinds::Kinds;
 use crate::layout::{Exists, Shapes};
 use crate::link::Links;
-use crate::lint::{DefinedLints, Linted};
+use crate::lint::{DefinedLints, LintLevelsOf, Linted};
 use crate::member::{MemberType, MemberValue, Members};
 use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
@@ -32,6 +32,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Chosen>,
     Db::persist::<Checked>,
     Db::persist::<Linted>,
+    Db::trace::<LintLevelsOf>,
     Db::persist::<DefinedLints>,
     Db::persist::<Planned>,
     Db::persist::<Runner>,

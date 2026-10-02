@@ -26,3 +26,21 @@ fn dump_cst_prints_the_tree() {
     assert_eq!(outcome, Outcome::Success);
     assert!(String::from_utf8(out).unwrap().starts_with("File Eof 8..8"));
 }
+
+/// `vun check <file> --lint ...`, its outcome.
+fn checked(path: &std::path::Path, lint: &str) -> Outcome {
+    let argv = ["check", path.to_str().unwrap(), "--lint", lint].map(str::to_owned);
+    let (mut session, mut out, mut err) = (Session::new(), Vec::new(), Vec::new());
+    PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut out, &mut err)).unwrap()
+}
+
+#[test]
+fn the_command_line_sets_a_lint_level() {
+    let dir = Scratch::new("lint-level");
+    let path = dir.write("app.vun", "WriteAll := () -> u8 { 0 };\n");
+    // `naming.case` is `deny` by default, so lowering it to `warn` lets the file pass.
+    assert_eq!(checked(&path, "std.lints.naming.case=warn"), Outcome::Success);
+    // A name matching no lint or group, and a level that is none of `lang.lint.Level`'s.
+    assert_eq!(checked(&path, "std.lints.naming.kase=warn"), Outcome::Failure);
+    assert_eq!(checked(&path, "std.lints.naming.case=war"), Outcome::Failure);
+}

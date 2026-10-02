@@ -14,6 +14,7 @@ pub mod errors_int;
 pub mod errors_io;
 pub mod errors_layout;
 pub mod errors_link;
+pub mod errors_lint;
 pub mod errors_manifest;
 pub mod errors_meta;
 pub mod errors_names;

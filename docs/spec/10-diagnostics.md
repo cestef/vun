@@ -258,7 +258,9 @@ raw_mmio := lang.lint.Lint{
   calls, where it is written); a check left at its default (`lang.lint.unchecked`) is not run. The
   compiler walks each file once and runs every check on every node of its kind. A function type's
   parameters are no locals, and the binders of an or-pattern's alternatives after the first are
-  the first's (or names nothing can read), so each local is one node.
+  the first's (or names nothing can read), so each local is one node. An attribute allowing a
+  lint may be written on a local's own declaration, silencing the lints of that local and of the
+  calls in its value, as on a declaration.
 - Every lint report notes the level it reports at and proposes, as a placeholder fix, the
   attribute allowing it on the declaration around (`#[lang.lint.allow(lint, "why it is allowed")]`),
   whose reason its author writes.
@@ -277,8 +279,9 @@ raw_mmio := lang.lint.Lint{
 A group is a namespace of `std.lints` (`std.lints.pedantic`), which configuring names and which
 declares its default `level`; a library's group is a namespace of its own.
 
-Levels: `allow`, `warn`, `deny`, `forbid` (cannot be lowered below), `expect` (warns if the lint does
-not fire). Every override takes a reason.
+Levels: `allow`, `warn`, `deny`, `forbid` (cannot be lowered below), `expect` (warns when the lint
+fires and, as much, when it does not report in a file it is checked with). Every override takes a
+reason.
 
 | Group | Default |
 |-------|---------|
@@ -302,12 +305,20 @@ b.lints(.{
     .{ mydrivers.lints.raw_mmio, .deny },
 });
 
-// in source: on a declaration, a file (//! position) or a directory's own file
+// in source: on a declaration, a field, a local or an expression, a file (//! position) or a
+// directory's own file
 #[lint.allow(std.lints.naming.case, "mirrors the vendor register names")]
 ```
 
+```console
+$ vun check . --lint std.lints.naming.case=warn --lint std.lints.style.unused=expect
+```
+
 - The command line overrides the build; the build overrides package defaults; `forbid` is final.
-- Dependencies' lints are capped at `warn` when building a dependent.
+  The command line configures the code the command names, never the libraries it reaches, and a
+  name matching no lint or group is reported.
+- A lint a dependency defines, `std` aside, reports at most `warn` while a dependent is built,
+  unless the dependent's build or the command line raises it.
 
 ## 5. Conventions
 

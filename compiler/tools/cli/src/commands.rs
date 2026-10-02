@@ -108,6 +108,7 @@ pub(crate) const COMPILE: OptionSet = OptionSet {
         vun_driver::target::TARGET,
         checks::CHECKS,
         cover::COVER,
+        vun_driver::lints::LINTS,
         trace::TRACE,
         codegen::RELEASE,
         formats::DIAGNOSTICS,
@@ -148,6 +149,7 @@ fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Dia
     codegen::configure(session, args);
     checks::configure(session, args)?;
     cover::configure(session, args);
+    vun_driver::lints::configure(session, args)?;
     trace::configure(session, args);
     vun_driver::target::configure(session, args)
 }

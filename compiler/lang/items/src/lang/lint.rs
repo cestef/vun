@@ -10,8 +10,8 @@ use crate::Item;
 pub const Level: Item = Item::new(&["lang", "lint", "Level"]);
 /// `#[lint.define]`: the declaration is a lint, which the files that see it are checked with.
 pub const define: Item = Item::new(&["lang", "lint", "define"]);
-/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration; every override
-/// says why.
+/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration, field or local;
+/// every override says why.
 pub const allow: Item = Item::new(&["lang", "lint", "allow"]);
 /// What a declaration binds, as compile-time evaluation knows it (spec 10, section 5).
 pub const Binds: Item = Item::new(&["lang", "lint", "Binds"]);

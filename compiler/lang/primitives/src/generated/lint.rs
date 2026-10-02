@@ -5,8 +5,8 @@
 pub enum Lint {
     /// `#[lint.define]`: the declaration is a lint, which the files that see it are checked with.
     define,
-    /// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration; every override
-    /// says why.
+    /// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration, field or local;
+    /// every override says why.
     allow,
     /// The function a checked call calls.
     Callee,

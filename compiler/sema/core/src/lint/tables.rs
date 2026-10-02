@@ -5,8 +5,8 @@ use vun_items::{Item, lang};
 use vun_sema_ty::Value;
 
 /// A lint's level (`lang.lint.Level`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Level {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Level {
     Allow,
     Warn,
     Deny,
@@ -29,6 +29,33 @@ impl Level {
         match value {
             Value::Name(name) => Self::ALL.iter().find(|(item, _)| item.symbol() == *name).map(|&(_, l)| l),
             _ => variant(value, &Self::ALL),
+        }
+    }
+
+    /// The level the name `name` is, as [`Level::name`] spells it.
+    #[must_use]
+    pub fn of_name(name: &str) -> Option<Self> {
+        Self::ALL.iter().find(|(item, _)| item.name() == name).map(|&(_, level)| level)
+    }
+
+    /// Its name, the spelling [`Level::of_name`] reads.
+    #[must_use]
+    pub fn name(self) -> &'static str {
+        self.item().name()
+    }
+
+    /// Every name a level is written as, in the order of [`Level`].
+    pub fn names() -> impl Iterator<Item = &'static str> {
+        Self::ALL.iter().map(|(item, _)| item.name())
+    }
+
+    /// The level itself, or `warn` where it is `deny` or `forbid`: how a dependency's lint
+    /// reports while a dependent is built (spec 10, section 4).
+    #[must_use]
+    pub fn capped(self) -> Self {
+        match self {
+            Self::Deny | Self::Forbid => Self::Warn,
+            other => other,
         }
     }
 

@@ -25,6 +25,12 @@ attr := struct {
     misplaced := diag.Diag{};
 };
 
+/// Lints and their configuration (spec 10, section 4).
+lint := struct {
+    unknown := diag.Diag{};
+    unfulfilled := diag.Diag{};
+};
+
 /// Range integers (spec 04).
 int := struct {
     does_not_fit := diag.Diag{};

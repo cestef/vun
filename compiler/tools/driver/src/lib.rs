@@ -14,6 +14,7 @@ pub mod editor;
 pub mod fix;
 pub mod formats;
 pub mod install;
+pub mod lints;
 pub mod packages;
 mod pages;
 mod plan;

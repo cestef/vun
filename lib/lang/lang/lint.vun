@@ -20,8 +20,8 @@ Level := enum {
 
 /// `#[lint.define]`: the declaration is a lint, which the files that see it are checked with.
 define: Attribute(&[Place.decls]) = _;
-/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration; every override
-/// says why.
+/// `#[lint.allow(lint, reason)]`: `lint` does not report inside the declaration, field or local;
+/// every override says why.
 allow: ($lint: Lint, $reason: &[u8]) -> Attribute(&[Place.decls, Place.fields]) = _;
 
 /// What a declaration binds, as compile-time evaluation knows it (spec 10, section 5).

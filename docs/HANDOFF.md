@@ -1,27 +1,56 @@
 # Handoff
 
-State of Vun as of 2026-09-30, for the next agent: what is open and what comes next. Nothing here
+State of Vun as of 2026-10-02, for the next agent: what is open and what comes next. Nothing here
 is durable; conventions and how-tos live in [`dev/`](dev/workflow.md), rules in
 [`spec/`](spec/00-principles.md), history in `jj log` and [`decisions.md`](spec/decisions.md).
 Read `CLAUDE.md` and [`dev/workflow.md`](dev/workflow.md) first.
 
 ## State
 
-Everything is committed in the main chain. 693 tests pass; clippy,
-`lines` and `layers` are clean; the corpus has 312 passing programs and 2 planned, and LIR
-lowers every function the corpus reaches.
+Everything is committed in the main chain. 813 tests pass; clippy,
+`lines` and `layers` are clean; the corpus has 340 passing programs and 2 planned, and LIR
+lowers every function the corpus reaches (3412 of 3412).
 
 Built: the front end (a parser reading the productions of `nodes.vun`), packages and the store,
 the persisted parallel query engine, sema, MIR and its checks, LIR with legalization, the C and
-wasm backends, the native backend for x86-64, arm64 and Thumb-2, ELF and Mach-O objects, the
-`gnu`, `mold` and `wild` linkers, the toolchain file, static Linux runtimes calling the kernel
-(threads, storage per thread, files, clocks), backtraces, lints (`lang.lint.Lint`,
-`std.lints.naming.case`), inline assembly as calls of `lang.arch` declarations, editor packages
-generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS Code) and the language server.
-Programs run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
-wasi.wasm32.
+wasm backends, the native backend for x86-64, arm64 and Thumb-2, ELF, PE and Mach-O objects with
+their readers (`vun-elf`, `vun-pe`) and the disassembler (`vun-disasm`) behind `vun debug disasm`,
+the `gnu`, `mold` and `wild` linkers and lld's COFF flavor (`lld-link`), the toolchain file,
+static Linux runtimes calling the kernel (threads, storage per thread, files, clocks) and the C
+library's runtime, a Windows runtime (`std.os.windows`) calling `kernel32` itself, dynamic
+library loading (`std.os.library`), the integers' byte and bit methods, `std.re` and pages over a
+process's own memory (`std.os.pages`), backtraces,
+lints (`lang.lint.Lint`, `std.lints.naming.case`), inline assembly as calls of `lang.arch`
+declarations, editor packages generated from the grammar (tree-sitter, Helix, Neovim, Zed, VS
+Code) and the language server. A function or type names an architecture's calling convention
+(`abi.sysv`, `abi.win64`, `abi.cdecl`, `abi.stdcall`, `abi.fastcall`, `abi.thiscall`). Programs
+run through either backend on linux.x86_64, linux.arm64, linux.arm (through `qemu`) and
+wasi.wasm32, and through the C backend on windows.x86_64.msvc and windows.x86.msvc (under Wine).
 
-Last landed: the compiler runs under WASI (389), and the playground runs it in the browser.
+Last landed: the lint levels of a build are configurable from the command line (`--lint
+lint=level`, `LintLevelsOf`, scoped to the packages a command names; a name matching no lint or
+group is `lint.unknown`, a level none of `lang.lint.Level`'s is `cli.invalid_value`), a lint at
+`expect` warns when it does not report (`lint.unfulfilled`), a dependency's lint reports at most
+`warn` while a dependent is built, and `#[lint.allow]` may be written on a local binding or an
+expression as on a declaration (decisions 421 to 424). Before that: Windows is a target, two of
+them (411 to 418). `windows.x86_64.msvc` and
+`windows.x86.msvc` build through the C backend with clang for `x86_64-pc-windows-msvc` and
+`i686-pc-windows-msvc`, linked by `lld-link` against a sysroot's import libraries, programs named
+`.exe`; `std.os.windows` runs one thread with no C runtime, calling `kernel32` itself (handles
+for file numbers, UTF-16 paths and command line, the performance counter and system time,
+`__chkstk`, `_fltused`, and the string functions a C compiler assumes), and programs run under
+Wine where the machine's tools file names it. A function or type carries its architecture's
+calling convention (`abi.sysv`, `abi.win64`, `abi.cdecl`, `abi.stdcall`, `abi.fastcall`,
+`abi.thiscall`), which the C backend writes as GNU attributes; Microsoft x64 is data
+(`Rules::WIN64`), its scalar placements checked against clang, and the native backend does not
+build it yet. A program loads libraries at run time (`System.load`, `std.os.library.Library`)
+through `dlopen`, `dlsym` and `dlclose` or `LoadLibraryW`, `GetProcAddress` and `FreeLibrary`;
+a Windows library is a DLL naming its exports. `vun debug disasm` lists an ELF or PE file's code
+as instructions labelled by its symbols (`vun-disasm`, `vun-pe`), and `fuzz/` has the targets
+`elf`, `pe` and `disasm`. A call of a function of `$` parameters alone folds by its value like a
+primitive's (decision 407), and the integers gained byte and bit methods and `std.re` byte
+patterns with `hexdump`. Before that: the compiler runs under WASI (389), and the playground runs
+it in the browser.
 `vun` builds for `wasm32-wasip1` (16 MB, 2.6 MB with brotli): the user's directories are
 `vun_build::dirs::Dirs` (none there), a process is `vun_fs::PROCESS` (random there), and the CLI
 leaves out `vun ffi` and mimalloc there. `site/play.html` runs `vun build --format json` in a worker through
@@ -142,7 +171,16 @@ not typed abstractly), 384 (benchmarks, `vun bench`), 386 (simulations; shrinkin
 smaller cases), 387 (coverage, `--cover`, `vun fuzz`) and 388 (the wasm linker), 398 (`{?}`, `{x}`, `{b}`, `Debug`), 399 (a name a spread selects is a
 member), 400 (an array has its slice's impls), 401 (`impl I for T { }`), 402 (aliases for delegation; interface declarations are literals), 403 (a literal takes
 its parameters from its annotation), 404 (an impl member takes them from its requirement) and 405 (a closure
-argument takes them from the call).
+argument takes them from the call), 406 (a call checks the bounds of its `$` parameters), 407 (a
+call of a function of `$` parameters alone folds by its value; the integers' byte and bit
+methods), 408 (`vun debug disasm` over ELF), 409 (a splice with no value at compile time runs
+where it is spliced), 410 (a coroutine member's result from its requirement's interface), 411 to
+413 (Microsoft x64 as data, `windows.x86_64.msvc`, PE disassembly), 414 (`std.re`), 415 (a DLL
+naming its exports), 416 (`System.load`), 417 (calling-convention markers), 418
+(`windows.x86.msvc`), 419 (lowering reaches every function the corpus reaches), 420 (the
+readers' bounds, the command line's limits, a repeat's run-time length), 421 (the command line
+sets lint levels), 422 (`expect` reports a lint that does not fire), 423 (a dependency's lint is
+capped at `warn`) and 424 (`#[lint.allow]` on a local or an expression).
 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
@@ -162,6 +200,12 @@ argument takes them from the call).
   closure is typed (the accumulator of a `fold` nothing expects a result of).
 - A `$`-generic C import (a pack inferred per call) is typed nowhere yet: such calls stay
   silently untyped (decisions 285, 286).
+- Windows programs run only through the C backend, under Wine: the native backend builds neither
+  Windows target (no COFF code path, no `Rules::WIN64` in `Rules::of`), and a DLL is checked by
+  linking one, never by loading one built here.
+- `vun debug disasm` reads a program's code but names no data; the ELF and PE readers are fuzzed
+  (`elf`, `pe`, `disasm`) for bounds, and their agreement with llvm tools is checked by the
+  driver's tests alone, not per instruction form.
 - ABI: legalize splits a soft `f64` by `Rules::fits`; `Rules` should be declared in `lang` and
   generated; no target check yet that the convention's word matches `pointer_bits`.
 - Backtraces: no call line per frame (native marks each call's origin; C cannot say where a
@@ -236,8 +280,11 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 
 The website: `site/` (Vite, TypeScript) holds the landing page (the hero, the brand's motion
 ported from `assets/motion`, the install command) and the playground; the spec reader was
-removed at the owner's request. Nothing deploys it yet; a host must send the headers of
-`site/public/_headers`, or the editor has no language server. Open in the playground: a program that never ends runs
+removed at the owner's request; the playground now carries a guided tour in lessons
+(`site/lessons/`, checked by `pnpm check:lessons`). `.github/workflows/site.yml` deploys it to
+GitHub Pages when `main` changes what it is made of (a pull request only builds); a host must
+still send the headers of `site/public/_headers`, or the editor has no language server. Open in
+the playground: a program that never ends runs
 until stopped (the stop button ends the worker), and threads, which WASI lacks, are not
 offered. The wasm backend still refuses inline assembly (no `lang.arch.wasm32`
 table), naked functions and addresses past a function's start, and reports no frame sizes or
@@ -271,14 +318,13 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
    sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
+   Windows: `windows.x86_64.msvc` and `windows.x86.msvc` run through the C backend under Wine;
+   the native backend builds neither and needs a COFF code path and `Rules::WIN64` in `Rules::of`.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
-4. Corpus gaps (`cargo xtask corpus`, 3 planned): `std.Dyn` (`meta/derive.vun` waits for it and
-   an `Encoder`), `std.meta.decls` of a struct type (namespaces only for now),
-   `mem.copy` (and `node`, `Packet`, `crc32` stand-ins). Lints: level `expect` shows as `warn` and never reports
-   that a lint stayed silent; the command line sets no levels yet, and dependencies' lints are
-   not capped at `warn` when building a dependent (the build's levels apply to its own
-   package); `#[lint.allow]` applies to declarations, not to locals; the grammar generator still reads a PascalCase table
+4. Corpus gaps (`cargo xtask corpus`, 2 planned): `std.Dyn` (`corpus/planned/types/dynamic.vun`,
+   plus the `Encoder` `meta/derive.vun` waits for) and `mem.copy` (`corpus/planned/testing/tests.vun`,
+   with the `node`, `Packet`, `crc32` stand-ins). Lints: the grammar generator still reads a PascalCase table
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
    over `#[target.require]`. A trap in a `$` form inside a declaration's value is reported twice,

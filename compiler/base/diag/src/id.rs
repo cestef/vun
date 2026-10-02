@@ -24,6 +24,12 @@ impl DiagId {
         Self(Cow::Borrowed(path))
     }
 
+    /// An id built at run time, from a binding path read as text.
+    #[must_use]
+    pub fn owned(path: String) -> Self {
+        Self(Cow::Owned(path))
+    }
+
     /// The compiler error written `relative` to [`Self::COMPILER`], as annotations and
     /// displays name it: `int.does_not_fit`.
     #[must_use]

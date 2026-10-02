@@ -47,6 +47,9 @@ impl Inputs for Session {
     fn named(&mut self, args: &Args, step: Step, shell: &mut Shell<'_>) -> io::Result<Option<Named>> {
         let path = args.value(&PATH).map(Path::new);
         let Some(subject) = self.subject(path)? else { return Ok(None) };
+        if !self.resolve_lints(&subject) {
+            return Ok(None);
+        }
         let shown = path.map_or_else(|| subject.shown(), |p| p.display().to_string());
         let ready = self.ready(&subject.root(), Some(&Started { step, subject: shown.clone() }), shell);
         Ok(Some(Named { subject, shown, ready }))
