@@ -86,10 +86,7 @@ impl Printer<'_, '_, '_> {
                 self.left(result)?;
                 self.gap(result)?;
                 self.f.write_char('(')?;
-                if let Some(convention) = convention {
-                    self.convention(*convention)?;
-                    self.f.write_char(' ')?;
-                }
+                self.convention(*convention)?;
                 self.f.write_char('*')
             }
         }
@@ -201,27 +198,18 @@ impl Printer<'_, '_, '_> {
         })
     }
 
-    /// `__attribute__((stdcall))`: the calling convention as GNU C and Clang name it.
-    fn convention(&mut self, convention: Convention) -> fmt::Result {
-        self.f.write_str(match convention {
-            Convention::Sysv => "__attribute__((sysv_abi))",
-            Convention::Win64 => "__attribute__((ms_abi))",
-            Convention::Cdecl => "__attribute__((cdecl))",
-            Convention::Stdcall => "__attribute__((stdcall))",
-            Convention::Fastcall => "__attribute__((fastcall))",
-            Convention::Thiscall => "__attribute__((thiscall))",
-            other => {
-                unreachable!("no attribute names the convention {other:?}: the target's own is not written")
-            }
-        })
+    /// `__attribute__((stdcall)) `: the calling convention a function names, as GNU C and Clang
+    /// spell it, and a space; nothing where it names none, or the target's own.
+    fn convention(&mut self, convention: Option<Convention>) -> fmt::Result {
+        match convention.and_then(attribute) {
+            Some(name) => write!(self.f, "__attribute__(({name})) "),
+            None => Ok(()),
+        }
     }
 
     fn proto(&mut self, proto: &Proto) -> fmt::Result {
         self.storage(proto.storage)?;
-        if let Some(convention) = proto.convention {
-            self.convention(convention)?;
-            self.f.write_char(' ')?;
-        }
+        self.convention(proto.convention)?;
         self.decl(&Decl::new(proto.result.clone(), proto.name))?;
         self.declared(proto.params.iter(), Self::decl, proto.variadic)
     }
@@ -285,4 +273,24 @@ impl Printer<'_, '_, '_> {
             }
         }
     }
+}
+
+/// The attribute GNU C and Clang select a calling convention by. None for the conventions no
+/// function names, which are the target's own and need none.
+fn attribute(convention: Convention) -> Option<&'static str> {
+    Some(match convention {
+        Convention::Sysv => "sysv_abi",
+        Convention::Win64 => "ms_abi",
+        Convention::Cdecl => "cdecl",
+        Convention::Stdcall => "stdcall",
+        Convention::Fastcall => "fastcall",
+        Convention::Thiscall => "thiscall",
+        Convention::Aapcs64
+        | Convention::DarwinArm64
+        | Convention::Lp64d
+        | Convention::AapcsVfp
+        | Convention::Aapcs
+        | Convention::Ilp32
+        | Convention::Wasm32 => return None,
+    })
 }

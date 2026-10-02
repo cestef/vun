@@ -8,6 +8,7 @@ use vun_intern::Symbol;
 
 mod c;
 mod check;
+mod convention;
 mod floats;
 mod machine;
 mod name;
@@ -19,6 +20,7 @@ mod trace;
 
 pub use c::{Atomics, Attributes, BuildsFor, CCompiler, CInt, CTypes, FrameSizes};
 pub use check::{Check, Checks};
+pub use convention::Convention;
 pub use floats::Floats;
 pub use machine::Machine;
 pub use name::Name;
@@ -31,41 +33,6 @@ pub use trace::Detail;
 pub enum Endian {
     Little,
     Big,
-}
-
-/// `lang.target.Convention`: the calling convention of a target's C functions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub enum Convention {
-    Sysv,
-    Aapcs64,
-    DarwinArm64,
-    Win64,
-    Lp64d,
-    AapcsVfp,
-    Aapcs,
-    Ilp32,
-    Wasm32,
-    Cdecl,
-    Stdcall,
-    Fastcall,
-    Thiscall,
-}
-
-impl Convention {
-    /// The architecture whose C functions follow it: a function of a target may be declared with
-    /// the conventions of the target's own.
-    #[must_use]
-    pub const fn arch(self) -> &'static str {
-        match self {
-            Self::Sysv | Self::Win64 => "x86_64",
-            Self::Aapcs64 | Self::DarwinArm64 => "arm64",
-            Self::Lp64d => "riscv64",
-            Self::AapcsVfp | Self::Aapcs => "arm",
-            Self::Ilp32 => "riscv32",
-            Self::Wasm32 => "wasm32",
-            Self::Cdecl | Self::Stdcall | Self::Fastcall | Self::Thiscall => "x86",
-        }
-    }
 }
 
 /// How a build trades compile time for run time.

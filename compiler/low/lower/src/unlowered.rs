@@ -86,7 +86,7 @@ impl fmt::Display for Unlowered {
             }
             Why::Reported(_) => f.write_str("library code reached at run time reports an error"),
             Why::Convention(c) => {
-                write!(f, "the calling convention `{c:?}` is not one of the target's architecture")
+                write!(f, "the calling convention `{c}` is not one of the target's architecture")
             }
             Why::NotAFunction(ty) => write!(f, "`{ty}` is no function type"),
             Why::Unavailable(Needed::Float(bits)) => write!(
@@ -145,7 +145,7 @@ impl Why {
             }
             Self::Convention(c) => Msg::new()
                 .text("the calling convention ")
-                .code(format!("{c:?}").to_lowercase())
+                .code(c.to_string())
                 .text(" is not one of the target's architecture"),
         }
     }
