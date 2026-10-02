@@ -24,7 +24,7 @@ use vun_sema_float::Format;
 use vun_sema_int::Integer;
 use vun_sema_ty::Value;
 use vun_sema_ty::float::FloatType;
-use vun_target::{Endian, Floats, TargetSpec, Threads};
+use vun_target::{Convention, Endian, Floats, TargetSpec, Threads};
 
 /// A target as its declaration gives it: the description read from it, and the value itself.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -50,6 +50,9 @@ pub struct Target {
     pub register_bits: u32,
     /// The architecture: what its C functions' conventions are those of.
     pub arch: Symbol,
+    /// The conventions of other architectures its C compiler takes for its own
+    /// (`lang.target.Spec.accepts`).
+    pub accepts: Vec<Convention>,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
     /// What its processor has of the instruction set beyond what every processor of it has
@@ -72,6 +75,7 @@ impl Target {
             address_bits: target.spec.pointer_bits,
             register_bits: target.spec.register_bits,
             arch: target.spec.arch,
+            accepts: target.spec.accepts.clone(),
             isa: target.spec.isa,
             features: target.spec.features.clone(),
             floats: target.spec.floats,

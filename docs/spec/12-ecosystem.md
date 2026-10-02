@@ -365,6 +365,11 @@ tools := .{
             .sysroot = "/opt/winlibs",           // the directory holding `kernel32.lib`
             .runner = .{ "wine64" },
         },
+        .{
+            .target = windows.x86.msvc,
+            .sysroot = "/opt/winlibs32",         // `kernel32.lib` and `ntdll.lib` of 32-bit x86
+            .runner = .{ "env", "WINEPREFIX=/opt/wine32", "wine" },
+        },
     },
 };
 ```

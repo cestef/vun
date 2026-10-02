@@ -101,6 +101,15 @@ command line is one UTF-16 string that the program splits as the C runtime does
 functions a freestanding C compiler calls (`std.os.memory`, and `__chkstk`, which probes the
 pages of a large frame in order, `std.os.windows.stack`).
 
+`windows.x86.msvc` is the same for 32-bit x86: `kernel32`'s functions are `stdcall` (the system's
+convention there, which x86-64 takes for its one, `lang.target.Spec.accepts`, so
+`#[abi.stdcall]` is written once for both), a handle is the whole 32 bits, and what the C
+compiler calls for (the division of 64-bit integers, `_chkstk`, the copies and fills) is
+`ntdll`'s, which the target links after `kernel32`, no assembler for 32-bit x86 being written
+yet. A function of a library or a program names its convention as C does (`#[abi.fastcall]`,
+`#[abi.thiscall]`), and a function type carries it, so that `lang.mem.function_at` makes a
+callable function of an address of the code of a C++ method.
+
 **Clocks.** `std.time` holds spans of time (`Duration`, to the nanosecond) and readings of a clock
 (`Instant`, nanoseconds since the clock's start); `Clock` is `monotonic` (never goes back, from an
 instant the system chose) or `real` (the time of day since 1970 UTC). `System.now(clock)` reads

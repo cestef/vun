@@ -32,6 +32,7 @@ pub(crate) fn target() -> TargetSpec {
         os: name("linux"),
         abi: name("gnu"),
         convention: Convention::Sysv,
+        accepts: Vec::new(),
         pointer_bits: 64,
         register_bits: 64,
         floats: vun_target::Floats::ALL,

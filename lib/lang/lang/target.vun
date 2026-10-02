@@ -165,6 +165,10 @@ Spec := struct {
     /// The conventions of the system's binaries: `gnu` (the GNU C library), `eabihf`, ...
     abi: lang.meta.Name,
     convention: Convention,
+    /// The conventions of other architectures that its C compiler takes for its own, as Windows
+    /// takes `__stdcall` on x86-64, where the one convention has no other: `#[abi.stdcall]` names
+    /// the target's own there, so that code calling the system is written once.
+    accepts: &[Convention] = &[],
     /// The width of an address.
     pointer_bits: u8,
     /// The width of a general register: the widest integer its processor computes with, wider

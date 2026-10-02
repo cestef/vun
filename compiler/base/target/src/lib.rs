@@ -133,6 +133,8 @@ pub struct TargetSpec {
     pub os: Symbol,
     pub abi: Symbol,
     pub convention: Convention,
+    /// The conventions of other architectures its C compiler takes for its own.
+    pub accepts: Vec<Convention>,
     pub pointer_bits: u32,
     /// The width of a general register: the widest integer the processor computes with.
     pub register_bits: u32,

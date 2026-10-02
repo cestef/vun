@@ -59,6 +59,9 @@ pub const start: Item = Item::new(&["std", "os", "windows", "start"]);
 /// frame, and the symbol it refers to where code uses floating point. A runtime holds it, and so
 /// does a library, which has no runtime: `services := std.os.windows.services`.
 pub const services: Item = Item::new(&["std", "os", "windows", "services"]);
+/// The copies and fills of `string.h` and the probe of a large frame, for the architectures whose
+/// runtime defines them.
+pub const support: Item = Item::new(&["std", "os", "windows", "support"]);
 /// The command line the system holds, as the units of its text.
 pub const command_line_units: Item = Item::new(
     &["std", "os", "windows", "command_line_units"],

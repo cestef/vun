@@ -220,6 +220,7 @@ impl Read for TargetSpec {
             os: m.name(spec::os)?,
             abi: m.name(spec::abi)?,
             convention: m.read(spec::convention)?,
+            accepts: m.list(spec::accepts)?,
             pointer_bits: m.width(spec::pointer_bits)?,
             register_bits: m.width(spec::register_bits)?,
             floats: m.floats(spec::floats)?,

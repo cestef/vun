@@ -49,7 +49,7 @@ build := (b: &mut std.build.Build) {
     )
     .expect("the plan runs");
     let target = ".{ .arch = .arm, .isa = .thumb, .features = .{ .microcontroller, .divide }, .cpu = .generic, .os = .bare, .abi = .eabihf, .convention = .aapcs_vfp, \
-                  .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
+                  .accepts = .{}, .pointer_bits = 32, .register_bits = 32, .floats = .{ lang.Float(32) }, \
                   .threads = .one, .endian = .little, \
                   .object_format = .elf, .entry_symbol = .some(\"Reset\"), .os_version = .none, .backends = .{ .debug = .{ .cranelift, .c }, \
                   .release = .{ .llvm, .c } }, .linker = .gnu, .c = .{ .short = .{ .bits = 16, .align = 2 }, \

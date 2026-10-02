@@ -104,13 +104,14 @@ fn a_program_loads_a_library_and_calls_its_function() {
     assert!(gnu.is_none_or(|status| status == 42), "linux gnu: {gnu:?}");
     // A DLL has no C runtime to hold what its compiler assumes, so it holds the system's services;
     // Wine finds the file by the drive that maps the machine's root.
-    let windows = loaded(
-        "load-windows",
-        targets::windows_x86_64::msvc,
-        "services := std.os.windows.services;\n",
-        |p| format!("Z:{}", p.display().to_string().replace('/', "\\")),
-    );
-    assert!(windows.is_none_or(|status| status == 42), "windows: {windows:?}");
+    for (name, target) in
+        [("load-windows", targets::windows_x86_64::msvc), ("load-windows-x86", targets::windows_x86::msvc)]
+    {
+        let windows = loaded(name, target, "services := std.os.windows.services;\n", |p| {
+            format!("Z:{}", p.display().to_string().replace('/', "\\"))
+        });
+        assert!(windows.is_none_or(|status| status == 42), "{name}: {windows:?}");
+    }
 }
 
 #[test]

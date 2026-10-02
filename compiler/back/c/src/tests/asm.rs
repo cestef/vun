@@ -79,6 +79,7 @@ fn cortex_m4() -> TargetSpec {
         os: name("bare"),
         abi: name("eabihf"),
         convention: Convention::AapcsVfp,
+        accepts: Vec::new(),
         pointer_bits: 32,
         register_bits: 32,
         floats: vun_target::Floats::ALL,

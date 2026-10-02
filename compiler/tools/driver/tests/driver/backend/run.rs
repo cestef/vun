@@ -33,12 +33,13 @@ pub(crate) fn run(name: &str, source: &str, backend: Name) -> std::process::Outp
 
 /// The targets every program here runs on besides the machine's own, where the machine runs
 /// their programs through the runner its tools file names: arm64 and 32-bit Arm Linux, WASI, and
-/// 64-bit Windows.
-const CROSS: [Item; 4] = [
+/// 64-bit and 32-bit Windows.
+const CROSS: [Item; 5] = [
     targets::linux_arm64::kernel,
     targets::linux_arm::kernel,
     targets::wasi_wasm32::p1,
     targets::windows_x86_64::msvc,
+    targets::windows_x86::msvc,
 ];
 
 /// Builds `source` through each backend that generates code and runs it, for the machine's

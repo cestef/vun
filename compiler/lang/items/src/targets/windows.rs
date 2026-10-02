@@ -6,5 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `targets.windows.x86`.
+pub const x86: Item = Item::new(&["targets", "windows", "x86"]);
 /// The namespace `targets.windows.x86_64`.
 pub const x86_64: Item = Item::new(&["targets", "windows", "x86_64"]);

@@ -7,6 +7,7 @@ use vun_driver::Codegen;
 use vun_items::targets;
 use vun_sema::target::Choice;
 use vun_target::Output;
+use vun_tool::Executable;
 
 use crate::common::Fixture;
 use crate::link::run_with_library;
@@ -72,4 +73,94 @@ fn a_backend_without_conventions_refuses_them() {
     assert!(session.build(file, None).is_err());
     let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(ids, [errors::BACKEND_LACKS]);
+}
+
+/// A Windows library of one function under each convention of 32-bit x86, which x86-64 takes for
+/// its one: it holds the services the system's C runtime would.
+const WINDOWS_LIBRARY: &str = "\
+services := std.os.windows.services;
+
+#[link.export(\"conv_c\"), abi.c]
+plain := (a: i32, b: i32) -> i32 { (a + b).wrap(i32) };
+
+#[link.export(\"conv_std\"), abi.stdcall]
+std_call := (a: i32, b: i32) -> i32 { (a + b).wrap(i32) };
+
+#[link.export(\"conv_fast\"), abi.fastcall]
+fast := (a: i32, b: i32, c: i32) -> i32 { (a + b + c).wrap(i32) };
+
+#[link.export(\"conv_this\"), abi.thiscall]
+method := (me: *i32, b: i32) -> i32 { (unsafe me.read() + b).wrap(i32) };
+";
+
+/// C for Windows loading the library and calling each function as its convention says: `3 + 7 +
+/// 6 + 105`.
+const WINDOWS_USER: &str = "\
+typedef void *(__stdcall *proc_t)(void);
+__declspec(dllimport) void *__stdcall LoadLibraryA(const char *);
+__declspec(dllimport) proc_t __stdcall GetProcAddress(void *, const char *);
+typedef int (__cdecl *c_t)(int, int);
+typedef int (__stdcall *s_t)(int, int);
+typedef int (__fastcall *f_t)(int, int, int);
+typedef int (__thiscall *t_t)(int *, int);
+int _fltused;
+int mainCRTStartup(void) {
+    void *m = LoadLibraryA(\"conv.dll\");
+    if (!m) return 1;
+    c_t c = (c_t)GetProcAddress(m, \"conv_c\");
+    s_t s = (s_t)GetProcAddress(m, \"conv_std\");
+    f_t f = (f_t)GetProcAddress(m, \"conv_fast\");
+    t_t t = (t_t)GetProcAddress(m, \"conv_this\");
+    if (!c || !s || !f || !t) return 2;
+    int me = 100;
+    return c(1, 2) + s(3, 4) + f(1, 2, 3) + t(&me, 5);
+}
+";
+
+#[test]
+fn a_windows_library_is_called_by_c_under_each_convention_of_its_architecture() {
+    let (Some(clang), Some(linker)) = (Executable::search("clang"), Executable::search("lld-link")) else {
+        return;
+    };
+    for (name, target, triple) in [
+        ("conv-x86", targets::windows_x86::msvc, "i686-pc-windows-msvc"),
+        ("conv-x86-64", targets::windows_x86_64::msvc, "x86_64-pc-windows-msvc"),
+    ] {
+        let fixture = Fixture::new(name);
+        let path = fixture.root.write("conv.vun", WINDOWS_LIBRARY);
+        let mut session = fixture.session();
+        session.choice = Choice::of(target);
+        let file = session.load(&path).unwrap();
+        let _ = session.lir(file);
+        let sysroot = session.target.clone().and_then(Result::ok).and_then(|spec| spec.c.compiler.sysroot);
+        let Some(sysroot) = sysroot.filter(|_| !session.runner().is_empty()) else { continue };
+        session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_c::INFO.id) };
+        let library = session.build(file, None).unwrap_or_else(|_| panic!("{name}: {:#?}", session.diag));
+        // The program is beside the library, where the system looks for it first.
+        let dir = library.parent().unwrap();
+        let source = fixture.root.write("user.c", WINDOWS_USER);
+        let object = dir.join("user.o");
+        let compiled = std::process::Command::new(&clang)
+            .args(["-ffreestanding", "-c"])
+            .arg(format!("--target={triple}"))
+            .arg(&source)
+            .arg("-o")
+            .arg(&object)
+            .status()
+            .unwrap();
+        assert!(compiled.success(), "{name}");
+        let program = dir.join("user.exe");
+        let machine = if name == "conv-x86" { "x86" } else { "x64" };
+        let joined = std::process::Command::new(&linker)
+            .args([format!("/machine:{machine}"), "/subsystem:console".into(), "/nodefaultlib".into()])
+            .args(["/entry:mainCRTStartup".to_string(), format!("/libpath:{sysroot}")])
+            .arg(&object)
+            .arg("kernel32.lib")
+            .arg(format!("/out:{}", program.display()))
+            .status()
+            .unwrap();
+        assert!(joined.success(), "{name}");
+        let status = session.command(&program).current_dir(dir).status().unwrap();
+        assert_eq!(status.code(), Some(121), "{name}");
+    }
 }

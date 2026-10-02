@@ -22,6 +22,10 @@ pub const os: Item = Item::new(&["lang", "target", "Spec", "os"]);
 /// The conventions of the system's binaries: `gnu` (the GNU C library), `eabihf`, ...
 pub const abi: Item = Item::new(&["lang", "target", "Spec", "abi"]);
 pub const convention: Item = Item::new(&["lang", "target", "Spec", "convention"]);
+/// The conventions of other architectures that its C compiler takes for its own, as Windows
+/// takes `__stdcall` on x86-64, where the one convention has no other: `#[abi.stdcall]` names
+/// the target's own there, so that code calling the system is written once.
+pub const accepts: Item = Item::new(&["lang", "target", "Spec", "accepts"]);
 /// The width of an address.
 pub const pointer_bits: Item = Item::new(&["lang", "target", "Spec", "pointer_bits"]);
 /// The width of a general register: the widest integer its processor computes with, wider

@@ -71,4 +71,5 @@ pub mod os_windows_library_exports;
 pub mod os_windows_services;
 pub mod os_windows_stack;
 pub mod os_windows_start;
+pub mod os_windows_support;
 pub mod os_windows_tests;

@@ -4,9 +4,10 @@
 //! mingw-w64 lay it out), and calls `kernel32` itself, with no C runtime (`std.os.windows`).
 
 /// Clang, or any clang `machine` names the target to (its triple), building C for it and leaving
-/// the link to `lld-link`: its GNU options, and `kernel32` linked after the objects.
+/// the link to `lld-link`: its GNU options, and `libraries` linked after the objects, `kernel32`
+/// among them.
 #[visible(.within(targets.windows))]
-_clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
+_clang := ($machine: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.CCompiler {
     .{
         .command = "clang",
         .archiver = "llvm-ar",
@@ -14,7 +15,7 @@ _clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
         .optimize = targets.c_optimize,
         .shared = &[],
         .link_flags = &[],
-        .libraries = &["kernel32"],
+        .libraries = libraries,
         .atomics = .gnu,
         .attributes = .gnu,
         .frame_sizes = .none,

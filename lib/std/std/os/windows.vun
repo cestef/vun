@@ -183,12 +183,20 @@ services := struct {
         lang.panic.fail(.message("a program runs one thread, so none is joined"))
     };
 
-    memory := std.os.memory.exports;
-    stack := std.os.windows.stack.exports;
+    /// What the C compiler calls for: defined here on x86-64, and by `ntdll` on 32-bit x86, which
+    /// the target links.
+    support := if lang.target.current.arch == .x86 { struct {} } else { std.os.windows.support };
     library := std.os.windows.library.exports;
 
     #[link.export("_fltused")]
     float_used: i32 = 1;
+};
+
+/// The copies and fills of `string.h` and the probe of a large frame, for the architectures whose
+/// runtime defines them.
+support := struct {
+    memory := std.os.memory.exports;
+    stack := std.os.windows.stack.exports;
 };
 
 /// The command line the system holds, as the units of its text.

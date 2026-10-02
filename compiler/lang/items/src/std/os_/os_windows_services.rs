@@ -26,8 +26,9 @@ pub const sleep: Item = Item::new(&["std", "os", "windows", "services", "sleep"]
 pub const spawn: Item = Item::new(&["std", "os", "windows", "services", "spawn"]);
 /// No thread was started to join.
 pub const join: Item = Item::new(&["std", "os", "windows", "services", "join"]);
-pub const memory: Item = Item::new(&["std", "os", "windows", "services", "memory"]);
-pub const stack: Item = Item::new(&["std", "os", "windows", "services", "stack"]);
+/// What the C compiler calls for: defined here on x86-64, and by `ntdll` on 32-bit x86, which
+/// the target links.
+pub const support: Item = Item::new(&["std", "os", "windows", "services", "support"]);
 pub const library: Item = Item::new(&["std", "os", "windows", "services", "library"]);
 pub const float_used: Item = Item::new(
     &["std", "os", "windows", "services", "float_used"],

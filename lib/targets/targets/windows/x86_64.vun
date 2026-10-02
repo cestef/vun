@@ -7,6 +7,7 @@ msvc := lang.target.Spec{
     .os = .windows,
     .abi = .msvc,
     .convention = .win64,
+    .accepts = &[.cdecl, .stdcall, .fastcall, .thiscall],
     .pointer_bits = 64,
     .register_bits = 64,
     .floats = &[f32, f64],
@@ -16,5 +17,5 @@ msvc := lang.target.Spec{
     .entry_symbol = .some("mainCRTStartup"),
     .backends = targets.c_only,
     .linker = .lld,
-    .c = targets.llp64(targets.windows._clang(&["--target=x86_64-pc-windows-msvc"])),
+    .c = targets.llp64(targets.windows._clang(&["--target=x86_64-pc-windows-msvc"], &["kernel32"])),
 };

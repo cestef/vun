@@ -75,11 +75,13 @@ impl Lowering<'_, '_> {
             Some(Abi::naked) => Conv::Naked,
             _ => Conv::Vun,
         };
-        // A convention the target's architecture has none of is refused where it is written.
-        let convention = abi.and_then(Abi::convention);
+        // A convention of another architecture is refused unless the target takes it for its own.
+        let mut convention = abi.and_then(Abi::convention);
         if let Some(named) = convention {
             let target = self.env.cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
-            if named.arch() != target.arch.as_str() {
+            if target.accepts.contains(&named) {
+                convention = None;
+            } else if named.arch() != target.arch.as_str() {
                 return Err(Unlowered::new(at, Why::Convention(named)));
             }
         }

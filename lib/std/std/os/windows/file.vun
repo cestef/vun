@@ -5,7 +5,7 @@
 standard_handles: [3]u32 = [0xFFFF_FFF6, 0xFFFF_FFF5, 0xFFFF_FFF4];
 
 /// What `CreateFileW` returns where it failed: -1 as a handle.
-invalid: usize = 0xFFFF_FFFF_FFFF_FFFF;
+invalid: usize = (0 - 1).wrap(usize);
 
 /// The handle the file number `fd` stands for: the standard streams are 0, 1 and 2, which no
 /// handle is (handles are multiples of 4), and any other number is a handle, of which a 64-bit
