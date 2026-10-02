@@ -1,10 +1,10 @@
 //! Relocations with their addends: where the linker writes, what it writes there (a number each
 //! machine gives its kinds, `arm::Reloc` and its siblings), from which symbol, plus how much.
 
-use vun_bytes::Out;
+use vun_bytes::{In, Out};
 
+use crate::Malformed;
 use crate::headers::RelaEntry;
-use crate::input::{Input, Malformed};
 use crate::record::{SignedWord, Word};
 use crate::{Class, Section};
 
@@ -82,7 +82,7 @@ impl Rela {
     /// # Errors
     /// Where an entry runs past the section's end.
     pub fn read(class: Class, section: &Section) -> Result<Vec<Self>, Malformed> {
-        let mut input = Input::at(section.bytes(), 0);
+        let mut input = In::at(section.bytes(), 0);
         (0..section.bytes().len() as u64 / RelaEntry::size(class))
             .map(|_| {
                 let entry = RelaEntry::take(class, &mut input)?;

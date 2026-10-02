@@ -1,10 +1,10 @@
 //! Symbols: the entries of a symbol table after its null one, locals first, each named in the
 //! string table the symbol table links.
 
-use vun_bytes::{Out, Strings};
+use vun_bytes::{In, Out, Strings};
 
+use crate::Malformed;
 use crate::headers::SymbolEntry;
-use crate::input::{Input, Malformed};
 use crate::record::Word;
 use crate::{Class, File, SectionKind};
 
@@ -74,7 +74,9 @@ impl Symbol {
     /// The symbol of `entry`, named in `strings`.
     fn of(entry: SymbolEntry, strings: &[u8]) -> Result<Self, Malformed> {
         Ok(Self {
-            name: Input::string(strings, u64::from(entry.name))?.to_vec(),
+            name: In::name(strings, u64::from(entry.name))
+                .ok_or(Malformed::Name(u64::from(entry.name)))?
+                .to_vec(),
             kind: SymbolKind::of(entry.info & ((1 << KIND_BITS) - 1)),
             binding: Binding::of(entry.info >> KIND_BITS),
             section: entry.section,
@@ -95,7 +97,7 @@ impl File {
         };
         let strings = self.numbered(table.link).ok_or(Malformed::Link(table.link))?.bytes();
         let size = SymbolEntry::size(self.class);
-        let mut input = Input::at(table.bytes(), size);
+        let mut input = In::at(table.bytes(), size);
         (1..table.bytes().len() as u64 / size)
             .map(|_| Symbol::of(SymbolEntry::take(self.class, &mut input)?, strings))
             .collect()

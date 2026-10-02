@@ -1,8 +1,10 @@
 //! Reading a file: its header, then its sections from their headers, named in the table the
 //! header points to, then its segments, each found as what it covers.
 
+use vun_bytes::{Copies, In};
+
 use crate::headers::{FileHeader, ProgramHeader, SectionHeader};
-use crate::input::{Input, Malformed};
+use crate::malformed::Malformed;
 use crate::segment::{Covers, Segment, SegmentFlags};
 use crate::{
     Class, Contents, File, Kind, LITTLE, MAGIC, Machine, Section, SectionFlags, SectionKind, SegmentKind,
@@ -22,7 +24,7 @@ impl File {
     /// Where they are not a little-endian ELF file, or a header, a name or a section runs past
     /// their end.
     pub fn read(bytes: &[u8]) -> Result<Self, Malformed> {
-        let ident: [u8; 16] = Input::at(bytes, 0).array()?;
+        let ident: [u8; 16] = In::at(bytes, 0).array()?;
         if ident[..MAGIC.len()] != MAGIC {
             return Err(Malformed::Magic);
         }
@@ -30,8 +32,8 @@ impl File {
         if ident[DATA] != LITTLE {
             return Err(Malformed::BigEndian);
         }
-        let header = FileHeader::take(class, &mut Input::at(bytes, 0))?;
-        let mut input = Input::at(bytes, header.section_headers.0);
+        let header = FileHeader::take(class, &mut In::at(bytes, 0))?;
+        let mut input = In::at(bytes, header.section_headers.0);
         let headers = (0..header.section_header_count)
             .map(|_| SectionHeader::take(class, &mut input))
             .collect::<Result<Vec<_>, _>>()?;
@@ -40,20 +42,23 @@ impl File {
             0 => NAMELESS,
             k => {
                 let table = headers.get(k).ok_or(Malformed::Link(u32::from(header.names)))?;
-                Input::at(bytes, table.offset.0).take(table.size.0)?
+                In::at(bytes, table.offset.0).take(table.size.0)?
             }
         };
+        let mut copies = Copies::of(bytes.len() as u64);
         let sections = headers
             .iter()
             .enumerate()
             .skip(1)
-            .map(|(k, h)| Section::read(bytes, h, names, k == usize::from(header.names)))
+            .map(|(k, h)| Section::read(bytes, h, names, k == usize::from(header.names), &mut copies))
             .collect::<Result<Vec<_>, _>>()?;
-        let mut input = Input::at(bytes, header.program_headers.0);
+        // A file may lack section headers altogether, as a stripped program does.
+        let described = headers.get(1..).unwrap_or_default();
+        let mut input = In::at(bytes, header.program_headers.0);
         let segments = (0..usize::from(header.program_header_count))
             .map(|k| {
                 let placed = ProgramHeader::take(class, &mut input)?;
-                Segment::read(k, &placed, &headers[1..], FileHeader::size(class))
+                Segment::read(k, &placed, described, FileHeader::size(class))
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
@@ -70,11 +75,13 @@ impl File {
 
 impl Section {
     /// The section `header` describes, named in `names`; `holds_names` where it is their table.
+    /// The bytes it holds are taken from what `copies` allows.
     fn read(
         bytes: &[u8],
         header: &SectionHeader,
         names: &[u8],
         holds_names: bool,
+        copies: &mut Copies,
     ) -> Result<Self, Malformed> {
         let kind = SectionKind::of(header.kind);
         let contents = if holds_names {
@@ -82,10 +89,14 @@ impl Section {
         } else if kind == SectionKind::NoBits {
             Contents::Zeros(header.size.0)
         } else {
-            Contents::Bytes(Input::at(bytes, header.offset.0).take(header.size.0)?.to_vec())
+            let held = In::at(bytes, header.offset.0).take(header.size.0)?;
+            copies.spend(header.size.0)?;
+            Contents::Bytes(held.to_vec())
         };
         Ok(Self {
-            name: Input::string(names, u64::from(header.name))?.to_vec(),
+            name: In::name(names, u64::from(header.name))
+                .ok_or(Malformed::Name(u64::from(header.name)))?
+                .to_vec(),
             kind,
             flags: SectionFlags(header.flags.0),
             address: header.address.0,
@@ -113,10 +124,12 @@ impl Segment {
         } else if placed.file_size.0 == 0 && placed.memory_size.0 == 0 {
             Covers::Nothing
         } else {
-            let (file, memory) = (
-                placed.offset.0..placed.offset.0 + placed.file_size.0,
-                placed.address.0..placed.address.0 + placed.memory_size.0,
-            );
+            let range = |start: u64, size: u64| Some(start..start.checked_add(size)?);
+            let (Some(file), Some(memory)) =
+                (range(placed.offset.0, placed.file_size.0), range(placed.address.0, placed.memory_size.0))
+            else {
+                return Err(Malformed::Range(k));
+            };
             // A loaded section is in the segment where its bytes are, or its zeros are in memory.
             let covered: Vec<usize> = (0..headers.len())
                 .filter(|&at| {

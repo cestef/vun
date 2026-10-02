@@ -1,16 +1,16 @@
 //! The records ELF lays out, each declared once with its fields' order in each class
 //! ([`record!`]), from which it is written, read, and measured.
 
-use vun_bytes::Out;
+use vun_bytes::{In, Out};
 
 use crate::Class;
-use crate::input::{Input, Malformed};
+use crate::malformed::Malformed;
 
 /// A field of a record: its width in a class, and its bytes there, little-endian.
 pub(crate) trait Field: Sized {
     fn width(class: Class) -> u64;
     fn put(self, class: Class, out: &mut Out);
-    fn take(class: Class, input: &mut Input<'_>) -> Result<Self, Malformed>;
+    fn take(class: Class, input: &mut In<'_>) -> Result<Self, Malformed>;
 }
 
 /// An address, an offset or a size: 32 bits in `ELFCLASS32`, 64 in `ELFCLASS64`.
@@ -32,7 +32,7 @@ macro_rules! fixed {
                 out.bytes(&self.to_le_bytes());
             }
 
-            fn take(_: Class, input: &mut Input<'_>) -> Result<Self, Malformed> {
+            fn take(_: Class, input: &mut In<'_>) -> Result<Self, Malformed> {
                 Ok(<$ty>::from_le_bytes(input.array()?))
             }
         }
@@ -50,8 +50,8 @@ impl<const N: usize> Field for [u8; N] {
         out.bytes(&self);
     }
 
-    fn take(_: Class, input: &mut Input<'_>) -> Result<Self, Malformed> {
-        input.array()
+    fn take(_: Class, input: &mut In<'_>) -> Result<Self, Malformed> {
+        Ok(input.array()?)
     }
 }
 
@@ -69,7 +69,7 @@ impl Field for Word {
         }
     }
 
-    fn take(class: Class, input: &mut Input<'_>) -> Result<Self, Malformed> {
+    fn take(class: Class, input: &mut In<'_>) -> Result<Self, Malformed> {
         Ok(Self(match class {
             Class::Elf32 => u64::from(u32::take(class, input)?),
             Class::Elf64 => u64::from_le_bytes(input.array()?),
@@ -91,7 +91,7 @@ impl Field for SignedWord {
         }
     }
 
-    fn take(class: Class, input: &mut Input<'_>) -> Result<Self, Malformed> {
+    fn take(class: Class, input: &mut In<'_>) -> Result<Self, Malformed> {
         Ok(Self(match class {
             Class::Elf32 => i64::from(i32::from_le_bytes(input.array()?)),
             Class::Elf64 => i64::from_le_bytes(input.array()?),
@@ -140,8 +140,8 @@ macro_rules! record {
             /// Reads it as `class` lays it out.
             pub(crate) fn take(
                 class: $crate::Class,
-                input: &mut $crate::input::Input<'_>,
-            ) -> Result<Self, $crate::input::Malformed> {
+                input: &mut vun_bytes::In<'_>,
+            ) -> Result<Self, $crate::Malformed> {
                 use $crate::record::Field;
                 let mut record = Self::default();
                 match class {

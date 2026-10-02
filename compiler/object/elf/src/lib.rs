@@ -14,7 +14,7 @@ pub mod aarch64;
 pub mod arm;
 mod class;
 mod headers;
-mod input;
+mod malformed;
 mod read;
 mod rela;
 mod section;
@@ -26,7 +26,7 @@ mod write;
 pub mod x86_64;
 
 pub use class::Class;
-pub use input::Malformed;
+pub use malformed::Malformed;
 pub use rela::Rela;
 pub use section::{Contents, Section, SectionFlags, SectionKind};
 pub use segment::{Covers, Segment, SegmentFlags, SegmentKind};
