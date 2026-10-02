@@ -6,8 +6,6 @@ use super::Runs;
 use crate::persist::Saved;
 use crate::{Census, Cx, Db, Query, Reuse, Unloaded};
 
-static WORDS: Runs = Runs::new();
-
 /// A persisted input: a file's text by path.
 struct Source;
 impl Query for Source {
@@ -26,7 +24,7 @@ impl Query for Words {
     type Key = String;
     type Value = Vec<String>;
     fn compute(cx: &Cx<'_>, key: &String) -> Vec<String> {
-        WORDS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Source>(key).split_whitespace().map(str::to_owned).collect()
     }
 }
@@ -46,7 +44,7 @@ fn saved_memos_are_reused_until_their_trace_changes() {
     assert_eq!(first.get::<Words>(&"a".into()), ["one", "two"]);
     let saved = first.save();
     assert_eq!(saved, first.save(), "the saved form is deterministic");
-    assert_eq!(WORDS.count(), 1);
+    assert_eq!(Runs::<Words>::of(&first), 1);
 
     // Another process with the same input reuses the memo.
     let second = persisting("one two");
@@ -54,7 +52,7 @@ fn saved_memos_are_reused_until_their_trace_changes() {
     assert_eq!(memos, [0, 1], "only computed memos are saved");
     assert_eq!(second.load(saved.clone()).unwrap(), 2, "both queries are registered");
     assert_eq!(second.get::<Words>(&"a".into()), ["one", "two"]);
-    assert_eq!(WORDS.count(), 1);
+    assert_eq!(Runs::<Words>::of(&second), 0, "the saved memo is reused");
 
     assert!(!second.changed(), "nothing computed that was not loaded");
     assert!(matches!(second.load(saved.clone()), Err(Unloaded::Again)));
@@ -63,7 +61,7 @@ fn saved_memos_are_reused_until_their_trace_changes() {
     let third = persisting("three");
     third.load(saved.clone()).unwrap();
     assert_eq!(third.get::<Words>(&"a".into()), ["three"]);
-    assert_eq!(WORDS.count(), 2);
+    assert_eq!(Runs::<Words>::of(&third), 1);
     assert!(third.changed());
 }
 
@@ -84,9 +82,8 @@ fn values_never_read_are_saved_again_as_they_were() {
     let third = persisting("x y");
     third.set::<Source>(&"b".into(), "z".into());
     third.load(again.clone()).unwrap();
-    let runs = WORDS.count();
     assert_eq!(third.get::<Words>(&"b".into()), ["z"]);
-    assert_eq!(WORDS.count(), runs, "read from the bytes carried over");
+    assert_eq!(Runs::<Words>::of(&third), 0, "read from the bytes carried over");
 }
 
 /// The size a saved file's body had when last written whole, and its size.
@@ -125,10 +122,9 @@ fn a_body_is_written_whole_once_it_outgrows_its_last_whole_size() {
     let fourth = persisting("p");
     fourth.set::<Source>(&"b".into(), long);
     fourth.load(whole).unwrap();
-    let runs = WORDS.count();
     assert_eq!(fourth.get::<Words>(&"a".into()), ["p"]);
     assert_eq!(fourth.get::<Words>(&"b".into()).len(), 64);
-    assert_eq!(WORDS.count(), runs, "both read from the body written whole");
+    assert_eq!(Runs::<Words>::of(&fourth), 0, "both read from the body written whole");
 }
 
 #[test]
@@ -139,17 +135,14 @@ fn memos_of_unregistered_queries_and_other_formats_are_not_loaded() {
     let bare = Db::reusing(Reuse::Trust);
     bare.persist::<Words>();
     assert_eq!(bare.load(saved.clone()).unwrap(), 1);
-    let runs = WORDS.count();
     assert!(bare.get::<Words>(&"a".into()).is_empty(), "a memo reading an unregistered query is computed");
-    assert_eq!(WORDS.count(), runs + 1);
+    assert_eq!(Runs::<Words>::of(&bare), 1);
     // The format is the leading varint.
     let mut other = saved.clone();
     other[0] = 1;
     assert!(matches!(Db::reusing(Reuse::Trust).load(other.clone()), Err(Unloaded::Format { found: 1 })));
     assert!(matches!(Db::reusing(Reuse::Trust).load(Vec::new()), Err(Unloaded::Decode(_))));
 }
-
-static COUNTS: Runs = Runs::new();
 
 /// Reads a traced query: its memos are saved without their values.
 struct Count;
@@ -158,12 +151,10 @@ impl Query for Count {
     type Key = String;
     type Value = usize;
     fn compute(cx: &Cx<'_>, key: &String) -> usize {
-        COUNTS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Tokens>(key).len()
     }
 }
-
-static TOKENS: Runs = Runs::new();
 
 struct Tokens;
 impl Query for Tokens {
@@ -171,7 +162,7 @@ impl Query for Tokens {
     type Key = String;
     type Value = Vec<String>;
     fn compute(cx: &Cx<'_>, key: &String) -> Vec<String> {
-        TOKENS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Source>(key).split_whitespace().map(str::to_owned).collect()
     }
 }
@@ -190,14 +181,18 @@ fn a_traced_memo_stands_for_its_value_until_it_is_read() {
     let first = counting("x y");
     assert_eq!(first.get::<Count>(&"b".into()), 2);
     let saved = first.save();
-    assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1));
+    assert_eq!((Runs::<Tokens>::of(&first), Runs::<Count>::of(&first)), (1, 1));
 
     let second = counting("x y");
     assert_eq!(second.load(saved.clone()).unwrap(), 3);
     assert_eq!(second.get::<Count>(&"b".into()), 2);
-    assert_eq!((TOKENS.count(), COUNTS.count()), (1, 1), "verified through the traced memo");
+    assert_eq!(
+        (Runs::<Tokens>::of(&second), Runs::<Count>::of(&second)),
+        (0, 0),
+        "verified through the traced memo"
+    );
     assert_eq!(second.get::<Tokens>(&"b".into()), ["x", "y"]);
-    assert_eq!(TOKENS.count(), 2, "its value is computed once read");
+    assert_eq!(Runs::<Tokens>::of(&second), 1, "its value is computed once read");
 }
 
 #[test]
@@ -215,9 +210,8 @@ fn a_memo_carried_over_unread_sees_the_reads_it_saw() {
     // Its read of the tokens still names the ones it saw, so it is recomputed.
     let third = counting("x y z");
     third.load(carried).unwrap();
-    let runs = COUNTS.count();
     assert_eq!(third.get::<Count>(&"b".into()), 3);
-    assert_eq!(COUNTS.count(), runs + 1);
+    assert_eq!(Runs::<Count>::of(&third), 1);
 }
 
 #[test]
@@ -234,8 +228,6 @@ fn only_the_memos_asked_for_are_restored() {
     assert_eq!(second.computed::<Words>().len(), 1, "the memo of b is never restored");
 }
 
-static LENGTHS: Runs = Runs::new();
-
 /// How many words the sources `0` to `key` hold, read through `Words`.
 struct Length;
 impl Query for Length {
@@ -243,7 +235,6 @@ impl Query for Length {
     type Key = u32;
     type Value = usize;
     fn compute(cx: &Cx<'_>, key: &u32) -> usize {
-        LENGTHS.tick();
         (0..*key).map(|i| cx.get::<Words>(&i.to_string()).len()).sum()
     }
 }
@@ -255,7 +246,7 @@ fn a_key_reached_by_its_saved_position_and_by_its_value_has_one_slot() {
     first.persist::<Length>();
     sources(&first);
     assert_eq!(first.get::<Length>(&20), 40);
-    let (saved, words) = (first.save(), WORDS.count());
+    let saved = first.save();
 
     // Verifying the length reaches each word memo by its saved position, its key unread; a
     // source changed then makes the length ask for the words by their keys.
@@ -266,7 +257,7 @@ fn a_key_reached_by_its_saved_position_and_by_its_value_has_one_slot() {
     assert_eq!(second.get::<Length>(&20), 40);
     second.set::<Source>(&"7".into(), "a b c".into());
     assert_eq!(second.get::<Length>(&20), 41);
-    assert_eq!(WORDS.count(), words + 1, "only the words of the source changed are computed");
+    assert_eq!(Runs::<Words>::of(&second), 1, "only the words of the source changed are computed");
     let keys: Vec<String> = second.computed::<Words>().into_iter().map(|(key, _)| key).collect();
     let distinct: std::collections::HashSet<&String> = keys.iter().collect();
     assert_eq!((keys.len(), distinct.len()), (20, 20), "one slot per key");

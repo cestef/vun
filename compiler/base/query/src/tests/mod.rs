@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod all;
@@ -9,25 +10,27 @@ mod shared;
 
 use super::{Cx, Cycle, Db, Query, Reuse, Revision};
 
-/// Counts how many times a query ran.
-pub(super) struct Runs(AtomicUsize);
+/// Counts how many times the query `Q` ran in a database. The database holds the count, so tests
+/// running side by side in one process, or one after the other, count only their own runs.
+pub(super) struct Runs<Q>(AtomicUsize, PhantomData<fn() -> Q>);
 
-impl Runs {
-    const fn new() -> Self {
-        Self(AtomicUsize::new(0))
-    }
-
-    fn tick(&self) {
-        self.0.fetch_add(1, Ordering::Relaxed);
-    }
-
-    fn count(&self) -> usize {
-        self.0.load(Ordering::Relaxed)
+impl<Q> Default for Runs<Q> {
+    fn default() -> Self {
+        Self(AtomicUsize::new(0), PhantomData)
     }
 }
 
-static LENGTHS: Runs = Runs::new();
-static PARITIES: Runs = Runs::new();
+impl<Q: 'static> Runs<Q> {
+    /// Notes that `Q` ran, as its `compute` does.
+    fn tick(cx: &Cx<'_>) {
+        cx.db().resource::<Self>().0.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// How many times `Q` ran in `db`.
+    fn of(db: &Db) -> usize {
+        db.resource::<Self>().0.load(Ordering::Relaxed)
+    }
+}
 
 /// An input: a file's text by name.
 struct Text;
@@ -47,7 +50,7 @@ impl Query for Length {
     type Key = &'static str;
     type Value = usize;
     fn compute(cx: &Cx<'_>, key: &Self::Key) -> usize {
-        LENGTHS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Text>(key).len()
     }
 }
@@ -58,7 +61,7 @@ impl Query for Parity {
     type Key = &'static str;
     type Value = bool;
     fn compute(cx: &Cx<'_>, key: &Self::Key) -> bool {
-        PARITIES.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Length>(key).is_multiple_of(2)
     }
 }
@@ -69,17 +72,21 @@ fn results_are_memoized_and_cut_off_early() {
     db.set::<Text>(&"a", "four".into());
     assert!(db.get::<Parity>(&"a"));
     assert!(db.get::<Parity>(&"a"));
-    assert_eq!((LENGTHS.count(), PARITIES.count()), (1, 1), "memoized");
+    assert_eq!((Runs::<Length>::of(&db), Runs::<Parity>::of(&db)), (1, 1), "memoized");
 
     // Same length: the length is recomputed, the parity is not.
     db.set::<Text>(&"a", "five".into());
     assert!(db.get::<Parity>(&"a"));
-    assert_eq!((LENGTHS.count(), PARITIES.count()), (2, 1), "cut off at an unchanged interface");
+    assert_eq!(
+        (Runs::<Length>::of(&db), Runs::<Parity>::of(&db)),
+        (2, 1),
+        "cut off at an unchanged interface"
+    );
 
     // A different length reaches the parity.
     db.set::<Text>(&"a", "three".into());
     assert!(!db.get::<Parity>(&"a"));
-    assert_eq!((LENGTHS.count(), PARITIES.count()), (3, 2));
+    assert_eq!((Runs::<Length>::of(&db), Runs::<Parity>::of(&db)), (3, 2));
 }
 
 #[test]
@@ -130,8 +137,6 @@ fn memos_reading_a_cycle_are_verified_in_a_later_revision() {
     assert_eq!(path.first(), path.last(), "a cycle");
 }
 
-static PARTS: Runs = Runs::new();
-
 /// The parts a type reaches, itself included: a join over what it holds, where a type reached
 /// again adds nothing, as the kinds of recursive types are computed.
 struct Parts;
@@ -140,7 +145,7 @@ impl Query for Parts {
     type Key = u8;
     type Value = Vec<u8>;
     fn compute(cx: &Cx<'_>, key: &u8) -> Vec<u8> {
-        PARTS.tick();
+        Runs::<Self>::tick(cx);
         // 0 holds 1, 1 holds 0 and 2.
         let holds: &[u8] = match key {
             0 => &[1],
@@ -163,9 +168,9 @@ fn a_value_computed_from_a_cycle_value_is_not_kept() {
     let db = Db::reusing(Reuse::Trust);
     assert_eq!(db.get::<Parts>(&0), [0, 1, 2]);
     // Computing 0 read 1 through 0's cycle value, which lacked 0: 1 is computed again on its own.
-    let runs = PARTS.count();
+    let runs = Runs::<Parts>::of(&db);
     assert_eq!(db.get::<Parts>(&1), [0, 1, 2]);
-    assert!(PARTS.count() > runs);
+    assert!(Runs::<Parts>::of(&db) > runs);
     assert_eq!(db.get::<Parts>(&1), [0, 1, 2]);
     assert_eq!(db.get::<Parts>(&2), [2]);
 }
@@ -178,16 +183,14 @@ fn resources_are_shared_per_type() {
     assert_eq!(*db.resource::<std::sync::Mutex<Vec<u8>>>().lock().unwrap(), [1]);
 }
 
-static SLOW: Runs = Runs::new();
-
 /// A query slow enough that threads asking for it meet while it runs.
 struct Slow;
 impl Query for Slow {
     const NAME: &'static str = "slow";
     type Key = u8;
     type Value = u8;
-    fn compute(_: &Cx<'_>, key: &u8) -> u8 {
-        SLOW.tick();
+    fn compute(cx: &Cx<'_>, key: &u8) -> u8 {
+        Runs::<Self>::tick(cx);
         std::thread::sleep(std::time::Duration::from_millis(50));
         key + 1
     }
@@ -201,7 +204,7 @@ fn threads_needing_one_memo_compute_it_once() {
             s.spawn(|| assert_eq!(db.get::<Slow>(&1), 2));
         }
     });
-    assert_eq!(SLOW.count(), 1);
+    assert_eq!(Runs::<Slow>::of(&db), 1);
 }
 
 /// Where both threads of the cycle below meet before reading the other half.
@@ -253,17 +256,15 @@ fn a_cycle_across_threads_ends_without_waiting_forever() {
     assert_eq!(db.get::<Ping>(&1), 0);
 }
 
-static FLAKY: Runs = Runs::new();
-
 /// Fails the first time it runs; a cycle through it would give `None`.
 struct Flaky;
 impl Query for Flaky {
     const NAME: &'static str = "flaky";
     type Key = u8;
     type Value = Option<u8>;
-    fn compute(_: &Cx<'_>, key: &u8) -> Option<u8> {
-        FLAKY.tick();
-        assert!(FLAKY.count() > 1, "the first run fails");
+    fn compute(cx: &Cx<'_>, key: &u8) -> Option<u8> {
+        Runs::<Self>::tick(cx);
+        assert!(Runs::<Self>::of(cx.db()) > 1, "the first run fails");
         Some(*key)
     }
     fn cycle(_: &Cx<'_>, _: &u8, _: &Cycle) -> Option<u8> {

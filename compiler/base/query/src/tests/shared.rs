@@ -4,9 +4,6 @@
 use super::Runs;
 use crate::{Census, Cx, Db, Layering, Query, Reuse, Unloaded};
 
-static LENGTHS: Runs = Runs::new();
-static JOINED: Runs = Runs::new();
-
 /// A file's text by path, an input.
 struct Text;
 impl Query for Text {
@@ -26,7 +23,7 @@ impl Query for Length {
     type Key = String;
     type Value = usize;
     fn compute(cx: &Cx<'_>, key: &String) -> usize {
-        LENGTHS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Text>(key).len()
     }
 }
@@ -38,7 +35,7 @@ impl Query for Joined {
     type Key = (String, String);
     type Value = usize;
     fn compute(cx: &Cx<'_>, (a, b): &(String, String)) -> usize {
-        JOINED.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Length>(a) + cx.get::<Length>(b)
     }
 }
@@ -67,9 +64,8 @@ fn memos_reading_shared_inputs_alone_are_saved_apart_and_reused() {
     // Another project starts from them: the library is not computed again.
     let second = project("another");
     second.load(shared.clone()).unwrap();
-    let runs = LENGTHS.count();
     assert_eq!(second.get::<Joined>(&both), 14);
-    assert_eq!(LENGTHS.count(), runs + 1, "the project's length alone");
+    assert_eq!(Runs::<Length>::of(&second), 1, "the project's length alone");
     assert_eq!(second.save_shared(), None, "no shared memo was computed");
 
     // A shared memo whose input changed is recomputed, never trusted.
@@ -78,7 +74,7 @@ fn memos_reading_shared_inputs_alone_are_saved_apart_and_reused() {
     edited.load(shared).unwrap();
     assert_eq!(edited.get::<Joined>(&both), 10);
     assert!(edited.save_shared().is_some());
-    assert!(JOINED.count() >= 3);
+    assert_eq!(Runs::<Length>::of(&edited), 2, "the library's length is computed again with the project's");
 }
 
 #[test]
@@ -104,9 +100,8 @@ fn memos_saved_over_shared_ones_hold_the_project_s_alone() {
     // Both loaded again, nothing is computed.
     let third = project("main two");
     third.load_over(shared.clone(), Some(own)).unwrap();
-    let (lengths, joined) = (LENGTHS.count(), JOINED.count());
     assert_eq!(third.get::<Joined>(&both), 15);
-    assert_eq!((LENGTHS.count(), JOINED.count()), (lengths, joined));
+    assert_eq!((Runs::<Length>::of(&third), Runs::<Joined>::of(&third)), (0, 0));
 
     // A shared memo computed again is saved over the one it replaces, and holds next time.
     let edited = || {
@@ -122,20 +117,19 @@ fn memos_saved_over_shared_ones_hold_the_project_s_alone() {
     assert_eq!(memos, [0, 2, 1], "the library's length replaced");
     let fifth = edited();
     fifth.load_over(shared.clone(), Some(own)).unwrap();
-    let lengths = LENGTHS.count();
     assert_eq!(fifth.get::<Joined>(&both), 11);
-    assert_eq!(LENGTHS.count(), lengths, "the replaced memo holds");
+    assert_eq!(Runs::<Length>::of(&fifth), 0, "the replaced memo holds");
 
     // A file extending one layered over the shared file stays layered over it.
     fifth.get::<Length>(&"other".into());
+    assert_eq!(Runs::<Length>::of(&fifth), 1, "the file read is the one computed");
     let grown = fifth.save();
     assert_eq!(Layering::of(&grown).unwrap().base, id);
     let sixth = edited();
     sixth.load_over(shared, Some(grown)).unwrap();
-    let lengths = LENGTHS.count();
     assert_eq!(sixth.get::<Joined>(&both), 11);
     sixth.get::<Length>(&"other".into());
-    assert_eq!(LENGTHS.count(), lengths, "every memo of both layers holds");
+    assert_eq!(Runs::<Length>::of(&sixth), 0, "every memo of both layers holds");
 }
 
 #[test]
@@ -152,9 +146,8 @@ fn a_database_that_loaded_nothing_saves_over_the_shared_memos_it_saved() {
 
     let second = project("main one");
     second.load_over(shared, Some(own)).unwrap();
-    let (lengths, joined) = (LENGTHS.count(), JOINED.count());
     assert_eq!(second.get::<Joined>(&both), 15);
-    assert_eq!((LENGTHS.count(), JOINED.count()), (lengths, joined));
+    assert_eq!((Runs::<Length>::of(&second), Runs::<Joined>::of(&second)), (0, 0));
 }
 
 #[test]
@@ -177,7 +170,6 @@ fn shared_memos_a_shared_file_loaded_lacks_are_saved_with_the_own() {
 
     let third = with_extra();
     third.load_over(shared, Some(own)).unwrap();
-    let lengths = LENGTHS.count();
     assert_eq!(third.get::<Length>(&"extra".into()), 4);
-    assert_eq!(LENGTHS.count(), lengths, "the shared memo saved with the own holds");
+    assert_eq!(Runs::<Length>::of(&third), 0, "the shared memo saved with the own holds");
 }

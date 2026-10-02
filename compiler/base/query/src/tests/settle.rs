@@ -5,9 +5,6 @@
 use super::Runs;
 use crate::{Cx, Db, Query, Reuse};
 
-static ITEMS: Runs = Runs::new();
-static TOTALS: Runs = Runs::new();
-
 /// How many items the total adds, an input.
 struct Count;
 impl Query for Count {
@@ -39,7 +36,7 @@ impl Query for Item {
     type Key = u32;
     type Value = u64;
     fn compute(cx: &Cx<'_>, key: &u32) -> u64 {
-        ITEMS.tick();
+        Runs::<Self>::tick(cx);
         cx.get::<Number>(key) * 2
     }
 }
@@ -51,7 +48,7 @@ impl Query for Total {
     type Key = ();
     type Value = u64;
     fn compute(cx: &Cx<'_>, (): &()) -> u64 {
-        TOTALS.tick();
+        Runs::<Self>::tick(cx);
         (0..cx.get::<Count>(&())).map(|i| cx.get::<Item>(&i)).sum()
     }
 }
@@ -65,13 +62,13 @@ fn settles(reuse: Reuse) {
     let db = Db::reusing(reuse);
     db.set::<Count>(&(), 40);
     assert_eq!(db.get::<Total>(&()), total(40, (0, 0)));
-    let (items, totals) = (ITEMS.count(), TOTALS.count());
+    let (items, totals) = (Runs::<Item>::of(&db), Runs::<Total>::of(&db));
     // One number of forty changes: its item is computed again, the other items hold.
     db.set::<Number>(&7, 100);
     assert_eq!(db.get::<Total>(&()), total(40, (7, 100)));
-    assert!(TOTALS.count() > totals, "the total is computed again");
+    assert!(Runs::<Total>::of(&db) > totals, "the total is computed again");
     if reuse == Reuse::Trust {
-        assert_eq!(ITEMS.count(), items + 1, "one item computed again");
+        assert_eq!(Runs::<Item>::of(&db), items + 1, "one item computed again");
     }
     // Fewer items: the total is computed again from the count it reads first.
     db.set::<Count>(&(), 20);

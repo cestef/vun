@@ -3,8 +3,6 @@
 use super::Runs;
 use crate::{Cx, Db, Query, Reuse};
 
-static SUMS: Runs = Runs::new();
-
 /// A number, an input.
 struct Number;
 impl Query for Number {
@@ -36,7 +34,7 @@ impl Query for Sum {
     type Key = u32;
     type Value = u64;
     fn compute(cx: &Cx<'_>, key: &u32) -> u64 {
-        SUMS.tick();
+        Runs::<Self>::tick(cx);
         let keys: Vec<u32> = (0..*key).collect();
         cx.get_all::<Square>(&keys).into_iter().sum()
     }
@@ -46,13 +44,13 @@ impl Query for Sum {
 fn values_come_in_order_and_each_is_a_read_of_the_caller() {
     let db = Db::reusing(Reuse::Trust);
     assert_eq!(db.get::<Sum>(&100), (0..100u64).map(|n| n * n).sum::<u64>());
-    let runs = SUMS.count();
+    let runs = Runs::<Sum>::of(&db);
     assert_eq!(db.get::<Sum>(&100), (0..100u64).map(|n| n * n).sum::<u64>());
-    assert_eq!(SUMS.count(), runs, "reused");
+    assert_eq!(Runs::<Sum>::of(&db), runs, "reused");
     // A number read through one of the squares changes the sum.
     db.set::<Number>(&7, 0);
     assert_eq!(db.get::<Sum>(&100), (0..100u64).map(|n| n * n).sum::<u64>() - 49);
-    assert_eq!(SUMS.count(), runs + 1);
+    assert_eq!(Runs::<Sum>::of(&db), runs + 1);
 }
 
 /// How many nodes a ring holds.
