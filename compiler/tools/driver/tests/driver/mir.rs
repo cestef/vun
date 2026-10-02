@@ -8,6 +8,8 @@ use vun_harness::{ACCEPT, SOURCES, repo_root};
 use vun_par::Parallel;
 use vun_span::{EXTENSION, SourceMap};
 
+use crate::common::Fixture;
+
 #[test]
 fn repository_bodies_lower_to_mir_that_verifies() {
     let root = repo_root();
@@ -73,4 +75,21 @@ fn typing_gives_up_nowhere_a_corpus_program_reaches() {
     });
     let gaps = gaps.concat();
     assert!(gaps.is_empty(), "{gaps:#?}");
+}
+
+#[test]
+fn a_closure_in_a_declarations_value_runs_at_compile_time_and_is_no_gap() {
+    let fixture = Fixture::new("coverage-closure");
+    // The closure is run when `four` is computed, and nothing else runs it.
+    let path = fixture.root.write(
+        "main.vun",
+        "\
+twice := ($F: lang.ops.Call((u8), u8), f: F, v: u8) -> u8 { f(f(v)) };
+four := twice([] (x) { (x * 2).wrap(u8) }, 1);
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let coverage = session.coverage(file);
+    assert_eq!(coverage.gaps, []);
 }

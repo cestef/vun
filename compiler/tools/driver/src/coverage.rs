@@ -76,19 +76,25 @@ impl Session {
         for f in self.functions(file) {
             let origin = f.expr.origin;
             let plain = Instantiation::plain(f.clone());
-            let closure = self.db.get::<Parsed>(&key).is_some_and(|p| p.hir.closure_of(f.expr.id).is_some());
+            let parsed = self.db.get::<Parsed>(&key);
+            let closure = parsed.as_ref().is_some_and(|p| p.hir.closure_of(f.expr.id).is_some());
             // A closure's body is typed, and counted, with the body it is written in.
             if !closure && let Some(typed) = self.db.get::<Typed>(&plain) {
                 coverage.exprs += typed.exprs;
                 coverage.typed += typed.typed_count();
             }
-            if plain.compile_time(&Cx::new(&self.db)) {
+            let instantiations: Vec<&Instantiation> =
+                program.instantiations().filter(|i| i.f.literal == f).collect();
+            // A closure outside any function is in a declaration's value, which only compile-time
+            // code evaluates: it runs only then, unless the program reaches it.
+            let declared = closure
+                && instantiations.is_empty()
+                && parsed.as_ref().is_some_and(|p| p.hir.enclosing_function(f.expr.id).is_none());
+            if declared || plain.compile_time(&Cx::new(&self.db)) {
                 coverage.compile_time += 1;
                 continue;
             }
             coverage.bodies += 1;
-            let instantiations: Vec<&Instantiation> =
-                program.instantiations().filter(|i| i.f.literal == f).collect();
             let unready = program.unready.iter().find(|(i, _)| i.f.literal == f).map(|(_, u)| u.clone());
             // A literal only compile-time code calls is covered by the bodies built for it.
             let at_compile_time = ran.iter().filter(|(i, _)| i.f.literal == f).map(|(_, built)| built);
