@@ -52,6 +52,12 @@ pub(crate) const HOOKS: Task = Task::new(
     "set this repository's jj aliases that run tasks: `jj check`, `jj push`",
     Work::Run(crate::hooks::install_all),
 );
+pub(crate) const INSTALL: Task = Task::new(
+    "install",
+    "build `vun` from this checkout and install it as the default toolchain",
+    Work::Run(crate::install::install),
+)
+.params(&[crate::install::PROFILE]);
 
 pub(crate) const TREE_SITTER: Task = Task::new(
     "tree-sitter",
@@ -76,6 +82,7 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     CHECK,
     CORPUS,
     HOOKS,
+    INSTALL,
     LAYERS,
     LINES,
     PACKAGE,

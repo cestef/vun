@@ -9,7 +9,7 @@ use std::io;
 use std::path::Path;
 
 use vun_build::release::{Build, Release};
-use vun_build::toolchains::{BIN, CONTENTS, NAME, Toolchains};
+use vun_build::toolchains::{CONTENTS, NAME};
 use vun_command::{Args, Outcome, Param, PathKind, Shell, Values};
 use vun_data::json::Json;
 use vun_data::{FromData, ToData};
@@ -19,6 +19,8 @@ use vun_fs::{Edit, Tree};
 use vun_harness::repo_root;
 use vun_span::Version;
 use vun_target::Machine;
+
+use crate::toolchain::Stage;
 
 const UNPACKED: DiagId = DiagId::new("xtask.release.unpacked");
 const UNTAGGED: DiagId = DiagId::new("xtask.release.untagged");
@@ -39,25 +41,15 @@ const STAGE: &str = ".stage";
 pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
     let binary = Path::new(args.value(&BINARY).expect("positional parameters are present"));
     let out = Path::new(args.value(&OUT).expect("positional parameters are present"));
-    let stage = out.join(STAGE);
-    stage.fresh()?;
-    let root = repo_root();
-    let exe = stage.join(BIN).join(binary.file_name().unwrap_or_default());
-    exe.parent().map(fs::create_dir_all).transpose()?;
-    fs::copy(binary, &exe)?;
-    for part in CONTENTS.iter().filter(|&&c| c != BIN) {
-        for file in root.join(part).files()? {
-            let relative = file.strip_prefix(&root).unwrap_or(&file);
-            stage.join(relative).put(fs::read(&file)?)?;
-        }
-    }
+    let staging = Stage::at(repo_root(), out.join(STAGE));
+    staging.lay(binary)?;
     let contents: Vec<String> = CONTENTS.iter().map(|&c| c.to_owned()).collect();
     let format = Format::of(Build::SUFFIX).expect("toolchain archives are of a known format");
-    let (bytes, snapshot) = format.pack(&stage, &contents, NAME)?;
+    let (bytes, snapshot) = format.pack(staging.dir(), &contents, NAME)?;
     let archive = Build::archive_name(Machine::RUNNING);
     let build = Build { machine: Machine::RUNNING, archive: archive.clone(), hash: snapshot.root() };
-    let hashed = Toolchains::hash(&stage)?;
-    stage.remove()?;
+    let hashed = staging.hash()?;
+    staging.dir().remove()?;
     if hashed != build.hash {
         diag.error(Diagnostic::error(
             UNPACKED,

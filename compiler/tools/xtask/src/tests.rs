@@ -23,7 +23,7 @@ fn no_file_is_monolithic() {
 }
 
 #[test]
-fn the_measured_binary_is_the_last_executable_cargo_reports() {
+fn the_built_binary_is_the_last_executable_cargo_reports() {
     let messages = [
         r#"{"reason":"compiler-artifact","executable":null}"#,
         "not json",
@@ -31,7 +31,7 @@ fn the_measured_binary_is_the_last_executable_cargo_reports() {
         r#"{"reason":"build-finished","success":true}"#,
     ]
     .join("\n");
-    assert_eq!(crate::size::Measured::executable(&messages), Some("/t/dist/vun".into()));
+    assert_eq!(crate::cargo::executable(&messages), Some("/t/dist/vun".into()));
 }
 
 #[test]

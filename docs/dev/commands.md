@@ -10,6 +10,8 @@ cargo xtask hooks             # once per clone: the jj aliases `jj check` and `j
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
 cargo xtask size              # the distributed binary against its budget (20 MiB)
+cargo xtask install           # build `vun` (the dist profile) and install it as the default toolchain
+cargo xtask install --profile dev   # the same, built quickly for development
 VUN_QUERY_CHECK=1 cargo nextest run -p vun-driver   # after query, sema or MIR changes
 VUN_BLESS=1 cargo nextest run -p vun-syntax         # snapshots, only after reading the diff
 cd fuzz && cargo +nightly fuzz run parse -- -max_total_time=120   # after lexer or parser changes
@@ -59,7 +61,10 @@ and the hash of its tree beside it), writes `release.json` (`cargo xtask release
 The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs
 from a directory laid out as a forge's (`releases/download/<version>/`,
 `releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at
-the root installs the latest release for a first time.
+the root installs the latest release for a first time. From a checkout instead of a release,
+`cargo xtask install` builds `vun` (the `dist` profile; `--profile release` or `--profile dev`
+for a faster build) and installs it as the toolchain of the workspace's version, replacing that
+version and making it the default `~/.local/bin/vun` links to.
 
 The release job signs `release.json` with the `RELEASE_KEY` secret (an Ed25519 key in PEM), and
 `vun` checks it against `compiler/pkg/build/src/release/key.pub` (decision 368). The key is made,

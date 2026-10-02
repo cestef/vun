@@ -4,6 +4,7 @@ mod cargo;
 mod corpus;
 mod explanations;
 mod hooks;
+mod install;
 mod layers;
 mod lines;
 mod release;
@@ -13,6 +14,7 @@ mod size;
 mod task;
 #[cfg(test)]
 mod tests;
+mod toolchain;
 mod tree_sitter;
 mod typeset;
 
