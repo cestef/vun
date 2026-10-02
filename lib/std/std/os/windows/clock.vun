@@ -21,11 +21,18 @@ monotonic := () -> Result(std.time.Instant, std.os.Error) {
     .ok(std.time.Instant.at(nanos.to(u64)))
 };
 
+/// The nanoseconds since 1970 of the system time `intervals`, since 1601. A clock set before 1970
+/// reads as the epoch, as one past what an `Instant` counts reads as its last.
+unix_nanos := (intervals: u64) -> u64 {
+    since := (intervals - unix_epoch).sat(u64);
+    (since * nanos_per_interval).sat(u64)
+};
+
 /// The real clock: the system's time of day, in nanoseconds since 1970.
 real := () -> Result(std.time.Instant, std.os.Error) {
     mut intervals: u64 = 0;
     unsafe { std.os.windows.kernel32.get_system_time_precise_as_file_time(std.ptr.to(u64, &intervals)); }
-    .ok(std.time.Instant.at(((intervals - unix_epoch) * nanos_per_interval).to(u64)))
+    .ok(std.time.Instant.at(unix_nanos(intervals)))
 };
 
 /// Suspends the calling thread for at least `span`, in whole milliseconds.

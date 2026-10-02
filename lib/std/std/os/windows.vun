@@ -52,10 +52,14 @@ exit := (code: Int(0..=125)) -> lang.never { unsafe std.os.windows.kernel32.exit
 /// Ends the process with the failure `status`.
 end := (status: std.os.Status) -> lang.never { exit(status) };
 
-/// The most arguments, and bytes of them, a program starts with: `entry` holds them in its frame,
-/// which lasts as long as the program. A program started with more exits trapped.
-arguments := 256;
-argument_bytes := 8192;
+/// The most UTF-16 units the system gives a command line (`CreateProcess`), which are the most a
+/// program is started with. It has an argument for every two of them at most, an argument and its
+/// separator, and each unit is at most three bytes of UTF-8, with a zero after each argument. So
+/// `entry` holds every argument a program is started with in its frame, which lasts as long as the
+/// program, and a command line never does not fit.
+command_line_max := 32767;
+arguments := (command_line_max + 1) / 2;
+argument_bytes := 3 * command_line_max + arguments;
 
 /// The code page of UTF-8, which a console is set to so that it writes the program's text as it is.
 utf8_code_page: u32 = 65001;
@@ -70,10 +74,10 @@ start := ($main: std.os.Main) -> type { struct {
         mut bytes: [argument_bytes]u8 = [0; argument_bytes];
         match std.os.windows.command_line.split(line, &mut bytes, &mut starts) {
             .some(count) => {
-                mut values: [arguments]usize = [0; arguments];
+                // Where each starts is made the address it is at.
                 base := std.ptr.to([argument_bytes]u8, &bytes).address();
-                for k in 0..count { values[k] = (base + starts[k]).wrap(usize); }
-                at := unsafe std.ptr.to([arguments]usize, &values).cast(*u8);
+                for k in 0..count { starts[k] = (base + starts[k]).wrap(usize); }
+                at := unsafe std.ptr.to([arguments]usize, &starts).cast(*u8);
                 mut sys := unsafe std.os.System.claim(std.os.Args.of(count, at));
                 exit(main(&mut sys).status())
             },

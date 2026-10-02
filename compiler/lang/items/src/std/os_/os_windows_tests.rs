@@ -28,3 +28,30 @@ pub const the_programs_name_has_no_escapes: Item = Item::new(
 pub const a_command_line_that_does_not_fit_is_not_split: Item = Item::new(
     &["std", "os", "windows", "tests", "a_command_line_that_does_not_fit_is_not_split"],
 );
+pub const a_surrogate_without_its_partner_is_the_replacement_character: Item = Item::new(
+    &[
+        "std",
+        "os",
+        "windows",
+        "tests",
+        "a_surrogate_without_its_partner_is_the_replacement_character",
+    ],
+);
+pub const the_longest_command_lines_the_system_gives_are_split: Item = Item::new(
+    &[
+        "std",
+        "os",
+        "windows",
+        "tests",
+        "the_longest_command_lines_the_system_gives_are_split",
+    ],
+);
+pub const the_real_clock_counts_from_1970_and_never_before: Item = Item::new(
+    &[
+        "std",
+        "os",
+        "windows",
+        "tests",
+        "the_real_clock_counts_from_1970_and_never_before",
+    ],
+);

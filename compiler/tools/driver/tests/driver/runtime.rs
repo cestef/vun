@@ -4,7 +4,8 @@
 use vun_harness::{ACCEPT, repo_root};
 use vun_items::{Item, targets};
 
-use crate::backend::{BACKENDS, build, status, status_on};
+use crate::backend::{self, BACKENDS, build, status, status_on};
+use crate::common::Fixture;
 
 /// The types of an ELF program's segments: its program headers' `p_type`, read from the
 /// 64-bit little-endian layout (`e_phoff` at 32, `e_phentsize` at 54, `e_phnum` at 56).
@@ -222,5 +223,38 @@ fn a_trap_in_a_thread_ends_it_alone_naming_the_calls_up_to_where_it_starts_then_
         assert!(lines[spawned - 1].starts_with("  in Thread.run ("), "{backend}: {text}");
         let main = format!("  in main ({file}:");
         assert!(lines[spawned..].iter().any(|l| l.starts_with(&main)), "{backend}: {text}");
+    }
+}
+
+/// A program that exits with 7 when it is started with the program's name and 601 arguments of more
+/// than ten thousand bytes between them, the last being `last`: more than the 256 arguments and
+/// 8192 bytes a Windows program once held.
+const COUNTING: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut count: usize = 0;
+    mut bytes: usize = 0;
+    mut last: &[u8] = \"\";
+    for arg in sys.args() {
+        count += 1;
+        bytes += arg.len();
+        last = arg;
+    }
+    if count == 602 and bytes > 10000 and last == \"last\" { .code(7) } else { .code(1) }
+};
+";
+
+#[test]
+fn a_windows_program_is_started_with_every_argument_its_command_line_holds() {
+    for target in [targets::windows_x86_64::msvc, targets::windows_x86::msvc] {
+        let fixture = Fixture::new(&format!("args-{}", target.symbol()));
+        let (mut session, file) = backend::on(&fixture, "count.vun", COUNTING, target);
+        if session.runner().is_empty() {
+            continue;
+        }
+        let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+        let arguments = (0..600).map(|k| format!("argument-number-{k}")).chain(["last".to_owned()]);
+        let status = session.command(&program).args(arguments).status().unwrap();
+        assert_eq!(status.code(), Some(7), "{}", target.symbol());
     }
 }

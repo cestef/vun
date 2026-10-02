@@ -23,6 +23,7 @@ pub const skip: Item = Item::new(&["std", "os", "windows", "command_line", "skip
 /// How many units from the start of `rest` are `unit`.
 pub const run: Item = Item::new(&["std", "os", "windows", "command_line", "run"]);
 /// Splits `line` into arguments written to `bytes`, each followed by a zero byte, with where each
-/// starts in `starts`; how many there are. None where `line` is not UTF-16, or `bytes` or
-/// `starts` is too short.
+/// starts in `starts`; how many there are. A unit that stands for no character, a surrogate
+/// without its partner, which the name of a file on Windows may hold, is written as
+/// `std.text.utf8.replacement`. None where `bytes` or `starts` is too short.
 pub const split: Item = Item::new(&["std", "os", "windows", "command_line", "split"]);

@@ -52,8 +52,9 @@ run := (rest: &[u16], unit: u32) -> usize {
 };
 
 /// Splits `line` into arguments written to `bytes`, each followed by a zero byte, with where each
-/// starts in `starts`; how many there are. None where `line` is not UTF-16, or `bytes` or
-/// `starts` is too short.
+/// starts in `starts`; how many there are. A unit that stands for no character, a surrogate
+/// without its partner, which the name of a file on Windows may hold, is written as
+/// `std.text.utf8.replacement`. None where `bytes` or `starts` is too short.
 split := (line: &[u16], bytes: &mut [u8], starts: &mut [usize]) -> Option(usize) {
     mut sink := Sink.of(bytes);
     mut count: usize = 0;
@@ -65,7 +66,10 @@ split := (line: &[u16], bytes: &mut [u8], starts: &mut [usize]) -> Option(usize)
         mut quoted := false;
         escapes := count > 0;
         for rest.len() > 0 {
-            (cp, len) := std.text.utf16.decode(rest)?;
+            (cp, len) := match std.text.utf16.decode(rest) {
+                .some(decoded) => decoded,
+                .none => (std.text.utf8.replacement, 1),
+            };
             if !quoted and separates(cp) { break; }
             if cp == backslash and escapes {
                 slashes := run(rest, backslash);

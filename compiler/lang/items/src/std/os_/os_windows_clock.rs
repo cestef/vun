@@ -18,6 +18,9 @@ pub const longest_sleep: Item = Item::new(
 );
 /// The monotonic clock: counts of the performance counter, in nanoseconds.
 pub const monotonic: Item = Item::new(&["std", "os", "windows", "clock", "monotonic"]);
+/// The nanoseconds since 1970 of the system time `intervals`, since 1601. A clock set before 1970
+/// reads as the epoch, as one past what an `Instant` counts reads as its last.
+pub const unix_nanos: Item = Item::new(&["std", "os", "windows", "clock", "unix_nanos"]);
 /// The real clock: the system's time of day, in nanoseconds since 1970.
 pub const real: Item = Item::new(&["std", "os", "windows", "clock", "real"]);
 /// Suspends the calling thread for at least `span`, in whole milliseconds.

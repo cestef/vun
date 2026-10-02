@@ -46,8 +46,14 @@ pub const state: Item = Item::new(&["std", "os", "windows", "state"]);
 pub const exit: Item = Item::new(&["std", "os", "windows", "exit"]);
 /// Ends the process with the failure `status`.
 pub const end: Item = Item::new(&["std", "os", "windows", "end"]);
-/// The most arguments, and bytes of them, a program starts with: `entry` holds them in its frame,
-/// which lasts as long as the program. A program started with more exits trapped.
+/// The most UTF-16 units the system gives a command line (`CreateProcess`), which are the most a
+/// program is started with. It has an argument for every two of them at most, an argument and its
+/// separator, and each unit is at most three bytes of UTF-8, with a zero after each argument. So
+/// `entry` holds every argument a program is started with in its frame, which lasts as long as the
+/// program, and a command line never does not fit.
+pub const command_line_max: Item = Item::new(
+    &["std", "os", "windows", "command_line_max"],
+);
 pub const arguments: Item = Item::new(&["std", "os", "windows", "arguments"]);
 pub const argument_bytes: Item = Item::new(&["std", "os", "windows", "argument_bytes"]);
 /// The code page of UTF-8, which a console is set to so that it writes the program's text as it is.

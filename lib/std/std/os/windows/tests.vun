@@ -1,4 +1,5 @@
-//! Tests of `std.os.windows`: a command line split into the arguments a program is given.
+//! Tests of `std.os.windows`: a command line split into the arguments a program is given, and a
+//! clock before the epoch.
 
 /// The arguments of the command line `line`, each followed by `|`, and how many there are.
 arguments := (line: &[u8], out: &mut std.text.Slab(256)) -> usize {
@@ -65,4 +66,44 @@ a_command_line_that_does_not_fit_is_not_split := () {
     mut few: [1]u8 = [0; 1];
     mut many: [4]usize = [0; 4];
     std.testing.assert(std.os.windows.command_line.split(&one, &mut few, &mut many) == Option(usize).none);
+};
+
+#[test]
+a_surrogate_without_its_partner_is_the_replacement_character := () {
+    // A file on Windows may be named with one, so a command line may hold one.
+    line: [4]u16 = [0x61, 0x20, 0xD800, 0x62];
+    mut bytes: [16]u8 = [0; 16];
+    mut starts: [4]usize = [0; 4];
+    count := std.os.windows.command_line.split(&line, &mut bytes, &mut starts).expect("splits");
+    std.testing.assert(count == 2);
+    expected: &[u8] = &[0xEF, 0xBF, 0xBD, 0x62];
+    std.testing.assert(&bytes[starts[1]..starts[1] + 4] == expected);
+};
+
+#[test]
+the_longest_command_lines_the_system_gives_are_split := () {
+    $longest := std.os.windows.command_line_max;
+    mut bytes: [std.os.windows.argument_bytes]u8 = [0; std.os.windows.argument_bytes];
+    mut starts: [std.os.windows.arguments]usize = [0; std.os.windows.arguments];
+    // The most arguments: one letter each, a space between.
+    mut letters: [longest]u16 = [0x61; longest];
+    for k in 0..longest { if k % 2 == 1 { letters[k] = 0x20; } }
+    std.testing.assert(std.os.windows.command_line.split(&letters, &mut bytes, &mut starts)
+            == Option(usize).some(16384));
+    // The most bytes: one argument of characters three bytes long.
+    euros: [longest]u16 = [0x20AC; longest];
+    std.testing.assert(std.os.windows.command_line.split(&euros, &mut bytes, &mut starts)
+            == Option(usize).some(1));
+};
+
+#[test]
+the_real_clock_counts_from_1970_and_never_before := () {
+    epoch := std.os.windows.clock.unix_epoch;
+    std.testing.assert(std.os.windows.clock.unix_nanos(epoch) == 0);
+    std.testing.assert(std.os.windows.clock.unix_nanos((epoch + 10).wrap(u64)) == 1000);
+    // A clock set to 1601, its start, or to any time before 1970.
+    std.testing.assert(std.os.windows.clock.unix_nanos(0) == 0);
+    std.testing.assert(std.os.windows.clock.unix_nanos((epoch - 1).wrap(u64)) == 0);
+    // And one set past the last time an `Instant` counts.
+    std.testing.assert(std.os.windows.clock.unix_nanos(0xFFFF_FFFF_FFFF_FFFF) == 0xFFFF_FFFF_FFFF_FFFF);
 };
