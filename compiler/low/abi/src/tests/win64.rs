@@ -82,8 +82,13 @@ fn a_small_record_result_comes_back_in_rax_even_of_floats() {
 #[test]
 fn a_float_among_the_variadic_arguments_travels_as_an_integer_in_its_position() {
     // `printf(fmt, 7, 3.5, 2.5)`: the float after the fixed argument is the integer of its bits.
-    let printf =
-        Signature { conv: Conv::C, params: vec![PTR, I32, F64, F64], result: Some(I32), variadic: Some(1) };
+    let printf = Signature {
+        conv: Conv::C,
+        params: vec![PTR, I32, F64, F64],
+        result: Some(I32),
+        variadic: Some(1),
+        convention: None,
+    };
     let passing = Passing::of(&printf, &WIN64).unwrap();
     assert_eq!(passing.params, [int(RCX), int(RDX), int(R8), int(R9)]);
     // Fixed, the same float is in a floating-point register of its position.

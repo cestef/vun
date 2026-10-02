@@ -48,6 +48,8 @@ pub struct Target {
     pub address_bits: u32,
     /// The width of a general register, in bits.
     pub register_bits: u32,
+    /// The architecture: what its C functions' conventions are those of.
+    pub arch: Symbol,
     /// The instruction set its code is written in, which a block of instructions names.
     pub isa: Symbol,
     /// What its processor has of the instruction set beyond what every processor of it has
@@ -69,6 +71,7 @@ impl Target {
             endian: target.spec.endian,
             address_bits: target.spec.pointer_bits,
             register_bits: target.spec.register_bits,
+            arch: target.spec.arch,
             isa: target.spec.isa,
             features: target.spec.features.clone(),
             floats: target.spec.floats,

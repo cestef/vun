@@ -12,6 +12,7 @@ mod bind;
 mod borrows;
 mod checks;
 mod comptime;
+mod conventions;
 mod coroutines;
 mod dependencies;
 mod doc;

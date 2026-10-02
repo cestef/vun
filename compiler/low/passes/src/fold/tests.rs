@@ -16,6 +16,7 @@ fn a_function_folds_what_became_constant_and_branches_on_it() {
         params: Vec::new(),
         result: Some(vun_lir::AbiType::Int(Scalar::I32, vun_lir::Ext::Sign)),
         variadic: None,
+        convention: None,
     };
     let mut build = Builder::new(Linkage::Internal, signature, at);
     let [minus_two, zero] = [0xfe, 0].map(|bits| build.constant(Scalar::I8, bits, at));

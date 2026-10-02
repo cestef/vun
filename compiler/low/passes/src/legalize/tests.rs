@@ -21,8 +21,13 @@ const HOST: Legalize = Legalize {
 fn arithmetic(conv: Conv, origins: &OriginTable) -> Unit {
     let at = origin(origins);
     let wide = AbiType::Int(Scalar::I128, Ext::Sign);
-    let signature =
-        Signature { conv, params: vec![wide.clone(), wide.clone()], result: Some(wide), variadic: None };
+    let signature = Signature {
+        conv,
+        params: vec![wide.clone(), wide.clone()],
+        result: Some(wide),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];
     let sum = b.binary(BinOp::Add, x, y, at);
@@ -79,8 +84,13 @@ fn integers_four_times_the_widest_become_four_limbs_under_vun_s_convention_alone
 fn half(conv: Conv, origins: &OriginTable) -> Unit {
     let at = origin(origins);
     let half = AbiType::Scalar(Scalar::F16);
-    let signature =
-        Signature { conv, params: vec![half.clone(), half.clone()], result: Some(half), variadic: None };
+    let signature = Signature {
+        conv,
+        params: vec![half.clone(), half.clone()],
+        result: Some(half),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];
     let sum = b.binary(BinOp::FAdd, x, y, at);
@@ -125,7 +135,7 @@ fn choose(conv: Conv, add: bool, origins: &OriginTable) -> Unit {
     let double = AbiType::Scalar(Scalar::F64);
     let flag = AbiType::Int(Scalar::I8, Ext::Zero);
     let params = vec![double.clone(), double.clone(), flag];
-    let signature = Signature { conv, params, result: Some(double), variadic: None };
+    let signature = Signature { conv, params, result: Some(double), variadic: None, convention: None };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y, c] = [0, 1, 2].map(|k| b.params(b.current())[k]);
     let zero = b.constant(Scalar::I8, 0, at);
@@ -179,6 +189,7 @@ fn divided(ty: Scalar, origins: &OriginTable) -> Unit {
         params: vec![int.clone(), int.clone()],
         result: Some(int),
         variadic: None,
+        convention: None,
     };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let [x, y] = [b.params(b.current())[0], b.params(b.current())[1]];

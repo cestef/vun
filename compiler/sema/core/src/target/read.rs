@@ -120,6 +120,10 @@ impl Variants for Convention {
         (convention::aapcs, Self::Aapcs),
         (convention::ilp32, Self::Ilp32),
         (convention::wasm32, Self::Wasm32),
+        (convention::cdecl, Self::Cdecl),
+        (convention::stdcall, Self::Stdcall),
+        (convention::fastcall, Self::Fastcall),
+        (convention::thiscall, Self::Thiscall),
     ];
 }
 

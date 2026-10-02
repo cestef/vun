@@ -7,6 +7,7 @@ use vun_codec::{Decode, Encode};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
+use vun_target::Convention;
 
 use crate::entity::{Block, Inst, Slot, Value};
 use crate::inst::{Address, InstKind, Terminator};
@@ -110,6 +111,8 @@ pub struct Signature {
     /// Under the C convention, the parameter the variadic arguments start at (C's `...`); the
     /// function is an import declared at the arity its callers use.
     pub variadic: Option<usize>,
+    /// Under the C convention, the one it names (`#[abi.stdcall]`) where it is not the target's.
+    pub convention: Option<Convention>,
 }
 
 impl Signature {

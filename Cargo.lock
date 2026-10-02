@@ -2085,6 +2085,7 @@ dependencies = [
  "foldhash",
  "vun-codec",
  "vun-items",
+ "vun-target",
 ]
 
 [[package]]

@@ -3,7 +3,6 @@
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir};
-use vun_primitives::abi::Abi;
 use vun_sema_float::Format;
 use vun_sema_ty::float::FloatType;
 use vun_sema_ty::item::DeclRef;
@@ -19,7 +18,7 @@ impl Checker<'_, '_, '_> {
         let Ok(declared) = self.env.cx.get::<DeclType>(&key) else { return };
         let Some(signature) = declared.ty.signature() else { return };
         let Some(items) = signature.params.last().and_then(|p| p.packed()) else { return };
-        if !signature.has(vun_primitives::Primitive::Abi(Abi::c)) {
+        if !signature.is_c() {
             return;
         }
         let body = hir.decls[decl].value.is_some_and(|v| matches!(hir.exprs[v].kind, ExprKind::Fn { .. }));

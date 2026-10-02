@@ -6,7 +6,7 @@ mod unchosen;
 
 use std::path::PathBuf;
 
-use vun_backend::{Artifact, Emits, Emitted, Line, Lines, Request, Traced};
+use vun_backend::{Artifact, Emits, Emitted, Feature, Line, Lines, Missing, Request, Traced};
 use vun_command::{Args, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
@@ -146,6 +146,13 @@ impl Session {
             }
         };
         let info = *backend.info();
+        // A convention a function names, other than the target's own, is for backends that say so.
+        let own = target.convention;
+        let named = unit.signatures().find(|(_, s)| s.convention.is_some_and(|c| c != own));
+        if let Some((at, _)) = named.filter(|_| !info.caps.has(Feature::Conventions)) {
+            let d = Missing::NamedConvention.at(at).diagnostic(info.id);
+            return Err(Uncoded::Reported(self.diag.error(d)));
+        }
         // Integers wider than the backend's are split into halves first.
         let legalizing = LEGALIZE.start();
         let mut unit = unit.clone();

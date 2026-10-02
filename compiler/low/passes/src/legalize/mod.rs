@@ -217,6 +217,7 @@ impl Legalize {
             params: signature.params.iter().map(split).collect(),
             result,
             variadic: signature.variadic,
+            convention: signature.convention,
         })
     }
 

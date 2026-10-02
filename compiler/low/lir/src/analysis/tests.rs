@@ -25,6 +25,7 @@ fn shaped(origin: OriginId, blocks: usize, ends: &dyn Fn(crate::Value) -> Vec<Te
         params: vec![AbiType::Int(Scalar::I8, crate::Ext::Zero)],
         result: None,
         variadic: None,
+        convention: None,
     };
     let mut builder = Builder::new(Linkage::Export(Symbol::intern("f")), signature, origin);
     let cond = builder.params(builder.current())[0];
@@ -128,7 +129,8 @@ fn swapped_parameters_move_through_a_temporary() {
 fn calling(origin: OriginId, calls: &[&[usize]]) -> crate::Unit {
     let mut unit = crate::Unit { pointer_bits: 64, ..crate::Unit::default() };
     for callees in calls {
-        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None };
+        let signature =
+            Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None, convention: None };
         let mut builder = Builder::new(Linkage::Internal, signature, origin);
         for &callee in *callees {
             let call = crate::InstKind::Call {

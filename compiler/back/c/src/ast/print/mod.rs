@@ -9,6 +9,8 @@ use std::fmt::{self, Write};
 
 use vun_backend::Emits;
 
+use vun_target::Convention;
+
 use super::{Aggregate, Attribute, Base, Decl, Duration, File, Ident, Item, Names, Own, Proto, Storage, Ty};
 
 struct Printer<'f, 'a, 'n> {
@@ -80,10 +82,15 @@ impl Printer<'_, '_, '_> {
                 self.gap(to)?;
                 self.f.write_char('*')
             }
-            Ty::Function { result, .. } => {
+            Ty::Function { result, convention, .. } => {
                 self.left(result)?;
                 self.gap(result)?;
-                self.f.write_str("(*")
+                self.f.write_char('(')?;
+                if let Some(convention) = convention {
+                    self.convention(*convention)?;
+                    self.f.write_char(' ')?;
+                }
+                self.f.write_char('*')
             }
         }
     }
@@ -92,7 +99,7 @@ impl Printer<'_, '_, '_> {
     fn right(&mut self, ty: &Ty) -> fmt::Result {
         match ty {
             Ty::Volatile(ty) | Ty::Restrict(ty) | Ty::Pointer(ty) => self.right(ty),
-            Ty::Function { result, params, variadic } => {
+            Ty::Function { result, params, variadic, .. } => {
                 self.f.write_char(')')?;
                 self.declared(params.iter(), Self::ty, *variadic)?;
                 self.right(result)
@@ -194,8 +201,27 @@ impl Printer<'_, '_, '_> {
         })
     }
 
+    /// `__attribute__((stdcall))`: the calling convention as GNU C and Clang name it.
+    fn convention(&mut self, convention: Convention) -> fmt::Result {
+        self.f.write_str(match convention {
+            Convention::Sysv => "__attribute__((sysv_abi))",
+            Convention::Win64 => "__attribute__((ms_abi))",
+            Convention::Cdecl => "__attribute__((cdecl))",
+            Convention::Stdcall => "__attribute__((stdcall))",
+            Convention::Fastcall => "__attribute__((fastcall))",
+            Convention::Thiscall => "__attribute__((thiscall))",
+            other => {
+                unreachable!("no attribute names the convention {other:?}: the target's own is not written")
+            }
+        })
+    }
+
     fn proto(&mut self, proto: &Proto) -> fmt::Result {
         self.storage(proto.storage)?;
+        if let Some(convention) = proto.convention {
+            self.convention(convention)?;
+            self.f.write_char(' ')?;
+        }
         self.decl(&Decl::new(proto.result.clone(), proto.name))?;
         self.declared(proto.params.iter(), Self::decl, proto.variadic)
     }

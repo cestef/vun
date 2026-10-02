@@ -10,6 +10,7 @@ use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_sema_ty::Ty;
 use vun_sema_ty::trap::{Reason, Trap};
+use vun_target::Convention;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Unlowered {
@@ -40,6 +41,8 @@ pub enum Why {
     /// Library code reached at run time reports an error (`lang.diag.error`): the program is
     /// refused (spec 10, section 3).
     Reported(Reason),
+    /// A function marked with a calling convention of another architecture.
+    Convention(Convention),
 }
 
 /// What lowering does not handle yet.
@@ -80,6 +83,9 @@ impl fmt::Display for Unlowered {
                 write!(f, "the instruction needs `{feature}`, which the target's processor lacks")
             }
             Why::Reported(_) => f.write_str("library code reached at run time reports an error"),
+            Why::Convention(c) => {
+                write!(f, "the calling convention `{c:?}` is not one of the target's architecture")
+            }
             Why::Unavailable(Needed::Float(bits)) => write!(
                 f,
                 "the instruction needs a floating-point unit computing {bits}-bit floats, which the \
@@ -105,6 +111,7 @@ impl Why {
             Self::Recursive => "recursive frame",
             Self::Unavailable(_) => "unavailable instruction",
             Self::Reported(_) => "reported",
+            Self::Convention(_) => "convention",
         }
     }
 }
@@ -129,6 +136,10 @@ impl Why {
                 .append(needed.msg())
                 .text(", which the target's processor lacks"),
             Self::Reported(_) => Msg::new().text("library code reached here reports an error"),
+            Self::Convention(c) => Msg::new()
+                .text("the calling convention ")
+                .code(format!("{c:?}").to_lowercase())
+                .text(" is not one of the target's architecture"),
         }
     }
 
@@ -139,6 +150,7 @@ impl Why {
                 Some(Msg::new().text("use it only at compile time, under ").code("$"))
             }
             Self::Untargeted => Some(Msg::new().text("choose a target with ").code("--target")),
+            Self::Convention(_) => Some(Msg::new().text("use ").code("#[abi.c]").text(", the target's own")),
             Self::Recursive => Some(Msg::new().text("await the call through a pointer to its frame")),
             Self::Unready(Unready::Untyped { .. }) => Some(
                 Msg::new()

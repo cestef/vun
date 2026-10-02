@@ -14,6 +14,7 @@ fn a_value_carrying_a_load_stays_before_a_later_store() {
         params: vec![AbiType::Address(Alias::Any)],
         result: Some(AbiType::Int(Scalar::I32, Ext::Zero)),
         variadic: None,
+        convention: None,
     };
     let mut b = Builder::new(Linkage::Internal, signature, at);
     let p = b.params(b.current())[0];

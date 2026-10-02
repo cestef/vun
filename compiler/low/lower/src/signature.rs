@@ -8,11 +8,12 @@ use vun_origin::OriginId;
 use vun_primitives::abi::Abi;
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
+use vun_sema::target::TargetOf;
 use vun_sema_ty::{Closure, Ty, TyKind};
 
 use crate::lowering::Lowering;
 use crate::repr::{Repr, Types};
-use crate::unlowered::{Form, Unlowered};
+use crate::unlowered::{Form, Unlowered, Why};
 
 impl Lowering<'_, '_> {
     /// The LIR signature of a function of type `signature`, called under `abi`.
@@ -55,6 +56,7 @@ impl Lowering<'_, '_> {
             params: vec![AbiType::Address(Alias::Exclusive)],
             result,
             variadic: None,
+            convention: None,
         })
     }
 
@@ -69,10 +71,18 @@ impl Lowering<'_, '_> {
         at: OriginId,
     ) -> Result<Signature, Unlowered> {
         let conv = match abi {
-            Some(Abi::c) => Conv::C,
+            Some(abi) if abi.is_c() => Conv::C,
             Some(Abi::naked) => Conv::Naked,
             _ => Conv::Vun,
         };
+        // A convention the target's architecture has none of is refused where it is written.
+        let convention = abi.and_then(Abi::convention);
+        if let Some(named) = convention {
+            let target = self.env.cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
+            if named.arch() != target.arch.as_str() {
+                return Err(Unlowered::new(at, Why::Convention(named)));
+            }
+        }
         let (mut passed, mut variadic) = (Vec::new(), None);
         for &param in params {
             match param.packed() {
@@ -86,7 +96,7 @@ impl Lowering<'_, '_> {
             }
         }
         let result = self.passed(result, conv, at)?;
-        Ok(Signature { conv, params: passed, result, variadic })
+        Ok(Signature { conv, params: passed, result, variadic, convention })
     }
 }
 

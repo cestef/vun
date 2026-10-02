@@ -15,7 +15,13 @@ use vun_lir::{
 /// slot's address is also passed to an import.
 fn pair(at: OriginId, escapes: bool) -> Unit {
     let int = AbiType::Int(Scalar::I32, Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![int.clone()],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let x = b.params(b.current())[0];
     let [built, copied] = [b.slot(8, 4, at), b.slot(8, 4, at)];
@@ -42,8 +48,13 @@ fn pair(at: OriginId, escapes: bool) -> Unit {
     b.terminate(Terminator::Return(Some(sum)));
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     unit.functions.push(b.finish());
-    let signature =
-        Signature { conv: Conv::C, params: vec![AbiType::Address(Alias::Any)], result: None, variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![AbiType::Address(Alias::Any)],
+        result: None,
+        variadic: None,
+        convention: None,
+    };
     let kind = ImportKind::Func(signature);
     unit.imports.push(Import {
         symbol: Symbol::intern("keep"),

@@ -202,6 +202,7 @@ impl<'u> Emitter<'u> {
                     name: Ident::Own(Own::Helper(helper)),
                     params: vec![Decl::new(from, param)],
                     variadic: false,
+                    convention: None,
                 };
                 Item::Define(proto, vec![Stmt::Return(Some(read))])
             })

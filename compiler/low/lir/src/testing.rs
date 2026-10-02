@@ -18,7 +18,13 @@ pub fn origin(origins: &OriginTable) -> OriginId {
 #[must_use]
 pub fn sum(origin: OriginId) -> Unit {
     let int = AbiType::Int(Scalar::I64, crate::Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![int.clone()],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("sum")), signature, origin);
     let n = b.params(b.current())[0];
     let zero = b.constant(Scalar::I64, 0, origin);

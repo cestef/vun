@@ -22,7 +22,13 @@ fn jump(block: Block) -> Terminator {
 /// `sum(n)` as lowering gives it: the counter and the total are slots.
 fn sum_in_slots(origin: OriginId) -> Unit {
     let int = AbiType::Int(Scalar::I64, vun_lir::Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![int.clone()],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("sum")), signature, origin);
     let n = b.params(b.current())[0];
     let [i, total] = [b.slot(8, 8, origin), b.slot(8, 8, origin)];
@@ -86,7 +92,8 @@ fn locals_in_slots_become_the_parameters_of_the_loop() {
 fn a_slot_whose_address_escapes_stays() {
     let origins = OriginTable::new();
     let o = origin(&origins);
-    let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None };
+    let signature =
+        Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None, convention: None };
     let mut b = Builder::new(Linkage::Internal, signature, o);
     let [kept, promoted] = [b.slot(8, 8, o), b.slot(4, 4, o)];
     let at = b.slot_addr(kept, o);
@@ -112,6 +119,7 @@ fn a_slot_read_before_any_store_reads_zero_and_one_read_in_parts_stays() {
         params: Vec::new(),
         result: Some(AbiType::Scalar(Scalar::F64)),
         variadic: None,
+        convention: None,
     };
     let mut b = Builder::new(Linkage::Internal, signature, o);
     let [unset, halves] = [b.slot(8, 8, o), b.slot(8, 8, o)];

@@ -5,7 +5,6 @@
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::{DeclId, ExprKind, Hir, Member, each_entry};
 use vun_primitives::Primitive;
-use vun_primitives::abi::Abi;
 use vun_primitives::lang::Lang;
 use vun_primitives::layout::Layout;
 use vun_primitives::mem::Mem;
@@ -79,9 +78,7 @@ impl Checker<'_, '_, '_> {
         }
         match &*ty {
             TyKind::Primitive(Primitive::Mem(Mem::Ptr), _) => Some(true),
-            TyKind::Primitive(Primitive::Lang(Lang::Fn), _) => {
-                Some(ty.signature()?.has(Primitive::Abi(Abi::c)))
-            }
+            TyKind::Primitive(Primitive::Lang(Lang::Fn), _) => Some(ty.signature()?.is_c()),
             TyKind::Primitive(Primitive::Mem(Mem::Array), _) => self.c_type(ty.as_array()?.1),
             // A cell holds its value as the value is held.
             TyKind::Primitive(Primitive::Mem(Mem::Cell), args) => match args.as_slice() {
@@ -97,7 +94,7 @@ impl Checker<'_, '_, '_> {
                 let payloads: Vec<_> = members.variants.iter().map(|v| v.payload.as_slice()).collect();
                 let pointer = |p: &Ty| {
                     matches!(&**p, TyKind::Primitive(Primitive::Mem(Mem::Ptr), _))
-                        || p.signature().is_some_and(|s| s.has(Primitive::Abi(Abi::c)))
+                        || p.signature().is_some_and(|s| s.is_c())
                 };
                 Some(match payloads.as_slice() {
                     [[], [Ok(p)]] | [[Ok(p)], []] => pointer(p),

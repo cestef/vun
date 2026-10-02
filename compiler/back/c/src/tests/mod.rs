@@ -78,7 +78,13 @@ impl vun_backend::Lines for NoLines {
 /// A function of `linkage` returning a constant of `ty`.
 fn returning(linkage: Linkage, ty: Scalar, origin: OriginId) -> vun_lir::Function {
     let result = if ty.is_int() { AbiType::Int(ty, Ext::Zero) } else { AbiType::Scalar(ty) };
-    let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: Some(result), variadic: None };
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: Vec::new(),
+        result: Some(result),
+        variadic: None,
+        convention: None,
+    };
     let mut b = Builder::new(linkage, signature, origin);
     let v = b.constant(ty, 7, origin);
     b.terminate(Terminator::Return(Some(v)));
@@ -188,4 +194,33 @@ fn qualifiers_on_pointers_follow_their_star() {
     assert_eq!(typedef(volatile(Ty::BYTE).pointer()), "typedef volatile u8 *p;\n");
     assert_eq!(typedef(Ty::code().pointer()), "typedef void (**p)(void);\n");
     assert_eq!(typedef(volatile(Ty::code())), "typedef void (*volatile p)(void);\n");
+}
+
+#[test]
+fn a_calling_convention_a_function_names_is_written_where_its_pointer_and_prototype_are() {
+    use crate::ast::{Decl, File, Item, Ty};
+    let name = Symbol::intern("p");
+    let named = |convention| Ty::Function {
+        result: Box::new(Ty::Void),
+        params: vec![Ty::int(32)],
+        variadic: false,
+        convention: Some(convention),
+    };
+    let typedef = |ty: Ty| {
+        let item = Item::Typedef(Decl::new(ty, Ident::Symbol(name)));
+        File { names: Names::new([name], None), items: vec![item] }.to_string()
+    };
+    assert_eq!(typedef(named(Convention::Stdcall)), "typedef void (__attribute__((stdcall)) *p)(i32);\n");
+    assert_eq!(
+        typedef(named(Convention::Win64).pointer()),
+        "typedef void (__attribute__((ms_abi)) **p)(i32);\n"
+    );
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let mut unit = constant("seven", Scalar::I32, at);
+    let named = unit.functions.iter().next().map(|(id, _)| id).unwrap();
+    unit.functions[named].signature.convention = Some(Convention::Fastcall);
+    let source = CBackend::default().sources(&unit, &target(), &NoLines).unwrap();
+    let text = String::from_utf8_lossy(&source[0].bytes);
+    assert!(text.contains("__attribute__((fastcall)) u32 seven(void)"), "{text}");
 }

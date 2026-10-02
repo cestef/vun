@@ -11,7 +11,7 @@ use vun_lir::{
 
 fn signature(conv: Conv, param: Scalar, result: Scalar) -> Signature {
     let int = |ty| AbiType::Int(ty, Ext::Zero);
-    Signature { conv, params: vec![int(param)], result: Some(int(result)), variadic: None }
+    Signature { conv, params: vec![int(param)], result: Some(int(result)), variadic: None, convention: None }
 }
 
 fn call(b: &mut Builder, f: usize, arg: vun_lir::Value, ty: Scalar, at: OriginId) -> vun_lir::Value {

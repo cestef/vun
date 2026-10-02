@@ -35,6 +35,7 @@ fn the_builder_folds_constants_and_identities() {
         params: vec![crate::AbiType::Int(Scalar::I32, crate::Ext::Zero)],
         result: None,
         variadic: None,
+        convention: None,
     };
     let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, o);
     let x = b.params(b.current())[0];

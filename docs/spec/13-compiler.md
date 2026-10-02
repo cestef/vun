@@ -1120,8 +1120,11 @@ rules (proposed, decision 256).
   `Rules::calling` gives the rules a call of it follows, legalization asking them too. The C
   backend declares such an import with `...`; the wasm backend, whose C convention passes them
   in a buffer the caller fills, refuses it (`Missing::Variadic`). `SYSV`, `AAPCS64`,
-  `DARWIN_ARM64`, `AAPCS` and `AAPCS_VFP` are the five built; riscv64's LP64D and wasm32's C
-  convention are further values of the same type.
+  `DARWIN_ARM64`, `AAPCS`, `AAPCS_VFP` and `WIN64` are the six built; riscv64's LP64D, wasm32's
+  C convention and 32-bit x86's four (`cdecl`, `stdcall`, `fastcall`, `thiscall`) are further
+  values of the same type, 32-bit x86's left to the C compiler: a function names its convention
+  (`Signature::convention`, from `#[abi.stdcall]`) and the C backend writes it as the GNU
+  attribute (`__attribute__((stdcall))`) on the prototype and in the type of a pointer to it.
 - **A value in one register.** A LIR value never spans registers: a scalar wider than a register
   of its class (a 128-bit integer, or a 64-bit one or a soft-float `f64` on a 32-bit machine) is
   refused (`Unpassable::Wider`), legalization having split it into limbs first by asking the

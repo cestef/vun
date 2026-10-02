@@ -135,7 +135,13 @@ itself lays out each thread's block and sets the thread pointer (spec 08, sectio
 
 A function type carries, as part of the type, and all checked:
 
-- its ABI: `#[abi.c]`, `#[abi.interrupt]`, `#[abi.naked]`, native by default;
+- its ABI: `#[abi.c]`, `#[abi.interrupt]`, `#[abi.naked]`, native by default; or a calling
+  convention of the target's architecture that the target's own C convention is not
+  (`#[abi.sysv]` and `#[abi.win64]` of x86-64, `#[abi.cdecl]`, `#[abi.stdcall]`,
+  `#[abi.fastcall]` and `#[abi.thiscall]` of 32-bit x86), a function so marked being called as a
+  C function is under that convention. A convention of another architecture is refused where it
+  is lowered, and a backend that does not have them (`Feature::Conventions`, the C backend's)
+  refuses a program naming one that is not the target's;
 - whether calling it is `unsafe`;
 - `#[panic.never]`;
 - an optional stack bound `#[stack.max(512)]`;
@@ -153,7 +159,7 @@ is accepted in place of an expected function type:
 | duty (of the callers) | `unsafe`, `target.require(f)` | no duty the expected type lacks |
 | guarantee (to the callers) | `panic.never` | every guarantee the expected type has |
 | bound | `stack.max(n)` | a bound at most the expected one |
-| identity | `abi.c`, `abi.interrupt`, `abi.naked` | the same ones |
+| identity | `abi.c`, `abi.interrupt`, `abi.naked`, `abi.sysv`, `abi.win64`, `abi.cdecl`, `abi.stdcall`, `abi.fastcall`, `abi.thiscall` | the same ones |
 
 `unsafe` is one marker with one meaning: **`unsafe x` is used only where someone vouched for
 it.** An `unsafe` expression or block is used where it is written, so writing it vouches for the

@@ -120,7 +120,13 @@ impl Describe for Toy {
 #[must_use]
 pub fn signature(params: usize) -> Signature {
     let int = AbiType::Int(Scalar::I64, Ext::Zero);
-    Signature { conv: Conv::Vun, params: vec![int.clone(); params], result: Some(int), variadic: None }
+    Signature {
+        conv: Conv::Vun,
+        params: vec![int.clone(); params],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    }
 }
 
 /// A generator of functions: a loop whose body computes, calls and branches over values its

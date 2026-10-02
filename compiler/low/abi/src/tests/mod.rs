@@ -59,7 +59,7 @@ const I64: AbiType = AbiType::Int(Scalar::I64, Ext::Zero);
 const WIDE: AbiType = AbiType::Wide { limb: Scalar::I64, limbs: 2, ext: Ext::Sign };
 
 pub(super) fn c(params: Vec<AbiType>, result: Option<AbiType>) -> Signature {
-    Signature { conv: Conv::C, params, result, variadic: None }
+    Signature { conv: Conv::C, params, result, variadic: None, convention: None }
 }
 
 type Place = Loc<Carrier<u8, u8>>;

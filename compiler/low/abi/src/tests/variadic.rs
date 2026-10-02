@@ -13,7 +13,7 @@ const PTR: AbiType = AbiType::Address(vun_lir::Alias::Any);
 
 /// A C function taking `params`, those from `fixed` on variadic.
 fn variadic(params: Vec<AbiType>, fixed: usize, result: Option<AbiType>) -> Signature {
-    Signature { conv: Conv::C, params, result, variadic: Some(fixed) }
+    Signature { conv: Conv::C, params, result, variadic: Some(fixed), convention: None }
 }
 
 fn stack(offset: u64, bytes: u64) -> Loc<Carrier<u8, u8>> {

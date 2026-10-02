@@ -1,5 +1,7 @@
 //! C types, as the backend writes them.
 
+use vun_target::Convention;
+
 use super::Ident;
 
 /// A C integer type by its keywords.
@@ -44,6 +46,8 @@ pub enum Ty {
         result: Box<Ty>,
         params: Vec<Ty>,
         variadic: bool,
+        /// The calling convention it names, where it is not the target's.
+        convention: Option<Convention>,
     },
 }
 
@@ -91,7 +95,7 @@ impl Ty {
     /// `void (*)(void)`: a function's address held in data.
     #[must_use]
     pub fn code() -> Self {
-        Self::Function { result: Box::new(Self::Void), params: Vec::new(), variadic: false }
+        Self::Function { result: Box::new(Self::Void), params: Vec::new(), variadic: false, convention: None }
     }
 }
 

@@ -13,6 +13,7 @@ pub use ty::{Base, Suffix, Ty};
 
 use vun_backend::{Line, Part};
 use vun_intern::Symbol;
+use vun_target::Convention;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Expr {
@@ -235,6 +236,8 @@ pub struct Proto {
     pub params: Vec<Decl>,
     /// Whether it takes variadic arguments after `params` (`...`).
     pub variadic: bool,
+    /// The calling convention it names, where it is not the target's.
+    pub convention: Option<Convention>,
 }
 
 /// What GNU C says of a function or an object beyond what C99 does (`__attribute__`).

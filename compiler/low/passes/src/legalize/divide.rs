@@ -22,6 +22,7 @@ pub(super) fn helper(legalize: Legalize, count: u8, pointer_bits: u32, at: Origi
         params: vec![int; 2 * n],
         result: Some(AbiType::Memory { size: 2 * u64::from(count) * bytes, align: bytes }),
         variadic: None,
+        convention: None,
     };
     let mut build = Builder::new(Linkage::Internal, signature, at);
     let entry = build.params(build.current()).to_vec();

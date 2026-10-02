@@ -10,3 +10,15 @@ pub const native: Item = Item::new(&["lang", "abi", "native"]);
 pub const c: Item = Item::new(&["lang", "abi", "c"]);
 pub const interrupt: Item = Item::new(&["lang", "abi", "interrupt"]);
 pub const naked: Item = Item::new(&["lang", "abi", "naked"]);
+/// The System V AMD64 convention, a function of x86-64 called as C's are under it.
+pub const sysv: Item = Item::new(&["lang", "abi", "sysv"]);
+/// The Microsoft x64 convention.
+pub const win64: Item = Item::new(&["lang", "abi", "win64"]);
+/// The C convention of 32-bit x86: arguments on the stack, popped by the caller.
+pub const cdecl: Item = Item::new(&["lang", "abi", "cdecl"]);
+/// 32-bit x86's `__stdcall`: the arguments on the stack, popped by the callee.
+pub const stdcall: Item = Item::new(&["lang", "abi", "stdcall"]);
+/// 32-bit x86's `__fastcall`: two arguments in `ecx` and `edx`, the rest as `stdcall`.
+pub const fastcall: Item = Item::new(&["lang", "abi", "fastcall"]);
+/// 32-bit x86's `__thiscall`: the first argument in `ecx`, the rest as `stdcall`.
+pub const thiscall: Item = Item::new(&["lang", "abi", "thiscall"]);

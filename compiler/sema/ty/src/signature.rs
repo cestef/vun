@@ -5,6 +5,7 @@
 use vun_codec::{Decode, Encode};
 use vun_grammar::TokenKind;
 use vun_primitives::Primitive;
+use vun_primitives::abi::Abi;
 use vun_primitives::lang::Lang;
 use vun_primitives::safety::Safety;
 
@@ -58,6 +59,13 @@ impl Signature {
     #[must_use]
     pub fn has(&self, item: Primitive) -> bool {
         self.markers.iter().any(|m| m.item == item)
+    }
+
+    /// Whether a function of this signature is called as C's are: under `#[abi.c]`, or a calling
+    /// convention a target names (`#[abi.stdcall]`).
+    #[must_use]
+    pub fn is_c(&self) -> bool {
+        Marker::abi(&self.markers).is_some_and(Abi::is_c)
     }
 
     /// Whether calling a function of this signature is `unsafe`.

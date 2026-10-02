@@ -8,7 +8,7 @@
 
 use vun_lir::{AbiType, Alias, Conv, Ext, Record, Scalar, Signature};
 use vun_origin::OriginId;
-use vun_target::Attributes;
+use vun_target::{Attributes, Convention};
 
 use super::Emitter;
 use crate::ast::{Binary, Decl, Expr, Ident, Proto, Storage, Ty};
@@ -21,6 +21,8 @@ pub(super) struct CSignature {
     pub(super) params: Vec<Ty>,
     /// The parameter the variadic arguments start at, if any.
     pub(super) variadic: Option<usize>,
+    /// The calling convention it names, where it is not the target's.
+    pub(super) convention: Option<Convention>,
 }
 
 impl CSignature {
@@ -32,7 +34,7 @@ impl CSignature {
     /// A pointer to a function of this signature.
     pub(super) fn pointer(&self) -> Ty {
         let (result, params) = (Box::new(self.result.clone()), self.declared().to_vec());
-        Ty::Function { result, params, variadic: self.variadic.is_some() }
+        Ty::Function { result, params, variadic: self.variadic.is_some(), convention: self.convention }
     }
 }
 
@@ -143,7 +145,7 @@ impl Emitter<'_> {
             }
             Some(result) => self.abi(conv, result, at)?,
         };
-        Ok(CSignature { result, params, variadic: signature.variadic })
+        Ok(CSignature { result, params, variadic: signature.variadic, convention: signature.convention })
     }
 
     /// A declaration of a function named `name`, its parameters named by position.
@@ -157,6 +159,6 @@ impl Emitter<'_> {
         let c = self.signature(signature, at)?;
         let params = c.declared().iter().enumerate().map(|(i, ty)| Decl::new(ty.clone(), Ident::param(i)));
         let (params, variadic) = (params.collect(), c.variadic.is_some());
-        Ok(Proto { storage, result: c.result, name, params, variadic })
+        Ok(Proto { storage, result: c.result, name, params, variadic, convention: c.convention })
     }
 }

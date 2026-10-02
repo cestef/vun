@@ -70,7 +70,10 @@ impl Emitter<'_> {
             f.block(block)?;
         }
         let body = f.finish()?;
-        Ok(Item::Define(Proto { storage, result: c.result, name, params, variadic: false }, body))
+        Ok(Item::Define(
+            Proto { storage, result: c.result, name, params, variadic: false, convention: c.convention },
+            body,
+        ))
     }
 }
 

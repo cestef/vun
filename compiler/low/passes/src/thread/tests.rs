@@ -12,7 +12,13 @@ fn joined() -> (Unit, OriginTable) {
     let origins = OriginTable::new();
     let at = origin(&origins);
     let int = AbiType::Int(Scalar::I8, Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![int.clone()],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
     let mut build = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let c = build.params(build.current())[0];
     let [yes, no, join, three, four] = [0; 5].map(|_| build.block(&[], at));
@@ -87,7 +93,13 @@ fn a_block_whose_constant_is_read_after_it_is_not_jumped_over() {
     let origins = OriginTable::new();
     let at = origin(&origins);
     let int = AbiType::Int(Scalar::I8, Ext::Zero);
-    let signature = Signature { conv: Conv::C, params: vec![int.clone()], result: Some(int), variadic: None };
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![int.clone()],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
     let mut build = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
     let c = build.params(build.current())[0];
     let [other, holding, after] = [0; 3].map(|_| build.block(&[], at));

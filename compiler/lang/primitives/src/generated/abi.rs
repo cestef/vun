@@ -7,10 +7,33 @@ pub enum Abi {
     c,
     interrupt,
     naked,
+    /// The System V AMD64 convention, a function of x86-64 called as C's are under it.
+    sysv,
+    /// The Microsoft x64 convention.
+    win64,
+    /// The C convention of 32-bit x86: arguments on the stack, popped by the caller.
+    cdecl,
+    /// 32-bit x86's `__stdcall`: the arguments on the stack, popped by the callee.
+    stdcall,
+    /// 32-bit x86's `__fastcall`: two arguments in `ecx` and `edx`, the rest as `stdcall`.
+    fastcall,
+    /// 32-bit x86's `__thiscall`: the first argument in `ecx`, the rest as `stdcall`.
+    thiscall,
 }
 impl Abi {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::abi;
-    pub const ALL: &[Self] = &[Self::native, Self::c, Self::interrupt, Self::naked];
+    pub const ALL: &[Self] = &[
+        Self::native,
+        Self::c,
+        Self::interrupt,
+        Self::naked,
+        Self::sysv,
+        Self::win64,
+        Self::cdecl,
+        Self::stdcall,
+        Self::fastcall,
+        Self::thiscall,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
@@ -19,6 +42,12 @@ impl Abi {
             Self::c => "c",
             Self::interrupt => "interrupt",
             Self::naked => "naked",
+            Self::sysv => "sysv",
+            Self::win64 => "win64",
+            Self::cdecl => "cdecl",
+            Self::stdcall => "stdcall",
+            Self::fastcall => "fastcall",
+            Self::thiscall => "thiscall",
         }
     }
     /// The declaration.
@@ -29,6 +58,12 @@ impl Abi {
             Self::c => vun_items::lang::abi::c,
             Self::interrupt => vun_items::lang::abi::interrupt,
             Self::naked => vun_items::lang::abi::naked,
+            Self::sysv => vun_items::lang::abi::sysv,
+            Self::win64 => vun_items::lang::abi::win64,
+            Self::cdecl => vun_items::lang::abi::cdecl,
+            Self::stdcall => vun_items::lang::abi::stdcall,
+            Self::fastcall => vun_items::lang::abi::fastcall,
+            Self::thiscall => vun_items::lang::abi::thiscall,
         }
     }
 }

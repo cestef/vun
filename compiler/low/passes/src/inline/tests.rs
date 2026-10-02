@@ -14,8 +14,13 @@ fn unit() -> (Unit, OriginTable) {
     let origins = OriginTable::new();
     let at = origin(&origins);
     let int = AbiType::Int(Scalar::I32, Ext::Zero);
-    let signature =
-        |conv| Signature { conv, params: vec![int.clone()], result: Some(int.clone()), variadic: None };
+    let signature = |conv| Signature {
+        conv,
+        params: vec![int.clone()],
+        result: Some(int.clone()),
+        variadic: None,
+        convention: None,
+    };
     let mut inc = Builder::new(Linkage::Internal, signature(Conv::Vun), at);
     let x = inc.params(inc.current())[0];
     let body = inc.block(&[], at);

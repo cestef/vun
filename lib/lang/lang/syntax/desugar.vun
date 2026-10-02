@@ -231,6 +231,12 @@ fn_markers := .{
     .{ .item = lang.abi.c, .relation = .identity },
     .{ .item = lang.abi.interrupt, .relation = .identity },
     .{ .item = lang.abi.naked, .relation = .identity },
+    .{ .item = lang.abi.sysv, .relation = .identity },
+    .{ .item = lang.abi.win64, .relation = .identity },
+    .{ .item = lang.abi.cdecl, .relation = .identity },
+    .{ .item = lang.abi.stdcall, .relation = .identity },
+    .{ .item = lang.abi.fastcall, .relation = .identity },
+    .{ .item = lang.abi.thiscall, .relation = .identity },
 };
 
 /// What calling a value that is not a function literal means (spec 01, section 4): `f(a, b)` is

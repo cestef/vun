@@ -67,7 +67,13 @@ const KINDS: [(Output, &str); 2] = [(Output::Shared, "so"), (Output::Static, "a"
 
 /// The exit status of the C program `user`, linked against the library `name` built from
 /// `source` as `output` through `backend`, and the threads library.
-fn run_with_library(name: &str, source: &str, user: &str, output: Output, backend: Name) -> Option<i32> {
+pub(crate) fn run_with_library(
+    name: &str,
+    source: &str,
+    user: &str,
+    output: Output,
+    backend: Name,
+) -> Option<i32> {
     let fixture = Fixture::new(&format!("link-{name}-{}-{backend}", output.name()));
     let path = fixture.root.write(format!("{name}.vun"), source);
     let mut session = fixture.session();

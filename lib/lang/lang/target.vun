@@ -108,6 +108,17 @@ Convention := enum {
     ilp32,
     /// The C convention of `wasm32`, as clang follows it.
     wasm32,
+    /// The C convention of 32-bit x86: arguments on the stack, last first, popped by the caller,
+    /// a result in `eax`, or `edx` and `eax`, or `st0` for a float.
+    cdecl,
+    /// 32-bit x86's `__stdcall`: as `cdecl`, but the callee pops the arguments (Windows' API).
+    stdcall,
+    /// 32-bit x86's `__fastcall`: the first two arguments of a word or less in `ecx` and `edx`,
+    /// the rest as `stdcall`.
+    fastcall,
+    /// 32-bit x86's `__thiscall` on Windows: the first argument in `ecx`, the rest as `stdcall`
+    /// (a C++ method's `this`).
+    thiscall,
 };
 
 /// The backends a target builds with under each profile, most preferred first: a build takes

@@ -60,7 +60,8 @@ a_command_line_that_does_not_fit_is_not_split := () {
     mut bytes: [4]u8 = [0; 4];
     mut starts: [1]usize = [0; 1];
     one: [3]u16 = [0x61, 0x20, 0x62];
-    std.testing.assert(std.os.windows.command_line.split(&one, &mut bytes, &mut starts) == Option(usize).none);
+    std.testing.assert(std.os.windows.command_line.split(&one, &mut bytes, &mut starts)
+            == Option(usize).none);
     mut few: [1]u8 = [0; 1];
     mut many: [4]usize = [0; 4];
     std.testing.assert(std.os.windows.command_line.split(&one, &mut few, &mut many) == Option(usize).none);

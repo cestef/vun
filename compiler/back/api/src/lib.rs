@@ -105,6 +105,9 @@ pub enum Feature {
     /// Reports frame sizes, which `stack.max` requires.
     FrameSizes,
     DebugInfo,
+    /// Defines and calls functions under the calling conventions they name (`#[abi.stdcall]`),
+    /// not only the target's own.
+    Conventions,
 }
 
 /// Everything known about a backend without running it.

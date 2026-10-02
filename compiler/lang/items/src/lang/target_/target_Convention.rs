@@ -28,3 +28,14 @@ pub const aapcs: Item = Item::new(&["lang", "target", "Convention", "aapcs"]);
 pub const ilp32: Item = Item::new(&["lang", "target", "Convention", "ilp32"]);
 /// The C convention of `wasm32`, as clang follows it.
 pub const wasm32: Item = Item::new(&["lang", "target", "Convention", "wasm32"]);
+/// The C convention of 32-bit x86: arguments on the stack, last first, popped by the caller,
+/// a result in `eax`, or `edx` and `eax`, or `st0` for a float.
+pub const cdecl: Item = Item::new(&["lang", "target", "Convention", "cdecl"]);
+/// 32-bit x86's `__stdcall`: as `cdecl`, but the callee pops the arguments (Windows' API).
+pub const stdcall: Item = Item::new(&["lang", "target", "Convention", "stdcall"]);
+/// 32-bit x86's `__fastcall`: the first two arguments of a word or less in `ecx` and `edx`,
+/// the rest as `stdcall`.
+pub const fastcall: Item = Item::new(&["lang", "target", "Convention", "fastcall"]);
+/// 32-bit x86's `__thiscall` on Windows: the first argument in `ecx`, the rest as `stdcall`
+/// (a C++ method's `this`).
+pub const thiscall: Item = Item::new(&["lang", "target", "Convention", "thiscall"]);

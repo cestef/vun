@@ -26,7 +26,13 @@ pub const INFO: BackendInfo = BackendInfo {
     formats: Names::Any,
     caps: BackendCaps {
         emits: Emits::Source,
-        features: &[Feature::CAbi, Feature::NoAlias, Feature::FrameSizes, Feature::DebugInfo],
+        features: &[
+            Feature::CAbi,
+            Feature::NoAlias,
+            Feature::FrameSizes,
+            Feature::DebugInfo,
+            Feature::Conventions,
+        ],
         widest: Widest::Bits(64),
         half: Half::Promoted,
         floats: HeldFloats::Every,

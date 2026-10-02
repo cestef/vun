@@ -79,7 +79,8 @@ fn the_verifier_rejects_an_offset_leaving_its_object() {
     let o = origin(&origins);
     // Offsets of `steps` in turn from the address of an 8-byte slot.
     let verify = |steps: &[u64]| {
-        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None };
+        let signature =
+            Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None, convention: None };
         let mut b = Builder::new(Linkage::Internal, signature, o);
         let slot = b.slot(8, 8, o);
         let mut at = b.slot_addr(slot, o);
@@ -160,7 +161,8 @@ fn the_verifier_checks_what_an_assembly_block_binds_and_where_it_ends() {
     let o = origin(&origins);
     // A block writing an 8-byte slot, or the constant 8 as if it were an address.
     let verify = |bind_slot: bool, returns: bool, term: Terminator| {
-        let signature = Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None };
+        let signature =
+            Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None, convention: None };
         let mut b = Builder::new(Linkage::Internal, signature, o);
         let slot = b.slot(8, 8, o);
         let place = if bind_slot { b.slot_addr(slot, o) } else { b.constant(Scalar::I64, 8, o) };
@@ -196,7 +198,13 @@ fn a_naked_function_holds_nothing_but_blocks_without_bindings() {
     let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
     // A block naming nothing, then `slot` a slot, `constant` a constant, and `term`.
     let verify = |slot: bool, constant: bool, term: Terminator| {
-        let signature = Signature { conv: Conv::Naked, params: Vec::new(), result: None, variadic: None };
+        let signature = Signature {
+            conv: Conv::Naked,
+            params: Vec::new(),
+            result: None,
+            variadic: None,
+            convention: None,
+        };
         let mut b = Builder::new(Linkage::Internal, signature, o);
         if slot {
             b.slot(8, 8, o);

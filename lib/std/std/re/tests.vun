@@ -31,7 +31,28 @@ text_that_is_no_pattern_is_not_parsed := () {
 #[test]
 bytes_are_dumped_a_line_of_sixteen_at_a_time := () {
     mut out := std.text.Slab(512).empty();
-    bytes: [20]u8 = [0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x2c, 0x20, 0x76, 0x75, 0x6e, 0x21, 0x0a, 0, 1, 2, 3, 0xff, 0x41, 0x42, 0x7e];
+    bytes: [20]u8 = [
+        0x48,
+        0x65,
+        0x6c,
+        0x6c,
+        0x6f,
+        0x2c,
+        0x20,
+        0x76,
+        0x75,
+        0x6e,
+        0x21,
+        0x0a,
+        0,
+        1,
+        2,
+        3,
+        0xff,
+        0x41,
+        0x42,
+        0x7e
+    ];
     std.re.hexdump(&mut out, &bytes, 0x1000).expect("room");
     expected := "00001000  48 65 6c 6c 6f 2c 20 76  75 6e 21 0a 00 01 02 03  |Hello, vun!.....|\n00001010  ff 41 42 7e                                       |.AB~|\n";
     std.testing.assert(out.bytes() == expected);

@@ -246,7 +246,13 @@ impl Rules {
             Named::AapcsVfp => Some(&Self::AAPCS_VFP),
             Named::Aapcs => Some(&Self::AAPCS),
             Named::Win64 => Some(&Self::WIN64),
-            Named::Lp64d | Named::Ilp32 | Named::Wasm32 => None,
+            Named::Lp64d
+            | Named::Ilp32
+            | Named::Wasm32
+            | Named::Cdecl
+            | Named::Stdcall
+            | Named::Fastcall
+            | Named::Thiscall => None,
         }
     }
 }

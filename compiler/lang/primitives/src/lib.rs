@@ -20,3 +20,27 @@ impl Primitive {
 
 #[cfg(test)]
 mod tests;
+
+impl abi::Abi {
+    /// Whether a function with it is called as C's are: records by value, a variadic tail. That is
+    /// `#[abi.c]`, and each calling convention a target names.
+    #[must_use]
+    pub const fn is_c(self) -> bool {
+        !matches!(self, Self::native | Self::interrupt | Self::naked)
+    }
+
+    /// The calling convention it names, when it names one rather than the target's own.
+    #[must_use]
+    pub const fn convention(self) -> Option<vun_target::Convention> {
+        use vun_target::Convention;
+        match self {
+            Self::sysv => Some(Convention::Sysv),
+            Self::win64 => Some(Convention::Win64),
+            Self::cdecl => Some(Convention::Cdecl),
+            Self::stdcall => Some(Convention::Stdcall),
+            Self::fastcall => Some(Convention::Fastcall),
+            Self::thiscall => Some(Convention::Thiscall),
+            Self::native | Self::c | Self::interrupt | Self::naked => None,
+        }
+    }
+}

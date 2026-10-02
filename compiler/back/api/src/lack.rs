@@ -36,6 +36,9 @@ pub enum Missing {
     Format(Symbol),
     /// The target's calling convention.
     Convention,
+    /// A function or call under a calling convention a function names, other than the target's
+    /// own (`#[abi.stdcall]`).
+    NamedConvention,
     /// A C record's eightbyte of floats holding this many bytes, neither a `f32` nor two nor a
     /// `f64`: a layout only an explicit size makes.
     FloatPart(u64),
@@ -111,6 +114,7 @@ impl Missing {
             Missing::FunctionOffset => Msg::new().text("an address inside a function"),
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
             Missing::Convention => Msg::new().text("the calling convention of this target"),
+            Missing::NamedConvention => Msg::new().text("calling conventions other than the target's own"),
             Missing::Asm => Msg::new().text("inline assembly"),
             Missing::AsmOperand(operand) => {
                 let what = match operand {
@@ -130,6 +134,12 @@ impl Missing {
             }
         };
         let msg = backend.text(" cannot express ").append(what);
-        Diagnostic::error(errors::BACKEND_LACKS, msg)
+        let diagnostic = Diagnostic::error(errors::BACKEND_LACKS, msg);
+        match self {
+            Missing::NamedConvention => {
+                diagnostic.help(Msg::new().text("build with ").code("--backend c").text(", which has them"))
+            }
+            _ => diagnostic,
+        }
     }
 }

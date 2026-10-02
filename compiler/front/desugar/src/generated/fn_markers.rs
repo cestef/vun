@@ -48,4 +48,28 @@ pub const FN_MARKERS: &[FnMarkersRow] = &[
         item: vun_items::lang::abi::naked,
         relation: Relation::Identity,
     },
+    FnMarkersRow {
+        item: vun_items::lang::abi::sysv,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::win64,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::cdecl,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::stdcall,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::fastcall,
+        relation: Relation::Identity,
+    },
+    FnMarkersRow {
+        item: vun_items::lang::abi::thiscall,
+        relation: Relation::Identity,
+    },
 ];

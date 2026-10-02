@@ -8,7 +8,7 @@ use vun_origin::OriginId;
 
 use crate::entity::{DataId, FuncId, ImportId};
 use crate::func::{Function, Linkage, Signature};
-use crate::inst::Address;
+use crate::inst::{Address, Callee, InstKind};
 
 /// Initialized memory: bytes, with the addresses written into them at link time.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -82,6 +82,25 @@ pub struct Unit {
 }
 
 impl Unit {
+    /// The signature of every function the unit defines, imports and calls through an address,
+    /// with where it is written.
+    pub fn signatures(&self) -> impl Iterator<Item = (OriginId, &Signature)> + '_ {
+        let defined = self.functions.iter().map(|(_, f)| (f.origin, &f.signature));
+        let imported = self.imports.iter().filter_map(|(_, i)| match &i.kind {
+            ImportKind::Func(signature) => Some((i.origin, signature)),
+            ImportKind::Data => None,
+        });
+        let called = self.functions.iter().flat_map(|(_, f)| f.insts.iter()).filter_map(|(_, inst)| {
+            match &inst.kind {
+                InstKind::Call { callee: Callee::Indirect(_, signature), .. } => {
+                    Some((inst.origin, &**signature))
+                }
+                _ => None,
+            }
+        });
+        defined.chain(imported).chain(called)
+    }
+
     /// The link symbols the unit exports: its functions' and its data's, in that order.
     pub fn exports(&self) -> impl Iterator<Item = Symbol> + '_ {
         let functions = self.functions.iter().map(|(_, f)| f.linkage);

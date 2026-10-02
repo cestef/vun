@@ -4,3 +4,16 @@ native: Attribute(&[Place.functions]) = _;
 c: Attribute(&[Place.functions]) = _;
 interrupt: Attribute(&[Place.functions]) = _;
 naked: Attribute(&[Place.functions]) = _;
+
+/// The System V AMD64 convention, a function of x86-64 called as C's are under it.
+sysv: Attribute(&[Place.functions]) = _;
+/// The Microsoft x64 convention.
+win64: Attribute(&[Place.functions]) = _;
+/// The C convention of 32-bit x86: arguments on the stack, popped by the caller.
+cdecl: Attribute(&[Place.functions]) = _;
+/// 32-bit x86's `__stdcall`: the arguments on the stack, popped by the callee.
+stdcall: Attribute(&[Place.functions]) = _;
+/// 32-bit x86's `__fastcall`: two arguments in `ecx` and `edx`, the rest as `stdcall`.
+fastcall: Attribute(&[Place.functions]) = _;
+/// 32-bit x86's `__thiscall`: the first argument in `ecx`, the rest as `stdcall`.
+thiscall: Attribute(&[Place.functions]) = _;
