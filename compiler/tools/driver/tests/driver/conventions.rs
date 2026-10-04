@@ -71,6 +71,7 @@ fn a_backend_without_conventions_refuses_them() {
     let fixture = Fixture::new("conv-native");
     let path = fixture.root.write("main.vun", LIBRARY);
     let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::kernel);
     let file = session.load(&path).unwrap();
     session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_native::INFO.id) };
     assert!(session.build(file, None).is_err());
