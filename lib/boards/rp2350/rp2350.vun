@@ -3,6 +3,3 @@
 //! and the chip's memory map.
 
 ..rp2350.runtime;
-
-/// The target of the chip's Arm processor, a Cortex-M33 running Armv7E-M code.
-target := targets.bare.thumbv7em.eabihf;

@@ -121,6 +121,7 @@ impl Session {
             deps,
             prelude,
             prelude_span: p.prelude_span,
+            target: p.target.clone(),
             files: p.sources.texts().map(|(path, _)| path.clone()).collect(),
             manifest: p
                 .sources

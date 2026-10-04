@@ -1,4 +1,1 @@
 //! ESP32-C3 runtime.
-
-/// The target of the chip's processor, a 32-bit RISC-V core (RV32IMC).
-target := targets.bare.riscv32imc.ilp32;

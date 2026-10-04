@@ -30,6 +30,7 @@ use vun_build::manifest::{DEFAULT_PRELUDE, DepKind, Identity, Manifest, Source, 
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
+use vun_sema::target::TargetPath;
 use vun_span::{FileId, PackageId, Span};
 use vun_trace::tracing;
 use vun_uri::Uri;
@@ -71,6 +72,8 @@ pub struct Package {
     pub release: Option<(Identity, Version)>,
     /// The toolchain it pins (`.toolchain`), which builds it.
     pub toolchain: Option<Version>,
+    /// The target it is written for (`.target`), the names inside the package `targets`.
+    pub target: Vec<Symbol>,
     /// The identities it replaces; only the project's apply.
     pub replace: Vec<Replace>,
 }
@@ -226,6 +229,7 @@ impl Session {
                 snapshot: taken.snapshot,
                 release: Some((identity, manifest.version)),
                 toolchain: manifest.toolchain,
+                target: manifest.target.iter().flat_map(|t| TargetPath::parse(t).0).collect(),
                 replace,
             };
             let package = package.with_defaults(&self.library);
@@ -277,6 +281,7 @@ impl Session {
                 sources: Sources::default(),
                 release: None,
                 toolchain: None,
+                target: Vec::new(),
                 replace: Vec::new(),
             };
             let package = package.with_defaults(&self.library);

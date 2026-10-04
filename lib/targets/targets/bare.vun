@@ -2,7 +2,7 @@
 //! (`thumbv7em`, as Arm names it), holding a target per ABI. A program brings its own runtime
 //! (spec 08), links without the C runtime but with the compiler's helpers (`libgcc`), through its
 //! C compiler's linker, which places its sections in the memory its build declares, and starts
-//! at its reset handler. A board names the target of its processor (`stm32f4.target`).
+//! at its reset handler. A board names the target of its processor in its manifest (`.target`).
 
 /// A 32-bit bare-metal target of `arch`, its code in the instruction set `isa`, of which it has
 /// `features`, following `abi` and calling C by `convention`, its processor computing `floats`,

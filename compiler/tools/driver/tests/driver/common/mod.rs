@@ -44,6 +44,7 @@ impl Fixture {
             version: Version::parse(version).unwrap(),
             edition: EDITION,
             toolchain: None,
+            target: None,
             include: vec![MANIFEST.into(), Path::new(name).with_extension(EXTENSION).display().to_string()],
             deps: Vec::new(),
             replace: Vec::new(),

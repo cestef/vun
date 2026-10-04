@@ -2,6 +2,3 @@
 //! calling the program's `main`, the peripherals, and the chip's memory map.
 
 ..stm32f4.runtime;
-
-/// The target of the chip's processor, a Cortex-M4 with its floating-point unit.
-target := targets.bare.thumbv7em.eabihf;

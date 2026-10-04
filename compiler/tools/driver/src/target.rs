@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use vun_command::{Args, Param};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
-use vun_hir::db::FileRef;
+use vun_hir::db::{FileRef, Package};
 use vun_query::Sharing;
 use vun_sema::target::{Choice, Chosen, Target, TargetOf, TargetPath};
 use vun_target::TargetSpec;
@@ -36,6 +36,13 @@ impl Session {
     pub(crate) fn target_for(&mut self, key: &FileRef) -> Result<TargetSpec, ErrorGuaranteed> {
         if let Some(target) = &self.target {
             return target.clone();
+        }
+        // A package says what it is written for; naming a target overrides it.
+        if self.choice == Choice::Host {
+            let declared = self.db.get::<Package>(&key.package).target.clone();
+            if !declared.is_empty() {
+                self.choice = Choice::Path(TargetPath(declared));
+            }
         }
         let chosen = self.db.get::<Chosen>(&(key.clone(), self.choice.clone()));
         let target = match chosen {

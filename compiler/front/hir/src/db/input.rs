@@ -24,6 +24,9 @@ pub struct PackageData {
     pub prelude: Vec<Vec<Symbol>>,
     /// Where the manifest declares the prelude.
     pub prelude_span: Option<Span>,
+    /// The names inside the package `targets` of the target it is written for; empty when the
+    /// manifest names none.
+    pub target: Vec<Symbol>,
     /// Its files, relative to `dir`, sorted.
     pub files: Vec<String>,
     /// The file among `files` declaring it, whose plan configures it (spec 12, section 2); `None`

@@ -24,6 +24,7 @@ impl Manifest {
             at(field::EDITION, Literal::Int(self.edition.into())),
         ];
         fields.extend(self.toolchain.map(|v| at(field::TOOLCHAIN, text(v.to_string()))));
+        fields.extend(self.target.clone().map(|t| at(field::TARGET, text(t))));
         fields.push(at(field::INCLUDE, Literal::strings(self.include.iter().map(String::as_str))));
         if !self.deps.is_empty() {
             let deps = self.deps.iter().map(|d| at(&d.name, d.literal())).collect();

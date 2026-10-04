@@ -35,6 +35,9 @@ pub struct Manifest {
     pub edition: u16,
     /// The exact toolchain the launcher runs, if pinned.
     pub toolchain: Option<Version>,
+    /// The path in the package `targets` the package is written for, as `--target` takes it;
+    /// checking or building one of its files chooses it instead of the machine's.
+    pub target: Option<String>,
     /// What the content hash covers.
     pub include: Vec<String>,
     pub deps: Vec<Dep>,
@@ -102,6 +105,7 @@ mod field {
     pub(super) const VERSION: &str = "version";
     pub(super) const EDITION: &str = "edition";
     pub(super) const TOOLCHAIN: &str = "toolchain";
+    pub(super) const TARGET: &str = "target";
     pub(super) const INCLUDE: &str = "include";
     pub(super) const DEPS: &str = "deps";
     pub(super) const MEMBERS: &str = "members";
@@ -115,7 +119,7 @@ mod field {
     pub(super) const INDEX: &str = "index";
 
     pub(super) const PACKAGE: &[&str] =
-        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS, PRELUDE];
+        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS, PRELUDE];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH];
 }
@@ -156,6 +160,7 @@ impl Manifest {
         let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
         let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| d.version(cx).map(Some));
+        let target = fields.get(field::TARGET).map_or(Some(None), |d| d.string(cx).map(Some));
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
         let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));
@@ -171,6 +176,7 @@ impl Manifest {
             version: version?,
             edition: edition?,
             toolchain: toolchain?,
+            target: target?,
             include: include?,
             deps: deps?,
             replace: replace?,

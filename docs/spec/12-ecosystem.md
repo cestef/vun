@@ -64,6 +64,7 @@ package := .{
     .version = "0.3.1",
     .edition = 2026,
     .toolchain = "0.4.2",                 // exact; another `vun` hands off to it (section 6)
+    .target = "bare.thumbv7em.eabihf",    // what the package is written for; the machine's when absent
     .include = .{ "build.vun", "blinky.vun", "blinky", "LICENSE" },   // what the hash covers
     .prelude = .{ "std.prelude" },        // the default; `.{}` for none (spec 01, section 8)
     .deps = .{
