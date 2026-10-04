@@ -71,6 +71,7 @@ impl Diagnostics for Shell<'_> {
 struct Version {
     name: &'static str,
     version: &'static str,
+    build: Option<&'static str>,
 }
 
 impl Record for Version {
@@ -79,11 +80,14 @@ impl Record for Version {
     }
 
     fn text(&self) -> Text {
-        Text::from(format!("{} {}", self.name, self.version))
+        match self.build {
+            Some(build) => Text::from(format!("{} {} ({build})", self.name, self.version)),
+            None => Text::from(format!("{} {}", self.name, self.version)),
+        }
     }
 
     fn fields(&self) -> Object<'static> {
-        Object::new().with("name", self.name).with("version", self.version)
+        Object::new().with("name", self.name).with("version", self.version).with("build", self.build)
     }
 }
 
@@ -110,7 +114,7 @@ impl<Cx> Program<Cx> {
                 .map(|()| Outcome::Success)
             }
             Request::Version => shell
-                .result(&Version { name: self.root.name, version: self.version })
+                .result(&Version { name: self.root.name, version: self.version, build: self.build })
                 .map(|()| Outcome::Success),
             Request::Run(selected, mut args) => match selected.last().action {
                 Action::Run(run) => {

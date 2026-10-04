@@ -28,6 +28,7 @@ const PROGRAM: Program<()> = Program {
     defaults: crate::undefaulted,
     configure: crate::unconfigured,
     version: "1.0",
+    build: None,
     root: Command::group(
         "tool",
         "a tool",

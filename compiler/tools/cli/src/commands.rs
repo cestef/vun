@@ -12,10 +12,11 @@ use settings::defaults;
 use status::{Conclude, Started, Step};
 
 use vun_driver::subject::Subject;
-use vun_driver::{Session, VERSION, checks, codegen, cover, formats, trace};
+use vun_driver::{BUILD, Session, VERSION, checks, codegen, cover, formats, trace};
 
 pub(crate) const PROGRAM: Program<Session> = Program {
     version: VERSION,
+    build: BUILD,
     defaults,
     configure,
     root: Command::group(

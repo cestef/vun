@@ -31,6 +31,8 @@ pub use settings::{Setting, Settings};
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
+    /// Which build of the version this is, such as the commit it was built from.
+    pub build: Option<&'static str>,
     pub root: Command<Cx>,
     /// Gives the options the command line and the environment leave out the values the project
     /// gives them, before `configure` applies them.

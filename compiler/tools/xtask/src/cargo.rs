@@ -4,10 +4,15 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::{fmt, io};
 
+use vun_tool::{Arg, Invocation, Tool};
+
 use crate::task::Program;
 
 /// The package whose `vun` executable a build makes.
 const PACKAGE: &str = "vun-cli";
+
+/// The variable the driver reads its build from.
+const BUILD: &str = "VUN_BUILD";
 
 /// Why cargo reported nothing.
 #[derive(Debug)]
@@ -47,7 +52,7 @@ impl std::error::Error for CargoFailed {
 /// Returns why cargo cannot run or fails, or built no executable.
 pub(crate) fn vun(root: &Path, profile: &'static str) -> Result<PathBuf, CargoFailed> {
     let args = ["build", "--message-format=json", "--profile", profile, "--package", PACKAGE];
-    let messages = output(root, &args)?;
+    let messages = run(root, &args, Build::of(root).as_deref())?;
     executable(&messages).ok_or(CargoFailed::NoExecutable)
 }
 
@@ -68,11 +73,36 @@ pub(crate) fn executable(messages: &str) -> Option<PathBuf> {
 /// # Errors
 /// Returns why cargo cannot run or fails.
 pub(crate) fn output(root: &Path, args: &[&'static str]) -> Result<String, CargoFailed> {
+    run(root, args, None)
+}
+
+/// The commit the checkout is at, which `vun --version` reports.
+struct Build;
+
+impl Build {
+    /// The commit of the working copy at `root`, none where `jj` is absent or `root` is no
+    /// repository (a mirror on a build host).
+    fn of(root: &Path) -> Option<String> {
+        let inv = Invocation {
+            args: ["log", "--no-graph", "--ignore-working-copy", "-r", "@", "-T", "commit_id.short(12)"]
+                .map(Arg::from)
+                .to_vec(),
+            cwd: Some(root.to_owned()),
+            ..Invocation::default()
+        };
+        let out = Program::Jj.find().ok()?.check(&inv).ok()?;
+        Some(String::from_utf8_lossy(&out.stdout).trim().to_owned()).filter(|id| !id.is_empty())
+    }
+}
+
+/// [`output`], with the commit the build is of set for the driver to report.
+fn run(root: &Path, args: &[&'static str], build: Option<&str>) -> Result<String, CargoFailed> {
     let cargo =
         Program::Cargo.path().ok_or_else(|| CargoFailed::Unstarted(io::ErrorKind::NotFound.into()))?;
     let output = Command::new(cargo)
         .current_dir(root)
         .args(args)
+        .envs(build.map(|id| (BUILD, id)))
         .stderr(Stdio::inherit())
         .output()
         .map_err(CargoFailed::Unstarted)?;

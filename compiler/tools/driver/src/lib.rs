@@ -46,3 +46,6 @@ pub use session::Session;
 pub use shared::Shared;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The commit `cargo xtask install` built this from; none for a plain `cargo build`.
+pub const BUILD: Option<&str> = option_env!("VUN_BUILD");

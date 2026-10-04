@@ -60,6 +60,7 @@ const PROGRAM: Program<DiagCtxt> = Program {
     defaults: vun_command::undefaulted,
     configure: vun_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
+    build: None,
     root: Command::run(RUN, "regenerate Rust sources from their Vun sources", generate_all).params(&[CHECK]),
 };
 

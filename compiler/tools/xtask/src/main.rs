@@ -43,6 +43,7 @@ const PROGRAM: Program<DiagCtxt> = Program {
     defaults: vun_command::undefaulted,
     configure: vun_command::unconfigured,
     version: env!("CARGO_PKG_VERSION"),
+    build: None,
     root: Command::group("cargo xtask", "Repository automation.", task::COMMANDS),
 };
 
