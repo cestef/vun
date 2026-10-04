@@ -14,8 +14,8 @@ use crate::{
 const NAMELESS: &[u8] = &[0];
 
 /// Where `EI_CLASS` and `EI_DATA` are in the file's identification.
-const CLASS: usize = 4;
-const DATA: usize = 5;
+pub(crate) const CLASS: usize = 4;
+pub(crate) const DATA: usize = 5;
 
 impl File {
     /// The file `bytes` hold.

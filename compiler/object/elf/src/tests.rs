@@ -116,6 +116,15 @@ fn a_program_reads_back_with_its_segments_over_what_they_cover() {
 }
 
 #[test]
+fn a_program_lists_the_bytes_each_loadable_segment_puts_where() {
+    let bytes = program().write();
+    let loads = File::loads(&bytes).unwrap();
+    assert_eq!(loads.len(), 2);
+    assert_eq!((loads[1].physical, loads[1].bytes), (0x40_2000, &[1, 2, 3][..]));
+    assert!(matches!(File::loads(&bytes[..40]), Err(Malformed::Truncated { .. })));
+}
+
+#[test]
 fn bytes_that_are_not_little_endian_elf_are_refused() {
     let bytes = object(Class::Elf64).write();
     let mut foreign = bytes.clone();

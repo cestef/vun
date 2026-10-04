@@ -14,6 +14,7 @@ pub mod aarch64;
 pub mod arm;
 mod class;
 mod headers;
+mod loads;
 mod malformed;
 mod read;
 mod rela;
@@ -26,6 +27,7 @@ mod write;
 pub mod x86_64;
 
 pub use class::Class;
+pub use loads::Load;
 pub use malformed::Malformed;
 pub use rela::Rela;
 pub use section::{Contents, Section, SectionFlags, SectionKind};
