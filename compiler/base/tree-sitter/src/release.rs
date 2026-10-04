@@ -12,4 +12,9 @@ pub struct Release {
 impl Release {
     /// Its file, beside `grammar.js`.
     pub const FILE: &'static str = "release.json";
+
+    /// What the grammar's repository holds of the grammar's directory, each a file or a directory
+    /// copied whole: the grammar, its conflicts, its configuration, its parser and its queries.
+    pub const PUBLISHED: &'static [&'static str] =
+        &["grammar.js", "conflicts.json", "tree-sitter.json", "src", "queries"];
 }

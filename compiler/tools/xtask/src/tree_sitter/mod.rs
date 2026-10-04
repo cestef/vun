@@ -5,6 +5,7 @@
 
 mod compare;
 mod conflicts;
+pub(crate) mod publish;
 
 use std::io;
 use std::path::{Path, PathBuf};

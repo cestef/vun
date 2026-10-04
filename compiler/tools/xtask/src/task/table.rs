@@ -6,6 +6,8 @@ pub(crate) const FORMATTED: Task =
     Task::new("formatted", "fail if rustfmt would change a file", Work::Call(Call::Formatted));
 pub(crate) const GENERATED: Task =
     Task::new("generated", "fail if a generated file is out of date", Work::Call(Call::Generated));
+pub(crate) const GENERATE: Task =
+    Task::new("generate", "write the generated files", Work::Call(Call::Generate));
 pub(crate) const LINES: Task =
     Task::new("lines", "fail on source files too long to stay one concern", Work::Run(crate::check_lines));
 pub(crate) const LAYERS: Task = Task::new(
@@ -64,6 +66,13 @@ pub(crate) const TREE_SITTER: Task = Task::new(
     "generate the tree-sitter parser and compare its trees with the compiler's on every source",
     Work::Run(crate::tree_sitter::check),
 );
+pub(crate) const TREE_SITTER_PUBLISH: Task = Task::new(
+    "tree-sitter-publish",
+    "publish the tree-sitter grammar to its repository, record the commit, and generate the editors' packages",
+    Work::Run(crate::tree_sitter::publish::publish),
+)
+.needs(&[&GENERATED, &TREE_SITTER])
+.params(&[crate::tree_sitter::publish::MESSAGE, crate::tree_sitter::publish::REPO]);
 pub(crate) const REMOTE: Task = Task::new(
     "remote",
     "mirror the working copy to a host and run the words given there",
@@ -91,5 +100,6 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     REMOTE,
     SIZE,
     TREE_SITTER,
+    TREE_SITTER_PUBLISH,
     TYPESET
 ];

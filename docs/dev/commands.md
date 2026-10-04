@@ -32,11 +32,15 @@ MIRIFLAGS="-Zmiri-num-cpus=4 -Zmiri-many-seeds=0..8 -Zmiri-ignore-leaks" cargo +
 
 ## Publishing the tree-sitter grammar
 
-`tree-sitter-vun` is a repository of its own, published by hand: copy `grammar.js`,
-`conflicts.json`, `tree-sitter.json`, `src/` (after `cargo xtask tree-sitter`) and `queries/` from
-`editors/tree-sitter` into it and commit there. Then record the commit beside the grammar,
-`editors/tree-sitter/release.json` as `{ "revision": "<commit>" }`, and run `cargo gen`: the Helix,
-Neovim and Zed packages build that revision (the branch `main` while no release is recorded).
+`tree-sitter-vun` is a repository of its own, published by `cargo xtask tree-sitter-publish
+<message>`: it checks that the generated sources are current and that the parser agrees with the
+compiler on every source (`cargo xtask tree-sitter`), copies what `vun_tree_sitter::Release::
+PUBLISHED` names (`grammar.js`, `conflicts.json`, `tree-sitter.json`, `src/`, `queries/`) into the
+clone, commits it there with the message and pushes `main` when anything changed, records the
+commit in `editors/tree-sitter/release.json` and runs `cargo gen`: the Helix, Neovim and Zed
+packages build that revision. The parser's `src/` is the tree-sitter CLI's own output, so publish
+with the version the last publication used (`tree-sitter --version`: 0.27.0 on `am3.wg`, which
+has `jj`; the clone is a path, `--repo`, `tree-sitter-vun` beside this repository by default).
 The repository (`cestef/tree-sitter-vun`, private until the language is public, so the packages
 fetch it only where git can authenticate) is a `jj` clone at `../tree-sitter-vun`; `jj` refuses
 the generated `parser.c` (16 MiB) until `jj config set --repo snapshot.max-new-file-size 33554432`.
