@@ -291,7 +291,7 @@ table), naked functions and addresses past a function's start, and reports no fr
 debug information.
 
 The owner's queue, in order: the editor polish of item 0 (hover on
-views of the function at the cursor, VS Code commands), then the rest of lint levels in item 4 (command-line levels,
+VS Code commands), then the rest of lint levels in item 4 (command-line levels,
 dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
 
 0. Editor integration (the owner's current focus; Zed, Helix, VS Code, Neovim). Helix and
@@ -308,7 +308,8 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    types (`[0]type`) has no run-time layout, which only a library's report now hides.
    Richer server (349): views as `source` code actions (`vun.view`, shown by `window/showDocument`),
    hovers with values and layouts, type-only inlays, a run lens (`vun.run`). Open: test lenses (no
-   `vun test` or `std.testing.runner` exists yet); a run cannot be given input; views are of the whole file, not the function at the cursor;
+   `vun test` or `std.testing.runner` exists yet); a run cannot be given input; the function at the cursor has the types and MIR views only (no
+   `--at` on `vun debug dump` yet);
    per-editor polish (VS Code commands, Zed has no code lenses); untried in a real editor.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's

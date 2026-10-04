@@ -33,7 +33,7 @@ use std::path::PathBuf;
 
 use vun_diag::DiagCtxt;
 use vun_hir::db::{Package, Parsed};
-use vun_hir::tree::Name;
+use vun_hir::tree::{ExprKind, Name};
 
 use vun_origin::Resolve;
 use vun_sema::decl::TypedDecl;
@@ -76,6 +76,18 @@ impl Session {
         });
         let (_, id) = holding.min_by_key(|&(len, _)| len)?;
         Some(ExprRef::new(key, &parsed.hir, id))
+    }
+
+    /// The function literal of `file` holding the byte `offset`: the innermost one, the literal
+    /// itself when `offset` is on its own text and no inner function holds it.
+    pub fn function_at(&mut self, file: FileId, offset: u32) -> Option<ExprRef> {
+        let expr = self.expr_at(file, offset)?;
+        let hir = &self.db.get::<Parsed>(&expr.file)?.hir;
+        let function = match hir.exprs[expr.expr.id].kind {
+            ExprKind::Fn { .. } => expr.expr.id,
+            _ => hir.enclosing_function(expr.expr.id)?,
+        };
+        Some(ExprRef::new(expr.file.clone(), hir, function))
     }
 
     /// The type typing found for `expr`: in the body of the function holding it, or else in the

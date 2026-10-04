@@ -6,13 +6,19 @@ use std::sync::Arc;
 
 use vun_mir::{Body, Concrete, Mir, Unbuilt};
 use vun_origin::{OriginId, Resolve};
+use vun_sema_ty::item::ExprRef;
 use vun_span::{FileId, SourceMap};
 
 use crate::Session;
 
 impl Session {
-    pub(super) fn view_mir(&mut self, file: FileId, out: &mut dyn Write) -> io::Result<()> {
-        for (f, body) in self.bodies(file) {
+    pub(super) fn view_mir(
+        &mut self,
+        file: FileId,
+        focus: Option<&ExprRef>,
+        out: &mut dyn Write,
+    ) -> io::Result<()> {
+        for (f, body) in self.bodies(file).into_iter().filter(|(f, _)| focus.is_none_or(|focus| focus == f)) {
             self.write_body(f.expr.origin, body, out)?;
         }
         Ok(())

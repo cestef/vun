@@ -5,7 +5,7 @@ use std::path::Path;
 
 use vun_command::{Args, Outcome};
 use vun_driver::Session;
-use vun_driver::view::View;
+use vun_driver::view::{Scope, View};
 use vun_term::Shell;
 
 use super::super::FILE;
@@ -36,7 +36,7 @@ pub(super) fn show(
     shell.document(DUMP, view.name().to_owned(), |out| {
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
-        session.view(view, file, out)?;
+        session.view(view, file, Scope::File, out)?;
         Ok(session.outcome())
     })
 }

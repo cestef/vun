@@ -36,6 +36,27 @@ pub enum View {
     Frames,
 }
 
+/// How much of a file a view shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+pub enum Scope {
+    /// Everything the view shows of the file.
+    File,
+    /// What the function holding the byte `offset` has: only the views that [`View::narrows`]
+    /// show less than the file.
+    Function { offset: u32 },
+}
+
+impl Scope {
+    /// What a view of this scope is named beside the file, after the view's own name.
+    #[must_use]
+    pub const fn name(self) -> Option<&'static str> {
+        match self {
+            Self::File => None,
+            Self::Function { .. } => Some("function"),
+        }
+    }
+}
+
 /// What a view is a view of.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Subject {
@@ -90,6 +111,12 @@ impl View {
         }
     }
 
+    /// Whether it can show one function of the file instead of all of them.
+    #[must_use]
+    pub const fn narrows(self) -> bool {
+        matches!(self, Self::Types | Self::Mir)
+    }
+
     #[must_use]
     pub const fn subject(self) -> Subject {
         match self {
@@ -116,20 +143,28 @@ impl Session {
         View::ALL.iter().copied().filter(|v| applies(v.subject())).collect()
     }
 
-    /// Writes the view `view` of `file` to `out`; what computing it reports is recorded.
+    /// Writes the view `view` of `file`, as much of it as `scope` says, to `out`; what computing
+    /// it reports is recorded. A scope no function holds shows nothing.
     ///
     /// # Errors
     /// Returns an error if `out` cannot be written.
-    pub fn view(&mut self, view: View, file: FileId, out: &mut dyn Write) -> io::Result<()> {
+    pub fn view(&mut self, view: View, file: FileId, scope: Scope, out: &mut dyn Write) -> io::Result<()> {
+        let focus = match scope {
+            Scope::Function { offset } if view.narrows() => match self.function_at(file, offset) {
+                Some(function) => Some(function),
+                None => return Ok(()),
+            },
+            _ => None,
+        };
         match view {
             View::Tokens => self.view_tokens(file, out),
             View::Cst => self.view_cst(file, out),
             View::Manifest => self.view_manifest(file, out),
             View::Plan => self.view_plan(file, out),
             View::Hir => self.view_hir(file, out),
-            View::Types => self.view_types(file, out),
+            View::Types => self.view_types(file, focus.as_ref(), out),
             View::Values => self.view_values(file, out),
-            View::Mir => self.view_mir(file, out),
+            View::Mir => self.view_mir(file, focus.as_ref(), out),
             View::Layout => self.view_layout(file, out),
             View::Program => self.view_program(file, out),
             View::Lir => self.view_lir(file, out),

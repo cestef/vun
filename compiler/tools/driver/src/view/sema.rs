@@ -12,7 +12,7 @@ use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
 use vun_sema::typeck::{Operation, Typed};
 use vun_sema_ty::call::Instantiation;
-use vun_sema_ty::item::DeclRef;
+use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_span::{FileId, SourceMap};
 
 use crate::Session;
@@ -24,13 +24,19 @@ impl Session {
     /// What typing found in each function of `file`, plain, and in every body of the program,
     /// from any file, each once: each expression's type and stage, the untyped ones marked,
     /// and each operator without the function it calls.
-    pub(super) fn view_types(&mut self, file: FileId, out: &mut dyn Write) -> io::Result<()> {
+    pub(super) fn view_types(
+        &mut self,
+        file: FileId,
+        focus: Option<&ExprRef>,
+        out: &mut dyn Write,
+    ) -> io::Result<()> {
         let key = self.file_ref(file);
         let program = self.db.get::<Programs>(&(key, Roots::Functions));
         let plain = self.functions(file).into_iter().map(Instantiation::plain);
         let mut seen = std::collections::HashSet::new();
         let bodies = program.bodies().into_iter().map(|(i, _)| i);
-        for i in plain.chain(bodies).filter(|i| seen.insert(i.clone())) {
+        let wanted = |i: &Instantiation| focus.is_none_or(|focus| *focus == i.f.literal);
+        for i in plain.chain(bodies).filter(|i| wanted(i) && seen.insert(i.clone())) {
             let Some(typed) = self.db.get::<Typed>(&i) else { continue };
             let Some(parsed) = self.db.get::<Parsed>(&i.f.literal.file) else { continue };
             let hir = &parsed.hir;

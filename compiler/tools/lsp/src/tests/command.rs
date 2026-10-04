@@ -168,3 +168,40 @@ fn a_run_that_has_not_ended_has_a_lens_stopping_it() {
         assert!(!std::fs::read(&output).unwrap().is_empty(), "how it ended is written");
     });
 }
+
+#[test]
+fn the_views_that_narrow_are_offered_again_for_the_function_at_the_cursor() {
+    use vun_driver::view::Scope;
+    use vun_lsp_protocol::base::Position;
+
+    served("lsp-function-views", |client, uri| {
+        client.open(uri, SOURCE);
+        let text_document = TextDocumentIdentifier { uri: uri.clone() };
+        let context = CodeActionContext { diagnostics: Vec::new(), only: Some(vec![CodeActionKind::Source]) };
+        let cursor = Position { line: 2, character: 24 };
+        let range = Range { start: cursor, end: cursor };
+        let params = CodeActionParams { text_document, range, context };
+        let actions = client.request::<r::CodeAction>(&params).unwrap();
+        let viewed: Vec<Viewed> = actions
+            .iter()
+            .filter_map(|a| a.command.as_ref()?.arguments.as_ref()?[0].read::<Viewed>().ok())
+            .collect();
+        let narrowed: Vec<_> = viewed.iter().filter(|v| v.scope != Scope::File).collect();
+        let narrowing: Vec<_> = View::ALL.iter().copied().filter(|v| v.narrows()).collect();
+        assert_eq!(narrowed.iter().map(|v| v.view).collect::<Vec<_>>(), narrowing);
+
+        let types = narrowed.iter().find(|v| v.view == View::Types).unwrap();
+        let command = actions.iter().filter_map(|a| a.command.as_ref()).find(|c| {
+            c.arguments.as_ref().is_some_and(|a| a[0].read::<Viewed>().is_ok_and(|v| &v == *types))
+        });
+        let command = command.unwrap();
+        let params =
+            ExecuteCommandParams { command: command.command.clone(), arguments: command.arguments.clone() };
+        client.request::<r::ExecuteCommand>(&params).unwrap();
+        let path = client.server.session.shown_at(&uri.to_file_path().unwrap(), "types.function");
+        let text = std::fs::read_to_string(&path).unwrap();
+        // `f` alone: its expressions, and none of `g`'s.
+        assert_eq!(text.matches("fn ").count(), 1, "{text}");
+        assert!(text.contains("p.y + k"), "{text}");
+    });
+}

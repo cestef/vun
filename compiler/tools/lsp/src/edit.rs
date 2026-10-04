@@ -46,7 +46,7 @@ impl Answers<r::CodeAction> for Server<'_> {
             actions.extend(self.fixes(&params)?);
         }
         if asked(CodeActionKind::Source) {
-            actions.extend(self.view_actions(&params.text_document)?);
+            actions.extend(self.view_actions(&params.text_document, params.range.start)?);
         }
         Ok(actions)
     }

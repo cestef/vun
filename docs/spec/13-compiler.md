@@ -1441,7 +1441,11 @@ reads each message itself once the last is handled, and checks after each.
   applying its edits, except those only shown and those whose edits are in an earlier text of
   their file; and each view of the document (`vun_driver::view::View`, the representations `vun
   debug` prints: those of any file, of a package's `build.vun`, of the program a root file
-  exports, as the file is one), a `source` action running the command `vun.view`.
+  exports, as the file is one), a `source` action running the command `vun.view`; the views that can
+  show less than the file (`View::narrows`: types and MIR) are offered again, titled `of this
+  function`, when the range asked about starts in a function (`Session::function_at`, the innermost
+  function literal holding the byte), and show that function alone, written beside the document
+  as `<view>.function`.
 - *Commands.* `workspace/executeCommand` carries out the commands the server announces, one row
   each. `vun.view` writes a view of a document in its project's `.vun/views/<path>.<view>`, at the document's path in the project,, and asks
   the client to show it (`window/showDocument`); what computing it reports is left to the
