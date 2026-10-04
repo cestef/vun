@@ -7,6 +7,7 @@ use vun_desugar::{Borrow, MODE_SEPARATOR};
 use vun_desugar::{COMPOUND, Narrowing};
 use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
 use vun_grammar::TokenKind;
+use vun_hir::resolve::Res;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_origin::OriginId;
 use vun_origin::OriginTable;
@@ -76,7 +77,19 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             let here = Msg::new().text("expected because of this type");
             d = d.label(self.hir().exprs[because].origin, Some(here));
         }
+        if let Some(origin) = self.declaration_of(at) {
+            d = d.label(origin, Some(Msg::new().text("declared here")));
+        }
         self.diag.error(d);
+    }
+
+    /// Where the binding the value written at `at` names is declared, when it is a name.
+    fn declaration_of(&self, at: OriginId) -> Option<OriginId> {
+        let written = self.written_at(at)?;
+        match self.env().parsed.resolution.names[written] {
+            Some(Res::Binder(binder)) => Some(self.hir().binders[binder].origin),
+            _ => None,
+        }
     }
 
     /// The fix making the value written at `at`, of type `found`, one of `expected`, when a

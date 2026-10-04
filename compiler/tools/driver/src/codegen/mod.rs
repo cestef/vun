@@ -175,6 +175,7 @@ impl Session {
                 .text(" cannot express ")
                 .text(unlegal.to_string());
             let d = Diagnostic::error(errors::BACKEND_LACKS, msg).at(unlegal.at, None);
+            let d = self.fitting(&target, Some(info.id), d);
             return Err(Uncoded::Reported(self.diag.error(d)));
         }
         drop(legalizing);

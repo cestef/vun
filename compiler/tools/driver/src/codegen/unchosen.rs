@@ -3,7 +3,7 @@
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_intern::Symbol;
 use vun_suggest::Lookup;
-use vun_target::{TargetSpec, Unsupported};
+use vun_target::{Name, TargetSpec, Unsupported};
 
 use crate::Session;
 use crate::registry::{Unchosen, Unfit};
@@ -23,11 +23,11 @@ impl Session {
             }
             Unchosen::Named(name, Unfit::Planned) => {
                 let msg = Msg::new().text("backend ").code(name.as_str()).text(" cannot generate code yet");
-                self.fitting(target, Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg))
+                self.fitting(target, None, Diagnostic::error(errors::BACKEND_UNAVAILABLE, msg))
             }
             &Unchosen::Named(name, Unfit::Unsupported(why)) => {
                 let msg = Msg::new().text("backend ").code(name.as_str()).append(Self::unsupported(why));
-                self.fitting(target, Diagnostic::error(errors::BACKEND_UNSUPPORTED, msg))
+                self.fitting(target, None, Diagnostic::error(errors::BACKEND_UNSUPPORTED, msg))
             }
             Unchosen::Preferred(profile, tried) => {
                 let msg = Msg::new()
@@ -39,7 +39,7 @@ impl Session {
                     .fold(Diagnostic::error(errors::BACKEND_UNCHOSEN, msg), |d, &(name, unfit)| {
                         d.child(ChildKind::Note, Self::unfit(name, unfit))
                     });
-                self.fitting(target, d)
+                self.fitting(target, None, d)
             }
         }
     }
@@ -64,9 +64,15 @@ impl Session {
         }
     }
 
-    /// `d`, with the backends that could build for `target` named.
-    fn fitting(&self, target: &TargetSpec, d: Diagnostic) -> Diagnostic {
-        let fitting: Vec<&str> = self.registry.fitting(target).map(|b| b.info().id.0).collect();
+    /// `d`, with the backends that could build for `target` named, `besides` the one that failed.
+    pub(super) fn fitting(&self, target: &TargetSpec, besides: Option<Name>, d: Diagnostic) -> Diagnostic {
+        let fitting: Vec<&str> = self
+            .registry
+            .fitting(target)
+            .map(|b| b.info().id)
+            .filter(|id| Some(*id) != besides)
+            .map(|id| id.0)
+            .collect();
         if fitting.is_empty() {
             return d;
         }
