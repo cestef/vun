@@ -201,6 +201,11 @@ build := (b: &mut std.build.Build) {
     let (uf2, blocks) = vun_uf2::Uf2::read(&std::fs::read(program.with_extension("uf2")).unwrap()).unwrap();
     assert_eq!(uf2.family, 0xe48b_ff59);
     let elf = std::fs::read(program).unwrap();
-    let loaded: usize = vun_elf::File::loads(&elf).unwrap().iter().map(|l| l.bytes.len()).sum();
-    assert_eq!(blocks.iter().map(|b| b.payload.len()).sum::<usize>(), loaded);
+    let loaded: usize = vun_elf::File::loads(&elf)
+        .unwrap()
+        .iter()
+        .map(|l| l.bytes.len().div_ceil(vun_uf2::Block::PAYLOAD))
+        .sum();
+    assert_eq!(blocks.len(), loaded);
+    assert!(blocks.iter().all(|b| b.payload.len() == vun_uf2::Block::PAYLOAD));
 }

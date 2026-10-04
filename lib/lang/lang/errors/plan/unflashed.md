@@ -21,3 +21,8 @@ error[plan.unflashed]: cannot write `.vun/build/fw` as a UF2 file
 
 Place the program's sections in the memory of a device of 32-bit addresses (`memory` and
 `sections` of the program's options), or flash a device whose method takes larger addresses.
+
+```console
+$ vun build build.vun
+    Finished .vun/build/fw
+```

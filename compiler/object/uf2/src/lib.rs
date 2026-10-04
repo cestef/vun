@@ -40,7 +40,8 @@ impl std::error::Error for Unaddressable {}
 
 impl Uf2 {
     /// The file holding `pieces`, each cut into blocks of [`Block::PAYLOAD`] bytes at the
-    /// addresses they have, in the order given.
+    /// addresses they have, in the order given. The last block of a piece is filled up with
+    /// zeros: a chip's boot ROM takes only whole blocks.
     ///
     /// # Errors
     /// Returns the first address a block cannot hold.
@@ -59,7 +60,14 @@ impl Uf2 {
         let count = u32::try_from(blocks.len()).expect("a program has fewer blocks than 32 bits count");
         let mut out = Out::default();
         for (number, (address, chunk)) in (0..).zip(blocks) {
-            Block { address, number, count, family: self.family, payload: chunk.to_vec() }.put(&mut out);
+            Block {
+                address,
+                number,
+                count,
+                family: self.family,
+                payload: chunk.iter().copied().chain(std::iter::repeat(0)).take(Block::PAYLOAD).collect(),
+            }
+            .put(&mut out);
         }
         Ok(out.0)
     }

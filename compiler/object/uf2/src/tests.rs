@@ -13,8 +13,10 @@ fn pieces_are_cut_into_blocks_that_read_back_as_they_were_made() {
     let (uf2, blocks) = Uf2::read(&file).unwrap();
     assert_eq!(uf2.family, RP2350_ARM_SECURE);
     let placed: Vec<(u32, usize)> = blocks.iter().map(|b| (b.address, b.payload.len())).collect();
-    assert_eq!(placed, [(0x1000_0000, 256), (0x1000_0100, 256), (0x1000_0200, 88), (0x2000_0000, 10)]);
+    assert_eq!(placed, [(0x1000_0000, 256), (0x1000_0100, 256), (0x1000_0200, 256), (0x2000_0000, 256)]);
     assert_eq!(blocks[1].payload, flash[256..512]);
+    assert_eq!(blocks[3].payload[..10], ram);
+    assert!(blocks[3].payload[10..].iter().all(|b| *b == 0));
 }
 
 #[test]
