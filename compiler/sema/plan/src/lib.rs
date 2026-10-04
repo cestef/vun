@@ -3,5 +3,5 @@
 
 mod action;
 
-pub use action::{Action, Options, Placement, Region, Use};
+pub use action::{Action, Method, Options, Placement, Region, Use};
 pub use vun_sema::plan::{Plan, Planned, Unplanned};

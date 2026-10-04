@@ -17,6 +17,9 @@ pub const Dep: Item = Item::new(&["std", "build", "Dep"]);
 pub const Program: Item = Item::new(&["std", "build", "Program"]);
 /// A probe attached to a device.
 pub const Probe: Item = Item::new(&["std", "build", "Probe"]);
+/// A device that takes a program as a file of blocks over USB mass storage, by the family of chip
+/// it is, as the UF2 format's registry numbers them (`0xe48bff59`: the RP2350's secure Arm cores).
+pub const Uf2: Item = Item::new(&["std", "build", "Uf2"]);
 /// How a program reaches its device.
 pub const Flash: Item = Item::new(&["std", "build", "Flash"]);
 /// Where a program's tests run.

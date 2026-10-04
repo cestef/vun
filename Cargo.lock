@@ -1395,6 +1395,7 @@ dependencies = [
  "vun-data",
  "vun-diag",
  "vun-doc",
+ "vun-elf",
  "vun-fetch",
  "vun-fmt",
  "vun-fs",
@@ -1443,6 +1444,7 @@ dependencies = [
  "vun-term",
  "vun-tool",
  "vun-trace",
+ "vun-uf2",
  "vun-uri",
  "vun-variants",
  "vun-wasm",
@@ -2358,6 +2360,13 @@ name = "vun-tree-sitter"
 version = "0.1.0"
 dependencies = [
  "vun-data",
+]
+
+[[package]]
+name = "vun-uf2"
+version = "0.1.0"
+dependencies = [
+ "vun-bytes",
 ]
 
 [[package]]

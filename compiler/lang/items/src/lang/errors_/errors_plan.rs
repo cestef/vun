@@ -17,3 +17,4 @@ pub const ambiguous_run: Item = Item::new(&["lang", "errors", "plan", "ambiguous
 pub const unknown_setting: Item = Item::new(
     &["lang", "errors", "plan", "unknown_setting"],
 );
+pub const unflashed: Item = Item::new(&["lang", "errors", "plan", "unflashed"]);

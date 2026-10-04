@@ -3,6 +3,7 @@
 //! for one target, or only the program rooted at a file named. Steps this toolchain does not
 //! carry out yet are warnings.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
@@ -10,7 +11,7 @@ use vun_fs::Tree;
 use vun_link::{MemoryRegion, SectionPlacement};
 use vun_origin::OriginId;
 use vun_sema::target::Choice;
-use vun_sema_plan::{Action, Options, Plan};
+use vun_sema_plan::{Action, Method, Options, Plan};
 use vun_span::{FileId, SourceMap};
 use vun_trace::tracing;
 
@@ -28,7 +29,7 @@ enum Pending {
 impl Pending {
     fn what(self) -> &'static str {
         match self {
-            Self::Flash => "writes a program to its device",
+            Self::Flash => "writes a program to its device through a probe or DFU",
             Self::Tests => "runs a program's tests",
             Self::Parameters => "passes parameters to a dependency",
             Self::Lints => "sets lint levels",
@@ -48,10 +49,20 @@ impl Session {
     pub fn carry_out(&mut self, file: FileId) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
         let (plan, steps, dir) = self.steps(file)?;
         let mut built = Vec::new();
+        // What each program step built, by the step.
+        let mut at_step = HashMap::new();
         for (step, action) in steps.iter().enumerate() {
             let pending = match action {
                 Action::Program(options) => {
-                    built.push(self.build_program(&dir, options, plan.at, None)?);
+                    let path = self.build_program(&dir, options, plan.at, None)?;
+                    at_step.insert(step, path.clone());
+                    built.push(path);
+                    continue;
+                }
+                Action::Flash { program, method: Method::Uf2 { family } } => {
+                    if let Some(path) = at_step.get(program) {
+                        self.write_uf2(path, *family, plan.at)?;
+                    }
                     continue;
                 }
                 Action::Dep { params, .. } if params.is_empty_record() => continue,

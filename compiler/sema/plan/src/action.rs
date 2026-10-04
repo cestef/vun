@@ -4,9 +4,10 @@
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::std::{
-    build_Action as action, build_Dep as dep, build_Flashed as flashed, build_Needed as needed,
-    build_Options as options, build_Placement as placement, build_Program as program, build_Region as region,
-    build_Step as step, build_Tested as tested, build_Use as used,
+    build_Action as action, build_Dep as dep, build_Flash as flash, build_Flashed as flashed,
+    build_Needed as needed, build_Options as options, build_Placement as placement, build_Probe as probe,
+    build_Program as program, build_Region as region, build_Step as step, build_Tested as tested,
+    build_Uf2 as uf2, build_Use as used,
 };
 use vun_sema::plan::Plan;
 use vun_sema::target::{Declared, Members, Read, Unread};
@@ -25,6 +26,7 @@ pub enum Action {
     /// The program built at a step, written to its device.
     Flash {
         program: usize,
+        method: Method,
     },
     /// The tests of the program built at a step, run.
     TestOn {
@@ -34,6 +36,18 @@ pub enum Action {
     Lints(Value),
     /// The values of the options of commands, as recorded.
     Commands(Value),
+}
+
+/// How a program reaches its device (`std.build.Flash`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum Method {
+    /// Through a debug probe attached to `chip`.
+    Probe { chip: Symbol },
+    /// As a file of blocks for the chip family numbered `family`, which its boot ROM takes over USB
+    /// mass storage.
+    Uf2 { family: u32 },
+    /// Through the device firmware upgrade protocol.
+    Dfu,
 }
 
 /// A program's options (`std.build.Options`).
@@ -96,7 +110,9 @@ impl Read for Action {
         } else if *name == action::program.symbol() {
             Options::read(payload).map(|o| Self::Program(Box::new(o)))
         } else if *name == action::flash.symbol() {
-            Ok(Self::Flash { program: Built::read(m()?.get(flashed::program)?)?.0 })
+            let m = m()?;
+            let method = Method::read(m.get(flashed::method)?)?;
+            Ok(Self::Flash { program: Built::read(m.get(flashed::program)?)?.0, method })
         } else if *name == action::test_on.symbol() {
             Ok(Self::TestOn { program: Built::read(m()?.get(tested::program)?)?.0 })
         } else if *name == action::lints.symbol() {
@@ -149,6 +165,26 @@ impl Read for Placement {
             None => None,
         };
         Ok(Self { name: m.name(placement::name)?, region: m.name(placement::region)?, load })
+    }
+}
+
+impl Read for Method {
+    fn read(value: &Value) -> Result<Self, Unread> {
+        let Value::Variant { name, payload, .. } = value else { return Err(Unread::Record) };
+        if *name == flash::dfu.symbol() {
+            Ok(Self::Dfu)
+        } else if let [payload] = payload.as_slice() {
+            let m = Members::of(payload)?;
+            if *name == flash::probe.symbol() {
+                Ok(Self::Probe { chip: m.string(probe::chip)? })
+            } else if *name == flash::uf2.symbol() {
+                Ok(Self::Uf2 { family: m.int(uf2::family)? })
+            } else {
+                Err(Unread::Record)
+            }
+        } else {
+            Err(Unread::Record)
+        }
     }
 }
 

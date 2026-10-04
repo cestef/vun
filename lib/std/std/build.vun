@@ -19,8 +19,11 @@ Program := struct { step: Step };
 
 /// A probe attached to a device.
 Probe := struct { chip: &[u8] };
+/// A device that takes a program as a file of blocks over USB mass storage, by the family of chip
+/// it is, as the UF2 format's registry numbers them (`0xe48bff59`: the RP2350's secure Arm cores).
+Uf2 := struct { family: u32 };
 /// How a program reaches its device.
-Flash := enum { probe(Probe), uf2, dfu };
+Flash := enum { probe(Probe), uf2(Uf2), dfu };
 /// Where a program's tests run.
 Runner := enum { host, qemu(&[u8]), probe(Probe) };
 

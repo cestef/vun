@@ -12,6 +12,7 @@ pub mod coverage;
 mod doc;
 pub mod editor;
 pub mod fix;
+mod flash;
 pub mod formats;
 pub mod install;
 pub mod lints;

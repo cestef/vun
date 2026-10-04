@@ -182,3 +182,25 @@ build := (b: &mut std.build.Build) {
     assert_eq!(std::process::Command::new(program).status().unwrap().code(), Some(7));
     assert_eq!(session.planned(file, &other, None).unwrap(), None, "nothing the plan records");
 }
+
+#[test]
+fn a_uf2_flash_step_writes_the_blocks_of_the_program_beside_it() {
+    if !HOSTED {
+        return;
+    }
+    let fixture = Fixture::new("plan-uf2");
+    let build = "\
+build := (b: &mut std.build.Build) {
+    app := b.program(.{ .root = \"app.vun\", .target = targets.linux.x86_64.kernel });
+    b.flash(app, .uf2(.{ .family = 0xe48b_ff59 }));
+};
+";
+    let (programs, reported) = fixture.carried(build, APP, None);
+    assert_eq!(reported, Vec::<DiagId>::new());
+    let [program] = programs.as_slice() else { panic!("one program is built: {programs:?}") };
+    let (uf2, blocks) = vun_uf2::Uf2::read(&std::fs::read(program.with_extension("uf2")).unwrap()).unwrap();
+    assert_eq!(uf2.family, 0xe48b_ff59);
+    let elf = std::fs::read(program).unwrap();
+    let loaded: usize = vun_elf::File::loads(&elf).unwrap().iter().map(|l| l.bytes.len()).sum();
+    assert_eq!(blocks.iter().map(|b| b.payload.len()).sum::<usize>(), loaded);
+}
