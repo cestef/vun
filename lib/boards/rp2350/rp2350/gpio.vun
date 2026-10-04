@@ -1,0 +1,93 @@
+//! General-purpose I/O (datasheet, chapter 9): a pin driven by the single-cycle I/O block, its
+//! function and pad set up through the banks' registers, which a reset holds off until released.
+
+/// The registers of the single-cycle I/O block, from the first the board uses.
+#[layout.c]
+Sio := struct {
+    cpuid: std.hw.Reg(u32),
+    gpio_in: std.hw.Reg(u32),
+    gpio_hi_in: std.hw.Reg(u32),
+    _reserved0: u32,
+    gpio_out: std.hw.Reg(u32),
+    gpio_hi_out: std.hw.Reg(u32),
+    gpio_out_set: std.hw.Reg(u32),
+    gpio_hi_out_set: std.hw.Reg(u32),
+    gpio_out_clr: std.hw.Reg(u32),
+    gpio_hi_out_clr: std.hw.Reg(u32),
+    gpio_out_xor: std.hw.Reg(u32),
+    gpio_hi_out_xor: std.hw.Reg(u32),
+    gpio_oe: std.hw.Reg(u32),
+    gpio_hi_oe: std.hw.Reg(u32),
+    gpio_oe_set: std.hw.Reg(u32),
+};
+
+sio_address := 0xd000_0000;
+
+/// A pin's control register in the I/O bank, and its pad's in the pads bank: eight bytes and
+/// four apart, from `ctrl_first` and `pad_first`.
+io_bank := 0x4002_8000;
+ctrl_first := 0x4;
+ctrl_stride := 8;
+pads_bank := 0x4003_8000;
+pad_first := 0x4;
+pad_stride := 4;
+
+/// The function that connects a pin to the single-cycle I/O block.
+function_sio: u32 = 5;
+/// The pad's isolation, set at reset: it holds the pin off its pad until cleared.
+pad_isolation: u32 = 1 << 8;
+
+/// The reset controller, holding each block in reset until its bit is cleared.
+resets := 0x4002_0000;
+reset_io_bank: u32 = 1 << 6;
+reset_pads_bank: u32 = 1 << 9;
+reset_done_offset := 8;
+
+/// Pins, claimed with the peripherals.
+Bank := struct {
+    _held: (),
+
+    claim := unsafe () -> Bank { .{ ._held = () } };
+
+    /// Pin `n`, with the banks out of reset.
+    pin := (self: &Bank, n: Index) -> Pin {
+        reset := unsafe std.hw.at(std.hw.Reg(u32), resets);
+        done := unsafe std.hw.at(std.hw.Reg(u32), resets + reset_done_offset);
+        wanted := reset_io_bank | reset_pads_bank;
+        reset.write(reset.read() & ~wanted);
+        for done.read() & wanted != wanted {}
+        Pin.of(n)
+    };
+};
+
+/// A pin, by its number.
+Index: type = Int(0..30);
+
+/// A pin not configured yet.
+Pin := struct {
+    _n: Index,
+
+    of := (n: Index) -> Pin { .{ ._n = n } };
+
+    /// The pin driving its level.
+    output := (self: Pin) -> Output {
+        pad := unsafe std.hw.at(std.hw.Reg(u32), pads_bank + pad_first + self._n * pad_stride);
+        pad.write(pad.read() & ~pad_isolation);
+        ctrl := unsafe std.hw.at(std.hw.Reg(u32), io_bank + ctrl_first + self._n * ctrl_stride);
+        ctrl.write(function_sio);
+        bit := (1 << self._n).wrap(u32);
+        unsafe std.hw.at(Sio, sio_address).gpio_oe_set.write(bit);
+        Output.of(bit)
+    };
+};
+
+/// A pin driving its level.
+Output := struct {
+    _bit: u32,
+
+    of := (bit: u32) -> Output { .{ ._bit = bit } };
+
+    high := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_set.write(self._bit); };
+    low := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_clr.write(self._bit); };
+    toggle := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_xor.write(self._bit); };
+};

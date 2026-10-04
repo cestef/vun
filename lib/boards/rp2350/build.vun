@@ -1,0 +1,12 @@
+//! Build file of `rp2350`.
+
+package := .{
+    .name = "rp2350",
+    .id = 0x0000_0000_0000_0013,
+    .version = "0.0.0",
+    .edition = 2026,
+    .include = .{ "build.vun", "rp2350.vun", "rp2350" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {};

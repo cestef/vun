@@ -1,0 +1,8 @@
+//! RP2350 runtime: the image definition the boot ROM looks for, the vector table the core starts
+//! from, the reset handler laying memory out and calling the program's `main`, the peripherals,
+//! and the chip's memory map.
+
+..rp2350.runtime;
+
+/// The target of the chip's Arm processor, a Cortex-M33 running Armv7E-M code.
+target := targets.bare.thumbv7em.eabihf;
