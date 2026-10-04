@@ -22,6 +22,7 @@ mod fixes;
 mod forms;
 mod fuzz;
 mod generics;
+mod hover;
 mod impls;
 mod layout;
 mod library;

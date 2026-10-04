@@ -83,8 +83,16 @@ impl Session {
             Some(Declaration::Site(Site::Decl(decl))) => Some(decl),
             _ => None,
         };
-        let (span, known) = (self.source_span(expr.expr.origin), self.known(&expr));
+        let known = self.known(&expr).or_else(|| self.annotated(&expr));
+        let span = self.source_span(expr.expr.origin);
         Some(Found { span, name, known, decl, expr: Some(expr) })
+    }
+
+    /// The type and stage of a type written where typing records none, as an annotation: `type`,
+    /// at compile time, when it evaluates to a type.
+    fn annotated(&self, expr: &ExprRef) -> Option<Known> {
+        let Value::Type(_) = self.db.get::<ExprValue>(expr).ok()? else { return None };
+        Some(Known { ty: TyKind::of_types(), stage: Stage::Compile })
     }
 
     /// What the declaration of `file` whose name holds `offset` is.

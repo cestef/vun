@@ -300,8 +300,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    extension builds for `wasm32-wasip2`; `cestef/tree-sitter-vun` is published (private until the
    language is public), pinned in `editors/tree-sitter/release.json`. Open: the owner looks at
    VSCodium and installs Zed's dev extension (`zed: install dev extension` on `editors/zed`);
-   whether Zed lets the last pattern win is unverified; hover shows nothing on a declaration's own
-   name or on a type annotation (`u64`, which typing leaves out); the TextMate grammar scopes
+   whether Zed lets the last pattern win is unverified; the TextMate grammar scopes
    `in(` as the loop keyword and types not at all; a doc comment on a record's field reads as a
    doc of an assignment in tree-sitter (`editors.vun` uses `//` inside records for now);
    `FromLiteral` could replace the hand walks of `Literal` in manifests, the lock file and the

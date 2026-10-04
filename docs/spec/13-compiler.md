@@ -1414,7 +1414,7 @@ reads each message itself once the last is handled, and checks after each.
   holding the position: `name: T = value`, its name when it is one, its type as `vun debug dump
   types` prints it, and its value when compiling computes one other than a function or type
   literal it writes (the value of the declaration it names, or else its own, `vun_sema::value::
-  ExprValue`, evaluated where it is written); its stage; the layout of the type it is, or else of
+  ExprValue`, evaluated where it is written); its stage (a type written as an annotation, which typing records nothing for, is a `type` at compile time); the layout of the type it is, or else of
   its type, as `vun debug dump layout` prints it; and the doc comment of the declaration.
 - *Outline.* The declarations of the file, read from the syntax tree alone, so that a file that
   does not check has one: each binding by what its value is (a function, a struct with its
