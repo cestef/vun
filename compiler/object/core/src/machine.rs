@@ -58,6 +58,14 @@ impl Machine {
         }
     }
 
+    /// Whether linkers read a relocation's addend from the field it fills, not from the entry
+    /// (the Arm ELF ABI's `REL`: GNU ld ignores an entry's addend there). Relocations then name
+    /// the symbol itself, and the fields hold their addends.
+    #[must_use]
+    pub const fn implicit_addends(self) -> bool {
+        matches!(self, Self::Arm(_))
+    }
+
     /// The relocation of a word of data holding an address.
     #[must_use]
     pub const fn address(self) -> RelocKind {

@@ -70,6 +70,14 @@ impl Fixup {
         }
     }
 
+    /// The fields holding the distance a relocation's addend leaves for the linker to add to:
+    /// the program counter's lead over the field, backwards. Linkers that read the addend from
+    /// the instruction rather than the relocation (GNU ld on Arm) take it from here.
+    #[must_use]
+    pub fn addend(self) -> u32 {
+        self.fields(-PC_AHEAD / HALFWORD)
+    }
+
     /// The distance in its units from a reference at `at` to `target`, if its field holds it.
     #[must_use]
     pub fn reach(self, at: u64, target: u64) -> Option<i64> {

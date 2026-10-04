@@ -50,3 +50,23 @@ fn a_thread_local_variable_names_its_descriptor_which_names_its_initial_bytes() 
         section.relocs.iter().map(|r| (r.offset, &object.symbols[r.symbol].name[..])).collect();
     assert_eq!(named, [(0, &b"_tlv_bootstrap"[..]), (16, &b"count$tlv$init"[..])]);
 }
+
+#[test]
+fn a_relocation_on_arm_keeps_naming_its_symbol_for_linkers_reading_addends_from_the_field() {
+    let mut object = Object::new(Machine::Arm(crate::Float::Hard), Format::Elf);
+    let text = object.section(b".text", Contents::Code);
+    object.append(text, &[0; 8], 4);
+    let callee = object.symbols.push(Symbol {
+        name: b"callee".to_vec(),
+        section: Some(text),
+        value: 4,
+        size: 4,
+        kind: SymbolKind::Func,
+        binding: Binding::Local,
+    });
+    object.sections[text].relocs =
+        vec![Reloc { offset: 0, symbol: callee, kind: RelocKind::ThumbCall, addend: -4 }];
+    object.bind_locally();
+    let relocs = &object.sections[text].relocs;
+    assert_eq!((relocs[0].symbol, relocs[0].addend), (callee, -4));
+}

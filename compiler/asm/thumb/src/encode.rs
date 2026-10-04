@@ -57,10 +57,14 @@ impl<S: Copy> Emit<S> for Asm<S> {
 /// the code is listed.
 fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, word: u32, size: Size, operands: &[Operand<S>]) {
     let at = asm.here();
+    let mut word = word;
     for (arg, operand) in form.args.iter().zip(operands) {
         match Link::of(arg.kind, operand) {
             Some(Link::Label(label, fixup)) => asm.refer(at, label, fixup),
-            Some(Link::Reloc(target, kind, addend)) => asm.relocate(at, target, kind, addend),
+            Some(Link::Reloc(target, kind, addend, field)) => {
+                asm.relocate(at, target, kind, addend);
+                word |= field.map_or(0, Fixup::addend);
+            }
             None => {}
         }
     }
@@ -81,10 +85,10 @@ const fn reloc(branch: Branch) -> Option<RelocKind> {
 }
 
 /// A field written after the instruction: when its function ends, or by the linker, which adds
-/// the addend.
+/// the addend, a branch's also left in its field.
 enum Link<S> {
     Label(Label, Fixup),
-    Reloc(S, RelocKind, i64),
+    Reloc(S, RelocKind, i64, Option<Fixup>),
 }
 
 impl<S: Copy> Link<S> {
@@ -93,9 +97,11 @@ impl<S: Copy> Link<S> {
         Some(match (kind, operand) {
             (Kind::Target(branch), Operand::Label(label)) => Link::Label(*label, branch.fixup()),
             // A branch counts from its program counter, ahead of its field.
-            (Kind::Target(branch), Operand::Sym(target)) => Link::Reloc(*target, reloc(branch)?, -PC_AHEAD),
-            (Kind::Low, Operand::Low(target)) => Link::Reloc(*target, RelocKind::ThumbLow16, 0),
-            (Kind::High, Operand::High(target)) => Link::Reloc(*target, RelocKind::ThumbHigh16, 0),
+            (Kind::Target(branch), Operand::Sym(target)) => {
+                Link::Reloc(*target, reloc(branch)?, -PC_AHEAD, Some(branch.fixup()))
+            }
+            (Kind::Low, Operand::Low(target)) => Link::Reloc(*target, RelocKind::ThumbLow16, 0, None),
+            (Kind::High, Operand::High(target)) => Link::Reloc(*target, RelocKind::ThumbHigh16, 0, None),
             _ => return None,
         })
     }

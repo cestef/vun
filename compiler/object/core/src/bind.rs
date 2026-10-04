@@ -17,6 +17,10 @@ impl Object {
     /// Panics on a symbol at an offset past 2^63.
     pub fn bind_locally(&mut self) {
         self.bind_per_thread();
+        // A section's symbol would take the offset as an addend, which the field must hold.
+        if self.machine.implicit_addends() {
+            return;
+        }
         let targets: Vec<Option<(SectionId, u64)>> = self
             .symbols
             .iter()

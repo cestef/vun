@@ -26,6 +26,9 @@ fn a_call_and_an_address_are_left_to_the_linker() {
     asm.emit(Op::Movw, Size::B32, &[Operand::Reg(Reg::R0), Operand::Low("d")]);
     asm.emit(Op::Movt, Size::B32, &[Operand::Reg(Reg::R0), Operand::High("d")]);
     let code = asm.finish().expect("no label");
+    // The call's field holds its addend, which a linker reading it from there (GNU ld on Arm) adds
+    // to the symbol: `bl` to its own field, -4, as `as` writes it.
+    assert_eq!(code.bytes[..4], [0xff, 0xf7, 0xfe, 0xff]);
     let kinds: Vec<(u64, RelocKind, i64)> =
         code.relocs.iter().map(|r| (r.offset, r.kind, r.addend)).collect();
     assert_eq!(
