@@ -1,0 +1,14 @@
+//! Armv8-M Mainline: Cortex-M33 and M55, Thumb-2 with the DSP extension and TrustZone.
+
+/// With the single-precision floating-point unit (`fpv5-sp-d16`), the hard-float EABI.
+eabihf := targets.bare._on(
+    .arm,
+    .thumb,
+    &[.microcontroller, .divide],
+    .eabihf,
+    .aapcs_vfp,
+    &[f32],
+    "arm-none-eabi-gcc",
+    "arm-none-eabi-ar",
+    &["-march=armv8-m.main+dsp", "-mthumb", "-mfloat-abi=hard", "-mfpu=fpv5-sp-d16"],
+);

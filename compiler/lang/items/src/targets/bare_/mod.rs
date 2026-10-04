@@ -2,3 +2,4 @@
 pub mod bare_riscv32imc;
 pub mod bare_thumbv7em;
 pub mod bare_thumbv7m;
+pub mod bare_thumbv8m_main;

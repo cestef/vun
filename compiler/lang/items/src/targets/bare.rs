@@ -12,3 +12,5 @@ pub const riscv32imc: Item = Item::new(&["targets", "bare", "riscv32imc"]);
 pub const thumbv7em: Item = Item::new(&["targets", "bare", "thumbv7em"]);
 /// The namespace `targets.bare.thumbv7m`.
 pub const thumbv7m: Item = Item::new(&["targets", "bare", "thumbv7m"]);
+/// The namespace `targets.bare.thumbv8m_main`.
+pub const thumbv8m_main: Item = Item::new(&["targets", "bare", "thumbv8m_main"]);
