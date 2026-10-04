@@ -3,6 +3,7 @@
 //! workspace's version is replaced, so installing again picks up the new build.
 
 use std::io;
+use std::path::{Path, PathBuf};
 
 use vun_build::toolchains::Toolchains;
 use vun_command::{Args, Outcome, Param, Shell, Values};
@@ -12,6 +13,7 @@ use vun_fs::Edit;
 use vun_harness::repo_root;
 use vun_span::Version;
 use vun_term::{Record, Status, Style, Text, Verb};
+use vun_tool::Executable;
 
 use crate::cargo;
 use crate::toolchain::Stage;
@@ -25,9 +27,13 @@ pub(crate) const PROFILE: Param = Param::option("profile")
 const PROFILES: &[&str] = &["dist", "release", "dev"];
 const DEFAULT: &str = "dist";
 
+/// What the installed executable is called.
+const NAME: &str = "vun";
+
 const UNBUILT: DiagId = DiagId::new("xtask.install.unbuilt");
 const HOMELESS: DiagId = DiagId::new("xtask.install.homeless");
 const UNSTAGED: DiagId = DiagId::new("xtask.install.unstaged");
+const SHADOWED: DiagId = DiagId::new("xtask.install.shadowed");
 const UNINSTALLED: DiagId = DiagId::new("xtask.install.uninstalled");
 
 pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
@@ -65,7 +71,31 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
         return Ok(Outcome::Failure);
     }
     shell.status(&Installed { version, profile });
+    if let Some(first) = Shadow::first(toolchains.link()) {
+        let msg = Msg::new()
+            .text("another ")
+            .code("vun")
+            .text(" comes first on the search path: ")
+            .code(first.display().to_string());
+        let help = Msg::new()
+            .text("remove it, or put ")
+            .code(toolchains.link().display().to_string())
+            .text(" before it");
+        diag.report(Diagnostic::warning(SHADOWED, msg).help(help));
+    }
     Ok(Outcome::Success)
+}
+
+/// A `vun` on the search path that is not the one installed.
+struct Shadow;
+
+impl Shadow {
+    /// The first `vun` on the search path when it is not the file `link` resolves to.
+    fn first(link: &Path) -> Option<PathBuf> {
+        let first = Executable::search(NAME)?;
+        let same = first.canonicalize().ok().zip(link.canonicalize().ok()).is_some_and(|(a, b)| a == b);
+        (!same).then_some(first)
+    }
 }
 
 /// The profile `args` names, one of [`PROFILES`], `dist` when it names none.
