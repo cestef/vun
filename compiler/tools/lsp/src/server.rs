@@ -20,6 +20,7 @@ use vun_lsp_protocol::rpc::{ErrorCode, Id, Message};
 use vun_span::FileId;
 use vun_trace::{Activity, tracing};
 
+use crate::command::stop::{RunId, Runs};
 use crate::failure::{Failure, Reason};
 use crate::message::Incoming;
 use crate::methods::{Admitted, Kind, Method};
@@ -53,6 +54,8 @@ pub(crate) enum Event {
     Frame(Result<Option<String>, Unframed>),
     /// What a run of `vun.test` reported of the tests of the document at `uri`.
     Tested { uri: Uri, tests: Vec<Tested> },
+    /// A program `vun.run` started ended.
+    Ended(RunId),
 }
 
 /// Where the loop's messages come from: a thread reading them as they come, sending each as an
@@ -75,9 +78,11 @@ pub(crate) struct Server<'s> {
     pub(crate) asked: i64,
     /// How the tests of each document ended when last run, by name, until it changes.
     pub(crate) results: BTreeMap<Uri, BTreeMap<String, Tested>>,
+    /// The programs `vun.run` started that have not ended.
+    pub(crate) runs: Runs,
     /// Where events are sent, and where the loop receives them.
     pub(crate) events: Sender<Event>,
-    received: Receiver<Event>,
+    pub(crate) received: Receiver<Event>,
 }
 
 impl<'s> Server<'s> {
@@ -92,6 +97,7 @@ impl<'s> Server<'s> {
             outbox: Vec::new(),
             asked: 0,
             results: BTreeMap::new(),
+            runs: Runs::default(),
             events,
             received,
         }
@@ -122,6 +128,7 @@ impl<'s> Server<'s> {
                         }
                     }
                     Event::Tested { uri, tests } => self.tested(uri, tests),
+                    Event::Ended(run) => self.ended(run),
                 }
                 next = self.received.try_recv().ok();
             }

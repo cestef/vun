@@ -132,3 +132,39 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
         assert!(client.published()[0].diagnostics.is_empty());
     });
 }
+
+#[cfg(unix)]
+#[test]
+fn a_run_that_has_not_ended_has_a_lens_stopping_it() {
+    use std::process::{Command, Stdio};
+    use std::time::Duration;
+
+    use vun_lsp_protocol::command::CodeLensParams;
+
+    use crate::command::Order;
+    use crate::server::Event;
+
+    served("lsp-stop", |client, uri| {
+        client.open(uri, "main := () -> () {};\nstart := std.os.start(main);\n");
+        let params = CodeLensParams { text_document: TextDocumentIdentifier { uri: uri.clone() } };
+        let commands = |client: &mut super::Client<'_, '_>| -> Vec<String> {
+            let lenses = client.request::<r::CodeLens>(&params).unwrap();
+            lenses.into_iter().filter_map(|l| l.command).map(|c| c.command).collect()
+        };
+        assert_eq!(commands(client), [Order::Run.name()]);
+
+        let output = uri.to_file_path().unwrap().with_extension("out");
+        let child = Command::new("sleep").arg("60").stdin(Stdio::null()).spawn().unwrap();
+        client.server.follow(child, std::fs::File::create(&output).unwrap());
+        assert_eq!(commands(client), [Order::Run.name(), Order::Stop.name()]);
+
+        let stop = ExecuteCommandParams { command: Order::Stop.name(), arguments: None };
+        assert_eq!(client.request::<r::ExecuteCommand>(&stop).unwrap(), None);
+        let Event::Ended(run) = client.server.received.recv_timeout(Duration::from_secs(10)).unwrap() else {
+            panic!("the run ends");
+        };
+        client.server.ended(run);
+        assert_eq!(commands(client), [Order::Run.name()]);
+        assert!(!std::fs::read(&output).unwrap().is_empty(), "how it ended is written");
+    });
+}

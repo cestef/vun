@@ -3,6 +3,7 @@
 //! test, each written beside the document and shown (spec 13, section 11).
 
 pub(crate) mod run;
+pub(crate) mod stop;
 pub(crate) mod test;
 pub(crate) mod view;
 
@@ -33,6 +34,10 @@ pub(crate) enum Order {
     /// Builds the tests' program of a document's namespace and runs one test: [`test::Tested`].
     #[data(name = "vun.test")]
     Test,
+    /// Ends the programs `vun.run` started that are still running; the arguments are those of
+    /// the run's own lens.
+    #[data(name = "vun.stop")]
+    Stop,
 }
 
 impl Order {
@@ -74,6 +79,7 @@ impl Answers<r::ExecuteCommand> for Server<'_> {
             Order::View => self.show_view(&argument.read().map_err(Failure::params)?)?,
             Order::Run => self.run_program(&argument.read().map_err(Failure::params)?)?,
             Order::Test => self.run_test(&argument.read().map_err(Failure::params)?)?,
+            Order::Stop => self.stop_runs(),
         }
         Ok(None)
     }

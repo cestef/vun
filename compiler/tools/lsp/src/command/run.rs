@@ -12,7 +12,6 @@ use vun_fs::Edit;
 use vun_lsp_protocol::base::TextDocumentIdentifier;
 use vun_lsp_protocol::command::CodeLens;
 use vun_term::Shell;
-use vun_trace::tracing;
 
 use super::Order;
 use crate::failure::Failure;
@@ -48,11 +47,13 @@ impl Server<'_> {
     pub(super) fn run_lenses(&mut self, document: &TextDocumentIdentifier) -> Result<Vec<CodeLens>, Failure> {
         let file = self.document(document)?.file;
         let ran = Ran { text_document: document.clone() };
-        let lenses = self.session.runnable(file).into_iter().filter_map(|name| {
+        let runs = self.session.runnable(file).into_iter().filter_map(|name| {
             let range = self.location(name)?.range;
             Some(CodeLens { range, command: Some(Order::Run.command(TITLE.to_owned(), &ran)) })
         });
-        Ok(lenses.collect())
+        let runs: Vec<_> = runs.collect();
+        let stops: Vec<_> = runs.iter().filter_map(|run| self.stop_lens(run, document)).collect();
+        Ok(runs.into_iter().chain(stops).collect())
     }
 
     /// Builds the program `ran` names and runs it, its output written beside the document as it
@@ -70,13 +71,8 @@ impl Server<'_> {
         let errors = output.try_clone().map_err(Failure::unwritten)?;
         let mut command = self.session.command(&program);
         command.stdin(Stdio::null()).stdout(output.try_clone().map_err(Failure::unwritten)?);
-        let mut child = command.stderr(errors).spawn().map_err(Failure::unwritten)?;
-        std::thread::spawn(move || {
-            let ended = child.wait().and_then(|status| writeln!(output, "\n{status}"));
-            if let Err(error) = ended {
-                tracing::warn!(%error, "a run did not end cleanly");
-            }
-        });
+        let child = command.stderr(errors).spawn().map_err(Failure::unwritten)?;
+        self.follow(child, output);
         self.show(&path)
     }
 }
