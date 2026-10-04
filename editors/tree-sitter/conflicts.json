@@ -138,6 +138,10 @@
   ],
   [
     "_operand",
+    "extension"
+  ],
+  [
+    "_operand",
     "typed_lit"
   ],
   [

@@ -119,7 +119,13 @@ impl<'m> Rules<'m> {
                 if spelled.is_empty() {
                     return None;
                 }
-                Rule::choice(spelled.into_iter().map(|&t| self.token(t, at.named)).collect())
+                let named = spelled.iter().map(|&&t| self.token(t, at.named));
+                // The word a name is read as is also a contextual keyword's spelling where its
+                // context does not apply, which the parser tells apart by what follows.
+                let words = spelled.iter().any(|&&t| t == self.editors.tree_sitter.word);
+                let words =
+                    self.model.contextual.iter().filter(|_| words).map(|(w, _)| Rule::Text(w.clone()));
+                Rule::choice(named.chain(words).collect())
             }
             Term::Words(words) => Rule::choice(words.iter().map(|w| Rule::Text(w.clone())).collect()),
             Term::Field(field, None) => self.content(*field).field(self.model.field_name(*field)),
