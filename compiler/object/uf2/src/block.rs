@@ -67,7 +67,7 @@ impl Block {
     }
 
     pub(crate) fn read_all(bytes: &[u8]) -> Result<(Uf2, Vec<Self>), Malformed> {
-        if bytes.len() % Self::SIZE != 0 {
+        if !bytes.len().is_multiple_of(Self::SIZE) {
             return Err(Malformed::Truncated);
         }
         let mut input = In::at(bytes, 0);

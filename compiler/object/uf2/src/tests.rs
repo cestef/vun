@@ -5,7 +5,7 @@ const RP2350_ARM_SECURE: u32 = 0xe48b_ff59;
 
 #[test]
 fn pieces_are_cut_into_blocks_that_read_back_as_they_were_made() {
-    let flash: Vec<u8> = (0..600).map(|b| b as u8).collect();
+    let flash: Vec<u8> = (0..600u32).map(|b| u8::try_from(b % 256).unwrap()).collect();
     let ram = [7; 10];
     let pieces = [Piece { address: 0x1000_0000, bytes: &flash }, Piece { address: 0x2000_0000, bytes: &ram }];
     let file = Uf2 { family: RP2350_ARM_SECURE }.write(&pieces).unwrap();
@@ -26,7 +26,7 @@ fn an_address_past_32_bits_is_refused() {
 #[test]
 fn a_file_breaking_the_format_is_refused_where_it_does() {
     let file = Uf2 { family: 1 }.write(&[Piece { address: 0, bytes: &[0; 300] }]).unwrap();
-    assert_eq!(Uf2::read(&file[..Block::SIZE + 1]), Err(Malformed::Truncated));
+    assert_eq!(Uf2::read(&file[..=Block::SIZE]), Err(Malformed::Truncated));
     let mut magic = file.clone();
     magic[Block::SIZE] ^= 1;
     assert_eq!(Uf2::read(&magic), Err(Malformed::Magic { block: 1 }));

@@ -44,6 +44,9 @@ impl Uf2 {
     ///
     /// # Errors
     /// Returns the first address a block cannot hold.
+    ///
+    /// # Panics
+    /// Never: a program has fewer blocks than 32 bits count.
     pub fn write(self, pieces: &[Piece<'_>]) -> Result<Vec<u8>, Unaddressable> {
         let mut blocks = Vec::new();
         for piece in pieces {

@@ -76,9 +76,10 @@ impl<T> Assembly<'_, T> {
                     Reloc { offset: start + r.offset, symbol, kind: object.machine.address(), addend };
                 object.sections[section].relocs.push(reloc);
                 if object.machine.implicit_addends() {
-                    let (at, width) = (usize::try_from(reloc.offset).expect("data fits memory"), 4);
-                    let field = &mut object.sections[section].bytes[at..at + width];
-                    field.copy_from_slice(&(addend as u32).to_le_bytes());
+                    let at = usize::try_from(reloc.offset).expect("data fits memory");
+                    let width = usize::from(object.machine.address_bytes());
+                    object.sections[section].bytes[at..at + width]
+                        .copy_from_slice(&addend.to_le_bytes()[..width]);
                 }
             }
         }
