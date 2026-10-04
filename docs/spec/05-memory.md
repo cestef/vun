@@ -169,7 +169,7 @@ Defined, never left to the implementation:
 - `#[layout.bits(uN)] struct`: bit-exact, least significant bit first; fields must sum to N bits.
 - `#[layout.c] struct`: the target C ABI's layout, which is the default one on every target
   described, and a promise that each field is of a type C reads the same way: full-width
-  integers, `bool`, `f32`, `f64`, `*T`, `?*T`, `#[abi.c]` functions and `?` of them, arrays of
+  integers, `bool`, `f32`, `f64`, `*T`, `?*T`, `#[abi.c]` and `#[abi.naked]` functions and `?` of them, arrays of
   these and other `#[layout.c]` structs (`layout.not_c`).
 - `#[layout.tag(uN)] enum`: explicit tag representation; `uN` has a pattern for each variant
   (`layout.tag`).

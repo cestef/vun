@@ -68,6 +68,13 @@ impl Signature {
         Marker::abi(&self.markers).is_some_and(Abi::is_c)
     }
 
+    /// Whether code outside the language can enter a function of this signature by its address
+    /// (`Abi::is_enterable`).
+    #[must_use]
+    pub fn is_enterable(&self) -> bool {
+        Marker::abi(&self.markers).is_some_and(Abi::is_enterable)
+    }
+
     /// Whether calling a function of this signature is `unsafe`.
     #[must_use]
     pub fn is_unsafe(&self) -> bool {

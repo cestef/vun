@@ -11,7 +11,8 @@ declared type, so a field holds only what both sides mean the same way:
 - `bool`, `f32`, `f64`;
 - raw pointers `*T`, which are never null, and `?*T` for a pointer C may leave null; a borrow is
   a promise C cannot keep;
-- function types marked `#[abi.c]`, and `?` of them;
+- function types marked `#[abi.c]` or `#[abi.naked]` (a core or loader enters one by its address,
+  as a vector table does), and `?` of them;
 - arrays of these, and other `#[layout.c]` structs.
 
 A `#[layout.c]` struct has at least one field: C has no empty struct.

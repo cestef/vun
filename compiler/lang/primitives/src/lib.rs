@@ -29,6 +29,14 @@ impl abi::Abi {
         !matches!(self, Self::native | Self::interrupt | Self::naked)
     }
 
+    /// Whether code outside the language can enter a function with it by its address: it is called
+    /// as C's are, or it is `#[abi.naked]`, entered by what the target defines (a core taking an
+    /// exception), which a table of addresses holds.
+    #[must_use]
+    pub const fn is_enterable(self) -> bool {
+        self.is_c() || matches!(self, Self::naked)
+    }
+
     /// The calling convention it names, when it names one rather than the target's own.
     #[must_use]
     pub const fn convention(self) -> Option<vun_target::Convention> {
