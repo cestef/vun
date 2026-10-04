@@ -1,4 +1,4 @@
-use vun_driver::view::{Subject, View};
+use vun_driver::view::{Scope, Subject, View};
 use vun_lsp_protocol::base::{Range, TextDocumentIdentifier};
 use vun_lsp_protocol::command::{ExecuteCommandParams, ShowDocumentParams};
 use vun_lsp_protocol::edit::{CodeActionContext, CodeActionKind, CodeActionParams};
@@ -22,7 +22,11 @@ fn each_view_of_a_file_is_a_source_action_whose_command_writes_and_shows_it() {
             commands.iter().map(|c| c.arguments.as_ref().unwrap()[0].read::<Viewed>().unwrap()).collect();
         // A file neither exporting a program nor a package's `build.vun` has the views of a file.
         let of_a_file: Vec<_> = View::ALL.iter().copied().filter(|v| v.subject() == Subject::File).collect();
-        assert_eq!(viewed.iter().map(|v| v.view).collect::<Vec<_>>(), of_a_file);
+        let whole = viewed.iter().filter(|v| v.scope == Scope::File);
+        assert_eq!(whole.map(|v| v.view).collect::<Vec<_>>(), of_a_file);
+        // The declaration `P` holds the cursor, so the values of it are offered again.
+        let at_the_cursor: Vec<_> = viewed.iter().filter(|v| v.scope != Scope::File).collect();
+        assert_eq!(at_the_cursor.iter().map(|v| v.view).collect::<Vec<_>>(), [View::Values]);
 
         let layout = viewed.iter().position(|v| v.view == View::Layout).unwrap();
         let command = &commands[layout];
@@ -171,7 +175,6 @@ fn a_run_that_has_not_ended_has_a_lens_stopping_it() {
 
 #[test]
 fn the_views_that_narrow_are_offered_again_for_the_function_at_the_cursor() {
-    use vun_driver::view::Scope;
     use vun_lsp_protocol::base::Position;
 
     served("lsp-function-views", |client, uri| {
@@ -187,7 +190,7 @@ fn the_views_that_narrow_are_offered_again_for_the_function_at_the_cursor() {
             .filter_map(|a| a.command.as_ref()?.arguments.as_ref()?[0].read::<Viewed>().ok())
             .collect();
         let narrowed: Vec<_> = viewed.iter().filter(|v| v.scope != Scope::File).collect();
-        let narrowing: Vec<_> = View::ALL.iter().copied().filter(|v| v.narrows()).collect();
+        let narrowing: Vec<_> = View::ALL.iter().copied().filter(|v| v.unit().is_some()).collect();
         assert_eq!(narrowed.iter().map(|v| v.view).collect::<Vec<_>>(), narrowing);
 
         let types = narrowed.iter().find(|v| v.view == View::Types).unwrap();
@@ -203,5 +206,13 @@ fn the_views_that_narrow_are_offered_again_for_the_function_at_the_cursor() {
         // `f` alone: its expressions, and none of `g`'s.
         assert_eq!(text.matches("fn ").count(), 1, "{text}");
         assert!(text.contains("p.y + k"), "{text}");
+
+        // The values of a declaration: `f` alone.
+        let values = narrowed.iter().find(|v| v.view == View::Values).unwrap();
+        client.server.show_view(values).unwrap();
+        let path = client.server.session.shown_at(&uri.to_file_path().unwrap(), "values.declaration");
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(text.lines().count(), 1, "{text}");
+        assert!(text.contains(" f"), "{text}");
     });
 }

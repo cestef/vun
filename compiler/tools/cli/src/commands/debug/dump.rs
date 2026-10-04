@@ -3,7 +3,7 @@
 use std::io;
 use std::path::Path;
 
-use vun_command::{Args, Outcome};
+use vun_command::{Args, Outcome, Param, Values};
 use vun_driver::Session;
 use vun_driver::view::{Scope, View};
 use vun_term::Shell;
@@ -12,6 +12,11 @@ use super::super::FILE;
 
 /// What debug commands report, and the group of the views.
 pub(super) const DUMP: &str = "dump";
+
+/// The place the views of a unit are narrowed to.
+pub(super) const AT: Param = Param::option("at")
+    .about("show only the function (types, mir) or declaration (values) holding this place, `line:column`")
+    .values(Values::Place);
 
 /// The command showing the view `$view` of a file, taking `$param`s besides the file.
 macro_rules! view {
@@ -36,7 +41,14 @@ pub(super) fn show(
     shell.document(DUMP, view.name().to_owned(), |out| {
         let path = args.value(&FILE).expect("positional parameters are present when a command runs");
         let Some(file) = session.load(Path::new(path)) else { return Ok(Outcome::Failure) };
-        session.view(view, file, Scope::File, out)?;
+        let scope = match args.place(&AT) {
+            None => Scope::File,
+            Some(place) => match session.scope_at(file, place) {
+                Some(scope) => scope,
+                None => return Ok(Outcome::Failure),
+            },
+        };
+        session.view(view, file, scope, out)?;
         Ok(session.outcome())
     })
 }

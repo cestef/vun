@@ -2,6 +2,7 @@
 //! language server shows it. A view is one row of [`View`]: its name, what it shows, and what it
 //! is a view of, which says the files it applies to.
 
+mod focus;
 mod front;
 mod mid;
 mod sema;
@@ -10,10 +11,12 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use vun_data::{FromData, ToData};
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_fs::Tree;
-use vun_span::FileId;
+use vun_span::{FileId, Place, SourceMap as _};
 use vun_variants::Variants;
 
+use self::focus::Focus;
 use crate::Session;
 
 /// The directory of the work directory views are written in.
@@ -41,18 +44,25 @@ pub enum View {
 pub enum Scope {
     /// Everything the view shows of the file.
     File,
-    /// What the function holding the byte `offset` has: only the views that [`View::narrows`]
-    /// show less than the file.
-    Function { offset: u32 },
+    /// What the unit of the view ([`View::unit`]) holding the byte `offset` has; a view that has
+    /// no unit shows the file.
+    At { offset: u32 },
 }
 
-impl Scope {
-    /// What a view of this scope is named beside the file, after the view's own name.
+/// The part of a file a view can be narrowed to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unit {
+    Function,
+    Declaration,
+}
+
+impl Unit {
+    /// Its name, which a narrowed view is titled and named by.
     #[must_use]
-    pub const fn name(self) -> Option<&'static str> {
+    pub const fn name(self) -> &'static str {
         match self {
-            Self::File => None,
-            Self::Function { .. } => Some("function"),
+            Self::Function => "function",
+            Self::Declaration => "declaration",
         }
     }
 }
@@ -111,10 +121,14 @@ impl View {
         }
     }
 
-    /// Whether it can show one function of the file instead of all of them.
+    /// What it can be narrowed to, if it shows one thing per unit of the file.
     #[must_use]
-    pub const fn narrows(self) -> bool {
-        matches!(self, Self::Types | Self::Mir)
+    pub const fn unit(self) -> Option<Unit> {
+        match self {
+            Self::Types | Self::Mir => Some(Unit::Function),
+            Self::Values => Some(Unit::Declaration),
+            _ => None,
+        }
     }
 
     #[must_use]
@@ -130,6 +144,16 @@ impl View {
 }
 
 impl Session {
+    /// The scope of the unit holding `place` in `file`; reports a place the file lacks.
+    pub fn scope_at(&mut self, file: FileId, place: Place) -> Option<Scope> {
+        let offset = self.sources.file(file).offset(place);
+        if offset.is_none() {
+            let msg = Msg::new().code(place.to_string()).text(" is past the end of the file");
+            self.diag.error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg));
+        }
+        offset.map(|offset| Scope::At { offset })
+    }
+
     /// The views that apply to `file`: every view of a file, those of a package when it is a
     /// package's `build.vun`, and those of a program when it exports one.
     pub fn views(&mut self, file: FileId) -> Vec<View> {
@@ -144,14 +168,14 @@ impl Session {
     }
 
     /// Writes the view `view` of `file`, as much of it as `scope` says, to `out`; what computing
-    /// it reports is recorded. A scope no function holds shows nothing.
+    /// it reports is recorded. A scope no unit holds shows nothing.
     ///
     /// # Errors
     /// Returns an error if `out` cannot be written.
     pub fn view(&mut self, view: View, file: FileId, scope: Scope, out: &mut dyn Write) -> io::Result<()> {
-        let focus = match scope {
-            Scope::Function { offset } if view.narrows() => match self.function_at(file, offset) {
-                Some(function) => Some(function),
+        let focus = match (scope, view.unit()) {
+            (Scope::At { offset }, Some(unit)) => match self.unit_at(unit, file, offset) {
+                Some(focus) => Some(focus),
                 None => return Ok(()),
             },
             _ => None,
@@ -162,9 +186,9 @@ impl Session {
             View::Manifest => self.view_manifest(file, out),
             View::Plan => self.view_plan(file, out),
             View::Hir => self.view_hir(file, out),
-            View::Types => self.view_types(file, focus.as_ref(), out),
-            View::Values => self.view_values(file, out),
-            View::Mir => self.view_mir(file, focus.as_ref(), out),
+            View::Types => self.view_types(file, focus.as_ref().and_then(Focus::expr), out),
+            View::Values => self.view_values(file, focus.as_ref().and_then(Focus::decl), out),
+            View::Mir => self.view_mir(file, focus.as_ref().and_then(Focus::expr), out),
             View::Layout => self.view_layout(file, out),
             View::Program => self.view_program(file, out),
             View::Lir => self.view_lir(file, out),

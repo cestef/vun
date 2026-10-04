@@ -104,3 +104,17 @@ fn spans_read_back_only_within_their_text() {
         Err(Malformed::Invariant)
     );
 }
+
+#[test]
+fn a_place_is_the_byte_offset_of_a_line_and_a_column_of_characters() {
+    let file = SourceFile::new("a.vun".into(), "x := 1;\ns := \"é\"; x\n".into());
+    assert_eq!("2:11".parse(), Ok(Place { line: 2, column: 11 }));
+    assert_eq!(file.offset(Place { line: 1, column: 1 }), Some(0));
+    assert_eq!(file.offset(Place { line: 2, column: 11 }), Some(8 + 11));
+    assert_eq!(file.line_col(file.offset(Place { line: 2, column: 11 }).unwrap()).chars, 11);
+    assert_eq!(file.offset(Place { line: 1, column: 99 }), Some(7));
+    assert_eq!(file.offset(Place { line: 9, column: 1 }), None);
+    for bad in ["3", "0:1", "1:0", "a:b", "1:2:3"] {
+        assert_eq!(bad.parse::<Place>(), Err(NoPlace));
+    }
+}

@@ -1,6 +1,8 @@
 //! Parameters as data: what a command takes, how often, what values it accepts and where a
 //! default comes from. Help, parsing, validation and completions all read the same declaration.
 
+use vun_span::Place;
+
 /// A parameter, declared as a constant with the builders below:
 /// `Param::option("target").about("...").values(Values::Text).env("VUN_TARGET")`.
 #[derive(Debug)]
@@ -47,6 +49,8 @@ pub enum Values {
     Catalog(Catalog),
     /// A whole number, such as a count or a seed.
     Count,
+    /// A place in a file, `line:column` counted from 1.
+    Place,
 }
 
 /// A table of names described by what they are and where they are declared.
@@ -162,7 +166,7 @@ impl Param {
     pub fn choices(&self) -> Option<Vec<&'static str>> {
         match self.values {
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => Some(names()),
-            Values::Text | Values::Path(_) | Values::Count => None,
+            Values::Text | Values::Path(_) | Values::Count | Values::Place => None,
         }
     }
 }
@@ -220,6 +224,12 @@ impl Args {
     /// The number a count parameter is given; parsing checked that it is one.
     #[must_use]
     pub fn count(&self, param: &Param) -> Option<u64> {
+        self.value(param)?.parse().ok()
+    }
+
+    /// The place a place parameter is given; parsing checked that it is one.
+    #[must_use]
+    pub fn place(&self, param: &Param) -> Option<Place> {
         self.value(param)?.parse().ok()
     }
 

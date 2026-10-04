@@ -308,8 +308,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    types (`[0]type`) has no run-time layout, which only a library's report now hides.
    Richer server (349): views as `source` code actions (`vun.view`, shown by `window/showDocument`),
    hovers with values and layouts, type-only inlays, a run lens (`vun.run`). Open: test lenses (no
-   `vun test` or `std.testing.runner` exists yet); a run cannot be given input; the function at the cursor has the types and MIR views only (no
-   `--at` on `vun debug dump` yet);
+   `vun test` or `std.testing.runner` exists yet); a run cannot be given input; views narrow to the function (types, MIR) or declaration (values) at the cursor, the others show the file;
    per-editor polish (VS Code commands, Zed has no code lenses); untried in a real editor.
 1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's

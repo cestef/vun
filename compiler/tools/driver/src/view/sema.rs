@@ -4,7 +4,7 @@
 use std::io::{self, Write};
 
 use vun_hir::db::Parsed;
-use vun_hir::tree::ExprKind;
+use vun_hir::tree::{DeclId, ExprKind};
 use vun_mir::{Programs, Roots};
 use vun_origin::Resolve;
 use vun_sema::decl::{DeclType, DeclValue};
@@ -67,11 +67,16 @@ impl Session {
 
     /// Each declaration of a namespace of `file`, in source order: where it is, its name, its
     /// type and stage, and its value, or why it has none when compiling.
-    pub(super) fn view_values(&mut self, file: FileId, out: &mut dyn Write) -> io::Result<()> {
+    pub(super) fn view_values(
+        &mut self,
+        file: FileId,
+        focus: Option<DeclId>,
+        out: &mut dyn Write,
+    ) -> io::Result<()> {
         let key = self.file_ref(file);
         let parsed = self.parsed(file);
         let hir = &parsed.hir;
-        for (id, decl) in hir.decls.iter() {
+        for (id, decl) in hir.decls.iter().filter(|&(id, _)| focus.is_none_or(|focus| focus == id)) {
             let mut binders = Vec::new();
             hir.binders(decl.pat, &mut binders);
             let Some(&binder) = binders.first().filter(|&&b| hir.member_decl(b).is_some()) else { continue };

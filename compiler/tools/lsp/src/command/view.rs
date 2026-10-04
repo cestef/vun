@@ -1,7 +1,7 @@
 //! Views of a document: each representation `vun debug dump` prints, written beside it.
 
 use vun_data::{FromData, ToData};
-use vun_driver::view::{Scope, View};
+use vun_driver::view::{Scope, Unit, View};
 use vun_fs::Edit;
 use vun_lsp_protocol::base::{Position, TextDocumentIdentifier};
 use vun_lsp_protocol::edit::{CodeAction, CodeActionKind};
@@ -22,9 +22,9 @@ pub(crate) struct Viewed {
 impl Viewed {
     /// What the action showing it says: `Show types`, or `Show types of this function`.
     fn title(&self) -> String {
-        match self.scope {
-            Scope::File => ["Show ", self.view.name()].concat(),
-            Scope::Function { .. } => ["Show ", self.view.name(), " of this function"].concat(),
+        match (self.scope, self.view.unit()) {
+            (Scope::At { .. }, Some(unit)) => ["Show ", self.view.name(), " of this ", unit.name()].concat(),
+            _ => ["Show ", self.view.name()].concat(),
         }
     }
 }
@@ -40,14 +40,18 @@ impl Server<'_> {
         let document = self.document(text_document)?;
         let file = document.file;
         let offset = document.lines.offset(self.session.text(file), at, self.encoding);
-        let function = offset.filter(|&offset| self.session.function_at(file, offset).is_some());
         let views = self.session.views(file);
-        let narrowed = views.iter().copied().filter(|view| view.narrows());
-        let scoped = function.map(|offset| Scope::Function { offset }).into_iter();
-        let scoped: Vec<_> =
-            scoped.flat_map(|scope| narrowed.clone().map(move |view| (view, scope))).collect();
         let whole = views.iter().map(|&view| (view, Scope::File));
-        let actions = whole.chain(scoped).map(|(view, scope)| {
+        let mut narrowed = Vec::new();
+        if let Some(offset) = offset {
+            for &view in &views {
+                let held = view.unit().is_some_and(|unit| self.session.has_unit(unit, file, offset));
+                if held {
+                    narrowed.push((view, Scope::At { offset }));
+                }
+            }
+        }
+        let actions = whole.chain(narrowed).map(|(view, scope)| {
             let viewed = Viewed { text_document: text_document.clone(), view, scope };
             let title = viewed.title();
             CodeAction {
@@ -63,10 +67,11 @@ impl Server<'_> {
     }
 
     /// Writes the view `viewed` asks for beside its document, and asks the client to show it.
-    pub(super) fn show_view(&mut self, viewed: &Viewed) -> Result<(), Failure> {
+    pub(crate) fn show_view(&mut self, viewed: &Viewed) -> Result<(), Failure> {
         let document = self.document(&viewed.text_document)?;
         let (file, source) = (document.file, document.path.clone());
-        let shown = [Some(viewed.view.name()), viewed.scope.name()].into_iter().flatten();
+        let unit = viewed.view.unit().filter(|_| viewed.scope != Scope::File).map(Unit::name);
+        let shown = [Some(viewed.view.name()), unit].into_iter().flatten();
         let path = self.session.shown_at(&source, &shown.collect::<Vec<_>>().join("."));
         let mut text = Vec::new();
         let written =

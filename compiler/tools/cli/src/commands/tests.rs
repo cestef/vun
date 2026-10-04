@@ -44,3 +44,27 @@ fn the_command_line_sets_a_lint_level() {
     assert_eq!(checked(&path, "std.lints.naming.kase=warn"), Outcome::Failure);
     assert_eq!(checked(&path, "std.lints.naming.case=war"), Outcome::Failure);
 }
+
+/// `vun debug dump <view> <file> --at <place>`: what it wrote, or its outcome.
+fn dumped_at(view: &str, path: &std::path::Path, at: &str) -> Result<String, Outcome> {
+    let argv = ["debug", "dump", view, path.to_str().unwrap(), "--at", at].map(str::to_owned);
+    let (mut session, mut out, mut err) = (Session::new(), Vec::new(), Vec::new());
+    let outcome = PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut out, &mut err));
+    match outcome.map_err(|refusal| refusal.outcome)? {
+        Outcome::Success => Ok(String::from_utf8(out).unwrap()),
+        failed => Err(failed),
+    }
+}
+
+#[test]
+fn a_dump_at_a_place_shows_the_unit_holding_it() {
+    let dir = Scratch::new("dump-at");
+    let path = dir.write("at.vun", "f := (x: u8) -> u8 { x };\ng := (y: u16) -> u16 { y };\n");
+    let types = dumped_at("types", &path, "2:24").unwrap();
+    assert_eq!(types.matches("fn ").count(), 1, "{types}");
+    let values = dumped_at("values", &path, "1:1").unwrap();
+    assert_eq!(values.lines().count(), 1, "{values}");
+    assert!(values.contains(" f"), "{values}");
+    assert_eq!(dumped_at("types", &path, "9:1"), Err(Outcome::Failure), "a line the file lacks");
+    assert_eq!(dumped_at("types", &path, "nowhere"), Err(Outcome::Usage), "no place");
+}
