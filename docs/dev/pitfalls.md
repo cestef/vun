@@ -152,6 +152,22 @@ Traps that cost a session before. Add one when it costs you time.
 - arm64: homes past 256 bytes below `x29` take an index built in `x15` (`FAR`); `x16`/`x17` are
   the framework's carrier and temp, so nothing else may use them across a jump's moves.
 - A LIR value never spans registers (no `Loc::Pair`): wide values are split by legalization.
+- Arm ELF is `REL`: GNU ld reads a relocation's addend from the field, never the entry, and a
+  section symbol would take the offset as an addend. Thumb objects name the symbol itself and
+  hold addends in fields (`Machine::implicit_addends`, `bind_locally` skips them).
+
+## Boards without a console
+
+- A RP2350 has no readable mailbox across a ROM reboot (SRAM comes back zero); the watchdog
+  scratch registers survive (`rp2350.fault`). Their contents can be read back with no UART by
+  answering one question per BOOTSEL entry: `lsusb -v -d 2e8a:000f` shows a mass storage
+  interface or not (`rom.bootsel_hiding`). Never call a ROM routine before reading its table
+  pointer back: it is at `0x16` on Arm, not `0x18`.
+- A register is a value: `r := self.regs.control` copies it and `r.write` hits the copy. Take
+  `&self.regs.control`. Check a struct of registers against the datasheet's offsets (a missing
+  reserved word shifted every register after it).
+- `picotool load` needs `-t elf` for the extensionless `.vun/build` output, and races a reboot:
+  retry, or use `picotool reboot -f -u`.
 
 ## Editors
 

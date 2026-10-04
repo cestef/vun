@@ -315,6 +315,12 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
    sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
+   The rp2350 board (`lib/boards/rp2350`, Pico 2 W over USB, report `docs/reports/2026-10-04-pico2w.md`)
+   runs on hardware: IMAGE_DEF, `.data`/`.bss`, ROM `reboot` and a fault entry that leaves a record in
+   the watchdog scratch registers (`rp2350.fault.take`) then returns to BOOTSEL; the FPU is enabled at
+   reset; `clocks` and `uart` (PL011 on GP0/GP1) configure right but the loopback byte arrives corrupt (`0xFC`, framing error): unresolved, needs a serial adapter or probe; the fault record's contents are unverified (see the report).
+   Open there: tick/timer, interrupts, the CYW43 LED, `.dfu` and probe flash steps, the Hazard3 cores,
+   native backend as the default for bare targets (they still go through C), ELF names `f1`/`d0`.
    Windows: `windows.x86_64.msvc` and `windows.x86.msvc` run through the C backend under Wine;
    the native backend builds neither and needs a COFF code path and `Rules::WIN64` in `Rules::of`.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
