@@ -20,6 +20,11 @@ arm_secure: u32 = 1 << 2;
 /// `reboot`'s way of restarting into the USB mass storage and PICOBOOT interfaces.
 reboot_bootsel: u32 = 2;
 
+/// The interfaces BOOTSEL offers, which its `p0` may hide: the mass storage volume, and PICOBOOT,
+/// the protocol `picotool` speaks.
+interface_mass_storage: u32 = 1;
+interface_picoboot: u32 = 2;
+
 /// `reboot`'s flag to wait for the restart rather than return.
 no_return_on_success: u32 = 0x100;
 
@@ -35,7 +40,11 @@ reboot := (flags: u32, delay_ms: u32, p0: u32, p1: u32) -> i32 {
 };
 
 /// Restarts the chip into BOOTSEL mode, where it takes a new program over USB.
-bootsel := () -> never {
-    reboot(reboot_bootsel | no_return_on_success, 10, 0, 0);
+bootsel := () -> never { bootsel_hiding(0) };
+
+/// `bootsel` without the interfaces `hidden` names (`interface_mass_storage`, `interface_picoboot`):
+/// what the host finds on the bus differs, which is all a board with no console can say.
+bootsel_hiding := (hidden: u32) -> never {
+    reboot(reboot_bootsel | no_return_on_success, 10, hidden, 0);
     for {}
 };

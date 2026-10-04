@@ -1,0 +1,46 @@
+//! The clocks (datasheet, chapter 8). Out of reset the chip runs from its ring oscillator, whose
+//! frequency drifts with voltage and temperature, so nothing timed by a clock is exact until the
+//! 12 MHz crystal the boards carry runs the system.
+
+/// The crystal's frequency, which a divisor of a peripheral is made from.
+crystal_hz: u32 = 12_000_000;
+
+xosc := 0x4004_8000;
+xosc_ctrl := 0x00;
+xosc_status := 0x04;
+xosc_startup := 0x0c;
+/// The crystal oscillator's control: the range it is between 1 and 15 MHz in, and the code that
+/// enables it.
+xosc_range_1_15mhz: u32 = 0xaa0;
+xosc_enable: u32 = 0xfab << 12;
+xosc_stable: u32 = 1 << 31;
+/// Cycles of the crystal waited for before it is stable: 1 ms in units of 256, rounded up.
+xosc_delay: u32 = 47;
+
+clocks := 0x4001_0000;
+clk_ref_ctrl := 0x30;
+clk_ref_selected := 0x38;
+clk_peri_ctrl := 0x48;
+/// The reference clock's source that is the crystal, and the bit that says it is the one chosen.
+clk_ref_xosc: u32 = 2;
+clk_ref_xosc_selected: u32 = 1 << 2;
+/// The peripheral clock's enable, from the system clock by its first auxiliary source.
+clk_peri_enable: u32 = 1 << 11;
+
+Register: type = std.hw.Reg(u32);
+
+/// The register at `address`.
+at := (address: usize) -> &Register { unsafe std.hw.at(Register, address) };
+
+/// Runs the system and the peripherals from the crystal.
+run_from_crystal := () {
+    at(xosc + xosc_ctrl).write(xosc_range_1_15mhz);
+    at(xosc + xosc_startup).write(xosc_delay);
+    control := at(xosc + xosc_ctrl);
+    control.write(control.read() | xosc_enable);
+    for at(xosc + xosc_status).read() & xosc_stable == 0 {}
+    // The system clock follows the reference clock out of reset.
+    at(clocks + clk_ref_ctrl).write(clk_ref_xosc);
+    for at(clocks + clk_ref_selected).read() & clk_ref_xosc_selected == 0 {}
+    at(clocks + clk_peri_ctrl).write(clk_peri_enable);
+};

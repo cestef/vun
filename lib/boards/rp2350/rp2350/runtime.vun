@@ -11,12 +11,17 @@ Config := struct {
 /// The device's peripherals, claimed once at reset.
 Peripherals := struct {
     gpio: rp2350.gpio.Bank,
+    uart0: rp2350.uart.Port0,
 
-    claim := unsafe () -> Peripherals { .{ .gpio = unsafe rp2350.gpio.Bank.claim() } };
+    claim := unsafe () -> Peripherals {
+        .{ .gpio = unsafe rp2350.gpio.Bank.claim(), .uart0 = unsafe rp2350.uart.Port0.claim() }
+    };
 };
 
-/// What the core calls on an exception or interrupt, as it calls a C function.
-Handler := #[abi.c] () -> ();
+/// What the core runs on an exception or interrupt: a function of no convention, the core having
+/// pushed what it saves and left a return code in `lr`, which each handler's first and last
+/// instructions keep.
+Handler := #[abi.naked] () -> never;
 
 /// Handlers of the exceptions and interrupts, plain functions the table calls through a wrapper;
 /// one a program does not give runs `unhandled`.
@@ -29,14 +34,29 @@ unhandled := () {
     for {}
 };
 
-/// `h`, called by the core as it calls a C function.
-wrapped := ($h: () -> ()) -> Handler { #[abi.c] () { h() } };
+/// `h`, entered as the core enters a handler: the return code in `lr` is kept across the call, with
+/// the stack kept to the 8 bytes the calling convention aligns it to.
+wrapped := ($h: () -> ()) -> Handler {
+    #[abi.naked] () -> never {
+        unsafe {
+            lang.arch.asm({
+                ..lang.arch.thumb.names;
+                push(r4, lr);
+                bl(h);
+                pop(r4, pc);
+            });
+            lang.hint.unreachable()
+        }
+    }
+};
 
 /// The vectors after the initial stack pointer: the core's 15 exceptions, then the chip's 52
 /// interrupts.
 vectors: usize = 67;
 reset_vector: usize = 0;
 systick_vector: usize = 14;
+/// The faults the core takes: hard (2), memory management, bus, usage and security (3 to 6).
+fault_vectors: [5]usize = [2, 3, 4, 5, 6];
 
 /// The vector table: the stack pointer the core starts with, then a handler per vector.
 #[layout.c]
@@ -62,11 +82,26 @@ bss_start: u32 = _;
 #[link.symbol("__bss_end")]
 bss_end: u32 = _;
 
+/// Taken by every fault, with the core's frame on the stack it runs on, which `record` is given.
+fault_entry: Handler = #[abi.naked] () -> never {
+    unsafe {
+        lang.arch.asm({
+            ..lang.arch.thumb.names;
+            mov(r0, sp);
+            bl(rp2350.fault.record);
+        });
+        lang.hint.unreachable()
+    }
+};
+
 /// The table starting the stack at the end of SRAM, reset at `reset`, each interrupt at its
 /// handler, and every other vector at `unhandled`.
 table := ($config: Config, $reset: Handler) -> Table {
     mut handlers: [vectors]Handler = [wrapped(unhandled); vectors];
     handlers[reset_vector] = reset;
+    for vector in fault_vectors {
+        handlers[vector] = fault_entry;
+    }
     handlers[systick_vector] = wrapped(config.interrupts.systick);
     .{ .stack = lang.mem.pointer_to(u32, &ram_end), .handlers = handlers }
 };
@@ -108,9 +143,21 @@ start := ($config: Config) -> type { struct {
     #[link.section(".embedded_block"), link.export("__embedded_block")]
     block := image_def;
 
-    #[link.export("Reset"), abi.c]
-    reset := () {
+    /// The first instruction run: the table gave it the stack, so it only has to call `boot`.
+    #[link.export("Reset"), abi.naked]
+    reset := () -> never {
+        unsafe {
+            lang.arch.asm({
+                ..lang.arch.thumb.names;
+                bl(boot);
+            });
+            lang.hint.unreachable()
+        }
+    };
+
+    boot := () -> never {
         unsafe { init_memory(); }
+        rp2350.core.enable_fpu();
         config.main(unsafe { Peripherals.claim() })
     };
 

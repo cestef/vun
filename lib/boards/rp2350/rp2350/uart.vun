@@ -1,0 +1,93 @@
+//! The UARTs (datasheet, chapter 12): ARM's PrimeCell PL011. `open` runs the clocks from the
+//! crystal, releases the block's reset, puts a pair of pins on it and sets the line to 8N1; the
+//! port then sends and receives bytes, and `loopback` joins its transmitter to its receiver
+//! inside the chip, which checks a port with nothing attached.
+
+/// The registers of a UART.
+#[layout.c]
+Uart := struct {
+    data: std.hw.Reg(u32),
+    status: std.hw.Reg(u32),
+    _reserved: [4]u32,
+    flags: std.hw.Reg(u32),
+    _low_power: std.hw.Reg(u32),
+    integer_divisor: std.hw.Reg(u32),
+    fraction_divisor: std.hw.Reg(u32),
+    line: std.hw.Reg(u32),
+    control: std.hw.Reg(u32),
+};
+
+uart0 := 0x4007_0000;
+
+/// The flags: the transmit FIFO is full, the receive FIFO is empty.
+flag_tx_full: u32 = 1 << 5;
+flag_rx_empty: u32 = 1 << 4;
+/// The line: 8 data bits, FIFOs on.
+line_8n1_fifo: u32 = (3 << 5) | (1 << 4);
+/// The control: the UART, its transmitter and receiver on, and loopback.
+control_enable: u32 = 1;
+control_loopback: u32 = 1 << 7;
+control_tx: u32 = 1 << 8;
+control_rx: u32 = 1 << 9;
+
+/// The reset controller's bit for UART 0.
+reset_uart0: u32 = 1 << 26;
+
+/// UART 0, claimed with the peripherals.
+Port0 := struct {
+    _held: (),
+
+    claim := unsafe () -> Port0 { .{ ._held = () } };
+
+    /// UART 0 at `baud` on GP0 (transmit) and GP1 (receive), clocked by the crystal.
+    open := (self: &Port0, pins: &rp2350.gpio.Bank, baud: Baud) -> Port {
+        rp2350.clocks.run_from_crystal();
+        reset := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets);
+        done := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets + rp2350.gpio.reset_done_offset);
+        reset.write(reset.read() & ~reset_uart0);
+        for done.read() & reset_uart0 != reset_uart0 {}
+        pins.pin(0).uart();
+        pins.pin(1).uart();
+        port := unsafe std.hw.at(Uart, uart0);
+        // The divisor in 64ths, from 8 times the clock over the rate, rounded.
+        eighths: u64 = ((rp2350.clocks.crystal_hz.to(u64) * 8) / baud.to(u64)).wrap(u64);
+        port.integer_divisor.write((eighths >> 7).wrap(u32));
+        halves: u64 = ((eighths & 0x7f) + 1).wrap(u64);
+        port.fraction_divisor.write((halves >> 1).wrap(u32));
+        port.line.write(line_8n1_fifo);
+        port.control.write(control_enable | control_tx | control_rx);
+        Port.of(port)
+    };
+};
+
+/// The rates a line is set to, in bits a second.
+Baud: type = Int(1200..=921_600);
+
+/// An open UART.
+Port := struct {
+    _registers: &Uart,
+
+    of := (registers: &Uart) -> Port { .{ ._registers = registers } };
+
+    /// Waits for room, then sends `byte`.
+    send := (self: &Port, byte: u8) {
+        for self._registers.flags.read() & flag_tx_full != 0 {}
+        self._registers.data.write(byte.to(u32));
+    };
+
+    /// Waits for a byte and returns it.
+    receive := (self: &Port) -> u8 {
+        for self._registers.flags.read() & flag_rx_empty != 0 {}
+        (self._registers.data.read() & 0xff).wrap(u8)
+    };
+
+    /// Joins the transmitter to the receiver, or separates them.
+    loopback := (self: &Port, on: bool) {
+        control := self._registers.control;
+        if on {
+            control.write(control.read() | control_loopback);
+        } else {
+            control.write(control.read() & ~control_loopback);
+        }
+    };
+};

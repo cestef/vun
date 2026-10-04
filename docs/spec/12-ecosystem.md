@@ -121,14 +121,16 @@ build := (b: &mut std.build.Build) {
   (`std.build.Placement`: a section, the region holding it and the region it loads from, if
   another), the last three empty unless given;
   `b.flash(program, method)` with a
-  `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2`, `.dfu`); `b.test_on(program, runner)`
+  `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2(.{ .family = ... })`, `.dfu`); `b.test_on(program, runner)`
   with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the
   package knows, names and parameters, is written as records (spec 02, section 2), whose types
   are inferred and which the driver reads by reflection.
 - `vun build` on a package (its directory, its `build.vun`, or no path inside it) carries out the plan in order: each program is built in a session for its
   own target, its root relative to the `build.vun`, its memory map placed by the link plan. Steps
-  the toolchain does not carry out yet (`flash`, `test_on`, dependency parameters, lint levels)
-  are warnings (`plan.unsupported`); a step that is not a `std.build.Action` as `std.build`
+  the toolchain does not carry out yet (`flash` through a probe or DFU, `test_on`, dependency
+  parameters, lint levels) are warnings (`plan.unsupported`); a `uf2` flash step writes the
+  program's loadable segments as a `.uf2` file beside it, for a device whose boot ROM takes
+  blocks over USB mass storage (`plan.unflashed` when it cannot); a step that is not a `std.build.Action` as `std.build`
   declares it is `plan.unread`.
 - Everything configurable in a project is configured here, in Vun: dependencies, targets, memory
   maps, lints, profiles, flash methods, test targets. There is no second configuration format.

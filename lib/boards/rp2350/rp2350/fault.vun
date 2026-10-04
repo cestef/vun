@@ -1,0 +1,63 @@
+//! What a fault leaves behind. A board without a console shows nothing of a program that stopped,
+//! so the handlers write where and why into the watchdog's scratch registers, which a soft reset
+//! keeps (datasheet, section 12.9), and reboot to the boot ROM's USB mode: a program that faulted
+//! is a device back on the host's bus, and the next program, or `picotool`, reads what it did.
+
+watchdog := 0x400d_8000;
+scratch_first := 0xc;
+/// The boot ROM keeps the scratch registers from the fourth on for its own reboot, so a fault
+/// leaves four words.
+
+/// Marks the scratch registers as holding a fault, in the first of them: `FAUL`.
+marker: u32 = 0x4641_554c;
+
+/// Where a core was stopped, and what it said of why.
+Fault := struct {
+    /// The instruction it was running.
+    pc: u32,
+    /// The configurable fault status register: which of the memory, bus and usage faults it was.
+    status: u32,
+    /// The address the memory or bus fault was on, when the status says there is one.
+    address: u32,
+};
+
+/// A scratch register left to programs.
+Index: type = Int(0..4);
+
+/// The `n`th scratch register.
+scratch := (n: Index) -> &std.hw.Reg(u32) {
+    unsafe std.hw.at(std.hw.Reg(u32), watchdog + scratch_first + n * 4)
+};
+
+/// The words of the frame the core pushed on taking the exception: `r0` to `r3`, `r12`, `lr`, the
+/// instruction it was running, and the status register.
+frame_pc := 6;
+
+/// Writes the fault the frame at `frame` was taken for, then reboots into the boot ROM.
+record := (frame: *u32) -> never {
+    status := rp2350.core.register(rp2350.core.cfsr_offset).read();
+    // The address registers are valid only where the status says so: bit 7 of the memory fault's
+    // byte and of the bus fault's.
+    bus := status & 0x8000 != 0;
+    address := if bus {
+        rp2350.core.register(rp2350.core.bfar_offset).read()
+    } else {
+        rp2350.core.register(rp2350.core.mmfar_offset).read()
+    };
+    scratch(0).write(marker);
+    scratch(1).write(unsafe frame.offset(frame_pc).read());
+    scratch(2).write(status);
+    scratch(3).write(address);
+    rp2350.rom.bootsel()
+};
+
+/// The fault the last run left, if it left one, forgotten as it is read.
+take := () -> ?Fault {
+    if scratch(0).read() != marker { return .none; }
+    scratch(0).write(0);
+    .some(.{
+        .pc = scratch(1).read(),
+        .status = scratch(2).read(),
+        .address = scratch(3).read(),
+    })
+};

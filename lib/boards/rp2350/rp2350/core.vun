@@ -1,0 +1,29 @@
+//! The Cortex-M33 core's system control block (Arm v8-M architecture manual, section B3.2): the
+//! registers every core of the family has at the same addresses.
+
+scb := 0xe000_ed00;
+cfsr_offset := 0x28;
+mmfar_offset := 0x34;
+bfar_offset := 0x38;
+cpacr_offset := 0x88;
+
+/// The coprocessor access register's fields giving full access to coprocessors 10 and 11, which
+/// are the floating-point unit's.
+fpu_access: u32 = 0xf << 20;
+
+/// The offsets into the block, which is 4 KiB.
+Offset: type = Int(0..0x1000);
+
+/// A register of the system control block, at `offset`.
+register := (offset: Offset) -> &std.hw.Reg(u32) { unsafe std.hw.at(std.hw.Reg(u32), scb + offset) };
+
+/// Gives the program the floating-point unit, which faults on its first instruction until then.
+enable_fpu := () {
+    access := register(cpacr_offset);
+    access.write(access.read() | fpu_access);
+    unsafe lang.arch.asm({
+        ..lang.arch.thumb.names;
+        dsb(sy);
+        isb(sy);
+    });
+};
