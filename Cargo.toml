@@ -139,6 +139,7 @@ blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 # Ed25519, already built for `ureq`'s TLS: the signatures of releases.
 ring = { version = "0.17", default-features = false }
+base64 = { version = "0.23", default-features = false, features = ["std"] }
 flate2 = "1"
 zip = { version = "8", default-features = false, features = ["deflate-flate2"] }
 ruzstd = { version = "0.9", default-features = false, features = ["std"] }

@@ -64,3 +64,19 @@ fn the_releases_key_reads_and_is_set() {
         "`key.pub` holds the placeholder: make the key (dev/commands.md)"
     );
 }
+
+#[test]
+fn install_sh_holds_the_releases_key() {
+    use base64::Engine;
+    const SHELL_DEFAULT: &str = "key=\"${VUN_INSTALL_KEY:-";
+    // The header of an Ed25519 public key in DER, before its 32 bytes.
+    const SPKI: [u8; 12] = [0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00];
+    let script =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../install.sh")).unwrap();
+    let held = script.lines().find_map(|l| l.strip_prefix(SHELL_DEFAULT)).and_then(|l| l.strip_suffix("}\""));
+    let der =
+        base64::engine::general_purpose::STANDARD.decode(held.expect("install.sh names its key")).unwrap();
+    let (header, key) = der.split_at(SPKI.len());
+    assert_eq!(header, SPKI);
+    assert_eq!(Key::new(key.try_into().unwrap()), Key::releases());
+}

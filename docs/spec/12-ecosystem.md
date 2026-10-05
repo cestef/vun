@@ -347,8 +347,9 @@ signature of its bytes, checked against the key `vun` is built with, or the one
 through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|remove|update` manages them;
 `update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
 to; the default and the running toolchain are not removed. A first installation runs the
-repository's `install.sh`, which unpacks this machine's archive of the latest release somewhere
-temporary and lets it run `vun toolchain update`.
+repository's `install.sh`, which downloads this machine's archive of the latest release somewhere
+temporary, checks it against the release's signed `SHA256SUMS`, unpacks it and lets it run
+`vun toolchain update`.
 
 A package says which toolchains read it with `.requires`, the oldest one: a `vun` below it reports
 that (`manifest.toolchain_too_old`) and nothing about the fields it does not know, which a newer
@@ -361,8 +362,8 @@ itself (`VUN_TOOLCHAIN=local`, which also keeps the running one anywhere). The l
 the pinned release as `toolchain := .{ .version, .hash }`, the hash of its manifest's bytes, which
 names every machine's toolchain at once; a `vun` handing off refuses a manifest of that version
 hashing otherwise, and installs again a toolchain installed from another. A first installation
-trusts the toolchain `install.sh` fetches as far as the connection; the `vun toolchain update` it
-runs checks the signature.
+checks the archive against the signed checksums before anything runs; the `vun toolchain update`
+it runs then checks the manifest's signature and the tree's hash.
 
 **The machine's tools file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target: a C compiler building for the target (`builds_for = .target`, a
