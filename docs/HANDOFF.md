@@ -272,7 +272,10 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 ## Next steps, most useful first
 
 The website: `site/` (Vite, TypeScript) holds the landing page (the hero, the brand's motion
-ported from `assets/motion`, the install command) and the playground; the spec reader was
+ported from `assets/motion`, the install steps), the playground (`/play/`: editor over a foldable
+panel of problems and output, the compiler's spans drawn in the editor and linked both ways, fix
+previews, `F8` between problems) and the course (`/learn/`: checks with partial progress, a hint
+ladder, a lesson map; keys from `site/src/keys.ts`); the old description follows: the spec reader was
 removed at the owner's request; the playground now carries a guided tour in lessons
 (`site/lessons/`, checked by `pnpm check:lessons`). `.github/workflows/site.yml` deploys it to
 GitHub Pages when `main` changes what it is made of (a pull request only builds); a host must
@@ -329,9 +332,9 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    the native backend builds neither and needs a COFF code path and `Rules::WIN64` in `Rules::of`.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.
 3. Checks (268): a board and a WASI shadow, use after return; `fixed` kinds.
-4. Corpus gaps (`cargo xtask corpus`, 2 planned): `std.Dyn` (`corpus/planned/types/dynamic.vun`,
-   plus the `Encoder` `meta/derive.vun` waits for) and `mem.copy` (`corpus/planned/testing/tests.vun`,
-   with the `node`, `Packet`, `crc32` stand-ins). Lints: the grammar generator still reads a PascalCase table
+4. Corpus gaps (`cargo xtask corpus`, 1 planned): `std.Dyn` (`corpus/planned/types/dynamic.vun`,
+   plus the `Encoder` `meta/derive.vun` waits for). `std.mem.copy` takes `&mut` slices: an `&out`
+   destination needs the callee's initialization tracked through the unsafe copy. Lints: the grammar generator still reads a PascalCase table
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
    over `#[target.require]`.

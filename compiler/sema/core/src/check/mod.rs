@@ -40,8 +40,13 @@ impl Query for Checked {
 
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let env = Env::of(cx, key)?;
-        let mut checker =
-            Checker { env: &env, diag: DiagCtxt::new(), homes: vec![env.home()], interfaces: 0 };
+        let mut checker = Checker {
+            env: &env,
+            diag: DiagCtxt::new(),
+            homes: vec![env.home()],
+            interfaces: 0,
+            initialized: 0,
+        };
         if let Some(root) = env.parsed.hir.root {
             checker.namespace(&env.parsed.hir, root);
         }
@@ -76,6 +81,8 @@ struct Checker<'e, 'a, 'db> {
     homes: Vec<Home>,
     /// How many `lang.interface(...)` calls enclose what is visited: requirements may be `_`.
     interfaces: usize,
+    /// How many annotations being walked belong to a binding with an initializer.
+    initialized: usize,
 }
 
 impl Visitor for Checker<'_, '_, '_> {
@@ -102,7 +109,29 @@ impl Visitor for Checker<'_, '_, '_> {
         visit::walk_namespace(self, hir, ns);
     }
 
+    fn decl(&mut self, hir: &Hir, decl: DeclId) {
+        let d = &hir.decls[decl];
+        for &attr in &d.attrs {
+            self.expr(hir, attr);
+        }
+        if let Some(ty) = d.ty {
+            let given = usize::from(d.value.is_some());
+            self.initialized += given;
+            self.expr(hir, ty);
+            self.initialized -= given;
+        }
+        if let Some(value) = d.value {
+            self.expr(hir, value);
+        }
+        self.pat(hir, d.pat);
+    }
+
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
+        if let ExprKind::ArrayType { len, .. } = hir.exprs[expr].kind
+            && matches!(hir.exprs[len].kind, ExprKind::Hole)
+        {
+            self.open_length(hir, len);
+        }
         self.member(hir, expr);
         self.rest(hir, expr);
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {

@@ -38,3 +38,13 @@ same := (n: NodeId) -> NodeId { n };
 ";
     assert_eq!(reported(app), ["types.mismatch: expected `TypeId`, found `NodeId`"]);
 }
+
+#[test]
+fn an_annotation_is_a_type() {
+    let app = "\
+Pair := ($T: type) -> type { struct { a: T, b: T } };
+x := Pair { .a = 1, .b = 2 };
+y := Pair(u8){ .a = 1, .b = 2 };
+";
+    assert_eq!(reported(app), ["types.mismatch: expected a type, found a value"]);
+}

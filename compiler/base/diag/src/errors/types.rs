@@ -11,4 +11,5 @@ pub const TYPES_SLICE_VALUE: DiagId = DiagId::new("lang.errors.types.slice_value
 pub const TYPES_BAD_INDEX: DiagId = DiagId::new("lang.errors.types.bad_index");
 pub const TYPES_PACK_POSITION: DiagId = DiagId::new("lang.errors.types.pack_position");
 pub const TYPES_UNTYPED_PARAM: DiagId = DiagId::new("lang.errors.types.untyped_param");
+pub const TYPES_HOLE_LENGTH: DiagId = DiagId::new("lang.errors.types.hole_length");
 pub const TYPES_NO_ITEMS: DiagId = DiagId::new("lang.errors.types.no_items");

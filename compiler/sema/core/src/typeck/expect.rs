@@ -161,11 +161,27 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// The type the annotation `expr` denotes, or why it has none: its value is not known here,
     /// or is not a type, which the check of the file reports.
     pub(super) fn annotation(&mut self, expr: ExprId) -> Result<Ty, GaveUp> {
+        let value = self.annotated(expr)?;
+        value.as_type().ok_or_else(|| {
+            // An interface annotates a `$` parameter, which then ranges over the types implementing
+            // it; a requirement an impl provides, `Error: type = _`, is not known until it does.
+            if !matches!(value, Value::Interface(_) | Value::Linked(_)) {
+                let found = value.ty().map_or_else(|| "a value".to_string(), |t| format!("`{t}`"));
+                let msg = Msg::new().text("expected a type, found ").text(found);
+                let at = self.hir().exprs[expr].origin;
+                self.diag.error(Diagnostic::error(errors::TYPES_MISMATCH, msg).at(at, None));
+            }
+            GaveUp::Reported
+        })
+    }
+
+    /// The value of the annotation `expr`, or why it has none.
+    fn annotated(&mut self, expr: ExprId) -> Result<Value, GaveUp> {
         let evaluated = self.known_value(expr, None);
         if let Err(why) = &evaluated {
             self.needed_when_compiling(expr, why);
         }
-        self.reported(expr, evaluated).map_err(GaveUp::Unevaluated)?.as_type().ok_or(GaveUp::Reported)
+        self.reported(expr, evaluated).map_err(GaveUp::Unevaluated)
     }
 
     /// Reports `expr`, which is needed when compiling (an annotation, the length of an array), if

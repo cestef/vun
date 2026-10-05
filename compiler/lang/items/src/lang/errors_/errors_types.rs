@@ -15,4 +15,5 @@ pub const slice_value: Item = Item::new(&["lang", "errors", "types", "slice_valu
 pub const bad_index: Item = Item::new(&["lang", "errors", "types", "bad_index"]);
 pub const pack_position: Item = Item::new(&["lang", "errors", "types", "pack_position"]);
 pub const untyped_param: Item = Item::new(&["lang", "errors", "types", "untyped_param"]);
+pub const hole_length: Item = Item::new(&["lang", "errors", "types", "hole_length"]);
 pub const no_items: Item = Item::new(&["lang", "errors", "types", "no_items"]);

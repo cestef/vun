@@ -48,6 +48,7 @@ types := struct {
     bad_index := diag.Diag{};
     pack_position := diag.Diag{};
     untyped_param := diag.Diag{};
+    hole_length := diag.Diag{};
     no_items := diag.Diag{};
 };
 

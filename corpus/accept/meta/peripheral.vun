@@ -1,6 +1,6 @@
 //! Computed names generate declarations that read like hand-written ones (spec 03, section 2).
 
-Register := struct { name: &static [_]u8, offset: usize, reset: u32 };
+Register := struct { name: &static [u8], offset: usize, reset: u32 };
 
 Block := ($registers: &[Register]) -> type {
     $Regs := struct {

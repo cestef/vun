@@ -3,7 +3,7 @@
 //! requirements (each impl) may say; anywhere else it is `binding.hole_value`.
 
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_hir::tree::{DeclId, ExprKind, Hir};
+use vun_hir::tree::{DeclId, ExprId, ExprKind, Hir};
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
 use vun_primitives::link::Link;
@@ -33,6 +33,23 @@ impl Checker<'_, '_, '_> {
             .text(" attribute");
         let diagnostic =
             Diagnostic::error(errors::BINDING_HOLE_VALUE, msg).at(hir.exprs[value].origin, None).help(help);
+        self.diag.error(diagnostic);
+    }
+
+    /// Reports the `_` array length written at `len` when nothing gives it: `[_]u8` takes its length
+    /// from the initializer of the binding it annotates, which a parameter, a field, a result or a
+    /// binding without a value has none of.
+    pub(super) fn open_length(&mut self, hir: &Hir, len: ExprId) {
+        if self.initialized > 0 {
+            return;
+        }
+        let msg = Msg::new().text("nothing gives this array length");
+        let help = Msg::new()
+            .text("write the length, take a slice, ")
+            .code("[u8]")
+            .text(", or initialize the binding, which gives it");
+        let diagnostic =
+            Diagnostic::error(errors::TYPES_HOLE_LENGTH, msg).at(hir.exprs[len].origin, None).help(help);
         self.diag.error(diagnostic);
     }
 

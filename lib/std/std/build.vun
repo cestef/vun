@@ -52,7 +52,7 @@ Output := enum { executable, shared, static };
 /// What a program is built from.
 Options := struct {
     /// Its root file, relative to the directory of the `build.vun`.
-    root: &static [_]u8,
+    root: &static [u8],
     target: lang.target.Spec,
     /// The dependencies it uses, each by its name in `package.deps`.
     deps: &[Use] = &[],
