@@ -16,3 +16,4 @@ pub const evict: Item = Item::new(&["lang", "check", "symbols", "evict"]);
 pub const fail: Item = Item::new(&["lang", "check", "symbols", "fail"]);
 pub const asm_write: Item = Item::new(&["lang", "check", "symbols", "asm_write"]);
 pub const asm_stack: Item = Item::new(&["lang", "check", "symbols", "asm_stack"]);
+pub const stack: Item = Item::new(&["lang", "check", "symbols", "stack"]);

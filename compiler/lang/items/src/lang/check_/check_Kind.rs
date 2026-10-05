@@ -12,3 +12,5 @@ pub const pointers: Item = Item::new(&["lang", "check", "Kind", "pointers"]);
 pub const allocations: Item = Item::new(&["lang", "check", "Kind", "allocations"]);
 /// The memory assembly blocks write, and the stack pointer they return with.
 pub const asm: Item = Item::new(&["lang", "check", "Kind", "asm"]);
+/// The frame of each function that has one, against the bounds of the stack the runtime gives.
+pub const stack: Item = Item::new(&["lang", "check", "Kind", "stack"]);

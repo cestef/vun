@@ -24,3 +24,7 @@ pub const size_mismatch: Item = Item::new(
 );
 /// An assembly block returning with the stack pointer moved.
 pub const stack_moved: Item = Item::new(&["lang", "check", "Violation", "stack_moved"]);
+/// A frame that would reach past the stack.
+pub const stack_overflow: Item = Item::new(
+    &["lang", "check", "Violation", "stack_overflow"],
+);

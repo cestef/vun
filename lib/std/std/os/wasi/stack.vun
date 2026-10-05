@@ -1,0 +1,11 @@
+//! The stack of a WASI program, in the linear memory the linker lays out.
+
+/// The edges of the stack the linker gives the program: its lowest and its highest address.
+#[link.symbol("__stack_low")]
+low: u8 = _;
+#[link.symbol("__stack_high")]
+high: u8 = _;
+
+/// The lowest address of the stack, and the one past its highest.
+bottom := () -> usize { lang.mem.address(u8, lang.mem.pointer_to(u8, &low)) };
+top := () -> usize { lang.mem.address(u8, lang.mem.pointer_to(u8, &high)) };

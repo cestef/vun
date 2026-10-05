@@ -21,6 +21,9 @@ pub const by: Item = Item::new(&["lang", "check", "by"]);
 pub const granule: Item = Item::new(&["lang", "check", "granule"]);
 /// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 pub const redzone: Item = Item::new(&["lang", "check", "redzone"]);
+/// The bytes at the bottom of the stack kept for reporting a failed check: a frame that reaches
+/// into them is an overflow, so that the report has room to be written.
+pub const stack_reserve: Item = Item::new(&["lang", "check", "stack_reserve"]);
 /// The bytes of memory given back that the quarantine holds poisoned before giving them to their
 /// allocator, past which each free gives back the oldest its allocator has there.
 pub const quarantine: Item = Item::new(&["lang", "check", "quarantine"]);
@@ -59,6 +62,10 @@ pub const asm_write: Item = Item::new(&["lang", "check", "asm_write"]);
 /// Fails at the site `site` for an assembly block returning with the stack pointer moved from
 /// `before` to `after`.
 pub const asm_stack: Item = Item::new(&["lang", "check", "asm_stack"]);
+/// Fails at the site `site` unless `frame`, the lowest address of a function's frame, lies within
+/// the stack of the program: what a backend calls before the stack moves to the frame, so that the
+/// failure is reported on the stack as it was.
+pub const stack: Item = Item::new(&["lang", "check", "stack"]);
 /// The id of a new trap site at `at`, which a check made there fails at: the message table
 /// records it as it records a trap site.
 pub const site: Item = Item::new(&["lang", "check", "site"]);

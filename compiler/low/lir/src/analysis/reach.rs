@@ -28,7 +28,8 @@ impl Reached {
             }
             let func = &unit.functions[f];
             let insts = func.blocks.iter().flat_map(|(_, b)| &b.insts).map(|&i| &func.insts[i].kind);
-            pending.extend(insts.flat_map(InstKind::addresses).filter_map(|a| match a {
+            let checked = func.stack_check.map(|check| check.call);
+            pending.extend(insts.flat_map(InstKind::addresses).chain(checked).filter_map(|a| match a {
                 Address::Func(g) => Some(g),
                 Address::Data(_) | Address::Import(_) => None,
             }));

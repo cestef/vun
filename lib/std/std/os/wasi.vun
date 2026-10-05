@@ -183,6 +183,9 @@ open := (path: &[u8], mode: std.os.file.Mode) -> Result(i32, std.os.Error) {
 arguments := 256;
 argument_bytes := 8192;
 
+/// Ends the program with `status`.
+exit := (status: std.os.Status) -> lang.never { unsafe proc_exit(status) };
+
 /// The exports of a program whose `_start` the host calls.
 start := ($main: std.os.Main) -> type { struct {
     #[link.export("_start"), abi.c]
@@ -206,6 +209,13 @@ start := ($main: std.os.Main) -> type { struct {
     trap := (t: &lang.panic.Trap) -> lang.never {
         if std.os.thread.reporting.get() { std.trace.trapped(t, trap); }
         unsafe proc_exit(std.os.trapped)
+    };
+
+    /// The operations of the checks of unsafe code a WASI program may be built with: its stack's.
+    checks := if std.check.stack.enabled() {
+        std.check.stack.exports(std.os.wasi.stack.bottom, std.os.wasi.stack.top, exit)
+    } else {
+        struct {}
     };
 
     #[link.export(std.os.symbols.write)]

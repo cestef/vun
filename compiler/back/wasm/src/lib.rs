@@ -10,8 +10,8 @@ pub mod module;
 mod tests;
 
 use vun_backend::{
-    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, HeldFloats, Missing, Part, Readiness,
-    Request, Widest,
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Missing, Part,
+    Readiness, Request, Widest,
 };
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 
@@ -25,7 +25,7 @@ pub const INFO: BackendInfo = BackendInfo {
     formats: Names::Only(&[Name("wasm")]),
     caps: BackendCaps {
         emits: Emits::Object,
-        features: &[],
+        features: &[Feature::StackChecks],
         widest: Widest::Bits(64),
         half: Half::Promoted,
         floats: HeldFloats::Every,

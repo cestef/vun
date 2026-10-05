@@ -18,6 +18,7 @@ mod primitive;
 mod redzone;
 mod rounded;
 mod rvalue;
+mod stack;
 mod storage;
 mod term;
 mod trap;
@@ -110,6 +111,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         this.storage(params, None)?;
         this.entry(params, through)?;
         this.guard()?;
+        this.stack_check()?;
         this.create_blocks();
         let first = this.blocks[Idx::new(0)];
         this.b.terminate(Terminator::Jump(Target { block: first, args: Vec::new() }));

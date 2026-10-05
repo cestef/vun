@@ -111,6 +111,9 @@ impl Text<'_> {
     }
 
     fn function(&self, f: &mut fmt::Formatter<'_>, func: &Function) -> fmt::Result {
+        if let Some(check) = func.stack_check {
+            writeln!(f, "  stack check {} site {}", check.call, check.site)?;
+        }
         for (slot, data) in func.slots.iter() {
             write!(f, "  slot {slot}: {} align {}", data.size, data.align)?;
             self.end(f, data.origin)?;

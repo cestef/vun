@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.check.quarantine`.
 pub const quarantine: Item = Item::new(&["std", "check", "quarantine"]);
+/// The namespace `std.check.stack`.
+pub const stack: Item = Item::new(&["std", "check", "stack"]);
 /// The namespace `std.check.table`.
 pub const table: Item = Item::new(&["std", "check", "table"]);
 /// The namespace `std.check.words`.

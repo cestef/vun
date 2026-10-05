@@ -134,6 +134,9 @@ impl Checker<'_> {
         if params != func.signature.values() {
             return Self::fail(Entity::Block(id, entry), Reason::EntryParams);
         }
+        if let Some(check) = func.stack_check {
+            self.unit.address(Entity::Func(id), check.call)?;
+        }
         self.structure(entry)?;
         self.placement()?;
         let dominators = Dominators::of(func, &Cfg::of(func));

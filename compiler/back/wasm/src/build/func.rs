@@ -115,6 +115,13 @@ impl<'a> Lower<'a> {
         self.op(Op::I32Const(0));
         self.op(Op::Num(Num::I32And));
         self.op(Op::LocalTee(self.frame.base));
+        if let Some(check) = self.f.stack_check {
+            // Before the stack moves to the frame, so that a failure is reported on the stack as it was.
+            let site = Self::i32(u64::from(check.site));
+            self.op(Op::I32Const(site));
+            self.op(Op::Call(self.cx.symbol(check.call)));
+            self.op(Op::LocalGet(self.frame.base));
+        }
         self.op(Op::GlobalSet(sp));
         for (slot, data) in self.f.slots.iter() {
             let at = self.alloc(data.size, data.align);

@@ -42,6 +42,8 @@ pub enum Missing {
     /// A C record's eightbyte of floats holding this many bytes, neither a `f32` nor two nor a
     /// `f64`: a layout only an explicit size makes.
     FloatPart(u64),
+    /// A check of each function's frame against the stack (`stack` checks).
+    StackCheck,
     /// A block of inline assembly.
     Asm,
     /// An operand of inline assembly the backend cannot place.
@@ -115,6 +117,7 @@ impl Missing {
             Missing::Format(f) => Msg::new().text("objects of format ").code(f.as_str()),
             Missing::Convention => Msg::new().text("the calling convention of this target"),
             Missing::NamedConvention => Msg::new().text("calling conventions other than the target's own"),
+            Missing::StackCheck => Msg::new().text("checks of the stack's frames"),
             Missing::Asm => Msg::new().text("inline assembly"),
             Missing::AsmOperand(operand) => {
                 let what = match operand {

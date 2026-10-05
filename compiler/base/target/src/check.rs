@@ -11,6 +11,8 @@ pub enum Check {
     Allocations,
     /// The memory assembly blocks write, and the stack pointer they return with.
     Asm,
+    /// That each function's frame lies within the stack the runtime gives.
+    Stack,
 }
 
 /// The checks a program is built with, each once, in order.

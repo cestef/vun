@@ -5,6 +5,8 @@ pub mod check_exports;
 pub mod check_quarantine;
 pub mod check_quarantine_Quarantine;
 pub mod check_quarantine_header;
+pub mod check_stack;
+pub mod check_stack_exports;
 pub mod check_table;
 pub mod check_table_Table;
 pub mod check_words;

@@ -1,0 +1,25 @@
+//! The checks of the stack (spec 13, section 8.7): the export of a runtime that checks the frames of
+//! its stack and nothing else, over the bounds it knows.
+
+/// Whether the program is built with the stack checked.
+enabled := () -> bool {
+    for k in lang.check.current {
+        if k.* == .stack { return true; }
+    }
+    false
+};
+
+/// The export of a runtime that checks only the frames of the stack, whose bounds `low` and `high`
+/// give, and which ends the program with `status` when a frame reaches past them or into the
+/// bytes `lang.check.stack_reserve` keeps at the bottom for the report.
+exports := ($low: () -> usize, $high: () -> usize, $end: (status: std.os.Status) -> lang.never) -> type {
+    struct {
+        #[link.export(lang.check.symbols.stack)]
+        stack := (frame: usize, site: u32) {
+            if frame < low() + lang.check.stack_reserve or frame >= high() {
+                std.trace.report((frame: usize, site: u32) -> (), stack, site, .failed(.stack_overflow));
+                end(std.os.trapped)
+            }
+        };
+    }
+};

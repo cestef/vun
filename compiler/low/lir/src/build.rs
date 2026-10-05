@@ -5,7 +5,7 @@ use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
 
 use crate::entity::{Block, DataId, Slot, Value};
-use crate::func::{BlockData, Def, Function, InstData, Linkage, Signature, SlotData, ValueData};
+use crate::func::{BlockData, Def, Function, InstData, Linkage, Signature, SlotData, StackCheck, ValueData};
 use crate::inst::{Access, Address, BinOp, CastOp, Cond, InstKind, Right, Terminator};
 use crate::ty::Scalar;
 
@@ -28,6 +28,7 @@ impl Builder {
             values: IndexVec::new(),
             origin,
             stack_max: None,
+            stack_check: None,
         };
         let mut b = Self { func, current: Idx::new(0) };
         b.current = b.block(&params, origin);
@@ -175,6 +176,11 @@ impl Builder {
     pub fn terminate(&mut self, term: Terminator) {
         vun_trace::tracing::trace!(block = ?self.current, ?term, "terminator");
         self.func.blocks[self.current].term = term;
+    }
+
+    /// Checks the function's frame as `check` says, before the stack moves to it.
+    pub fn check_stack(&mut self, check: StackCheck) {
+        self.func.stack_check = Some(check);
     }
 
     #[must_use]

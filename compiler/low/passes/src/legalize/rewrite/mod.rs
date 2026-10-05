@@ -90,6 +90,7 @@ impl<'u> Rewrite<'u> {
         }
         let mut function = rw.b.finish();
         function.stack_max = old.stack_max;
+        function.stack_check = old.stack_check;
         Ok(function)
     }
 

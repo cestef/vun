@@ -3,7 +3,7 @@
 
 use vun_diag::{DiagId, errors};
 use vun_intern::Symbol;
-use vun_items::targets;
+use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 use vun_target::Check;
 
@@ -11,6 +11,7 @@ use crate::common::Fixture;
 
 mod allocations;
 mod asm;
+mod stack;
 
 /// The status a program ends with when a check fails (`std.os.trapped`).
 const TRAPPED: Option<i32> = Some(101);
@@ -103,4 +104,38 @@ fn a_runtime_without_the_operations_of_the_checks_is_refused() {
     let _ = session.compile(file);
     let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
     assert_eq!(ids, [errors::CHECK_UNSUPPORTED]);
+}
+
+/// How a program built for a target ran here.
+enum Ran {
+    /// With this status, or none where a signal ended it.
+    Exited(Option<i32>),
+    /// Not at all: this machine runs no program of the target.
+    Elsewhere,
+}
+
+/// How `source`, built for `target` by `backend` with `checks`, runs here.
+fn checked_run(name: &str, target: Item, backend: &str, checks: &[Check], source: &str) -> Ran {
+    let fixture = Fixture::new(name);
+    let path = fixture.root.write("main.vun", source);
+    let mut session = fixture.session();
+    session.choice = Choice::of(target);
+    session.codegen.backend = Some(Symbol::intern(backend));
+    session.add_checks(checks.iter().copied());
+    let file = session.load(&path).unwrap();
+    // Choosing the target equips it with the machine's tools, and a runner where it needs one.
+    let _ = session.lir(file);
+    let native = cfg!(target_arch = "x86_64") && target == targets::linux_x86_64::kernel;
+    if !cfg!(target_os = "linux") || !native && session.runner().is_empty() {
+        return Ran::Elsewhere;
+    }
+    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    // A runner the toolchain names but this machine lacks runs nothing either.
+    match session.command(&program).status() {
+        Ok(status) => Ran::Exited(status.code()),
+        Err(why) if why.kind() == std::io::ErrorKind::NotFound && !session.runner().is_empty() => {
+            Ran::Elsewhere
+        }
+        Err(why) => panic!("{why}"),
+    }
 }

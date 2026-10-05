@@ -67,6 +67,7 @@ pub mod os_wasi_Opening;
 pub mod os_wasi_Prestat;
 pub mod os_wasi_Subscription;
 pub mod os_wasi_Timeout;
+pub mod os_wasi_stack;
 pub mod os_wasi_start;
 pub mod os_windows;
 pub mod os_windows_clock;

@@ -50,6 +50,9 @@ pub(crate) trait Places {
                 check.site = placing.sites[check.site as usize];
             }
         }
+        if let Some(check) = &mut function.stack_check {
+            check.site = placing.sites[check.site as usize];
+        }
         Ok(function)
     }
 }

@@ -55,6 +55,10 @@ impl Attributes<'_, '_> {
 }
 
 impl Variants for Check {
-    const VARIANTS: &'static [(Item, Self)] =
-        &[(kind::pointers, Self::Pointers), (kind::allocations, Self::Allocations), (kind::asm, Self::Asm)];
+    const VARIANTS: &'static [(Item, Self)] = &[
+        (kind::pointers, Self::Pointers),
+        (kind::allocations, Self::Allocations),
+        (kind::asm, Self::Asm),
+        (kind::stack, Self::Stack),
+    ];
 }

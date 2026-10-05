@@ -10,6 +10,8 @@ Kind := enum {
     allocations,
     /// The memory assembly blocks write, and the stack pointer they return with.
     asm,
+    /// The frame of each function that has one, against the bounds of the stack the runtime gives.
+    stack,
 };
 
 /// The checks the program is built with (`std.build.Options.checks`), known when compiling, as
@@ -25,6 +27,9 @@ by: ($kind: Kind, $F: type, $f: F) -> Attribute(&[Place.decls]) = _;
 granule := 8;
 /// The bytes poisoned past a stack slot whose address is taken, a multiple of `granule`.
 redzone := 16;
+/// The bytes at the bottom of the stack kept for reporting a failed check: a frame that reaches
+/// into them is an overflow, so that the report has room to be written.
+stack_reserve := 16384;
 /// The bytes of memory given back that the quarantine holds poisoned before giving them to their
 /// allocator, past which each free gives back the oldest its allocator has there.
 quarantine := 1 << 20;
@@ -45,6 +50,8 @@ Violation := enum {
     size_mismatch,
     /// An assembly block returning with the stack pointer moved.
     stack_moved,
+    /// A frame that would reach past the stack.
+    stack_overflow,
 };
 
 /// How an access touches memory.
@@ -78,6 +85,7 @@ symbols := struct {
     fail := "vun_check_fail";
     asm_write := "vun_check_asm_write";
     asm_stack := "vun_check_asm_stack";
+    stack := "vun_check_stack";
 };
 
 /// Why the `bytes` at `address` may not be accessed, if they may not.
@@ -123,6 +131,12 @@ asm_write: (address: usize, bytes: usize, site: u32) = _;
 /// `before` to `after`.
 #[link.symbol(symbols.asm_stack), abi.c]
 asm_stack: (site: u32, before: usize, after: usize) -> lang.never = _;
+
+/// Fails at the site `site` unless `frame`, the lowest address of a function's frame, lies within
+/// the stack of the program: what a backend calls before the stack moves to the frame, so that the
+/// failure is reported on the stack as it was.
+#[link.symbol(symbols.stack)]
+stack: (frame: usize, site: u32) = _;
 
 /// The id of a new trap site at `at`, which a check made there fails at: the message table
 /// records it as it records a trap site.

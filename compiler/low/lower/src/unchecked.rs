@@ -11,6 +11,7 @@ use vun_mir::{Concrete, Lowered as _, Operand, Program, Rvalue};
 use vun_query::Cx;
 use vun_sanitize::Operations;
 use vun_sema::checks::ChecksOf;
+use vun_sema::link::Linkable;
 use vun_sema_ty::Value;
 use vun_sema_ty::call::Instantiation;
 
@@ -49,8 +50,17 @@ impl Lowering<'_, '_> {
             }
             let stmts = body.blocks.iter().flat_map(|(_, b)| &b.stmts);
             for stmt in stmts {
-                if let Rvalue::Call { callee: Operand::Const(Value::Fn(callee)), args } = &stmt.value {
-                    pending.push(Instantiation::called(cx, callee, args));
+                match &stmt.value {
+                    Rvalue::Call { callee: Operand::Const(Value::Fn(callee)), args } => {
+                        pending.push(Instantiation::called(cx, callee, args));
+                    }
+                    // What the runtime provides as a symbol is the function it exports under it.
+                    Rvalue::Call { callee: Operand::Const(Value::Linked(decl)), .. } => {
+                        let linked = decl.linked(cx).map(|l| l.symbol);
+                        let exported = program.exports.iter().filter(|(_, symbol)| Some(*symbol) == linked);
+                        pending.extend(exported.map(|&(i, _)| program.functions[i].i.clone()));
+                    }
+                    _ => {}
                 }
             }
         }

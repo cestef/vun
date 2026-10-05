@@ -225,6 +225,17 @@ pub struct Function {
     /// The most bytes of stack a call of the function may take, with the calls it makes, when
     /// the function is bound (`#[stack.max(n)]`, spec 07, section 4).
     pub stack_max: Option<u64>,
+    /// Under the `stack` checks, how the frame is checked before the stack moves to it.
+    pub stack_check: Option<StackCheck>,
+}
+
+/// How a frame is checked under the `stack` checks (spec 13, section 8.7): the runtime's
+/// `lang.check.stack(frame, site)`, called with the lowest address of the frame before the stack
+/// moves to it, and the site in the message table it fails at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct StackCheck {
+    pub site: u32,
+    pub call: Address,
 }
 
 impl Function {
@@ -233,6 +244,9 @@ impl Function {
     pub fn map_addresses(&mut self, mut f: impl FnMut(Address) -> Address) {
         for (_, inst) in self.insts.iter_mut() {
             inst.kind.map_addresses(&mut f);
+        }
+        if let Some(check) = &mut self.stack_check {
+            check.call = f(check.call);
         }
     }
 

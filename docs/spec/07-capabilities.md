@@ -327,6 +327,7 @@ a trap carrying its origin:
 | `pointers` | a read or write through a raw pointer (`lang.mem.read`, `write`, `copy`, `fill`) of bytes no object holds: past the end of an allocation or a stack slot, or freed memory |
 | `allocations` | an allocator given back what it was given back already, what it never handed out, or bytes with another size than it handed them out with; with `pointers`, an access to memory given back |
 | `asm` | an assembly block writing memory no object holds, or returning with the stack pointer moved |
+| `stack` | a function whose frame would reach past the stack, or into the bytes kept at its bottom for the report (`lang.check.stack_reserve`) |
 
 - **Enabled by the build, never by a flag in the compiler.** `std.build.Options` has
   `checks: &[lang.check.Kind] = &[]`, and `vun build`, `run` and `test` take `--checks`, whose
@@ -351,7 +352,7 @@ a trap carrying its origin:
 - **Reported as traps with typed reasons.** A failed check calls `lang.check.fail`, a typed link
   symbol taking `&lang.check.Failure { site: u32, violation: Violation, address: usize }` and
   returning `never`. `Violation := enum { outside, freed, returned, double_free, foreign_free,
-  size_mismatch, stack_moved }`. The site indexes the message table like a trap site's
+  size_mismatch, stack_moved, stack_overflow }`. The site indexes the message table like a trap site's
   (section 3), so the runtime reports the violation, the address and the origin chain of the
   access. `#[panic.never]` is judged on the program without checks. A check that fails in such
   a function reports behavior that would have been undefined, so it is not a broken promise.

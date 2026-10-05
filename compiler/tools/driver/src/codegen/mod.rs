@@ -153,6 +153,11 @@ impl Session {
             let d = Missing::NamedConvention.at(at).diagnostic(info.id);
             return Err(Uncoded::Reported(self.diag.error(d)));
         }
+        let checked = unit.functions.iter().find(|(_, f)| f.stack_check.is_some());
+        if let Some((_, f)) = checked.filter(|_| !info.caps.has(Feature::StackChecks)) {
+            let d = Missing::StackCheck.at(f.origin).diagnostic(info.id);
+            return Err(Uncoded::Reported(self.diag.error(d)));
+        }
         // Integers wider than the backend's are split into halves first.
         let legalizing = LEGALIZE.start();
         let mut unit = unit.clone();

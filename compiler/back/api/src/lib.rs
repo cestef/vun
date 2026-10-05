@@ -108,6 +108,9 @@ pub enum Feature {
     /// Defines and calls functions under the calling conventions they name (`#[abi.stdcall]`),
     /// not only the target's own.
     Conventions,
+    /// Checks each function's frame before the stack moves to it (`StackCheck`), which the `stack`
+    /// checks need.
+    StackChecks,
 }
 
 /// Everything known about a backend without running it.

@@ -1,11 +1,10 @@
 //! The checks of assembly blocks: the memory they write and the stack pointer they return with.
 
-use vun_intern::Symbol;
 use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 use vun_target::Check;
 
-use super::TRAPPED;
+use super::{Ran, TRAPPED, checked_run};
 use crate::common::Fixture;
 
 #[test]
@@ -50,40 +49,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     }
 }
 
-/// How a program built for a target ran here.
-enum Ran {
-    /// With this status, or none where a signal ended it.
-    Exited(Option<i32>),
-    /// Not at all: this machine runs no program of the target.
-    Elsewhere,
-}
-
-/// How `source`, built for `target` by `backend` with the asm checks, runs here.
-fn asm_run(name: &str, target: Item, backend: &str, source: &str) -> Ran {
-    let fixture = Fixture::new(name);
-    let path = fixture.root.write("main.vun", source);
-    let mut session = fixture.session();
-    session.choice = Choice::of(target);
-    session.codegen.backend = Some(Symbol::intern(backend));
-    session.add_checks([Check::Asm]);
-    let file = session.load(&path).unwrap();
-    // Choosing the target equips it with the machine's tools, and a runner where it needs one.
-    let _ = session.lir(file);
-    let native = cfg!(target_arch = "x86_64") && target == targets::linux_x86_64::kernel;
-    if !cfg!(target_os = "linux") || !native && session.runner().is_empty() {
-        return Ran::Elsewhere;
-    }
-    let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-    // A runner the toolchain names but this machine lacks runs nothing either.
-    match session.command(&program).status() {
-        Ok(status) => Ran::Exited(status.code()),
-        Err(why) if why.kind() == std::io::ErrorKind::NotFound && !session.runner().is_empty() => {
-            Ran::Elsewhere
-        }
-        Err(why) => panic!("{why}"),
-    }
-}
-
 /// A program writing 7 through a block of `arch`, `write` with `past` for its offset, `past`
 /// bytes into its local, exiting with what the local holds.
 fn writing(arch: &str, write: &str, past: u32) -> String {
@@ -125,7 +90,13 @@ const ARCHES: [(Item, &str, &str, &str); 2] = [
 fn a_block_writing_past_its_memory_traps_under_the_asm_checks() {
     for (target, arch, write, _) in ARCHES {
         let run = |past| {
-            asm_run(&format!("checks-asm-{arch}-{past}"), target, "native", &writing(arch, write, past))
+            checked_run(
+                &format!("checks-asm-{arch}-{past}"),
+                target,
+                "native",
+                &[Check::Asm],
+                &writing(arch, write, past),
+            )
         };
         let (Ran::Exited(within), Ran::Exited(past)) = (run(0), run(8)) else { continue };
         assert_eq!((within, past), (Some(7), TRAPPED), "{arch}");
@@ -137,7 +108,11 @@ fn a_block_returning_with_the_stack_moved_traps_through_native_code_and_c() {
     for (target, arch, _, moves) in ARCHES {
         for backend in ["native", "c"] {
             let name = format!("checks-asm-stack-{arch}-{backend}");
-            let Ran::Exited(status) = asm_run(&name, target, backend, &moving(arch, moves)) else { continue };
+            let Ran::Exited(status) =
+                checked_run(&name, target, backend, &[Check::Asm], &moving(arch, moves))
+            else {
+                continue;
+            };
             assert_eq!(status, TRAPPED, "{arch} {backend}");
         }
     }

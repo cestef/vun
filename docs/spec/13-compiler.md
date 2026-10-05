@@ -1069,7 +1069,8 @@ backend's, clang's) and writes the program, as `wasm-ld` does:
   gives one, else the symbol's) and the symbols objects keep (`NO_STRIP`) are the roots; a
   function, segment or import nothing reaches from them through relocations is left out.
 - **Memory.** The stack comes first, a megabyte growing down from its top, so overflowing it
-  leaves memory (the engine's out-of-bounds trap) rather than writing over data; then `.rodata`, `.data`, the sections sources name, and
+  leaves memory (the engine's out-of-bounds trap, or the report of the `stack` checks, section 8.7)
+  rather than writing over data; then `.rodata`, `.data`, the sections sources name, and
   `.bss`, each segment at its alignment. Each section is one data segment, and one holding only
   zeros is not written, memory starting as zeros. Memory is exported as `memory`.
 - **Relocations** are applied in place, as the objects padded their fields; a function whose
@@ -1241,6 +1242,16 @@ in registers a call may overwrite, none saved.
     each instruction whose form writes memory, with the address that operand computes, and
     `asm_stack` where a block that returns moved the stack pointer. The C backend checks the
     stack pointer only, which needs no encoder.
+  - Under the `stack` checks, lowering gives each function it checks in a `StackCheck`
+    (`vun_lir::Function::stack_check`): the runtime's `lang.check.stack(frame, site)` and the site
+    it fails at. The backend calls it with the lowest address of the frame it is about to give the
+    function, before the stack pointer moves to it, so that the failure is reported on the stack as
+    it was, and a frame so large that its address wraps is caught too. The runtime compares the
+    address with the bounds of the stack, keeping `lang.check.stack_reserve` bytes at the bottom for
+    the report. A backend without `Feature::StackChecks` refuses a program built with them
+    (`backend.lacks`); the wasm backend has it, and the WASI runtime exports the operation
+    (`std.check.stack_exports`, over the linker's `__stack_low` and `__stack_high`). A runtime
+    without it fails the build (`check.unsupported`).
   Sema holds the checks (`vun_sema::checks::ChecksOf`, an input as the target is) and what an
   operation runs as under them (`Attributes::checked`); `vun-sanitize` holds the link symbols of
   the operations a runtime provides (`Operations`), which the driver reads to report

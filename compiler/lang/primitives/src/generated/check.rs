@@ -33,6 +33,10 @@ pub enum Check {
     /// Fails at the site `site` for an assembly block returning with the stack pointer moved from
     /// `before` to `after`.
     asm_stack,
+    /// Fails at the site `site` unless `frame`, the lowest address of a function's frame, lies within
+    /// the stack of the program: what a backend calls before the stack moves to the frame, so that the
+    /// failure is reported on the stack as it was.
+    stack,
     /// The id of a new trap site at `at`, which a check made there fails at: the message table
     /// records it as it records a trap site.
     site,
@@ -52,6 +56,7 @@ impl Check {
         Self::fail,
         Self::asm_write,
         Self::asm_stack,
+        Self::stack,
         Self::site,
     ];
     /// The declaration's name.
@@ -70,6 +75,7 @@ impl Check {
             Self::fail => "fail",
             Self::asm_write => "asm_write",
             Self::asm_stack => "asm_stack",
+            Self::stack => "stack",
             Self::site => "site",
         }
     }
@@ -89,6 +95,7 @@ impl Check {
             Self::fail => vun_items::lang::check::fail,
             Self::asm_write => vun_items::lang::check::asm_write,
             Self::asm_stack => vun_items::lang::check::asm_stack,
+            Self::stack => vun_items::lang::check::stack,
             Self::site => vun_items::lang::check::site,
         }
     }
