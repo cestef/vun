@@ -332,7 +332,9 @@ is annotated `type`, `lang.Interface` or a function type giving one, or when its
 `struct`, an `enum`, a function type, an `interface` or a function literal giving a type. A name
 or a call that happens to give a type is a value, so an alias is annotated to bind one:
 `Index: type = Int(0..9);`, `Error: type = Full;`, and `()` or `(u8, u16)` are values unless
-annotated.
+annotated. A member of an impl that leaves its annotation out has the one its interface
+requires, as its function types do (spec 02, section 3): `Error := ();` in an impl of
+`std.fmt.Writer` binds a type.
 
 | Binding | Case | Examples |
 |---------|------|----------|

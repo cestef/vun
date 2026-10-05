@@ -270,7 +270,8 @@ through its borrows as `.` reaches a value. Integer, float and vector operators 
 functions are `_`, provided by the compiler: `lang.int.ops` gives `add := lang.int.add`, whose
 signature carries spec 04's rules through range primitives (`Int(lang.int.sum(a, b))`). A
 compound assignment and a literal or range pattern are operators too. User types implement the
-same interfaces and dispatch statically.
+same interfaces and dispatch statically. An operand that never finishes (`1 / 0` over constants,
+which has no value) makes the operation never finish, and asks for no impl.
 
 **Derived impls.** An interface marked `#[derive(f)]` gives a struct or an enum with no impl of it
 the witness `f(T)`, when every part of it, each field and the payload of each variant, has the
