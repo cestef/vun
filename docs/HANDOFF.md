@@ -348,12 +348,12 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    (`sqrt`, `floor`, `pow`, `ln`, trigonometry: each needs a `lang.float` primitive and a lowering
    per backend first), `std.os.{env,process,net}` and directories, and `std.json` reading (the
    writer exists). Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
-   methods of `std.int.math`. `ArrayVec(n, T)`, a fixed-capacity vector with no allocator, waits
-   on a decision: it needs `n` items of a generic `T` that are not initialized, which no struct
-   literal can leave (a field is initialized whole). Options: a `lang.mem` primitive for
-   uninitialized storage (what Rust calls `MaybeUninit`; recommended, as it is also what a ring
-   buffer or an arena of values wants), or `[n]?T`, which wastes a tag per item and fills with
-   `.none`. Signed bit tricks need `.wrap(uN)` round trips (rule 8):
+   methods of `std.int.math`. `ArrayVec(n, T)` is built on 485 (`lang.mem.Uninit`).
+   Open there: `==` of arrays of no items (`[0]u32`) does not compile. `for i in 0..0` types the
+   index `never`, so typing reports `types.bad_index` at `std.seq`'s `a[i]`; past that the MIR
+   builder and `Projection::Index` lowering refuse an index of an empty type, and past that
+   `Bounds(never)` constants (the loop's `0..0` as a compile-time value) have no lowering
+   (`stopped at lir constant`, `lib/lang/lang/ops.vun` `bounds.empty`). Fixing it takes all three. Signed bit tricks need `.wrap(uN)` round trips (rule 8):
    a helper for an arithmetic shift or a sign mask in `std.int` would stop each library
    rederiving it. `int.does_not_fit`'s help still says "widen `u64`" for a run-time value of
    another type; `.to(T)` or `.wrap(T)` is the fix it should name. A `mut x := e` takes the range

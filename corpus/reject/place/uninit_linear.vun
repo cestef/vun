@@ -1,0 +1,11 @@
+//! Storage that is not initialized owns nothing, but a vector made of it holds items, so it is
+//! linear: it cannot be moved into two owners of the same items.
+
+Token := #[kind.linear] struct { id: u32 };
+
+twice := () {
+    v := std.collections.ArrayVec(2, Token).empty();
+    first := v;
+    first.deinit();
+    v.deinit(); //~ place.read_uninit
+};

@@ -82,8 +82,8 @@ impl Checker<'_, '_, '_> {
             TyKind::Primitive(Primitive::Mem(Mem::Ptr), _) => Some(true),
             TyKind::Primitive(Primitive::Lang(Lang::Fn), _) => Some(ty.signature()?.is_enterable()),
             TyKind::Primitive(Primitive::Mem(Mem::Array), _) => self.c_type(ty.as_array()?.1),
-            // A cell holds its value as the value is held.
-            TyKind::Primitive(Primitive::Mem(Mem::Cell), args) => match args.as_slice() {
+            // A cell holds its value as the value is held, and so does storage for one.
+            TyKind::Primitive(Primitive::Mem(Mem::Cell | Mem::Uninit), args) => match args.as_slice() {
                 [Value::Type(held)] => self.c_type(*held),
                 _ => Some(false),
             },

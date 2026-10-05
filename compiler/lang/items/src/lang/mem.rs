@@ -38,6 +38,12 @@ pub const Cell: Item = Item::new(&["lang", "mem", "Cell"]);
 pub const cell: Item = Item::new(&["lang", "mem", "cell"]);
 /// A pointer to what `c` holds, through which it may change while `c` is borrowed shared.
 pub const cell_pointer: Item = Item::new(&["lang", "mem", "cell_pointer"]);
+/// Storage for a `T` that may hold none yet: the bytes of a `T`, whatever they are. It owns
+/// nothing, so it is copied and discarded as plain bytes whichever `T` is; a `T` is read from it
+/// through `cast` and `read` (`unsafe`), once one was written (spec 05, section 5).
+pub const Uninit: Item = Item::new(&["lang", "mem", "Uninit"]);
+/// Storage for a `T` with no value in it: no byte is written, and none is read before one is.
+pub const uninit: Item = Item::new(&["lang", "mem", "uninit"]);
 /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
 pub const pointer_to: Item = Item::new(&["lang", "mem", "pointer_to"]);
 /// The address `p` holds.

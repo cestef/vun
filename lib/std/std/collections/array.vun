@@ -1,0 +1,69 @@
+//! `ArrayVec(n, T)`: up to `n` items of one type held in the value itself, with no allocator. The
+//! room is `lang.mem.Uninit`, storage that holds no `T` until one is written, so `T` needs no value
+//! to fill it with. Items are not dropped: ones owning memory are taken out first. Storage owns
+//! nothing, so the vector is linear whatever `T` is, as `Vec` is: it cannot be copied into two
+//! owners of one item, and `deinit` ends it.
+
+ArrayVec := ($n: Int(0..), $T: type) -> type { #[kind.linear] #[kind.free] struct {
+    _items: [n]lang.mem.Uninit(T),
+    _len: usize,
+
+    /// A vector holding nothing.
+    empty := () -> ArrayVec(n, T) { .{ ._items = [lang.mem.uninit(T); n], ._len = 0 } };
+
+    /// How many items it holds.
+    #[panic.never]
+    len := (self: &ArrayVec(n, T)) -> usize { self._len };
+    /// How many items it has room for.
+    #[panic.never]
+    capacity := (self: &ArrayVec(n, T)) -> usize { n.sat(usize) };
+    /// Whether it holds no item.
+    #[panic.never]
+    is_empty := (self: &ArrayVec(n, T)) -> bool { self._len == 0 };
+    /// Whether it has no room for another.
+    #[panic.never]
+    is_full := (self: &ArrayVec(n, T)) -> bool { self._len == n };
+
+    /// Where the first item is: the room, read as items.
+    start := (self: &ArrayVec(n, T)) -> *T {
+        unsafe lang.mem.items_pointer(lang.mem.Uninit(T), &self._items).cast(T)
+    };
+
+    /// The items it holds.
+    items := (self: &ArrayVec(n, T)) -> &[T] { unsafe lang.mem.items_at(T, self.start(), self._len) };
+    /// The items it holds, to change.
+    items_mut := (self: &mut ArrayVec(n, T)) -> &mut [T] {
+        unsafe lang.mem.items_at_mut(T, self.start(), self._len)
+    };
+
+    /// The item at `i`, none past the last.
+    get := (self: &ArrayVec(n, T), i: usize) -> ?&T {
+        if i >= self._len { return .none; }
+        .some(&self.items()[i])
+    };
+
+    /// Adds `item` after the last; the item itself when there is no room for it.
+    push := (self: &mut ArrayVec(n, T), item: T) -> Result((), T) {
+        if self._len == n { return .err(item); }
+        unsafe { self.start().offset(self._len.to(isize)).write(item); }
+        self._len += 1;
+        .ok(())
+    };
+
+    /// Takes the last item away.
+    pop := (self: &mut ArrayVec(n, T)) -> ?T {
+        if self._len == 0 { return .none; }
+        self._len -= 1;
+        .some(unsafe self.start().offset(self._len.to(isize)).read())
+    };
+
+    /// Keeps the first `n` items, dropping the others without a trace.
+    truncate := (self: &mut ArrayVec(n, T), keep: usize) { if keep < self._len { self._len = keep; } };
+    /// Holds nothing again.
+    clear := (self: &mut ArrayVec(n, T)) { self._len = 0; };
+
+    /// Ends the vector; the items it holds are left as they are, not dropped.
+    deinit := (self: ArrayVec(n, T)) {
+        .{ ._items = _, ._len = _ } := self;
+    };
+} };

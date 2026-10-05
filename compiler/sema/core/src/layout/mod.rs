@@ -175,7 +175,8 @@ impl Shapes {
                 let flag = Layout::scalar(1, None);
                 Some(Shape::sequence([item, item, flag]))
             }
-            Primitive::Mem(Mem::Cell) => {
+            // A cell holds its value in place; uninitialized storage has the bytes of one.
+            Primitive::Mem(Mem::Cell | Mem::Uninit) => {
                 let inner = cx.get::<Self>(&arg(0)?)?;
                 Some(Shape {
                     layout: Layout { niche: None, ..inner.layout },

@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.collections.array`.
+pub const array: Item = Item::new(&["std", "collections", "array"]);
 /// The namespace `std.collections.deque`.
 pub const deque: Item = Item::new(&["std", "collections", "deque"]);
 /// The namespace `std.collections.heap`.
@@ -28,3 +30,5 @@ pub const HashSet: Item = Item::new(&["std", "collections", "HashSet"]);
 pub const Deque: Item = Item::new(&["std", "collections", "Deque"]);
 /// Items taken out largest first.
 pub const BinaryHeap: Item = Item::new(&["std", "collections", "BinaryHeap"]);
+/// Up to `n` items held in the value itself, with no allocator.
+pub const ArrayVec: Item = Item::new(&["std", "collections", "ArrayVec"]);

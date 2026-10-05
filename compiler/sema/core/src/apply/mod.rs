@@ -90,8 +90,9 @@ impl Apply for Primitive {
             (Self::Mem(Mem::cell), [_, value]) | (Self::Simd(Simd::lanes | Simd::of), [_, _, value]) => {
                 Ok(value.clone())
             }
-            // What a cell holds changes at run time: a pointer into it reads a run-time place.
-            (Self::Mem(Mem::cell_pointer), _) => Err(Unevaluated::Runtime),
+            // What a cell holds changes at run time: a pointer into it reads a run-time place. Storage
+            // with no value has none to know when compiling.
+            (Self::Mem(Mem::cell_pointer | Mem::uninit), _) => Err(Unevaluated::Runtime),
             // `lang.interface(f)` wraps `f` so that it can constrain `$` parameters.
             (Self::Lang(Lang::interface), [Value::Fn(f)]) => Ok(Value::Interface(f.clone())),
             // `lang.mem.Array(n, T)`: `[n]T`.
@@ -112,7 +113,7 @@ impl Apply for Primitive {
                     .map(|(_, lane)| Value::Type(lane))
                     .ok_or_else(|| Unevaluated::trap(Reason::Argument))
             }
-            // Bounds, borrow, pointer, cell, slice and code types have no structure beyond their
+            // Bounds, borrow, pointer, cell, uninitialized, slice and code types have no structure beyond their
             // argument.
             (p, [arg])
                 if Borrow::of(p.item()).is_some()
@@ -120,7 +121,7 @@ impl Apply for Primitive {
                         p,
                         Self::Meta(Meta::Code)
                             | Self::Lang(Lang::Bounds)
-                            | Self::Mem(Mem::Ptr | Mem::Cell | Mem::Slice)
+                            | Self::Mem(Mem::Ptr | Mem::Cell | Mem::Slice | Mem::Uninit)
                     ) =>
             {
                 let arg = arg.as_type().ok_or(Unevaluated::Unsupported)?;

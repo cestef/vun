@@ -39,6 +39,14 @@ cell: ($T: type, value: T) -> Cell(T) = _;
 #[panic.never]
 cell_pointer: unsafe ($T: type, c: &Cell(T)) -> *T = _;
 
+/// Storage for a `T` that may hold none yet: the bytes of a `T`, whatever they are. It owns
+/// nothing, so it is copied and discarded as plain bytes whichever `T` is; a `T` is read from it
+/// through `cast` and `read` (`unsafe`), once one was written (spec 05, section 5).
+Uninit: ($T: type) -> type = _;
+/// Storage for a `T` with no value in it: no byte is written, and none is read before one is.
+#[panic.never]
+uninit: ($T: type) -> Uninit(T) = _;
+
 /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
 #[panic.never]
 pointer_to: ($T: type, r: &T) -> *T = _;

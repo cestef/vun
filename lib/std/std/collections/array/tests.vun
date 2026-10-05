@@ -1,0 +1,62 @@
+//! Tests of `std.collections.ArrayVec`.
+
+Pair := struct { a: u32, b: u8 };
+
+#[test]
+an_array_vec_holds_up_to_its_room := () {
+    mut v := std.collections.ArrayVec(3, u32).empty();
+    std.testing.assert(v.is_empty() and v.capacity() == 3);
+    std.testing.assert(v.push(10) == Result((), u32).ok(()));
+    std.testing.assert(v.push(20) == Result((), u32).ok(()));
+    std.testing.assert(v.push(30) == Result((), u32).ok(()));
+    std.testing.assert(v.is_full());
+    // A push with no room gives the item back.
+    std.testing.assert(v.push(40) == Result((), u32).err(40));
+    std.testing.assert(v.items() == [10, 20, 30]);
+    std.testing.assert(v.get(2) == Option(&u32).some(&30) and v.get(3) == Option(&u32).none);
+    v.deinit();
+};
+
+#[test]
+an_array_vec_pops_in_reverse_and_changes_through_its_items := () {
+    mut v := std.collections.ArrayVec(4, u32).empty();
+    std.testing.assert(v.pop() == Option(u32).none);
+    _ = v.push(1);
+    _ = v.push(2);
+    v.items_mut()[0] = 7;
+    std.testing.assert(v.pop() == Option(u32).some(2));
+    std.testing.assert(v.pop() == Option(u32).some(7));
+    std.testing.assert(v.pop() == Option(u32).none);
+    _ = v.push(5);
+    _ = v.push(6);
+    v.truncate(1);
+    std.testing.assert(v.items() == [5]);
+    v.clear();
+    std.testing.assert(v.is_empty());
+    v.deinit();
+};
+
+#[test]
+an_array_vec_holds_structs_and_nothing_is_read_before_it_is_written := () {
+    mut v := std.collections.ArrayVec(8, Pair).empty();
+    for i in 0..5 { _ = v.push(.{ .a = i * 100, .b = i.to(u8) }); }
+    std.testing.assert(v.len() == 5);
+    std.testing.assert(v.get(4).expect("present").a == 400);
+    sorted := v.items_mut();
+    sorted.sort_by([] (x: &Pair, y: &Pair) { x.a > y.a });
+    std.testing.assert(sorted[0].a == 400 and sorted[4].a == 0);
+    v.deinit();
+};
+
+Token := #[kind.linear] struct { id: u32 };
+
+#[test]
+an_array_vec_of_linear_items_is_linear_and_ends_with_deinit := () {
+    mut v := std.collections.ArrayVec(2, Token).empty();
+    v.push(.{ .id = 1 }).expect("room");
+    taken := v.pop().expect("one item");
+    std.testing.assert(taken.id == 1);
+    v.deinit();
+    .{ .id = id } := taken;
+    std.testing.assert(id == 1);
+};

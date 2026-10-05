@@ -154,6 +154,14 @@ tied to arguments, so no interprocedural analysis is needed.
   device's registers) is `unsafe` too, as is making a function of the address of code that
   outside hands over (`lang.mem.function_at(F, address)`: a symbol a loaded library exports),
   which must be written to the signature and calling convention of the function type `F`.
+- `lang.mem.Uninit(T)`: storage for a `T` that may hold none yet, with the size, alignment and
+  layout of a `T`. It is copy and free whatever `T` is, because it owns nothing: a `T` in it is
+  neither dropped nor counted, so the linear value written into it is the writer's to account for.
+  `lang.mem.uninit(T)` makes one without writing a byte, and it is never known when compiling.
+  Reading a `T` out of it is a read through a raw pointer (`lang.mem.cast` to `*T`, `read`),
+  `unsafe`, and valid once a `T` was written there. It is how a fixed-capacity vector holds room
+  for `n` items it has none of yet (`std.collections.ArrayVec`), and the only way a generic `T`
+  can be left unfilled, since a struct field is initialized whole.
 - Volatile and atomic access are operations in `lang.mem`, not type qualifiers.
   `std.hw.Reg(T)` and `std.sync.Atomic(T)` wrap them. An atomic access of an integer wider than
   an address runs as `lang.mem.soft`'s (`#[lower.soft]`): on Thumb, exclusive loads and stores of

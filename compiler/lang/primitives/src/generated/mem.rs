@@ -33,6 +33,12 @@ pub enum Mem {
     cell,
     /// A pointer to what `c` holds, through which it may change while `c` is borrowed shared.
     cell_pointer,
+    /// Storage for a `T` that may hold none yet: the bytes of a `T`, whatever they are. It owns
+    /// nothing, so it is copied and discarded as plain bytes whichever `T` is; a `T` is read from it
+    /// through `cast` and `read` (`unsafe`), once one was written (spec 05, section 5).
+    Uninit,
+    /// Storage for a `T` with no value in it: no byte is written, and none is read before one is.
+    uninit,
     /// A pointer to what `r` borrows. Creating a pointer is safe; using it is not (spec 05, section 5).
     pointer_to,
     /// The address `p` holds.
@@ -90,6 +96,8 @@ impl Mem {
         Self::Cell,
         Self::cell,
         Self::cell_pointer,
+        Self::Uninit,
+        Self::uninit,
         Self::pointer_to,
         Self::address,
         Self::pointer_at,
@@ -130,6 +138,8 @@ impl Mem {
             Self::Cell => "Cell",
             Self::cell => "cell",
             Self::cell_pointer => "cell_pointer",
+            Self::Uninit => "Uninit",
+            Self::uninit => "uninit",
             Self::pointer_to => "pointer_to",
             Self::address => "address",
             Self::pointer_at => "pointer_at",
@@ -171,6 +181,8 @@ impl Mem {
             Self::Cell => vun_items::lang::mem::Cell,
             Self::cell => vun_items::lang::mem::cell,
             Self::cell_pointer => vun_items::lang::mem::cell_pointer,
+            Self::Uninit => vun_items::lang::mem::Uninit,
+            Self::uninit => vun_items::lang::mem::uninit,
             Self::pointer_to => vun_items::lang::mem::pointer_to,
             Self::address => vun_items::lang::mem::address,
             Self::pointer_at => vun_items::lang::mem::pointer_at,

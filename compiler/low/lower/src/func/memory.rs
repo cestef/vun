@@ -40,6 +40,8 @@ impl FnLower<'_, '_, '_> {
                 let inner = args.first().and_then(Constant::as_type).ok_or_else(unsupported)?;
                 return self.write(arg(0)?, dest, inner);
             }
+            // Storage with no value is left as it is: no byte is written.
+            Mem::uninit => return Ok(()),
             // An address as another kind of address: a borrow's or a cell's as a pointer, or a
             // pointer to another type.
             Mem::pointer_to | Mem::cell_pointer | Mem::cast => self.pointed(arg(0)?)?,

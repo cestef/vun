@@ -206,7 +206,8 @@ impl Typer<'_, '_, '_> {
 
     /// An operand passed as asked is borrowed, which converts nothing: where it is a temporary,
     /// such as the literal in `xs == [1, 2]`, it is stored as the type expected of it when that
-    /// type accepts it, as `borrow` stores the temporary in `&[1, 2]`; a place keeps its own.
+    /// type accepts it, or as an array of the items of the slice expected, as `borrow` stores the
+    /// temporary in `&[1, 2]`; a place keeps its own.
     fn stored(
         &mut self,
         passing: Passing,
@@ -218,10 +219,14 @@ impl Typer<'_, '_, '_> {
         // A borrow written as the operand has stored its own operand already.
         let kind = &self.hir().exprs[expr].kind;
         let temporary = !kind.is_place() && !kind.is_borrow();
-        if passing != Passing::Asked || !temporary || param == known.ty || !param.accepts(&known.ty) {
+        if passing != Passing::Asked || !temporary || param == known.ty {
             return Some(known);
         }
-        let known = Known { ty: param, ..known };
+        let Some(stored) = (if param.accepts(&known.ty) { Some(param) } else { param.stored_as(&known.ty) })
+        else {
+            return Some(known);
+        };
+        let known = Known { ty: stored, ..known };
         self.finding().types.insert(expr, known);
         Some(known)
     }

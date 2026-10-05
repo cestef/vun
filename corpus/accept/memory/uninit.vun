@@ -1,0 +1,25 @@
+//! Storage for a value that is not there yet (spec 05, section 6): `lang.mem.Uninit(T)` has the
+//! size and alignment of a `T`, owns nothing, and holds a `T` only once one is written through a
+//! pointer. A vector over it needs no value of `T` to fill its room with.
+
+start := std.os.start(main);
+
+Pair := struct { a: u32, b: u8 };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    // The room has the layout of its items, whatever they are.
+    same_size := lang.meta.size(lang.mem.Uninit(Pair)) == lang.meta.size(Pair);
+    same_align := lang.meta.align(lang.mem.Uninit(Pair)) == lang.meta.align(Pair);
+    // A single place written and read back through a pointer.
+    mut room := lang.mem.uninit(u64);
+    p := unsafe lang.mem.pointer_to(lang.mem.Uninit(u64), &room).cast(u64);
+    unsafe { p.write(0xfeed_beef); }
+    read := unsafe p.read();
+    // A vector of pairs.
+    mut v := std.collections.ArrayVec(4, Pair).empty();
+    v.push(.{ .a = 1, .b = 2 }).expect("room");
+    v.push(.{ .a = 3, .b = 4 }).expect("room");
+    sum := v.get(0).expect("first").a + v.get(1).expect("second").a;
+    v.deinit();
+    if same_size and same_align and read == 0xfeed_beef and sum == 4 { .ok } else { .code(1) }
+};

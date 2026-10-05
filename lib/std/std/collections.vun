@@ -16,3 +16,6 @@ Deque: ($T: type) -> type = std.collections.deque.Deque;
 
 /// Items taken out largest first.
 BinaryHeap: ($T: type) -> type = std.collections.heap.BinaryHeap;
+
+/// Up to `n` items held in the value itself, with no allocator.
+ArrayVec: ($n: Int(0..), $T: type) -> type = std.collections.array.ArrayVec;
