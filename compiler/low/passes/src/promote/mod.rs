@@ -37,7 +37,7 @@ impl Promote for Function {
         }
         let count = uses.promoted.len();
         Promotion::new(self, uses).run();
-        vun_trace::tracing::trace!(count, "slots promoted");
+        vun_trace::tracing::trace!(count, blocks = self.blocks.len(), at = %self.origin.located(), "slots promoted");
         count
     }
 }

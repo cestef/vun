@@ -8,7 +8,7 @@ use vun_index::IndexVec;
 
 use super::Uses;
 use crate::replaced::Replaced;
-use vun_lir::analysis::Cfg;
+use vun_lir::analysis::{Cfg, Dominators};
 use vun_lir::entity::{Block, Inst, Slot, Value};
 use vun_lir::func::{Def, Function, InstData, ValueData};
 use vun_lir::inst::InstKind;
@@ -38,11 +38,22 @@ pub(super) struct Promotion<'f> {
     replaced: Replaced,
     /// The value of a slot read before any store, a constant at the entry, once asked for.
     unset: Map<Slot, (Inst, Value)>,
+    dominators: Dominators,
+    /// The slots stored once, with the block and the value: that value reaches every block the
+    /// store's block dominates.
+    sole: Map<Slot, (Block, Value)>,
+    /// Blocks looked through for definitions, and parameters made: what the pass cost.
+    steps: usize,
+    made: Map<Slot, usize>,
+    /// How many stores each slot has.
+    stored: Map<Slot, usize>,
 }
 
 impl<'f> Promotion<'f> {
     pub(super) fn new(func: &'f mut Function, uses: Uses) -> Self {
-        let preds = Cfg::of(func).preds;
+        let cfg = Cfg::of(func);
+        let dominators = Dominators::of(func, &cfg);
+        let preds = cfg.preds;
         Self {
             func,
             uses,
@@ -54,6 +65,11 @@ impl<'f> Promotion<'f> {
             incoming: Map::default(),
             replaced: Replaced::default(),
             unset: Map::default(),
+            dominators,
+            sole: Map::default(),
+            steps: 0,
+            made: Map::default(),
+            stored: Map::default(),
         }
     }
 
@@ -69,15 +85,22 @@ impl<'f> Promotion<'f> {
 
     pub(super) fn run(mut self) {
         let blocks: Vec<Block> = self.func.blocks.iter().map(|(b, _)| b).collect();
+        let mut stores: Map<Slot, Vec<(Block, Value)>> = Map::default();
         for &block in &blocks {
             for &inst in &self.func.blocks[block].insts {
                 if let InstKind::Store { value, .. } = self.func.insts[inst].kind
                     && let Some(slot) = self.promoted(&self.func.insts[inst].kind)
                 {
                     self.ends.insert((block, slot), value);
+                    stores.entry(slot).or_default().push((block, value));
+                    *self.stored.entry(slot).or_default() += 1;
                 }
             }
         }
+        self.sole = stores
+            .into_iter()
+            .filter_map(|(slot, at)| Some((slot, *at.first().filter(|_| at.len() == 1)?)))
+            .collect();
         let mut removed = Set::default();
         for &block in &blocks {
             let mut defined: Map<Slot, Value> = Map::default();
@@ -111,6 +134,17 @@ impl<'f> Promotion<'f> {
                 self.incoming.entry(param).or_default().push((pred, passed));
             }
         }
+        let heaviest = self.made.iter().max_by_key(|&(slot, made)| (*made, *slot));
+        vun_trace::tracing::trace!(
+            insts = self.func.insts.len(),
+            steps = self.steps,
+            parameters = self.made.values().sum::<usize>(),
+            heaviest = heaviest.map_or(0, |(_, made)| *made),
+            stores = heaviest.map_or(0, |(slot, _)| self.stored.get(slot).copied().unwrap_or(0)),
+            at = heaviest
+                .map_or(String::new(), |(slot, _)| self.func.slots[*slot].origin.located().to_string()),
+            "slots reached through blocks"
+        );
         self.drop_trivial();
         self.rewrite(&removed);
     }
@@ -124,7 +158,14 @@ impl<'f> Promotion<'f> {
             if let Some(&value) = self.starts.get(&(at, slot)) {
                 break value;
             }
+            if let Some(&(def, value)) = self.sole.get(&slot)
+                && def != at
+                && self.dominators.dominates(def, at)
+            {
+                break value;
+            }
             path.push(at);
+            self.steps += 1;
             match self.preds[at][..] {
                 [] => break self.unset(slot),
                 [pred] if path.len() <= self.preds.len() => match self.ends.get(&(pred, slot)) {
@@ -142,6 +183,7 @@ impl<'f> Promotion<'f> {
 
     /// A parameter of `block` for `slot`, whose predecessors pass it their definitions.
     fn parameter(&mut self, block: Block, slot: Slot) -> Value {
+        *self.made.entry(slot).or_default() += 1;
         let ty = self.uses.promoted[&slot];
         let param = self.func.values.push(ValueData { ty, def: Def::Param(block, 0) });
         self.params.entry(block).or_default().push((slot, param));

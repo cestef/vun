@@ -15,6 +15,8 @@ pub struct Dominators {
     /// Each block's position in the reverse postorder.
     order: IndexVec<Block, usize>,
     rpo: Vec<Block>,
+    /// Each block's span in a walk of the tree: a block dominates those inside its own.
+    spans: IndexVec<Block, (u32, u32)>,
 }
 
 impl Dominators {
@@ -27,7 +29,8 @@ impl Dominators {
             order[block] = i;
         }
         let mut idom: IndexVec<Block, Option<Block>> = IndexVec::filled(None, count);
-        let Some(&entry) = rpo.first() else { return Self { idom, order, rpo } };
+        let spans = IndexVec::filled((u32::MAX, 0), count);
+        let Some(&entry) = rpo.first() else { return Self { idom, order, rpo, spans } };
         idom[entry] = Some(entry);
         let mut changed = true;
         while changed {
@@ -42,7 +45,29 @@ impl Dominators {
                 }
             }
         }
-        Self { idom, order, rpo }
+        let mut tree = Self { idom, order, rpo, spans };
+        tree.span(entry);
+        tree
+    }
+
+    /// Numbers the blocks in a walk of the tree from `entry`.
+    fn span(&mut self, entry: Block) {
+        let children = self.children();
+        let mut clock = 0;
+        let mut open = vec![(entry, 0)];
+        while let Some((block, next)) = open.pop() {
+            if next == 0 {
+                self.spans[block].0 = clock;
+                clock += 1;
+            }
+            match children[block].get(next) {
+                Some(&child) => {
+                    open.push((block, next + 1));
+                    open.push((child, 0));
+                }
+                None => self.spans[block].1 = clock,
+            }
+        }
     }
 
     /// The nearest block dominating both `a` and `b`, walking up the tree built so far.
@@ -69,16 +94,8 @@ impl Dominators {
         if self.idom.get(block).copied().flatten().is_none() {
             return true;
         }
-        let mut at = block;
-        loop {
-            if at == def {
-                return true;
-            }
-            match self.idom[at] {
-                Some(up) if up != at => at = up,
-                _ => return false,
-            }
-        }
+        let (def, block) = (self.spans[def], self.spans[block]);
+        def.0 <= block.0 && block.1 <= def.1
     }
 
     /// The block immediately dominating `block`, when it is reached and not the entry.
