@@ -1,0 +1,18 @@
+//! A function marked `#[comptime.deferred]` splices its code where it is written and runs it when
+//! the program does, even when the code has a value at compile time (spec 03, section 4): the
+//! condition below is a call that traps, which compile-time evaluation would report as the
+//! program is built, and which here traps when the program runs.
+
+start := std.os.start(main);
+
+fails := () -> bool { lang.panic.fail(.message("does not hold")) };
+
+#[comptime.deferred]
+holds := ($c: lang.meta.Code(bool)) {
+    if !$c { lang.panic.fail(.message("does not hold")); }
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    holds(fails());
+    std.os.Exit.of(5)
+};

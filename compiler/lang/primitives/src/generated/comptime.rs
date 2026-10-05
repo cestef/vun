@@ -4,15 +4,19 @@
 #[allow(non_camel_case_types, reason = "variants are named as their declarations")]
 pub enum Comptime {
     fuel,
+    /// Attribute: the code this function splices is built where it is written and runs when the
+    /// program does, even when it has a value at compile time (spec 03, section 4).
+    deferred,
 }
 impl Comptime {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::comptime;
-    pub const ALL: &[Self] = &[Self::fuel];
+    pub const ALL: &[Self] = &[Self::fuel, Self::deferred];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::fuel => "fuel",
+            Self::deferred => "deferred",
         }
     }
     /// The declaration.
@@ -20,6 +24,7 @@ impl Comptime {
     pub const fn item(self) -> vun_items::Item {
         match self {
             Self::fuel => vun_items::lang::comptime::fuel,
+            Self::deferred => vun_items::lang::comptime::deferred,
         }
     }
 }

@@ -1,3 +1,7 @@
 //! Compile-time evaluation budgets (spec 03, section 7).
 
 fuel: ($steps: u64) -> Attribute(&[Place.functions]) = _;
+
+/// Attribute: the code this function splices is built where it is written and runs when the
+/// program does, even when it has a value at compile time (spec 03, section 4).
+deferred: Attribute(&[Place.functions]) = _;

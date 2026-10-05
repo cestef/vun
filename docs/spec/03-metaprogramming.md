@@ -145,6 +145,11 @@ binding, or what a cell holds, `std.sync.Atomic` and `Local` included, since a p
 reads a run-time place) runs where it is spliced. A failed assertion's trap site is where its
 condition is written.
 
+A function marked `#[comptime.deferred]` (`lang.comptime.deferred`) never folds: the code it splices
+is built where it is written and runs with the program, whatever its value at compile time, and a
+trap it would fire at compile time fires when the program runs. `std.testing.assert` is one, so a
+test checks on the target what it asserts, not what the compiler could compute of it.
+
 A code value is written where its code is: its names resolve there, with the bindings of the call
 and of the `$for` steps it was written in, and splicing it at compile time evaluates it there. An
 argument for `Code(T)` is typed as a `T`, and `Code(T)` accepts code of any value `T` accepts. A

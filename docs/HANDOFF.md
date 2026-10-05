@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 495 (`#[comptime.deferred]`), 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
@@ -268,6 +268,7 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
+- Compile-time evaluation is still most of a cold `vun test lib/std` (about 9 s on `am3.wg`: 87 000 calls, 2.4 s of the interpreter's own time, mostly lints and std code a `$` runs). Left: one function (the runner with its tests inlined, 22 000 promoted slots) takes 2.2 s in `promote` while the workers wait, and each compile-time call still costs about 28 microseconds (memo table probes, hashing keys that hold arrays, `Env` set-up).
 
 ## Next steps, most useful first
 

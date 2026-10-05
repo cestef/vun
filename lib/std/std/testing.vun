@@ -37,6 +37,7 @@ Ignored := struct {
 };
 
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
+#[comptime.deferred]
 assert := ($cond: lang.meta.Code(bool)) {
     if !$cond { lang.panic.fail(.assertion(cond.source(), cond.span())); }
 };

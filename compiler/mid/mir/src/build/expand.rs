@@ -5,6 +5,9 @@
 use vun_hir::tree::ExprId;
 use vun_index::{Idx, IndexVec};
 use vun_origin::OriginId;
+use vun_primitives::Primitive;
+use vun_primitives::comptime::Comptime;
+use vun_sema::attributes::Attributed;
 use vun_sema::callable::Parameters;
 use vun_sema::env::Passed;
 use vun_sema_ty::Value;
@@ -21,13 +24,24 @@ impl Builder<'_, '_, '_> {
     /// `$c` at run time for the code `c` (spec 03, section 4): its value at compile time where it
     /// has one, and otherwise the code, a splice that the call site expanding this body builds
     /// where it is written, and runs when it does. A trap the code fires when computed at
-    /// compile time is the exception: it is reported here, as the evaluation stopped.
+    /// compile time is the exception: it is reported here, as the evaluation stopped. A function
+    /// marked `#[comptime.deferred]` always splices the code.
     pub(super) fn spliced(&mut self, expr: ExprId, code: Code, origin: OriginId) -> Operand {
+        if self.defers() {
+            return self.temp(Rvalue::Splice { code }, origin);
+        }
         match self.env().eval(expr) {
             Ok(value) => Operand::Const(value),
             Err(Unevaluated::Trapped(_)) => self.temp(self.comptime(expr, None), origin),
             Err(_) => self.temp(Rvalue::Splice { code }, origin),
         }
+    }
+
+    /// Whether the function built splices its code at run time only (`#[comptime.deferred]`).
+    fn defers(&self) -> bool {
+        let deferred = Primitive::Comptime(Comptime::deferred);
+        let function = self.env().instance.as_ref().map(|i| &i.f);
+        function.and_then(|f| f.attributes(self.env.cx)).is_some_and(|a| a.get(deferred).is_some())
     }
 
     /// The body a call of `f` passing `passing` expands into, every `$` argument known here:

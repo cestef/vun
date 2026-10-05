@@ -7,3 +7,6 @@
 )]
 use crate::Item;
 pub const fuel: Item = Item::new(&["lang", "comptime", "fuel"]);
+/// Attribute: the code this function splices is built where it is written and runs when the
+/// program does, even when it has a value at compile time (spec 03, section 4).
+pub const deferred: Item = Item::new(&["lang", "comptime", "deferred"]);

@@ -126,6 +126,11 @@ fn code_with_no_value_at_compile_time_runs_where_it_is_spliced() {
 }
 
 #[test]
+fn deferred_code_runs_at_run_time_though_it_has_a_value_at_compile_time() {
+    assert_eq!(status("backend-spliced-deferred", &program("spliced_deferred.vun")), Some(TRAPPED));
+}
+
+#[test]
 fn borrowed_constants_and_placed_fields_run_through_each_backend() {
     assert_eq!(status("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
 }

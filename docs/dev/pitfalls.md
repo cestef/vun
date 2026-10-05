@@ -223,3 +223,14 @@ Traps that cost a session before. Add one when it costs you time.
   manifest fields and reports each as `manifest.unknown_field`. A toolchain with `.requires`
   (442) says it is too old instead; one without cannot, so update the toolchain first when a
   library manifest "has unknown fields" nobody misspelled.
+- What a compile-time call costs shows in `VUN_LOG=vun_query::cx=debug,vun_sema=debug`: each
+  `computing query="metered_call"` line carries the `call{ f="name" }` spans of the calls it is
+  inside, outermost first. Count by the first span to find what starts the evaluation (a
+  declaration's value, a lint, an `assert` condition) and by the last for what is called most.
+  Code spliced by a `Code(T)` parameter is evaluated at compile time when it has a value, so a
+  constant condition runs in the interpreter and is folded: `#[comptime.deferred]` stops that
+  (`std.testing.assert` has it), and a function without it checks the interpreter, not the target.
+- Profiling the compiler: `perf record -F 250 --call-graph dwarf,16384` on a host (the remotes
+  have `perf`), then `perf script -F ip,sym` and count the frame above the allocator or
+  `clone` to find who copies. A flat profile of `Value::clone` or a hash probe is a copy of
+  a whole array per read, or a table scanned per query, not the cost of the work itself.
