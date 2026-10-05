@@ -315,12 +315,12 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    SysTick. Written after the second report and built but never run on the board (decisions 431 to 440):
    the default trap (`rp2350.fault.trap`, reboots into BOOTSEL), NVIC and `Interrupts.external`, TIMER0
    (`rp2350.time`), pin input, pulls and drive, `rp2350.flash.uf2`, the `templates/rp2350` project and
-   the board README. `vun new`, `vun flash`, `.library` dependencies and `vun doc --deps` are built.
+   the board README, and, run on the board, the USB serial console, the stop record in the reboot
+   parameters (`picotool info -a`) and `vun flash` over the reset interface (449 to 451). `vun new`, `vun flash`, `.library` dependencies and `vun doc --deps` are built.
    Open there: the UART loopback byte arrives corrupt (`0xFC`, framing error; needs an adapter or
    probe; the registers, divisor and control bits read right against the PL011, but the pad of a UART
-   pin had its input off until 442, which a receiver on GP1 needs, unrun); the fault record is readable only by another Vun program (flash or a USB console would let
-   `picotool` read it); a first-run signal beyond the hidden drive (CYW43 LED driver, USB CDC); the
-   ADC, SPI, I2C, PWM, PIO, USB, flash driver, the
+   pin had its input off until 442, which a receiver on GP1 needs, unrun); a CYW43 LED driver; the
+   ADC, SPI, I2C, PWM, PIO, flash driver, the
    Hazard3 cores; native backend as the default for bare targets (they still go through C), ELF
    names `f1`/`d0`; `.dfu` and probe flash steps.
    Windows: `windows.x86_64.msvc` and `windows.x86.msvc` run through the C backend under Wine;

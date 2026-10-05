@@ -1,11 +1,13 @@
 //! How a program reaches an RP2350 (`b.flash(program, rp2350.flash.uf2)`): a file of blocks for
 //! the chip's secure Arm cores, written by `picotool`, which finds the device on the bus whether or
-//! not its drive is mounted, else copied to the drive the boot ROM shows.
+//! not its drive is mounted, and, with `-f`, asks a running program with a USB console
+//! (`rp2350.usb`) to reboot into BOOTSEL first, so the button is for a board that was never
+//! flashed; else copied to the drive the boot ROM shows.
 
 uf2: std.build.Flash = .uf2(.{
     .family = 0xe48b_ff59,
     .deliver = &[
-        .run(.{ .command = "picotool", .args = &[.text("load"), .text("-x"), .file] }),
+        .run(.{ .command = "picotool", .args = &[.text("load"), .text("-f"), .text("-x"), .file] }),
         .drive(.{ .mark = "INFO_UF2.TXT" }),
     ],
 });

@@ -51,7 +51,7 @@ fn every_manifest_reads() {
             }
         }
     }
-    assert_eq!(read, 16, "manifests found");
+    assert_eq!(read, 17, "manifests found");
 }
 
 #[test]

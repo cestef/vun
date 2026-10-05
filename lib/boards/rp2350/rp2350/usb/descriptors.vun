@@ -5,7 +5,7 @@
 
 /// A descriptor the host asks for, by what it is: its bytes are read one at a time, so none is
 /// copied before the host takes it.
-Source := enum { device, configuration, language, manufacturer, product, line_coding, status };
+Source := enum { device, configuration, language, manufacturer, product, serial, reset, line_coding, status };
 
 /// Raspberry Pi's vendor id, and the id of its CDC serial port.
 vendor: u16 = 0x2e8a;
@@ -13,12 +13,12 @@ product_id: u16 = 0x000a;
 
 device: [18]u8 = [
     18, 1, 0x00, 0x02, 0xef, 0x02, 0x01, 64,
-    0x8a, 0x2e, 0x0a, 0x00, 0x00, 0x01, 1, 2, 0, 1,
+    0x8a, 0x2e, 0x0a, 0x00, 0x00, 0x01, 1, 2, 3, 1,
 ];
 
-configuration: [75]u8 = [
-    // The configuration: two interfaces, bus powered, 100 mA.
-    9, 2, 75, 0, 2, 1, 0, 0x80, 50,
+configuration: [84]u8 = [
+    // The configuration: three interfaces, bus powered, 100 mA.
+    9, 2, 84, 0, 3, 1, 0, 0x80, 50,
     // They are one function: a serial port.
     8, 0x0b, 0, 2, 2, 2, 0, 0,
     // The control interface, with its functional descriptors and its notification endpoint.
@@ -32,6 +32,8 @@ configuration: [75]u8 = [
     9, 4, 1, 0, 2, 0x0a, 0, 0, 0,
     7, 5, 0x02, 2, 64, 0, 0,
     7, 5, 0x81, 2, 64, 0, 0,
+    // The reset interface, which `picotool` finds a running program by and asks to reboot.
+    9, 4, 2, 0, 0, 0xff, 0, 1, 4,
 ];
 
 /// 115200 baud, one stop bit, no parity, 8 data bits: what a port starts as.
@@ -41,6 +43,7 @@ line_coding: [7]u8 = [0x00, 0xc2, 0x01, 0x00, 0, 0, 8];
 language: [4]u8 = [4, 3, 0x09, 0x04];
 manufacturer_text: &[u8] = "Vun";
 product_text: &[u8] = "RP2350 console";
+reset_text: &[u8] = "Reset";
 
 /// The length of the string descriptor of `text`.
 text_len := (text: &[u8]) -> usize { (2 + 2 * text.len()).wrap(usize) };
@@ -54,15 +57,26 @@ text_byte := (text: &[u8], at: usize) -> u8 {
     text[(at - 2) / 2]
 };
 
+/// The string descriptor of the chip's id, as 16 hexadecimal digits.
+serial_byte := (at: usize) -> u8 {
+    if at == 0 { return 34; }
+    if at == 1 { return 3; }
+    if at % 2 == 1 { return 0; }
+    digit := (rp2350.chip.id() >> (60 - 4 * ((at - 2) / 2))) & 0xf;
+    "0123456789ABCDEF"[digit.wrap(usize)]
+};
+
 impl Source {
     /// How many bytes the descriptor has.
     len := (self: &Source) -> usize {
         match self {
             .device => 18,
-            .configuration => 75,
+            .configuration => 84,
             .language => 4,
             .manufacturer => text_len(manufacturer_text),
             .product => text_len(product_text),
+            .serial => 34,
+            .reset => text_len(reset_text),
             .line_coding => 7,
             .status => 2,
         }
@@ -76,6 +90,8 @@ impl Source {
             .language => language[at],
             .manufacturer => text_byte(manufacturer_text, at),
             .product => text_byte(product_text, at),
+            .serial => serial_byte(at),
+            .reset => text_byte(reset_text, at),
             .line_coding => line_coding[at],
             .status => 0,
         }

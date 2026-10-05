@@ -3,11 +3,11 @@
 
 /// A console, which `std.fmt.print` writes to.
 Console := struct {
-    _device: rp2350.usb.Device,
+    _device: rp2350.usb.device.Device,
 
     /// Starts the device and connects.
     open := () -> Console {
-        .{ ._device = rp2350.usb.Device.start() }
+        .{ ._device = rp2350.usb.device.Device.start() }
     };
 
     /// Services the bus once.
@@ -22,6 +22,15 @@ Console := struct {
 
     /// Whether the host opened the port.
     ready := (self: &Console) -> bool { self._device.ready() };
+
+    /// Waits for `d`, servicing the bus meanwhile: a program that waits some other way leaves the
+    /// host's requests unanswered.
+    delay := (self: &mut Console, timer: &rp2350.time.Timer, d: std.time.Duration) {
+        until := (timer.now() + d.as_nanos() / 1000).wrap(u64);
+        for timer.now() < until {
+            self._device.poll();
+        }
+    };
 
     /// Services the bus until the host opens the port, or until `timer` reads `until`
     /// microseconds; whether it did.

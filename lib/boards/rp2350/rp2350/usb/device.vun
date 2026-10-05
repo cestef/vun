@@ -1,0 +1,289 @@
+//! The controller as a device, polled: `Device.poll` reads what happened on the bus and answers
+//! it. The host reads the descriptors of `usb.descriptors`, sets an address and a configuration,
+//! and opens the serial port; bytes then go out through endpoint 1 (`Device.send`).
+
+/// The controller, polled.
+Device := struct {
+    stage: rp2350.usb.Stage,
+    reply: rp2350.usb.descriptors.Source,
+    reply_len: usize,
+    reply_sent: usize,
+    reply_chunk: usize,
+    reply_data1: bool,
+    address: u8,
+    configured: bool,
+    /// The host opened the port: its `DTR` line is up.
+    open: bool,
+    tx_data1: bool,
+    /// How many requests were answered, for a program that shows what the device did.
+    requests: u32,
+    /// What the host asked of the reset interface: the request and its value.
+    reboot_request: u8,
+    reboot_value: u16,
+
+    /// Starts the clock and the controller, and connects to the bus.
+    start := () -> Device {
+        rp2350.usb.clock.run();
+        resets := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets);
+        done := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets + rp2350.gpio.reset_done_offset);
+        resets.write(resets.read() | rp2350.usb.reset_usbctrl);
+        resets.write(resets.read() & ~rp2350.usb.reset_usbctrl);
+        for done.read() & rp2350.usb.reset_usbctrl != rp2350.usb.reset_usbctrl {}
+        for i in 0..1024 {
+            rp2350.usb.word(i * 4).write(0);
+        }
+        regs := rp2350.usb.Registers.get();
+        regs.muxing.write(rp2350.usb.muxing_to_phy | rp2350.usb.muxing_softcon);
+        regs.power.write(rp2350.usb.power_vbus_detect);
+        regs.main_ctrl.write(rp2350.usb.main_controller_enable);
+        regs.sie_ctrl.write(rp2350.usb.sie_ep0_interrupt_1buf);
+        regs.sie_ctrl.write(rp2350.usb.sie_ep0_interrupt_1buf | rp2350.usb.sie_pullup);
+        .{
+            .stage = .idle,
+            .reply = .device,
+            .reply_len = 0,
+            .reply_sent = 0,
+            .reply_chunk = 0,
+            .reply_data1 = true,
+            .address = 0,
+            .configured = false,
+            .open = false,
+            .tx_data1 = false,
+            .requests = 0,
+            .reboot_request = 0,
+            .reboot_value = 0,
+        }
+    };
+
+    /// Whether a program may send: the host configured the device and opened the port.
+    ready := (self: &Device) -> bool { self.configured and self.open };
+
+    /// Answers what happened on the bus since the last call.
+    poll := (self: &mut Device) {
+        regs := rp2350.usb.Registers.get();
+        status := regs.sie_status.read();
+        if status & rp2350.usb.sie_bus_reset != 0 {
+            regs.sie_status.write(rp2350.usb.sie_bus_reset);
+            self.reset();
+        }
+        if status & rp2350.usb.sie_setup != 0 {
+            request := rp2350.usb.Request.read();
+            regs.sie_status.write(rp2350.usb.sie_setup);
+            self.setup(request);
+        }
+        bits := regs.buff_status.read();
+        if bits & rp2350.usb.status_ep0_in != 0 {
+            regs.buff_status.write(rp2350.usb.status_ep0_in);
+            self.sent();
+        }
+        if bits & rp2350.usb.status_ep0_out != 0 {
+            regs.buff_status.write(rp2350.usb.status_ep0_out);
+            self.received();
+        }
+        if bits & rp2350.usb.status_tx != 0 {
+            regs.buff_status.write(rp2350.usb.status_tx);
+        }
+    };
+
+    /// The bus was reset: address zero, no configuration, and the other endpoints off.
+    reset := (self: &mut Device) {
+        rp2350.usb.Registers.get().address.write(0);
+        self.stage = .idle;
+        self.configured = false;
+        self.open = false;
+        self.tx_data1 = false;
+        for i in 0..30 {
+            rp2350.usb.word(rp2350.usb.endpoint_control_at + i * 4).write(0);
+        }
+    };
+
+    /// Answers a request on endpoint 0.
+    setup := (self: &mut Device, request: rp2350.usb.Request) {
+        self.stage = .idle;
+        self.requests = (self.requests + 1).wrap(u32);
+        rp2350.usb.buffer_control(0, false).write(rp2350.usb.buf_data1 | rp2350.usb.buf_select);
+        rp2350.usb.buffer_control(0, true).write(rp2350.usb.buf_data1 | rp2350.usb.buf_select);
+        kind := request.kind & rp2350.usb.type_mask;
+        n := request.number;
+        if kind == rp2350.usb.type_standard and n == rp2350.usb.get_descriptor {
+            self.describe(request);
+        } else if kind == rp2350.usb.type_standard and n == rp2350.usb.set_address {
+            self.address = (request.value & 0x7f).wrap(u8);
+            self.acknowledge(.done_then_address);
+        } else if kind == rp2350.usb.type_standard and n == rp2350.usb.set_configuration {
+            self.configure();
+            self.acknowledge(.done);
+        } else if kind == rp2350.usb.type_standard and n == rp2350.usb.get_status {
+            self.answer(.status, request.length);
+        } else if kind == rp2350.usb.type_standard
+            and (n == rp2350.usb.clear_feature or n == rp2350.usb.set_interface) {
+                self.acknowledge(.done);
+            } else if kind == rp2350.usb.type_class and n == rp2350.usb.set_control_line_state {
+                self.open = request.value & 1 != 0;
+                self.acknowledge(.done);
+            } else if kind == rp2350.usb.type_vendor and request.index == rp2350.usb.reset_interface {
+                self.reboot_request = n;
+                self.reboot_value = request.value;
+                self.acknowledge(.done_then_reboot);
+            } else if kind == rp2350.usb.type_class and n == rp2350.usb.send_break {
+                self.acknowledge(.done);
+            } else if kind == rp2350.usb.type_class and n == rp2350.usb.set_line_coding {
+                self.stage = .taking_line_coding;
+                rp2350.usb.arm(
+                    rp2350.usb.buffer_control(0, true),
+                    64 | rp2350.usb.buf_data1 | rp2350.usb.buf_select
+                );
+            } else if kind == rp2350.usb.type_class and n == rp2350.usb.get_line_coding {
+                self.answer(.line_coding, request.length);
+            } else {
+                self.stall();
+            }
+    };
+
+    /// Answers `GET_DESCRIPTOR`.
+    describe := (self: &mut Device, request: rp2350.usb.Request) {
+        what := request.value >> 8;
+        which := request.value & 0xff;
+        if what == rp2350.usb.descriptor_device {
+            self.answer(.device, request.length);
+        } else if what == rp2350.usb.descriptor_configuration {
+            self.answer(.configuration, request.length);
+        } else if what == rp2350.usb.descriptor_string and which == 0 {
+            self.answer(.language, request.length);
+        } else if what == rp2350.usb.descriptor_string and which == 1 {
+            self.answer(.manufacturer, request.length);
+        } else if what == rp2350.usb.descriptor_string and which == 2 {
+            self.answer(.product, request.length);
+        } else if what == rp2350.usb.descriptor_string and which == 3 {
+            self.answer(.serial, request.length);
+        } else if what == rp2350.usb.descriptor_string and which == 4 {
+            self.answer(.reset, request.length);
+        } else {
+            self.stall();
+        }
+    };
+
+    /// Enables the endpoints of the one configuration.
+    configure := (self: &mut Device) {
+        rp2350.usb.endpoint_control(1, false).write(
+            rp2350.usb.ctrl_enable | rp2350.usb.ctrl_interrupt_per_buffer | rp2350.usb.ctrl_bulk
+                | rp2350.usb.tx_buffer_at.wrap(u32)
+        );
+        rp2350.usb.endpoint_control(2, true).write(
+            rp2350.usb.ctrl_enable | rp2350.usb.ctrl_interrupt_per_buffer | rp2350.usb.ctrl_bulk
+                | rp2350.usb.rx_buffer_at.wrap(u32)
+        );
+        rp2350.usb.endpoint_control(3, false)
+            .write(
+                rp2350.usb.ctrl_enable | rp2350.usb.ctrl_interrupt_per_buffer | rp2350.usb.ctrl_interrupt
+                    | rp2350.usb.notify_buffer_at.wrap(u32)
+            );
+        rp2350.usb.buffer_control(1, false).write(0);
+        rp2350.usb.buffer_control(2, true).write(0);
+        rp2350.usb.buffer_control(3, false).write(0);
+        self.tx_data1 = false;
+        self.configured = true;
+    };
+
+    /// Replies with `source`, as much of it as the host asked for.
+    answer := (self: &mut Device, source: rp2350.usb.descriptors.Source, asked: u16) {
+        self.reply = source;
+        self.reply_len = if source.len() < asked.to(usize) { source.len() } else { asked.to(usize) };
+        self.reply_sent = 0;
+        self.reply_data1 = true;
+        self.stage = .reply;
+        self.send_chunk();
+    };
+
+    /// Sends the next packet of the reply on endpoint 0.
+    send_chunk := (self: &mut Device) {
+        left := (self.reply_len - self.reply_sent).wrap(usize);
+        n: rp2350.usb.Chunk = if left < rp2350.usb.packet { left } else { rp2350.usb.packet };
+        for i in 0..n {
+            rp2350.usb.byte(rp2350.usb.ep0_buffer_at + i).write(
+                self.reply.byte((self.reply_sent + i).wrap(usize))
+            );
+        }
+        self.reply_chunk = n.to(usize);
+        mut value: u32 = n.wrap(u32) | rp2350.usb.buf_full | rp2350.usb.buf_select;
+        if self.reply_data1 { value = value | rp2350.usb.buf_data1; }
+        if n == left { value = value | rp2350.usb.buf_last; }
+        self.reply_data1 = !self.reply_data1;
+        rp2350.usb.arm(rp2350.usb.buffer_control(0, false), value);
+    };
+
+    /// Sends the empty packet that ends a request, and goes on to `stage` once it is taken.
+    acknowledge := (self: &mut Device, stage: rp2350.usb.Stage) {
+        self.stage = stage;
+        rp2350.usb.arm(
+            rp2350.usb.buffer_control(0, false),
+            rp2350.usb.buf_data1 | rp2350.usb.buf_full | rp2350.usb.buf_last | rp2350.usb.buf_select
+        );
+    };
+
+    /// Refuses the request, until the next one.
+    stall := (self: &mut Device) {
+        rp2350.usb.Registers.get().ep_stall_arm.write(3);
+        rp2350.usb.buffer_control(0, false).write(rp2350.usb.buf_stall | rp2350.usb.buf_select);
+        rp2350.usb.buffer_control(0, true).write(rp2350.usb.buf_stall | rp2350.usb.buf_select);
+    };
+
+    /// The host took the packet sent on endpoint 0.
+    sent := (self: &mut Device) {
+        if self.stage == .reply {
+            self.reply_sent = (self.reply_sent + self.reply_chunk).wrap(usize);
+            if self.reply_sent < self.reply_len {
+                self.send_chunk();
+            } else {
+                self.stage = .acknowledged;
+                rp2350.usb.arm(
+                    rp2350.usb.buffer_control(0, true),
+                    rp2350.usb.buf_data1 | rp2350.usb.buf_last | rp2350.usb.buf_select
+                );
+            }
+        } else if self.stage == .done_then_reboot {
+            self.reboot();
+        } else if self.stage == .done_then_address {
+            rp2350.usb.Registers.get().address.write(self.address.to(u32));
+            self.stage = .idle;
+        } else {
+            self.stage = .idle;
+        }
+    };
+
+    /// Reboots as the host asked: into BOOTSEL, or into the program in flash.
+    reboot := (self: &mut Device) {
+        if self.reboot_request == rp2350.usb.reset_to_bootsel {
+            rp2350.rom.bootsel_hiding((self.reboot_value & 3).to(u32));
+        } else if self.reboot_request == rp2350.usb.reset_to_flash {
+            rp2350.rom.reboot(rp2350.rom.reboot_normal | rp2350.rom.no_return_on_success, 10, 0, 0);
+        }
+        self.stage = .idle;
+    };
+
+    /// The host sent a packet on endpoint 0.
+    received := (self: &mut Device) {
+        if self.stage == .taking_line_coding {
+            self.acknowledge(.done);
+        } else {
+            self.stage = .idle;
+        }
+    };
+
+    /// Sends up to a packet of `bytes` on endpoint 1, returning how many it took: none while the
+    /// last packet is still waiting for the host.
+    send := (self: &mut Device, bytes: &[u8]) -> usize {
+        control := rp2350.usb.buffer_control(1, false);
+        if control.read() & rp2350.usb.buf_available != 0 { return 0; }
+        have := bytes.len();
+        n: rp2350.usb.Chunk = if have < rp2350.usb.packet { have } else { rp2350.usb.packet };
+        for i in 0..n {
+            rp2350.usb.byte(rp2350.usb.tx_buffer_at + i).write(bytes[i]);
+        }
+        mut value: u32 = n.wrap(u32) | rp2350.usb.buf_full | rp2350.usb.buf_select;
+        if self.tx_data1 { value = value | rp2350.usb.buf_data1; }
+        self.tx_data1 = !self.tx_data1;
+        rp2350.usb.arm(control, value);
+        n
+    };
+};

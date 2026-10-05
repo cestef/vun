@@ -4,8 +4,6 @@
 
 start := rp2350.start(.{ .main = main });
 
-/// A copy of a record the C compiler makes calls `memcpy`, which no C library provides here.
-memory := std.os.memory.exports;
 
 main := (p: rp2350.Peripherals) -> never {
     rp2350.rom.reboot(rp2350.rom.reboot_bootsel, 90_000, 0, 0);
@@ -15,7 +13,7 @@ main := (p: rp2350.Peripherals) -> never {
         mut count: u32 = 0;
         for count < 30 {
             std.fmt.print(&mut console, "hello from vun {}\n", count);
-            timer.delay(.millis(1000));
+            console.delay(&timer, .millis(1000));
             count = (count + 1).wrap(u32);
         }
     }

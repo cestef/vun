@@ -32,8 +32,8 @@ main := (p: rp2350.Peripherals) -> never {
     port := p.uart0.open(&p.gpio, 115200);
     port.loopback(true);
     port.send(0x55);
-    if port.receive() != 0x55 { rp2350.fault.take(); }
-    if timer.now() > 10 { rp2350.fault.take(); }
+    if port.receive() != 0x55 { rp2350.record.report(.trap(0)); }
+    if timer.now() > 10 { rp2350.record.report(.trap(0)); }
     if input.low() { led.high(); }
     rp2350.nvic.disable(rp2350.irq.timer0_0);
     rp2350.nvic.clear(rp2350.irq.timer0_0);

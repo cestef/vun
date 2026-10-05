@@ -1,16 +1,7 @@
 //! What a program that stopped leaves behind. A board without a console shows nothing of it, so
-//! a fault or a trap writes where and why into the watchdog's scratch registers, which a soft
-//! reset keeps (datasheet, section 12.9), and reboots to the boot ROM's USB mode: a program that
-//! stopped is a device back on the host's bus, and the next program reads what it did (`take`).
-
-watchdog := 0x400d_8000;
-scratch_first := 0xc;
-/// The boot ROM keeps the scratch registers from the fourth on for its own reboot, so a fault
-/// leaves four words.
-
-/// Marks the scratch registers as holding a fault (`FAUL`) or a trap (`TRAP`), in the first of them.
-fault_marker: u32 = 0x4641_554c;
-trap_marker: u32 = 0x5452_4150;
+//! a fault or a trap reboots into the boot ROM's USB mode with a record of it as the reboot's
+//! parameters (`rp2350.record`): a program that stopped is a device back on the host's bus, and
+//! `picotool info -a` says why.
 
 /// Where a core was stopped, and what it said of why.
 Fault := struct {
@@ -19,65 +10,37 @@ Fault := struct {
     /// The configurable fault status register: which of the memory, bus and usage faults it was.
     status: u32,
     /// The address the memory or bus fault was on, when the status says there is one.
-    address: u32,
+    address: ?u32,
 };
 
-/// Why the last run stopped: the core faulted, or the program trapped at a site of its own
+/// Why a program stopped: the core faulted, or the program trapped at a site of its own
 /// (`lang.panic.Trap`).
 Stop := enum { fault(Fault), trap(u32) };
-
-/// A scratch register left to programs.
-Index: type = Int(0..4);
-
-/// The `n`th scratch register.
-scratch := (n: Index) -> &std.hw.Reg(u32) {
-    unsafe std.hw.at(std.hw.Reg(u32), watchdog + scratch_first + n * 4)
-};
 
 /// The words of the frame the core pushed on taking the exception: `r0` to `r3`, `r12`, `lr`, the
 /// instruction it was running, and the status register.
 frame_pc := 6;
 
-/// Writes the fault the frame at `frame` was taken for, then reboots into the boot ROM.
+/// The memory fault address register holds the address when its status bit says so, and so does the
+/// bus fault's: bit 7 and bit 15 of the status.
+mmfar_valid: u32 = 0x80;
+bfar_valid: u32 = 0x8000;
+
+/// Reports the fault the frame at `frame` was taken for, and reboots into the boot ROM.
 record := (frame: *u32) -> never {
     status := rp2350.core.register(rp2350.core.cfsr_offset).read();
-    // The address registers are valid only where the status says so: bit 7 of the memory fault's
-    // byte and of the bus fault's.
-    bus := status & 0x8000 != 0;
-    address := if bus {
-        rp2350.core.register(rp2350.core.bfar_offset).read()
-    } else {
-        rp2350.core.register(rp2350.core.mmfar_offset).read()
-    };
-    scratch(0).write(fault_marker);
-    scratch(1).write(unsafe frame.offset(frame_pc).read());
-    scratch(2).write(status);
-    scratch(3).write(address);
-    rp2350.rom.bootsel()
-};
-
-/// The trap handler a program gives as its `trap`: records the site, then reboots into the boot
-/// ROM, as a fault does, so a program that trapped is a device on the host's bus and not a
-/// halted one that only the button recovers.
-trap := (t: &lang.panic.Trap) -> never {
-    scratch(0).write(trap_marker);
-    scratch(1).write(t.site);
-    rp2350.rom.bootsel()
-};
-
-/// What the last run left, if it left anything, forgotten as it is read.
-take := () -> ?Stop {
-    marker := scratch(0).read();
-    scratch(0).write(0);
-    if marker == fault_marker {
-        .some(.fault(.{
-            .pc = scratch(1).read(),
-            .status = scratch(2).read(),
-            .address = scratch(3).read(),
-        }))
-    } else if marker == trap_marker {
-        .some(.trap(scratch(1).read()))
+    address: ?u32 = if status & bfar_valid != 0 {
+        .some(rp2350.core.register(rp2350.core.bfar_offset).read())
+    } else if status & mmfar_valid != 0 {
+        .some(rp2350.core.register(rp2350.core.mmfar_offset).read())
     } else {
         .none
-    }
+    };
+    pc := unsafe frame.offset(frame_pc).read();
+    rp2350.record.report(.fault(.{ .pc = pc, .status = status, .address = address }))
 };
+
+/// The trap handler a program gives as its `trap`: reports the site and reboots into the boot ROM,
+/// as a fault does, so a program that trapped is a device on the host's bus and not a halted one
+/// that only the button recovers.
+trap := (t: &lang.panic.Trap) -> never { rp2350.record.report(.trap(t.site)) };

@@ -1,0 +1,17 @@
+//! What the chip says of itself, through the boot ROM's `get_sys_info`.
+
+/// `get_sys_info`: fills `words` with the information `flags` ask for, led by the flags it has,
+/// and returns how many words it wrote.
+SysInfo := #[abi.c] (words: *u32, count: usize, flags: u32) -> i32;
+
+/// The flag asking for the chip's identity: its package, device and wafer.
+chip_info: u32 = 1;
+
+/// The chip's unique id, which BOOTSEL shows as its USB serial number and `picotool info -a` as
+/// its chip id: the device word and the wafer word, as 64 bits.
+id := () -> u64 {
+    mut words: [4]u32 = [0, 0, 0, 0];
+    call := unsafe { lang.mem.function_at(SysInfo, rp2350.rom.function(rp2350.rom.code('G', 'S'))) };
+    call(lang.mem.pointer_to(u32, &mut words[0]), 4, chip_info);
+    ((words[3].to(u64) << 32) | words[2].to(u64)).wrap(u64)
+};

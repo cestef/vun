@@ -181,6 +181,9 @@ start := ($config: Config) -> type { struct {
     #[link.export(lang.panic.symbols.trap)]
     trap := config.trap;
 
+    /// The copies and fills the C compiler makes of records and arrays are calls of these.
+    memory := std.os.memory.exports;
+
     /// Masks interrupts, keeping `PRIMASK` as it was: one core, so the section is never
     /// contended and nests by restoring the mask.
     #[link.export(std.sync.symbols.enter), panic.never]

@@ -1,0 +1,76 @@
+//! A stop's record, in the two words the boot ROM keeps across a reboot into BOOTSEL: the
+//! reboot's parameters, which `picotool info -a` shows as "reboot param 0" and "reboot param 1".
+//! A board with no console and no probe tells the host why it stopped, with stock tools:
+//!
+//!     picotool info -a | grep "reboot param"
+//!
+//! The first word holds the kind of stop in its top two bits and, below them, the instruction
+//! the core was running, as 27 bits of its address and whether it was in SRAM or flash; its two
+//! lowest bits are zero, since they choose the interfaces BOOTSEL hides. The second word is the
+//! trap's site, the address a fault was on, or, where it was on none, the fault's status.
+
+/// The two words.
+Words := struct { first: u32, second: u32 };
+
+kind_shift := 30;
+kind_trap: u32 = 0;
+kind_fault_at: u32 = 1;
+kind_fault_status: u32 = 2;
+
+/// Where the instruction's address sits in the first word: its halfword address, which is its
+/// bits 1 to 27, and above them whether it is in SRAM. The address's top bits say it is in
+/// flash (`0x1000_0000`) or SRAM (`0x2000_0000`).
+pc_shift := 2;
+pc_mask: u32 = 0x07ff_ffff;
+pc_ram: u32 = 1 << 27;
+flash_base: u32 = 0x1000_0000;
+ram_base: u32 = 0x2000_0000;
+
+/// The words that say `stop`.
+encode := (stop: rp2350.fault.Stop) -> Words {
+    match stop {
+        .trap(site) => .{ .first = kind_trap << kind_shift, .second = site },
+        .fault(fault) => {
+            pc: u32 = ((fault.pc >> 1) & pc_mask) | if fault.pc >= ram_base { pc_ram } else { 0 };
+            match fault.address {
+                .some(address) => .{
+                    .first = (kind_fault_at << kind_shift) | (pc << pc_shift).wrap(u32),
+                    .second = address,
+                },
+                .none => .{
+                    .first = (kind_fault_status << kind_shift) | (pc << pc_shift).wrap(u32),
+                    .second = fault.status,
+                },
+            }
+        },
+    }
+};
+
+/// What `words` say, as the host reads them back; none for words that say nothing.
+decode := (words: Words) -> ?rp2350.fault.Stop {
+    kind := words.first >> kind_shift;
+    payload := (words.first >> pc_shift) & (pc_mask | pc_ram);
+    pc: u32 = ((payload & pc_mask) << 1).wrap(u32) | if payload & pc_ram
+        != 0 { ram_base } else { flash_base };
+    if kind == kind_trap {
+        .some(.trap(words.second))
+    } else if kind == kind_fault_at {
+        .some(.fault(.{ .pc = pc, .status = 0, .address = .some(words.second) }))
+    } else if kind == kind_fault_status {
+        .some(.fault(.{ .pc = pc, .status = words.second, .address = .none }))
+    } else {
+        .none
+    }
+};
+
+/// Reboots into BOOTSEL with `stop` as the parameters.
+report := (stop: rp2350.fault.Stop) -> never {
+    words := encode(stop);
+    rp2350.rom.reboot(
+        rp2350.rom.reboot_bootsel | rp2350.rom.no_return_on_success,
+        10,
+        words.first,
+        words.second,
+    );
+    for {}
+};

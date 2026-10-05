@@ -1,0 +1,27 @@
+//! A program that stops, to see what the record says: `picotool info -a | grep "reboot param"`
+//! shows the two words, which `rp2350.record` documents. Change `how` to try each stop.
+
+start := rp2350.start(.{ .main = main });
+
+/// How the program stops: a trap (an index past an array), or a fault (a read where nothing is).
+Way := enum { trap, bus_fault };
+how: Way = .bus_fault;
+
+main := (p: rp2350.Peripherals) -> never {
+    // Whatever the program does, the board is back in BOOTSEL after five seconds.
+    rp2350.rom.reboot(rp2350.rom.reboot_bootsel, 5_000, 0, 0);
+    match how {
+        .trap => {
+            mut numbers: [4]u32 = [1, 2, 3, 4];
+            mut at: usize = 3;
+            at = (at + at).wrap(usize);
+            numbers[at] = 5;
+        },
+        .bus_fault => {
+            mut seen: u32 = unsafe { lang.mem.pointer_at(u32, 0x6000_0000).read() };
+            seen = (seen + 1).wrap(u32);
+            rp2350.rom.reboot(rp2350.rom.reboot_bootsel | rp2350.rom.no_return_on_success, 10, seen, 0);
+        },
+    }
+    for {}
+};

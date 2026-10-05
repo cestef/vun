@@ -1,19 +1,20 @@
-//! A program that shows it ran. The board has no console, so it ends by restarting into BOOTSEL
-//! with the drive hidden: the host sees the device come back without its mass storage drive, which
-//! a program that never started does not do (`rp2350.rom.bootsel` would show the drive).
+//! A program that shows it ran: it prints a line a second over USB, which the host sees as a
+//! serial port (`/dev/ttyACM0`; `picocom /dev/ttyACM0` or `screen /dev/ttyACM0` shows it).
+//! It waits for a program on the host to open the port, and `vun flash` replaces it without the
+//! button: the console answers the programmer's request to reboot.
 //!
-//! Pin 15 is driven high for a second first, for a LED on it.
+//! A trap or a fault reboots into BOOTSEL with a record of why, which `picotool info -a` shows
+//! (`rp2350.record`).
 
-start := rp2350.start(.{
-    .main = main,
-    .interrupts = .{ .external = &[.{ .irq = rp2350.irq.timer0_0, .handler = rp2350.time.on_alarm0 }] },
-});
+start := rp2350.start(.{ .main = main });
 
 main := (p: rp2350.Peripherals) -> never {
-    mut led := p.gpio.pin(15).output();
     timer := rp2350.time.Timer.init(p.timer0);
-    led.high();
-    timer.delay(.millis(1000));
-    led.low();
-    rp2350.rom.bootsel_hiding(rp2350.rom.interface_mass_storage)
+    mut console := rp2350.usb.console.Console.open();
+    mut count: u32 = 0;
+    for {
+        std.fmt.print(&mut console, "hello from the RP2350, {}\n", count);
+        console.delay(&timer, .millis(1000));
+        count = (count + 1).wrap(u32);
+    }
 };

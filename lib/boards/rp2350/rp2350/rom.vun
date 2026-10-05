@@ -17,6 +17,9 @@ code := (a: u8, b: u8) -> u32 { a.to(u32) | (b.to(u32) << 8).wrap(u32) };
 /// The function table's flag for functions of Arm code in the secure state.
 arm_secure: u32 = 1 << 2;
 
+/// `reboot`'s way of restarting the program in flash.
+reboot_normal: u32 = 0;
+
 /// `reboot`'s way of restarting into the USB mass storage and PICOBOOT interfaces.
 reboot_bootsel: u32 = 2;
 
@@ -28,14 +31,18 @@ interface_picoboot: u32 = 2;
 /// `reboot`'s flag to wait for the restart rather than return.
 no_return_on_success: u32 = 0x100;
 
-/// Calls the ROM's `reboot`, returning what it returns where it does.
-reboot := (flags: u32, delay_ms: u32, p0: u32, p1: u32) -> i32 {
+/// The address of the ROM function with the code `wanted`.
+function := (wanted: u32) -> usize {
     lookup := unsafe {
         half := lang.mem.pointer_at(u16, lookup_at).read();
         lang.mem.function_at(Lookup, half.to(usize))
     };
-    found := lookup(code('R', 'B'), arm_secure);
-    call := unsafe { lang.mem.function_at(Reboot, found) };
+    lookup(wanted, arm_secure)
+};
+
+/// Calls the ROM's `reboot`, returning what it returns where it does.
+reboot := (flags: u32, delay_ms: u32, p0: u32, p1: u32) -> i32 {
+    call := unsafe { lang.mem.function_at(Reboot, function(code('R', 'B'))) };
     call(flags, delay_ms, p0, p1)
 };
 
