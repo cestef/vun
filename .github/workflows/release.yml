@@ -24,7 +24,7 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: sudo apt-get update && sudo apt-get install -y clang lld
+      - run: sudo apt-get update && sudo apt-get install -y clang lld gcc-arm-none-eabi libnewlib-arm-none-eabi
       - run: cargo xtask check
       - run: cargo clippy --all-targets
       - run: cargo nextest run
