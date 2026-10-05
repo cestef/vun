@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.int</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#Integer">Integer</a></li><li><a href="#Narrow">Narrow</a></li><li><a href="#width">width</a></li><li><a href="#Word">Word</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.int.html">int</a></h1><p>Integer methods (spec 04, section 3): narrowing to another integer type, an impl for every
+<code>Int(r)</code> over the primitives of <a href="lang.int.html"><code>lang.int</code></a>.</p>
+<h2>Namespaces</h2><ul class="namespaces"><li><a href="std.int.bits.html"><code>std.int.bits</code></a><p>Integers as the bits of their storage (spec 04, rule 8): rotating them and counting them. A signed value is its two's complement, so every <code>Int(r)</code> is rotated and counted by its word.</p>
+</li><li><a href="std.int.bytes.html"><code>std.int.bytes</code></a><p>Integers as the bytes of their storage (spec 04, rule 7): <code>to_le</code> and <code>to_be</code> give the bytes of a value, <code>from_le</code> and <code>from_be</code> read a value from them. A signed value is its two's complement, so every <code>Int(r)</code> is read and written alike.</p>
+</li><li><a href="std.int.tests.html"><code>std.int.tests</code></a><p>Tests of <a href="std.int.html"><code>std.int</code></a>: integers read from text.</p>
+</li></ul><section id="Integer" class="struct"><h3><span class="kind">struct</span> <a href="#Integer">Integer</a></h3><pre><code>Integer := interface(($Self: type) -&gt; type { struct { ... } })</code></pre><p>The types that are integers: every <code>Int(r)</code>, and so what narrowing brings a value into.</p>
+</section><section id="Narrow" class="struct"><h3><span class="kind">struct</span> <a href="#Narrow">Narrow</a></h3><pre><code>Narrow := interface(($Self: type) -&gt; type { struct { ... } })</code></pre><p>Bringing a value into a narrower type.</p>
+<div class="members"><section id="Narrow.to" class="function"><h3><span class="kind">function</span> <a href="#Narrow.to">to</a></h3><pre><code>to: (x: Self, $T: Integer) -&gt; T = _</code></pre><p>Traps when the value is outside <code>T</code>.</p>
+</section><section id="Narrow.wrap" class="function"><h3><span class="kind">function</span> <a href="#Narrow.wrap">wrap</a></h3><pre><code>#[panic.never]
+wrap: (x: Self, $T: Integer) -&gt; T = _</code></pre><p>Reduces the value modulo the size of <code>T</code>.</p>
+</section><section id="Narrow.sat" class="function"><h3><span class="kind">function</span> <a href="#Narrow.sat">sat</a></h3><pre><code>#[panic.never]
+sat: (x: Self, $T: Integer) -&gt; T = _</code></pre><p>Clamps the value to the bounds of <code>T</code>.</p>
+</section><section id="Narrow.try_to" class="function"><h3><span class="kind">function</span> <a href="#Narrow.try_to">try_to</a></h3><pre><code>#[panic.never]
+try_to: (x: Self, $T: Integer) -&gt; ?T = _</code></pre><p><code>.none</code> when the value is outside <code>T</code>.</p>
+</section></div></section><section id="width" class="function"><h3><span class="kind">function</span> <a href="#width">width</a></h3><pre><code>width := ($r: lang.Range) -&gt; Int(1..)</code></pre><p>How many bits the storage of <code>Int(r)</code> has.</p>
+</section><section id="Word" class="function"><h3><span class="kind">function</span> <a href="#Word">Word</a></h3><pre><code>Word := ($r: lang.Range) -&gt; type</code></pre><p>The unsigned integer as wide as the storage of <code>Int(r)</code>, whose bits a signed value shares
+as its two's complement.</p>
+</section></main></body></html>

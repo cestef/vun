@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>lang.float.soft.arith</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#add">add</a></li><li><a href="#sub">sub</a></li><li><a href="#mul">mul</a></li><li><a href="#div">div</a></li></ul></nav><main><h1><a href="lang.html">lang</a>.<a href="lang.float.html">float</a>.<a href="lang.float.soft.html">soft</a>.<a href="lang.float.soft.arith.html">arith</a></h1><p>IEEE 754 arithmetic written with integers, for a processor computing no float of the type
+(<a href="lang.lower.html#soft"><code>lang.lower.soft</code></a>): each operand taken apart through <a href="lang.float.html#bits"><code>lang.float.bits</code></a>, the result exact in
+integers twice as wide as the float, then rounded once to nearest, ties to even; a NaN result
+is the canonical NaN, as the instructions' are made (spec 04, section 2).</p>
+<section id="add" class="function"><h3><span class="kind">function</span> <a href="#add">add</a></h3><pre><code>add := ($T: type, a: T, b: T) -&gt; T</code></pre><p><code>a + b</code>.</p>
+</section><section id="sub" class="function"><h3><span class="kind">function</span> <a href="#sub">sub</a></h3><pre><code>sub := ($T: type, a: T, b: T) -&gt; T</code></pre><p><code>a - b</code>: <code>a</code> plus <code>b</code> negated.</p>
+</section><section id="mul" class="function"><h3><span class="kind">function</span> <a href="#mul">mul</a></h3><pre><code>mul := ($T: type, a: T, b: T) -&gt; T</code></pre><p><code>a · b</code>.</p>
+</section><section id="div" class="function"><h3><span class="kind">function</span> <a href="#div">div</a></h3><pre><code>div := ($T: type, a: T, b: T) -&gt; T</code></pre><p><code>a / b</code>: the dividend's significand shifted up past the divisor's, both with their leading
+one at bit <code>M</code>, so the integer quotient holds <code>M + 3</code> bits at least, a remainder kept sticky.</p>
+</section></main></body></html>

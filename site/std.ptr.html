@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.ptr</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#to">to</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.ptr.html">ptr</a></h1><p>Raw pointers (spec 05, section 5): methods of every <code>*T</code> over the primitives of <a href="lang.mem.html"><code>lang.mem</code></a>.
+Creating a pointer and reading its address are safe; the rest is <code>unsafe</code> to call, and each
+body vouches for the primitive it calls.</p>
+<section id="to" class="function"><h3><span class="kind">function</span> <a href="#to">to</a></h3><pre><code>#[panic.never]
+to := ($T: type, r: &amp;T) -&gt; *T</code></pre><p>A pointer to what <code>r</code> borrows.</p>
+</section></main></body></html>

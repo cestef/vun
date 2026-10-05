@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.lints.suspicious</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#level">level</a></li><li><a href="#shadowing">shadowing</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.lints.html">lints</a>.<a href="std.lints.suspicious.html">suspicious</a></h1><p>Code that is most likely wrong.</p>
+<section id="level" class="value"><h3><span class="kind">value</span> <a href="#level">level</a></h3><pre><code>level: lang.lint.Level = .warn</code></pre><p>The level of the group's lints unless a build or an attribute sets another (spec 10,
+section 4).</p>
+</section><section id="shadowing" class="value"><h3><span class="kind">value</span> <a href="#shadowing">shadowing</a></h3><pre><code>#[lint.define]
+shadowing := lang.lint.Lint{ .group = .suspicious, .doc = std.meta.embed("suspicious/shadowing.md"), .local = (cx: &amp;mut lang.lint.Cx, l: lang.lint.Local) { if l.tests and l.hides { msg := "the pattern binds a new local `" ++ l.name ++ "`, matching any value"; cx.report(l.origin, msg, &amp;[]); } }, }</code></pre><p>A binder of a pattern testing a value, named as a constant from outside the file: the pattern
+binds a new local, matching any value, where comparing with the constant was likely meant
+(<code>.ok(true)</code> matches every <code>.ok</code>).</p>
+</section></main></body></html>

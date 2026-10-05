@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.mem</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#Own">Own</a></li><li><a href="#copy">copy</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.mem.html">mem</a></h1><p>Memory: allocators, owning pointers, copying, and <code>Arena</code>, which hands out <code>&amp;mut T</code> tied to
+the arena borrow so that trees are ordinary scoped values (decision 40, spec 05, section 4).</p>
+<h2>Namespaces</h2><ul class="namespaces"><li><a href="std.mem.alloc.html"><code>std.mem.alloc</code></a><p>Allocators are capabilities (spec 07, section 1).</p>
+</li></ul><section id="Own" class="function"><h3><span class="kind">function</span> <a href="#Own">Own</a></h3><pre><code>Own := ($T: type) -&gt; type</code></pre><p>An owning pointer (spec 05, section 5): linear, free, and read through with <code>.*</code> and <code>.</code>.
+Freeing it needs the allocator it came from.</p>
+</section><section id="copy" class="function"><h3><span class="kind">function</span> <a href="#copy">copy</a></h3><pre><code>copy := ($T: type, to: &amp;mut [T], from: &amp;[T])</code></pre><p>Copies <code>from</code> over <code>to</code>, which must be as long: a difference is a bug, not a short copy.</p>
+</section></main></body></html>

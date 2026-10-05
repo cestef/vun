@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.check.stack</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#enabled">enabled</a></li><li><a href="#exports">exports</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.check.html">check</a>.<a href="std.check.stack.html">stack</a></h1><p>The checks of the stack (spec 13, section 8.7): the export of a runtime that checks the frames of
+its stack and nothing else, over the bounds it knows.</p>
+<section id="enabled" class="function"><h3><span class="kind">function</span> <a href="#enabled">enabled</a></h3><pre><code>enabled := () -&gt; bool</code></pre><p>Whether the program is built with the stack checked.</p>
+</section><section id="exports" class="struct"><h3><span class="kind">struct</span> <a href="#exports">exports</a></h3><pre><code>exports := ($low: () -&gt; usize, $high: () -&gt; usize, $end: (status: std.os.Status) -&gt; lang.never) -&gt; type { struct { ... } }</code></pre><p>The export of a runtime that checks only the frames of the stack, whose bounds <code>low</code> and <code>high</code>
+give, and which ends the program with <code>status</code> when a frame reaches past them or into the
+bytes <a href="lang.check.html#stack_reserve"><code>lang.check.stack_reserve</code></a> keeps at the bottom for the report.</p>
+<div class="members"><section id="exports.stack" class="function"><h3><span class="kind">function</span> <a href="#exports.stack">stack</a></h3><pre><code>#[link.export(lang.check.symbols.stack)]
+stack := (frame: usize, site: u32)</code></pre></section></div></section></main></body></html>

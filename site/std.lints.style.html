@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.lints.style</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#level">level</a></li><li><a href="#unused">unused</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.lints.html">lints</a>.<a href="std.lints.style.html">style</a></h1><p>Code that is written in an unusual way.</p>
+<section id="level" class="value"><h3><span class="kind">value</span> <a href="#level">level</a></h3><pre><code>level: lang.lint.Level = .warn</code></pre><p>The level of the group's lints unless a build or an attribute sets another (spec 10,
+section 4).</p>
+</section><section id="unused" class="value"><h3><span class="kind">value</span> <a href="#unused">unused</a></h3><pre><code>#[lint.define]
+unused := lang.lint.Lint{ .group = .style, .doc = std.meta.embed("style/unused.md"), .local = (cx: &amp;mut lang.lint.Cx, l: lang.lint.Local) { if !l.used and !l.param { // Discarding a value may end it earlier than its binding would: shown, applied on request. fix: lang.lint.Fix = .{ .msg = "discard it with `_`", .safety = .\unsafe, .text = "_" }; cx.report(l.origin, "the local `" ++ l.name ++ "` is never used", &amp;[fix]); } }, }</code></pre><p>A local binding the code never names: left over, or a mistake, another name read where it was
+meant. Parameters are not reported: they belong to the function's signature, which callers
+name and interfaces fix.</p>
+</section></main></body></html>

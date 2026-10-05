@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.os.windows.command_line</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#space">space</a></li><li><a href="#tab">tab</a></li><li><a href="#quote">quote</a></li><li><a href="#backslash">backslash</a></li><li><a href="#Sink">Sink</a></li><li><a href="#separates">separates</a></li><li><a href="#skip">skip</a></li><li><a href="#run">run</a></li><li><a href="#split">split</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.os.html">os</a>.<a href="std.os.windows.html">windows</a>.<a href="std.os.windows.command_line.html">command_line</a></h1><p>The command line of a Windows process: one string of UTF-16, which a program splits into its
+arguments itself. The rules are the C runtime's, as Microsoft documents them:</p>
+<ul>
+<li>The program's name is up to the first space or tab, or, when it starts with a double quote,
+up to the next one; nothing in it is escaped.</li>
+<li>The other arguments are separated by spaces and tabs, which a double quote protects: a
+quote starts a quoted stretch and the next one ends it, neither being part of the argument,
+and two quotes together inside a stretch are one quote of the argument.</li>
+<li>Backslashes are themselves, except before a double quote: a run of them there stands for
+half as many, and if the run is odd the quote is one of the argument, else it starts or
+ends a stretch.</li>
+</ul>
+<section id="space" class="value"><h3><span class="kind">value</span> <a href="#space">space</a></h3><pre><code>space := 0x20</code></pre></section><section id="tab" class="value"><h3><span class="kind">value</span> <a href="#tab">tab</a></h3><pre><code>tab := 0x09</code></pre></section><section id="quote" class="value"><h3><span class="kind">value</span> <a href="#quote">quote</a></h3><pre><code>quote := 0x22</code></pre></section><section id="backslash" class="value"><h3><span class="kind">value</span> <a href="#backslash">backslash</a></h3><pre><code>backslash := 0x5C</code></pre></section><section id="Sink" class="struct"><h3><span class="kind">struct</span> <a href="#Sink">Sink</a></h3><pre><code>Sink := struct { ... }</code></pre><p>Where an argument's text is written.</p>
+<div class="members"><section id="Sink.of" class="function"><h3><span class="kind">function</span> <a href="#Sink.of">of</a></h3><pre><code>of := (bytes: &amp;mut [u8]) -&gt; Sink</code></pre><p>A sink writing to the front of <code>bytes</code>.</p>
+</section><section id="Sink.len" class="function"><h3><span class="kind">function</span> <a href="#Sink.len">len</a></h3><pre><code>len := (self: &amp;Sink) -&gt; usize</code></pre><p>How many bytes it has written.</p>
+</section><section id="Sink.put" class="function"><h3><span class="kind">function</span> <a href="#Sink.put">put</a></h3><pre><code>put := (self: &amp;mut Sink, cp: u32) -&gt; Option(())</code></pre><p>Writes <code>cp</code> in UTF-8; none where it does not fit.</p>
+</section></div></section><section id="separates" class="function"><h3><span class="kind">function</span> <a href="#separates">separates</a></h3><pre><code>separates := (cp: u32) -&gt; bool</code></pre><p>Whether <code>cp</code> separates arguments.</p>
+</section><section id="skip" class="function"><h3><span class="kind">function</span> <a href="#skip">skip</a></h3><pre><code>skip := (rest: &amp;[u16]) -&gt; &amp;[u16]</code></pre><p><code>rest</code> without the separators before its first other unit.</p>
+</section><section id="run" class="function"><h3><span class="kind">function</span> <a href="#run">run</a></h3><pre><code>run := (rest: &amp;[u16], unit: u32) -&gt; usize</code></pre><p>How many units from the start of <code>rest</code> are <code>unit</code>.</p>
+</section><section id="split" class="function"><h3><span class="kind">function</span> <a href="#split">split</a></h3><pre><code>split := (line: &amp;[u16], bytes: &amp;mut [u8], starts: &amp;mut [usize]) -&gt; Option(usize)</code></pre><p>Splits <code>line</code> into arguments written to <code>bytes</code>, each followed by a zero byte, with where each
+starts in <code>starts</code>; how many there are. A unit that stands for no character, a surrogate
+without its partner, which the name of a file on Windows may hold, is written as
+<a href="std.text.utf8.html#replacement"><code>std.text.utf8.replacement</code></a>. None where <code>bytes</code> or <code>starts</code> is too short.</p>
+</section></main></body></html>

@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.lints.layout</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#level">level</a></li><li><a href="#pub_doc">pub_doc</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.lints.html">lints</a>.<a href="std.lints.layout.html">layout</a></h1><p>Organization of namespaces, files and directories (spec 10, section 5).</p>
+<section id="level" class="value"><h3><span class="kind">value</span> <a href="#level">level</a></h3><pre><code>level: lang.lint.Level = .warn</code></pre><p>The level of the group's lints unless a build or an attribute sets another (spec 10,
+section 4).</p>
+</section><section id="pub_doc" class="value"><h3><span class="kind">value</span> <a href="#pub_doc">pub_doc</a></h3><pre><code>#[lint.define]
+pub_doc := lang.lint.Lint{ .group = .layout, .default = .some(.allow), .doc = std.meta.embed("layout/pub_doc.md"), .decl = (cx: &amp;mut lang.lint.Cx, d: lang.lint.Decl) { if d.public and !d.documented { cx.report( d.origin, "the public " ++ d.binds.noun() ++ " `" ++ d.name ++ "` has no doc comment", &amp;[] ); } }, }</code></pre><p>A declaration any package sees says what it is in a doc comment. Allowed unless a build asks
+for it, as libraries publishing an interface do.</p>
+</section></main></body></html>

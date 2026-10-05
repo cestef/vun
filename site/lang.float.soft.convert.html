@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>lang.float.soft.convert</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#from_int">from_int</a></li><li><a href="#to_int">to_int</a></li><li><a href="#convert">convert</a></li></ul></nav><main><h1><a href="lang.html">lang</a>.<a href="lang.float.html">float</a>.<a href="lang.float.soft.html">soft</a>.<a href="lang.float.soft.convert.html">convert</a></h1><p>Conversions written with integers, for a processor that does not convert between the types
+(<a href="lang.lower.html#soft"><code>lang.lower.soft</code></a>): a float it lacks, or an integer wider than an address. Each takes the
+encoding apart through <a href="lang.float.html#bits"><code>lang.float.bits</code></a> and rounds once, to nearest, ties to even, as the
+primitives of <a href="lang.float.html"><code>lang.float</code></a> say.</p>
+<section id="from_int" class="function"><h3><span class="kind">function</span> <a href="#from_int">from_int</a></h3><pre><code>from_int := ($r: lang.Range, x: Int(r), $T: type) -&gt; T</code></pre><p>The float of type <code>T</code> nearest the integer <code>x</code>.</p>
+</section><section id="to_int" class="function"><h3><span class="kind">function</span> <a href="#to_int">to_int</a></h3><pre><code>to_int := ($T: type, x: T, $U: type) -&gt; U</code></pre><p><code>x</code> rounded toward zero and clamped to the bounds of the integer type <code>U</code>; a NaN gives 0,
+clamped likewise.</p>
+</section><section id="convert" class="function"><h3><span class="kind">function</span> <a href="#convert">convert</a></h3><pre><code>convert := ($T: type, x: T, $U: type) -&gt; U</code></pre><p>The float of type <code>U</code> nearest <code>x</code>, of type <code>T</code>; a NaN gives the canonical NaN.</p>
+</section></main></body></html>

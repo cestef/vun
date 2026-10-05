@@ -1,0 +1,14 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.os.memory</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#exports">exports</a></li><li><a href="#forward">forward</a></li><li><a href="#backward">backward</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.os.html">os</a>.<a href="std.os.memory.html">memory</a></h1><p>The functions of C's <code>string.h</code> a freestanding C program must provide, which a C compiler
+calls for copies and fills of its own: a runtime with no C library holds them. Copies and
+fills are written in assembly: a loop in Vun would be read back by the C compiler as a call of
+the function it is.</p>
+<section id="exports" class="struct"><h3><span class="kind">struct</span> <a href="#exports">exports</a></h3><pre><code>exports := struct { ... }</code></pre><p>The exports, which a runtime holds: <code>memory := std.os.memory.exports</code>.</p>
+<div class="members"><section id="exports.copy" class="function"><h3><span class="kind">function</span> <a href="#exports.copy">copy</a></h3><pre><code>#[link.export("memcpy"), abi.c]
+copy := (to: *u8, from: *u8, bytes: usize) -&gt; *u8</code></pre></section><section id="exports.move" class="function"><h3><span class="kind">function</span> <a href="#exports.move">move</a></h3><pre><code>#[link.export("memmove"), abi.c]
+move := (to: *u8, from: *u8, bytes: usize) -&gt; *u8</code></pre><p>Copies from the last byte down where <code>to</code> overlaps the end of <code>from</code>, else up.</p>
+</section><section id="exports.fill" class="function"><h3><span class="kind">function</span> <a href="#exports.fill">fill</a></h3><pre><code>#[link.export("memset"), abi.c]
+fill := (to: *u8, value: i32, bytes: usize) -&gt; *u8</code></pre></section><section id="exports.compare" class="function"><h3><span class="kind">function</span> <a href="#exports.compare">compare</a></h3><pre><code>#[link.export("memcmp"), abi.c]
+compare := (a: *u8, b: *u8, bytes: usize) -&gt; i32</code></pre><p>The sign of the first byte that differs, as unsigned bytes, 0 where none does.</p>
+</section></div></section><section id="forward" class="function"><h3><span class="kind">function</span> <a href="#forward">forward</a></h3><pre><code>forward := (to: usize, from: usize, bytes: usize)</code></pre><p>Copies <code>bytes</code> from <code>from</code> to <code>to</code>, from the first byte up.</p>
+</section><section id="backward" class="function"><h3><span class="kind">function</span> <a href="#backward">backward</a></h3><pre><code>backward := (to: usize, from: usize, bytes: usize)</code></pre><p>Copies <code>bytes</code>, at least one, from <code>from</code> to <code>to</code>, from the last byte down.</p>
+</section></main></body></html>
