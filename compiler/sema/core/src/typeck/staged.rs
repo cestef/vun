@@ -101,7 +101,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let expected = self.expected(expr);
         self.tests(branch);
         let selected = self.evaluating().select(branch);
-        match self.reported(branch, selected) {
+        match self.reported(expr, selected) {
             Ok(Selected::Block(block)) => self.block_value(block, expected),
             Ok(Selected::Tested { block, pat, bound }) => {
                 let mut value = None;

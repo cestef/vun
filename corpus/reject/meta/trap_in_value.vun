@@ -1,0 +1,5 @@
+//! A trap in a `$` form that is a declaration's value is reported once, whether the declaration's check
+//! or the form's typing finds it first (spec 03, section 7).
+
+broken := () -> bool { assert(false); true }; //~ comptime.trap
+picked: u32 = $if broken() { 1 } else { 2 };
