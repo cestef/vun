@@ -63,7 +63,8 @@ impl<'a, 'db> Literal<'a, 'db> {
             ExprKind::Struct(_) => !self.namespace(),
             ExprKind::Call { callee, .. } => {
                 let interface = Value::Primitive(Primitive::Lang(Lang::interface));
-                self.env.eval(*callee).is_ok_and(|v| v == interface)
+                self.env.parsed.hir.path(*callee).is_some()
+                    && self.env.eval(*callee).is_ok_and(|v| v == interface)
             }
             ExprKind::Enum { .. } | ExprKind::FnType { .. } => true,
             ExprKind::Fn { .. } => self.gives_type(),

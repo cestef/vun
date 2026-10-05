@@ -235,8 +235,12 @@ impl Visitor for Walk<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         match &hir.exprs[expr].kind {
+            // Only a path names a function worth knowing; any other callee, a method called on a
+            // call included, is not run.
             ExprKind::Call { callee, .. } => {
-                if let Ok(value) = self.env.eval(*callee) {
+                if hir.path(*callee).is_some()
+                    && let Ok(value) = self.env.eval(*callee)
+                {
                     self.push(Kind::Call { callee: value }, hir.exprs[expr].origin);
                 }
             }

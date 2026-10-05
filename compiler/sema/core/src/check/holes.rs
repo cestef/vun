@@ -62,7 +62,9 @@ impl Checker<'_, '_, '_> {
     }
 
     /// Whether `callee` is `lang.interface`, whose argument's struct holds requirements.
-    pub(super) fn is_interface(&self, callee: vun_hir::tree::ExprId) -> bool {
-        matches!(self.env.eval(callee), Ok(Value::Primitive(Primitive::Lang(Lang::interface))))
+    pub(super) fn is_interface(&self, hir: &Hir, callee: vun_hir::tree::ExprId) -> bool {
+        // Only a path names it; a callee that is a call is not run to find out.
+        hir.path(callee).is_some()
+            && matches!(self.env.eval(callee), Ok(Value::Primitive(Primitive::Lang(Lang::interface))))
     }
 }

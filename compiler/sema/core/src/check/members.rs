@@ -15,15 +15,13 @@ impl Checker<'_, '_, '_> {
     /// known and it is none of them.
     pub(super) fn member(&mut self, hir: &Hir, expr: ExprId) {
         let ExprKind::Member { object, name: Name::Plain(name) } = hir.exprs[expr].kind else { return };
-        if !matches!(hir.exprs[object].kind, ExprKind::Name(_) | ExprKind::Member { .. }) {
-            return;
-        }
+        // Only a path of names can be a namespace; anything else, a call included, is not run.
+        let Some((_, path)) = hir.path(object) else { return };
         let Ok(Value::Namespace(ns)) = self.env.eval(object) else { return };
         let cx = self.env.cx;
         if cx.get::<Declared>(&(ns.clone(), name)).is_some() || !Declared::complete(cx, &ns) {
             return;
         }
-        let Some((_, path)) = hir.path(object) else { return };
         let msg =
             Msg::new().path(path.iter().map(|s| s.as_str())).text(" has no member ").code(name.as_str());
         let mut d = Diagnostic::error(errors::NAMES_UNRESOLVED, msg).at(hir.exprs[expr].origin, None);

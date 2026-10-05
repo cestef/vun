@@ -141,7 +141,7 @@ impl Visitor for Checker<'_, '_, '_> {
             }
         }
         if let ExprKind::Call { callee, .. } = hir.exprs[expr].kind
-            && self.is_interface(callee)
+            && self.is_interface(hir, callee)
         {
             self.interfaces += 1;
             visit::walk_expr(self, hir, expr);
