@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.seq.search`.
 pub const search: Item = Item::new(&["std", "seq", "search"]);
+/// The namespace `std.seq.sort`.
+pub const sort: Item = Item::new(&["std", "seq", "sort"]);
 /// The namespace `std.seq.tests`.
 pub const tests: Item = Item::new(&["std", "seq", "tests"]);
 /// A run of items.

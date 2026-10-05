@@ -1,0 +1,51 @@
+//! Variable-length integers (LEB128): seven bits of the number to a byte, least significant first,
+//! the high bit of a byte set when another follows. A signed number goes by its zigzag, which keeps
+//! small magnitudes short.
+
+/// Why a text is not a variable-length integer.
+Problem := enum {
+    /// The bytes ended in the middle of a number.
+    ended,
+    /// The number does not fit 64 bits.
+    overflow,
+};
+
+/// The bytes a `u64` takes at most.
+longest: usize = 10;
+
+/// What a read gives: the number and how many bytes it took.
+Read := struct { value: u64, len: usize };
+
+/// Writes `value`.
+write := ($W: std.fmt.Writer, w: &mut W, value: u64) -> Result((), W.Error) {
+    mut rest := value;
+    for rest >= 0x80 {
+        w.write_all(&[(rest & 0x7f).to(u8) | 0x80])?;
+        rest = rest >> 7;
+    }
+    w.write_all(&[rest.to(u8)])
+};
+
+/// The number at the start of `bytes`.
+read := (bytes: &[u8]) -> Result(Read, Problem) {
+    mut value: u64 = 0;
+    for at in 0..bytes.len() {
+        if at >= longest { return .err(.overflow); }
+        part := (bytes[at] & 0x7f).to(u64);
+        shift: Int(0..64) = (7 * at).to(Int(0..64));
+        // The tenth byte holds the last bit of a `u64`.
+        if shift == 63 and part > 1 { return .err(.overflow); }
+        value = (value | (part << shift)).wrap(u64);
+        if bytes[at] & 0x80 == 0 { return .ok(.{ .value = value, .len = at + 1 }); }
+    }
+    .err(.ended)
+};
+
+/// The unsigned number that stands for `value`: 0, -1, 1, -2 ... as 0, 1, 2, 3 ...
+zigzag := (value: i64) -> u64 {
+    bits := value.wrap(u64);
+    ((bits << 1).wrap(u64)) ^ (0 - (bits >> 63)).wrap(u64)
+};
+
+/// The signed number `zigzag` made `value` of.
+unzigzag := (value: u64) -> i64 { ((value >> 1) ^ (0 - (value & 1)).wrap(u64)).wrap(i64) };

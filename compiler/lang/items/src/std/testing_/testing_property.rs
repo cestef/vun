@@ -22,8 +22,6 @@ pub const tries: Item = Item::new(&["std", "testing", "property", "tries"]);
 /// A stream of choices, each a `u64` at most a bound: those recorded to replay first, then drawn
 /// from a seeded generator, or 0 where it replays only; each recorded as taken.
 pub const Choices: Item = Item::new(&["std", "testing", "property", "Choices"]);
-/// The next value of the generator whose state is `state`: splitmix64.
-pub const next: Item = Item::new(&["std", "testing", "property", "next"]);
 /// How a type's values are generated its own way, rather than by reflection (spec 11,
 /// section 2).
 pub const Arbitrary: Item = Item::new(&["std", "testing", "property", "Arbitrary"]);

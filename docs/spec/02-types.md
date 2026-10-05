@@ -61,6 +61,11 @@ like `lang.Int`, so impls target them: `xs.len()` is the impl `std.seq.Sequence`
 primitive `lang.mem.len`. A slice's size is known only at run time, so a binding holding one by
 value, as `ys := xs[1..3]`, is `types.slice_value`, whose fix borrows it (`&xs[1..3]`).
 
+A borrow of an array is a borrow of a slice only of items stored alike: a temporary takes the
+item type the slice expects (`&[1, 2, 300]` where a `&[u32]` is expected holds `u32` items, as does
+`xs == [1, 2, 300]` for `xs: [3]u32`), but a place of items of a narrower range, `[3]Int(1..=300)`
+of 2-byte items, is `types.mismatch` where a `&[u32]` is expected, since the borrow converts nothing.
+
 **Identity.** Every `struct` and `enum` literal is a new, nominal type, identified by where it is
 written and by the compile-time arguments of the evaluation that produced it. Two identical
 literals in different declarations are different types, so `NodeId := struct { raw: u32 }` and

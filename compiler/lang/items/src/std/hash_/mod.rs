@@ -2,6 +2,10 @@
 pub mod hash_Fnv;
 pub mod hash_Hash;
 pub mod hash_Hasher;
+pub mod hash_adler32;
+pub mod hash_adler32_Adler32;
+pub mod hash_crc32;
+pub mod hash_crc32_Crc32;
 pub mod hash_derive_hash;
 pub mod hash_tests;
 pub mod hash_tests_Point;

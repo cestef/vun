@@ -1,0 +1,132 @@
+//! Encodings that cut bytes into groups of 4, 5 or 6 bits (RFC 4648), each group a symbol of an
+//! alphabet that is a power of two long. The three are one rule with a table: the group size, the
+//! alphabet, whether a block of symbols is padded to its full size, and whether letters of either
+//! case decode.
+
+/// Why a text is not the encoding of any bytes.
+Problem := enum {
+    /// The byte at this position is not in the alphabet.
+    symbol(usize),
+    /// The symbols left over at the end cannot be the end of any bytes.
+    length,
+    /// The padding is missing, too long, or where the encoding has none.
+    padding,
+    /// The bits past the last byte are not zero, so the text is not the one the bytes encode to.
+    trailing,
+};
+
+/// Why decoding failed: the text was invalid, or the writer failed.
+Failed := ($E: type) -> type { enum { invalid(Problem), write(E) } };
+
+/// A bit count within a `u32` shift.
+Shift: type = Int(0..32);
+
+Base := struct {
+    bits: Int(4..=6),
+    alphabet: &[u8],
+    padding: ?u8,
+    fold: bool,
+
+    /// How many symbols make the least whole number of bytes: the size of a padded block.
+    block := (self: &Base) -> usize {
+        mut n: usize = 1;
+        for (n * self.bits.to(usize)) % 8 != 0 { n += 1; }
+        n
+    };
+
+    /// The bits of a symbol's group, set.
+    mask := (self: &Base) -> u32 {
+        one: u32 = 1;
+        ((one << self.bits) - 1).wrap(u32)
+    };
+
+    /// Writes `bytes` as symbols, then the padding that completes the last block.
+    encode := (self: &Base, $W: std.fmt.Writer, bytes: &[u8], w: &mut W) -> Result((), W.Error) {
+        mut acc: u32 = 0;
+        mut held: Shift = 0;
+        mut symbols: usize = 0;
+        for byte in bytes {
+            acc = ((acc << 8) | byte.*.to(u32)).wrap(u32);
+            held = (held + 8).to(Shift);
+            for held >= self.bits {
+                held = (held - self.bits).to(Shift);
+                w.write_all(&[self.alphabet[((acc >> held) & self.mask()).to(usize)]])?;
+                symbols += 1;
+            }
+        }
+        if held > 0 {
+            last := (acc << (self.bits - held).to(Shift)) & self.mask();
+            w.write_all(&[self.alphabet[last.to(usize)]])?;
+            symbols += 1;
+        }
+        if .some(pad) = self.padding {
+            for symbols % self.block() != 0 {
+                w.write_all(&[pad])?;
+                symbols += 1;
+            }
+        }
+        .ok(())
+    };
+
+    /// Writes the bytes `text` encodes, which must be as `encode` writes them.
+    decode := (self: &Base, $W: std.fmt.Writer, text: &[u8], w: &mut W) -> Result((), Failed(W.Error)) {
+        mut end := text.len();
+        if .some(pad) = self.padding {
+            for end > 0 and text[end - 1] == pad { end -= 1; }
+            if text.len() % self.block() != 0 { return .err(.invalid(.length)); }
+            if text.len() - end != (self.block() - end % self.block()) % self.block() {
+                return .err(.invalid(.padding));
+            }
+        }
+        mut acc: u32 = 0;
+        mut held: Shift = 0;
+        for at in 0..end {
+            group := match self.alphabet.index_of(&text[at]) {
+                .some(group) => group,
+                .none => match self.folded(text[at]) {
+                    .some(group) => group,
+                    .none => return .err(.invalid(.symbol(at))),
+                },
+            };
+            acc = ((acc << self.bits) | group.to(u32)).wrap(u32);
+            held = (held + self.bits).to(Shift);
+            if held >= 8 {
+                held = (held - 8).to(Shift);
+                w.write_all(&[((acc >> held) & 0xff).to(u8)]).map_err(Failed(W.Error).write)?;
+            }
+        }
+        if held >= self.bits { return .err(.invalid(.length)); }
+        if acc & ((1 << held) - 1) != 0 { return .err(.invalid(.trailing)); }
+        .ok(())
+    };
+
+    /// The group of `symbol` in the other case, where letters of either case decode.
+    folded := (self: &Base, symbol: u8) -> ?usize {
+        if !self.fold { return .none; }
+        lower := std.text.ascii.to_lower(symbol);
+        for i in 0..self.alphabet.len() {
+            if std.text.ascii.to_lower(self.alphabet[i]) == lower { return .some(i); }
+        }
+        .none
+    };
+};
+
+hex := Base{ .bits = 4, .alphabet = "0123456789abcdef", .padding = .none, .fold = true };
+base32 := Base{
+    .bits = 5,
+    .alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+    .padding = .some("="[0]),
+    .fold = true
+};
+base64 := Base{
+    .bits = 6,
+    .alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+    .padding = .some("="[0]),
+    .fold = false,
+};
+base64url := Base{
+    .bits = 6,
+    .alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+    .padding = .none,
+    .fold = false,
+};

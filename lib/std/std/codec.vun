@@ -1,0 +1,20 @@
+//! Codecs: bytes as text in the encodings of RFC 4648 (`Base`: hex, base32, base64) and as
+//! variable-length integers (`varint`). Encoders write to any `std.fmt.Writer` and decoders write
+//! the bytes to one, so none of them needs an allocator. Checksums are `std.hash.crc32` and
+//! `std.hash.adler32`.
+
+/// An encoding that writes a group of `bits` bits of the bytes as one symbol of its alphabet.
+Base: type = std.codec.base.Base;
+/// Why a text is not encoded in a `Base`.
+Problem: type = std.codec.base.Problem;
+/// Why decoding failed: the text was invalid, or the writer failed.
+Failed: ($E: type) -> type = std.codec.base.Failed;
+
+/// Base 16, in lower case; decoding takes either case.
+hex: Base = std.codec.base.hex;
+/// Base 32 with the padding `=`.
+base32: Base = std.codec.base.base32;
+/// Base 64 with the padding `=`.
+base64: Base = std.codec.base.base64;
+/// Base 64 with `-` and `_` in place of `+` and `/`, and no padding.
+base64url: Base = std.codec.base.base64url;

@@ -1,0 +1,65 @@
+//! Tests of `std.rand`: the reference outputs of each generator, and what every `Rng` guarantees.
+
+#[test]
+splitmix64_gives_its_reference_numbers := () {
+    mut g := std.rand.SplitMix64.seeded(0);
+    std.testing.assert(g.next() == 0xE220_A839_7B1D_CDAF);
+    std.testing.assert(g.next() == 0x6E78_9E6A_A1B9_65F4);
+    std.testing.assert(g.next() == 0x06C4_5D18_8009_454F);
+};
+
+#[test]
+pcg32_gives_its_reference_numbers := () {
+    mut g := std.rand.Pcg32.seeded(42, 54);
+    std.testing.assert(g.step() == 0xa15c_02b7);
+    std.testing.assert(g.step() == 0x7b47_f409);
+    std.testing.assert(g.step() == 0xba1d_3330);
+    std.testing.assert(g.step() == 0x83d2_f293);
+    std.testing.assert(g.step() == 0xbfa4_784b);
+    std.testing.assert(g.step() == 0xcbed_606e);
+};
+
+#[test]
+a_seed_fixes_the_numbers := () {
+    mut a := std.rand.Xoshiro256.seeded(7);
+    mut b := std.rand.Xoshiro256.seeded(7);
+    mut c := std.rand.Xoshiro256.seeded(8);
+    std.testing.assert(a.next() == b.next());
+    std.testing.assert(a.next() == b.next());
+    std.testing.assert(a.next() != c.next());
+};
+
+#[test]
+numbers_below_a_bound_stay_below_it_and_reach_all := () {
+    mut g := std.rand.Xoshiro256.seeded(1);
+    mut seen: [10]bool = [false; 10];
+    for _ in 0..1000 {
+        n := g.below(10);
+        std.testing.assert(n < 10);
+        seen[n.to(usize)] = true;
+    }
+    for hit in seen { std.testing.assert(hit); }
+    std.testing.assert(g.below(1) == 0);
+};
+
+#[test]
+a_shuffle_keeps_the_items := () {
+    mut g := std.rand.SplitMix64.seeded(3);
+    mut xs: [20]u8 = [0; 20];
+    for i in 0..20 { xs[i] = i.to(u8); }
+    g.shuffle(u8, &mut xs);
+    std.testing.assert(xs != [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+    xs.sort();
+    for i in 0..20 { std.testing.assert(xs[i] == i.to(u8)); }
+};
+
+#[test]
+bytes_are_filled_and_coins_fall_both_ways := () {
+    mut g := std.rand.Pcg32.seeded(1, 1);
+    mut bytes: [13]u8 = [0; 13];
+    g.fill(&mut bytes);
+    std.testing.assert(bytes != [0; 13]);
+    mut heads: usize = 0;
+    for _ in 0..200 { if g.flip() { heads += 1; } }
+    std.testing.assert(heads > 50 and heads < 150);
+};

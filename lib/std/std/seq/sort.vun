@@ -1,0 +1,103 @@
+//! Ordering a slice in place (spec 05): methods of every `[T]`, and so of every `[n]T`, with no
+//! allocator. Short runs are insertion sorted; longer ones are heap sorted, so no input is slow.
+//! The sort is not stable: items that are equal may change places.
+
+/// The runs this short are insertion sorted.
+short: usize = 16;
+
+impl lang.mem.Slice($T) {
+    /// Exchanges the items at `a` and `b`.
+    swap := (xs: &mut [T], a: usize, b: usize) {
+        held := xs[a];
+        xs[a] = xs[b];
+        xs[b] = held;
+    };
+
+    /// Reverses the order of the items.
+    reverse := (xs: &mut [T]) {
+        mut i: usize = 0;
+        mut j := xs.len();
+        for i + 1 < j {
+            j -= 1;
+            xs.swap(i, j);
+            i += 1;
+        }
+    };
+
+    /// Puts the items in ascending order by `<`.
+    sort := (xs: &mut [T]) { xs.sort_by([] (a: &T, b: &T) { a.* < b.* }); };
+
+    /// Puts the items in the order `less` gives: it holds when its first argument goes before the
+    /// second, and never for two that are equal.
+    sort_by := (xs: &mut [T], $F: lang.ops.Call((&T, &T), bool), less: F) {
+        n := xs.len();
+        if n <= short {
+            xs.insertion(F, less, n);
+            return;
+        }
+        mut start := n / 2;
+        for start > 0 {
+            start -= 1;
+            xs.sift_down(F, less, start, n);
+        }
+        mut end := n;
+        for end > 1 {
+            end -= 1;
+            xs.swap(0, end);
+            xs.sift_down(F, less, 0, end);
+        }
+    };
+
+    /// Whether the items are in the order `less` gives.
+    is_sorted_by := (xs: &[T], $F: lang.ops.Call((&T, &T), bool), less: F) -> bool {
+        for i in 1..xs.len() {
+            if less(&xs[i], &xs[i - 1]) { return false; }
+        }
+        true
+    };
+
+    /// Whether the items are in ascending order by `<`.
+    is_sorted := (xs: &[T]) -> bool { xs.is_sorted_by([] (a: &T, b: &T) { a.* < b.* }) };
+
+    /// Where `item` is in items sorted by `<`, or, if it is not, where it would go to keep them so.
+    binary_search := (xs: &[T], item: &T) -> Result(usize, usize) {
+        mut lo: usize = 0;
+        mut hi := xs.len();
+        for lo < hi {
+            mid: usize = (lo + (hi - lo) / 2).to(usize);
+            if xs[mid] < item.* {
+                lo = (mid + 1).to(usize);
+            } else if item.* < xs[mid] {
+                hi = mid;
+            } else {
+                return .ok(mid);
+            }
+        }
+        .err(lo)
+    };
+
+    /// Sorts the first `n` items by insertion.
+    insertion := (xs: &mut [T], $F: lang.ops.Call((&T, &T), bool), less: F, n: usize) {
+        for i in 1..n {
+            mut j: usize = i;
+            for j > 0 and less(&xs[j], &xs[j - 1]) {
+                before: usize = (j - 1).to(usize);
+                xs.swap(j, before);
+                j = before;
+            }
+        }
+    };
+
+    /// Restores the heap in the first `end` items below `root`, whose children may be out of place.
+    sift_down := (xs: &mut [T], $F: lang.ops.Call((&T, &T), bool), less: F, root: usize, end: usize) {
+        mut at := root;
+        for {
+            mut child: usize = (2 * at + 1).to(usize);
+            if child >= end { return; }
+            if child + 1 < end and less(&xs[child], &xs[child + 1]) { child += 1; }
+            if !less(&xs[at], &xs[child]) { return; }
+            xs.swap(at, child);
+            at = child;
+        }
+    };
+}

@@ -6,7 +6,7 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The state of the generator (splitmix64).
+/// The generator the choices past those replayed are drawn from.
 pub const state: Item = Item::new(&["std", "testing", "property", "Choices", "state"]);
 /// Whether the choices past those replayed are drawn from the generator rather than 0.
 pub const random: Item = Item::new(&["std", "testing", "property", "Choices", "random"]);

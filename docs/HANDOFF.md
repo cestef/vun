@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
@@ -337,9 +337,20 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    destination needs the callee's initialization tracked through the unsafe copy. Lints: the grammar generator still reads a PascalCase table
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
-   over `#[target.require]`.
+   over `#[target.require]`, and the primitive `lang.simd.Scalable` with a target of scalable
+   hardware (decision 480 has `std.simd.Scalable` over `Spec.vector_bits` for now).
 5. Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
+   Added in 481 (proposed): `std.rand`, `std.seq.sort`, `std.codec`, `std.hash.{crc32,adler32}`.
+   Open there: operating system entropy for `std.rand` (`getrandom`, WASI `random_get`, Windows
+   `ProcessPrng`: a runtime symbol on each system), a stable sort (needs a scratch slice or an
+   allocator) and a pattern-defeating quicksort for speed, `HashSet`, `Deque`, `BinaryHeap`, an
+   `ArrayVec` with no allocator, `std.math`, `std.os.{env,process,net}` and directories, and
+   `std.json` reading (the writer exists). Signed bit tricks need `.wrap(uN)` round trips (rule 8):
+   a helper for an arithmetic shift or a sign mask in `std.int` would stop each library
+   rederiving it. `int.does_not_fit`'s help still says "widen `u64`" for a run-time value of
+   another type; `.to(T)` or `.wrap(T)` is the fix it should name. A `mut x := e` takes the range
+   of `e`, so `x -= 1` traps at the range's low end (a loop index starting at `1..`): annotate it.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed
    caches, planned builds, `vun pkg why`. A comptime-heavy benchmark before perf audits.
 8. Refactors: `vun-sema` itself is one dependency cycle (`env`, `eval`, `typeck`, `decl`,

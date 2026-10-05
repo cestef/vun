@@ -1,0 +1,125 @@
+//! Tests of `std.codec`: the vectors of RFC 4648, strictness of decoding, varints.
+
+Slab: type = std.text.Slab(64);
+Failed: type = std.codec.Failed(std.text.Full);
+
+encoded := (base: &std.codec.Base, bytes: &[u8]) -> Slab {
+    mut out := Slab.empty();
+    base.encode(std.text.Slab(64), bytes, &mut out).expect("room");
+    out
+};
+
+decoded := (base: &std.codec.Base, text: &[u8]) -> Result(Slab, Failed) {
+    mut out := Slab.empty();
+    base.decode(std.text.Slab(64), text, &mut out)?;
+    .ok(out)
+};
+
+problem := (base: &std.codec.Base, text: &[u8]) -> ?std.codec.Problem {
+    match decoded(base, text) {
+        .ok(_) => .none,
+        .err(.invalid(why)) => .some(why),
+        .err(.write(_)) => .none,
+    }
+};
+
+varint_problem := (bytes: &[u8]) -> ?std.codec.varint.Problem {
+    match std.codec.varint.read(bytes) {
+        .ok(_) => .none,
+        .err(why) => .some(why),
+    }
+};
+
+#[test]
+base64_encodes_the_vectors_of_the_rfc := () {
+    b := &std.codec.base64;
+    std.testing.assert(encoded(b, "").bytes() == "");
+    std.testing.assert(encoded(b, "f").bytes() == "Zg==");
+    std.testing.assert(encoded(b, "fo").bytes() == "Zm8=");
+    std.testing.assert(encoded(b, "foo").bytes() == "Zm9v");
+    std.testing.assert(encoded(b, "foob").bytes() == "Zm9vYg==");
+    std.testing.assert(encoded(b, "fooba").bytes() == "Zm9vYmE=");
+    std.testing.assert(encoded(b, "foobar").bytes() == "Zm9vYmFy");
+};
+
+#[test]
+base32_encodes_the_vectors_of_the_rfc := () {
+    b := &std.codec.base32;
+    std.testing.assert(encoded(b, "f").bytes() == "MY======");
+    std.testing.assert(encoded(b, "fo").bytes() == "MZXQ====");
+    std.testing.assert(encoded(b, "foo").bytes() == "MZXW6===");
+    std.testing.assert(encoded(b, "foob").bytes() == "MZXW6YQ=");
+    std.testing.assert(encoded(b, "fooba").bytes() == "MZXW6YTB");
+    std.testing.assert(encoded(b, "foobar").bytes() == "MZXW6YTBOI======");
+};
+
+#[test]
+hex_encodes_in_lower_case_and_decodes_either := () {
+    b := &std.codec.hex;
+    std.testing.assert(encoded(b, "foobar").bytes() == "666f6f626172");
+    std.testing.assert(decoded(b, "666F6f626172").expect("valid").bytes() == "foobar");
+};
+
+#[test]
+base64url_uses_its_alphabet_and_no_padding := () {
+    b := &std.codec.base64url;
+    bytes: [2]u8 = [0xfb, 0xff];
+    std.testing.assert(encoded(b, &bytes).bytes() == "-_8");
+};
+
+#[test]
+decoding_gives_back_what_was_encoded := () {
+    bytes: [5]u8 = [0, 255, 16, 7, 128];
+    b64 := &std.codec.base64;
+    b32 := &std.codec.base32;
+    std.testing.assert(decoded(b64, encoded(b64, &bytes).bytes()).expect("valid").bytes() == &bytes);
+    std.testing.assert(decoded(b32, encoded(b32, &bytes).bytes()).expect("valid").bytes() == &bytes);
+};
+
+#[test]
+decoding_refuses_what_encoding_does_not_write := () {
+    b := &std.codec.base64;
+    std.testing.assert(problem(b, "Zm9!") == Option(std.codec.Problem).some(.symbol(3)));
+    std.testing.assert(problem(b, "Zm9") == Option(std.codec.Problem).some(.length));
+    std.testing.assert(problem(b, "Zg=") == Option(std.codec.Problem).some(.length));
+    std.testing.assert(problem(b, "Zg=A") == Option(std.codec.Problem).some(.symbol(2)));
+    std.testing.assert(problem(b, "Zh==") == Option(std.codec.Problem).some(.trailing));
+    std.testing.assert(problem(&std.codec.base64url, "Zg==") == Option(std.codec.Problem).some(.symbol(2)));
+    std.testing.assert(problem(&std.codec.hex, "abc") == Option(std.codec.Problem).some(.length));
+};
+
+#[test]
+a_writer_that_is_full_fails_the_decoder := () {
+    mut small := std.text.Slab(2).empty();
+    result := std.codec.base64.decode(std.text.Slab(2), "Zm9vYmFy", &mut small);
+    std.testing.assert(result == Result((), std.codec.Failed(std.text.Full)).err(.write(.full)));
+};
+
+#[test]
+varints_hold_seven_bits_a_byte := () {
+    mut out := std.text.Slab(16).empty();
+    std.codec.varint.write(std.text.Slab(16), &mut out, 300).expect("room");
+    std.testing.assert(out.bytes() == &[0xac, 0x02]);
+    read := std.codec.varint.read(out.bytes()).expect("valid");
+    std.testing.assert(read.value == 300 and read.len == 2);
+    std.testing.assert(std.codec.varint.read(&[0x7f]).expect("valid").value == 127);
+};
+
+#[test]
+a_varint_that_is_cut_or_too_big_is_refused := () {
+    std.testing.assert(varint_problem(&[0x80]) == Option(std.codec.varint.Problem).some(.ended));
+    std.testing.assert(varint_problem(&[]) == Option(std.codec.varint.Problem).some(.ended));
+    big: [11]u8 = [0xff; 11];
+    std.testing.assert(varint_problem(&big) == Option(std.codec.varint.Problem).some(.overflow));
+    top: [10]u8 = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01];
+    std.testing.assert(std.codec.varint.read(&top).expect("valid").value == 0xffff_ffff_ffff_ffff);
+};
+
+#[test]
+zigzag_orders_by_magnitude := () {
+    std.testing.assert(std.codec.varint.zigzag(0) == 0);
+    std.testing.assert(std.codec.varint.zigzag(-1) == 1);
+    std.testing.assert(std.codec.varint.zigzag(1) == 2);
+    std.testing.assert(std.codec.varint.zigzag(-2) == 3);
+    std.testing.assert(std.codec.varint.unzigzag(std.codec.varint.zigzag(-1234567)) == -1234567);
+};

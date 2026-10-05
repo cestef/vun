@@ -19,8 +19,8 @@ tries: usize = 1000;
 /// A stream of choices, each a `u64` at most a bound: those recorded to replay first, then drawn
 /// from a seeded generator, or 0 where it replays only; each recorded as taken.
 Choices := struct {
-    /// The state of the generator (splitmix64).
-    state: u64,
+    /// The generator the choices past those replayed are drawn from.
+    state: std.rand.SplitMix64,
     /// Whether the choices past those replayed are drawn from the generator rather than 0.
     random: bool,
     replay: [room]u64,
@@ -30,12 +30,26 @@ Choices := struct {
 
     /// A stream drawing from `seed`.
     seeded := (seed: u64) -> Choices {
-        .{ .state = seed, .random = true, .replay = [0; room], .replayed = 0, .taken = [0; room], .len = 0 }
+        .{
+            .state = std.rand.SplitMix64.seeded(seed),
+            .random = true,
+            .replay = [0; room],
+            .replayed = 0,
+            .taken = [0; room],
+            .len = 0
+        }
     };
 
     /// A stream replaying the first `len` of `choices`, then 0.
     replaying := (choices: &[room]u64, len: usize) -> Choices {
-        .{ .state = 0, .random = false, .replay = choices.*, .replayed = len, .taken = [0; room], .len = 0 }
+        .{
+            .state = std.rand.SplitMix64.seeded(0),
+            .random = false,
+            .replay = choices.*,
+            .replayed = len,
+            .taken = [0; room],
+            .len = 0
+        }
     };
 
     /// The next choice, at most `bound`.
@@ -44,7 +58,7 @@ Choices := struct {
         raw := if self.len < self.replayed {
             self.replay[self.len]
         } else if self.random {
-            next(&mut self.state)
+            self.state.next()
         } else {
             0
         };
@@ -53,17 +67,6 @@ Choices := struct {
         self.len += 1;
         choice
     };
-};
-
-/// The next value of the generator whose state is `state`: splitmix64.
-next := (state: &mut u64) -> u64 {
-    state.* +%= 0x9E37_79B9_7F4A_7C15;
-    mut z := state.*;
-    z = z ^ (z >> 30);
-    z *%= 0xBF58_476D_1CE4_E5B9;
-    z = z ^ (z >> 27);
-    z *%= 0x94D0_49BB_1331_11EB;
-    z ^ (z >> 31)
 };
 
 /// How a type's values are generated its own way, rather than by reflection (spec 11,
@@ -223,9 +226,9 @@ Failing := struct {
 /// `.none` when none trapped, else the first that did, shrunk, with the case it was. Only the
 /// smallest case reports its trap, run once more.
 check := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, count: usize) -> ?(Failing, usize) {
-    mut master := seed;
+    mut master := std.rand.SplitMix64.seeded(seed);
     for case in 0..count {
-        mut c := Choices.seeded(next(&mut master));
+        mut c := Choices.seeded(master.next());
         if .some(trap) = attempt(F, f, sys, &mut c, true) {
             failing: Failing = .{ .taken = c.taken, .len = c.len, .trap = trap, .shrinks = 0 };
             smallest := std.testing.property.shrink.smallest(F, f, sys, failing);

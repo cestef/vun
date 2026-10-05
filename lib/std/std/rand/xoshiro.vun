@@ -1,0 +1,32 @@
+//! xoshiro256**: four words of state, a period of 2^256 - 1. The state must not be all zero, so
+//! a seed is spread over it by `SplitMix64`, which never gives four zeros.
+
+..std.rand.{ Rng, SplitMix64 };
+
+Xoshiro256 := struct {
+    _state: [4]u64,
+
+    /// A generator whose numbers `seed` fixes.
+    seeded := (seed: u64) -> Xoshiro256 {
+        mut seeder := SplitMix64.seeded(seed);
+        .{ ._state = [seeder.step(), seeder.step(), seeder.step(), seeder.step()] }
+    };
+
+    /// The next number.
+    step := (self: &mut Xoshiro256) -> u64 {
+        s := &mut self._state;
+        result := ((s[1] * 5).wrap(u64).rotate_left(7) * 9).wrap(u64);
+        t := (s[1] << 17).wrap(u64);
+        s[2] = s[2] ^ s[0];
+        s[3] = s[3] ^ s[1];
+        s[1] = s[1] ^ s[2];
+        s[0] = s[0] ^ s[3];
+        s[2] = s[2] ^ t;
+        s[3] = s[3].rotate_left(45);
+        result
+    };
+};
+
+impl Rng for Xoshiro256 {
+    next := (self) { self.step() };
+}

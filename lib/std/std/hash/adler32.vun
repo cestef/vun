@@ -1,0 +1,29 @@
+//! Adler-32 (zlib's checksum): two sums modulo 65521, of the bytes and of the first sum after each
+//! byte. Faster than a CRC and weaker on short inputs.
+
+..std.hash.{ Hasher };
+
+/// The largest prime below 2^16.
+modulus: u32 = 65521;
+
+Adler32 := struct {
+    _sum: u32,
+    _weighted: u32,
+
+    /// A checksum of no bytes.
+    init := () -> Adler32 { .{ ._sum = 1, ._weighted = 0 } };
+    /// Takes `bytes` in.
+    update := (self: &mut Adler32, bytes: &[u8]) {
+        for b in bytes {
+            self._sum = (self._sum + b.*.to(u32)) % modulus;
+            self._weighted = (self._weighted + self._sum) % modulus;
+        }
+    };
+    /// The checksum of everything taken in.
+    checksum := (self: &Adler32) -> u32 { ((self._weighted << 16) | self._sum).to(u32) };
+};
+
+impl Hasher for Adler32 {
+    write := (self, bytes) { self.update(bytes); };
+    finish := (self) { self.checksum().to(u64) };
+}

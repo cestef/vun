@@ -1,0 +1,35 @@
+//! PCG-XSH-RR 64/32: a 64-bit linear congruential state, whose output is 32 bits xored, shifted
+//! and rotated. A stream picks one of 2^63 sequences, so two generators on one seed can differ.
+
+..std.rand.{ Rng };
+
+Pcg32 := struct {
+    _state: u64,
+    _increment: u64,
+
+    /// A generator on sequence `stream` whose numbers `seed` fixes.
+    seeded := (seed: u64, stream: u64) -> Pcg32 {
+        mut pcg: Pcg32 = .{ ._state = 0, ._increment = ((stream << 1) | 1).wrap(u64) };
+        pcg.step();
+        pcg._state +%= seed;
+        pcg.step();
+        pcg
+    };
+
+    /// The next 32 bits.
+    step := (self: &mut Pcg32) -> u32 {
+        old := self._state;
+        self._state = (old * 6364136223846793005 + self._increment).wrap(u64);
+        xored := (((old >> 18) ^ old) >> 27).wrap(u32);
+        xored.rotate_right((old >> 59).wrap(Int(0..32)))
+    };
+};
+
+/// Two steps make the 64 bits, the first of them the high half.
+impl Rng for Pcg32 {
+    next := (self) {
+        high := self.step();
+        low := self.step();
+        ((high.to(u64) << 32) | low.to(u64)).wrap(u64)
+    };
+}

@@ -6,6 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.hash.adler32`.
+pub const adler32: Item = Item::new(&["std", "hash", "adler32"]);
+/// The namespace `std.hash.crc32`.
+pub const crc32: Item = Item::new(&["std", "hash", "crc32"]);
 /// The namespace `std.hash.tests`.
 pub const tests: Item = Item::new(&["std", "hash", "tests"]);
 /// Where the bytes of a value are mixed into a hash.

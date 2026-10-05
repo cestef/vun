@@ -12,6 +12,8 @@ pub const build: Item = Item::new(&["std", "build"]);
 pub const check: Item = Item::new(&["std", "check"]);
 /// The namespace `std.cmp`.
 pub const cmp: Item = Item::new(&["std", "cmp"]);
+/// The namespace `std.codec`.
+pub const codec: Item = Item::new(&["std", "codec"]);
 /// The namespace `std.collections`.
 pub const collections: Item = Item::new(&["std", "collections"]);
 /// The namespace `std.diag`.
@@ -48,6 +50,8 @@ pub const panic: Item = Item::new(&["std", "panic"]);
 pub const prelude: Item = Item::new(&["std", "prelude"]);
 /// The namespace `std.ptr`.
 pub const ptr: Item = Item::new(&["std", "ptr"]);
+/// The namespace `std.rand`.
+pub const rand: Item = Item::new(&["std", "rand"]);
 /// The namespace `std.re`.
 pub const re: Item = Item::new(&["std", "re"]);
 /// The namespace `std.result`.

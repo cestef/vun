@@ -1,0 +1,41 @@
+//! CRC-32 (the checksum of Ethernet, zlib and PNG): the remainder of the bytes as a polynomial,
+//! reflected, with the polynomial `0xEDB88320`. It is a checksum against accidents, not a hash
+//! against an adversary.
+
+..std.hash.{ Hasher };
+
+/// The polynomial, bits reversed.
+polynomial: u32 = 0xEDB8_8320;
+
+/// The remainder of each byte, which a step looks up instead of dividing eight times.
+table: [256]u32 = made();
+
+made := () -> [256]u32 {
+    mut out: [256]u32 = [0; 256];
+    for i in 0..256 {
+        mut crc := i.to(u32);
+        for _ in 0..8 {
+            crc = if crc & 1 == 1 { (crc >> 1) ^ polynomial } else { crc >> 1 };
+        }
+        out[i] = crc;
+    }
+    out
+};
+
+Crc32 := struct {
+    _crc: u32,
+
+    /// A checksum of no bytes.
+    init := () -> Crc32 { .{ ._crc = 0xFFFF_FFFF } };
+    /// Takes `bytes` in.
+    update := (self: &mut Crc32, bytes: &[u8]) {
+        for b in bytes { self._crc = table[((self._crc ^ b.*.to(u32)) & 0xff).to(usize)] ^ (self._crc >> 8); }
+    };
+    /// The checksum of everything taken in.
+    checksum := (self: &Crc32) -> u32 { self._crc ^ 0xFFFF_FFFF };
+};
+
+impl Hasher for Crc32 {
+    write := (self, bytes) { self.update(bytes); };
+    finish := (self) { self.checksum().to(u64) };
+}

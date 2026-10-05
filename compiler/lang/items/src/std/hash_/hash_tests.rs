@@ -20,3 +20,15 @@ pub const structs_and_enums_hash_by_their_parts: Item = Item::new(
 pub const options_hash_by_their_variant: Item = Item::new(
     &["std", "hash", "tests", "options_hash_by_their_variant"],
 );
+pub const crc32_matches_the_check_value: Item = Item::new(
+    &["std", "hash", "tests", "crc32_matches_the_check_value"],
+);
+pub const checksums_taken_in_pieces_equal_one_taken_whole: Item = Item::new(
+    &["std", "hash", "tests", "checksums_taken_in_pieces_equal_one_taken_whole"],
+);
+pub const adler32_matches_its_example: Item = Item::new(
+    &["std", "hash", "tests", "adler32_matches_its_example"],
+);
+pub const checksums_are_hashers: Item = Item::new(
+    &["std", "hash", "tests", "checksums_are_hashers"],
+);

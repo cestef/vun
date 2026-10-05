@@ -129,6 +129,10 @@ Traps that cost a session before. Add one when it costs you time.
   build (`plan.stopped`: "a function whose body does not build"); name it as a typed constant
   and put that in the array (`std.build.uf2_drive`).
 
+- A `mut` local declared without a type takes its first value's range, and an update narrows
+  back into it: `mut j := i` for `i in 1..n` is `Int(1..)`, and `j -= 1` traps when it reaches 0.
+  Write `mut j: usize = i`. Conditions do not narrow a mutable place into the loop's body either
+  (`for j > 0 { xs[j - 1] }` is fine, `f(j - 1)` for a `usize` parameter is not).
 - Integer arithmetic is exact, and so are declarations without a type: `first := 0x4002_0000`
   keeps its value's range, where `first: usize = ...` has all of `usize`'s, and adding to it can
   pass the width. A shift of a constant by a run-time amount (`1 << n`, `n: u32`) has no width;

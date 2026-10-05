@@ -72,3 +72,44 @@ an_array_has_the_methods_of_the_slice_of_its_items := () {
     // Its own equality, of arrays of one length.
     std.testing.assert(items == [7, 8, 9]);
 };
+
+#[test]
+items_are_sorted_ascending := () {
+    mut few: [6]i32 = [5, -1, 3, 3, 0, 9];
+    few.sort();
+    std.testing.assert(few == [-1, 0, 3, 3, 5, 9]);
+    mut many: [100]u32 = [0; 100];
+    for i in 0..100 { many[i] = ((i * 37) % 101).to(u32); }
+    std.testing.assert(!many.is_sorted());
+    many.sort();
+    std.testing.assert(many.is_sorted());
+    mut empty: [0]u8 = [];
+    empty.sort();
+};
+
+#[test]
+items_are_sorted_in_the_order_given := () {
+    mut xs: [40]u32 = [0; 40];
+    for i in 0..40 { xs[i] = ((i * 7) % 41).to(u32); }
+    xs.sort_by([] (a: &u32, b: &u32) { a.* > b.* });
+    std.testing.assert(xs.is_sorted_by([] (a: &u32, b: &u32) { a.* > b.* }));
+    std.testing.assert(xs[0] == 40 and xs[39] == 0);
+};
+
+#[test]
+a_slice_is_reversed_and_swapped := () {
+    mut xs: [4]u8 = [1, 2, 3, 4];
+    xs.reverse();
+    std.testing.assert(xs == [4, 3, 2, 1]);
+    xs.swap(0, 3);
+    std.testing.assert(xs == [1, 3, 2, 4]);
+};
+
+#[test]
+a_sorted_slice_is_searched_by_halves := () {
+    xs: [5]u32 = [1, 3, 5, 7, 9];
+    std.testing.assert(xs.binary_search(&7) == Result(usize, usize).ok(3));
+    std.testing.assert(xs.binary_search(&1) == Result(usize, usize).ok(0));
+    std.testing.assert(xs.binary_search(&4) == Result(usize, usize).err(2));
+    std.testing.assert(xs.binary_search(&10) == Result(usize, usize).err(5));
+};

@@ -128,12 +128,14 @@ every `vun test`, and comparisons traced to guide mutations to the values code t
   breakpoint.
 
 All modes emit the same JSON result stream, so editors run single tests the same way everywhere:
-one line per test run, `{"test":{"name":...,"outcome":...}}`, its outcome `"passed"`,
+one line per test run, `{"test":{"name":...,"outcome":...,"nanos":n}}`, its outcome `"passed"`,
 `{"ignored":{"reason":...}}` or
 `{"trapped":{"site":n,"said":{"message":...,"at":{"file":...,"line":...,"column":...}}}}` as the
 program's table says it (`std.trace.Site.of`), or for a property
 `{"falsified":{"trapped":...,"seed":n,"case":n,"shrinks":n}}`, then the totals,
-`{"totals":{"passed":n,"trapped":n,"falsified":n,"ignored":n}}`. The lines are `std.testing.Line` written by
+`{"totals":{"passed":n,"trapped":n,"falsified":n,"ignored":n,"nanos":n}}`. `nanos` is how long the test,
+or the whole run, took by the monotonic clock (`std.time.Stopwatch`), `null` where the system gives the
+program none; `vun test` shows it beside each name and after the totals. The lines are `std.testing.Line` written by
 `std.fmt.json.derive`, read by the driver as `vun_driver::testing::Line`. `vun test` reads the
 program's standard output and error as one stream, so what a test writes, the backtrace of its
 trap included, comes before its line and is reported with it. Unit tests, properties, fuzz

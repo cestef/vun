@@ -1,0 +1,54 @@
+//! Random numbers: an `Rng` answers a `u64` each time it is asked and holds its state, so a
+//! seed fixes everything it gives. These generators are not for secrets. The default methods draw
+//! bounded numbers, bytes and shuffles from `next`, whichever generator gives it.
+
+/// Where random numbers come from.
+Rng := interface(($Self: type) -> type { struct {
+    /// The next 64 random bits.
+    next: (self: &mut Self) -> u64 = _;
+
+    /// A number below `bound`, every one as likely as the others; traps for a `bound` of 0.
+    below := (self: &mut Self, bound: u64) -> u64 {
+        if bound == 0 { lang.panic.fail(.message("rand.below: the bound is 0")); }
+        // The draws below this would make the low numbers likelier.
+        biased := (0 - bound).wrap(u64) % bound;
+        for {
+            draw := self.next();
+            if draw >= biased { return draw % bound; }
+        }
+    };
+
+    /// Whether a fair coin fell heads.
+    flip := (self: &mut Self) -> bool { self.next() >> 63 == 1 };
+
+    /// Fills `into` with random bytes.
+    fill := (self: &mut Self, into: &mut [u8]) {
+        mut at: usize = 0;
+        for at < into.len() {
+            word := self.next();
+            for i in 0..8 {
+                if at < into.len() {
+                    into[at] = (word >> (8 * i)).wrap(u8);
+                    at += 1;
+                }
+            }
+        }
+    };
+
+    /// Puts the items of `xs` in a random order, every order as likely as the others.
+    shuffle := (self: &mut Self, $T: type, xs: &mut [T]) {
+        mut i := xs.len();
+        for i > 1 {
+            j := self.below(i.to(u64)).to(usize);
+            i -= 1;
+            xs.swap(i, j);
+        }
+    };
+} });
+
+/// A generator of one `u64` of state, which any seed starts; the usual way to seed the others.
+SplitMix64: type = std.rand.splitmix.SplitMix64;
+/// A generator of 256 bits of state, fast and with a long period.
+Xoshiro256: type = std.rand.xoshiro.Xoshiro256;
+/// A generator of 64 bits of state that gives 32 bits at a time, light on 32-bit machines.
+Pcg32: type = std.rand.pcg.Pcg32;

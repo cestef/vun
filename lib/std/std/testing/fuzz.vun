@@ -23,21 +23,21 @@ Stream := struct {
     /// Choices replaying this stream mutated by `g`, then drawing from it: a choice set to a
     /// value drawn (half the time), to 0, to the next value or to its half, or the stream cut
     /// short there.
-    mutated := (self: &Stream, g: &mut u64) -> std.testing.Choices {
+    mutated := (self: &Stream, g: &mut std.rand.SplitMix64) -> std.testing.Choices {
         mut taken := self.taken;
         mut len := self.len;
         if len > 0 {
-            at := (std.testing.property.next(g) % len.to(u64)).to(usize);
-            match std.testing.property.next(g) % 8 {
+            at := (g.next() % len.to(u64)).to(usize);
+            match g.next() % 8 {
                 0 => { taken[at] = 0; },
                 1 => { taken[at] +%= 1; },
                 2 => { taken[at] = taken[at] / 2; },
                 3 => { len = at; },
-                _ => { taken[at] = std.testing.property.next(g); },
+                _ => { taken[at] = g.next(); },
             }
         }
         .{
-            .state = std.testing.property.next(g),
+            .state = std.rand.SplitMix64.seeded(g.next()),
             .random = true,
             .replay = taken,
             .replayed = len,
@@ -54,17 +54,17 @@ fuzz := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, runs: u64) -> Resu
     Fuzzed,
     (std.testing.property.Failing, usize)
 ) {
-    mut g := seed;
+    mut g := std.rand.SplitMix64.seeded(seed);
     mut streams: [kept]Stream = [.{ .taken = [0; std.testing.property.room], .len = 0 }; kept];
     mut count: usize = 0;
     mut seen: [lang.cover.size]u8 = [0; lang.cover.size];
     mut flags: usize = 0;
     for run in 0..runs {
         // A new stream one case in four, and until one is kept.
-        mut c := if count == 0 or std.testing.property.next(&mut g) % 4 == 0 {
-            std.testing.Choices.seeded(std.testing.property.next(&mut g))
+        mut c := if count == 0 or g.next() % 4 == 0 {
+            std.testing.Choices.seeded(g.next())
         } else {
-            streams[(std.testing.property.next(&mut g) % count.to(u64)).to(usize)].mutated(&mut g)
+            streams[(g.next() % count.to(u64)).to(usize)].mutated(&mut g)
         };
         clear();
         if .some(trap) = std.testing.property.attempt(F, f, sys, &mut c, true) {
@@ -83,7 +83,7 @@ fuzz := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, runs: u64) -> Resu
         if found > 0 {
             flags += found;
             slot := if count < kept { count } else {
-                (std.testing.property.next(&mut g) % kept.to(u64)).to(usize)
+                (g.next() % kept.to(u64)).to(usize)
             };
             streams[slot] = .{ .taken = c.taken, .len = c.len };
             if count < kept { count += 1; }

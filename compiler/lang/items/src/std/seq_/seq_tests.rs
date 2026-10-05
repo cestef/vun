@@ -24,3 +24,15 @@ pub const the_ends_of_a_slice_are_its_first_and_last_items: Item = Item::new(
 pub const an_array_has_the_methods_of_the_slice_of_its_items: Item = Item::new(
     &["std", "seq", "tests", "an_array_has_the_methods_of_the_slice_of_its_items"],
 );
+pub const items_are_sorted_ascending: Item = Item::new(
+    &["std", "seq", "tests", "items_are_sorted_ascending"],
+);
+pub const items_are_sorted_in_the_order_given: Item = Item::new(
+    &["std", "seq", "tests", "items_are_sorted_in_the_order_given"],
+);
+pub const a_slice_is_reversed_and_swapped: Item = Item::new(
+    &["std", "seq", "tests", "a_slice_is_reversed_and_swapped"],
+);
+pub const a_sorted_slice_is_searched_by_halves: Item = Item::new(
+    &["std", "seq", "tests", "a_sorted_slice_is_searched_by_halves"],
+);
