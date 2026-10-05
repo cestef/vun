@@ -79,6 +79,15 @@ impl<A: Selects> Looked<'_, '_, A> {
         }
     }
 
+    /// Reads `v` in a register, or in a scratch register when it is recomputed where used.
+    fn in_register(&self, needs: &mut Needs, v: Value) {
+        if self.0.recomputed(v).is_none() {
+            needs.read(v, Need::Reg);
+        } else {
+            needs.temps.push(Bank::General);
+        }
+    }
+
     /// Reads `v` in a register, read again after the result is written when `late`, unless it
     /// is recomputed where used, which then takes a scratch register.
     fn read(&self, needs: &mut Needs, v: Value, late: bool) {
@@ -112,13 +121,10 @@ impl<A: Selects> Looked<'_, '_, A> {
                     let ins = [fused.a, fused.b];
                     cx.snippet_needs(snippet, &Args { ins: &ins, out: None, size, cond: None }, needs);
                 }
-                None if kept(cond) => needs.read(cond, Need::Reg),
-                None => {}
+                None => self.in_register(needs, cond),
             },
             Terminator::Switch { value, .. } => {
-                if kept(value) {
-                    needs.read(value, Need::Reg);
-                }
+                self.in_register(needs, value);
                 if A::held(cx, value).is_ok_and(A::narrow) {
                     needs.temps.push(Bank::General);
                 }

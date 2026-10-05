@@ -4,7 +4,7 @@
 
 use vun_asm_x86_64::Reg;
 use vun_codegen::snippet::Args;
-use vun_codegen::{Arch, Need, Needs, Out};
+use vun_codegen::{Arch, Bank, Need, Needs, Out};
 use vun_lir::{Block, Callee, Conv, Inst, Terminator, Value};
 
 use super::select::{Look, Selection};
@@ -75,6 +75,15 @@ impl Look<'_, '_> {
         }
     }
 
+    /// Reads `v` in a register, or in a scratch register when it is recomputed where used.
+    fn in_register(&self, needs: &mut Needs, v: Value) {
+        if self.0.recomputed(v).is_none() {
+            needs.read(v, Need::Reg);
+        } else {
+            needs.temps.push(Bank::General);
+        }
+    }
+
     /// Reads `v` where `need` says, unless it is recomputed where used.
     fn read(&self, needs: &mut Needs, v: Value, need: Need) {
         if self.0.recomputed(v).is_none() {
@@ -93,9 +102,9 @@ impl Look<'_, '_> {
                     let ins = [fused.a, fused.b];
                     cx.snippet_needs(CMP, &Args { ins: &ins, out: None, size, cond: None }, needs);
                 }
-                None => self.read(needs, cond, Need::Reg),
+                None => self.in_register(needs, cond),
             },
-            Terminator::Switch { value, .. } => self.read(needs, value, Need::Reg),
+            Terminator::Switch { value, .. } => self.in_register(needs, value),
             Terminator::Return(Some(v)) => match cx.state.passing.ret {
                 Ret::Reg(Carrier::Int(r)) => self.read(needs, v, Need::Fixed(X86::preg(r))),
                 Ret::Reg(Carrier::Float(_)) => self.read(needs, v, Need::Any),
