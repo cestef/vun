@@ -3,6 +3,8 @@
 //! that interface's `resume` (the table `iteration`). Also the signatures of function literals
 //! and how long a call holds each parameter's borrow.
 
+use std::sync::Arc;
+
 use vun_desugar::{Borrow, CALLS, Extent, ITERATION};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
@@ -39,7 +41,7 @@ impl Env<'_, '_> {
                     name: hir.binders[binder].name,
                     interface,
                 };
-                self.bindings.insert(binder, Value::Type(TyKind::Param(param).intern()));
+                Arc::make_mut(&mut self.bindings).insert(binder, Value::Type(TyKind::Param(param).intern()));
             }
         }
         self

@@ -92,14 +92,14 @@ pub struct Staging {
 pub struct Instantiation {
     pub f: Func,
     /// By parameter: the value of each `$` parameter, `None` for the others and for unknown ones.
-    pub args: Vec<Option<Value>>,
+    pub args: Arc<[Option<Value>]>,
 }
 
 impl Instantiation {
     /// The function literal `f`, outside any call, with no parameter bound.
     #[must_use]
     pub fn plain(f: ExprRef) -> Self {
-        Self { f: Func { literal: f, within: None, staged: Arc::from([]) }, args: Vec::new() }
+        Self { f: Func { literal: f, within: None, staged: Arc::from([]) }, args: Arc::from([]) }
     }
 
     /// Whether this is its function literal outside any call, with no parameter bound.
@@ -113,7 +113,7 @@ impl Instantiation {
     #[must_use]
     pub fn new(f: Func, args: Vec<Option<Value>>) -> Self {
         let args = if args.iter().all(Option::is_none) { Vec::new() } else { args };
-        Self { f, args }
+        Self { f, args: args.into() }
     }
 
     /// The compile-time call this is, when it binds every parameter: `Pair(u8)` for a type made

@@ -2,6 +2,8 @@
 //! itself, since a shared borrow of a compile-time value reads as the value; `.*` of a loan, an
 //! exclusive borrow, goes on at the place it reaches.
 
+use std::borrow::Cow;
+
 use vun_index::Idx;
 use vun_mir::{Local, Place, Projection, Role};
 use vun_sema::decl::DeclValue;
@@ -31,9 +33,9 @@ impl Frame<'_, '_, '_> {
             match self.part(projection)? {
                 Some(part) => parts.push(part),
                 None => {
-                    if let Value::Loan { local: lent, parts: under } = self.at(local, &parts)? {
-                        local = self.lent(lent)?;
-                        parts = under;
+                    if let Value::Loan { local: lent, parts: under } = &*self.reach(local, &parts)? {
+                        let lent = self.lent(*lent)?;
+                        (local, parts) = (lent, under.clone());
                     }
                 }
             }
@@ -46,9 +48,18 @@ impl Frame<'_, '_, '_> {
         (local < self.locals.len()).then(|| Local::new(local)).ok_or(Unevaluated::Unsupported)
     }
 
-    /// The value at `parts` under `local`.
+    /// The value at `parts` under `local`, borrowed where it is held.
+    pub(crate) fn reach(&self, local: Local, parts: &[Part]) -> Result<Cow<'_, Value>, Unevaluated> {
+        match (&self.body.locals[local].role, &self.locals[local]) {
+            (Role::StaticMut(_), _) => Err(Unevaluated::Runtime),
+            (_, Some(held)) => held.at(parts),
+            _ => Ok(Cow::Owned(self.local(local)?.at(parts)?.into_owned())),
+        }
+    }
+
+    /// The value at `parts` under `local`; only that value is copied.
     pub(crate) fn at(&self, local: Local, parts: &[Part]) -> Result<Value, Unevaluated> {
-        parts.iter().try_fold(self.local(local)?, |value, part| value.part(part))
+        self.reach(local, parts).map(Cow::into_owned)
     }
 
     /// The value at `place`.
@@ -73,18 +84,19 @@ impl Frame<'_, '_, '_> {
         self.store(local, &parts, value)
     }
 
-    /// Stores `value` at `parts` under `local`.
+    /// Stores `value` at `parts` under `local`, changing the local's value in place.
     pub(crate) fn store(&mut self, local: Local, parts: &[Part], value: Value) -> Result<(), Unevaluated> {
-        let value = if parts.is_empty() { value } else { Self::replaced(self.local(local)?, parts, value)? };
-        self.locals[local] = Some(value);
-        Ok(())
-    }
-
-    /// `whole` with the part `parts` reach replaced by `value`.
-    fn replaced(whole: Value, parts: &[Part], value: Value) -> Result<Value, Unevaluated> {
-        let Some((first, rest)) = parts.split_first() else { return Ok(value) };
-        let inner = Self::replaced(whole.part(first)?, rest, value)?;
-        whole.with_part(first, inner)
+        if parts.is_empty() {
+            self.locals[local] = Some(value);
+            return Ok(());
+        }
+        if self.locals[local].is_none() {
+            self.locals[local] = Some(self.local(local)?);
+        }
+        if matches!(self.body.locals[local].role, Role::StaticMut(_)) {
+            return Err(Unevaluated::Runtime);
+        }
+        self.locals[local].as_mut().ok_or(Unevaluated::Unsupported)?.replace(parts, value)
     }
 
     /// The part of a value `projection` reaches, its index read; `None` for `.*`.

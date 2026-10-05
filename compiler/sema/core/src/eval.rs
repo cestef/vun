@@ -154,7 +154,7 @@ pub trait Instantiate: Sized {
 impl Instantiate for Instantiation {
     fn body(&self, cx: &Cx<'_>) -> Option<Self> {
         let comptime = self.f.comptime(cx)?;
-        let args = comptime.iter().zip(&self.args).map(|(&c, arg)| arg.clone().filter(|_| c));
+        let args = comptime.iter().zip(self.args.iter()).map(|(&c, arg)| arg.clone().filter(|_| c));
         Some(Self::new(self.f.clone(), args.collect()))
     }
 

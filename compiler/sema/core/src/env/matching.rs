@@ -2,6 +2,8 @@
 //! the scrutinee and whose guard holds gives the match its value, the binders of the pattern bound
 //! to the parts they take.
 
+use std::sync::Arc;
+
 use vun_grammar::TokenKind;
 use vun_hir::tree::{Arm, BinderId, Entry, ExprId, List, Name, PatId, PatKind};
 use vun_sema_int::Interval;
@@ -23,7 +25,7 @@ impl Env<'_, '_> {
                 continue;
             }
             let mut env = self.clone();
-            env.bindings.extend(bound);
+            Arc::make_mut(&mut env.bindings).extend(bound);
             if let Some(guard) = arm.guard
                 && !env.holds(&env.eval(guard)?)?
             {

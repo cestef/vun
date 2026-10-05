@@ -62,9 +62,9 @@ pub struct Env<'a, 'db> {
     /// it.
     pub instance: Option<Instantiation>,
     /// The parameters it binds, bound to their values.
-    pub(super) bindings: Map<BinderId, Value>,
+    pub(super) bindings: Arc<Map<BinderId, Value>>,
     /// The `$for` bindings evaluated under, also among `bindings`.
-    staged: Vec<Staging>,
+    staged: Arc<Vec<Staging>>,
     /// What typing found in the body evaluated in, so far while it is typed: forms typed by
     /// their context, such as `.{ }` and `.name`, and calls whose `$` arguments are inferred
     /// evaluate only with it.
@@ -81,8 +81,8 @@ impl<'a, 'db> Env<'a, 'db> {
             parsed: cx.get::<Parsed>(file)?,
             names: cx.get::<FileNames>(file)?,
             instance: None,
-            bindings: Map::default(),
-            staged: Vec::new(),
+            bindings: Arc::default(),
+            staged: Arc::default(),
             types: None,
         })
     }
@@ -114,7 +114,8 @@ impl<'a, 'db> Env<'a, 'db> {
             _ => None,
         });
         let args: Vec<_> = args.into_iter().collect();
-        env.bindings.extend(binders.zip(&args).filter_map(|(b, arg)| Some((b?, arg.clone()?))));
+        Arc::make_mut(&mut env.bindings)
+            .extend(binders.zip(&args).filter_map(|(b, arg)| Some((b?, arg.clone()?))));
         let instance = Instantiation::new(f.clone(), args);
         if !instance.args.is_empty() {
             env.instance = Some(instance);
@@ -126,8 +127,8 @@ impl<'a, 'db> Env<'a, 'db> {
     #[must_use]
     pub fn staging(mut self, staged: &[Staging]) -> Self {
         for s in staged {
-            self.bindings.insert(s.binder.id, s.value.clone());
-            self.staged.push(s.clone());
+            Arc::make_mut(&mut self.bindings).insert(s.binder.id, s.value.clone());
+            Arc::make_mut(&mut self.staged).push(s.clone());
         }
         self
     }

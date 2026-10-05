@@ -136,7 +136,7 @@ impl Typer<'_, '_, '_> {
                 *v = Some(value.clone());
             }
         }
-        Instantiation { args: values, f }
+        Instantiation { args: values.into(), f }
     }
 
     /// The signature of the instantiation `instantiation` that the call at `call` reaches. A trap

@@ -31,3 +31,19 @@ fn borrows_of_arrays_and_slices_join_in_any_order() {
     assert_eq!(two.join(&three).and_then(|s| s.join(&four)), slice);
     assert_eq!(four.join(&two.join(&three).unwrap()), slice);
 }
+
+#[test]
+fn parts_are_read_by_borrowing_and_replaced_in_place() {
+    use crate::ops::Part;
+    let int = |n: i32| Value::Int(Integer::from(n));
+    let mut grid = Value::Array(vec![Value::Tuple(vec![int(1), int(2)]), Value::Tuple(vec![int(3), int(4)])]);
+    let second = [Part::Item(int(1)), Part::Position(0)];
+    assert_eq!(*grid.at(&second).unwrap(), int(3));
+    grid.replace(&second, int(9)).unwrap();
+    assert_eq!(*grid.at(&second).unwrap(), int(9));
+    assert_eq!(*grid.at(&[Part::Item(int(0)), Part::Position(1)]).unwrap(), int(2));
+    // An index past the end traps, and changes nothing.
+    let before = grid.clone();
+    assert!(grid.replace(&[Part::Item(int(2)), Part::Position(0)], int(0)).is_err());
+    assert_eq!(grid, before);
+}

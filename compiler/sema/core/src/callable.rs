@@ -284,7 +284,7 @@ pub trait Generic {
 impl Generic for Instantiation {
     fn generic(&self, cx: &Cx<'_>) -> bool {
         let Some(comptime) = self.f.comptime(cx) else { return false };
-        let bound = comptime.iter().zip(&self.args).all(|(&c, arg)| !c || arg.is_some());
+        let bound = comptime.iter().zip(self.args.iter()).all(|(&c, arg)| !c || arg.is_some());
         (self.f.within.is_some() || comptime.contains(&true)) && bound
     }
 }

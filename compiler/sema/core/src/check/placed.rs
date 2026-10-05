@@ -87,7 +87,7 @@ impl Checker<'_, '_, '_> {
         if Value::Fn(made.f.clone()) != self.env.item(vun_items::lang::Attribute).ok()? {
             return None;
         }
-        let [Some(Value::Array(on))] = made.args.as_slice() else { return None };
+        let [Some(Value::Array(on))] = &*made.args else { return None };
         on.iter()
             .map(|place| match place {
                 Value::Variant { name, .. } => Some(*name),

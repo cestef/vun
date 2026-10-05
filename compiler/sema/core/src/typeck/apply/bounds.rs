@@ -28,7 +28,7 @@ impl Typer<'_, '_, '_> {
         let f = &instantiation.f;
         let Some(written) = Callable::Fn(f.clone()).written(self.env()) else { return };
         let Some(params) = written.params() else { return };
-        let Some(env) = Env::inside(self.env().cx, f, instantiation.args.clone()) else { return };
+        let Some(env) = Env::inside(self.env().cx, f, instantiation.args.iter().cloned()) else { return };
         let hir = &env.parsed.hir;
         for (i, (binder, annotation)) in params.iter().enumerate() {
             let (Some(binder), Some(annotation)) = (binder, annotation) else { continue };

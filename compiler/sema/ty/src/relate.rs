@@ -108,7 +108,7 @@ impl TyKind {
         expected.literal == found.literal
             && call.f == found_call.f
             && call.args.len() == found_call.args.len()
-            && call.args.iter().zip(&found_call.args).all(|(a, b)| a == b || empty(b))
+            && call.args.iter().zip(found_call.args.iter()).all(|(a, b)| a == b || empty(b))
     }
 
     /// The type values of both `self` and `other` have: the hull of two integer ranges, item by

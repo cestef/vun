@@ -1,6 +1,8 @@
 //! Compile-time values' parts, repetitions and ranges, and narrowing (spec 04, rule 3). Sema and
 //! the interpreter both compute through here; operators are calls (spec 02, section 4).
 
+use std::borrow::Cow;
+
 use vun_codec::{Decode, Encode};
 use vun_desugar::Narrowing;
 use vun_grammar::TokenKind;
@@ -36,44 +38,65 @@ impl Value {
     /// Returns a trap for an index past the end, and [`Unevaluated::Unsupported`] for a value
     /// without that part.
     pub fn part(&self, part: &Part) -> Result<Self, Unevaluated> {
-        let parts = match (part, self) {
-            (Part::Field(name), Self::Struct { fields, .. }) => {
-                return fields
-                    .iter()
-                    .find(|(n, _)| n == name)
-                    .map(|(_, v)| v.clone())
-                    .ok_or(Unevaluated::Unsupported);
-            }
+        match (part, self) {
             // Items at bounds of indices are that run of items, as `xs[a..b]` borrows them.
             (Part::Item(Self::Bounds(bounds)), Self::Array(items)) => {
-                return Ok(Self::Array(items[bounds.run(items.len())?].to_vec()));
+                Ok(Self::Array(items[bounds.run(items.len())?].to_vec()))
             }
-            (Part::Item(_), Self::Array(items)) | (Part::Position(_), Self::Tuple(items)) => items,
-            (Part::Payload(_), Self::Variant { payload, .. }) => payload,
-            _ => return Err(Unevaluated::Unsupported),
-        };
-        Ok(parts[part.position(parts)?].clone())
+            _ => self.slot(part).cloned(),
+        }
     }
 
-    /// This value with its part `part` replaced by `value`.
+    /// The value at `parts` under this one, borrowed unless a run of items is taken.
     ///
     /// # Errors
     /// As [`Self::part`].
-    pub fn with_part(mut self, part: &Part, value: Self) -> Result<Self, Unevaluated> {
-        let slot = match (part, &mut self) {
+    pub fn at(&self, parts: &[Part]) -> Result<Cow<'_, Self>, Unevaluated> {
+        let Some((first, rest)) = parts.split_first() else { return Ok(Cow::Borrowed(self)) };
+        match (first, self) {
+            (Part::Item(Self::Bounds(_)), _) => Ok(Cow::Owned(self.part(first)?.at(rest)?.into_owned())),
+            _ => self.slot(first)?.at(rest),
+        }
+    }
+
+    /// The place in this value that `part` names.
+    fn slot(&self, part: &Part) -> Result<&Self, Unevaluated> {
+        match (part, self) {
             (Part::Field(name), Self::Struct { fields, .. }) => {
-                &mut fields.iter_mut().find(|(n, _)| n == name).ok_or(Unevaluated::Unsupported)?.1
+                fields.iter().find(|(n, _)| n == name).map(|(_, v)| v).ok_or(Unevaluated::Unsupported)
+            }
+            (Part::Item(_), Self::Array(items))
+            | (Part::Position(_), Self::Tuple(items))
+            | (Part::Payload(_), Self::Variant { payload: items, .. }) => Ok(&items[part.position(items)?]),
+            _ => Err(Unevaluated::Unsupported),
+        }
+    }
+
+    fn slot_mut(&mut self, part: &Part) -> Result<&mut Self, Unevaluated> {
+        match (part, self) {
+            (Part::Field(name), Self::Struct { fields, .. }) => {
+                fields.iter_mut().find(|(n, _)| n == name).map(|(_, v)| v).ok_or(Unevaluated::Unsupported)
             }
             (Part::Item(_), Self::Array(items))
             | (Part::Position(_), Self::Tuple(items))
             | (Part::Payload(_), Self::Variant { payload: items, .. }) => {
                 let at = part.position(items)?;
-                &mut items[at]
+                Ok(&mut items[at])
             }
-            _ => return Err(Unevaluated::Unsupported),
-        };
-        *slot = value;
-        Ok(self)
+            _ => Err(Unevaluated::Unsupported),
+        }
+    }
+
+    /// Replaces the value at `parts` under this one with `value`, in place.
+    ///
+    /// # Errors
+    /// As [`Self::part`]; nothing is changed then.
+    pub fn replace(&mut self, parts: &[Part], value: Self) -> Result<(), Unevaluated> {
+        match parts.split_first() {
+            None => *self = value,
+            Some((first, rest)) => self.slot_mut(first)?.replace(rest, value)?,
+        }
+        Ok(())
     }
 
     /// This integer brought into the range `range` (spec 04, rule 3): unchanged when it lies
