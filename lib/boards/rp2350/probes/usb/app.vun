@@ -4,7 +4,6 @@
 
 start := rp2350.start(.{ .main = main });
 
-
 main := (p: rp2350.Peripherals) -> never {
     rp2350.rom.reboot(rp2350.rom.reboot_bootsel, 90_000, 0, 0);
     timer := rp2350.time.Timer.init(p.timer0);
