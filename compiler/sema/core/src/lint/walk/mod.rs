@@ -1,6 +1,8 @@
 //! Walking a file for the nodes lints look at (spec 10, section 4), carrying the lints
 //! `#[lint.allow]` silences: on a declaration, a field, a local binding, or an expression.
 
+mod binds;
+
 use std::collections::HashSet;
 
 use vun_hir::resolve::Res;
@@ -14,9 +16,7 @@ use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lint::Lint;
 use vun_sema_ty::Value;
-use vun_sema_ty::item::ExprRef;
 
-use super::literal::Literal;
 use super::nodes::{Kind, Node};
 use super::tables::Binds;
 use crate::env::Env;
@@ -142,29 +142,10 @@ impl<'e, 'a, 'db> Walk<'e, 'a, 'db> {
         self.env.visible(name, attrs, self.env.home()).0.reach == Reach::Public
     }
 
-    /// What the declaration `id` binds (spec 10, section 5), by how it is written: a type when
-    /// annotated `type`, `lang.Interface` or a function type giving one, or when its value is a
-    /// `struct` that is no namespace, an `enum`, a function type, an `interface` or a function
-    /// literal giving a type. Any other value, an alias of a type included, is annotated to bind
-    /// one. A primitive, `= _`, binds what the annotation of its declaration says.
-    fn binds(&self, id: DeclId) -> Binds {
-        let hir = self.hir();
-        let d = &hir.decls[id];
-        let literal = |e: ExprId| Literal::written(self.env.cx, &ExprRef::new(self.env.file.clone(), hir, e));
-        let annotated = d.ty.and_then(literal).is_some_and(|l| l.gives_type());
-        let written = d.value.and_then(literal).is_some_and(|l| l.is_type());
-        if annotated || written { Binds::Type } else { Binds::Value }
-    }
-
     /// Whether a local named `name` in the namespace walked hides a constant from outside the file.
     fn hides(&self, name: Symbol) -> bool {
         let site = self.ns.and_then(|ns| self.env.outside(name, ns).ok());
         site.and_then(|site| self.env.value_of(site).ok()).is_some_and(|value| value.is_datum())
-    }
-
-    /// Whether the annotation `expr` denotes `type` or `lang.Interface`: what binds a type.
-    fn types(&self, expr: ExprId) -> bool {
-        self.env.ty(expr).is_ok_and(|t| t.holds_types())
     }
 
     /// The binders of the parameters `params`.

@@ -3,7 +3,7 @@
 //! of the function making it for the parameters of its target, or which an interface derives with
 //! `#[lang.derive(f)]`, `f` building the struct for the type it is given.
 
-use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
+use vun_hir::tree::{Arg, DeclId, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
@@ -51,14 +51,26 @@ impl<'a, 'db> Env<'a, 'db> {
     /// A member the interface does not name is asked nothing: its types are its own.
     #[must_use]
     pub fn asked(&self, literal: ExprId) -> Option<Result<Written<'a, 'db>, Unevaluated>> {
-        let witnessed = self.witnessed(literal)?;
+        let decl = self.declaration_of(literal).0?;
+        let asked = self.annotated(decl)?;
+        Some(asked.and_then(|written| match written.env.parsed.hir.exprs[written.expr].kind {
+            ExprKind::FnType { .. } => Ok(written),
+            _ => Err(Unevaluated::Unsupported),
+        }))
+    }
+
+    /// Where the interface writes the type of the requirement the declaration `decl` implements,
+    /// whatever that type is (`type` for a member naming a type), if it is a member of a witness
+    /// the interface requires something of.
+    #[must_use]
+    pub fn annotated(&self, decl: DeclId) -> Option<Result<Written<'a, 'db>, Unevaluated>> {
+        let witnessed = self.witnessed(decl)?;
         self.requirement(&witnessed).transpose()
     }
 
-    /// The witness `literal` is a member of, if it is.
-    fn witnessed(&self, literal: ExprId) -> Option<Witnessed> {
+    /// The witness the member declared by `decl` is a member of, if it is.
+    fn witnessed(&self, decl: DeclId) -> Option<Witnessed> {
         let hir = &self.parsed.hir;
-        let decl = self.declaration_of(literal).0?;
         let PatKind::Bind(binder) = hir.pats[hir.decls[decl].pat].kind else { return None };
         let name = hir.binders[binder].name;
         let witness = hir.struct_of(hir.member_ns(binder)?)?;
@@ -82,7 +94,7 @@ impl<'a, 'db> Env<'a, 'db> {
     }
 
     /// The interface and target `declaration` registers a witness for with `lang.impl(I(T))`.
-    fn registration(&self, declaration: vun_hir::tree::DeclId) -> Option<(Source, Target)> {
+    fn registration(&self, declaration: DeclId) -> Option<(Source, Target)> {
         let hir = &self.parsed.hir;
         hir.decls[declaration].attrs.iter().find_map(|&attr| {
             let ExprKind::Call { callee, args } = &hir.exprs[attr].kind else { return None };
@@ -105,8 +117,8 @@ impl<'a, 'db> Env<'a, 'db> {
             .map(|d| Value::Interface(d.interface.clone()))
     }
 
-    /// The function type the interface of `witnessed` writes for the requirement of the member's
-    /// name, in the environment it is evaluated in; none for a member the interface names none of.
+    /// The type the interface of `witnessed` writes for the requirement of the member's name, in
+    /// the environment it is evaluated in; none for a member the interface names none of.
     fn requirement(&self, witnessed: &Witnessed) -> Result<Option<Written<'a, 'db>>, Unevaluated> {
         let hir = &self.parsed.hir;
         let interface = match &witnessed.interface {
@@ -148,9 +160,6 @@ impl<'a, 'db> Env<'a, 'db> {
         while let ExprKind::Prefix { operand, .. } = their_hir.exprs[expr].kind {
             expr = operand;
         }
-        match their_hir.exprs[expr].kind {
-            ExprKind::FnType { .. } => Ok(Some(Written { env, expr })),
-            _ => Err(Unevaluated::Unsupported),
-        }
+        Ok(Some(Written { env, expr }))
     }
 }
