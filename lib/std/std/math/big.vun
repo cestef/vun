@@ -1,0 +1,198 @@
+//! A fixed-size unsigned integer of 4096 bits, enough for the exact arithmetic that printing and
+//! reading a float take (a float is at most 2^1024 and at least 2^-1074, and a decimal string of
+//! 800 digits is 10^800). Limbs are 32 bits, least significant first. An operation that would
+//! pass 4096 bits traps.
+
+/// How many limbs it has.
+limbs: usize = 128;
+limb_bits: usize = 32;
+/// The most bits it holds.
+capacity: usize = 4096;
+/// The greatest power of ten a limb holds.
+chunk: u32 = 1_000_000_000;
+chunk_digits: usize = 9;
+
+Big := struct {
+    _limbs: [128]u32,
+
+    /// Zero.
+    zero := () -> Big { .{ ._limbs = [0; 128] } };
+
+    /// The number `n`.
+    from_u64 := (n: u64) -> Big {
+        mut b := Big.zero();
+        b._limbs[0] = n.wrap(u32);
+        b._limbs[1] = (n >> 32).wrap(u32);
+        b
+    };
+
+    /// Whether it is zero.
+    is_zero := (self: &Big) -> bool {
+        for i in 0..limbs {
+            if self._limbs[i] != 0 { return false; }
+        }
+        true
+    };
+
+    /// How many limbs up to the last that is not zero.
+    used := (self: &Big) -> usize {
+        mut n := limbs;
+        for n > 0 and self._limbs[n - 1] == 0 { n -= 1; }
+        n
+    };
+
+    /// How many bits its value takes: 0 for zero.
+    bit_length := (self: &Big) -> usize {
+        n := self.used();
+        if n == 0 { return 0; }
+        top := self._limbs[n - 1];
+        ((n * limb_bits).to(usize) - top.leading_zeros()).to(usize)
+    };
+
+    /// Whether bit `i` is set.
+    bit := (self: &Big, i: usize) -> bool {
+        limb := i / limb_bits;
+        if limb >= limbs { return false; }
+        ((self._limbs[limb] >> (i % limb_bits)) & 1) == 1
+    };
+
+    /// The low 128 bits.
+    low_u128 := (self: &Big) -> u128 {
+        mut out: u128 = 0;
+        for i in 0..4 {
+            out = out | (self._limbs[i].to(u128) << (32 * i));
+        }
+        out
+    };
+
+    /// Multiplies by `by`.
+    mul_small := (self: &mut Big, by: u32) {
+        mut carry: u64 = 0;
+        for i in 0..limbs {
+            t := (self._limbs[i].to(u64) * by + carry).to(u64);
+            self._limbs[i] = t.wrap(u32);
+            carry = (t >> 32).to(u64);
+        }
+        if carry != 0 { lang.panic.fail(.message("Big: the number passed 4096 bits")); }
+    };
+
+    /// Adds `by`.
+    add_small := (self: &mut Big, by: u32) {
+        mut carry: u64 = by.to(u64);
+        for i in 0..limbs {
+            if carry == 0 { return; }
+            t := (self._limbs[i].to(u64) + carry).to(u64);
+            self._limbs[i] = t.wrap(u32);
+            carry = (t >> 32).to(u64);
+        }
+        if carry != 0 { lang.panic.fail(.message("Big: the number passed 4096 bits")); }
+    };
+
+    /// Divides by `by`, giving the remainder.
+    div_small := (self: &mut Big, by: u32) -> u32 {
+        mut rest: u64 = 0;
+        mut i := limbs;
+        for i > 0 {
+            i -= 1;
+            t: u64 = (rest << 32) | self._limbs[i].to(u64);
+            self._limbs[i] = (t / by).to(u32);
+            rest = (t % by).to(u64);
+        }
+        rest.to(u32)
+    };
+
+    /// Multiplies by 10 to the power `n`.
+    mul_pow10 := (self: &mut Big, n: usize) {
+        mut left := n;
+        for left >= chunk_digits {
+            self.mul_small(chunk);
+            left -= chunk_digits;
+        }
+        mut by: u32 = 1;
+        for _ in 0..left { by = (by * 10).to(u32); }
+        self.mul_small(by);
+    };
+
+    /// Multiplies by 2 to the power `bits`.
+    shl := (self: &mut Big, bits: usize) {
+        if self.bit_length() + bits > capacity {
+            lang.panic.fail(.message("Big: the number passed 4096 bits"));
+        }
+        whole := bits / limb_bits;
+        part := bits % limb_bits;
+        mut out: [128]u32 = [0; 128];
+        for i in 0..limbs {
+            if self._limbs[i] == 0 { continue; }
+            wide := self._limbs[i].to(u64) << part;
+            out[i + whole] = out[i + whole] | wide.wrap(u32);
+            if i + whole + 1 < limbs { out[i + whole + 1] = out[i + whole + 1] | (wide >> 32).wrap(u32); }
+        }
+        self._limbs = out;
+    };
+
+    /// Divides by 2 to the power `bits`, rounding down, and gives whether a bit that was set was
+    /// shifted out.
+    shr := (self: &mut Big, bits: usize) -> bool {
+        mut lost := false;
+        whole := bits / limb_bits;
+        part := bits % limb_bits;
+        mut out: [128]u32 = [0; 128];
+        for i in 0..limbs {
+            limb := self._limbs[i];
+            if limb == 0 { continue; }
+            if i < whole {
+                lost = true;
+                continue;
+            }
+            wide := limb.to(u64) << (limb_bits - part);
+            // The bits that fall below this limb's position go to the limb under it, or are lost.
+            out[i - whole] = out[i - whole] | (wide >> 32).wrap(u32);
+            low := wide.wrap(u32);
+            if part > 0 and low != 0 {
+                if i > whole { out[i - whole - 1] = out[i - whole - 1] | low; } else { lost = true; }
+            }
+        }
+        self._limbs = out;
+        lost
+    };
+
+    /// Whether it is less than `other`.
+    less := (self: &Big, other: &Big) -> bool {
+        mut i := limbs;
+        for i > 0 {
+            i -= 1;
+            if self._limbs[i] != other._limbs[i] { return self._limbs[i] < other._limbs[i]; }
+        }
+        false
+    };
+
+    /// Whether it equals `other`.
+    equals := (self: &Big, other: &Big) -> bool {
+        for i in 0..limbs {
+            if self._limbs[i] != other._limbs[i] { return false; }
+        }
+        true
+    };
+
+    /// Adds `other`.
+    add := (self: &mut Big, other: &Big) {
+        mut carry: u64 = 0;
+        for i in 0..limbs {
+            t := (self._limbs[i].to(u64) + other._limbs[i] + carry).to(u64);
+            self._limbs[i] = t.wrap(u32);
+            carry = (t >> 32).to(u64);
+        }
+        if carry != 0 { lang.panic.fail(.message("Big: the number passed 4096 bits")); }
+    };
+
+    /// Subtracts `other`, which is not greater.
+    sub := (self: &mut Big, other: &Big) {
+        mut borrow: u64 = 0;
+        for i in 0..limbs {
+            t := (self._limbs[i].to(u64) + 0x1_0000_0000 - other._limbs[i] - borrow).to(u64);
+            self._limbs[i] = t.wrap(u32);
+            borrow = if t >= 0x1_0000_0000 { 0 } else { 1 };
+        }
+        if borrow != 0 { lang.panic.fail(.message("Big: the difference is below zero")); }
+    };
+};

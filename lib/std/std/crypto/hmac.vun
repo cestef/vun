@@ -1,0 +1,30 @@
+//! HMAC (RFC 2104): a hash keyed so that only who holds the key can make it. The key is padded
+//! with zeros to a block, or hashed first when longer; the message is hashed under the key with
+//! 0x36 mixed in, and that hash again under the key with 0x5c mixed in.
+
+..std.crypto.sha2.{ Sha256, block_size };
+
+/// The HMAC-SHA-256 of `message` under `key`.
+sha256 := (key: &[u8], message: &[u8]) -> [32]u8 {
+    mut block: [64]u8 = [0; 64];
+    if key.len() > block_size {
+        hashed := Sha256.digest(key);
+        for i in 0..32 { block[i] = hashed[i]; }
+    } else {
+        for i in 0..key.len() { block[i] = key[i]; }
+    }
+    mut inner_key: [64]u8 = [0; 64];
+    mut outer_key: [64]u8 = [0; 64];
+    for i in 0..block_size {
+        inner_key[i] = block[i] ^ 0x36;
+        outer_key[i] = block[i] ^ 0x5c;
+    }
+    mut inner := Sha256.init();
+    inner.update(&inner_key);
+    inner.update(message);
+    inside := inner.finish_digest();
+    mut outer := Sha256.init();
+    outer.update(&outer_key);
+    outer.update(&inside);
+    outer.finish_digest()
+};

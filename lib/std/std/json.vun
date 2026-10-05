@@ -1,0 +1,273 @@
+//! JSON (RFC 8259) read without an allocator: a `Reader` over the bytes of a document gives one
+//! `Token` at a time, checking the grammar as it goes. Strings and numbers are slices of the
+//! document, not decoded: `std.json.text.unescape` writes a string's text, and `std.json.text.integer` and `std.json.text.float` read a number as the
+//! integer or float type asked. `std.fmt.json` writes JSON from typed values.
+
+/// What a document holds, one piece at a time.
+Token := enum {
+    object_begin,
+    object_end,
+    array_begin,
+    array_end,
+    /// The name of a member, as it is written between its quotes.
+    name(&[u8]),
+    /// A string, as it is written between its quotes.
+    string(&[u8]),
+    /// A number, as it is written.
+    number(&[u8]),
+    boolean(bool),
+    null,
+};
+
+/// What is wrong with a document.
+Problem := enum {
+    /// The document ended inside a value, or before one.
+    unexpected_end,
+    /// A byte that cannot be there.
+    unexpected_byte,
+    /// A string holds a control character, or an escape that is none.
+    bad_string,
+    /// A number is not written as JSON writes numbers.
+    bad_number,
+    /// Arrays and objects nest deeper than a `Reader` follows.
+    too_deep,
+};
+
+/// A problem and the offset of the byte where it was found.
+Error := struct { problem: Problem, at: usize };
+
+/// The deepest nesting a `Reader` follows.
+depth_max: usize = 64;
+
+/// Where a `Reader` is in the grammar.
+State := enum {
+    /// A value is next.
+    value,
+    /// A value, or the end of the array, is next.
+    item_or_end,
+    /// A member name, or the end of the object, is next.
+    name_or_end,
+    /// A member name is next.
+    name,
+    /// The colon after a name is next.
+    colon,
+    /// A comma, or the end of the array or object, is next.
+    after,
+    /// The document's value is complete.
+    done,
+};
+
+/// What a nesting level is.
+Level := enum { array, object };
+
+Reader := struct {
+    _text: &[u8],
+    _at: usize,
+    _state: State,
+    _levels: [64]Level,
+    _depth: usize,
+
+    /// A reader at the start of `text`.
+    of := (text: &[u8]) -> Reader {
+        .{ ._text = text, ._at = 0, ._state = .value, ._levels = [.array; 64], ._depth = 0 }
+    };
+
+    /// How far in the document it has read.
+    offset := (self: &Reader) -> usize { self._at };
+
+    /// How many arrays and objects it is inside.
+    depth := (self: &Reader) -> usize { self._depth };
+
+    fail := (self: &Reader, problem: Problem) -> Error { .{ .problem = problem, .at = self._at } };
+
+    skip_space := (self: &mut Reader) {
+        for self._at < self._text.len() {
+            b := self._text[self._at];
+            if b != 32 and b != 9 and b != 10 and b != 13 { return; }
+            self._at += 1;
+        }
+    };
+
+    /// The token after the last, none once the document is complete and has nothing after.
+    next := (self: &mut Reader) -> Result(?Token, Error) {
+        self.skip_space();
+        if self._at >= self._text.len() {
+            if self._state == .done { return .ok(.none); }
+            return .err(self.fail(.unexpected_end));
+        }
+        b := self._text[self._at];
+        match self._state {
+            .done => .err(self.fail(.unexpected_byte)),
+            .colon => {
+                if b != ":"[0] { return .err(self.fail(.unexpected_byte)); }
+                self._at += 1;
+                self._state = .value;
+                self.next()
+            },
+            .name_or_end => {
+                if b == "}"[0] { return self.close(.object); }
+                self.member()
+            },
+            .name => self.member(),
+            .item_or_end => {
+                if b == "]"[0] { return self.close(.array); }
+                self.value(b)
+            },
+            .value => self.value(b),
+            .after => self.separated(b),
+        }
+    };
+
+    member := (self: &mut Reader) -> Result(?Token, Error) {
+        if self._text[self._at] != "\""[0] { return .err(self.fail(.unexpected_byte)); }
+        text := self._text;
+        (from, to) := self.string_body()?;
+        self._state = .colon;
+        .ok(.some(.name(text[from..to])))
+    };
+
+    separated := (self: &mut Reader, b: u8) -> Result(?Token, Error) {
+        if self._depth == 0 { return .err(self.fail(.unexpected_byte)); }
+        if b == ","[0] {
+            self._at += 1;
+            self._state = if self._levels[self._depth - 1] == .array { .value } else { .name };
+            return self.next();
+        }
+        if b == "]"[0] and self._levels[self._depth - 1] == .array { return self.close(.array); }
+        if b == "}"[0] and self._levels[self._depth - 1] == .object { return self.close(.object); }
+        .err(self.fail(.unexpected_byte))
+    };
+
+    close := (self: &mut Reader, level: Level) -> Result(?Token, Error) {
+        if self._depth == 0 or self._levels[self._depth - 1] != level {
+            return .err(self.fail(.unexpected_byte));
+        }
+        self._at += 1;
+        self._depth -= 1;
+        self._state = if self._depth == 0 { .done } else { .after };
+        .ok(.some(if level == .array { .array_end } else { .object_end }))
+    };
+
+    open := (self: &mut Reader, level: Level) -> Result(?Token, Error) {
+        if self._depth >= depth_max { return .err(self.fail(.too_deep)); }
+        self._levels[self._depth] = level;
+        self._depth += 1;
+        self._at += 1;
+        self._state = if level == .array { .item_or_end } else { .name_or_end };
+        .ok(.some(if level == .array { .array_begin } else { .object_begin }))
+    };
+
+    /// Marks a value complete.
+    finished := (self: &mut Reader) { self._state = if self._depth == 0 { .done } else { .after }; };
+
+    value := (self: &mut Reader, b: u8) -> Result(?Token, Error) {
+        if b == "["[0] { return self.open(.array); }
+        if b == "{"[0] { return self.open(.object); }
+        if b == "\""[0] {
+            text := self._text;
+            (from, to) := self.string_body()?;
+            self.finished();
+            return .ok(.some(.string(text[from..to])));
+        }
+        if b == "t"[0] { return self.word("true", .boolean(true)); }
+        if b == "f"[0] { return self.word("false", .boolean(false)); }
+        if b == "n"[0] { return self.word("null", .null); }
+        if b == "-"[0] or std.text.ascii.is_digit(b) { return self.number_body(); }
+        .err(self.fail(.unexpected_byte))
+    };
+
+    word := (self: &mut Reader, spelled: &[u8], token: Token) -> Result(?Token, Error) {
+        rest := self._text[self._at..];
+        if !rest.starts_with(spelled) { return .err(self.fail(.unexpected_byte)); }
+        self._at += spelled.len();
+        self.finished();
+        .ok(.some(token))
+    };
+
+    /// Where the text between the quotes of the string at the reader is, which moves past it.
+    string_body := (self: &mut Reader) -> Result((usize, usize), Error) {
+        self._at += 1;
+        start := self._at;
+        for self._at < self._text.len() {
+            b := self._text[self._at];
+            if b == "\""[0] {
+                end := self._at;
+                self._at += 1;
+                return .ok((start, end));
+            }
+            if b < 32 { return .err(self.fail(.bad_string)); }
+            if b == "\\"[0] {
+                self._at += 1;
+                if self._at >= self._text.len() { return .err(self.fail(.unexpected_end)); }
+                e := self._text[self._at];
+                if e == "u"[0] {
+                    for _ in 0..4 {
+                        self._at += 1;
+                        if self._at >= self._text.len() { return .err(self.fail(.unexpected_end)); }
+                        if !std.text.ascii.is_digit_of(self._text[self._at], 16) {
+                            return .err(self.fail(.bad_string));
+                        }
+                    }
+                } else if "\"\\/bfnrt".index_of(&e) == Option(usize).none {
+                    return .err(self.fail(.bad_string));
+                }
+            }
+            self._at += 1;
+        }
+        .err(self.fail(.unexpected_end))
+    };
+
+    digits := (self: &mut Reader) -> bool {
+        start := self._at;
+        for self._at < self._text.len() and std.text.ascii.is_digit(self._text[self._at]) { self._at += 1; }
+        self._at > start
+    };
+
+    /// The number at the reader, which moves past it.
+    number_body := (self: &mut Reader) -> Result(?Token, Error) {
+        start := self._at;
+        if self._text[self._at] == "-"[0] { self._at += 1; }
+        if self._at >= self._text.len() { return .err(self.fail(.unexpected_end)); }
+        if self._text[self._at] == "0"[0] {
+            self._at += 1;
+        } else if !self.digits() {
+            return .err(self.fail(.bad_number));
+        }
+        if self._at < self._text.len() and self._text[self._at] == "."[0] {
+            self._at += 1;
+            if !self.digits() { return .err(self.fail(.bad_number)); }
+        }
+        if self._at < self._text.len()
+            and (self._text[self._at] == "e"[0] or self._text[self._at] == "E"[0]) {
+                self._at += 1;
+                if self._at < self._text.len()
+                    and (self._text[self._at] == "+"[0] or self._text[self._at] == "-"[0]) {
+                        self._at += 1;
+                    }
+                if !self.digits() { return .err(self.fail(.bad_number)); }
+            }
+        self.finished();
+        .ok(.some(.number(self._text[start..self._at])))
+    };
+
+    /// Reads past the value that is next, all of it if it is an array or an object.
+    skip_value := (self: &mut Reader) -> Result((), Error) {
+        mut level: usize = 0;
+        for {
+            token := match self.next()? {
+                .some(t) => t,
+                .none => return .err(self.fail(.unexpected_end)),
+            };
+            match token {
+                .object_begin => { level += 1; },
+                .array_begin => { level += 1; },
+                .object_end => { level -= 1; },
+                .array_end => { level -= 1; },
+                .name(_) => { continue; },
+                _ => {},
+            }
+            if level == 0 { return .ok(()); }
+        }
+        .ok(())
+    };
+};

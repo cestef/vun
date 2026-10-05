@@ -14,3 +14,4 @@ pub const now: Item = Item::new(&["std", "os", "symbols", "now"]);
 pub const pause: Item = Item::new(&["std", "os", "symbols", "pause"]);
 pub const spawn: Item = Item::new(&["std", "os", "symbols", "spawn"]);
 pub const join: Item = Item::new(&["std", "os", "symbols", "join"]);
+pub const entropy: Item = Item::new(&["std", "os", "symbols", "entropy"]);

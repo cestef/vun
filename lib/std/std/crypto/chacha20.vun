@@ -1,0 +1,101 @@
+//! ChaCha20 (RFC 8439): a stream cipher making blocks of 64 bytes from a 32-byte key, a 12-byte
+//! nonce and a block counter, by 20 rounds on sixteen 32-bit words. Encrypting and decrypting are
+//! the same exclusive or with the stream; never use a key and a nonce for two messages.
+//! `ChaCha20Rng` is a generator over the stream, for seeds that are secret and unique.
+
+..std.rand.{ Rng };
+
+/// "expand 32-byte k", as four words.
+constants: [4]u32 = [0x61707865, 0x3320646e, 0x79622d32, 0x6b206574];
+
+quarter := (state: &mut [16]u32, a: usize, b: usize, c: usize, d: usize) {
+    state[a] = (state[a] + state[b]).wrap(u32);
+    state[d] = (state[d] ^ state[a]).rotate_left(16);
+    state[c] = (state[c] + state[d]).wrap(u32);
+    state[b] = (state[b] ^ state[c]).rotate_left(12);
+    state[a] = (state[a] + state[b]).wrap(u32);
+    state[d] = (state[d] ^ state[a]).rotate_left(8);
+    state[c] = (state[c] + state[d]).wrap(u32);
+    state[b] = (state[b] ^ state[c]).rotate_left(7);
+};
+
+/// The word whose little-endian bytes are `bytes`.
+word := (bytes: &[u8]) -> u32 {
+    (bytes[0].to(u32)) | (bytes[1].to(u32) << 8) | (bytes[2].to(u32) << 16) | (bytes[3].to(u32) << 24)
+};
+
+/// The 64 bytes of the stream for block `counter`.
+block := (key: &[32]u8, nonce: &[12]u8, counter: u32) -> [64]u8 {
+    mut state: [16]u32 = [0; 16];
+    for i in 0..4 { state[i] = constants[i]; }
+    for i in 0..8 { state[4 + i] = word(key[4 * i..4 * i + 4]); }
+    state[12] = counter;
+    for i in 0..3 { state[13 + i] = word(nonce[4 * i..4 * i + 4]); }
+    mut work := state;
+    for _ in 0..10 {
+        quarter(&mut work, 0, 4, 8, 12);
+        quarter(&mut work, 1, 5, 9, 13);
+        quarter(&mut work, 2, 6, 10, 14);
+        quarter(&mut work, 3, 7, 11, 15);
+        quarter(&mut work, 0, 5, 10, 15);
+        quarter(&mut work, 1, 6, 11, 12);
+        quarter(&mut work, 2, 7, 8, 13);
+        quarter(&mut work, 3, 4, 9, 14);
+    }
+    mut out: [64]u8 = [0; 64];
+    for i in 0..16 {
+        v := (work[i] + state[i]).wrap(u32);
+        out[4 * i] = v.wrap(u8);
+        out[4 * i + 1] = (v >> 8).wrap(u8);
+        out[4 * i + 2] = (v >> 16).wrap(u8);
+        out[4 * i + 3] = (v >> 24).wrap(u8);
+    }
+    out
+};
+
+/// Mixes the stream from block `counter` on into `data`, which encrypts plain text and decrypts
+/// cipher text.
+apply := (key: &[32]u8, nonce: &[12]u8, counter: u32, data: &mut [u8]) {
+    mut at: usize = 0;
+    mut next := counter;
+    for at < data.len() {
+        stream := block(key, nonce, next);
+        for i in 0..64 {
+            if at < data.len() {
+                data[at] = data[at] ^ stream[i];
+                at += 1;
+            }
+        }
+        next = (next + 1).wrap(u32);
+    }
+};
+
+/// A generator reading the stream of a seed as 64-bit numbers.
+ChaCha20Rng := struct {
+    _key: [32]u8,
+    _counter: u32,
+    _block: [64]u8,
+    _used: usize,
+
+    /// A generator from a 32-byte seed.
+    from_seed := (seed: [32]u8) -> ChaCha20Rng {
+        .{ ._key = seed, ._counter = 0, ._block = [0; 64], ._used = 64 }
+    };
+
+    /// The next 64 bits of the stream.
+    draw := (self: &mut ChaCha20Rng) -> u64 {
+        if self._used + 8 > 64 {
+            self._block = block(&self._key, &[0; 12], self._counter);
+            self._counter = (self._counter + 1).wrap(u32);
+            self._used = 0;
+        }
+        mut out: u64 = 0;
+        for i in 0..8 { out = out | (self._block[self._used + i].to(u64) << (8 * i)); }
+        self._used += 8;
+        out
+    };
+};
+
+impl Rng for ChaCha20Rng {
+    next := (self) { self.draw() };
+}

@@ -1,0 +1,13 @@
+//! `std.os.entropy` for WASI: `random_get`.
+
+#[link.symbol("random_get"), link.library(std.os.wasi.module), abi.c]
+random_get: unsafe (bytes: *u8, count: u32) -> u16 = _;
+
+/// The exports, which the runtime holds: `random := std.os.wasi.random.exports`.
+exports := struct {
+    #[link.export(std.os.symbols.entropy)]
+    entropy := (bytes: &mut [u8]) -> Result((), std.os.Error) {
+        if bytes.len() == 0 { return .ok(()); }
+        std.os.wasi.outcome(unsafe random_get(lang.mem.items_pointer(u8, bytes), bytes.len().to(u32)))
+    };
+};

@@ -289,4 +289,5 @@ start := ($main: std.os.Main) -> type { struct {
     };
     threads := std.os.linux.kernel.thread.exports;
     pages := std.os.linux.kernel.pages.exports;
+    random := std.os.linux.kernel.random.exports;
 } };

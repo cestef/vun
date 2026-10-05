@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.os.wasi.random`.
+pub const random: Item = Item::new(&["std", "os", "wasi", "random"]);
 /// The namespace `std.os.wasi.stack`.
 pub const stack: Item = Item::new(&["std", "os", "wasi", "stack"]);
 /// Preview 1 programs run through this namespace's runtime.

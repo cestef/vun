@@ -16,6 +16,9 @@ pub const open_file: Item = Item::new(
 );
 pub const close: Item = Item::new(&["std", "os", "windows", "services", "close"]);
 pub const now: Item = Item::new(&["std", "os", "windows", "services", "now"]);
+/// The system's generator for secrets is not reached yet: it is `ProcessPrng`, in a library
+/// this runtime does not link.
+pub const entropy: Item = Item::new(&["std", "os", "windows", "services", "entropy"]);
 pub const pause: Item = Item::new(&["std", "os", "windows", "services", "pause"]);
 pub const protect_pages: Item = Item::new(
     &["std", "os", "windows", "services", "protect_pages"],

@@ -50,3 +50,10 @@ pub const Keyed: Item = Item::new(&["std", "seq", "tests", "Keyed"]);
 pub const the_stable_sort_keeps_the_order_of_equal_items: Item = Item::new(
     &["std", "seq", "tests", "the_stable_sort_keeps_the_order_of_equal_items"],
 );
+/// Whether the text `a` goes before `b`.
+pub const goes_before: Item = Item::new(&["std", "seq", "tests", "goes_before"]);
+/// Whether the text `a` goes before `b` or is it.
+pub const not_after: Item = Item::new(&["std", "seq", "tests", "not_after"]);
+pub const slices_and_arrays_are_ordered_like_words: Item = Item::new(
+    &["std", "seq", "tests", "slices_and_arrays_are_ordered_like_words"],
+);

@@ -9,3 +9,15 @@ use crate::Item;
 pub const durations_add_subtract_and_show_in_their_unit: Item = Item::new(
     &["std", "time", "tests", "durations_add_subtract_and_show_in_their_unit"],
 );
+pub const dates_count_days_from_the_epoch_both_ways: Item = Item::new(
+    &["std", "time", "tests", "dates_count_days_from_the_epoch_both_ways"],
+);
+pub const every_day_of_four_centuries_round_trips: Item = Item::new(
+    &["std", "time", "tests", "every_day_of_four_centuries_round_trips"],
+);
+pub const moments_are_read_and_written_as_iso_8601: Item = Item::new(
+    &["std", "time", "tests", "moments_are_read_and_written_as_iso_8601"],
+);
+pub const text_that_is_no_moment_is_refused: Item = Item::new(
+    &["std", "time", "tests", "text_that_is_no_moment_is_refused"],
+);

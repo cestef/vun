@@ -1,0 +1,27 @@
+//! Cryptographic primitives written in Vun: the SHA-256 hash, HMAC over it, the ChaCha20 stream
+//! cipher and a generator built on it, and a comparison that takes the same time whatever the
+//! bytes. They are checked against the published test vectors. They are not audited, and the
+//! timing guarantee is that of the code written, not of what a compiler or a processor does to it.
+
+/// SHA-256 (FIPS 180-4): a hash of 32 bytes.
+Sha256: type = std.crypto.sha2.Sha256;
+
+/// The 32 bytes SHA-256 gives.
+Digest: type = [32]u8;
+
+/// The SHA-256 of `bytes`.
+sha256 := (bytes: &[u8]) -> Digest { std.crypto.sha2.Sha256.digest(bytes) };
+
+/// The HMAC-SHA-256 (RFC 2104) of `message` under `key`.
+hmac_sha256 := (key: &[u8], message: &[u8]) -> Digest { std.crypto.hmac.sha256(key, message) };
+
+/// Whether `a` and `b` hold the same bytes, taking the same time whatever they hold.
+equal := (a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() { return false; }
+    mut difference: u8 = 0;
+    for i in 0..a.len() { difference = difference | (a[i] ^ b[i]); }
+    difference == 0
+};
+
+/// A generator for secrets, keyed from the system's entropy: see `std.crypto.secure`.
+SecureRng: type = std.crypto.secure.SecureRng;

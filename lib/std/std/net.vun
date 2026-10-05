@@ -1,0 +1,195 @@
+//! Network addresses: IPv4 and IPv6, read and written in their usual text forms, and what their
+//! ranges are. `Ip` is either.
+
+Ipv4 := struct {
+    octets: [4]u8,
+
+    /// The address `a.b.c.d`.
+    new := (a: u8, b: u8, c: u8, d: u8) -> Ipv4 { .{ .octets = [a, b, c, d] } };
+
+    /// The address as one number, `a` the most significant byte.
+    to_u32 := (self: &Ipv4) -> u32 {
+        (self.octets[0].to(u32) << 24) | (self.octets[1].to(u32) << 16) | (self.octets[2].to(u32) << 8)
+            | self.octets[3].to(u32)
+    };
+
+    /// `127.0.0.0/8`.
+    is_loopback := (self: &Ipv4) -> bool { self.octets[0] == 127 };
+
+    /// `10.0.0.0/8`, `172.16.0.0/12` and `192.168.0.0/16` (RFC 1918).
+    is_private := (self: &Ipv4) -> bool {
+        self.octets[0] == 10 or (self.octets[0] == 172 and self.octets[1] >= 16 and self.octets[1] <= 31)
+            or (self.octets[0] == 192 and self.octets[1] == 168)
+    };
+
+    /// `169.254.0.0/16`.
+    is_link_local := (self: &Ipv4) -> bool { self.octets[0] == 169 and self.octets[1] == 254 };
+
+    /// `224.0.0.0/4`.
+    is_multicast := (self: &Ipv4) -> bool { self.octets[0] >= 224 and self.octets[0] <= 239 };
+
+    /// `0.0.0.0`.
+    is_unspecified := (self: &Ipv4) -> bool { self.to_u32() == 0 };
+};
+
+Ipv6 := struct {
+    /// The eight groups of sixteen bits, the first the most significant.
+    groups: [8]u16,
+
+    /// `::1`.
+    is_loopback := (self: &Ipv6) -> bool {
+        for i in 0..7 {
+            if self.groups[i] != 0 { return false; }
+        }
+        self.groups[7] == 1
+    };
+
+    /// `::`.
+    is_unspecified := (self: &Ipv6) -> bool {
+        for i in 0..8 {
+            if self.groups[i] != 0 { return false; }
+        }
+        true
+    };
+
+    /// `ff00::/8`.
+    is_multicast := (self: &Ipv6) -> bool { (self.groups[0] >> 8) == 0xff };
+
+    /// `fe80::/10`.
+    is_link_local := (self: &Ipv6) -> bool { (self.groups[0] & 0xffc0) == 0xfe80 };
+
+    /// `fc00::/7`.
+    is_unique_local := (self: &Ipv6) -> bool { (self.groups[0] & 0xfe00) == 0xfc00 };
+};
+
+/// An address of either version.
+Ip := enum { v4(Ipv4), v6(Ipv6) };
+
+/// Why a text is no address.
+Problem := enum {
+    /// The text is not written as an address is.
+    malformed,
+    /// A part is past what it holds: an octet over 255, a group over 16 bits.
+    out_of_range,
+};
+
+/// The address `text` writes in dotted decimal, `192.168.0.1`: four octets, no sign and no
+/// leading zero.
+parse_v4 := (text: &[u8]) -> Result(Ipv4, Problem) {
+    mut octets: [4]u8 = [0; 4];
+    mut count: usize = 0;
+    for part in text.split(".") {
+        if count >= 4 or part.len() == 0 or part.len() > 3 { return .err(.malformed); }
+        if part.len() > 1 and part[0] == std.text.ascii.zero { return .err(.malformed); }
+        octet := std.text.num.parse(u32, part, 10).map_err(
+            [] (e: std.text.num.Problem) -> Problem { .malformed }
+        )?;
+        if octet > 255 { return .err(.out_of_range); }
+        octets[count] = octet.to(u8);
+        count += 1;
+    }
+    if count != 4 { return .err(.malformed); }
+    .ok(.{ .octets = octets })
+};
+
+/// The groups of `text`, up to eight of hexadecimal digits separated by colons, into `groups`:
+/// how many there were.
+read_groups := (text: &[u8], groups: &mut [8]u16) -> Result(usize, Problem) {
+    mut count: usize = 0;
+    if text.len() == 0 { return .ok(0); }
+    for part in text.split(":") {
+        if count >= 8 or part.len() == 0 or part.len() > 4 { return .err(.malformed); }
+        value := std.text.num.parse(u32, part, 16).map_err(
+            [] (e: std.text.num.Problem) -> Problem { .malformed }
+        )?;
+        groups[count] = value.to(u16);
+        count += 1;
+    }
+    .ok(count)
+};
+
+/// The address `text` writes in colon-separated hexadecimal, with `::` for a run of zero groups.
+parse_v6 := (text: &[u8]) -> Result(Ipv6, Problem) {
+    mut groups: [8]u16 = [0; 8];
+    match text.find("::") {
+        .some(at) => {
+            tail_text := text[at + 2..];
+            if tail_text.find("::") != Option(usize).none { return .err(.malformed); }
+            mut head: [8]u16 = [0; 8];
+            mut tail: [8]u16 = [0; 8];
+            head_count := read_groups(text[0..at], &mut head)?;
+            tail_count := read_groups(tail_text, &mut tail)?;
+            if head_count + tail_count > 7 { return .err(.malformed); }
+            for i in 0..head_count { groups[i] = head[i]; }
+            for i in 0..tail_count { groups[8 - tail_count + i] = tail[i]; }
+        },
+        .none => {
+            count := read_groups(text, &mut groups)?;
+            if count != 8 { return .err(.malformed); }
+        },
+    }
+    .ok(.{ .groups = groups })
+};
+
+/// The address `text` writes, of either version.
+parse := (text: &[u8]) -> Result(Ip, Problem) {
+    if text.contains(&":"[0]) {
+        match parse_v6(text) {
+            .ok(a) => .ok(.v6(a)),
+            .err(e) => .err(e),
+        }
+    } else {
+        match parse_v4(text) {
+            .ok(a) => .ok(.v4(a)),
+            .err(e) => .err(e),
+        }
+    }
+};
+
+impl std.fmt.Format for Ipv4 {
+    format := ($W: std.fmt.Writer, value, w) {
+        std.fmt.print(w, "{}.{}.{}.{}", value.octets[0], value.octets[1], value.octets[2], value.octets[3])
+    };
+}
+
+impl std.fmt.Format for Ipv6 {
+    /// In lower case, the longest run of two or more zero groups (the first of equals) as `::`
+    /// (RFC 5952).
+    format := ($W: std.fmt.Writer, value, w) {
+        mut best_start: usize = 8;
+        mut best_len: usize = 0;
+        mut i: usize = 0;
+        for i < 8 {
+            if value.groups[i] == 0 {
+                mut j := i;
+                for j < 8 and value.groups[j] == 0 { j += 1; }
+                if j - i > best_len { best_start = i; best_len = (j - i).to(usize); }
+                i = j;
+            } else {
+                i += 1;
+            }
+        }
+        compress := best_len >= 2;
+        mut k: usize = 0;
+        for k < 8 {
+            if compress and k == best_start {
+                w.write_all("::")?;
+                k = (k + best_len).to(usize);
+                continue;
+            }
+            if k > 0 and !(compress and k == best_start + best_len) { w.write_all(":")?; }
+            std.fmt.print(w, "{x}", value.groups[k])?;
+            k += 1;
+        }
+        .ok(())
+    };
+}
+
+impl std.fmt.Format for Ip {
+    format := ($W: std.fmt.Writer, value, w) {
+        match value.* {
+            .v4(a) => std.fmt.print(w, "{}", a),
+            .v6(a) => std.fmt.print(w, "{}", a),
+        }
+    };
+}

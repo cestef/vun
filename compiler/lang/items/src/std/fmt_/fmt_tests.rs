@@ -68,3 +68,16 @@ pub const a_fill_pads_with_its_byte_and_a_specifier_comes_first: Item = Item::ne
 pub const an_argument_wider_than_its_width_is_written_whole: Item = Item::new(
     &["std", "fmt", "tests", "an_argument_wider_than_its_width_is_written_whole"],
 );
+/// What `{}` and `{?}` write for a float.
+pub const shown: Item = Item::new(&["std", "fmt", "tests", "shown"]);
+pub const floats_print_as_the_shortest_digits_that_read_back: Item = Item::new(
+    &["std", "fmt", "tests", "floats_print_as_the_shortest_digits_that_read_back"],
+);
+pub const special_floats_and_other_widths_print: Item = Item::new(
+    &["std", "fmt", "tests", "special_floats_and_other_widths_print"],
+);
+/// What `fixed` writes.
+pub const fixed_text: Item = Item::new(&["std", "fmt", "tests", "fixed_text"]);
+pub const fixed_decimals_round_the_exact_value_to_even: Item = Item::new(
+    &["std", "fmt", "tests", "fixed_decimals_round_the_exact_value_to_even"],
+);

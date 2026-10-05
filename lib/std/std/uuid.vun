@@ -1,0 +1,94 @@
+//! UUIDs (RFC 9562): 128-bit identifiers written as 32 hexadecimal digits in groups of 8-4-4-4-12.
+//! Version 4 is random; version 7 starts with a millisecond timestamp, so identifiers made later
+//! sort later. For identifiers that must not be guessed, draw from `std.crypto.SecureRng`.
+
+Uuid := struct {
+    bytes: [16]u8,
+
+    /// The identifier of all zero bits.
+    nil := () -> Uuid { .{ .bytes = [0; 16] } };
+
+    /// A random identifier, version 4, drawn from `rng`.
+    v4 := ($R: std.rand.Rng, rng: &mut R) -> Uuid {
+        mut bytes: [16]u8 = [0; 16];
+        rng.fill(&mut bytes);
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        .{ .bytes = bytes }
+    };
+
+    /// An identifier of version 7 made `millis` milliseconds after 1970-01-01, the rest drawn from
+    /// `rng`.
+    v7 := ($R: std.rand.Rng, millis: u64, rng: &mut R) -> Uuid {
+        mut bytes: [16]u8 = [0; 16];
+        rng.fill(&mut bytes);
+        for i in 0..6 { bytes[i] = (millis >> (40 - 8 * i)).wrap(u8); }
+        bytes[6] = (bytes[6] & 0x0f) | 0x70;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        .{ .bytes = bytes }
+    };
+
+    /// Its version, the high nibble of its seventh byte.
+    version := (self: &Uuid) -> u8 { self.bytes[6] >> 4 };
+
+    /// Whether it is the nil identifier.
+    is_nil := (self: &Uuid) -> bool {
+        for b in self.bytes {
+            if b != 0 { return false; }
+        }
+        true
+    };
+};
+
+/// Why a text is no UUID.
+Problem := enum {
+    /// It is not 36 bytes, or lacks the dashes of 8-4-4-4-12.
+    shape,
+    /// A byte is no hexadecimal digit.
+    digit,
+};
+
+/// The UUID `text` writes: 32 hexadecimal digits in either case, grouped 8-4-4-4-12.
+parse := (text: &[u8]) -> Result(Uuid, Problem) {
+    if text.len() != 36 { return .err(.shape); }
+    mut bytes: [16]u8 = [0; 16];
+    mut at: usize = 0;
+    mut held: ?u8 = .none;
+    mut out: usize = 0;
+    for at < 36 {
+        b := text[at];
+        if at == 8 or at == 13 or at == 18 or at == 23 {
+            if b != "-"[0] { return .err(.shape); }
+        } else {
+            digit := match std.text.ascii.digit(b, 16) {
+                .some(d) => d,
+                .none => return .err(.digit),
+            };
+            match held {
+                .none => { held = .some(digit); },
+                .some(high) => {
+                    bytes[out] = (high * 16 + digit).to(u8);
+                    out += 1;
+                    held = .none;
+                },
+            }
+        }
+        at += 1;
+    }
+    .ok(.{ .bytes = bytes })
+};
+
+hex := "0123456789abcdef";
+
+impl std.fmt.Format for Uuid {
+    /// In lower case.
+    format := ($W: std.fmt.Writer, value, w) {
+        for i in 0..16 {
+            if i == 4 or i == 6 or i == 8 or i == 10 { w.write_all("-")?; }
+            b := value.bytes[i];
+            w.write_all(hex[(b / 16).to(usize)..(b / 16 + 1).to(usize)])?;
+            w.write_all(hex[(b % 16).to(usize)..(b % 16 + 1).to(usize)])?;
+        }
+        .ok(())
+    };
+}

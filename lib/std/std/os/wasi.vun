@@ -296,4 +296,5 @@ start := ($main: std.os.Main) -> type { struct {
 
     library := std.os.library.unsupported;
     pages := std.os.pages.unsupported;
+    random := std.os.wasi.random.exports;
 } };

@@ -1,0 +1,26 @@
+//! `std.os.entropy` for the kernel runtime: `getrandom`, which the kernel keeps for secrets.
+
+/// The exports, which the runtime holds: `random := std.os.linux.kernel.random.exports`.
+exports := struct {
+    /// Fills `bytes` from `getrandom`, which the kernel keeps for secrets: it may give fewer than
+    /// asked, or be interrupted, and is asked again for what is left.
+    #[link.export(std.os.symbols.entropy)]
+    entropy := (bytes: &mut [u8]) -> Result((), std.os.Error) {
+        mut done: usize = 0;
+        for done < bytes.len() {
+            rest := bytes[done..];
+            at := lang.mem.items_pointer(u8, rest).address();
+            match std.os.linux.kernel.outcome(
+                std.os.linux.kernel.request(
+                    std.os.linux.kernel.numbers.getrandom,
+                    [at, rest.len(), 0, 0, 0, 0]
+                )
+            ) {
+                .ok(n) => { done = (done + n).to(usize); },
+                .err(.interrupted) => {},
+                .err(e) => return .err(e),
+            }
+        }
+        .ok(())
+    };
+};

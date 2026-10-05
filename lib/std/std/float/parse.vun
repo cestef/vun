@@ -1,0 +1,203 @@
+//! Reading a float from text, rounded once to the nearest float of the type, ties to even: an
+//! optional sign, then `inf`, `infinity` or `nan` in any case, or digits with an optional point
+//! and an optional exponent, `-12.5e-3`. The digits are held exactly (up to 800, the rest only
+//! deciding a tie), so the result is the correctly rounded one whatever the input.
+
+..std.math.big.{ Big };
+
+/// Why a text is not a float.
+Problem := enum {
+    /// There is nothing to read.
+    empty,
+    /// The text is not a float.
+    invalid,
+};
+
+/// The most significant digits that are kept.
+keep: usize = 800;
+/// An exponent past this is the same as this: the number is far past what any float holds.
+exponent_cap: std.math.Exponent = 2200;
+
+/// What a text holds once it is read: `digits` times 10 to the power `exponent`, and whether
+/// digits past `keep` were not zero.
+Decimal := struct {
+    digits: Big,
+    count: usize,
+    exponent: i64,
+    more: bool,
+};
+
+lower := std.text.ascii.to_lower;
+
+/// Whether `text` is `expected` in any case.
+is_word := (text: &[u8], expected: &[u8]) -> bool { std.text.eq_ignore_case(text, expected) };
+
+/// The float of type `T` that `text` writes.
+read := ($T: type, text: &[u8]) -> Result(T, Problem) {
+    if text.len() == 0 { return .err(.empty); }
+    negative := text[0] == "-"[0];
+    signed := negative or text[0] == "+"[0];
+    body := if signed { text[1..] } else { text };
+    sign: T = if negative { -1.0 } else { 1.0 };
+    if is_word(body, "inf") or is_word(body, "infinity") { return .ok(sign * (1.0 / 0.0)); }
+    if is_word(body, "nan") { return .ok(0.0 / 0.0); }
+    decimal := scan(body)?;
+    if decimal.digits.is_zero() { return .ok(sign * 0.0); }
+    .ok(round(T, negative, decimal))
+};
+
+/// The digits, point and exponent of `body`.
+scan := (body: &[u8]) -> Result(Decimal, Problem) {
+    mut out: Decimal = .{ .digits = Big.zero(), .count = 0, .exponent = 0, .more = false };
+    mut at: usize = 0;
+    mut seen := false;
+    mut after_point := false;
+    for at < body.len() {
+        b := body[at];
+        if b == "."[0] and !after_point {
+            after_point = true;
+        } else if std.text.ascii.is_digit(b) {
+            seen = true;
+            digit := b - std.text.ascii.zero;
+            if out.count == 0 and digit == 0 {
+                // A zero before the first other digit holds no place; after the point it moves it.
+                if after_point { out.exponent -= 1; }
+            } else if out.count < keep {
+                out.digits.mul_small(10);
+                out.digits.add_small(digit.to(u32));
+                out.count += 1;
+                if after_point { out.exponent -= 1; }
+            } else {
+                if digit != 0 { out.more = true; }
+                if !after_point { out.exponent += 1; }
+            }
+        } else {
+            break;
+        }
+        at += 1;
+    }
+    if !seen { return .err(.invalid); }
+    if at < body.len() {
+        if lower(body[at]) != "e"[0] { return .err(.invalid); }
+        at += 1;
+        mut negative := false;
+        if at < body.len() and (body[at] == "-"[0] or body[at] == "+"[0]) {
+            negative = body[at] == "-"[0];
+            at += 1;
+        }
+        if at == body.len() { return .err(.invalid); }
+        mut magnitude: i64 = 0;
+        for at < body.len() {
+            if !std.text.ascii.is_digit(body[at]) { return .err(.invalid); }
+            if magnitude < 100_000 {
+                magnitude = (magnitude * 10 + (body[at] - std.text.ascii.zero)).to(i64);
+            }
+            at += 1;
+        }
+        out.exponent = if negative { (out.exponent - magnitude).to(i64) } else {
+            (out.exponent + magnitude).to(i64)
+        };
+    }
+    // Digits past the last kept only decide a tie: one more place, non-zero.
+    if out.more {
+        out.digits.mul_small(10);
+        out.digits.add_small(1);
+        out.exponent -= 1;
+    }
+    .ok(out)
+};
+
+/// What a power of two below the quotient's width is held in.
+Narrow: type = Int(0..(1 << 100));
+
+/// 10 to the power `n`.
+pow10 := (n: usize) -> Big {
+    mut b := Big.from_u64(1);
+    b.mul_pow10(n);
+    b
+};
+
+/// The float of type `T` nearest `decimal`, which is not zero.
+round := ($T: type, negative: bool, decimal: Decimal) -> T {
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $E := W - M - 1;
+    $Top := (1 << E) - 1;
+    $Bias := (1 << (E - 1)) - 1;
+    $Bits := lang.float.Bits(T);
+    sign: Bits = if negative { (1 << (W - 1)) } else { 0 };
+    infinity := lang.float.from_bits(T, (sign | (Top << M)).to(Bits));
+    zero := lang.float.from_bits(T, sign);
+    // The size of the number in decimal places, to rule out what no float of the type is near.
+    size: i64 = (decimal.count.to(i64) + decimal.exponent).to(i64);
+    $High := ((Top - Bias + 1) * 30103) / 100000 + 2;
+    $Low := ((2 - Bias - M - 3) * 30103) / 100000 - 2;
+    if size > High { return infinity; }
+    if size < Low { return zero; }
+    mut n := decimal.digits;
+    mut d := Big.from_u64(1);
+    if decimal.exponent >= 0 { n.mul_pow10(decimal.exponent.to(usize)); } else {
+        d = pow10((0 - decimal.exponent).to(usize));
+    }
+    // Shifted so that the quotient has 64 or 65 bits.
+    gap: std.math.Exponent = (n.bit_length().to(std.math.Exponent) - d.bit_length().to(std.math.Exponent)).to(
+        std.math.Exponent
+    );
+    shift: std.math.Exponent = (64 - gap).to(std.math.Exponent);
+    if shift >= 0 { n.shl(shift.to(usize)); } else { d.shl((0 - shift).to(usize)); }
+    one: u128 = 1;
+    mut q: u128 = 0;
+    mut place: usize = 67;
+    for place > 0 {
+        place -= 1;
+        mut part := d;
+        part.shl(place);
+        if !n.less(&part) {
+            n.sub(&part);
+            q = q | (one << place);
+        }
+    }
+    sticky := !n.is_zero();
+    assemble(T, negative, q, (0 - shift).to(std.math.Exponent), sticky)
+};
+
+/// The float of type `T` nearest `q` times 2 to the power `x` and a little more where `sticky`.
+assemble := ($T: type, negative: bool, q: u128, x: std.math.Exponent, sticky: bool) -> T {
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $E := W - M - 1;
+    $Top := (1 << E) - 1;
+    $Bias := (1 << (E - 1)) - 1;
+    $Bits := lang.float.Bits(T);
+    sign: Bits = if negative { (1 << (W - 1)) } else { 0 };
+    bl: std.math.Exponent = (128 - q.leading_zeros()).to(std.math.Exponent);
+    // The exponent of the least bit kept: that of a normal float's, or the least a float has.
+    least: std.math.Exponent = (1 - Bias - M).to(std.math.Exponent);
+    normal: std.math.Exponent = (x + bl - 1 - M).to(std.math.Exponent);
+    target: std.math.Exponent = if normal > least { normal } else { least };
+    shift := (target - x).to(std.math.Exponent);
+    mut m: u64 = 0;
+    if shift <= 0 {
+        m = (q << (0 - shift).to(usize)).to(u64);
+    } else if shift < 128 {
+        s := shift.to(usize);
+        one: u128 = 1;
+        m = (q >> s).to(u64);
+        mask: u128 = ((one << s).to(Narrow) - 1).to(u128);
+        rest := q & mask;
+        half: u128 = (one << (s - 1)).to(u128);
+        if rest > half or (rest == half and (sticky or (m & 1) == 1)) { m = (m + 1).to(u64); }
+    }
+    mut e2 := target;
+    if m >= (1 << (M + 1)) {
+        m = m >> 1;
+        e2 = (e2 + 1).to(std.math.Exponent);
+    }
+    if m >= (1 << M) {
+        field := (e2 + M + Bias).to(std.math.Exponent);
+        if field >= Top { return lang.float.from_bits(T, (sign | (Top << M)).to(Bits)); }
+        bits := (field.to(u64) << M) | (m - (1 << M)).to(u64);
+        return lang.float.from_bits(T, (sign | bits).to(Bits));
+    }
+    lang.float.from_bits(T, (sign | m).to(Bits))
+};

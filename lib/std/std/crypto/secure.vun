@@ -1,0 +1,72 @@
+//! A generator for secrets: ChaCha20 keyed from the system's source of entropy, with fast key
+//! erasure. Each block of the stream makes a new key from its first 32 bytes and gives the other
+//! 32 as output, so a state taken later reveals nothing of what was drawn earlier. The key is mixed
+//! with fresh entropy after every `reseed_after` bytes, so one taken once does not predict what is
+//! drawn long after. An entropy source that cannot be read is fatal: no output is better than
+//! output that can be guessed.
+
+..std.rand.{ Rng };
+
+/// Bytes drawn between two mixes of fresh entropy.
+reseed_after: u64 = 1_048_576;
+
+SecureRng := struct {
+    _key: [32]u8,
+    _out: [32]u8,
+    _used: usize,
+    _drawn: u64,
+
+    /// A generator keyed from the system's entropy.
+    ///
+    /// # Errors
+    /// Fails when the system gives none.
+    new := () -> Result(SecureRng, std.os.Error) {
+        mut key: [32]u8 = [0; 32];
+        std.os.entropy(&mut key)?;
+        .ok(SecureRng.from_seed(key))
+    };
+
+    /// A generator keyed from `seed`, which must be secret and unique to it: the same seed gives
+    /// the same numbers.
+    from_seed := (seed: [32]u8) -> SecureRng { .{ ._key = seed, ._out = [0; 32], ._used = 32, ._drawn = 0 } };
+
+    /// Mixes `fresh` into the key.
+    mix := (self: &mut SecureRng, fresh: &[32]u8) {
+        for i in 0..32 { self._key[i] = self._key[i] ^ fresh[i]; }
+    };
+
+    /// The next block: a new key, and 32 bytes of output.
+    refill := (self: &mut SecureRng) {
+        if self._drawn >= reseed_after {
+            mut fresh: [32]u8 = [0; 32];
+            match std.os.entropy(&mut fresh) {
+                .ok(_) => {},
+                .err(_) => lang.panic.fail(.message("SecureRng: the system gave no entropy")),
+            }
+            self.mix(&fresh);
+            self._drawn = 0;
+        }
+        block := std.crypto.chacha20.block(&self._key, &[0; 12], 0);
+        for i in 0..32 {
+            self._key[i] = block[i];
+            self._out[i] = block[32 + i];
+        }
+        self._used = 0;
+    };
+
+    /// The next 64 bits.
+    draw := (self: &mut SecureRng) -> u64 {
+        if self._used + 8 > 32 { self.refill(); }
+        mut out: u64 = 0;
+        for i in 0..8 { out = out | (self._out[self._used + i].to(u64) << (8 * i)); }
+        // What was given is erased from the buffer.
+        for i in 0..8 { self._out[self._used + i] = 0; }
+        self._used += 8;
+        self._drawn = (self._drawn + 8).to(u64);
+        out
+    };
+};
+
+impl Rng for SecureRng {
+    next := (self) { self.draw() };
+}

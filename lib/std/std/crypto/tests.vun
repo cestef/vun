@@ -1,0 +1,128 @@
+//! Tests of `std.crypto` against published vectors.
+
+/// The digest as lower-case hexadecimal.
+hex := (bytes: &[u8]) -> std.text.Slab(128) {
+    mut slab := std.text.Slab(128).empty();
+    std.codec.hex.encode(std.text.Slab(128), bytes, &mut slab).expect("room");
+    slab
+};
+
+#[test]
+sha256_matches_the_published_digests := () {
+    std.testing.assert(
+        hex(&std.crypto.sha256("")).bytes()
+            == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    );
+    std.testing.assert(
+        hex(&std.crypto.sha256("abc")).bytes()
+            == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    std.testing.assert(
+        hex(&std.crypto.sha256("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")).bytes() ==
+            "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"
+    );
+};
+
+#[test]
+sha256_takes_input_in_any_pieces := () {
+    mut h := std.crypto.Sha256.init();
+    h.update("a");
+    h.update("bc");
+    std.testing.assert(h.finish_digest() == std.crypto.sha256("abc"));
+    // A million letters a, fed in short runs, cross every block boundary.
+    mut m := std.crypto.Sha256.init();
+    chunk: [100]u8 = [97; 100];
+    for _ in 0..10_000 { m.update(&chunk); }
+    std.testing.assert(
+        hex(&m.finish_digest()).bytes() == "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0"
+    );
+};
+
+#[test]
+hmac_sha256_matches_rfc_4231 := () {
+    mut key: [20]u8 = [0x0b; 20];
+    std.testing.assert(
+        hex(&std.crypto.hmac_sha256(&key, "Hi There")).bytes() ==
+            "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
+    );
+    std.testing.assert(
+        hex(&std.crypto.hmac_sha256("Jefe", "what do ya want for nothing?")).bytes() ==
+            "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
+    );
+    // A key longer than a block is hashed first.
+    mut long: [131]u8 = [0xaa; 131];
+    std.testing.assert(
+        hex(&std.crypto.hmac_sha256(&long, "Test Using Larger Than Block-Size Key - Hash Key First")).bytes() ==
+            "60e431591ee0b67f0d8a26aacbf5b77f8e0bc6213728c5140546040f0ee37f54"
+    );
+};
+
+#[test]
+chacha20_makes_the_published_stream := () {
+    zero_key: [32]u8 = [0; 32];
+    zero_nonce: [12]u8 = [0; 12];
+    block := std.crypto.chacha20.block(&zero_key, &zero_nonce, 0);
+    std.testing.assert(hex(&block).bytes() ==
+            "76b8e0ada0f13d90405d6ae55386bd28bdd219b8a08ded1aa836efcc8b770dc7da41597c5157488d7724e03fb8d84a376a43b8f41518a11cc387b669b2ee6586");
+    mut data: [4]u8 = "abcd".*;
+    std.crypto.chacha20.apply(&zero_key, &zero_nonce, 0, &mut data);
+    std.crypto.chacha20.apply(&zero_key, &zero_nonce, 0, &mut data);
+    std.testing.assert(data == "abcd".*);
+};
+
+#[test]
+the_chacha_generator_reads_the_stream_and_differs_by_seed := () {
+    mut a := std.crypto.chacha20.ChaCha20Rng.from_seed([0; 32]);
+    mut b := std.crypto.chacha20.ChaCha20Rng.from_seed([1; 32]);
+    first := a.next();
+    // The first eight bytes of the zero stream, little-endian.
+    std.testing.assert(first == 0x903df1a0ade0b876);
+    std.testing.assert(b.next() != first);
+    mut distinct := false;
+    for _ in 0..40 { if a.next() != first { distinct = true; } }
+    std.testing.assert(distinct);
+};
+
+#[test]
+equal_compares_in_full := () {
+    std.testing.assert(
+        std.crypto.equal("abc", "abc") and !std.crypto.equal("abc", "abd") and !std.crypto.equal("abc", "ab")
+    );
+};
+
+#[test]
+the_system_gives_entropy_and_a_secure_generator_uses_it := () {
+    mut a: [32]u8 = [0; 32];
+    mut b: [32]u8 = [0; 32];
+    std.os.entropy(&mut a).expect("entropy");
+    std.os.entropy(&mut b).expect("entropy");
+    std.testing.assert(a != b and a != [0; 32]);
+    mut big: [1000]u8 = [0; 1000];
+    std.os.entropy(&mut big).expect("entropy");
+    mut distinct: u32 = 0;
+    for i in 1..1000 { if big[i] != big[i - 1] { distinct += 1; } }
+    std.testing.assert(distinct > 900);
+    mut one := std.crypto.SecureRng.new().expect("entropy");
+    mut two := std.crypto.SecureRng.new().expect("entropy");
+    std.testing.assert(one.next() != two.next());
+};
+
+#[test]
+a_secure_generator_is_fixed_by_its_seed_and_erases_what_it_gave := () {
+    mut a := std.crypto.SecureRng.from_seed([7; 32]);
+    mut b := std.crypto.SecureRng.from_seed([7; 32]);
+    mut c := std.crypto.SecureRng.from_seed([8; 32]);
+    mut same := true;
+    mut apart := true;
+    for _ in 0..200 {
+        x := a.next();
+        if x != b.next() { same = false; }
+        if x == c.next() { apart = false; }
+    }
+    std.testing.assert(same and apart);
+    // Below, draws beyond a reseed still work (a reseed reads the system).
+    mut long := std.crypto.SecureRng.from_seed([1; 32]);
+    mut sum: u64 = 0;
+    for _ in 0..140_000 { sum = (sum + (long.next() & 1)).to(u64); }
+    std.testing.assert(sum > 60_000 and sum < 80_000);
+};

@@ -141,3 +141,67 @@ an_argument_wider_than_its_width_is_written_whole := () {
     std.fmt.print(&mut slab, "{:>2}|{?:>3}", 12345, "abc").expect("room");
     std.testing.assert(slab.bytes() == "12345|\"abc\"");
 };
+
+/// What `{}` and `{?}` write for a float.
+shown := ($T: type, x: T, debug: bool) -> std.text.Slab(48) {
+    mut slab := std.text.Slab(48).empty();
+    if debug { std.fmt.print(&mut slab, "{?}", x).expect("room"); } else {
+        std.fmt.print(&mut slab, "{}", x).expect("room");
+    }
+    slab
+};
+
+#[test]
+floats_print_as_the_shortest_digits_that_read_back := () {
+    std.testing.assert(shown(f64, 0.1, false).bytes() == "0.1" and shown(f64, 1.5, false).bytes() == "1.5");
+    std.testing.assert(shown(f64, 1.0, false).bytes() == "1" and shown(f64, 1.0, true).bytes() == "1.0");
+    std.testing.assert(
+        shown(f64, 100.0, false).bytes() == "100" and shown(f64, -250.0, true).bytes() == "-250.0"
+    );
+    std.testing.assert(shown(f64, 0.1 + 0.2, false).bytes() == "0.30000000000000004");
+    std.testing.assert(shown(f64, 123456789.125, false).bytes() == "123456789.125");
+    std.testing.assert(shown(f64, 9007199254740992.0, false).bytes() == "9007199254740992");
+    std.testing.assert(shown(f64, 0.000001, false).bytes() == "0.000001");
+    std.testing.assert(
+        shown(f64, 1e21, false).bytes() == "1e21" and shown(f64, 1e-7, false).bytes() == "1e-7"
+    );
+    std.testing.assert(shown(f64, 1.5e300, false).bytes() == "1.5e300");
+    std.testing.assert(shown(f64, 5e-324, false).bytes() == "5e-324");
+    std.testing.assert(shown(f64, 1.7976931348623157e308, false).bytes() == "1.7976931348623157e308");
+    std.testing.assert(shown(f64, 2.2250738585072014e-308, false).bytes() == "2.2250738585072014e-308");
+};
+
+#[test]
+special_floats_and_other_widths_print := () {
+    std.testing.assert(shown(f64, -0.0, false).bytes() == "-0" and shown(f64, 0.0, true).bytes() == "0.0");
+    std.testing.assert(shown(f64, 0.0 / 0.0, false).bytes() == "NaN");
+    std.testing.assert(
+        shown(f64, 1.0 / 0.0, false).bytes() == "inf" and shown(f64, -1.0 / 0.0, false).bytes() == "-inf"
+    );
+    std.testing.assert(
+        shown(f32, 0.1, false).bytes() == "0.1" and shown(f32, 16777216.0, false).bytes() == "16777216"
+    );
+    std.testing.assert(shown(f32, 3.4028235e38, false).bytes() == "3.4028235e38");
+    std.testing.assert(shown(f32, 1e-45, false).bytes() == "1e-45");
+    // A half float is 32 apart near its greatest, so 65500 reads back as it.
+    std.testing.assert(shown(f16, 65504.0, false).bytes() == "65500");
+    std.testing.assert(shown(f16, 0.1, false).bytes() == "0.1");
+};
+
+/// What `fixed` writes.
+fixed_text := (x: f64, decimals: usize) -> std.text.Slab(48) {
+    mut slab := std.text.Slab(48).empty();
+    std.fmt.float.fixed(f64, std.text.Slab(48), &mut slab, x, decimals).expect("room");
+    slab
+};
+
+#[test]
+fixed_decimals_round_the_exact_value_to_even := () {
+    std.testing.assert(fixed_text(3.14159, 2).bytes() == "3.14" and fixed_text(3.14159, 0).bytes() == "3");
+    std.testing.assert(fixed_text(2.5, 0).bytes() == "2" and fixed_text(3.5, 0).bytes() == "4");
+    std.testing.assert(fixed_text(0.125, 2).bytes() == "0.12" and fixed_text(0.375, 2).bytes() == "0.38");
+    std.testing.assert(fixed_text(0.0, 3).bytes() == "0.000" and fixed_text(-1.5, 1).bytes() == "-1.5");
+    std.testing.assert(fixed_text(0.1, 20).bytes() == "0.10000000000000000555");
+    std.testing.assert(fixed_text(1e21, 1).bytes() == "1000000000000000000000.0");
+    std.testing.assert(fixed_text(0.999, 2).bytes() == "1.00" and fixed_text(5e-324, 3).bytes() == "0.000");
+};

@@ -1,0 +1,117 @@
+//! Tests of the JSON reader.
+
+/// The tokens of `text`, as one number each: structure by a letter, and the length of a string,
+/// name or number.
+Seen := struct { objects: u32, arrays: u32, names: u32, strings: u32, numbers: u32, bools: u32, nulls: u32 };
+
+count := (text: &[u8]) -> Result(Seen, std.json.Error) {
+    mut r := std.json.Reader.of(text);
+    mut seen: Seen = .{
+        .objects = 0,
+        .arrays = 0,
+        .names = 0,
+        .strings = 0,
+        .numbers = 0,
+        .bools = 0,
+        .nulls = 0
+    };
+    for {
+        token := match r.next()? {
+            .some(t) => t,
+            .none => break,
+        };
+        match token {
+            .object_begin => { seen.objects += 1; },
+            .array_begin => { seen.arrays += 1; },
+            .name(_) => { seen.names += 1; },
+            .string(_) => { seen.strings += 1; },
+            .number(_) => { seen.numbers += 1; },
+            .boolean(_) => { seen.bools += 1; },
+            .null => { seen.nulls += 1; },
+            _ => {},
+        }
+    }
+    .ok(seen)
+};
+
+problem := (text: &[u8]) -> ?std.json.Problem {
+    match count(text) {
+        .ok(_) => .none,
+        .err(e) => .some(e.problem),
+    }
+};
+
+#[test]
+a_document_is_read_token_by_token := () {
+    text := " { \"a\": [1, 2.5e3, -0, true, false, null], \"b\": { \"c\": \"x\\ny\" }, \"d\": [] } ";
+    seen := count(text).expect("valid");
+    std.testing.assert(seen.objects == 2 and seen.arrays == 2 and seen.names == 4 and seen.strings == 1);
+    std.testing.assert(seen.numbers == 3 and seen.bools == 2 and seen.nulls == 1);
+};
+
+#[test]
+scalars_are_documents_too := () {
+    std.testing.assert(count("42").expect("valid").numbers == 1);
+    std.testing.assert(count("\"hi\"").expect("valid").strings == 1);
+    std.testing.assert(count("null").expect("valid").nulls == 1);
+    std.testing.assert(count("  true\n").expect("valid").bools == 1);
+};
+
+#[test]
+documents_that_break_the_grammar_are_refused := () {
+    std.testing.assert(problem("") == Option(std.json.Problem).some(.unexpected_end));
+    std.testing.assert(problem("[1, 2") == Option(std.json.Problem).some(.unexpected_end));
+    std.testing.assert(problem("[1,]") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("{\"a\" 1}") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("{\"a\": 1,}") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("[1] 2") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("{1: 2}") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("[}") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("tru") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("01") == Option(std.json.Problem).some(.unexpected_byte));
+    std.testing.assert(problem("1.") == Option(std.json.Problem).some(.bad_number));
+    std.testing.assert(problem("-") == Option(std.json.Problem).some(.unexpected_end));
+    std.testing.assert(problem("1e+") == Option(std.json.Problem).some(.bad_number));
+    std.testing.assert(problem("\"a\nb\"") == Option(std.json.Problem).some(.bad_string));
+    std.testing.assert(problem("\"\\x\"") == Option(std.json.Problem).some(.bad_string));
+    std.testing.assert(problem("\"\\u12g4\"") == Option(std.json.Problem).some(.bad_string));
+    std.testing.assert(problem("\"abc") == Option(std.json.Problem).some(.unexpected_end));
+};
+
+#[test]
+nesting_has_a_limit := () {
+    mut deep: [100]u8 = ["["[0]; 100];
+    std.testing.assert(problem(&deep) == Option(std.json.Problem).some(.too_deep));
+    mut fine: [128]u8 = ["["[0]; 128];
+    for i in 0..64 { fine[64 + i] = "]"[0]; }
+    std.testing.assert(problem(&fine) == Option(std.json.Problem).none);
+};
+
+#[test]
+a_value_can_be_skipped := () {
+    mut r := std.json.Reader.of("{\"skip\": {\"x\": [1, {\"y\": 2}]}, \"keep\": 7}");
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).some(.object_begin));
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).some(.name("skip")));
+    r.skip_value().expect("valid");
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).some(.name("keep")));
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).some(.number("7")));
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).some(.object_end));
+    std.testing.assert(r.next().expect("valid") == Option(std.json.Token).none);
+};
+
+#[test]
+strings_are_decoded_on_request := () {
+    mut slab := std.text.Slab(32).empty();
+    std.json.text.unescape(std.text.Slab(32), &mut slab, "a\\nb\\\"c\\u00e9\\ud83d\\ude00").expect("valid");
+    std.testing.assert(slab.bytes() == "a\nb\"c\xc3\xa9\xf0\x9f\x98\x80");
+    mut bad := std.text.Slab(32).empty();
+    std.testing.assert(std.json.text.unescape(std.text.Slab(32), &mut bad, "\\ud83d") ==
+            Result((), std.json.text.Unescaped(std.text.Full)).err(.bad_escape));
+};
+
+#[test]
+numbers_are_read_as_the_type_asked := () {
+    std.testing.assert(std.json.text.integer(i32, "-120") == Result(i32, std.text.num.Problem).ok(-120));
+    std.testing.assert(std.json.text.integer(u8, "300") == Result(u8, std.text.num.Problem).err(.overflow));
+    std.testing.assert(std.json.text.float(f64, "2.5e3") == Result(f64, std.float.parse.Problem).ok(2500.0));
+};

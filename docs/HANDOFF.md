@@ -351,16 +351,19 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    adapters and consumers, option and result combinators, `std.text.num` integer parsing, slice
    shapes with a stable merge sort over caller-given room, `Vec` extras, `BitSet`, `SortedMap`
    (sorted vectors, O(n) insert: a real `BTreeMap` is still open) and `Duration` arithmetic and
-   formatting. Open there: float parsing and printing (`std.fmt` has no `Format` for floats), a
-   correctly rounded `exp`/`ln`/`sin`, `f16` math through `f64` is rounded twice for the
-   transcendental functions, `Iter.sum` (a generic `+` of a range type needs a design), `rev` and
-   `peekable`, `Vec.drain`, `Vec.split_off`. Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
+   formatting. Open there: a correctly rounded `exp`/`ln`/`sin`, `f16` math through `f64` is
+   rounded twice for the transcendental functions, `Iter.sum` (a generic `+` of a range type needs
+   a design), `rev` and `peekable`, `Vec.drain`, `Vec.split_off`. Added in 492 (proposed): float
+   printing and reading (`std.fmt.float`, `std.float.parse`, on `std.math.big`), `std.json` (a
+   pull reader; the writer still writes a float as its exact hexadecimal string, which a reader of
+   other JSON cannot use: writing floats as numbers, `null` for a NaN, is a decision for the
+   user), `std.crypto` (SHA-256, HMAC, ChaCha20, `SecureRng` over `std.os.entropy`),
+   `std.time.date`, `std.net` addresses and `std.uuid`. `std.os.entropy` is `getrandom` (kernel
+   runtime), `getentropy` (C library) and `random_get` (WASI); on Windows it reports
+   `unsupported` until the runtime links `bcryptprimitives` (`ProcessPrng`). Open: `std.os.{env,
+   process,net}` sockets, `std.collections` `BTreeMap`, a pattern-defeating quicksort. Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
    methods of `std.int.math`. `ArrayVec(n, T)` is built on 485 (`lang.mem.Uninit`).
-   Open there: `==` of arrays of no items (`[0]u32`) does not compile. `for i in 0..0` types the
-   index `never`, so typing reports `types.bad_index` at `std.seq`'s `a[i]`; past that the MIR
-   builder and `Projection::Index` lowering refuse an index of an empty type, and past that
-   `Bounds(never)` constants (the loop's `0..0` as a compile-time value) have no lowering
-   (`stopped at lir constant`, `lib/lang/lang/ops.vun` `bounds.empty`). Fixing it takes all three. Signed bit tricks need `.wrap(uN)` round trips (rule 8):
+   Signed bit tricks need `.wrap(uN)` round trips (rule 8):
    a helper for an arithmetic shift or a sign mask in `std.int` would stop each library
    rederiving it. `int.does_not_fit`'s help still says "widen `u64`" for a run-time value of
    another type; `.to(T)` or `.wrap(T)` is the fix it should name. A `mut x := e` takes the range

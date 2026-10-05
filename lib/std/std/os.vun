@@ -39,6 +39,7 @@ symbols := struct {
     pause := "vun_os_pause";
     spawn := "vun_os_spawn";
     join := "vun_os_join";
+    entropy := "vun_os_entropy";
 };
 
 /// Writes some of `bytes` to the stream the system knows as `fd`, returning how many.
@@ -65,6 +66,11 @@ now: (clock: std.time.Clock) -> Result(std.time.Instant, Error) = _;
 /// Suspends the calling thread for at least `span`.
 #[link.symbol(symbols.pause)]
 pause: (span: std.time.Duration) -> Result((), Error) = _;
+
+/// Fills `bytes` with random bytes from the system's source for secrets, which does not run out
+/// and is not predictable from any other output.
+#[link.symbol(symbols.entropy)]
+entropy: (bytes: &mut [u8]) -> Result((), Error) = _;
 
 /// Starts a thread at `start` with the address of a copy of the `bytes` of its context at
 /// `context`, returning the handle `join` takes: the copy stays, where the thread may write it,
@@ -188,6 +194,8 @@ System := struct {
     now := (self: &System, clock: std.time.Clock) -> Result(std.time.Instant, Error) { std.os.now(clock) };
     /// Suspends the calling thread for at least `span`.
     pause := (self: &mut System, span: std.time.Duration) -> Result((), Error) { std.os.pause(span) };
+    /// Fills `bytes` with random bytes fit for secrets.
+    entropy := (self: &System, bytes: &mut [u8]) -> Result((), Error) { std.os.entropy(bytes) };
     /// Starts a thread running `f`, borrowed until the thread is joined.
     spawn := (self: &temp mut System, $R: type, $F: lang.ops.Call((), R), f: &mut F) -> Result(
         std.os.thread.Thread(R, F),

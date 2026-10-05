@@ -161,6 +161,11 @@ services := struct {
         }
     };
 
+    /// The system's generator for secrets is not reached yet: it is `ProcessPrng`, in a library
+    /// this runtime does not link.
+    #[link.export(std.os.symbols.entropy)]
+    entropy := (bytes: &mut [u8]) -> Result((), std.os.Error) { .err(.unsupported) };
+
     #[link.export(std.os.symbols.pause)]
     pause := (span: std.time.Duration) -> Result((), std.os.Error) { std.os.windows.clock.pause(span) };
 

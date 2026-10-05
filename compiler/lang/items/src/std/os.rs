@@ -50,6 +50,9 @@ pub const close: Item = Item::new(&["std", "os", "close"]);
 pub const now: Item = Item::new(&["std", "os", "now"]);
 /// Suspends the calling thread for at least `span`.
 pub const pause: Item = Item::new(&["std", "os", "pause"]);
+/// Fills `bytes` with random bytes from the system's source for secrets, which does not run out
+/// and is not predictable from any other output.
+pub const entropy: Item = Item::new(&["std", "os", "entropy"]);
 /// Starts a thread at `start` with the address of a copy of the `bytes` of its context at
 /// `context`, returning the handle `join` takes: the copy stays, where the thread may write it,
 /// until then.

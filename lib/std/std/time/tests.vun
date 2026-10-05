@@ -18,3 +18,77 @@ durations_add_subtract_and_show_in_their_unit := () {
     ).expect("room");
     std.testing.assert(slab.bytes() == "1.50s 2.50us 850ns 3.00ms");
 };
+
+#[test]
+dates_count_days_from_the_epoch_both_ways := () {
+    epoch := std.time.date.Date.new(1970, 1, 1).expect("a date");
+    std.testing.assert(epoch.days() == 0 and epoch.weekday() == .thursday);
+    leap := std.time.date.Date.new(2024, 2, 29).expect("a date");
+    std.testing.assert(leap.days() == 19782 and leap.weekday() == .thursday and leap.day_of_year() == 60);
+    std.testing.assert(std.time.date.Date.from_days(19782) == leap);
+    std.testing.assert(
+        std.time.date.Date.from_days(-1) == std.time.date.Date.new(1969, 12, 31).expect("a date")
+    );
+    std.testing.assert(
+        std.time.date.Date.from_days(-719162) == std.time.date.Date.new(1, 1, 1).expect("a date")
+    );
+    std.testing.assert(std.time.date.Date.new(2023, 2, 29) == Option(std.time.date.Date).none);
+    std.testing.assert(std.time.date.Date.new(1900, 2, 29) == Option(std.time.date.Date).none);
+    std.testing.assert(std.time.date.Date.new(2000, 2, 29) != Option(std.time.date.Date).none);
+    std.testing.assert(std.time.date.Date.new(2024, 12, 31).expect("a date").day_of_year() == 366);
+};
+
+#[test]
+every_day_of_four_centuries_round_trips := () {
+    mut ok := true;
+    mut previous := std.time.date.Date.from_days(-146097);
+    for n in -146096..=146097 {
+        d := std.time.date.Date.from_days(n);
+        if d.days() != n { ok = false; }
+        // The next day is the next day of the month, or the first of the next.
+        if d.day != previous.day + 1 and d.day != 1 { ok = false; }
+        previous = d;
+    }
+    std.testing.assert(ok);
+};
+
+#[test]
+moments_are_read_and_written_as_iso_8601 := () {
+    moment := std.time.date.parse("2024-02-29T12:30:45.5Z").expect("a moment");
+    std.testing.assert(moment.unix_seconds() == 1709209845 and moment.nanos == 500_000_000);
+    mut slab := std.text.Slab(48).empty();
+    std.fmt.print(&mut slab, "{}", moment).expect("room");
+    std.testing.assert(slab.bytes() == "2024-02-29T12:30:45.5Z");
+    offset := std.time.date.parse("2024-03-01T01:00:00+02:00").expect("a moment");
+    std.testing.assert(offset.unix_seconds() == 1709247600);
+    before := std.time.date.DateTime.from_unix(-1, 0);
+    mut text := std.text.Slab(48).empty();
+    std.fmt.print(&mut text, "{}", before).expect("room");
+    std.testing.assert(text.bytes() == "1969-12-31T23:59:59Z");
+};
+
+#[test]
+text_that_is_no_moment_is_refused := () {
+    std.testing.assert(
+        std.time.date.parse("2024-02-30T00:00:00Z")
+            == Result(std.time.date.DateTime, std.time.date.Problem).err(.out_of_range)
+    );
+    std.testing.assert(
+        std.time.date.parse("2024-02-29 00:00:00Z")
+            == Result(std.time.date.DateTime, std.time.date.Problem).err(.malformed)
+    );
+    std.testing.assert(
+        std.time.date.parse("2024-02-29T25:00:00Z")
+            == Result(std.time.date.DateTime, std.time.date.Problem).err(.out_of_range)
+    );
+    std.testing.assert(
+        std.time.date.parse_date("2024-13-01") == Result(std.time.date.Date, std.time.date.Problem).err(
+            .out_of_range
+        )
+    );
+    std.testing.assert(
+        std.time.date.parse_date("24-1-1") == Result(std.time.date.Date, std.time.date.Problem).err(
+            .malformed
+        )
+    );
+};

@@ -51,6 +51,9 @@ pub const clone: Item = Item::new(
 pub const futex: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "futex"],
 );
+pub const getrandom: Item = Item::new(
+    &["std", "os", "linux", "kernel", "calls", "Numbers", "getrandom"],
+);
 pub const exit: Item = Item::new(
     &["std", "os", "linux", "kernel", "calls", "Numbers", "exit"],
 );

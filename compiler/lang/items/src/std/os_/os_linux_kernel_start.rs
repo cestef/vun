@@ -40,3 +40,4 @@ pub const threads: Item = Item::new(
     &["std", "os", "linux", "kernel", "start", "threads"],
 );
 pub const pages: Item = Item::new(&["std", "os", "linux", "kernel", "start", "pages"]);
+pub const random: Item = Item::new(&["std", "os", "linux", "kernel", "start", "random"]);

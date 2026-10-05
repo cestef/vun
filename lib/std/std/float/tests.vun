@@ -1,0 +1,84 @@
+//! Tests of reading floats from text.
+
+read64 := (text: &[u8]) -> Result(f64, std.float.parse.Problem) { std.float.parse.read(f64, text) };
+read32 := (text: &[u8]) -> Result(f32, std.float.parse.Problem) { std.float.parse.read(f32, text) };
+
+/// Whether `text` reads as exactly `want`, to the bit.
+reads := (text: &[u8], want: f64) -> bool {
+    match read64(text) {
+        .ok(got) => lang.float.bits(f64, got) == lang.float.bits(f64, want),
+        .err(_) => false,
+    }
+};
+
+#[test]
+decimals_read_as_the_nearest_float := () {
+    std.testing.assert(reads("0.1", 0.1) and reads("0.3", 0.3) and reads("1", 1.0) and reads("-2.5", -2.5));
+    std.testing.assert(reads("+7.25e2", 725.0) and reads("1e23", 1e23) and reads("12345.678e-3", 12.345678));
+    std.testing.assert(reads("123456789012345678901234567890", 1.2345678901234568e29));
+    std.testing.assert(reads("0.000000000000000000000000000001", 1e-30));
+};
+
+#[test]
+the_ends_of_the_range_read_exactly := () {
+    std.testing.assert(reads("5e-324", 5e-324) and reads("4.9406564584124654e-324", 5e-324));
+    std.testing.assert(reads("2.2250738585072011e-308", 2.2250738585072011e-308));
+    std.testing.assert(reads("2.2250738585072014e-308", 2.2250738585072014e-308));
+    std.testing.assert(reads("1.7976931348623157e308", 1.7976931348623157e308));
+    std.testing.assert(
+        reads("1.8e308", 1.0 / 0.0) and reads("1e400", 1.0 / 0.0) and reads("-1e400", -1.0 / 0.0)
+    );
+    std.testing.assert(reads("1e-400", 0.0) and reads("2e-324", 0.0));
+    std.testing.assert(reads("-0", -0.0) and reads("0.000e5", 0.0));
+};
+
+#[test]
+a_halfway_goes_to_the_even_float := () {
+    std.testing.assert(reads("9007199254740993", 9007199254740992.0));
+    std.testing.assert(reads("9007199254740993.0000000000000000000001", 9007199254740994.0));
+    std.testing.assert(reads("9007199254740995", 9007199254740996.0));
+    std.testing.assert(reads("1.00000000000000011102230246251565404236316680908203125", 1.0));
+    std.testing.assert(reads("1.00000000000000011102230246251565404236316680908203126", 1.0000000000000002));
+};
+
+#[test]
+words_and_other_types_read := () {
+    std.testing.assert(
+        reads("inf", 1.0 / 0.0) and reads("-Infinity", -1.0 / 0.0) and reads("+INF", 1.0 / 0.0)
+    );
+    nan := read64("NaN").expect("a number");
+    std.testing.assert(nan != nan);
+    std.testing.assert(read32("0.1") == Result(f32, std.float.parse.Problem).ok(0.1));
+    std.testing.assert(read32("3.4028235e38") == Result(f32, std.float.parse.Problem).ok(3.4028235e38));
+    std.testing.assert(read32("3.4028236e38") == Result(f32, std.float.parse.Problem).ok(1.0 / 0.0));
+    std.testing.assert(read32("1e-45") == Result(f32, std.float.parse.Problem).ok(1e-45));
+    h: Result(f16, std.float.parse.Problem) = std.float.parse.read(f16, "65504");
+    std.testing.assert(h == Result(f16, std.float.parse.Problem).ok(65504.0));
+};
+
+#[test]
+texts_that_are_no_floats_are_refused := () {
+    std.testing.assert(read64("") == Result(f64, std.float.parse.Problem).err(.empty));
+    std.testing.assert(read64("abc") == Result(f64, std.float.parse.Problem).err(.invalid));
+    std.testing.assert(read64("1e") == Result(f64, std.float.parse.Problem).err(.invalid));
+    std.testing.assert(read64(".") == Result(f64, std.float.parse.Problem).err(.invalid));
+    std.testing.assert(read64("1.2.3") == Result(f64, std.float.parse.Problem).err(.invalid));
+    std.testing.assert(read64("1 ") == Result(f64, std.float.parse.Problem).err(.invalid));
+    std.testing.assert(read64("-") == Result(f64, std.float.parse.Problem).err(.invalid));
+};
+
+#[test]
+floats_print_and_read_back_as_they_were := () {
+    values := [0.1, 1.0
+            / 3.0, 123456.789, 1e-7, 2.5e300, 5e-324, 1.7976931348623157e308, 0.30000000000000004];
+    mut ok := true;
+    for v in values {
+        mut slab := std.text.Slab(64).empty();
+        std.fmt.print(&mut slab, "{}", v).expect("room");
+        match read64(slab.bytes()) {
+            .ok(back) => { if lang.float.bits(f64, back) != lang.float.bits(f64, v) { ok = false; } },
+            .err(_) => { ok = false; },
+        }
+    }
+    std.testing.assert(ok);
+};

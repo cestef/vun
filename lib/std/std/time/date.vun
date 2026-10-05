@@ -1,0 +1,236 @@
+//! Dates in the proleptic Gregorian calendar and times of day in UTC, from the count of days or
+//! seconds since 1970-01-01 (Howard Hinnant's civil-date algorithms). `Date.new` checks a date,
+//! `DateTime` carries a time of day to the nanosecond, and both read and write ISO 8601:
+//! `2024-02-29` and `2024-02-29T12:30:45.5Z`. Leap seconds are not counted, as Unix time does not.
+
+/// Days from 1970-01-01, far past any date that matters: 10^12.
+Days: type = Int(-1_000_000_000_000..=1_000_000_000_000);
+/// A month, counted from 1.
+Month: type = Int(1..=12);
+
+Weekday := enum { monday, tuesday, wednesday, thursday, friday, saturday, sunday };
+
+/// Days in each year of 400: the calendar repeats after this many.
+days_per_era: Days = 146097;
+/// Days from 0000-03-01 to 1970-01-01.
+epoch_shift: Days = 719468;
+
+/// `a / by`, rounded down.
+floor_div := (a: Days, by: Int(1..=1_000_000)) -> Days {
+    q: Days = (a / by).to(Days);
+    if a % by < 0 { (q - 1).to(Days) } else { q }
+};
+
+/// Whether `year` has a 29th of February.
+is_leap := (year: i32) -> bool { year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) };
+
+/// How many days `month` of `year` has.
+days_in := (year: i32, month: Month) -> Int(28..=31) {
+    if month == 2 {
+        if is_leap(year) { 29 } else { 28 }
+    } else if month == 4 or month == 6 or month == 9 or month == 11 {
+        30
+    } else {
+        31
+    }
+};
+
+Date := struct {
+    year: i32,
+    month: Month,
+    day: Int(1..=31),
+
+    /// The date, none if `day` is past the end of `month`.
+    new := (year: i32, month: Month, day: Int(1..=31)) -> ?Date {
+        if day > days_in(year, month) { .none } else { .some(.{ .year = year, .month = month, .day = day }) }
+    };
+
+    /// The date `since_epoch` days after 1970-01-01, or before it when negative.
+    from_days := (since_epoch: Days) -> Date {
+        z: Days = (since_epoch + epoch_shift).to(Days);
+        era := floor_div(z, 146097);
+        doe: Days = (z - era * days_per_era).to(Days);
+        yoe: Days = ((doe - doe / 1460 + doe / 36524 - doe / 146096) / 365).to(Days);
+        doy: Days = (doe - (365 * yoe + yoe / 4 - yoe / 100)).to(Days);
+        mp: Days = ((5 * doy + 2) / 153).to(Days);
+        day: Days = (doy - (153 * mp + 2) / 5 + 1).to(Days);
+        month: Days = if mp < 10 { (mp + 3).to(Days) } else { (mp - 9).to(Days) };
+        year: Days = (yoe + era * 400 + (if month <= 2 { 1 } else { 0 })).to(Days);
+        .{ .year = year.to(i32), .month = month.to(Month), .day = day.to(Int(1..=31)) }
+    };
+
+    /// Days from 1970-01-01 to the date.
+    days := (self: &Date) -> Days {
+        shifted: Days = (self.year.to(Days) - (if self.month <= 2 { 1 } else { 0 })).to(Days);
+        era := floor_div(shifted, 400);
+        yoe: Days = (shifted - era * 400).to(Days);
+        shifted_month: Days = if self.month > 2 { (self.month - 3).to(Days) } else {
+            (self.month + 9).to(Days)
+        };
+        doy: Days = ((153 * shifted_month + 2) / 5 + self.day - 1).to(Days);
+        doe: Days = (yoe * 365 + yoe / 4 - yoe / 100 + doy).to(Days);
+        (era * days_per_era + doe - epoch_shift).to(Days)
+    };
+
+    /// The day of the week.
+    weekday := (self: &Date) -> Weekday {
+        // 1970-01-01 was a Thursday.
+        shifted: Days = (self.days() + 3).to(Days);
+        n: Days = (shifted - floor_div(shifted, 7) * 7).to(Days);
+        if n == 0 { .monday }
+            else if n == 1 { .tuesday }
+            else if n == 2 { .wednesday }
+            else if n == 3 { .thursday }
+            else if n == 4 { .friday }
+            else if n == 5 { .saturday }
+            else { .sunday }
+    };
+
+    /// The day of the year, from 1.
+    day_of_year := (self: &Date) -> Int(1..=366) {
+        first := Date{ .year = self.year, .month = 1, .day = 1 };
+        ((self.days() - first.days()) + 1).to(Int(1..=366))
+    };
+};
+
+/// Seconds in a day.
+seconds_per_day: Days = 86_400;
+nanos_per_second: u32 = 1_000_000_000;
+
+DateTime := struct {
+    date: Date,
+    hour: Int(0..=23),
+    minute: Int(0..=59),
+    second: Int(0..=59),
+    nanos: Int(0..=999_999_999),
+
+    /// The moment `seconds` seconds and `nanos` nanoseconds after 1970-01-01 00:00:00 UTC.
+    from_unix := (seconds: Int(-86_400_000_000_000..=86_400_000_000_000), nanos: Int(0
+            ..=999_999_999)) -> DateTime {
+                days := floor_div(seconds.to(Days), 86_400);
+                rest: Days = (seconds.to(Days) - days * seconds_per_day).to(Days);
+                .{
+                    .date = Date.from_days(days),
+                    .hour = (rest / 3600).to(Int(0..=23)),
+                    .minute = ((rest % 3600) / 60).to(Int(0..=59)),
+                    .second = (rest % 60).to(Int(0..=59)),
+                    .nanos = nanos,
+                }
+            };
+
+    /// Seconds from 1970-01-01 00:00:00 UTC, the nanoseconds apart.
+    unix_seconds := (self: &DateTime) -> Int(-86_400_000_000_000..=86_400_000_000_000) {
+        (self.date.days() * seconds_per_day + self.hour * 3600 + self.minute * 60 + self.second)
+            .to(Int(-86_400_000_000_000..=86_400_000_000_000))
+    };
+};
+
+/// Why a text is not a date or a time.
+Problem := enum {
+    /// The text is not written as ISO 8601 writes it.
+    malformed,
+    /// A number is past what its place holds: a 13th month, a 30th of February.
+    out_of_range,
+};
+
+/// The digits of `text` as a number, none if there are other bytes or none.
+number := (text: &[u8]) -> ?u32 {
+    if text.len() == 0 { return .none; }
+    match std.text.num.parse(u32, text, 10) {
+        .ok(n) => .some(n),
+        .err(_) => .none,
+    }
+};
+
+/// The date `text` writes as `2024-02-29`, with a year of four digits.
+parse_date := (text: &[u8]) -> Result(Date, Problem) {
+    if text.len() != 10 or text[4] != "-"[0] or text[7] != "-"[0] { return .err(.malformed); }
+    year := number(text[0..4]).ok_or(Problem.malformed)?;
+    month := number(text[5..7]).ok_or(Problem.malformed)?;
+    day := number(text[8..10]).ok_or(Problem.malformed)?;
+    if month < 1 or month > 12 or day < 1 or day > 31 { return .err(.out_of_range); }
+    Date.new(year.to(i32), month.to(Month), day.to(Int(1..=31))).ok_or(Problem.out_of_range)
+};
+
+/// The moment `text` writes as `2024-02-29T12:30:45Z` or `2024-02-29T12:30:45.123+02:00`: a date,
+/// a `T`, a time with an optional fraction of a second, and `Z` or an offset from UTC, which the
+/// result is brought to.
+parse := (text: &[u8]) -> Result(DateTime, Problem) {
+    if text.len() < 20 or text[10] != "T"[0] or text[13] != ":"[0] or text[16] != ":"[0] {
+        return .err(.malformed);
+    }
+    date := parse_date(text[0..10])?;
+    hour := number(text[11..13]).ok_or(Problem.malformed)?;
+    minute := number(text[14..16]).ok_or(Problem.malformed)?;
+    second := number(text[17..19]).ok_or(Problem.malformed)?;
+    if hour > 23 or minute > 59 or second > 59 { return .err(.out_of_range); }
+    mut at: usize = 19;
+    mut nanos: u32 = 0;
+    if text[at] == "."[0] {
+        at += 1;
+        start := at;
+        mut scale: u32 = 100_000_000;
+        for at < text.len() and std.text.ascii.is_digit(text[at]) {
+            if scale > 0 {
+                nanos = (nanos + (text[at] - std.text.ascii.zero) * scale).to(u32);
+                scale = scale / 10;
+            }
+            at += 1;
+        }
+        if at == start { return .err(.malformed); }
+    }
+    mut offset: i64 = 0;
+    if at < text.len() and text[at] == "Z"[0] {
+        at += 1;
+    } else if at + 6 == text.len() and (text[at] == "+"[0] or text[at] == "-"[0]) and text[at + 3] == ":"[0] {
+        oh := number(text[at + 1..at + 3]).ok_or(Problem.malformed)?;
+        om := number(text[at + 4..at + 6]).ok_or(Problem.malformed)?;
+        if oh > 23 or om > 59 { return .err(.out_of_range); }
+        magnitude: i64 = (oh * 3600 + om * 60).to(i64);
+        offset = if text[at] == "-"[0] { (0 - magnitude).to(i64) } else { magnitude };
+        at += 6;
+    }
+    if at != text.len() { return .err(.malformed); }
+    local := DateTime{
+        .date = date,
+        .hour = hour.to(Int(0..=23)),
+        .minute = minute.to(Int(0..=59)),
+        .second = second.to(Int(0..=59)),
+        .nanos = nanos.to(Int(0..=999_999_999)),
+    };
+    .ok(
+        DateTime.from_unix(
+            (local.unix_seconds() - offset).to(Int(-86_400_000_000_000..=86_400_000_000_000)),
+            local.nanos
+        )
+    )
+};
+
+impl std.fmt.Format for Date {
+    /// As `2024-02-29`.
+    format := ($W: std.fmt.Writer, value, w) {
+        std.fmt.print(w, "{:0>4}-{:0>2}-{:0>2}", value.year, value.month, value.day)
+    };
+}
+
+impl std.fmt.Format for DateTime {
+    /// As `2024-02-29T12:30:45Z`, with the fraction of a second after the seconds where there is one.
+    format := ($W: std.fmt.Writer, value, w) {
+        std.fmt.print(w, "{}T{:0>2}:{:0>2}:{:0>2}", value.date, value.hour, value.minute, value.second)?;
+        if value.nanos != 0 {
+            mut digits: [9]u8 = [0; 9];
+            mut rest: u32 = value.nanos.to(u32);
+            mut i: usize = 9;
+            for i > 0 {
+                i -= 1;
+                digits[i] = (std.text.ascii.zero + rest % 10).to(u8);
+                rest = rest / 10;
+            }
+            mut end: usize = 9;
+            for end > 1 and digits[end - 1] == std.text.ascii.zero { end -= 1; }
+            w.write_all(".")?;
+            w.write_all(&digits[0..end])?;
+        }
+        w.write_all("Z")
+    };
+}

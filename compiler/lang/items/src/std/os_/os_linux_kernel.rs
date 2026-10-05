@@ -12,6 +12,8 @@ pub const calls: Item = Item::new(&["std", "os", "linux", "kernel", "calls"]);
 pub const division: Item = Item::new(&["std", "os", "linux", "kernel", "division"]);
 /// The namespace `std.os.linux.kernel.pages`.
 pub const pages: Item = Item::new(&["std", "os", "linux", "kernel", "pages"]);
+/// The namespace `std.os.linux.kernel.random`.
+pub const random: Item = Item::new(&["std", "os", "linux", "kernel", "random"]);
 /// The namespace `std.os.linux.kernel.thread`.
 pub const thread: Item = Item::new(&["std", "os", "linux", "kernel", "thread"]);
 /// The namespace `std.os.linux.kernel.tls`.

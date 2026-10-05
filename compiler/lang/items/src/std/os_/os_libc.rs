@@ -10,6 +10,8 @@ use crate::Item;
 pub const library: Item = Item::new(&["std", "os", "libc", "library"]);
 /// The namespace `std.os.libc.pages`.
 pub const pages: Item = Item::new(&["std", "os", "libc", "pages"]);
+/// The namespace `std.os.libc.random`.
+pub const random: Item = Item::new(&["std", "os", "libc", "random"]);
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const read: Item = Item::new(&["std", "os", "libc", "read"]);
 /// C's `open` is variadic, its permissions read only with `O_CREAT`: passed always.

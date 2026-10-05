@@ -1,0 +1,252 @@
+//! Floats as text: the shortest decimal that reads back as the same float (Burger and Dybvig's
+//! free-format algorithm, on `std.math.big`), `NaN`, `inf` and `-inf`, and `fixed`, the exact value
+//! rounded to a number of decimals. `{}` writes `1`, `1.5`, `0.1`, `1e21` and `1e-7`; `{?}` writes
+//! the same with `.0` after a whole number, `1.0`, as the expression that makes it.
+
+..std.math.big.{ Big };
+
+/// What kind of number an encoding is.
+Class := enum { zero, finite, infinite, nan };
+
+/// A float taken apart: its value is `mantissa` times 2 to the power `exponent`, negated when
+/// `negative`.
+Parts := struct {
+    class: Class,
+    negative: bool,
+    mantissa: u64,
+    exponent: std.math.Exponent,
+    /// Whether the float below this one is nearer than the float above: its mantissa is a power of
+    /// two and it is not the least normal float.
+    narrow: bool,
+};
+
+/// The parts of `x`.
+decode := ($T: type, x: T) -> Parts {
+    $W := lang.meta.size(T) * 8;
+    $M := lang.float.fraction_bits(T);
+    $E := W - M - 1;
+    $Top := (1 << E) - 1;
+    $Bias := (1 << (E - 1)) - 1;
+    b := lang.float.bits(T, x).to(u64);
+    negative := ((b >> (W - 1)) & 1) == 1;
+    field := ((b >> M) & Top).to(u64);
+    frac := (b & ((1 << M) - 1)).to(u64);
+    if field == Top {
+        return .{
+            .class = if frac == 0 { .infinite } else { .nan },
+            .negative = negative,
+            .mantissa = 0,
+            .exponent = 0,
+            .narrow = false,
+        };
+    }
+    if field == 0 {
+        if frac == 0 {
+            return .{ .class = .zero, .negative = negative, .mantissa = 0, .exponent = 0, .narrow = false };
+        }
+        return .{
+            .class = .finite,
+            .negative = negative,
+            .mantissa = frac,
+            .exponent = (1 - Bias - M).to(std.math.Exponent),
+            .narrow = false,
+        };
+    }
+    .{
+        .class = .finite,
+        .negative = negative,
+        .mantissa = frac | (1 << M),
+        .exponent = (field.to(std.math.Exponent) - Bias - M).to(std.math.Exponent),
+        .narrow = frac == 0 and field > 1,
+    }
+};
+
+/// The most digits a float of up to 64 bits needs.
+digits_max: usize = 24;
+
+/// Decimal digits and where their point goes: the value is 0.DIGITS times 10 to the power `point`.
+Digits := struct {
+    text: [24]u8,
+    len: usize,
+    point: std.math.Exponent,
+};
+
+zero_digit := 48;
+
+/// The shortest digits that read back as the float with these `parts`, which are of a finite,
+/// non-zero float.
+shortest := (parts: Parts) -> Digits {
+    f := parts.mantissa;
+    e := parts.exponent;
+    even := (f & 1) == 0;
+    mut r := Big.from_u64(f);
+    mut s := Big.zero();
+    mut mp := Big.zero();
+    mut mm := Big.zero();
+    narrow := if parts.narrow { 1 } else { 0 };
+    if e >= 0 {
+        r.shl((e + 1 + narrow).to(usize));
+        s = Big.from_u64(2 * (1 + narrow));
+        mp = Big.from_u64(1);
+        mp.shl((e + narrow).to(usize));
+        mm = Big.from_u64(1);
+        mm.shl(e.to(usize));
+    } else {
+        r.shl((1 + narrow).to(usize));
+        s = Big.from_u64(1);
+        s.shl((1 - e + narrow).to(usize));
+        mp = Big.from_u64(1 + narrow);
+        mm = Big.from_u64(1);
+    }
+    // The decimal exponent, estimated from the binary one and then corrected.
+    bits: std.math.Exponent = (Big.from_u64(f).bit_length() - 1).to(std.math.Exponent);
+    mut k: std.math.Exponent = (((e + bits) * 78913) / 262144).to(std.math.Exponent);
+    if k >= 0 { s.mul_pow10(k.to(usize)); } else {
+        r.mul_pow10((0 - k).to(usize));
+        mp.mul_pow10((0 - k).to(usize));
+        mm.mul_pow10((0 - k).to(usize));
+    }
+    // The scale is right when the highest number that reads back is below one, and not below a tenth.
+    for {
+        mut high := r;
+        high.add(&mp);
+        if if even { s.less(&high) or s.equals(&high) } else { s.less(&high) } {
+            s.mul_small(10);
+            k = (k + 1).to(std.math.Exponent);
+        } else { break; }
+    }
+    for {
+        mut high := r;
+        high.add(&mp);
+        high.mul_small(10);
+        if high.less(&s) {
+            r.mul_small(10);
+            mp.mul_small(10);
+            mm.mul_small(10);
+            k = (k - 1).to(std.math.Exponent);
+        } else { break; }
+    }
+    mut out: Digits = .{ .text = [0; 24], .len = 0, .point = k };
+    for {
+        r.mul_small(10);
+        mp.mul_small(10);
+        mm.mul_small(10);
+        mut digit: u8 = 0;
+        for !r.less(&s) {
+            r.sub(&s);
+            digit += 1;
+        }
+        low := if even { r.less(&mm) or r.equals(&mm) } else { r.less(&mm) };
+        mut high := r;
+        high.add(&mp);
+        up := if even { s.less(&high) or s.equals(&high) } else { s.less(&high) };
+        if !low and !up {
+            out.text[out.len] = (zero_digit + digit).to(u8);
+            out.len += 1;
+            continue;
+        }
+        mut twice := r;
+        twice.mul_small(2);
+        round_up := if low and up { !twice.less(&s) } else { up };
+        last: u8 = if round_up { (digit + 1).to(u8) } else { digit };
+        out.text[out.len] = (zero_digit + last).to(u8);
+        out.len += 1;
+        break;
+    }
+    out
+};
+
+/// Around and between the parts of a number.
+point := ".";
+exponent_mark := "e";
+minus := "-";
+zeros := "000000000000000000000000";
+not_a_number := "NaN";
+infinity := "inf";
+
+/// Writes `x` as the shortest digits, with `.0` after a whole number when `whole_point`.
+write := ($T: type, $W: std.fmt.Writer, w: &mut W, x: T, whole_point: bool) -> Result((), W.Error) {
+    parts := decode(T, x);
+    if parts.class == .nan { return w.write_all(not_a_number); }
+    if parts.negative { w.write_all(minus)?; }
+    if parts.class == .infinite { return w.write_all(infinity); }
+    if parts.class == .zero {
+        w.write_all("0")?;
+        if whole_point { w.write_all(".0")?; }
+        return .ok(());
+    }
+    d := shortest(parts);
+    n := d.len;
+    p := d.point;
+    text := &d.text[0..n];
+    if p > 0 and p <= 21 {
+        if p >= n {
+            w.write_all(text)?;
+            w.write_all(zeros[0..(p - n).to(usize)])?;
+            if whole_point { w.write_all(".0")?; }
+        } else {
+            w.write_all(text[0..p.to(usize)])?;
+            w.write_all(point)?;
+            w.write_all(text[p.to(usize)..])?;
+        }
+    } else if p <= 0 and p > -6 {
+        w.write_all("0.")?;
+        w.write_all(zeros[0..(0 - p).to(usize)])?;
+        w.write_all(text)?;
+    } else {
+        w.write_all(text[0..1])?;
+        if n > 1 {
+            w.write_all(point)?;
+            w.write_all(text[1..])?;
+        }
+        w.write_all(exponent_mark)?;
+        std.fmt.print(w, "{}", p - 1)?;
+    }
+    .ok(())
+};
+
+/// The most digits `fixed` writes: a float's 309 before the point and a decimals limit past it.
+fixed_max: usize = 700;
+
+/// Writes `x` rounded to `decimals` decimals, exactly and ties to even, as `3.142`. A NaN and an
+/// infinity are written as `{}` writes them.
+fixed := ($T: type, $W: std.fmt.Writer, w: &mut W, x: T, decimals: usize) -> Result((), W.Error) {
+    parts := decode(T, x);
+    if parts.class == .nan { return w.write_all(not_a_number); }
+    if parts.negative { w.write_all(minus)?; }
+    if parts.class == .infinite { return w.write_all(infinity); }
+    if decimals > 380 { lang.panic.fail(.message("fixed: at most 380 decimals")); }
+    mut n := Big.from_u64(parts.mantissa);
+    n.mul_pow10(decimals);
+    if parts.exponent >= 0 {
+        n.shl(parts.exponent.to(usize));
+    } else {
+        shift := (0 - parts.exponent).to(usize);
+        sticky := n.shr((shift - 1).to(usize));
+        round := n.bit(0);
+        n.shr(1);
+        if round and (sticky or n.bit(0)) { n.add_small(1); }
+    }
+    mut text: [700]u8 = [0; 700];
+    mut at := fixed_max;
+    for !n.is_zero() or fixed_max - at < decimals + 1 {
+        at -= 1;
+        text[at] = (zero_digit + n.div_small(10)).to(u8);
+    }
+    whole := fixed_max - decimals;
+    w.write_all(&text[at..whole])?;
+    if decimals > 0 {
+        w.write_all(point)?;
+        w.write_all(&text[whole..])?;
+    }
+    .ok(())
+};
+
+/// The shortest digits that read back, as `{}` shows a float.
+impl std.fmt.Format for lang.Float($bits) {
+    format := ($W: std.fmt.Writer, value, w) { write(lang.Float(bits), W, w, value.*, false) };
+}
+
+impl std.fmt.Debug for lang.Float($bits) {
+    debug := ($W: std.fmt.Writer, value, w) { write(lang.Float(bits), W, w, value.*, true) };
+}

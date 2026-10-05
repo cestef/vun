@@ -287,4 +287,5 @@ start := ($main: std.os.Main) -> type { struct {
 
     library := std.os.libc.library.exports;
     pages := std.os.libc.pages.exports;
+    random := std.os.libc.random.exports;
 } };

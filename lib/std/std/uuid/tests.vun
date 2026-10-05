@@ -1,0 +1,68 @@
+//! Tests of `std.uuid`.
+
+shown := (id: std.uuid.Uuid) -> std.text.Slab(48) {
+    mut slab := std.text.Slab(48).empty();
+    std.fmt.print(&mut slab, "{}", id).expect("room");
+    slab
+};
+
+#[test]
+a_random_identifier_has_its_version_and_variant := () {
+    mut rng := std.rand.SplitMix64.seeded(42);
+    id := std.uuid.Uuid.v4(std.rand.SplitMix64, &mut rng);
+    std.testing.assert(id.version() == 4 and (id.bytes[8] >> 6) == 2 and !id.is_nil());
+    text := shown(id);
+    std.testing.assert(text.bytes().len() == 36 and text.bytes()[14] == "4"[0] and text.bytes()[8] == "-"[0]);
+    other := std.uuid.Uuid.v4(std.rand.SplitMix64, &mut rng);
+    std.testing.assert(other != id);
+};
+
+#[test]
+identifiers_read_back_as_written := () {
+    mut rng := std.rand.SplitMix64.seeded(7);
+    id := std.uuid.Uuid.v4(std.rand.SplitMix64, &mut rng);
+    text := shown(id);
+    std.testing.assert(std.uuid.parse(text.bytes()) == Result(std.uuid.Uuid, std.uuid.Problem).ok(id));
+    std.testing.assert(
+        std.uuid.parse("123E4567-E89B-12D3-A456-426614174000").expect("an id").bytes[0] == 0x12
+    );
+    std.testing.assert(
+        shown(std.uuid.parse("123e4567-e89b-12d3-a456-426614174000").expect("an id")).bytes()
+            == "123e4567-e89b-12d3-a456-426614174000"
+    );
+    std.testing.assert(shown(std.uuid.Uuid.nil()).bytes() == "00000000-0000-0000-0000-000000000000");
+};
+
+#[test]
+text_that_is_no_identifier_is_refused := () {
+    std.testing.assert(
+        std.uuid.parse("123e4567e89b12d3a456426614174000") == Result(std.uuid.Uuid, std.uuid.Problem).err(
+            .shape
+        )
+    );
+    std.testing.assert(
+        std.uuid.parse("123e4567-e89b-12d3-a456-42661417400") == Result(std.uuid.Uuid, std.uuid.Problem).err(
+            .shape
+        )
+    );
+    std.testing.assert(
+        std.uuid.parse("123e4567-e89b-12d3-a456-42661417400g") == Result(std.uuid.Uuid, std.uuid.Problem).err(
+            .digit
+        )
+    );
+    std.testing.assert(
+        std.uuid.parse("123e4567_e89b-12d3-a456-426614174000") == Result(std.uuid.Uuid, std.uuid.Problem).err(
+            .shape
+        )
+    );
+};
+
+#[test]
+a_time_ordered_identifier_sorts_by_its_time := () {
+    mut rng := std.rand.SplitMix64.seeded(1);
+    early := std.uuid.Uuid.v7(std.rand.SplitMix64, 1_700_000_000_000, &mut rng);
+    late := std.uuid.Uuid.v7(std.rand.SplitMix64, 1_700_000_000_001, &mut rng);
+    std.testing.assert(early.version() == 7 and (early.bytes[8] >> 6) == 2);
+    std.testing.assert(early.bytes < late.bytes);
+    std.testing.assert(shown(early).bytes()[0..8] == "018bcfe5");
+};

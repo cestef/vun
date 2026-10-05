@@ -29,3 +29,4 @@ pub const spawn: Item = Item::new(&["std", "os", "libc", "start", "spawn"]);
 pub const join: Item = Item::new(&["std", "os", "libc", "start", "join"]);
 pub const library: Item = Item::new(&["std", "os", "libc", "start", "library"]);
 pub const pages: Item = Item::new(&["std", "os", "libc", "start", "pages"]);
+pub const random: Item = Item::new(&["std", "os", "libc", "start", "random"]);

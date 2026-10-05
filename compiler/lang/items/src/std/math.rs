@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.math.big`.
+pub const big: Item = Item::new(&["std", "math", "big"]);
 /// The namespace `std.math.exp`.
 pub const exp: Item = Item::new(&["std", "math", "exp"]);
 /// The namespace `std.math.root`.

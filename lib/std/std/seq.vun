@@ -44,3 +44,42 @@ impl lang.ops.Eq for lang.mem.Array($n, $T) {
         true
     };
 }
+
+/// Slices are ordered like words: the first item that differs decides, and a slice that is the
+/// start of another is the lesser.
+impl lang.ops.PartialOrd for lang.mem.Slice($T) {
+    lt := (a, b) {
+        n := std.cmp.min(usize, a.len(), b.len());
+        for i in 0..n {
+            if a[i] < b[i] { return true; }
+            if b[i] < a[i] { return false; }
+        }
+        a.len() < b.len()
+    };
+    le := (a, b) {
+        n := std.cmp.min(usize, a.len(), b.len());
+        for i in 0..n {
+            if a[i] < b[i] { return true; }
+            if b[i] < a[i] { return false; }
+        }
+        a.len() <= b.len()
+    };
+}
+
+/// Arrays are ordered by their items, like slices.
+impl lang.ops.PartialOrd for lang.mem.Array($n, $T) {
+    lt := (a, b) {
+        for i in 0..n {
+            if a[i] < b[i] { return true; }
+            if b[i] < a[i] { return false; }
+        }
+        false
+    };
+    le := (a, b) {
+        for i in 0..n {
+            if a[i] < b[i] { return true; }
+            if b[i] < a[i] { return false; }
+        }
+        true
+    };
+}

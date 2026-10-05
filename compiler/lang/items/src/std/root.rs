@@ -16,6 +16,8 @@ pub const cmp: Item = Item::new(&["std", "cmp"]);
 pub const codec: Item = Item::new(&["std", "codec"]);
 /// The namespace `std.collections`.
 pub const collections: Item = Item::new(&["std", "collections"]);
+/// The namespace `std.crypto`.
+pub const crypto: Item = Item::new(&["std", "crypto"]);
 /// The namespace `std.diag`.
 pub const diag: Item = Item::new(&["std", "diag"]);
 /// The namespace `std.float`.
@@ -32,6 +34,8 @@ pub const int: Item = Item::new(&["std", "int"]);
 pub const io: Item = Item::new(&["std", "io"]);
 /// The namespace `std.iter`.
 pub const iter: Item = Item::new(&["std", "iter"]);
+/// The namespace `std.json`.
+pub const json: Item = Item::new(&["std", "json"]);
 /// The namespace `std.lints`.
 pub const lints: Item = Item::new(&["std", "lints"]);
 /// The namespace `std.log`.
@@ -42,6 +46,8 @@ pub const math: Item = Item::new(&["std", "math"]);
 pub const mem: Item = Item::new(&["std", "mem"]);
 /// The namespace `std.meta`.
 pub const meta: Item = Item::new(&["std", "meta"]);
+/// The namespace `std.net`.
+pub const net: Item = Item::new(&["std", "net"]);
 /// The namespace `std.option`.
 pub const option: Item = Item::new(&["std", "option"]);
 /// The namespace `std.os`.
@@ -74,3 +80,5 @@ pub const text: Item = Item::new(&["std", "text"]);
 pub const time: Item = Item::new(&["std", "time"]);
 /// The namespace `std.trace`.
 pub const trace: Item = Item::new(&["std", "trace"]);
+/// The namespace `std.uuid`.
+pub const uuid: Item = Item::new(&["std", "uuid"]);

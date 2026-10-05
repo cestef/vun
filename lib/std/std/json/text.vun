@@ -1,0 +1,71 @@
+//! The text and numbers a document's tokens hold: a string with its escapes decoded, a number as
+//! the integer or float type asked.
+
+/// Why a string cannot be written decoded.
+Unescaped := ($E: type) -> type { enum {
+    /// An escape names a code point that is none, or half of a pair.
+    bad_escape,
+    /// The writer failed.
+    write(E),
+} };
+
+/// Writes the text of the string `raw`, which a `Token` holds, with its escapes decoded to UTF-8.
+unescape := ($W: std.fmt.Writer, w: &mut W, raw: &[u8]) -> Result((), Unescaped(W.Error)) {
+    mut at: usize = 0;
+    mut start: usize = 0;
+    for at < raw.len() {
+        if raw[at] != "\\"[0] {
+            at += 1;
+            continue;
+        }
+        w.write_all(raw[start..at]).map_err(Unescaped(W.Error).write)?;
+        e := raw[at + 1];
+        at += 2;
+        if e == "u"[0] {
+            mut cp: u32 = hex4(raw[at..at + 4]);
+            at += 4;
+            if cp >= 0xD800 and cp < 0xDC00 {
+                // A high surrogate is the first half of a pair.
+                if at + 6 > raw.len() or raw[at] != "\\"[0] or raw[at + 1] != "u"[0] {
+                    return .err(.bad_escape);
+                }
+                low := hex4(raw[at + 2..at + 6]);
+                if low < 0xDC00 or low >= 0xE000 { return .err(.bad_escape); }
+                cp = (0x10000 + ((cp - 0xD800).to(u32) << 10).to(u32) + (low - 0xDC00)).to(u32);
+                at += 6;
+            } else if cp >= 0xDC00 and cp < 0xE000 {
+                return .err(.bad_escape);
+            }
+            std.text.utf8.write(w, cp).map_err(Unescaped(W.Error).write)?;
+        } else {
+            decoded: &[u8] = if e == "b"[0] { "\x08" }
+                else if e == "f"[0] { "\x0c" }
+                else if e == "n"[0] { "\n" }
+                else if e == "r"[0] { "\r" }
+                else if e == "t"[0] { "\t" }
+                else { raw[at - 1..at] };
+            w.write_all(decoded).map_err(Unescaped(W.Error).write)?;
+        }
+        start = at;
+    }
+    w.write_all(raw[start..]).map_err(Unescaped(W.Error).write)
+};
+
+/// The value of four hexadecimal digits.
+hex4 := (digits: &[u8]) -> u32 {
+    mut v: u32 = 0;
+    for d in digits {
+        v = (v * 16 + std.text.ascii.digit(d.*, 16).unwrap_or(0)).to(u32);
+    }
+    v
+};
+
+/// The integer of type `T` that the number `text` writes, when it is an integer.
+integer := ($T: std.int.Integer, text: &[u8]) -> Result(T, std.text.num.Problem) {
+    std.text.num.parse(T, text, 10)
+};
+
+/// The float of type `T` that the number `text` writes.
+float := ($T: type, text: &[u8]) -> Result(T, std.float.parse.Problem) {
+    std.float.parse.read(T, text)
+};

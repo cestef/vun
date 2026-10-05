@@ -21,5 +21,7 @@ pub const load: Item = Item::new(&["std", "os", "System", "load"]);
 pub const now: Item = Item::new(&["std", "os", "System", "now"]);
 /// Suspends the calling thread for at least `span`.
 pub const pause: Item = Item::new(&["std", "os", "System", "pause"]);
+/// Fills `bytes` with random bytes fit for secrets.
+pub const entropy: Item = Item::new(&["std", "os", "System", "entropy"]);
 /// Starts a thread running `f`, borrowed until the thread is joined.
 pub const spawn: Item = Item::new(&["std", "os", "System", "spawn"]);

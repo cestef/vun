@@ -174,3 +174,24 @@ the_stable_sort_keeps_the_order_of_equal_items := () {
     ns.sort_stable(&mut spare);
     std.testing.assert(ns == [0, 1, 3, 3, 5, 9]);
 };
+
+/// Whether the text `a` goes before `b`.
+goes_before := (a: &[u8], b: &[u8]) -> bool { a < b };
+/// Whether the text `a` goes before `b` or is it.
+not_after := (a: &[u8], b: &[u8]) -> bool { a <= b };
+
+#[test]
+slices_and_arrays_are_ordered_like_words := () {
+    std.testing.assert(
+        goes_before("abc", "abd") and goes_before("ab", "abc") and !goes_before("abc", "abc") and not_after(
+            "abc",
+            "abc"
+        )
+    );
+    std.testing.assert(
+        goes_before("abc", "b") and goes_before("", "a") and !goes_before("a", "") and not_after("", "")
+    );
+    a: [3]u8 = [1, 2, 3];
+    b: [3]u8 = [1, 2, 4];
+    std.testing.assert(a < b and a <= b and b > a and !(b < a) and a <= a and !(a < a));
+};

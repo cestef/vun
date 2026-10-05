@@ -1,0 +1,22 @@
+//! `std.os.entropy` for the runtime over a C library: `getentropy`, which glibc and the system
+//! library of macOS both have, and which gives at most 256 bytes a call.
+
+#[link.symbol("getentropy"), abi.c]
+getentropy: unsafe (bytes: *u8, count: usize) -> i32 = _;
+
+/// The exports, which the runtime holds: `random := std.os.libc.random.exports`.
+exports := struct {
+    /// Fills `bytes` with `getentropy`, which gives at most 256 at a time.
+    #[link.export(std.os.symbols.entropy)]
+    entropy := (bytes: &mut [u8]) -> Result((), std.os.Error) {
+        mut done: usize = 0;
+        for done < bytes.len() {
+            rest := bytes[done..];
+            take := std.cmp.min(usize, rest.len(), 256);
+            at := lang.mem.items_pointer(u8, rest);
+            std.os.libc.outcome(unsafe getentropy(at, take).to(isize))?;
+            done = (done + take).to(usize);
+        }
+        .ok(())
+    };
+};
