@@ -87,7 +87,8 @@ impl Typer<'_, '_, '_> {
 
     /// The call of `function`, a requirement of an interface, for the type of `receiver`, with
     /// the operands `args` after it. Its value is known when its operands are; when it is not,
-    /// every operand is still typed, so what is wrong inside one is reported.
+    /// every operand is still typed, so what is wrong inside one is reported. An operand that never
+    /// finishes makes the operation never finish.
     fn operator(
         &mut self,
         at: Operation,
@@ -97,13 +98,11 @@ impl Typer<'_, '_, '_> {
         args: &[Argument],
     ) -> Option<Known> {
         let known = self.dispatch(at, site, function, receiver, args);
-        if known.is_none() {
-            for arg in args {
-                if let Argument::Expr(e) = arg
-                    && !self.found.types.contains_key(e)
-                {
-                    self.typed(*e);
-                }
+        for arg in args {
+            if let Argument::Expr(e) = arg
+                && !self.found.types.contains_key(e)
+            {
+                self.typed(*e);
             }
         }
         known
@@ -122,6 +121,10 @@ impl Typer<'_, '_, '_> {
         let float = self.expected(site).filter(|t| Format::of(t).is_some());
         let left = self.typed_as(receiver, float)?;
         let ty = left.ty.through_borrows();
+        // An operand that never finishes leaves nothing to call, and its own report says why.
+        if self.never().is_some_and(|never| never.ty == ty) {
+            return self.never();
+        }
         let (interface, function) = (function.parent()?, function.symbol());
         let owner = if ty.is_required() {
             // In a generic body, what the interface requires of its parameter.

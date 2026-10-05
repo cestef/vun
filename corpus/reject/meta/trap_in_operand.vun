@@ -1,0 +1,4 @@
+//! A compile-time operation that traps leaves nothing to call an operator on: the trap is the one
+//! error, not also a missing impl for `never` (spec 02, section 4).
+
+ratio := $(1 / 0 == 0); //~ comptime.trap
