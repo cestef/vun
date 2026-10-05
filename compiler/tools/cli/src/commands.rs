@@ -177,11 +177,7 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
         return Ok(session.outcome());
     };
     if ready {
-        for path in session.files(&subject) {
-            if let Some(file) = session.load(&path) {
-                session.check(file);
-            }
-        }
+        session.checked(&subject);
     }
     session.conclude(shell, shown, started);
     Ok(session.outcome())

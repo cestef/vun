@@ -39,6 +39,11 @@ pub(super) trait Inputs {
     /// Reads the file at `path` once its project is ready.
     fn root_at(&mut self, path: &Path, started: Option<&Started>, shell: &mut Shell<'_>) -> Option<FileId>;
 
+    /// Checks every file `subject` covers, as `vun check` does, so that a build of a package or
+    /// of tests holds its files to the checks a file reached by no program is held to; whether
+    /// none failed.
+    fn checked(&mut self, subject: &Subject) -> bool;
+
     /// Builds what the path `args` gives names, reporting how it went: the program of a file, or
     /// the programs the plan of each package records.
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<Built>>>;
@@ -74,13 +79,22 @@ impl Inputs for Session {
         self.ready(path, started, shell).then(|| self.load(path)).flatten()
     }
 
+    fn checked(&mut self, subject: &Subject) -> bool {
+        for path in self.files(subject) {
+            if let Some(file) = self.load(&path) {
+                self.check(file);
+            }
+        }
+        !self.failed()
+    }
+
     fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<Built>>> {
         let started = Instant::now();
         let Some(Named { subject, shown, ready }) = self.named(args, Step::Build, shell)? else {
             return Ok(None);
         };
         let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
-        let built = if !ready {
+        let built = if !ready || (subject.file().is_none() && !self.checked(&subject)) {
             None
         } else if let Some(file) = subject.file() {
             // A program its package's plan records is built as the plan says; any other file

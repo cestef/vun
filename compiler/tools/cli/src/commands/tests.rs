@@ -68,3 +68,56 @@ fn a_dump_at_a_place_shows_the_unit_holding_it() {
     assert_eq!(dumped_at("types", &path, "9:1"), Err(Outcome::Failure), "a line the file lacks");
     assert_eq!(dumped_at("types", &path, "nowhere"), Err(Outcome::Usage), "no place");
 }
+
+/// What `vun test <words>` takes as its path, and as the names of its tests.
+fn chosen(words: &[&str]) -> (Option<std::path::PathBuf>, Vec<String>) {
+    let line: Vec<String> = ["test"].into_iter().chain(words.iter().copied()).map(str::to_owned).collect();
+    let Ok(vun_command::Request::Run(_, args)) = PROGRAM.parse(&line) else {
+        panic!("{words:?} did not parse")
+    };
+    let chosen = test::Chosen::of(&args);
+    (chosen.path.map(Path::to_path_buf), chosen.names.into_iter().map(str::to_owned).collect())
+}
+
+#[test]
+fn a_first_word_naming_nothing_on_disk_is_a_test() {
+    let dir = Scratch::new("test-words");
+    let path = dir.write("main.vun", "");
+    let file = path.to_str().unwrap();
+    assert_eq!(chosen(&[]), (None, vec![]));
+    assert_eq!(chosen(&["crc_vector"]), (None, vec!["crc_vector".to_owned()]));
+    assert_eq!(chosen(&[file, "a", "b"]), (Some(path.clone()), vec!["a".to_owned(), "b".to_owned()]));
+    assert_eq!(chosen(&["missing.vun", "a"]), (None, vec!["missing.vun".to_owned(), "a".to_owned()]));
+}
+
+/// `vun build <dir> [--lint ...]` on a package whose only file declares a function no program
+/// reaches, named against `std.lints.naming.case`, its outcome.
+fn built_with(dir: &Scratch, lints: &[&str]) -> Outcome {
+    let argv: Vec<String> = ["build".to_owned(), dir.path().display().to_string()]
+        .into_iter()
+        .chain(lints.iter().flat_map(|level| ["--lint".to_owned(), (*level).to_owned()]))
+        .collect();
+    let (mut session, mut out, mut err) = (Session::new(), Vec::new(), Vec::new());
+    PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut out, &mut err)).unwrap()
+}
+
+#[test]
+fn a_build_of_a_package_checks_the_files_no_program_reaches() {
+    let dir = Scratch::new("build-checks-files");
+    let manifest = "\
+package := .{
+    .name = \"lone\",
+    .id = 0x0000_0000_0000_0f02,
+    .version = \"0.0.0\",
+    .edition = 2026,
+    .include = .{ \"build.vun\", \"lone.vun\" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {};
+";
+    dir.write("build.vun", manifest);
+    dir.write("lone.vun", "WriteAll := () -> u8 { 0 };\n");
+    assert_eq!(built_with(&dir, &[]), Outcome::Failure);
+    assert_eq!(built_with(&dir, &["std.lints.naming.case=warn"]), Outcome::Success);
+}

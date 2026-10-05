@@ -20,8 +20,9 @@ arguments, when it has some, are the names of the tests to run.
 driver calls `std.testing.runner` at compile time with the namespace as a value, and the program's
 exports are the members of the type it gives (a program's roots may be a type's members as well
 as a root file's, decision 355). The path is a file, a directory or a package's directory, the
-package around the current directory when there is none; a file outside any package is in no
-namespace (`test.no_namespace`).
+package around the current directory when there is none, which a first word naming nothing on
+disk is (`vun test crc_vector` runs that test); a file outside any package is in no namespace
+(`test.no_namespace`).
 
 **The parameters select what kind of test it is:**
 
