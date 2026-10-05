@@ -120,6 +120,7 @@ lists them). Build the compiler first, on a remote, and copy it back:
 cargo xtask remote --host am3.wg -- cargo build -p vun-cli --target wasm32-wasip1 --profile dist
 rsync am3.wg:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
 cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
+vun doc --library -o site/public/api   # the API pages, served at /api/ (git-ignored; never `-o site`, which overwrites the landing page)
 ```
 
 The site's plugin serves that file as `play/vun.wasm` and `lib/` as `play/library.json`. The

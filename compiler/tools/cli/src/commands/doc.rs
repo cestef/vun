@@ -32,7 +32,10 @@ pub(super) const DOC: Command<Session> = Command::run("doc", "write the API docu
     .examples(&[
         Example { line: "", about: "document the project around this directory" },
         Example { line: "--deps", about: "document the project and the packages it depends on" },
-        Example { line: "--library -o site", about: "document the project and the toolchain's library" },
+        Example {
+            line: "--library -o site/public/api",
+            about: "document the project and the toolchain's library, for the site to serve",
+        },
     ]);
 
 /// Where the documentation was written.

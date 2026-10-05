@@ -1,9 +1,4 @@
 node_modules
 dist
-# written by `vun doc --library -o site`
-/docs.json
-/style.css
-/lang.html
-/lang.*.html
-/std.html
-/std.*.html
+# written by `vun doc --library -o site/public/api`
+/public/api
