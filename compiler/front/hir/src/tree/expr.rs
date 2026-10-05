@@ -165,6 +165,12 @@ impl ExprKind {
         )
     }
 
+    /// Whether it is written as a borrow, `&e`.
+    #[must_use]
+    pub fn is_borrow(&self) -> bool {
+        matches!(self, Self::Borrow { .. })
+    }
+
     /// The name of this kind of expression.
     #[must_use]
     pub fn name(&self) -> &'static str {

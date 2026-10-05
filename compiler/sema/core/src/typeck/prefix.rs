@@ -23,10 +23,14 @@ impl Typer<'_, '_, '_> {
             return Some(Known { ty: types, ..known });
         }
         // A temporary, such as `7` in `&7`, holds the value as the type the borrow is expected
-        // to reach when that type accepts it, as `x: u8 = 7` stores it; a place keeps its own.
+        // to reach when that type accepts it, as `x: u8 = 7` stores it, and `[1, 2]` in `&[1, 2]`
+        // holds the items of the slice expected; a place keeps its own.
         let place = self.hir().exprs[operand].kind.is_place();
-        if let Some(pointee) = pointee.filter(|p| !place && p.accepts(&known.ty)) {
-            known = Known { ty: pointee, ..known };
+        let stored = pointee
+            .filter(|_| !place)
+            .and_then(|p| if p.accepts(&known.ty) { Some(p) } else { p.stored_as(&known.ty) });
+        if let Some(stored) = stored {
+            known = Known { ty: stored, ..known };
             self.finding().types.insert(operand, known);
         }
         // A borrow for the borrower's scope of what lives as long as the program is one for the

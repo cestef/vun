@@ -1,0 +1,8 @@
+//! A borrow of an array is a borrow of a slice only of items stored alike: `[3]Int(1..=300)` holds
+//! 2-byte items, which a `[u32]` would read as 4-byte ones.
+
+total := (xs: &[u32]) -> u32 { xs[0] };
+
+narrow := (items: &[3]Int(1..=300)) -> u32 {
+    total(items) //~ types.mismatch "expected"
+};

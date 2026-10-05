@@ -1,0 +1,12 @@
+//! A slice is compared with an array literal written after a borrow: the literal's items take the
+//! item type of the slice it is compared with, as an argument takes its parameter's.
+
+start := std.os.start(main);
+
+same := (xs: &[u32]) -> bool { xs == &[1, 2, 300] };
+other := (xs: &[u32]) -> bool { xs == &[1, 2, 301] };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    items: [3]u32 = [1, 2, 300];
+    if same(&items) and !other(&items) { .ok } else { .code(1) }
+};

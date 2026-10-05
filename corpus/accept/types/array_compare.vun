@@ -1,0 +1,9 @@
+//! Arrays are compared with an array literal of narrower items: the literal is stored as the items
+//! of the array it is compared with, not as the range of its own values.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    wide: [3]i32 = [-1, 0, 300];
+    if wide == [-1, 0, 300] and wide != [-1, 0, 301] { .ok } else { .code(1) }
+};

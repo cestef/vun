@@ -87,6 +87,16 @@ impl TyKind {
         }
     }
 
+    /// The array a temporary `found` is stored as where a borrow of this slice type is expected to
+    /// reach it: of as many items as `found` holds, each of this slice's item type, which accepts
+    /// the items of `found`. A slice is a view of the items of the array under it, so they are
+    /// laid out as the slice's items are.
+    #[must_use]
+    pub fn stored_as(&self, found: &Self) -> Option<Ty> {
+        let (wanted, (len, item)) = (self.slice_items()?, found.as_array()?);
+        wanted.accepts(&item).then(|| Self::array(len.clone(), wanted))
+    }
+
     /// Whether `found` is made by the same constructor as this type with an empty type, such as
     /// `lang.never`, in place of some arguments: `Result(never, E)` where `Result(T, E)` is
     /// expected. Its only values are those whose payloads avoid the empty type, which are values

@@ -19,12 +19,25 @@ use vun_span::Span;
 use super::reported::Reads;
 use super::{GaveUp, Known, Stage, TypedBody, Typer};
 use crate::env::Env;
+use crate::layout::Shapes;
 
 impl<'a, 'db> Typer<'_, 'a, 'db> {
+    /// Whether `found` is accepted as `expected` only by reading the items of an array as the
+    /// items of a slice of another type, which stores them with another size: a borrow of
+    /// `[3]Int(1..=300)` is a borrow of `[3]u16`, and no borrow of `[u32]`.
+    fn reinterprets(&self, found: Ty, expected: Ty) -> bool {
+        let (Some(expected), Some(found)) = (expected.borrowed(), found.borrowed()) else { return false };
+        let (Some(wanted), Some((_, item))) = (expected.slice_items(), found.as_array()) else {
+            return false;
+        };
+        let size = |ty: &Ty| Shapes::layout(self.env().cx, ty).map(|layout| layout.size);
+        wanted != item && size(&wanted) != size(&item)
+    }
+
     /// Checks that a value of `found`, written at `at`, is accepted where `expected` is, the type
     /// written at `because` when it is written.
     pub(super) fn expect(&mut self, at: OriginId, found: Known, expected: Ty, because: Option<ExprId>) {
-        if expected.accepts(&found.ty) {
+        if expected.accepts(&found.ty) && !self.reinterprets(found.ty, expected) {
             return;
         }
         let written = because.map_or_else(|| expected.to_string(), |e| self.env().source(e));

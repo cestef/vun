@@ -118,16 +118,8 @@ impl Typer<'_, '_, '_> {
                 }
                 self.reported(call, signature).ok()
             });
-        let mut found = Vec::new();
-        for ((&slot, &item), &arg) in slots[receiver..].iter().zip(&items[receiver..]).zip(args) {
-            // An argument for a `Code(T)` parameter is code of a `T`.
-            let param = signature.as_ref().and_then(|s| Self::param(s, slot, item));
-            let param = param.map(|p| callee.passing.expected(p.quoted().unwrap_or(p)));
-            found.push(match arg {
-                Argument::Expr(expr) => (expr, self.retyped(expr, param, inferred.is_some())),
-                Argument::Matched(ty) => (call, Some(Known { ty, stage: self.stage })),
-            });
-        }
+        let at = (&slots[receiver..], &items[receiver..]);
+        let found = self.arguments(call, callee, signature.as_ref(), at, args, inferred.is_some());
         let signature = signature?;
         if signature.is_unsafe() {
             self.unchecked(call, Msg::new().text("calling a function whose type is ").code("unsafe"));
@@ -148,7 +140,7 @@ impl Typer<'_, '_, '_> {
             if let Some(known) = known
                 && let Some(param) = Self::param(&signature, slot, item)
             {
-                let param = callee.passing.expected(param.quoted().unwrap_or(param));
+                let param = callee.passing.expected(param.quoted().unwrap_or(param), false);
                 let known = Known { ty: callee.passing.passed(known.ty, param), ..known };
                 self.expect(self.hir().exprs[value].origin, known, param, None);
             }
@@ -183,6 +175,57 @@ impl Typer<'_, '_, '_> {
         }
     }
 
+    /// The written arguments `args`, at the `slots` of the callee's parameters and the `items` of
+    /// a pack they are, typed as the parameters of `signature` expect them, each with the
+    /// expression it was typed at.
+    fn arguments(
+        &mut self,
+        call: ExprId,
+        callee: &Callee,
+        signature: Option<&Signature>,
+        (slots, items): (&[usize], &[Option<usize>]),
+        args: &[Argument],
+        inferred: bool,
+    ) -> Vec<(ExprId, Option<Known>)> {
+        let mut found = Vec::new();
+        for ((&slot, &item), &arg) in slots.iter().zip(items).zip(args) {
+            // An argument for a `Code(T)` parameter is code of a `T`.
+            let param = signature.and_then(|s| Self::param(s, slot, item));
+            let borrowed = matches!(arg, Argument::Expr(e) if self.hir().exprs[e].kind.is_borrow());
+            let param = param.map(|p| callee.passing.expected(p.quoted().unwrap_or(p), borrowed));
+            found.push(match arg {
+                Argument::Expr(expr) => {
+                    let known = self.retyped(expr, param, inferred);
+                    (expr, self.stored(callee.passing, expr, known, param))
+                }
+                Argument::Matched(ty) => (call, Some(Known { ty, stage: self.stage })),
+            });
+        }
+        found
+    }
+
+    /// An operand passed as asked is borrowed, which converts nothing: where it is a temporary,
+    /// such as the literal in `xs == [1, 2]`, it is stored as the type expected of it when that
+    /// type accepts it, as `borrow` stores the temporary in `&[1, 2]`; a place keeps its own.
+    fn stored(
+        &mut self,
+        passing: Passing,
+        expr: ExprId,
+        known: Option<Known>,
+        param: Option<Ty>,
+    ) -> Option<Known> {
+        let (Some(known), Some(param)) = (known, param) else { return known };
+        // A borrow written as the operand has stored its own operand already.
+        let kind = &self.hir().exprs[expr].kind;
+        let temporary = !kind.is_place() && !kind.is_borrow();
+        if passing != Passing::Asked || !temporary || param == known.ty || !param.accepts(&known.ty) {
+            return Some(known);
+        }
+        let known = Known { ty: param, ..known };
+        self.finding().types.insert(expr, known);
+        Some(known)
+    }
+
     /// `expr` typed as `param`. An argument typed already, to infer the `$` parameters left out,
     /// keeps its type when that is the parameter's: typing it again would give the same, and
     /// nested calls of generic functions would each type their arguments twice over.
@@ -196,11 +239,12 @@ impl Typer<'_, '_, '_> {
 
 impl Passing {
     /// The type an argument is expected to have for a parameter of type `param`: the type it
-    /// borrows, for an operand passed as its parameter asks.
-    fn expected(self, param: Ty) -> Ty {
+    /// borrows, for an operand passed as its parameter asks, unless the operand is written as a
+    /// borrow itself (`borrowed`), whose operand then takes the type the parameter borrows.
+    fn expected(self, param: Ty, borrowed: bool) -> Ty {
         match self {
-            Self::Written => param,
-            Self::Asked => param.borrowed().unwrap_or(param),
+            Self::Asked if !borrowed => param.borrowed().unwrap_or(param),
+            Self::Written | Self::Asked => param,
         }
     }
 
