@@ -1,0 +1,24 @@
+//! A `$for` steps through the items of a tuple as it does through an array's, each step typed by
+//! its own item (spec 03, section 1).
+
+total := () -> u32 {
+    n: u32 = 0;
+    $for x in .{ 1, 2, 3 } {
+        n += x;
+    }
+    n
+};
+
+widths := () -> usize {
+    n: usize = 0;
+    $for t in .{ u8, u16, u64 } {
+        n += std.meta.size(t);
+    }
+    n
+};
+
+#[test]
+tuples := () {
+    assert(total() == 6);
+    assert(widths() == 11);
+};

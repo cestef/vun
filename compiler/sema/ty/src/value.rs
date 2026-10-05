@@ -140,12 +140,12 @@ impl Value {
         fields.iter().find(|(name, _)| *name == field.symbol()).map(|(_, v)| v)
     }
 
-    /// The items a `$for` steps through: those of an array, or the integers of a finite range
+    /// The items a `$for` steps through: those of an array or a tuple, or the integers of a finite range
     /// of at most [`crate::ops::MAX_ITEMS`].
     #[must_use]
     pub fn items(self) -> Option<Vec<Self>> {
         match self {
-            Self::Array(items) => Some(items),
+            Self::Array(items) | Self::Tuple(items) => Some(items),
             Self::Bounds(bounds) => Self::Range(bounds.items()).items(),
             Self::Range(None) => Some(Vec::new()),
             Self::Range(Some(range)) => {
