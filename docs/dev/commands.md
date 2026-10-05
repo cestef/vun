@@ -222,6 +222,7 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 | `vun_link_wasm=debug` | each wasm link in process |
 | `vun_lir_passes=debug` | each function's tidy (`trace`: each pass) |
 | `vun_query=debug` | each query computed and why, shared memos named |
+| `vun_query::cx=debug,vun_sema=debug` | each compile-time call under a `call{ f="name" }` span of the call that made it: count the lines of `computing query="metered_call"` by their innermost (callee's caller) or outermost span to see what the interpreter runs |
 | `vun_query::changed=debug` | each persisted memo computed anew, with why it was asked and how it differs from the one held; cheap alone, so it does not hide a race (`Db::first_changed` names the first) |
 
 ## Cross builds

@@ -8,6 +8,7 @@
 use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Decode, Encode};
+use vun_origin::OriginTable;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::call::{Instance, Instantiation};
 use vun_sema_ty::trap::Reason;
@@ -96,6 +97,9 @@ impl Query for MeteredCall {
         if signature.is_some_and(|s| s.params.len() == call.args.len() && s.refuses(&call.args)) {
             return Metered::unrun(Unevaluated::trap(Reason::Argument));
         }
+        let name = OriginTable::global().declaration_name(call.f.literal.expr.origin);
+        let _span =
+            vun_trace::tracing::debug_span!("call", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         let evaluators = cx.db().resource::<Evaluators>();
         match evaluators.0.get() {
             Some(evaluator) => stacker::maybe_grow(RED_ZONE, SEGMENT, || evaluator.call(cx, call)),
