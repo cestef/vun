@@ -8,6 +8,7 @@ cargo xtask check             # the quick ones: formatting, generated sources, l
 cargo xtask push -- <words>   # check, then `jj git push <words>`
 cargo xtask hooks             # once per clone: the jj aliases `jj check` and `jj push <words>`
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
+cargo xtask runtimes          # the std tests on every target this machine runs (its tools file: kernel, C library, WASI, wine)
 cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
 cargo xtask size              # the distributed binary against its budget (20 MiB)
 cargo xtask install           # build `vun` (the dist profile) and install it as the default toolchain
@@ -172,6 +173,7 @@ cargo run -q -p vun-cli -- debug dump tokens|cst|manifest|plan|hir|types|values|
 cargo run -q -p vun-cli -- debug disasm <elf> [symbol]   # an ELF file's code as instructions (yaxpeax-x86, yaxpeax-arm)
 cargo run -q -p vun-cli -- debug coverage|compare <file>
 cargo run -q -p vun-cli -- test [path] [names]...   # the tests of a namespace, as std.testing.runner runs them
+cargo run -q -p vun-cli -- test [path] --jobs 4      # each test in a process of its own, 4 at a time (cores by default; 1 = one process, in order)
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- bench [--release] [path] [names]...   # the benchmarks alone, measured
 cargo run -q -p vun-cli -- fuzz [path] [names]... [--cases n]   # the properties alone, fuzzed, built --cover
@@ -186,6 +188,16 @@ cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part
 Saved queries live in `.vun/queries/` of the project (its package's directory, a workspace's root, or beside a file outside any package; delete it to start cold), builds in
 `.vun/build/`. The libraries' memos are shared entries of the store (`<store>/memos`, per
 toolchain, target and checks).
+
+`cargo xtask runtimes` runs `vun test --target T lib/std` for each target `vun target list` says runs
+on this machine, one line each. The runtimes are code of their own (`std.os.linux.kernel`,
+`std.os.libc`, `std.os.wasi`, `std.os.windows`), so a machine runs what it has the tools for: its
+own kernel and C library targets, and, through `vun/tools.vun` (`.runner`), WASI under `wasmtime`
+(`.runner = .{ "wasmtime", "run" }`), Windows under `wine64` with a `.sysroot` holding `kernel32.lib`
+(zig's cache has one), Arm under `qemu-aarch64`. Run it on each host with
+`cargo xtask remote --host am3.wg -- cargo xtask runtimes`; am3 (arm64) covers `linux.arm64.kernel`,
+`linux.arm64.gnu` and WASI, petal (x86-64) `linux.x86_64.kernel`, `linux.x86_64.gnu` and WASI, the
+laptop adds Windows under wine. macOS has no machine here.
 
 `vun debug compare` is a table with a row per backend (exit, bytes written to each stream, program size,
 time to generate and link, median run time) and, for each backend that parts from the first, the first line

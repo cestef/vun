@@ -205,3 +205,26 @@ fixed_decimals_round_the_exact_value_to_even := () {
     std.testing.assert(fixed_text(1e21, 1).bytes() == "1000000000000000000000.0");
     std.testing.assert(fixed_text(0.999, 2).bytes() == "1.00" and fixed_text(5e-324, 3).bytes() == "0.000");
 };
+
+/// What `std.fmt.json.write` writes for a float.
+as_json := ($T: type, x: T) -> std.text.Slab(48) {
+    mut slab := std.text.Slab(48).empty();
+    std.fmt.json.write(std.text.Slab(48), T, &mut slab, &x).expect("room");
+    slab
+};
+
+#[test]
+floats_are_json_numbers_of_their_shortest_digits := () {
+    std.testing.assert(as_json(f64, 1.5).bytes() == "1.5" and as_json(f64, -0.25).bytes() == "-0.25");
+    std.testing.assert(as_json(f64, 100.0).bytes() == "100" and as_json(f64, 1e21).bytes() == "1e21");
+    std.testing.assert(as_json(f64, 5e-324).bytes() == "5e-324" and as_json(f32, 0.1).bytes() == "0.1");
+    std.testing.assert(as_json(f64, 0.1 + 0.2).bytes() == "0.30000000000000004");
+};
+
+#[test]
+a_float_json_has_no_number_for_is_null := () {
+    std.testing.assert(as_json(f64, 0.0 / 0.0).bytes() == "null");
+    std.testing.assert(
+        as_json(f64, 1.0 / 0.0).bytes() == "null" and as_json(f32, -1.0 / 0.0).bytes() == "null"
+    );
+};

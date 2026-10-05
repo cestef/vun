@@ -30,6 +30,11 @@ pub(crate) const CORPUS: Task = Task::new(
     "run corpus/accept and corpus/reject through the stages that exist",
     Work::Run(crate::run_corpus),
 );
+pub(crate) const RUNTIMES: Task = Task::new(
+    "runtimes",
+    "run the standard library's tests on every target this machine can run programs of",
+    Work::Run(crate::runtimes::run),
+);
 pub(crate) const SIZE: Task =
     Task::new("size", "fail when the distributed vun outgrows its budget", Work::Run(crate::check_size));
 pub(crate) const PACKAGE: Task = Task::new(
@@ -98,6 +103,7 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     PUSH,
     RELEASE,
     REMOTE,
+    RUNTIMES,
     SIZE,
     TREE_SITTER,
     TREE_SITTER_PUBLISH,

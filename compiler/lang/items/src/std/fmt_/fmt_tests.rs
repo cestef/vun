@@ -81,3 +81,11 @@ pub const fixed_text: Item = Item::new(&["std", "fmt", "tests", "fixed_text"]);
 pub const fixed_decimals_round_the_exact_value_to_even: Item = Item::new(
     &["std", "fmt", "tests", "fixed_decimals_round_the_exact_value_to_even"],
 );
+/// What `std.fmt.json.write` writes for a float.
+pub const as_json: Item = Item::new(&["std", "fmt", "tests", "as_json"]);
+pub const floats_are_json_numbers_of_their_shortest_digits: Item = Item::new(
+    &["std", "fmt", "tests", "floats_are_json_numbers_of_their_shortest_digits"],
+);
+pub const a_float_json_has_no_number_for_is_null: Item = Item::new(
+    &["std", "fmt", "tests", "a_float_json_has_no_number_for_is_null"],
+);

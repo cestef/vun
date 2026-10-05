@@ -45,8 +45,11 @@ pub const Falsified: Item = Item::new(&["std", "testing", "Falsified"]);
 pub const Trapped: Item = Item::new(&["std", "testing", "Trapped"]);
 /// Totals of a run.
 pub const Totals: Item = Item::new(&["std", "testing", "Totals"]);
-/// A line the runner writes: a test run and what became of it, then the totals.
+/// A line the runner writes: a test run and what became of it, then the totals; asked to list,
+/// the tests it would run and nothing of them.
 pub const Line: Item = Item::new(&["std", "testing", "Line"]);
+/// A test the runner lists: its name, as declared, and what kind of test it is.
+pub const Listed: Item = Item::new(&["std", "testing", "Listed"]);
 /// A line the runner writes before a falsified property's line, one per parameter: the argument
 /// of its smallest failing case.
 pub const Argued: Item = Item::new(&["std", "testing", "Argued"]);

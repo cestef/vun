@@ -141,6 +141,15 @@ program's standard output and error as one stream, so what a test writes, the ba
 trap included, comes before its line and is reported with it. Unit tests, properties, fuzz
 targets, benchmarks and simulations run.
 
+**Parallel runs.** `vun test` runs the tests as nextest does: the program lists them (`--list`: one
+`{"listed":{"name":...,"kind":...}}` line each, `std.testing.Listed`), then each runs in a process
+of its own, `--jobs n` (`-j`, `VUN_TEST_JOBS`) at a time, the machine's cores if not given, and is
+reported as its process ends, in the order they end; the totals are the sum, the time the run's.
+A test that crashes its process, or never ends, costs that test alone, and a result missing from a
+process that ended is reported as a failure with its status. `--jobs 1` runs them in one process in
+the order they are declared, as the program does without arguments. Benchmarks and fuzzing run in
+one process, in order: they measure and guide.
+
 ## 4. Deterministic simulation
 
 Time, network, storage and randomness reach code only through capabilities (spec 07), and executors

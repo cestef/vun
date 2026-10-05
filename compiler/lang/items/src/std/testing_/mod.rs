@@ -5,6 +5,7 @@ pub mod testing_Falsified;
 pub mod testing_Ignored;
 pub mod testing_Kind;
 pub mod testing_Line;
+pub mod testing_Listed;
 pub mod testing_Outcome;
 pub mod testing_Ran;
 pub mod testing_Totals;

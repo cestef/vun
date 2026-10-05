@@ -355,9 +355,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    rounded twice for the transcendental functions, `Iter.sum` (a generic `+` of a range type needs
    a design), `rev` and `peekable`, `Vec.drain`, `Vec.split_off`. Added in 492 (proposed): float
    printing and reading (`std.fmt.float`, `std.float.parse`, on `std.math.big`), `std.json` (a
-   pull reader; the writer still writes a float as its exact hexadecimal string, which a reader of
-   other JSON cannot use: writing floats as numbers, `null` for a NaN, is a decision for the
-   user), `std.crypto` (SHA-256, HMAC, ChaCha20, `SecureRng` over `std.os.entropy`),
+   pull reader; the writer writes a float as a number, `null` for a NaN or an infinity), `std.crypto` (SHA-256, HMAC, ChaCha20, `SecureRng` over `std.os.entropy`),
    `std.time.date`, `std.net` addresses and `std.uuid`. `std.os.entropy` is `getrandom` (kernel
    runtime), `getentropy` (C library) and `random_get` (WASI); on Windows it reports
    `unsupported` until the runtime links `bcryptprimitives` (`ProcessPrng`). Open: `std.os.{env,

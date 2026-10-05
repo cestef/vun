@@ -1,5 +1,6 @@
 //! JSON (RFC 8259) written from typed values, each type writing itself through `Json`: an integer
-//! is a number, a float a string of its exact hexadecimal form, a `bool` `true` or `false`, bytes
+//! is a number, a float a number of its shortest digits (`null` for a NaN and an infinity, which JSON
+//! has no number for), a `bool` `true` or `false`, bytes
 //! a string, another sequence an array and an option its value or `null`. `derive(T)` writes a
 //! struct or a record as an object of its fields, a tuple as an array of its items, and an enum's
 //! value as its variant's name, or, where the variant holds parts, as an object naming it; a type
@@ -68,37 +69,14 @@ impl Json for Int($r) {
     json := lang.meta.witness(std.fmt.Format, Int(r)).format;
 }
 
-/// A float as a string holding its exact hexadecimal form, `"-0x1.8p+1"`, which every float has
-/// and a JSON number does not: an infinity is `"inf"` or `"-inf"`, a NaN `"nan"`.
+/// A float as a number of the shortest digits that read back as it (`std.fmt.float`); a NaN and an
+/// infinity, which JSON has no number for, are `null`.
 impl Json for lang.Float($bits) {
     json := ($W: std.fmt.Writer, value, w) {
         $F := lang.Float(bits);
-        $fraction := lang.float.fraction_bits(F);
-        $top := (1 << (bits - fraction - 1)) - 1;
-        $bias := (1 << (bits - fraction - 2)) - 1;
-        $digits := (fraction + 3) / 4;
-        b := lang.float.bits(F, value.*);
-        e := (b >> fraction) & top;
-        m := b & ((1 << fraction) - 1);
-        w.write_all(quote)?;
-        if b >> (bits - 1) == 1 and !(e == top and m != 0) { w.write_all("-")?; }
-        if e == top {
-            w.write_all(if m == 0 { "inf" } else { "nan" })?;
-            return w.write_all(quote);
-        }
-        w.write_all(if e == 0 { "0x0" } else { "0x1" })?;
-        // The fraction's hexadecimal digits, most significant first, trailing zeros left out.
-        mut shown: usize = digits;
-        for shown > 0 and ((m << (digits * 4 - fraction)) >> ((digits - shown) * 4)) % 16 == 0 { shown -= 1; }
-        if shown > 0 { w.write_all(".")?; }
-        for i in 0..shown {
-            d := (((m << (digits * 4 - fraction)) >> ((digits - 1 - i) * 4)) % 16).to(usize);
-            w.write_all(hex[d..d + 1])?;
-        }
-        power: i32 = if e == 0 { if m == 0 { 0 } else { 1 - bias } } else { (e - bias).to(i32) };
-        w.write_all(if power < 0 { "p" } else { "p+" })?;
-        power.format(w)?;
-        w.write_all(quote)
+        taken := std.fmt.float.decode(F, value.*);
+        if taken.class == .nan or taken.class == .infinite { return w.write_all(null); }
+        std.fmt.float.write(F, W, w, value.*, false)
     };
 }
 

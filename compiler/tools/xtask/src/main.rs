@@ -10,6 +10,7 @@ mod lines;
 mod release;
 mod remote;
 mod report;
+mod runtimes;
 mod size;
 mod task;
 #[cfg(test)]
