@@ -170,6 +170,7 @@ impl Lower<'_, '_> {
         match self.kind(n) {
             NodeKind::Name => ExprKind::Name(self.symbol(n)),
             NodeKind::Hole => ExprKind::Hole,
+            NodeKind::Rest => ExprKind::Rest,
             NodeKind::Int => vun_syntax::literal::integer(self.text(n))
                 .map_or(ExprKind::Error, |i| ExprKind::Lit(Lit::Int(i))),
             NodeKind::Float => ExprKind::Lit(Lit::Float(self.text(n).to_owned())),

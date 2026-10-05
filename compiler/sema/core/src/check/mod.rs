@@ -10,6 +10,7 @@ mod link;
 mod members;
 mod pack;
 mod placed;
+mod rest;
 mod visible;
 
 use std::sync::Arc;
@@ -103,6 +104,7 @@ impl Visitor for Checker<'_, '_, '_> {
 
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         self.member(hir, expr);
+        self.rest(hir, expr);
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
             let f = ExprRef::new(self.env.file.clone(), hir, expr);
             if let Some(reported) = self.env.cx.get::<Reported>(&Instantiation::plain(f)) {

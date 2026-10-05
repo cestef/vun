@@ -7,6 +7,7 @@
 )]
 use crate::Item;
 pub const hole_value: Item = Item::new(&["lang", "errors", "binding", "hole_value"]);
+pub const rest_value: Item = Item::new(&["lang", "errors", "binding", "rest_value"]);
 pub const irrefutable_test: Item = Item::new(
     &["lang", "errors", "binding", "irrefutable_test"],
 );

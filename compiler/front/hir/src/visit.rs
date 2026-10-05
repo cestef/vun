@@ -137,11 +137,13 @@ fn exprs<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, list: &List<ExprId>) {
     walk_list(v, hir, list, &mut |v, e| v.expr(hir, *e));
 }
 
+#[allow(clippy::too_many_lines, reason = "one arm per kind of expression")]
 pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
     use crate::tree::Name::Computed;
     match &hir.exprs[expr].kind {
         ExprKind::Error
         | ExprKind::Hole
+        | ExprKind::Rest
         | ExprKind::Name(_)
         | ExprKind::Lit(_)
         | ExprKind::Continue { .. } => {}

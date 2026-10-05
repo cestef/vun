@@ -3,6 +3,7 @@ use crate::DiagId;
 /// Bindings and patterns (spec 01, sections 3 and 6).
 pub const BINDING: DiagId = DiagId::new("lang.errors.binding");
 pub const BINDING_HOLE_VALUE: DiagId = DiagId::new("lang.errors.binding.hole_value");
+pub const BINDING_REST_VALUE: DiagId = DiagId::new("lang.errors.binding.rest_value");
 pub const BINDING_IRREFUTABLE_TEST: DiagId = DiagId::new(
     "lang.errors.binding.irrefutable_test",
 );

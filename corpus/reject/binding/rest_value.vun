@@ -1,0 +1,12 @@
+//! `..` only skips items in a pattern: as a value, even an index, it is an error (spec 01,
+//! section 6).
+
+all := (xs: &[u8]) -> &[u8] {
+    xs[..] //~ binding.rest_value
+};
+
+count := (s: &[u8]) -> usize { s.len() };
+
+borrowed := (a: [8]u8) -> usize {
+    count(&a[..]) //~ binding.rest_value
+};

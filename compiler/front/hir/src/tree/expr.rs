@@ -43,6 +43,8 @@ pub enum ExprKind {
     Error,
     /// `_` as a value: provided from outside (spec 01, section 3).
     Hole,
+    /// `..` as a value, which only a pattern may say (`binding.rest_value`).
+    Rest,
     Name(Symbol),
     Lit(Lit),
     /// `.name`, looked up in the expected type.
@@ -169,6 +171,7 @@ impl ExprKind {
         match self {
             ExprKind::Error => "Error",
             ExprKind::Hole => "Hole",
+            ExprKind::Rest => "Rest",
             ExprKind::Name(_) => "Name",
             ExprKind::Lit(_) => "Lit",
             ExprKind::DotName(_) => "DotName",
