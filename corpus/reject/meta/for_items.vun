@@ -1,0 +1,10 @@
+//! A `$for` steps through the items of an array, a tuple or a range, and reports any other value
+//! it is given (spec 03, section 1).
+
+total := () -> u32 {
+    mut sum: u32 = 0;
+    $for x in .{ .a = 1, .b = 2 } { //~ types.no_items
+        sum += x;
+    }
+    sum
+};

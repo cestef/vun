@@ -48,6 +48,7 @@ types := struct {
     bad_index := diag.Diag{};
     pack_position := diag.Diag{};
     untyped_param := diag.Diag{};
+    no_items := diag.Diag{};
 };
 
 /// Name resolution and visibility (spec 01, sections 3, 7 and 8).

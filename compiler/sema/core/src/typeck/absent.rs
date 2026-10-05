@@ -38,6 +38,19 @@ impl Typer<'_, '_, '_> {
         self.diag.error(d);
     }
 
+    /// Reports the `$for` over `iter`, whose value `ty` has no items to step through.
+    pub(super) fn no_items(&mut self, iter: ExprId) {
+        let mut msg = Msg::new().text("a `$for` cannot step through ");
+        msg = match self.typed(iter) {
+            Some(known) => msg.text("a value of type ").ty(known.ty.to_string()),
+            None => msg.text("this value"),
+        };
+        let help = Msg::new().text("it steps through the items of an array, of a tuple or of a range");
+        let d =
+            Diagnostic::error(errors::TYPES_NO_ITEMS, msg).at(self.hir().exprs[iter].origin, None).help(help);
+        self.diag.error(d);
+    }
+
     /// Reports `ty`, of the operand `expr` of a form driven by `interface`, as having no impl of
     /// it; a type whose impls its requirements give is left to them.
     pub(super) fn unimplemented(&mut self, expr: ExprId, interface: Option<Item>, ty: Ty) {

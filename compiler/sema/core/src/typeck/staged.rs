@@ -8,9 +8,9 @@ use std::sync::Arc;
 use vun_diag::DiagCtxt;
 use vun_hir::tree::{Cond, ExprId, ExprKind, Hir, PatKind, Staged};
 use vun_hir::visit::{walk_list, walk_staged};
+use vun_sema_ty::TyKind;
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::Node;
-use vun_sema_ty::{TyKind, Value};
 
 use super::{Found, Known, Stage, Step, TypedBody, Typer};
 use crate::env::{Env, Selected};
@@ -41,8 +41,14 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                 }
             }
             Staged::For { pat, iter, body, .. } => {
-                let items = self.evaluating().eval(*iter);
-                let items = self.reported(*iter, items).ok().and_then(Value::items);
+                let value = self.evaluating().eval(*iter);
+                let items = self.reported(*iter, value).ok().and_then(|value| {
+                    let items = value.items();
+                    if items.is_none() {
+                        self.no_items(*iter);
+                    }
+                    items
+                });
                 // `_` binds nothing: each step is the body as written.
                 let binder = match hir.pats[*pat].kind {
                     PatKind::Bind(binder) => Some(binder),
