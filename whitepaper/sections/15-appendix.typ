@@ -13,14 +13,15 @@ Every form below is a rewrite into `lang` items. The tables named in parentheses
     toprule,
     [Syntax], [Meaning],
     midrule,
-    [`?T`, `*T`], [`lang.Option(T)`, `lang.mem.Ptr(T)` (`type_prefixes`)],
+    [`?T`, `*T`, `..P`], [`lang.Option(T)`, `lang.mem.Ptr(T)`, `lang.Pack(P)` (`type_prefixes`)],
     [`[N]T`, `[T]`], [`lang.mem.Array(N, T)`, `lang.mem.Slice(T)` (`forms`)],
     [`&T`, `&mut T`, `&out T`, `&take T`], [`lang.mem.Ref(T)`, `RefMut(T)`, `RefOut(T)`, `RefTake(T)` (`borrows`)],
     [`&temp T`, `&temp mut T`, `&static T`], [`lang.mem.RefTemp(T)`, `RefTempMut(T)`, `RefStatic(T)` (`borrows`)],
     [`(A, B) -> R`], [`lang.Fn((A, B), R)`, with the markers of the literal],
-    [`if c`, `for c`, `!c`], [`c` has type `lang.bool` and holds when it is `lang.bool.true` (`forms`)],
+    [`if c`, `for c`, `a and b`, `!c`], [`c` has type `lang.bool` and holds when it is `lang.bool.true` (`forms`)],
     [`a..b`, `a..=b`], [bounds of type `lang.Bounds(T)`; a `lang.Range` where one is expected (`forms`)],
     [`a + b`, and each operator], [`lang.ops.Add.add(a, b)`, as the table gives (`operators`)],
+    [`a < b` in a condition], [narrows the ranges of the immutable integer bindings it compares, where it holds and where it fails (`comparisons`, @sec-integers)],
     [`a == b`, `a < b`], [`lang.ops.Eq.eq(&a, &b)`, `lang.ops.PartialOrd.lt(&a, &b)`],
     [`a[i]`], [`lang.ops.Index.at(&a, i)`, or `at_mut(&mut a, i)` in a place context],
     [`f(a, b)`, `f` not a function literal], [`lang.ops.Call.call(&mut f, (a, b))` (`calls`)],
@@ -30,11 +31,12 @@ Every form below is a rewrite into `lang` items. The tables named in parentheses
     [`if p = e { a } else { b }`], [`match e { p => a, _ => b }`],
     [`for c { b }`], [`for { if !c { break; } b }`],
     [`for p = e { b }`], [`for { match e { p => b, _ => break } }`],
-    [`for p in e { b }`], [`{ mut it := lang.ops.Iterate.iter(e); defer it.end(); for { match it.resume() { .yielded(p) => b, .done(r) => break r } } }` (`iteration`)],
+    [`for p in e { b }`], [`{ mut it := lang.ops.Iterate.iter(e); defer it.end(); 'l: for { match it.resume() { .yielded(p) => b, .done(r) => break 'l r } } }` (`iteration`)],
     [`yield ..e`], [`for y in e { yield y; }`],
     [`a.f(args)`], [`TypeOf(a).f(<a in the mode of the first parameter of f>, args)`],
     [`[caps] (ps) -> R { b }`], [an anonymous structure of `caps` with an implementation of `lang.ops.Call`],
     [`"text"`], [a `&static [N]u8` in read-only data],
+    [`#[a] d`], [`d` with `a` appended to its attribute list],
     [`.name`], [`E.name`, where `E` is the expected type],
     [`[..a, x]`], [`lang.ops.Concat.concat(a, [x])`],
     bottomrule,
@@ -45,7 +47,7 @@ Every form below is a rewrite into `lang` items. The tables named in parentheses
 = Undefined behavior <app-ub>
 
 Safe code cannot trigger any of the following; that is the definition of safe code. Inside
-`unsafe`, the list is exhaustive. The reference interpreter detects every item except the fourth
+`unsafe`, the list is exhaustive. The compile-time evaluator detects every item except the fourth
 and the fifth.
 
 + Dereferencing a `*T` that does not point to a live, aligned, initialized `T`.

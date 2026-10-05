@@ -7,16 +7,16 @@ type wraps because the hardware does; a destructor runs because cleanup is easy 
 lifetime annotation exists because the borrow checker needs a name for a region; a macro language
 exists because the base language cannot inspect itself; a pinning wrapper exists because
 asynchronous frames must not move; an attribute marks the entry point because the linker needs
-one. Together, these mechanisms interact in ways that programmers learn case by case and that
-implementations must handle case by case as well.
+one. These mechanisms interact in ways that programmers learn case by case and that implementations
+must handle case by case too.
 
 Vun starts from the opposite constraint. The language is a small set of _concepts_, each governed
 by exactly one rule. Every other feature must be one of those concepts, a library built from them,
 or a documented rewrite into them. When a behavior cannot be explained by the list of concepts and
-the desugaring tables, the design is considered incorrect rather than the explanation incomplete.
+the desugaring tables, the design is wrong; the explanation is not merely incomplete.
 
-The constraint is a means rather than an end. It is intended to make three properties hold at the
-same time, properties that existing systems languages tend to trade against each other:
+The constraint exists to make three properties hold at the same time. Existing systems languages
+tend to trade them against each other:
 
 - *Predictable cost.* Every allocation, copy, check and trap site is either written in the source
   or reported by the toolchain. No code runs that the program did not write or call.
@@ -43,8 +43,8 @@ This paper describes the design of Vun and the architecture of its implementatio
   functions are typed tuple patterns, and a single operator (`$`) expresses every change of
   evaluation stage (@sec-syntax).
 + *Types as compile-time values*, with interfaces defined as functions from a type to a structure
-  of requirements, and conformance registered by an attribute on any expression that yields such a
-  structure (@sec-types).
+  of requirements, and conformance registered by the attribute `lang.impl` on any expression that yields
+  such a structure, with `impl` declarations as sugar for it (@sec-types).
 + A *staging model* in which the whole language is available at compile time and in which generic
   code, generated declarations and hygienic quotation share one mechanism, with all generated code
   traceable to its generator (@sec-staging).
@@ -66,13 +66,14 @@ This paper describes the design of Vun and the architecture of its implementatio
 == Status and scope
 
 This is a design paper accompanied by a partial implementation. The specification is a set of
-documents with a decision log of 256 entries; a corpus of Vun programs was written before the
+documents with a decision log of 409 entries; a corpus of Vun programs was written before the
 compiler and serves as its acceptance test. The implemented part of the compiler covers parsing,
 name resolution, type checking, compile-time evaluation, the package system, the checks on the
 mid-level representation (place states, kinds, borrows, trap freedom), a low-level
-representation, three backends and the linkers they need. Programs run on Linux for x86-64 and
-arm64 and under WASI; the standard library, freestanding targets and the editor tools are
-incomplete. @sec-implementation reports the state of the implementation in detail.
+representation, three backends and the linkers they need, a test runner for unit, property, fuzz,
+benchmark and simulation tests, lints, a language server and generated editor packages. Programs run on Linux (x86-64, arm64 and 32-bit Arm), under WASI and, through the C backend, on
+Windows. A freestanding RP2350 board runs on hardware. The standard library and the board runtimes
+are incomplete. @sec-implementation reports the state of the implementation in detail.
 
 Statements about run-time and compile-time performance are design targets derived from published
 measurements of comparable systems, which are cited where they appear. The few measurements of

@@ -125,7 +125,7 @@
   arrow(draw, "back.west", "link.east", label: [objects])
   arrow(draw, "link.west", "out.east", label: [link plan])
   draw.content((row.at(2), -2.75), anchor: "north", text(7.8pt, fill: muted-ink)[C, native, wasm])
-  draw.content((row.at(1), -2.75), anchor: "north", text(7.8pt, fill: muted-ink)[GNU ld, mold, wild, wasm-ld])
+  draw.content((row.at(1), -2.75), anchor: "north", text(7.8pt, fill: muted-ink)[GNU ld, mold, wild, lld, wasm])
   draw.content((row.at(3) + w / 2 + 0.2, 0), anchor: "west",
     text(7.8pt, fill: muted-ink)[checks: \ places, kinds, \ borrows, traps])
 })
@@ -173,16 +173,21 @@
 // Lines of Rust per workspace group (section on implementation).
 #let code-size = {
   // Listed bottom to top, so the layering order reads from the top.
-  let groups = ("tools", "render", "link", "back", "low", "mid", "front", "base")
-  let lines = (18620, 716, 703, 18158, 12146, 5960, 22405, 11514)
+  let groups = (
+    "tools", "pkg", "native", "render", "link", "back", "asm", "low", "mid", "sema", "front",
+    "object", "isa", "lang", "base",
+  )
+  let lines = (
+    37214, 3752, 7327, 716, 2155, 11481, 2086, 15887, 6853, 20445, 10298, 5797, 5735, 1543, 21251,
+  )
   let ys = range(groups.len())
   lq.diagram(
-    width: 9cm, height: 4.4cm,
+    width: 9cm, height: 7.4cm,
     xlabel: [lines of Rust],
     yaxis: (ticks: ys.zip(groups.map(g => raw(g))), subticks: none),
-    xaxis: (ticks: (0, 5000, 10000, 15000, 20000, 25000).map(v => (v, str(v))), subticks: none),
-    xlim: (0, 25000),
-    ylim: (-0.6, 7.6),
+    xaxis: (ticks: (0, 10000, 20000, 30000, 40000).map(v => (v, str(v))), subticks: none),
+    xlim: (0, 40000),
+    ylim: (-0.6, 14.6),
     lq.hbar(lines, ys, fill: accent.lighten(40%), stroke: 0.4pt + accent, width: 0.6),
   )
 }

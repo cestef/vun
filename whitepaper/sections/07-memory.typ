@@ -118,8 +118,9 @@ or `&temp mut T` is lent for the call only: the result is not tied to it, and th
 return it or store it in anything it returns, which the checker verifies in the callee's body.
 Borrows of immutable top-level bindings, and string literals, have type `&static T`, which is free
 and copy and is accepted wherever a shared borrow is expected; borrows of one form meet in the
-shorter extent, so `if c { "text" } else { buf }` is a plain `&[u8]`. This is the language's only
-subtyping rule. There are exactly two regions, static and scoped.
+shorter extent, so `if c { "text" } else { buf }` is a plain `&[u8]`. Borrows of one transition serve for one
+another when they leave others no more access: `&static T` and `&mut T` where `&T` is expected.
+This is the language's only subtyping rule. There are exactly two regions, static and scoped.
 
 A borrow cannot be stored in a free value: a top-level binding, an owning pointer or a heap node.
 The attribute `kind.free` makes a type free, and then neither its parts nor its type arguments may
@@ -138,11 +139,11 @@ it does on a borrow or pointer, and member lookup continues through it (@sec-syn
 raw pointer `*T` is copy, free and non-null; `?*T` is nullable and occupies one word. Creating a
 raw pointer and reading its address are safe; dereferencing, offsetting, casting and bulk copies
 are `unsafe` primitives of `lang.mem`, which `std.ptr` exposes as methods. Volatile and atomic
-access are operations rather than type qualifiers.
+access are operations, not type qualifiers.
 
 == Layout
 
-Layout is defined by the language rather than left to the implementation.
+The language defines layout; the implementation does not choose it.
 
 - A `struct` is laid out in declaration order with natural alignment and C-style padding. The
   compiler never reorders fields; a lint reports padding and offers a reordering fix.
@@ -189,4 +190,4 @@ The following facts are part of the language definition, so every backend may re
 Exclusive borrows (`&mut`, `&out`, `&take`) alias no other access while they live. A shared
 borrow of a cell-free type denotes memory that does not change while the borrow lives. When a
 function's result type is free, none of its borrowed parameters escape. Violating these facts
-through raw pointers is undefined behavior (@app-ub), and the reference interpreter detects it.
+through raw pointers is undefined behavior (@app-ub), and the compile-time evaluator detects it; native code can ask for run-time checks (`--checks`).

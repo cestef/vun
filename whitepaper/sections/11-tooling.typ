@@ -57,9 +57,9 @@ range error of @sec-integers.
   5 │ norm1 := (p: Point) -> u32 {
     │                        ─── expected because of this type
   6 │     p.x.abs() + p.y.abs() //~ int.does_not_fit
-    │     ━━━━━━━━━━━━━━━━━━━━━
+    │     ━━━━━━━━━━━━━━━━━━━━━ this is `Int(0..=2^32)`
     │
-    ├ note: the value is `Int(0..=2^32)`, and `u32` is `Int(0..2^32)`
+    ├ note: the value is `Int(0..=2^32)`, which is not within `u32`
     ╰ help: widen `u32` to hold the whole range, or narrow the value explicitly; …
   ```,
   caption: [A range error as the compiler reports it. The file is part of the rejection corpus,
@@ -68,23 +68,30 @@ range error of @sec-integers.
 
 Intermediate representations are printed with the origin of every entity, so any line of a dump
 can be traced to the source. @fig-dump shows the MIR of the midpoint function of @sec-integers;
-`@2:6` is line 2, column 6.
+`@1:35` is line 1, column 35.
 
 #figure(
   ```term
   $ vun debug dump mir mid.vun
   fn(_1: a, _2: b) -> _0 { @1:8
+    let _0: u32 @1:8
+    let _1 a: u32 @1:9
+    let _2 b: u32 @1:17
+    let _3: u32 @1:35
+    let _4: u32 @1:39
+    let _5: Int(0..=2^33 - 2) @1:34
+    let _6: u32 @1:34
     bb0:
-      _3 = _1 @2:6
-      _4 = _2 @2:10
-      _5 = _3 + _4 @2:5
-      _6 = _5 / const 2 @2:5
-      _0 = _6 @2:5
-      return @2:5
+      _3 = _1 @1:35
+      _4 = _2 @1:39
+      _5 = const lang.int.add(const 0..=2^32 - 1, const 0..=2^32 - 1, _3, _4) @1:34
+      _6 = const lang.int.div(const 0..=2^33 - 2, const 2..=2, _5, const 2) @1:34
+      _0 = _6 @1:34
+      return @1:34
   }
   ```,
   caption: [MIR of `mid := (a: u32, b: u32) -> u32 { (a + b) / 2 };` with origins. The sum `_5`
-    has type `Int(0..=2^33 - 2)` and needs no check.],
+    has type `Int(0..=2^33 - 2)` and needs no check: `lang.int.add` takes the operand ranges.],
 ) <fig-dump>
 
 == Lints and conventions
@@ -95,7 +102,10 @@ a compile-time error. Pattern lints are written as quotations with holes, never 
 package's lints apply to code that uses its interface, or to any package that enables them.
 Levels are `allow`, `warn`, `deny`, `forbid` (which cannot be lowered) and `expect` (which warns
 if the lint does not fire), and every override takes a reason. Lints are grouped, with defaults
-from `deny` for correctness and naming to `allow` for pedantic and restriction lints.
+from `deny` for correctness and naming to `allow` for pedantic and restriction lints. A build
+sets levels from the command line (`--lint std.lints.naming.case=warn`), a dependency's lints
+report at most `warn` while a dependent is built, and `#[lint.allow]` may be written on a local
+binding or an expression as on a declaration.
 
 Naming and organization conventions are lints enabled by default. The case of a binding is
 determined by what it is, which compile-time evaluation knows exactly: types, interfaces and
@@ -122,10 +132,10 @@ parameters of a test select its kind (@tab-tests).
     [Parameters], [Kind], [Run by],
     midrule,
     [none], [unit test], [`vun test`],
-    [values of ordinary types], [property test], [`vun test` with seeded cases; `vun fuzz`, coverage-guided],
+    [values of ordinary types], [property test], [`vun test`, with `--seed` and `--cases`; `vun fuzz`, coverage-guided],
     [`&[u8]`], [fuzz target], [the same],
     [`&mut testing.Bench`], [benchmark], [`vun bench`],
-    [`&mut testing.Sim`], [deterministic simulation], [`vun test`; `vun sim --seeds N`],
+    [`&mut testing.Sim`], [deterministic simulation], [`vun test`, over seeds],
     bottomrule,
   ),
   caption: [Test kinds, selected by the parameters of the test.],
@@ -134,13 +144,13 @@ parameters of a test select its kind (@tab-tests).
 Inputs of property tests are generated from their types by reflection, reading from a typed choice
 stream, so range types bound generation without annotation and shrinking works on the stream for
 custom generators too. Because time, network, storage and randomness reach code only through
-capabilities, the simulation handle can supply deterministic, seeded substitutes for all of them:
-a virtual clock, a seeded scheduler, and a network and disk that drop, reorder, delay and corrupt
-on command. This is the approach of deterministic simulation testing @tigerbeetle-fuzz, obtained
-without run-time support. Tests run by default in the reference interpreter, which detects every
-detectable item of the list of undefined behaviors (@app-ub), so each test run is also a check of
-`unsafe` code. They can also run natively, in an emulator or on a board, with the same result
-stream.
+capabilities, the simulation handle can supply deterministic, seeded substitutes for them. It
+supplies a virtual clock and a seeded scheduler over a tuple of tasks today; a network and disk that
+drop, reorder, delay and corrupt on command are planned. This is the approach of deterministic
+simulation testing @tigerbeetle-fuzz, obtained without run-time support. Tests run natively, each
+on a thread of its own, and the same program can run in an emulator or on a board with the same
+result stream. Run-time checks of `unsafe` code (`--checks pointers,allocations,asm`) cover the
+first, second and fifth items of the list of undefined behaviors (@app-ub) in a test run.
 
 The compiler's own acceptance tests follow the same principle. The corpus consists of programs
 that must be accepted and programs that must be rejected; the latter carry annotations such as
@@ -166,6 +176,9 @@ methods, is configured there, with no second configuration format.
   alone. Archives are unpacked in a staging area and verified before they enter the store.
   Lockfiles register their projects as roots, and collection keeps exactly the entries some
   registered lockfile records.
+- *Toolchains.* A toolchain is a release (the compiler and its libraries) that a project pins in a
+  `.toolchain` file and the driver installs on demand; release manifests are signed, and a pinned
+  release's manifest hash is recorded in the lockfile.
 - *Archives and lockfile.* There is no bespoke format. Packages are published as `.tar.zst` with
   fixed metadata, so identical trees give identical archives. The lockfile, `lock.vun`, is a Vun
   literal with one sorted entry per line and no whole-file hash, so merges do not conflict.
@@ -189,7 +202,7 @@ avoids.
     [content hash as identity, URLs as mirrors], [Zig, Nix, Roc], [integrity without a central authority],
     [minimal version selection], [Go], [deterministic and explainable, no solver],
     [sorted, line-per-entry integrity file], [Go], [merges without conflicts],
-    [deferred logging], [defmt], [a log costs an index and packed bytes on the device],
+    [deferred logging (planned)], [defmt], [a log costs an index and packed bytes on the device],
     midrule,
     [_avoided:_ graph-wide additive features], [Cargo], [one dependent changes another's build],
     [_avoided:_ arbitrary code at build time], [`build.rs`, `build.zig`], [unsandboxed and uncacheable],
@@ -201,9 +214,10 @@ avoids.
   caption: [Practices adopted from and avoided in existing package ecosystems @unboxed-zig.],
 ) <tab-ecosystem>
 
-For embedded work, flashing and debugging tools are linked into the driver as libraries, and
-deferred logging is library code: a log call parses its format string at compile time, places the
-string in a section that is not loaded, and transmits only its index and the packed arguments.
+For embedded work, a build plan declares what is flashed (`vun flash`; UF2 images are written today,
+probe and DFU flashing are planned). Deferred logging is planned as library code: a log call would
+parse its format string at compile time, place the string in a section that is not loaded, and
+transmit only its index and the packed arguments.
 C code is compiled by declared build steps whose outputs are cached by the hash of the tool, its
 arguments and its inputs; Vun code can in turn be built as a static library with a C header for
 inclusion in a vendor build system.

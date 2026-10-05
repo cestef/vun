@@ -93,7 +93,10 @@ function:
 point_serialize := serde.derive(Point);
 ```
 
-Three generalizations use the same attribute without adding a mechanism.
+Declarations `impl I for T { ... }` and `impl T { ... }` are sugar for the attribute. An interface
+marked `#[derive(f)]` gives a witness to every structure or enumeration whose parts all have it, so
+`==` and hashing need no written implementation. Three generalizations use the same attribute
+without adding a mechanism.
 
 - *Constructors as targets.* When `T` is a type constructor, such as `lang.Int` or a user function
   returning a type, the implementation covers every type the constructor makes, and its value is
@@ -121,9 +124,9 @@ log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
 
 Function types denote plain function values, which are static and capture nothing. Code that
 takes a callback is generic over the interface `lang.ops.Call`, which both function values and
-closures implement, so either can be passed with static dispatch. Dynamic dispatch is the library
-type `std.Dyn(I)`, which reflects over the requirement structure of `I` to build a table of
-function pointers and a fat pointer.
+closures implement, so either can be passed with static dispatch. Dynamic dispatch is planned as a library
+type, `std.Dyn(I)`, which would reflect over the requirement structure of `I` to build a table of
+function pointers and a fat pointer; it is not implemented yet.
 
 == Operators and attributes
 
@@ -138,7 +141,8 @@ interfaces and dispatch statically.
 
 An attribute is any compile-time value attached with `#[...]` to the next declaration, field,
 parameter, type expression or expression. Attributes from `lang` namespaces (`layout`, `link`,
-`abi`, `impl`, `kind`, `opt`, `panic`, `stack`, `target`, `comptime`) are acted on by the compiler,
+`abi`, `kind`, `opt`, `panic`, `stack`, `target`, `comptime`, `lint`, `check`, `safety`) and the
+attributes `impl`, `derive` and `visible` are acted on by the compiler,
 and each is a documented `lang` declaration whose type, `lang.Attribute(on)`, lists the places it
 applies to (declarations, functions, types, fields, parameters); one written elsewhere is an error
 rather than ignored, and a library attribute may declare its places the same way. Every other

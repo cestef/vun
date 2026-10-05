@@ -107,7 +107,7 @@ A value leaves a range only through one of four library methods, which are one i
 - `x.try_to(T)` yields an optional.
 
 Compound assignment is defined over them by a table in `lang`: `x += y` means
-`x = (x + y).to(TypeOf(x))`, and the forms `+%=` and `+|=` use `wrap` and `sat`.
+`x = (x + y).to(TypeOf(x))`, and the forms `+%=` and `+|=`, and the like for `-` and `*`, use `wrap` and `sat`.
 
 #rule[trap sites][
   The trap sites of integer code are exactly: `.to` and compound assignments whose operand range is
@@ -146,26 +146,27 @@ the value (@fig-diagnostic in @sec-tooling).
 
 Exactness moves cost rather than removing it, and the toolchain reports where it moves. A product
 of two 64-bit values is a 128-bit multiplication, which is expensive on 32-bit cores;
-`vun check --widen` lists every intermediate wider than the target's word. A counter incremented
+a report of every intermediate wider than the target's word (`vun check --widen`) is specified and not yet implemented. A counter incremented
 with `+=` is a trap site on every iteration, whereas the form `for i in 0..n` yields indices of
 type $"Int"[0, n - 1]$ that need no check, and range analysis on the mid-level representation
 removes most remaining counter checks.
 
 == Floating point and vectors
 
-The floating-point types `f16`, `f32` and `f64` follow IEEE 754 with rounding to nearest even.
+The floating-point types `f16`, `f32` and `f64`, one constructor indexed by the width, follow IEEE 754 with rounding to nearest even.
 There is no fast-math mode and no flag that changes floating-point semantics; operations that trade
 precision for speed are explicit functions, such as `lang.float.mul_add` and reductions with a
 specified tree (`v.reduce_add(.pairwise(8))`), which are both vectorizable and reproducible. There
-are no implicit conversions between integers and floating-point values. Every operation whose
+are no implicit conversions between integers and floating-point values; explicit ones are total,
+and a float a processor lacks is computed by Vun code, bit-identical to hardware. Every operation whose
 result is a NaN gives one canonical NaN (sign clear, only the quiet bit set in the fraction), so a
 float result has a single encoding on every target and at compile time, where the compiler
 computes floats exactly and rounds once.
 
-Vectors are a type rather than a mode. `lang.simd.Vector(N, T)` implements the operator interfaces
+A vector is a type, not a mode. `lang.simd.Vector(N, T)` implements the operator interfaces
 lane by lane under the same range rules as scalars, so the lanes of a sum of two `u8` vectors have
 type $"Int"[0, 510]$: a lane's result type is the one the lane type's own impl gives. Comparisons return an opaque mask type; shuffles take compile-time index
 arrays; backends without vector support lower vectors to scalar code with identical results.
 A function marked `#[target.require(...)]` may use additional instruction-set features, and
-calling it from a function without them is `unsafe` or goes through a library dispatcher that
+calling it from a function without them is `unsafe` or goes through a library dispatcher, planned, that
 selects among compile-time-generated variants at run time.

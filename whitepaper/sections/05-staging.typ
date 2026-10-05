@@ -25,7 +25,7 @@ dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
 
 Among statements, each step of a `$for` is the body with the binder bound to one item, typed and
 lowered on its own, so an expression such as `a.$(f.name)` may have a different type in each
-step. The branch of a `$if` that is not selected is parsed and resolved but not type-checked,
+step. A `$if` may also test a pattern, its binders compile-time. The branch of a `$if` that is not selected is parsed and resolved but not type-checked,
 which is what allows target-specific code to name items that exist only on that target.
 
 == Compile-time semantics
@@ -34,7 +34,7 @@ Compile-time evaluation runs the whole language: mutation, loops, recursion, all
 coroutines. Four properties constrain it.
 
 - *Determinism.* Compile-time code has no clock, no randomness, no environment, no network and no
-  processes. Its only input is the files of the current package, read through `std.meta.embed`,
+  processes. Its only input is the files of the current package that its manifest includes, read through `std.meta.embed`,
   and each file read is a recorded dependency. Work that needs input or output is a build step
   (@sec-tooling).
 - *Purity.* As a consequence, every compile-time call is a pure function of its arguments. Calls
@@ -55,15 +55,15 @@ between (@fig-trap).
   ```term
   $ vun check trap.vun
   error[comptime.trap]: computing this at compile time failed: division by zero
-    ╭▸ trap.vun:2:10
+    ╭▸ trap.vun:2:15
     │
   1 │ half := ($n: u8) -> u8 { 10 / n };
     │                          ────── it fails here
-  2 │ Small := Int(0..=half(0));
-    │          ━━━━━━━━━━━━━━━━
+  2 │ Small: type = Int(0..=half(0));
+    │               ━━━━━━━━━━━━━━━━
     │
     ├ help: test the divisor before dividing
-    ╰ note: while evaluating this call at trap.vun:2:18
+    ╰ note: while evaluating this call at trap.vun:2:23
   ```,
   caption: [A trap during compile-time evaluation of a type. The fix suggested by the explanation
     page is to give the parameter the type `Int(1..=255)`, which removes the trap site.],
@@ -153,9 +153,9 @@ required when raw syntax is spliced @sets-of-scopes @lean-notations, in the mann
 multi-stage systems @metaocaml @scala-macros. Because code values are pure and keep their
 environment, the result of a splice does not depend on the stage at which it is generated.
 
-Reflection is read-only. `std.meta` turns types and declarations into ordinary structures declared
+Reflection is read-only, and attributes are reflected like fields (`std.meta.attr`). `std.meta` turns types and declarations into ordinary structures declared
 in `lang.meta` (fields with their names, types, attributes and offsets; declarations; sizes;
-origins), and the compiler fills each descriptor by field name. Types are created only by writing
+origins), and the compiler fills each descriptor through its handles. Types are created only by writing
 type literals, never by assembling descriptors. A _freeze rule_ makes reflection sound: the member
 set of a type is fixed when the expression that defines it finishes, and reflecting on a type
 still being defined is an error that names the cycle. Without it, a generator could observe its
@@ -169,7 +169,7 @@ elsewhere.
 
 Compile-time code reports errors with the same diagnostic model as the compiler
 (@sec-tooling). `std.diag.error` stops evaluation with a diagnostic that carries a location, a
-structured message and fixes; the location may point inside a string literal, so an embedded
+message, optional help and fixes; the location may point inside a string literal, so an embedded
 language can report the exact offending substring. A report without a location is attributed to
 the call that led into the reporting code from outside it. The formatting library uses this to
 reject, at compile time, a format string whose placeholders do not match its arguments. A report
@@ -189,7 +189,6 @@ written, accounting for 16% of type-checking time) @proc-macro-size, and that in
 matters by large factors: a loop of $10^8$ iterations takes 189 s in Zig's compile-time
 interpreter against 6 s in CPython @zig-4055, and Clang's constant evaluator became 2.5 to 6.6
 times faster when it moved from walking the syntax tree to bytecode @clang-bytecode. Vun's
-evaluator is therefore specified to lower bodies once to a register bytecode, to intern values
-only when they escape into types or constants, to run on its own stack, and to persist memoized
-calls across builds. `vun check --meta-stats` reports evaluation time and generated code size per
-generator.
+evaluator therefore lowers bodies once to a register bytecode, runs on its own stack, and persists
+memoized calls across builds. `--timings` reports the time of every stage and query; a report of
+generated code size per generator (`--meta-stats`) is specified and not yet implemented.

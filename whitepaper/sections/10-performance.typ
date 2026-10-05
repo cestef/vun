@@ -53,8 +53,8 @@ are cold by rule.
     [cold code], [`#[opt.cold]` on a function; `lang.hint.cold()` in a branch],
     [inlining], [`#[opt.inline(.always)]` is an error when the call cannot be inlined; `.never`],
     [size], [`#[opt.level(.size)]` per declaration, overriding the build profile],
-    [tail calls], [`return lang.flow.tail(f, (a, b))`, guaranteed or rejected],
-    [prefetch], [`lang.mem.prefetch(p, .read, .l1)`, safe, a hint only],
+    [tail calls], [`return lang.flow.tail(F, f, (a, b))`, specified as guaranteed or rejected],
+    [prefetch], [planned: `lang.mem.prefetch(p, .read, .l1)`, safe, a hint only],
     [vectors], [`lang.simd.Vector(N, T)` with scalar range rules],
     [floating point], [explicit fused and reassociating operations with a specified reduction order],
     [layout], [`layout` attributes; struct-of-arrays as a library type],
@@ -75,7 +75,7 @@ need.
 Monomorphization is the only semantic model of generic code. Code size is controlled by merging
 instantiations whose lowered, type-erased code is identical (`List(u32)` and `List(i32)`, for
 example), which is exact because the low-level representation carries no source types; by size
-optimization and inlining controls on generic helpers; by `std.Dyn(I)` where dynamic dispatch is
-the better trade; and by reporting generated code size per generic and per generator. Packages are
+optimization and inlining controls on generic helpers; by dynamic dispatch (the planned `std.Dyn(I)`) where it is
+the better trade; and, once `--meta-stats` exists, by reporting generated code size per generic and per generator. Packages are
 distributed as source, so every build sees the whole program at the low level; code generation
 remains parallel by sharding functions by hash.

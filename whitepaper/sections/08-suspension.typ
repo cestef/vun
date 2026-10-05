@@ -91,8 +91,8 @@ join of two waits living in the waiting frames, so waiting on either of two task
 nothing. `std.task` provides a single-threaded executor over a tuple of
 borrowed tasks that sleeps between rounds through a symbol the runtime provides (@sec-capabilities),
 a `block_on` for hosted programs, and `select`, which runs two tasks until one finishes and leaves
-both for the caller to end. A thread pool and a deterministic simulator (@sec-tooling) follow the
-same protocol.
+both for the caller to end. A deterministic simulator (@sec-tooling) follows the same protocol; a thread-pool
+executor is planned.
 
 == Frame layout
 

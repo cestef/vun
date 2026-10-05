@@ -15,7 +15,7 @@ Vun distinguishes four layers, and the relation between them is the first rule o
 ) <fig-layering>
 
 Syntax desugars into `lang`; `std` and user code are built on `lang`, and user code on `std` by
-choice rather than by necessity.
+choice, not by necessity.
 
 The package `lang` is written in Vun. It declares, with ordinary signatures and documentation
 comments, every primitive the compiler provides: integer and pointer operations, volatile and
@@ -40,26 +40,26 @@ wrap: ($r: Range, x: Int(r), $T: type) -> T = _;
 
 The compiler learns which primitives exist by reading `lang`: a generator produces, for every
 namespace of `lang`, an enumeration of its `= _` declarations, so a primitive the compiler does not
-implement is a build error of the compiler itself rather than a latent gap.
+implement is a build error of the compiler itself, not a latent gap.
 
 Syntax desugars only into `lang`. Each piece of notation, from `a + b` to `for x in xs` to the
 postfix `?`, is defined by a rewrite into named `lang` items. The rewrites are not written in the
 compiler: they are tables in the `lang` source file `syntax/desugar.vun`, which the compiler reads
-as data. An excerpt of the table of operators and the table of borrow forms:
+as data. A table names `lang` items by path, not by string, so renaming an item that a form desugars into is a compile error. An excerpt of the table of operators and the table of borrow forms:
 
 ```vun
-operators := [
-    .{ .token = .plus, .interface = "lang.ops.Add", .function = "add" },
-    .{ .token = .lt, .interface = "lang.ops.PartialOrd", .function = "lt" },
+operators := .{
+    .{ .token = .plus, .function = lang.ops.Add.add },
+    .{ .token = .lt, .function = lang.ops.PartialOrd.lt },
     // ...
-];
-borrows := [
-    .{ .mode = "", .item = "lang.mem.Ref", .before = .init, .after = .init,
+};
+borrows := .{
+    .{ .mode = [], .item = lang.mem.Ref, .before = .init, .after = .init,
        .access = .shared, .extent = .tied },
-    .{ .mode = "out", .item = "lang.mem.RefOut", .before = .uninit, .after = .init,
+    .{ .mode = [.out], .item = lang.mem.RefOut, .before = .uninit, .after = .init,
        .access = .exclusive, .extent = .tied },
     // ...
-];
+};
 ```
 
 Reading `lang` therefore tells a programmer what the syntax means, and changing the meaning of a
@@ -99,10 +99,10 @@ The design commits to five properties. Each constrains the decisions described i
     [], [Concept], [Rule], [Section],
     midrule,
     [1], [Everything is a binding], [Every declaration is `name := value`. Files, directories and packages are structures whose members are their declarations.], [@sec-syntax],
-    [2], [Types are compile-time values], [A type is a value of type `type`; `$` marks what is known at compile time. Generics, interfaces, reflection and code generation are compile-time computation.], [@sec-types, @sec-staging],
+    [2], [Types are compile-time values], [A type is a value of type `type`; `$` marks what is known at compile time. Generics, interfaces, attributes, reflection and code generation are compile-time computation.], [@sec-types, @sec-staging],
     [3], [Integers are ranges], [Every integer type is `Int(lo..hi)`; arithmetic is exact; narrowing is explicit.], [@sec-integers],
     [4], [Places have states], [Every place is `uninit` or `init`; moves, initialization, out-parameters, consumption and `defer` are transitions of one state machine.], [@sec-memory],
-    [5], [Borrows are scoped], [A borrow cannot outlive what created it; a returned borrow is tied to every borrowed argument.], [@sec-memory],
+    [5], [Borrows are scoped], [A borrow cannot outlive what created it; a returned borrow is tied to every borrowed argument. There are no lifetime annotations.], [@sec-memory],
     [6], [Capabilities are values], [Allocation, hardware, the operating system and interior mutability require holding a value. There is no ambient authority.], [@sec-capabilities],
     [7], [Functions can suspend], [A function containing `yield` returns a sized, immovable frame.], [@sec-suspension],
     bottomrule,

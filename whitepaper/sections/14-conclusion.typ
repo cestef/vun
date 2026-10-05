@@ -24,13 +24,16 @@ acceptance relations.
 
 == Proposed rules
 
-The rules decided most recently are implemented and specified but marked _proposed_ in the
-decision log, pending confirmation. Those that concern the language are: a field holding a
+Most decisions made since the first draft are implemented and specified but marked _proposed_ in the
+decision log, pending confirmation: 115 of its 409 entries. Those that concern the language
+include `impl` declarations as sugar for the `impl` attribute; generic bodies checked per
+instantiation; integer literals and ranges in patterns that need not fit the scrutinee's type; a
+name in a pattern that always binds; lint levels set from the command line; and the following: a field holding a
 function is called as a value, never as a method; compile-time work in a body splits into
 expansions run while typing and evaluations run after it; floats, like integers, are one
 constructor indexed by a compile-time width; exit statuses are a range every supported system
 passes on; a linked symbol names the library it comes from; a fixed-buffer allocator borrows
-its storage; and a library's report reached at run time refuses the program that reaches it. The sections above describe these rules as they are implemented.
+its storage; and a library's report reached at run time refuses the program that reaches it. The sections above describe these rules as they are implemented, and say where a feature is specified but not built.
 
 == Open problems
 
@@ -43,9 +46,10 @@ provide.
 - *Precision of scoped borrows.* Tying a returned borrow to every borrowed argument is simple and
   local, but it may reject programs that a region-based checker accepts. The frequency with which
   `&temp` is needed, and whether it suffices, is an empirical question.
-- *Cost of exact arithmetic.* Wide intermediates are reported rather than prevented. Whether this
-  is sufficient on 32-bit and smaller cores will be known only once programs run on them; the
-  implemented backends target 64-bit machines and 32-bit WebAssembly.
+- *Cost of exact arithmetic.* Wide intermediates are reported and not prevented. Whether this
+  is sufficient on 32-bit and smaller cores will be known only once larger programs run on them. The
+  native backend now targets 32-bit Arm, with wide integers legalized into limbs, and one board runs
+  on hardware, but no measurement of the cost exists yet.
 - *Scalable vectors.* Vector extensions without a fixed lane count (SVE, RVV) do not fit a type
   indexed by a compile-time width. A separate type for scalable vectors is planned.
 - *Compile-time memory model.* The evaluator models mutable borrows at compile time through loans,

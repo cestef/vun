@@ -76,12 +76,13 @@ compound assignment out of range, a division by a possibly zero divisor, an unpr
 unwrapping an absent optional, and `std.panic.fail(reason)`. There is no unwinding. The execution
 context is the thread: a trap in a spawned thread ends that thread alone, and joining it yields
 the trap in place of the thread's result, while a trap in the initial thread ends the program. The
-rule is general, and it is also what isolates tests from one another (@sec-tooling). A trap calls
+rule is general, and it is also what isolates tests from one another: each runs on a thread of its
+own (@sec-tooling). A trap calls
 `lang.panic.trap`, a typed link symbol provided by the program's runtime, and passes a 32-bit site
 identifier. The table mapping identifiers to origin chains and messages is emitted into a section
 that is not loaded, so on embedded targets a trap costs a call and a constant and still reports
-the exact source span on the host. `vun check --traps` lists every remaining trap site with the
-reason it remains.
+the exact source span on the host. A listing of every remaining trap site with the reason it remains
+(`vun check --traps`) is specified and not yet implemented.
 
 A function type carries, as part of the type, a set of _markers_: whether calling it is `unsafe`,
 whether it may trap (`panic.never`), a stack bound (`stack.max(n)`), required target features and
@@ -102,7 +103,7 @@ signature is.
     [duty of the caller], [`unsafe`, `target.require(f)`], [no duty the expected type lacks],
     [guarantee to the caller], [`panic.never`], [every guarantee the expected type has],
     [bound], [`stack.max(n)`], [a bound at most the expected one],
-    [identity], [`abi.c`, `abi.interrupt`, `abi.naked`], [the same markers],
+    [identity], [`abi.c`, `abi.interrupt`, `abi.naked`, and the calling conventions of an architecture], [the same markers],
     bottomrule,
   ),
   caption: [Function-type markers and their acceptance relations.],
@@ -154,7 +155,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ```
 
 A hosted runtime exports `_start`; a C-library runtime exports C's `main` and leaves start-up to
-the C runtime; a WASI runtime exports the command world's `run`. A microcontroller runtime
+the C runtime; a WASI runtime exports `_start` of preview 1. A microcontroller runtime
 generates at compile time the vector table as a plain array in a link section (with a default
 handler for every unlisted interrupt, and no weak symbols), the reset handler that initializes
 memory and constructs the peripherals once, and the interrupt wrappers:

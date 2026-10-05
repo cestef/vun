@@ -11,9 +11,9 @@ everywhere it appears.
 == Keywords
 
 Vun reserves fifteen words: `mut`; `if`, `else`, `match`, `for`, `break`, `continue`, `return`;
-`yield`, `defer`; `and`, `or`; `struct`, `enum`; and `unsafe`. Five further words are keywords
-only in one context: `in` after the pattern of a `for`, and `out`, `take`, `static` and `temp`
-after `&`. A backslash takes what follows literally, so `\unsafe` is an ordinary name,
+`yield`, `defer`; `and`, `or`; `struct`, `enum`; and `unsafe`. Six further words are keywords
+only in one context: `in` after the pattern of a `for`, `impl` where a declaration starts and a
+name follows, and `out`, `take`, `static` and `temp` after `&`. A backslash takes what follows literally, so `\unsafe` is an ordinary name,
 `\"C:\dir"` is a string without escapes, and a run of lines starting with `\\` is a multi-line
 string. No reserved word is therefore unavailable as a name, which matters when a declaration
 mirrors a foreign or domain name (`Safety := enum { safe, \unsafe }`). @fig-keywords compares
@@ -21,7 +21,7 @@ the count with other languages.
 
 #figure(
   keyword-counts,
-  caption: [Reserved words in comparable languages. Vun reserves 15, plus 5 contextual words.],
+  caption: [Reserved words in comparable languages. Vun reserves 15, plus 6 contextual words.],
 ) <fig-keywords>
 
 @tab-where lists how the roles of the words other languages reserve are covered.
@@ -36,7 +36,7 @@ the count with other languages.
     [`fn`, `func`, `proc`], [a function is a typed tuple pattern with a body: `(a: u32) -> u32 { a + 1 }`],
     [`pub`, `private`, `export`], [a leading `_` restricts a name; the attribute `visible` widens its scope],
     [`comptime`, `constexpr`, `const fn`], [`$` marks what is known at compile time],
-    [`trait`, `interface`, `impl`], [`interface(...)` is a `lang` function; `#[impl(...)]` a `lang` attribute],
+    [`trait`, `interface`, `impl`], [`interface(...)` is a `lang` function; `impl I for T { ... }` declares a witness and lowers to the `lang` attribute `#[impl(I(T))]`],
     [`extern`, intrinsics], [a declaration whose value is `_` is provided from outside],
     [`as`], [`x.to(u8)`, `x.wrap(u8)`, `x.sat(u8)`, `x.try_to(u8)`],
     [`if let`, `while let`, `is`], [`if p = e { }`, `for p = e { }`],
@@ -118,7 +118,8 @@ reused, so that adding a name to a library never breaks its users.
 
 A function literal is a typed tuple pattern, an optional result type and a body, and naming a
 function is binding it. A parenthesized group is a function type when one of its parameters is
-typed or when `->` follows it, and a function literal when a body follows either. A closure lists
+typed or when `->` follows it, and a function literal when a body follows either. A function written as an argument may leave out its parameter and result types when the callee's
+parameter is a function type or a `$F: Call(...)` constraint. A closure lists
 its captures in brackets, spelled as the values would be passed (`[&mut n] (by: u8) { n += by; }`),
 and is equivalent to an anonymous structure of its captures with an implementation of
 `lang.ops.Call`. A function literal without a capture list captures nothing.
@@ -143,7 +144,8 @@ the defaults of their interfaces. A borrow type has no namespace of its own, so 
 borrow reaches the borrowed type in one step. An owning structure, one whose pointer field carries
 the attribute `kind.owns` such as `Own(T)`, continues lookup to its target when it lacks the
 member. These are the only forms of automatic dereferencing, and no user-defined code runs as part
-of them.
+of them. When `f` is a field holding a function, `a.f(b)` calls that function with `b` alone, and a
+borrow of a function or closure is called as what it borrows.
 
 == Control flow and patterns
 
@@ -157,7 +159,8 @@ order is left to right everywhere.
 
 Patterns are parsed as expressions and reuse their operators: `p | q` matches either alternative,
 `lo..=hi` matches a range, `..rest` binds the remaining items of a sequence or the remaining fields
-of a structure, and `n := p` binds the whole value while matching its shape. Matching through a
+of a structure, and `n := p` binds the whole value while matching its shape. A plain name in a pattern always binds,
+even where it would name a constant, and a lint reports one that hides a constant. Matching through a
 borrow binds with the borrow's mode: when the scrutinee is `&E`, bindings to its parts are shared
 borrows of those parts.
 

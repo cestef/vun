@@ -4,7 +4,7 @@
   title: "Vun",
   subtitle: "Design and implementation of a systems programming language",
   authors: ((name: "cstef"),),
-  date: "Draft of September 2026",
+  date: "Draft of October 2026",
   abstract: [
     Vun is a systems programming language for software that runs under resource constraints:
     firmware, kernels, language runtimes and servers where memory use and latency matter. The
@@ -17,11 +17,12 @@
     that systems languages usually treat as separate mechanisms: overflow behavior, lifetime
     annotations, destructors, pinning, entry points and macro systems. We then describe an
     implementation architecture in which every stage after the front end is replaceable, the
-    compile-time interpreter defines the reference semantics, and every entity in every
+    compile-time interpreter and the backends share one semantics, checked by running every
+    program through each backend, and every entity in every
     intermediate representation carries an origin chain to the source text that produced it. The
     front end, the compile-time evaluator, the mid-level checks and three backends (C, a
-    single-pass native backend for x86-64 and arm64, and WebAssembly) are implemented, and the
-    same test programs give the same results through each of them. We report the state of the
+    single-pass native backend for x86-64, arm64 and 32-bit Arm, and WebAssembly) are implemented,
+    and the same test programs give the same results through each of them. We report the state of the
     implementation and the questions that remain open.
   ],
   notice: [
