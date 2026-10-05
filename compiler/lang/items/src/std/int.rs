@@ -10,6 +10,8 @@ use crate::Item;
 pub const bits: Item = Item::new(&["std", "int", "bits"]);
 /// The namespace `std.int.bytes`.
 pub const bytes: Item = Item::new(&["std", "int", "bytes"]);
+/// The namespace `std.int.math`.
+pub const math: Item = Item::new(&["std", "int", "math"]);
 /// The namespace `std.int.tests`.
 pub const tests: Item = Item::new(&["std", "int", "tests"]);
 /// The types that are integers: every `Int(r)`, and so what narrowing brings a value into.

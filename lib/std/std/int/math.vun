@@ -1,0 +1,67 @@
+//! Integer arithmetic that is not an operator: dividing upward, aligning, powers of two,
+//! logarithms, roots and the greatest common divisor. These are for values of zero and above;
+//! each result is narrowed into `Int(r)` and traps where it does not fit, as `.to` does.
+
+impl Int($r) {
+    /// `x / by` rounded up.
+    div_ceil := (x: Int(r), by: Int(r)) -> Int(r) { ((x + by - 1) / by).to(Int(r)) };
+
+    /// The least multiple of `align` that is at least `x`.
+    align_up := (x: Int(r), align: Int(r)) -> Int(r) { (x.div_ceil(align) * align).to(Int(r)) };
+
+    /// The greatest multiple of `align` that is at most `x`.
+    align_down := (x: Int(r), align: Int(r)) -> Int(r) { (x - x % align).to(Int(r)) };
+
+    /// Whether the value is 1, 2, 4, 8 and so on.
+    is_power_of_two := (x: Int(r)) -> bool { x > 0 and x.count_ones() == 1 };
+
+    /// The least power of two that is at least `x`: 1 for 0.
+    next_power_of_two := (x: Int(r)) -> Int(r) {
+        mut power: Int(r) = 1;
+        for power < x { power = (power * 2).to(Int(r)); }
+        power
+    };
+
+    /// The power of two the value is at least, as an exponent: traps for 0.
+    ilog2 := (x: Int(r)) -> Int(0..std.int.width(r)) {
+        $bits := std.int.width(r);
+        (bits - 1 - x.leading_zeros()).to(Int(0..bits))
+    };
+
+    /// The greatest integer whose square is at most the value.
+    isqrt := (x: Int(r)) -> Int(r) {
+        n := x.to(u64);
+        if n < 2 { return x; }
+        mut high: u64 = n;
+        mut low: u64 = ((n + 1) / 2).to(u64);
+        for low < high {
+            high = low;
+            low = ((high + n / high) / 2).to(u64);
+        }
+        high.to(Int(r))
+    };
+
+    /// The greatest integer that divides both.
+    gcd := (a: Int(r), b: Int(r)) -> Int(r) {
+        mut x: Int(r) = a;
+        mut y: Int(r) = b;
+        for y != 0 {
+            rest: Int(r) = (x % y).to(Int(r));
+            x = y;
+            y = rest;
+        }
+        x
+    };
+
+    /// The value to the power `n`, none where that is past `Int(r)`.
+    checked_pow := (x: Int(r), n: u32) -> ?Int(r) {
+        mut power: Int(r) = 1;
+        for _ in 0..n {
+            match (power * x).try_to(Int(r)) {
+                .some(next) => { power = next; },
+                .none => return .none,
+            }
+        }
+        .some(power)
+    };
+}

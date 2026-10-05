@@ -1,0 +1,57 @@
+//! `BinaryHeap(T)`: items taken out largest first by `<`, over a `Vec`. It is linear and holds no
+//! allocator, as `Vec` is: the one passed to a call that grows it is the one `deinit` must be
+//! given. Items are not dropped: ones owning memory are taken out first.
+
+..std.mem.alloc.{ Allocator };
+
+BinaryHeap := ($T: type) -> type { struct {
+    _items: std.collections.Vec(T),
+
+    /// A heap holding nothing, which owns no memory yet.
+    empty := () -> BinaryHeap(T) { .{ ._items = std.collections.Vec(T).empty() } };
+
+    /// How many items it holds.
+    #[panic.never]
+    len := (self: &BinaryHeap(T)) -> usize { self._items.len() };
+    /// Whether it holds no item.
+    #[panic.never]
+    is_empty := (self: &BinaryHeap(T)) -> bool { self._items.is_empty() };
+
+    /// The largest item.
+    peek := (self: &BinaryHeap(T)) -> ?&T { self._items.get(0) };
+
+    /// Adds `item`.
+    push := (self: &mut BinaryHeap(T), $A: Allocator, a: &mut A, item: T) -> Result((), A.Error) {
+        self._items.push(A, a, item)?;
+        xs := self._items.items_mut();
+        mut at: usize = (xs.len() - 1).to(usize);
+        for at > 0 {
+            parent: usize = ((at - 1) / 2).to(usize);
+            if !(xs[parent] < xs[at]) { break; }
+            xs.swap(parent, at);
+            at = parent;
+        }
+        .ok(())
+    };
+
+    /// Takes the largest item away.
+    pop := (self: &mut BinaryHeap(T)) -> ?T {
+        n := self._items.len();
+        if n == 0 { return .none; }
+        last: usize = (n - 1).to(usize);
+        xs := self._items.items_mut();
+        xs.swap(0, last);
+        taken := self._items.pop();
+        self._items.items_mut().sift_down([] (a: &T, b: &T) { a.* < b.* }, 0, last);
+        taken
+    };
+
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut BinaryHeap(T)) { self._items.clear(); };
+
+    /// Gives the buffer back to `a`, which it came from.
+    deinit := (self: BinaryHeap(T), $A: Allocator, a: &mut A) {
+        .{ ._items = items } := self;
+        items.deinit(A, a);
+    };
+} };

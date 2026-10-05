@@ -1,0 +1,45 @@
+//! Tests of `std.collections.Deque`.
+
+Fixed: type = std.mem.alloc.Fixed;
+
+#[test]
+a_deque_takes_items_at_both_ends := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut d := std.collections.Deque(u32).empty();
+    std.testing.assert(d.pop_front() == Option(u32).none);
+    d.push_back(Fixed, &mut a, 2).expect("room");
+    d.push_back(Fixed, &mut a, 3).expect("room");
+    d.push_front(Fixed, &mut a, 1).expect("room");
+    std.testing.assert(d.len() == 3);
+    std.testing.assert(d.front() == Option(&u32).some(&1));
+    std.testing.assert(d.back() == Option(&u32).some(&3));
+    std.testing.assert(d.pop_front() == Option(u32).some(1));
+    std.testing.assert(d.pop_back() == Option(u32).some(3));
+    std.testing.assert(d.pop_back() == Option(u32).some(2));
+    std.testing.assert(d.is_empty());
+    d.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_deque_wraps_and_grows_keeping_its_order := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut d := std.collections.Deque(u32).empty();
+    for i in 0..4 { d.push_back(Fixed, &mut a, i).expect("room"); }
+    // Two out of the front and two in at the back wrap the ring.
+    _ = d.pop_front();
+    _ = d.pop_front();
+    d.push_back(Fixed, &mut a, 4).expect("room");
+    d.push_back(Fixed, &mut a, 5).expect("room");
+    // One more than it has room for moves everything to a larger buffer.
+    d.push_front(Fixed, &mut a, 1).expect("room");
+    d.push_front(Fixed, &mut a, 0).expect("room");
+    mut at: u32 = 0;
+    for item in d.iter() {
+        std.testing.assert(item.* == at);
+        at += 1;
+    }
+    std.testing.assert(at == 6 and d.get(5) == Option(&u32).some(&5) and d.get(6) == Option(&u32).none);
+    d.deinit(Fixed, &mut a);
+};

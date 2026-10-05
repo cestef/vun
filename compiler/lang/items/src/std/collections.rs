@@ -6,8 +6,14 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.collections.deque`.
+pub const deque: Item = Item::new(&["std", "collections", "deque"]);
+/// The namespace `std.collections.heap`.
+pub const heap: Item = Item::new(&["std", "collections", "heap"]);
 /// The namespace `std.collections.map`.
 pub const map: Item = Item::new(&["std", "collections", "map"]);
+/// The namespace `std.collections.set`.
+pub const set: Item = Item::new(&["std", "collections", "set"]);
 /// The namespace `std.collections.tests`.
 pub const tests: Item = Item::new(&["std", "collections", "tests"]);
 /// The namespace `std.collections.vec`.
@@ -16,3 +22,9 @@ pub const vec: Item = Item::new(&["std", "collections", "vec"]);
 pub const Vec: Item = Item::new(&["std", "collections", "Vec"]);
 /// Values by key, in open addressing over a buffer an allocator gave.
 pub const HashMap: Item = Item::new(&["std", "collections", "HashMap"]);
+/// Keys held once, over a `HashMap`.
+pub const HashSet: Item = Item::new(&["std", "collections", "HashSet"]);
+/// Items added and taken at both ends, in a ring over a buffer an allocator gave.
+pub const Deque: Item = Item::new(&["std", "collections", "Deque"]);
+/// Items taken out largest first.
+pub const BinaryHeap: Item = Item::new(&["std", "collections", "BinaryHeap"]);

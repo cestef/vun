@@ -1,0 +1,48 @@
+//! Tests of `std.int.math`.
+
+#[test]
+division_rounds_up_and_alignment_to_multiples := () {
+    std.testing.assert(u32.div_ceil(7, 2) == 4 and u32.div_ceil(8, 2) == 4 and u32.div_ceil(0, 3) == 0);
+    std.testing.assert(u32.align_up(13, 8) == 16 and u32.align_up(16, 8) == 16 and u32.align_up(0, 8) == 0);
+    std.testing.assert(u32.align_down(13, 8) == 8 and u32.align_down(7, 8) == 0);
+};
+
+#[test]
+powers_of_two_are_found_and_reached := () {
+    std.testing.assert(u16.is_power_of_two(64) and !u16.is_power_of_two(65) and !u16.is_power_of_two(0));
+    std.testing.assert(u32.next_power_of_two(0) == 1 and u32.next_power_of_two(5) == 8);
+    std.testing.assert(u32.next_power_of_two(64) == 64 and u64.next_power_of_two(1_000_000) == 1_048_576);
+};
+
+#[test]
+logarithms_and_roots_are_floors := () {
+    std.testing.assert(
+        u32.ilog2(1) == 0 and u32.ilog2(2) == 1 and u32.ilog2(1023) == 9 and u32.ilog2(1024) == 10
+    );
+    std.testing.assert(u8.ilog2(255) == 7 and u64.ilog2(0xffff_ffff_ffff_ffff) == 63);
+    std.testing.assert(u32.isqrt(0) == 0 and u32.isqrt(1) == 1 and u32.isqrt(15) == 3 and u32.isqrt(16) == 4);
+    std.testing.assert(u64.isqrt(0xffff_ffff_ffff_ffff) == 0xffff_ffff);
+    std.testing.assert(u64.isqrt(0xffff_ffff * 0xffff_ffff) == 0xffff_ffff);
+};
+
+#[test]
+the_greatest_common_divisor_divides_both := () {
+    std.testing.assert(
+        u32.gcd(12, 18) == 6 and u32.gcd(17, 5) == 1 and u32.gcd(0, 9) == 9 and u32.gcd(9, 0) == 9
+    );
+    std.testing.assert(
+        u64.gcd(1_071_000_000_007, 462_000_000_000) == u64.gcd(462_000_000_000, 1_071_000_000_007)
+    );
+};
+
+#[test]
+a_power_past_the_type_is_none := () {
+    std.testing.assert(
+        u32.checked_pow(3, 4) == Option(u32).some(81) and u32.checked_pow(5, 0) == Option(u32).some(1)
+    );
+    std.testing.assert(
+        u8.checked_pow(2, 7) == Option(u8).some(128) and u8.checked_pow(2, 8) == Option(u8).none
+    );
+    std.testing.assert(u64.checked_pow(10, 19) == Option(u64).some(10_000_000_000_000_000_000));
+    std.testing.assert(u64.checked_pow(10, 20) == Option(u64).none);
+};

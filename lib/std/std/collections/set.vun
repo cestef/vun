@@ -1,0 +1,51 @@
+//! `HashSet(T)`: keys with no values, a `HashMap` of `T` to the unit. Like it, it is linear and
+//! holds no allocator: the one passed to a call that grows it is the one `deinit` must be given.
+
+..std.mem.alloc.{ Allocator };
+
+HashSet := ($T: type) -> type { struct {
+    _map: std.collections.HashMap(T, ()),
+
+    /// A set holding nothing, which owns no memory yet.
+    empty := () -> HashSet(T) { .{ ._map = std.collections.HashMap(T, ()).empty() } };
+
+    /// How many items it holds.
+    #[panic.never]
+    len := (self: &HashSet(T)) -> usize { self._map.len() };
+    /// Whether it holds no item.
+    #[panic.never]
+    is_empty := (self: &HashSet(T)) -> bool { self._map.is_empty() };
+
+    /// Whether it holds `item`.
+    contains := (self: &HashSet(T), item: &T) -> bool { self._map.contains(item) };
+
+    /// Adds `item`; whether it was not in the set already.
+    insert := (self: &mut HashSet(T), $A: Allocator, a: &mut A, item: T) -> Result(bool, A.Error) {
+        match self._map.insert(A, a, item, ())? {
+            .some(_) => .ok(false),
+            .none => .ok(true),
+        }
+    };
+
+    /// Takes `item` away; whether it was in the set.
+    remove := (self: &mut HashSet(T), item: &T) -> bool {
+        match self._map.remove(item) {
+            .some(_) => true,
+            .none => false,
+        }
+    };
+
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut HashSet(T)) { self._map.clear(); };
+
+    /// Each item, in no order.
+    items := (self: &HashSet(T)) -> std.iter.Iter(&T) {
+        for (item, _) in self._map.entries() { yield item; }
+    };
+
+    /// Gives the buffer back to `a`, which it came from.
+    deinit := (self: HashSet(T), $A: Allocator, a: &mut A) {
+        .{ ._map = map } := self;
+        map.deinit(A, a);
+    };
+} };

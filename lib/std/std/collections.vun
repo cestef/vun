@@ -7,3 +7,12 @@ Vec: ($T: type) -> type = std.collections.vec.Vec;
 
 /// Values by key, in open addressing over a buffer an allocator gave.
 HashMap: ($K: type, $V: type) -> type = std.collections.map.HashMap;
+
+/// Keys held once, over a `HashMap`.
+HashSet: ($T: type) -> type = std.collections.set.HashSet;
+
+/// Items added and taken at both ends, in a ring over a buffer an allocator gave.
+Deque: ($T: type) -> type = std.collections.deque.Deque;
+
+/// Items taken out largest first.
+BinaryHeap: ($T: type) -> type = std.collections.heap.BinaryHeap;

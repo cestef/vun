@@ -1,0 +1,119 @@
+//! `Deque(T)`: items added and taken at both ends, in a ring over one buffer an allocator gave.
+//! It is linear, as `Vec` is, and holds no allocator: the one passed to a call that grows it is
+//! the one `deinit` must be given. Items are not dropped: ones owning memory are taken out first.
+
+..std.mem.alloc.{ Allocator };
+
+/// The fewest items a buffer is made for.
+grown_least: usize = 4;
+
+Deque := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
+    _items: *T,
+    _head: usize,
+    _len: usize,
+    _cap: usize,
+
+    /// A deque holding nothing, which owns no memory yet.
+    empty := () -> Deque(T) {
+        .{ ._items = unsafe lang.mem.pointer_at(T, lang.meta.align(T)), ._head = 0, ._len = 0, ._cap = 0 }
+    };
+
+    /// How many items it holds.
+    #[panic.never]
+    len := (self: &Deque(T)) -> usize { self._len };
+    /// Whether it holds no item.
+    #[panic.never]
+    is_empty := (self: &Deque(T)) -> bool { self._len == 0 };
+    /// How many items it has room for before it grows.
+    #[panic.never]
+    capacity := (self: &Deque(T)) -> usize { self._cap };
+
+    /// Where the item `i` places after the first is in the buffer.
+    place := (self: &Deque(T), i: usize) -> *T {
+        unsafe self._items.offset(((self._head + i) % self._cap).to(isize))
+    };
+
+    /// The item `i` places after the first, none past the last.
+    get := (self: &Deque(T), i: usize) -> ?&T {
+        if i >= self._len { return .none; }
+        .some(unsafe &self.place(i).*)
+    };
+    /// The first item.
+    front := (self: &Deque(T)) -> ?&T { self.get(0) };
+    /// The last item.
+    back := (self: &Deque(T)) -> ?&T {
+        if self._len == 0 { .none } else { self.get((self._len - 1).to(usize)) }
+    };
+
+    /// Room for `extra` more items, growing the buffer if it has less; the items move to the new
+    /// one in order, and the old one goes back to `a`.
+    reserve := (self: &mut Deque(T), $A: Allocator, a: &mut A, extra: usize) -> Result((), A.Error) {
+        needed := (self._len + extra).sat(usize);
+        if needed <= self._cap { return .ok(()); }
+        cap := std.cmp.max(usize, std.cmp.max(usize, (self._cap * 2).sat(usize), needed), grown_least);
+        size := lang.meta.size(T);
+        align := lang.meta.align(T);
+        fresh := unsafe a.alloc((size * cap).sat(usize), align)?.cast(T);
+        for i in 0..self._len {
+            unsafe { fresh.offset(i.to(isize)).write(self.place(i).read()); }
+        }
+        if self._cap > 0 { a.free(unsafe self._items.cast(u8), (size * self._cap).sat(usize), align); }
+        self._items = fresh;
+        self._head = 0;
+        self._cap = cap;
+        .ok(())
+    };
+
+    /// Adds `item` after the last.
+    push_back := (self: &mut Deque(T), $A: Allocator, a: &mut A, item: T) -> Result((), A.Error) {
+        self.reserve(A, a, 1)?;
+        unsafe { self.place(self._len).write(item); }
+        self._len += 1;
+        .ok(())
+    };
+
+    /// Adds `item` before the first.
+    push_front := (self: &mut Deque(T), $A: Allocator, a: &mut A, item: T) -> Result((), A.Error) {
+        self.reserve(A, a, 1)?;
+        self._head = ((self._head + self._cap - 1) % self._cap).to(usize);
+        unsafe { self.place(0).write(item); }
+        self._len += 1;
+        .ok(())
+    };
+
+    /// Takes the first item away.
+    pop_front := (self: &mut Deque(T)) -> ?T {
+        if self._len == 0 { return .none; }
+        taken := unsafe self.place(0).read();
+        self._head = ((self._head + 1) % self._cap).to(usize);
+        self._len -= 1;
+        .some(taken)
+    };
+
+    /// Takes the last item away.
+    pop_back := (self: &mut Deque(T)) -> ?T {
+        if self._len == 0 { return .none; }
+        self._len -= 1;
+        .some(unsafe self.place(self._len).read())
+    };
+
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut Deque(T)) {
+        self._head = 0;
+        self._len = 0;
+    };
+
+    /// Each item, first to last.
+    iter := (self: &Deque(T)) -> std.iter.Iter(&T) {
+        for i in 0..self._len { yield unsafe &self.place(i).*; }
+    };
+
+    /// Gives the buffer back to `a`, which it came from. Items owning memory are taken away
+    /// first: they are not dropped.
+    deinit := (self: Deque(T), $A: Allocator, a: &mut A) {
+        .{ ._items = buffer, ._head = _, ._len = _, ._cap = cap } := self;
+        if cap > 0 {
+            a.free(unsafe buffer.cast(u8), (lang.meta.size(T) * cap).sat(usize), lang.meta.align(T));
+        }
+    };
+} };

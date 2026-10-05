@@ -344,9 +344,16 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    Added in 481 (proposed): `std.rand`, `std.seq.sort`, `std.codec`, `std.hash.{crc32,adler32}`.
    Open there: operating system entropy for `std.rand` (`getrandom`, WASI `random_get`, Windows
    `ProcessPrng`: a runtime symbol on each system), a stable sort (needs a scratch slice or an
-   allocator) and a pattern-defeating quicksort for speed, `HashSet`, `Deque`, `BinaryHeap`, an
-   `ArrayVec` with no allocator, `std.math`, `std.os.{env,process,net}` and directories, and
-   `std.json` reading (the writer exists). Signed bit tricks need `.wrap(uN)` round trips (rule 8):
+   allocator) and a pattern-defeating quicksort for speed, `BTreeMap`, `std.math`'s float functions
+   (`sqrt`, `floor`, `pow`, `ln`, trigonometry: each needs a `lang.float` primitive and a lowering
+   per backend first), `std.os.{env,process,net}` and directories, and `std.json` reading (the
+   writer exists). Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
+   methods of `std.int.math`. `ArrayVec(n, T)`, a fixed-capacity vector with no allocator, waits
+   on a decision: it needs `n` items of a generic `T` that are not initialized, which no struct
+   literal can leave (a field is initialized whole). Options: a `lang.mem` primitive for
+   uninitialized storage (what Rust calls `MaybeUninit`; recommended, as it is also what a ring
+   buffer or an arena of values wants), or `[n]?T`, which wastes a tag per item and fills with
+   `.none`. Signed bit tricks need `.wrap(uN)` round trips (rule 8):
    a helper for an arithmetic shift or a sign mask in `std.int` would stop each library
    rederiving it. `int.does_not_fit`'s help still says "widen `u64`" for a run-time value of
    another type; `.to(T)` or `.wrap(T)` is the fix it should name. A `mut x := e` takes the range

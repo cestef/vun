@@ -1,0 +1,33 @@
+//! Tests of `std.collections.HashSet`.
+
+Fixed: type = std.mem.alloc.Fixed;
+
+#[test]
+a_set_holds_each_item_once := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.collections.HashSet(u32).empty();
+    std.testing.assert(s.insert(Fixed, &mut a, 7).expect("room"));
+    std.testing.assert(s.insert(Fixed, &mut a, 9).expect("room"));
+    std.testing.assert(!s.insert(Fixed, &mut a, 7).expect("room"));
+    std.testing.assert(s.len() == 2);
+    std.testing.assert(s.contains(&7) and s.contains(&9) and !s.contains(&8));
+    s.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_set_gives_up_what_is_removed := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.collections.HashSet(u8).empty();
+    for i in 0..20 { _ = s.insert(Fixed, &mut a, i).expect("room"); }
+    std.testing.assert(s.remove(&5));
+    std.testing.assert(!s.remove(&5));
+    std.testing.assert(s.len() == 19);
+    mut sum: u32 = 0;
+    for item in s.items() { sum += item.*.to(u32); }
+    std.testing.assert(sum == 190 - 5);
+    s.clear();
+    std.testing.assert(s.is_empty());
+    s.deinit(Fixed, &mut a);
+};

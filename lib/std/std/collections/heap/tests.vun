@@ -1,0 +1,38 @@
+//! Tests of `std.collections.BinaryHeap`.
+
+Fixed: type = std.mem.alloc.Fixed;
+
+#[test]
+a_heap_gives_the_largest_first := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut h := std.collections.BinaryHeap(u32).empty();
+    std.testing.assert(h.pop() == Option(u32).none);
+    for x in [5, 1, 9, 3, 9, 0, 7] { h.push(Fixed, &mut a, x).expect("room"); }
+    std.testing.assert(h.len() == 7 and h.peek() == Option(&u32).some(&9));
+    mut last: u32 = 9;
+    mut count: usize = 0;
+    for h.len() > 0 {
+        taken := h.pop().expect("one left");
+        std.testing.assert(taken <= last);
+        last = taken;
+        count += 1;
+    }
+    std.testing.assert(count == 7);
+    h.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_heap_sorts_many_items := () {
+    mut storage: [8192]u8 = [0; 8192];
+    mut a := Fixed.init(&mut storage);
+    mut h := std.collections.BinaryHeap(u32).empty();
+    for i in 0..100 { h.push(Fixed, &mut a, ((i * 37) % 101).to(u32)).expect("room"); }
+    mut last: u32 = 100;
+    for h.len() > 0 {
+        taken := h.pop().expect("one left");
+        std.testing.assert(taken <= last);
+        last = taken;
+    }
+    h.deinit(Fixed, &mut a);
+};
