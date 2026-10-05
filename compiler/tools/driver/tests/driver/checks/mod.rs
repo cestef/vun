@@ -72,7 +72,7 @@ fn checked_statuses(name: &str, source: &str, checks: &[Check]) -> Vec<Option<i3
     let mut session = fixture.session();
     session.add_checks(checks.iter().copied());
     let file = session.load(&path).unwrap();
-    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let runs = session.run_each(file, 1).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     runs.iter().map(|r| r.output.status.code()).collect()
 }
 

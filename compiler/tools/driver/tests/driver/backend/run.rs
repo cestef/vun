@@ -98,7 +98,7 @@ fn statuses_on(name: &str, source: &str, choice: &Choice) -> Vec<(String, Option
     if *choice != Choice::Host && session.runner().is_empty() {
         return Vec::new();
     }
-    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let runs = session.run_each(file, 1).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let target = session.target.clone().and_then(Result::ok).map(|t| t.arch.to_string()).unwrap_or_default();
     let statuses: Vec<_> =
         runs.iter().map(|r| (format!("{target} {}", r.backend), r.output.status.code())).collect();

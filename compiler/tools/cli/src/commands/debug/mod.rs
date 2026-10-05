@@ -54,9 +54,9 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
     Command::run(
         "compare",
         "build and run a program through every backend that generates code, and compare",
-        |s, args, shell| shell.document(DUMP, "compare".to_owned(), |out| compare::compare(s, args, out)),
+        compare::compare,
     )
-    .params(&[FILE]),
+    .params(compare::PARAMS),
     Command::run(
         "reduce",
         "the least text that fails as a file does: the same crash, or the same error",

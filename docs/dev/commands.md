@@ -176,6 +176,7 @@ cargo run -q -p vun-cli -- bench [--release] [path] [names]...   # the benchmark
 cargo run -q -p vun-cli -- fuzz [path] [names]... [--cases n]   # the properties alone, fuzzed, built --cover
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
+cargo run -q -p vun-cli -- debug compare --runs 20 <file>   # run time as the median of 20 runs
 cargo run -q -p vun-cli -- toolchain show        # version, library and why there, each component's status
 cargo run -q -p vun-cli -- target list           # every target: backend, linker, where it runs, what is lacking
 cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
@@ -184,6 +185,11 @@ cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part
 Saved queries live in `.vun/queries/` of the project (its package's directory, a workspace's root, or beside a file outside any package; delete it to start cold), builds in
 `.vun/build/`. The libraries' memos are shared entries of the store (`<store>/memos`, per
 toolchain, target and checks).
+
+`vun debug compare` is a table with a row per backend (exit, bytes written to each stream, program size,
+time to generate and link, median run time) and, for each backend that parts from the first, the first line
+of stdout or stderr (or the exit code) where it does; `--format json` gives a `backend` line per row, a
+`parting` line per difference and a `verdict`. The exit status fails when any backend differs.
 
 ## Logging
 

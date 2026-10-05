@@ -78,7 +78,7 @@ fn loaded(name: &str, target: Item, services: &str, path: impl Fn(&Path) -> Stri
     let built = session.build(calc, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let loader = LOADER.replace("PATH", &format!("{:?}", path(&built)));
     let (mut session, file) = backend::on(&fixture, "main.vun", &loader, target);
-    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let runs = session.run_each(file, 1).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let statuses: Vec<_> = runs.iter().map(|r| (r.backend, r.output.status.code())).collect();
     assert!(Ran::agree(&runs), "the backends disagree: {statuses:?}");
     statuses[0].1

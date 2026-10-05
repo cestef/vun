@@ -66,7 +66,7 @@ fn status(name: &str, source: &str, target: Item) -> Option<i32> {
     let mut session = fixture.session();
     session.choice = Choice::of(target);
     let file = session.load(&path).unwrap();
-    let runs = session.run_each(file).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let runs = session.run_each(file, 1).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert!(Ran::agree(&runs), "the backends disagree");
     runs.first().and_then(|r| r.output.status.code())
 }
