@@ -41,6 +41,7 @@ int := struct {
 types := struct {
     mismatch := diag.Diag{};
     no_member := diag.Diag{};
+    not_dereferenceable := diag.Diag{};
     no_impl := diag.Diag{};
     cannot_infer := diag.Diag{};
     arity := diag.Diag{};

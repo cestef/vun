@@ -1,0 +1,10 @@
+//! Converting a float to its own type changes no bit but a NaN's, which is the canonical one
+//! (spec 04, section 2).
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    x: f64 = 2.5;
+    nan: f64 = 0.0 / 0.0;
+    if x.nearest(f64) == x and x.sqrt() == x.sqrt() and nan.nearest(f64) != nan { .ok } else { .code(1) }
+};

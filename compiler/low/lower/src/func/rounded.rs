@@ -35,7 +35,9 @@ impl FnLower<'_, '_, '_> {
                 self.b.cast(op, x, self.scalar_of(ty)?, at)
             }
             Float::convert => {
-                let value = self.b.cast(CastOp::FConvert, x, self.scalar_of(ty)?, at);
+                // A conversion to the same format changes no bit but a NaN's.
+                let to = self.scalar_of(ty)?;
+                let value = if self.b.ty(x) == to { x } else { self.b.cast(CastOp::FConvert, x, to, at) };
                 self.canonical(value, Format::of(&ty).ok_or_else(unsupported)?)
             }
             Float::to_int => self.truncated(x, Format::of(&from).ok_or_else(unsupported)?, ty)?,

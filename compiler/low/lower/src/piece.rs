@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
+use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_lir::{Function, Linkage, Reloc, Site};
 use vun_lir_passes::Tidy;
@@ -59,6 +60,19 @@ pub enum FuncRef {
     End(Instantiation),
     /// The constructor of a variant taken as a value.
     Constructor(Ty, Symbol),
+}
+
+impl std::fmt::Display for FuncRef {
+    /// Where the function is written and which of its `$` parameters are bound, for logs.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (kind, i) = match self {
+            Self::Function(i) => ("function", i),
+            Self::End(i) => ("end", i),
+            Self::Constructor(ty, name) => return write!(f, "constructor {name} of {ty}"),
+        };
+        let bound: String = i.args.iter().map(|a| if a.is_some() { 'x' } else { '_' }).collect();
+        write!(f, "{kind} {}#{} bound [{bound}]", i.f.literal.file.path, i.f.literal.expr.id.index())
+    }
 }
 
 /// A data object a function names.

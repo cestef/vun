@@ -76,6 +76,7 @@ impl<'l, 'a, 'db> Assembly<'l, 'a, 'db> {
         let cx = self.l.types.cx;
         let mut pieces: Vec<Piece> = Vec::new();
         for f in program.instantiations() {
+            vun_trace::tracing::trace!(function = %FuncRef::Function(f.clone()), id = pieces.len(), "a function of the program");
             self.functions.insert(f.clone(), FuncId::new(pieces.len()));
             pieces.push(Piece::of(f, false, unchecked));
         }
@@ -126,6 +127,9 @@ impl Places for Assembly<'_, '_, '_> {
             FuncRef::End(f) => self.ends.get(f),
             FuncRef::Constructor(ty, name) => self.constructors.get(&(*ty, *name)),
         };
+        if placed.is_none() {
+            vun_trace::tracing::debug!(callee = %named, "a callee the program does not hold");
+        }
         placed.map(|&f| Address::Func(f)).ok_or(Unlowered::unsupported(at, Form::Callee))
     }
 

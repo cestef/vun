@@ -104,10 +104,13 @@ impl Typer<'_, '_, '_> {
             self.absorb(call, i, &reported);
             Some(())
         });
+        // A call binding `$` arguments has the signature of its instantiation: a frame in it
+        // carries them, which the function running it is found by.
+        let binds = instantiation.as_ref().is_some_and(|i| i.args.iter().any(Option::is_some));
         let signature = callee
             .signature
             .clone()
-            .filter(|_| inferred.is_none())
+            .filter(|_| inferred.is_none() && !binds)
             .or_else(|| self.signature_of(call, instantiation.as_ref()?, absorbed.is_some()))
             .or_else(|| {
                 let Some(Callable::Primitive(p)) = callee.f else { return None };

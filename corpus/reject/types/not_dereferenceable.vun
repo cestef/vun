@@ -1,0 +1,10 @@
+//! `.*` of a value that is neither a borrow nor a pointer reports that there is nothing to read
+//! through, rather than leaving the form untyped.
+
+read := (n: u8) -> u8 {
+    n.* //~ types.not_dereferenceable "cannot read through"
+};
+
+twice := (n: &u8) -> u8 {
+    n.*.* //~ types.not_dereferenceable "cannot read through"
+};

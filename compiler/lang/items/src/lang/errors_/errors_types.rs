@@ -8,6 +8,9 @@
 use crate::Item;
 pub const mismatch: Item = Item::new(&["lang", "errors", "types", "mismatch"]);
 pub const no_member: Item = Item::new(&["lang", "errors", "types", "no_member"]);
+pub const not_dereferenceable: Item = Item::new(
+    &["lang", "errors", "types", "not_dereferenceable"],
+);
 pub const no_impl: Item = Item::new(&["lang", "errors", "types", "no_impl"]);
 pub const cannot_infer: Item = Item::new(&["lang", "errors", "types", "cannot_infer"]);
 pub const arity: Item = Item::new(&["lang", "errors", "types", "arity"]);

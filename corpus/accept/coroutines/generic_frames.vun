@@ -1,0 +1,19 @@
+//! A coroutine function with `$` parameters, called at run time: the frame it builds carries the
+//! arguments its function was instantiated with, so the function running it is found, whether
+//! the `$` parameters are named in its result or not.
+
+counted := ($T: type, n: usize) -> std.iter.Iter(usize) {
+    for i in 0..n { yield i; }
+};
+
+nums := (xs: &[u8]) -> std.iter.Iter(u8) {
+    for x in xs.iter() { yield x.*; }
+};
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    xs := [1, 2, 3, 4, 5, 6];
+    big := nums(&xs).filter([] (x: &u8) { x.* > 3 }).count();
+    if counted(u8, 4).count() == 4 and big == 3 { .ok } else { .code(1) }
+};

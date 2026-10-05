@@ -9,7 +9,7 @@ use vun_origin::OriginId;
 use vun_sema_ty::Ty;
 use vun_suggest::closest;
 
-use super::Typer;
+use super::{Known, Typer};
 use crate::member::Members;
 use crate::visible::Visible;
 
@@ -20,6 +20,34 @@ impl Typer<'_, '_, '_> {
             return;
         }
         self.diag.error(self.env().not_visible(self.hir().exprs[expr].origin, name, visible));
+    }
+
+    /// The type of `operand.*` at `expr`: what the operand borrows or points to, or what its type
+    /// reads through by its `deref`; reported when it has neither.
+    pub(super) fn read_through(&mut self, expr: ExprId, operand: ExprId) -> Option<Known> {
+        let known = self.typed(operand)?;
+        self.raw_deref(expr, known.ty);
+        let owned = || self.env().cx.get::<Members>(&known.ty)?.deref().map(|(_, ty)| ty);
+        let Some(ty) = known.ty.pointee().or_else(owned) else {
+            self.not_dereferenceable(expr, known.ty);
+            return None;
+        };
+        Some(Known { ty, ..known })
+    }
+
+    /// Reports the read `.*` at `expr` of a value of type `ty`, which borrows or points to nothing
+    /// and owns no value to read through.
+    pub(super) fn not_dereferenceable(&mut self, expr: ExprId, ty: Ty) {
+        let msg = Msg::new().text("cannot read through a value of type ").ty(ty.to_string());
+        let help = Msg::new()
+            .text("only a borrow, a pointer or a type with a ")
+            .code("deref")
+            .text(" can be read with ")
+            .code(".*");
+        let d = Diagnostic::error(errors::TYPES_NOT_DEREFERENCEABLE, msg)
+            .at(self.hir().exprs[expr].origin, None)
+            .child(ChildKind::Help, help);
+        self.diag.error(d);
     }
 
     /// Reports the operator at `expr` as having no impl of its interface `interface` for `ty`,

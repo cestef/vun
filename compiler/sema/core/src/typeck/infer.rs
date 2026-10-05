@@ -77,12 +77,7 @@ impl Typer<'_, '_, '_> {
             ExprKind::For { head, body } => self.looping(None, head, *body, self.expected(expr)),
             ExprKind::Labeled { label, body } => self.labeled(expr, *label, *body),
             ExprKind::Postfix { op: TokenKind::Question, operand } => self.early_return(expr, *operand),
-            ExprKind::Postfix { op: TokenKind::DotStar, operand } => {
-                let known = self.typed(*operand)?;
-                self.raw_deref(expr, known.ty);
-                let owned = || self.env().cx.get::<Members>(&known.ty)?.deref().map(|(_, ty)| ty);
-                Some(Known { ty: known.ty.pointee().or_else(owned)?, ..known })
-            }
+            ExprKind::Postfix { op: TokenKind::DotStar, operand } => self.read_through(expr, *operand),
             ExprKind::Break { label, value } => {
                 self.leave(expr, *label, *value);
                 self.never()

@@ -29,6 +29,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (INT_WIDTH_CAP, "lang/lang/errors/int/width_cap.md"),
     (TYPES_MISMATCH, "lang/lang/errors/types/mismatch.md"),
     (TYPES_NO_MEMBER, "lang/lang/errors/types/no_member.md"),
+    (TYPES_NOT_DEREFERENCEABLE, "lang/lang/errors/types/not_dereferenceable.md"),
     (TYPES_NO_IMPL, "lang/lang/errors/types/no_impl.md"),
     (TYPES_CANNOT_INFER, "lang/lang/errors/types/cannot_infer.md"),
     (TYPES_ARITY, "lang/lang/errors/types/arity.md"),

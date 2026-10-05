@@ -8,7 +8,7 @@ use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
 use vun_query::Cx;
-use vun_sema_ty::call::{Func, Instance};
+use vun_sema_ty::call::{Func, Instance, Instantiation};
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Frame, Marker, Param as ParamTy, Signature, Ty, TyKind, Value};
@@ -85,7 +85,7 @@ impl Env<'_, '_> {
                 let name = OriginTable::global().declaration_name(hir.exprs[literal].origin);
                 let frame = Frame {
                     literal: ExprRef::new(self.file.clone(), hir, literal),
-                    within: self.instance.clone(),
+                    within: self.enclosing(literal),
                     staged: self.staged().into(),
                     args: args.to_vec(),
                     interface,
@@ -103,6 +103,17 @@ impl Env<'_, '_> {
         let result = result.as_type().ok_or(Unevaluated::Unsupported)?;
         let signature = Signature::new(self.params_in(params, context)?, result);
         Ok(self.literal_markers(literal).into_iter().fold(signature, Signature::with))
+    }
+
+    /// The instantiation the function literal `literal` was evaluated in: this environment's, but
+    /// for the literal's own, which a generic function sees itself as (`Env::inside`).
+    fn enclosing(&self, literal: ExprId) -> Option<Instantiation> {
+        match &self.instance {
+            Some(own) if own.f.literal.expr.id == literal && own.f.literal.file == self.file => {
+                own.f.within.as_deref().cloned()
+            }
+            instance => instance.clone(),
+        }
     }
 
     /// The markers of the function literal `literal`: its attributes and its declaration's that
