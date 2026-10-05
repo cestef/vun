@@ -1,0 +1,3 @@
+//! An empty range indexes an empty slice.
+
+head := (xs: &[u8]) -> usize { xs[0..0].len() };

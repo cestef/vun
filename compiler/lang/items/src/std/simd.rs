@@ -7,6 +7,12 @@
 )]
 use crate::Item;
 pub const Vector: Item = Item::new(&["std", "simd", "Vector"]);
+/// How many lanes of `T` the target's vector registers hold (`lang.target.Spec.vector_bits`), one
+/// where it has none or `T` is wider than they are.
+pub const lane_count: Item = Item::new(&["std", "simd", "lane_count"]);
+/// The vector of the target's width: code over it takes its lane count from the target, and
+/// covers a sequence of any length through `cover`, `load_partial` and `store_partial`.
+pub const Scalable: Item = Item::new(&["std", "simd", "Scalable"]);
 /// The order a reduction combines lanes in: each run of `width` lanes as a balanced tree of
 /// pairs, then the runs' results in lane order. A width of 1 combines every lane in order.
 pub const Reduction: Item = Item::new(&["std", "simd", "Reduction"]);

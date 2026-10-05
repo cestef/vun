@@ -178,6 +178,9 @@ Spec := struct {
     /// The float types its processor computes; `lang.float.soft` computes the others
     /// (`lang.lower.soft`).
     floats: &[type],
+    /// The width of the vector registers its code can count on, in bits, or 0 where it has none:
+    /// `std.simd.Scalable(T)` holds as many lanes of `T` as they do (spec 04, section 3).
+    vector_bits: u16 = 0,
     /// How many threads its programs run, which storage per thread follows (spec 07, section 2).
     threads: Threads = .one,
     endian: Endian,

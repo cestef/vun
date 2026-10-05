@@ -227,6 +227,11 @@ fn vectors_compute_lane_by_lane_and_reduce_in_the_order_stated() {
 }
 
 #[test]
+fn scalable_vectors_cover_a_length_that_is_no_multiple_of_their_width() {
+    assert_eq!(status("backend-scalable", &program("scalable.vun")), Some(0));
+}
+
+#[test]
 fn closures_function_values_defers_and_primitives_lower_and_run() {
     assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(0));
 }

@@ -1,0 +1,24 @@
+//! Vector code that takes its width from the target and covers a slice of any length.
+
+V: type = std.simd.Scalable(f32);
+
+saxpy := (a: f32, x: &[f32], y: &mut [f32]) {
+    mut i: usize = 0;
+    for i < x.len() {
+        n := V.cover((x.len() - i).sat(usize));
+        v := V.load_partial(x[i..i + n], 0.0) * V.splat(a) + V.load_partial(y[i..i + n], 0.0);
+        v.store_partial(y[i..i + n]);
+        i +|= n;
+    }
+};
+
+sum := (xs: &[f32]) -> f32 {
+    mut acc := V.splat(0.0);
+    mut i: usize = 0;
+    for i < xs.len() {
+        n := V.cover((xs.len() - i).sat(usize));
+        acc = acc + V.load_partial(xs[i..i + n], 0.0);
+        i +|= n;
+    }
+    acc.reduce_add(.pairwise(1))
+};

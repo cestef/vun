@@ -35,6 +35,9 @@ pub const register_bits: Item = Item::new(&["lang", "target", "Spec", "register_
 /// The float types its processor computes; `lang.float.soft` computes the others
 /// (`lang.lower.soft`).
 pub const floats: Item = Item::new(&["lang", "target", "Spec", "floats"]);
+/// The width of the vector registers its code can count on, in bits, or 0 where it has none:
+/// `std.simd.Scalable(T)` holds as many lanes of `T` as they do (spec 04, section 3).
+pub const vector_bits: Item = Item::new(&["lang", "target", "Spec", "vector_bits"]);
 /// How many threads its programs run, which storage per thread follows (spec 07, section 2).
 pub const threads: Item = Item::new(&["lang", "target", "Spec", "threads"]);
 pub const endian: Item = Item::new(&["lang", "target", "Spec", "endian"]);

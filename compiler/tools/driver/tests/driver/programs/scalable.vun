@@ -1,0 +1,40 @@
+start := std.os.start(main);
+
+V: type = std.simd.Scalable(f32);
+
+saxpy := (a: f32, x: &[f32], y: &mut [f32]) {
+    mut i: usize = 0;
+    for i < x.len() {
+        n := V.cover((x.len() - i).sat(usize));
+        v := V.load_partial(x[i..i + n], 0.0) * V.splat(a) + V.load_partial(y[i..i + n], 0.0);
+        v.store_partial(y[i..i + n]);
+        i +|= n;
+    }
+};
+
+sum := (xs: &[f32]) -> f32 {
+    mut acc := V.splat(0.0);
+    mut i: usize = 0;
+    for i < xs.len() {
+        n := V.cover((xs.len() - i).sat(usize));
+        acc = acc + V.load_partial(xs[i..i + n], 0.0);
+        i +|= n;
+    }
+    acc.reduce_add(.pairwise(1))
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    k: u8 = sys.args().len().sat(u8);
+    x: [7]f32 = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0];
+    mut y: [7]f32 = [1.0; 7];
+    saxpy(k.nearest(f32), &x, &mut y);
+    mut failed: Int(0..=4) = 0;
+    // A length that is no multiple of the width: the tail is covered, nothing past it is written.
+    if y[0] != 2.0 or y[6] != 8.0 { failed +|= 1; }
+    if sum(&y) != 35.0 { failed +|= 1; }
+    // Shorter than one vector, and empty.
+    if sum(&x[0..1]) != 1.0 or sum(&x[0..0]) != 0.0 { failed +|= 1; }
+    // The lanes are the target's: its vector bits, or one where it has none.
+    if lang.simd.lanes(std.simd.lane_count(f32), f32, V.splat(1.0)).len() != std.simd.lane_count(f32) { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

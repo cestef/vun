@@ -13,6 +13,7 @@ _Machine := struct {
     pointer_bits: u8,
     register_bits: u8,
     floats: &[type],
+    vector_bits: u16 = 0,
     convention: lang.target.Convention,
 };
 
@@ -39,6 +40,7 @@ _on := (
         .pointer_bits = machine.pointer_bits,
         .register_bits = machine.register_bits,
         .floats = machine.floats,
+        .vector_bits = machine.vector_bits,
         .threads = .many,
         .endian = .little,
         .object_format = .elf,

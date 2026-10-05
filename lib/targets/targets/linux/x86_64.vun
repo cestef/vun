@@ -6,6 +6,7 @@ _machine: targets.linux._Machine = .{
     .pointer_bits = 64,
     .register_bits = 64,
     .floats = &[f32, f64],
+    .vector_bits = 128,
     .convention = .sysv,
 };
 

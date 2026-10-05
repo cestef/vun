@@ -191,4 +191,27 @@ saxpy := (a: f32, x: &[N]f32, y: &mut [N]f32) {
 - **Target features.** A function marked `#[target.require(.{ .avx2 })]` may use those features. A
   call from a function without them is `unsafe`, or goes through `std.simd.dispatch`, a library
   that selects an implementation at run time from compile-time-generated variants.
-- Scalable vectors (SVE, RVV) are an open question (decisions.md).
+- **Scalable vectors.** `std.simd.Scalable(T)` is `Vector(std.simd.lane_count(T), T)`: as many
+  lanes as the target's vector registers hold (`lang.target.Spec.vector_bits`, 0 where it has
+  none, which gives one lane). Code over it is written for no width: `V.cover(left)` is how many of
+  the `left` items to go the next vector covers (`n`, or fewer at the end; a target whose vectors
+  have a length known only when running grants the machine's, never more than `n`),
+  `V.load_partial(xs, fill)` takes the items `xs` has among the first `n` and sets the other
+  lanes to `fill` (one a division or other trapping operator cannot trap on), and
+  `v.store_partial(to)` writes the lanes `to` has items for. A loop steps by what `cover` gives
+  and slices by it, so no scalar loop handles the tail:
+
+  ```vun
+  for i < x.len() {
+      n := V.cover((x.len() - i).sat(usize));
+      v := V.load_partial(x[i..i + n], 0.0) * V.splat(a) + V.load_partial(y[i..i + n], 0.0);
+      v.store_partial(y[i..i + n]);
+      i +|= n;
+  }
+  ```
+
+  An integer reduction does not depend on the width; a float one does, as the order of
+  its lanes' sum follows the lane count (`reduce_add(.pairwise(1))` sums them in order). Every
+  target runs it as lanes, as `Vector`; a target with scalable hardware (SVE, RVV) makes
+  `Scalable` a type of `lang.simd` of no fixed size, whose `cover` is the machine's grant, when a
+  backend emits those instructions.

@@ -606,7 +606,8 @@ pub trait DiagSink {
   is a general register's width, the widest integer the processor computes with (64 on wasm32,
   whose addresses are 32 bits), which native code's legalization splits wider ones by and past
   which `lang.lower.soft` computes. `floats` lists the float types the processor computes, the
-  others computed by `lang.float.soft` (spec 04).
+  others computed by `lang.float.soft` (spec 04). `vector_bits` is the width of the vector registers
+  code can count on, 0 where it has none, which gives `std.simd.Scalable(T)` its lane count (spec 04, section 3).
 - **The target is chosen once, and nothing assumes one.** `--target` names a declaration of
   `targets` by its path (`--target bare.thumbv7em.eabihf`); without it, `targets.hosts` gives the
   target of the machine running the toolchain, named as Rust's `std::env::consts` names it. The

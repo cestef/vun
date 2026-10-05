@@ -167,6 +167,7 @@ A vector is a type, not a mode. `lang.simd.Vector(N, T)` implements the operator
 lane by lane under the same range rules as scalars, so the lanes of a sum of two `u8` vectors have
 type $"Int"[0, 510]$: a lane's result type is the one the lane type's own impl gives. Comparisons return an opaque mask type; shuffles take compile-time index
 arrays; backends without vector support lower vectors to scalar code with identical results.
+A scalable vector is a vector of the target's width: code over it covers a sequence of any length through a partial load, a partial store and the count of lanes the next vector covers, and so assumes no width.
 A function marked `#[target.require(...)]` may use additional instruction-set features, and
 calling it from a function without them is `unsafe` or goes through a library dispatcher, planned, that
 selects among compile-time-generated variants at run time.
