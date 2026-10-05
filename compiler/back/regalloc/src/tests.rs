@@ -122,3 +122,24 @@ fn random_functions_allocate_to_plans_the_checker_accepts() {
         }
     }
 }
+
+#[test]
+fn fixed_ranges_near_a_span_are_found_among_many() {
+    use crate::build::{Fixed, Owner, Takes};
+    use crate::interval::Range;
+    use crate::points::Pos;
+    let take = |from, to| Fixed { range: Range { from: Pos(from), to: Pos(to) }, owner: Owner::Nobody };
+    let mut takes = Takes::default();
+    // A long range starts first and reaches past the short ones after it.
+    for fixed in [take(0, 100), take(10, 12), take(20, 22), take(200, 202), take(300, 302)] {
+        takes.push(fixed);
+    }
+    takes.seal();
+    let spans = |from, until| -> Vec<(u32, u32)> {
+        takes.between(Pos(from), Pos(until)).iter().map(|f| (f.range.from.0, f.range.to.0)).collect()
+    };
+    // Those before the first that reaches the span are read too, but none after its end.
+    assert_eq!(spans(50, 150), [(0, 100), (10, 12), (20, 22)]);
+    assert_eq!(spans(150, 250), [(200, 202)]);
+    assert_eq!(spans(101, 150), []);
+}

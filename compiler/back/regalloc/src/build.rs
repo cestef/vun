@@ -42,6 +42,40 @@ impl Owner {
     }
 }
 
+/// The fixed ranges of one register, sorted by their start, and for each how far it and those
+/// before it reach, so that the ranges near a position are found without reading the rest.
+#[derive(Clone, Default)]
+pub(crate) struct Takes {
+    ranges: Vec<Fixed>,
+    reach: Vec<Pos>,
+}
+
+impl Takes {
+    pub(crate) fn push(&mut self, fixed: Fixed) {
+        self.ranges.push(fixed);
+    }
+
+    pub(crate) fn seal(&mut self) {
+        self.ranges.sort_by_key(|f| f.range.from);
+        let mut reach = Pos(0);
+        self.reach = self
+            .ranges
+            .iter()
+            .map(|f| {
+                reach = reach.max(f.range.to);
+                reach
+            })
+            .collect();
+    }
+
+    /// The ranges that may meet positions from `from` to `until`.
+    pub(crate) fn between(&self, from: Pos, until: Pos) -> &[Fixed] {
+        let first = self.reach.partition_point(|&r| r <= from);
+        let last = self.ranges.partition_point(|f| f.range.from < until);
+        &self.ranges[first.min(last)..last]
+    }
+}
+
 /// A value read in a fixed register, or written to a fixed place, at a point.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Pinned<L> {
@@ -54,8 +88,8 @@ pub(crate) struct Built {
     pub(crate) intervals: IndexVec<IntervalId, Interval>,
     /// The interval of each kept value, before any split.
     pub(crate) of_value: IndexVec<Value, Option<IntervalId>>,
-    /// The fixed ranges of each register, by index, sorted.
-    pub(crate) fixed: Vec<Vec<Fixed>>,
+    /// The fixed ranges of each register, by index.
+    pub(crate) fixed: Vec<Takes>,
     /// The scratch registers' intervals, by point.
     pub(crate) temps: Vec<(u32, IntervalId)>,
     /// Operands copied into fixed registers before their points, and results moved out of them
@@ -75,7 +109,7 @@ impl Built {
         let mut b = Self {
             intervals: IndexVec::new(),
             of_value: IndexVec::filled(None, f.values.len()),
-            fixed: vec![Vec::new(); 64],
+            fixed: vec![Takes::default(); 64],
             temps: Vec::new(),
             copies: Vec::new(),
             landed: Vec::new(),
@@ -97,8 +131,8 @@ impl Built {
         for interval in b.intervals.iter_mut().map(|(_, i)| i) {
             interval.uses.sort_by_key(|u| u.pos);
         }
-        for ranges in &mut b.fixed {
-            ranges.sort_by_key(|r| r.range.from);
+        for takes in &mut b.fixed {
+            takes.seal();
         }
         b
     }

@@ -10,7 +10,7 @@ use std::collections::BinaryHeap;
 use vun_index::IndexVec;
 use vun_lir::Value;
 
-use crate::build::{Built, Fixed};
+use crate::build::{Built, Takes};
 use crate::interval::{Held, Interval, IntervalId, Range};
 use crate::machine::{Machine, PReg, REGS};
 use crate::points::Pos;
@@ -20,7 +20,7 @@ pub(crate) struct Scan<'a> {
     machine: &'a Machine,
     splits: &'a Splits,
     pub(crate) intervals: IndexVec<IntervalId, Interval>,
-    fixed: &'a [Vec<Fixed>],
+    fixed: &'a [Takes],
     unhandled: BinaryHeap<Reverse<(Pos, IntervalId)>>,
     active: Vec<IntervalId>,
     inactive: Vec<IntervalId>,
@@ -134,8 +134,8 @@ impl<'a> Scan<'a> {
 
     /// Where `r`'s fixed ranges next meet `cur` from `pos`, but those `cur`'s value may be in.
     fn fixed_from(&self, r: PReg, cur: &Interval, pos: Pos) -> Option<Pos> {
-        let fixed = &self.fixed[usize::from(r.0)];
-        let foreign: Vec<Range> = fixed.iter().filter(|f| !f.owner.allows(cur)).map(|f| f.range).collect();
+        let near = self.fixed[usize::from(r.0)].between(pos, cur.end());
+        let foreign: Vec<Range> = near.iter().filter(|f| !f.owner.allows(cur)).map(|f| f.range).collect();
         cur.intersection(&foreign, pos)
     }
 
