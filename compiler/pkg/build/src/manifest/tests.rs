@@ -51,7 +51,7 @@ fn every_manifest_reads() {
             }
         }
     }
-    assert_eq!(read, 11, "manifests found");
+    assert_eq!(read, 13, "manifests found");
 }
 
 #[test]
@@ -63,6 +63,7 @@ fn reads_every_field() {
             .hal = .{ .version = "1.3.0", .hash = "blake3:k3f2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .urls = .{ "https://x" } },
             .cmsis = .{ .version = "5.9.0", .hash = "blake3:m7qdaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .kind = .foreign },
             .util = .{ .path = "../util" },
+            .board = .{ .library = "boards/rp2350" },
         },
         .replace = .{ .hal = .{ .id = 0xc0ffee01, .major = 1, .path = "../hal-fork" } },
     };"#;
@@ -73,8 +74,12 @@ fn reads_every_field() {
     assert_eq!(m.include, ["build.vun", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
-    assert_eq!(deps, [("hal", DepKind::Vun), ("cmsis", DepKind::Foreign), ("util", DepKind::Vun)]);
+    assert_eq!(
+        deps,
+        [("hal", DepKind::Vun), ("cmsis", DepKind::Foreign), ("util", DepKind::Vun), ("board", DepKind::Vun)]
+    );
     assert_eq!(m.deps[2].source, Source::Path("../util".into()));
+    assert_eq!(m.deps[3].source, Source::Library("boards/rp2350".into()));
     let [hal] = m.replace.as_slice() else { panic!("{:?}", m.replace) };
     assert_eq!(
         (hal.identity, &hal.source),
@@ -82,6 +87,7 @@ fn reads_every_field() {
     );
     let written = m.source().unwrap();
     let again = manifest(&written).0.unwrap();
+    assert_eq!(again.deps[3].source, m.deps[3].source, "{written}");
     assert_eq!(
         (again.replace[0].identity, &again.replace[0].source),
         (hal.identity, &hal.source),

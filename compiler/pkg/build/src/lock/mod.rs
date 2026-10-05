@@ -50,6 +50,8 @@ pub enum Replacing {
     Stored(Hash),
     /// A directory, by path from the root.
     Path(String),
+    /// A directory of the toolchain's library, by path inside it.
+    Library(String),
 }
 
 /// One required package.
@@ -79,11 +81,12 @@ mod field {
     pub(super) const HASH: &str = "hash";
     pub(super) const VIA: &str = "via";
     pub(super) const PATH: &str = "path";
+    pub(super) const LIBRARY: &str = "library";
     /// The identity of a foreign package, written `.id = .foreign`.
     pub(super) const FOREIGN: &str = "foreign";
 
     pub(super) const ENTRY: &[&str] = &[NAME, VERSION, ID, HASH, VIA];
-    pub(super) const REPLACEMENT: &[&str] = &[NAME, ID, HASH, PATH];
+    pub(super) const REPLACEMENT: &[&str] = &[NAME, ID, HASH, PATH, LIBRARY];
     pub(super) const IDENTITY: &[&str] = &[ID, MAJOR];
     pub(super) const PINNED: &[&str] = &[VERSION, HASH];
 }

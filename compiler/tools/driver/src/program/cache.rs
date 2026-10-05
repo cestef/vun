@@ -11,7 +11,7 @@ use vun_link::LinkPlan;
 use vun_target::{Name, Profile, TargetSpec};
 use vun_trace::tracing;
 
-/// Where link stamps are kept, among the builds.
+/// Where link stamps are kept, among what builds keep.
 const LINKED: &str = "linked";
 
 /// The directory holding a program's artifacts and objects.
@@ -34,11 +34,11 @@ pub(super) struct Stamp {
 }
 
 impl Stamp {
-    /// The stamp of linking `plan` for `target` with `linker`, among `builds`. The plan names its
+    /// The stamp of linking `plan` for `target` with `linker`, among `kept`. The plan names its
     /// objects by the directories their content keys.
-    pub(super) fn of(builds: &Path, linker: Name, target: &TargetSpec, plan: &LinkPlan) -> Self {
+    pub(super) fn of(kept: &Path, linker: Name, target: &TargetSpec, plan: &LinkPlan) -> Self {
         let key = Hash::of_value(&(linker.0, target, plan));
-        Self { at: builds.join(LINKED).join(key.digest()), output: plan.output.clone() }
+        Self { at: kept.join(LINKED).join(key.digest()), output: plan.output.clone() }
     }
 
     /// Whether the output is what this link wrote last, so linking again would write it again.

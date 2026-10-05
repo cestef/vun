@@ -73,6 +73,7 @@ package := .{
         .cmsis   = .{ .version = "5.9.0", .hash = "blake3:cbvh...", .kind = .foreign,
                       .urls = .{ "https://github.com/ARM-software/CMSIS_5/archive/5.9.0.tar.gz" } },
         .util    = .{ .path = "../util" },
+        .rp2350  = .{ .library = "boards/rp2350" },
     },
 };
 
@@ -121,7 +122,7 @@ build := (b: &mut std.build.Build) {
   (`std.build.Placement`: a section, the region holding it and the region it loads from, if
   another), the last three empty unless given;
   `b.flash(program, method)` with a
-  `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2(.{ .family = ... })`, `.dfu`); `b.test_on(program, runner)`
+  `std.build.Flash` (`.probe(.{ .chip = ... })`, `.uf2(.{ .family = ..., .deliver = ... })`, `.dfu`); `b.test_on(program, runner)`
   with a `std.build.Runner`; `b.lints(levels)` with pairs of a lint and a level. What only the
   package knows, names and parameters, is written as records (spec 02, section 2), whose types
   are inferred and which the driver reads by reflection.
@@ -131,7 +132,14 @@ build := (b: &mut std.build.Build) {
   parameters, lint levels) are warnings (`plan.unsupported`); a `uf2` flash step writes the
   program's loadable segments as a `.uf2` file beside it, for a device whose boot ROM takes
   blocks over USB mass storage (`plan.unflashed` when it cannot); a step that is not a `std.build.Action` as `std.build`
-  declares it is `plan.unread`.
+  declares it is `plan.unread`. The `uf2` method lists the ways to give the file to a device
+  (`std.build.Delivery`, decision 431): `.drive(.{ .mark = ... })` copies it to a mounted drive
+  holding a file of that name, `.run(.{ .command = ..., .args = ... })` runs a program with the
+  file among its arguments (`std.build.Argument.file`), and `vun flash` tries them in order until
+  one reaches a device (`plan.undelivered` when none does, each saying why). The default is the
+  drive every UF2 device shows (`INFO_UF2.TXT`); a board package declares its own as a value
+  (`rp2350.flash.uf2`), so no name of a programmer is in the toolchain. A program built for a
+  target this machine has no runner for is not run by `vun run` (`plan.runs_elsewhere`).
 - Everything configurable in a project is configured here, in Vun: dependencies, targets, memory
   maps, lints, profiles, flash methods, test targets. There is no second configuration format.
 - **Commands.** `b.commands(.{ .fmt = .{ .width = 100 }, .fuzz = .{ .cases = 5000 } })` gives the
@@ -191,6 +199,12 @@ build := (b: &mut std.build.Build) {
   `<store>/staging/`, verified against the declared hash, and moved into its entry only then,
   so the store never holds unverified contents. When every mirror fails, `package.fetch_failed`
   lists each mirror with the chain of causes (spec 10).
+- **The library as a source.** `.library = "boards/rp2350"` names a package of the toolchain's
+  library by its path inside it (decision 432): `lang`, `std` and `targets` are found there as
+  defaults, and this is the same lookup for any other package the library holds, such as a board.
+  The package is the same on every machine and follows the toolchain, where a path would name one
+  installation's directory. Like a path, a stored package may not use it; a lockfile records a
+  replacement by it as `.library`.
 - **Adding.** `vun pkg add <source>` declares a dependency in `build.vun`. A directory is declared
   by its path from the project. An archive URL is fetched once and trusted on first use: its tree
   hash is computed, the package is stored, and the entry records that hash and the URL as its first
@@ -401,13 +415,15 @@ package's directory, and with none the package around the current directory, its
 | Command | Does |
 |---------|------|
 | `vun build [path]` (`b`) | build the program a root file exports, or carry out the plan of a package, or of each package of a workspace; `--library shared` or `static` builds a library of a file's exports |
-| `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); a file the plan records as a program's root is built with the plan's options for it, any other as a program of its own; words after `--` go to the program |
+| `vun new <path> [--template <name>]` | start a project in a directory from a template of the library (`templates/`, each a project that builds as it is), named after the directory and given an id of its own; `new.exists`, `new.no_template` |
+| `vun flash [path]` | build the programs of a package's plan and give each its flash steps made to its device (`plan.nothing_to_flash`, `plan.undelivered`) |
+| `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); a file the plan records as a program's root is built with the plan's options for it, any other as a program of its own; a program for a device this machine does not emulate is refused (`plan.runs_elsewhere`); words after `--` go to the program |
 | `vun check [path]` (`c`) | analyze without generating code: a file and what its program reaches, every file of a directory, or of a package with its plan, or of each package of a workspace |
 | `vun test [path] [names]...` (`t`) | build and run the tests of a namespace (spec 11): a file, a directory or a package's directory, the package around the current directory when none; only the tests `names` names, when it names some |
 | `vun fix [path] [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
-| `vun doc [<packages>...] [--library] [-o <dir>]` | the API documentation of packages, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
+| `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |
@@ -420,7 +436,7 @@ package's directory, and with none the package around the current directory, its
 | `vun debug disasm <file> [symbol]` | the code of an ELF or PE file (x86, x86-64 or arm64) as instructions with addresses and bytes, labelled by its symbols (a PE file's exports, entry and imports), a direct branch or an operand relative to the instruction pointer with the symbol it refers to; only the code a symbol labels with one |
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
-Still to come, each as a verb or a group verb: `new`, `test`, `bench`, `fuzz`, `fix`,
+Still to come, each as a verb or a group verb: `test`, `bench`, `fuzz`, `fix`,
 `pkg vendor|why|tag|api`, `ffi header|svd`, `target flash|attach|debug`.
 
 Options:

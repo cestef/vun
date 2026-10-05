@@ -18,6 +18,7 @@ pub mod errors_lint;
 pub mod errors_manifest;
 pub mod errors_meta;
 pub mod errors_names;
+pub mod errors_new;
 pub mod errors_package;
 pub mod errors_panic;
 pub mod errors_place;

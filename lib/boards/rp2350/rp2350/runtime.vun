@@ -4,17 +4,23 @@
 
 Config := struct {
     main: (p: Peripherals) -> never,
-    trap: (t: &lang.panic.Trap) -> never,
-    interrupts: Interrupts,
+    /// What a trap does; the default records it and returns the device to the boot ROM.
+    trap: (t: &lang.panic.Trap) -> never = rp2350.fault.trap,
+    interrupts: Interrupts = .{},
 };
 
 /// The device's peripherals, claimed once at reset.
 Peripherals := struct {
     gpio: rp2350.gpio.Bank,
     uart0: rp2350.uart.Port0,
+    timer0: rp2350.time.Timer0,
 
     claim := unsafe () -> Peripherals {
-        .{ .gpio = unsafe rp2350.gpio.Bank.claim(), .uart0 = unsafe rp2350.uart.Port0.claim() }
+        .{
+            .gpio = unsafe rp2350.gpio.Bank.claim(),
+            .uart0 = unsafe rp2350.uart.Port0.claim(),
+            .timer0 = unsafe rp2350.time.Timer0.claim()
+        }
     };
 };
 
@@ -27,7 +33,12 @@ Handler := #[abi.naked] () -> never;
 /// one a program does not give runs `unhandled`.
 Interrupts := struct {
     systick: () -> () = unhandled,
+    /// The chip's interrupts a program handles, each by its number (`rp2350.irq`); the others run
+    /// `unhandled`. A handler runs once `rp2350.nvic.enable` lets its interrupt through.
+    external: &[External] = &[],
 };
+
+External := struct { irq: rp2350.irq.Number, handler: () -> () };
 
 /// An exception or interrupt the program does not handle: it stops there.
 unhandled := () {
@@ -55,6 +66,8 @@ wrapped := ($h: () -> ()) -> Handler {
 vectors: usize = 67;
 reset_vector: usize = 0;
 systick_vector: usize = 14;
+/// The vector of the chip's first interrupt.
+external_first_vector: usize = 15;
 /// The faults the core takes: hard (2), memory management, bus, usage and security (3 to 6).
 fault_vectors: [5]usize = [2, 3, 4, 5, 6];
 
@@ -103,6 +116,9 @@ table := ($config: Config, $reset: Handler) -> Table {
         handlers[vector] = fault_entry;
     }
     handlers[systick_vector] = wrapped(config.interrupts.systick);
+    $for external in config.interrupts.external {
+        handlers[external_first_vector + external.irq] = wrapped(external.handler);
+    }
     .{ .stack = lang.mem.pointer_to(u32, &ram_end), .handlers = handlers }
 };
 
@@ -126,7 +142,8 @@ init_memory := unsafe () {
     }
 };
 
-/// Stops the core, for a trap: waits for interrupts, forever.
+/// Stops the core, for a trap: waits for interrupts, forever. Nothing returns the device to the
+/// host's bus then, so it suits a board a probe is attached to, which `rp2350.fault.trap` does not.
 halt := (t: &lang.panic.Trap) -> never {
     for {
         unsafe lang.arch.asm({

@@ -125,6 +125,10 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Compile time
 
+- A variant written bare inside a non-empty array that is the default of a struct field does not
+  build (`plan.stopped`: "a function whose body does not build"); name it as a typed constant
+  and put that in the array (`std.build.uf2_drive`).
+
 - Integer arithmetic is exact, and so are declarations without a type: `first := 0x4002_0000`
   keeps its value's range, where `first: usize = ...` has all of `usize`'s, and adding to it can
   pass the width. A shift of a constant by a run-time amount (`1 << n`, `n: u32`) has no width;
@@ -166,8 +170,11 @@ Traps that cost a session before. Add one when it costs you time.
 - A register is a value: `r := self.regs.control` copies it and `r.write` hits the copy. Take
   `&self.regs.control`. Check a struct of registers against the datasheet's offsets (a missing
   reserved word shifted every register after it).
-- `picotool load` needs `-t elf` for the extensionless `.vun/build` output, and races a reboot:
-  retry, or use `picotool reboot -f -u`.
+- `vun flash` loads the `.uf2` beside the program; `picotool load` of the extensionless
+  `.vun/build/app` itself needs `-t elf`. Either races a reboot: retry, or `picotool reboot -f -u`.
+- The fault and trap record is in registers `picotool save -r` refuses (`Save range crosses
+  unmapped memory`); a stock tool cannot read it, and SRAM does not survive the ROM reboot. A
+  reader needs a program (`rp2350.fault.take`) or, to be written, flash or a USB console.
 
 ## Editors
 

@@ -759,7 +759,7 @@ a backtrace walks), the flags its links take (bare
 metal: `-nostdlib -nostartfiles`), the libraries of its own they name after the objects (`gcc`
 where it links none by itself), its atomics, and how it reports frame sizes
 (`lang.target.FrameSizes`). `vun build` writes the backend's artifacts under
-`.vun/build/<content hash>/` of the root file's project, the hash of the artifacts, the C compiler
+`.vun/objects/<content hash>/` of the root file's project, the hash of the artifacts, the C compiler
 and the profile, compiles each source with it through `vun-tool`, in parallel, with
 `-fstack-usage` where it has it (`vun debug dump frames` prints the sizes read back,
 `Backend::frame_sizes`), and links with the target's linker. What the directory holds is kept:

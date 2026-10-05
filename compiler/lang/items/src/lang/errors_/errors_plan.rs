@@ -18,3 +18,10 @@ pub const unknown_setting: Item = Item::new(
     &["lang", "errors", "plan", "unknown_setting"],
 );
 pub const unflashed: Item = Item::new(&["lang", "errors", "plan", "unflashed"]);
+pub const runs_elsewhere: Item = Item::new(
+    &["lang", "errors", "plan", "runs_elsewhere"],
+);
+pub const nothing_to_flash: Item = Item::new(
+    &["lang", "errors", "plan", "nothing_to_flash"],
+);
+pub const undelivered: Item = Item::new(&["lang", "errors", "plan", "undelivered"]);

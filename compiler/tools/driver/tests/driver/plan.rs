@@ -112,7 +112,10 @@ impl Fixture {
         session.codegen.linker = linker;
         let file = session.load(&path).unwrap();
         let programs = session.carry_out(file).unwrap_or_default();
-        (programs, session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect())
+        (
+            programs.into_iter().map(|built| built.path).collect(),
+            session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect(),
+        )
     }
 }
 
@@ -179,8 +182,8 @@ build := (b: &mut std.build.Build) {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     let program = session.planned(file, &app, None).unwrap().expect("the plan records `app.vun`");
-    assert_eq!(std::process::Command::new(program).status().unwrap().code(), Some(7));
-    assert_eq!(session.planned(file, &other, None).unwrap(), None, "nothing the plan records");
+    assert_eq!(std::process::Command::new(&program.path).status().unwrap().code(), Some(7));
+    assert!(session.planned(file, &other, None).unwrap().is_none(), "nothing the plan records");
 }
 
 #[test]

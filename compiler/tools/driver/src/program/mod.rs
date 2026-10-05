@@ -1,7 +1,8 @@
 //! Building a program from a root file (spec 13, section 1): the chosen backend's artifacts,
-//! written under `.vun/build/` next to the root file, by their content; each source compiled by
-//! the target's C compiler, in parallel, with the frame sizes it reports; then the target's
-//! linker. What is built is kept by its content (`cache`): a build finding it skips the step.
+//! written under `.vun/objects/` next to the root file, by their content, and the program in
+//! `.vun/build/`; each source compiled by the target's C compiler, in parallel, with the frame
+//! sizes it reports; then the target's linker. What is built is kept by its content (`cache`): a
+//! build finding it skips the step.
 
 mod cache;
 
@@ -18,7 +19,7 @@ use vun_origin::Resolve;
 use vun_par::Parallel;
 use vun_span::{FileId, SourceMap};
 use vun_target::{FrameSizes, Profile, Support, TargetSpec, Unsupported};
-use vun_tool::{Arg, Executable, Failure, Invocation, Tool, gcc};
+use vun_tool::{Arg, Executable, Failure, Invocation, Task, Tool, gcc};
 use vun_trace::{Activity, tracing};
 
 use crate::Session;
@@ -30,8 +31,10 @@ pub const OUTPUT: Param = Param::option("output")
     .about("where the program is written")
     .values(Values::Path(PathKind::File));
 
-/// Where builds keep their files, under the root file's directory (spec 12, section 1).
+/// Where builds write their programs, under the root file's directory (spec 12, section 1).
 const BUILDS: &str = "build";
+/// Where builds keep what they make on the way, by content: sources, objects and link stamps.
+const OBJECTS: &str = "objects";
 /// The extension of the frame sizes `-fstack-usage` writes beside an object.
 const STACK_USAGE: &str = "su";
 
@@ -46,8 +49,10 @@ pub struct Compiled {
     pub objects: Vec<PathBuf>,
     /// Each function's frame size in bytes, when the backend or its tools report them.
     pub frames: Vec<(FuncId, u64)>,
-    /// Where the build keeps its files.
+    /// Where the build writes its program.
     pub builds: PathBuf,
+    /// Where the build keeps what it makes on the way.
+    pub kept: PathBuf,
 }
 
 impl Session {
@@ -73,10 +78,11 @@ impl Session {
         tracing::info!(backend = coded.backend.0, artifacts = coded.artifacts.len(), "coded");
         let _timer = COMPILE.start();
         let root = PathBuf::from(&self.sources.file(file).path);
-        let builds = self.work(&root).join(BUILDS);
+        let work = self.work(&root);
+        let (builds, kept) = (work.join(BUILDS), work.join(OBJECTS));
         let compiler = &coded.target.c.compiler;
         let profile = self.codegen.profile;
-        let dir = builds.join(cache::Objects::key(&coded.artifacts, &coded.target, profile).digest());
+        let dir = kept.join(cache::Objects::key(&coded.artifacts, &coded.target, profile).digest());
         // A directory of this key holds these artifacts already.
         for artifact in coded.artifacts.iter().filter(|a| !dir.join(a.file()).exists()) {
             let path = dir.join(artifact.file());
@@ -90,11 +96,7 @@ impl Session {
         let mut objects = Vec::new();
         for (artifact, result) in sources.iter().zip(results) {
             objects.push(result.map_err(|failure| {
-                let msg = Msg::new()
-                    .code(compiler.command.as_str())
-                    .text(" could not compile ")
-                    .code(artifact.file().display().to_string());
-                self.diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&failure))
+                self.diag.error(failure.report(compiler.command.as_str(), Task::Compile, &artifact.file()))
             })?);
         }
         objects
@@ -120,7 +122,7 @@ impl Session {
             FrameSizes::None => Vec::new(),
         };
         self.check_stacks(&coded.unit, &frames, coded.backend.0)?;
-        Ok(Compiled { coded, objects, frames, builds })
+        Ok(Compiled { coded, objects, frames, builds, kept })
     }
 
     /// Prints the frame size of each function of the program rooted at `file`, as its tools
@@ -243,10 +245,13 @@ impl Session {
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNSUPPORTED, msg).help(help)));
         }
         let _timer = LINK.start();
-        let stamp = cache::Stamp::of(&compiled.builds, linker.info().id, target, &plan);
+        let stamp = cache::Stamp::of(&compiled.kept, linker.info().id, target, &plan);
         if stamp.holds() {
             tracing::info!(output = %output.display(), "linked already");
             return Ok(output);
+        }
+        if let Some(dir) = output.parent() {
+            dir.make().map_err(|e| self.diag.error(Diagnostic::unwritable(dir, &e)))?;
         }
         linker.link(&plan, target, &mut self.diag)?;
         stamp.record();

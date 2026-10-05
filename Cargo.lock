@@ -2340,6 +2340,7 @@ dependencies = [
 name = "vun-tool"
 version = "0.1.0"
 dependencies = [
+ "vun-diag",
  "vun-intern",
 ]
 

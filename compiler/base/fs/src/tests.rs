@@ -129,3 +129,26 @@ fn a_file_put_replaces_the_old_whole_and_leaves_no_part() {
     assert_eq!(std::fs::read(&path).unwrap(), b"new");
     assert_eq!(dir.path().files().unwrap(), [path]);
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn a_mount_point_is_read_with_its_escapes() {
+    assert_eq!(
+        crate::Mounts::unescaped(br"/run/media/a\040b\134c"),
+        std::path::PathBuf::from("/run/media/a b\\c")
+    );
+    assert_eq!(
+        crate::Mounts::unescaped(br"/a\04"),
+        std::path::PathBuf::from("/a\\04"),
+        "a short escape is kept"
+    );
+}
+
+#[test]
+fn a_directory_is_made_with_its_parents_and_may_be_there() {
+    let dir = Scratch::new("make");
+    let deep = dir.path().join("a").join("b");
+    deep.make().unwrap();
+    deep.make().unwrap();
+    assert!(deep.is_dir());
+}

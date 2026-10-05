@@ -2,7 +2,7 @@
 //! `vun-doc`'s pages, each declaration of a type told from a value by what it declares.
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use vun_build::layout::{Location, MANIFEST};
 use vun_diag::Diagnostic;
@@ -19,6 +19,17 @@ impl Session {
     #[must_use]
     pub fn is_package_root(dir: &Path) -> bool {
         dir.file_name().is_some_and(|name| dir.join(name).with_extension(EXTENSION).is_file())
+    }
+
+    /// The directories of the library's packages: the ones at its top, and the ones in the
+    /// directories that group them (`boards/`).
+    #[must_use]
+    pub fn library_packages(&self) -> Vec<PathBuf> {
+        fn within(dir: &Path) -> Vec<PathBuf> {
+            let below = dir.entries().unwrap_or_default().into_iter().filter(|d| d.is_dir());
+            below.flat_map(|d| if Session::is_package_root(&d) { vec![d] } else { within(&d) }).collect()
+        }
+        within(&self.library)
     }
 
     /// Adds the namespaces of the package in `dir` to `docs`: each source file but the manifest,

@@ -17,6 +17,12 @@ pub trait Edit {
     /// Returns an error if a directory or the file cannot be written.
     fn put(&self, contents: impl AsRef<[u8]>) -> io::Result<()>;
 
+    /// Makes this directory and the ones above it that are missing; one that is there is kept.
+    ///
+    /// # Errors
+    /// Returns an error if a directory cannot be created.
+    fn make(&self) -> io::Result<()>;
+
     /// Removes this directory and everything in it; an absent path is already removed.
     ///
     /// # Errors
@@ -94,6 +100,10 @@ impl Edit for Path {
             // The error that matters is the write's or the rename's.
             let _ = fs::remove_file(&part);
         })
+    }
+
+    fn make(&self) -> io::Result<()> {
+        fs::create_dir_all(self)
     }
 
     fn remove(&self) -> io::Result<()> {

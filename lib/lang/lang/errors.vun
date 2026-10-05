@@ -217,6 +217,15 @@ plan := struct {
     ambiguous_run := diag.Diag{};
     unknown_setting := diag.Diag{};
     unflashed := diag.Diag{};
+    runs_elsewhere := diag.Diag{};
+    nothing_to_flash := diag.Diag{};
+    undelivered := diag.Diag{};
+};
+
+/// Starting a project from a template (`vun new`).
+new := struct {
+    exists := diag.Diag{};
+    no_template := diag.Diag{};
 };
 
 /// Running a namespace's tests through `std.testing.runner` (spec 11).

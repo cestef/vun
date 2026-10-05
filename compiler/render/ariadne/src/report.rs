@@ -44,7 +44,7 @@ impl<W: Write> AriadneRenderer<W> {
         let (color, out) = (self.color, &mut self.out);
         let at = |origin: OriginId| -> At {
             let span = origins.source_span(origin);
-            let source = Source { file: span.file, path: sources_.file(span.file).path.clone() };
+            let source = Source { file: span.file, path: sources_.file(span.file).shown() };
             (source, span.range.lo as usize..span.range.hi as usize)
         };
         let title = d.message.to_string();
@@ -103,7 +103,7 @@ impl<W: Write> AriadneRenderer<W> {
         for span in files {
             if !texts.iter().any(|(source, _)| source.file == span.file) {
                 let file = sources_.file(span.file);
-                texts.push((Source { file: span.file, path: file.path.clone() }, file.text.clone()));
+                texts.push((Source { file: span.file, path: file.shown() }, file.text.clone()));
             }
         }
         report.finish().write(sources(texts), out)

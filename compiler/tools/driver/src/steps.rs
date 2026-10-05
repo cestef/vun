@@ -11,11 +11,29 @@ use vun_fs::Tree;
 use vun_link::{MemoryRegion, SectionPlacement};
 use vun_origin::OriginId;
 use vun_sema::target::Choice;
-use vun_sema_plan::{Action, Method, Options, Plan};
+use vun_sema_plan::{Action, Delivery, Method, Options, Plan};
 use vun_span::{FileId, SourceMap};
 use vun_trace::tracing;
 
+use crate::setup::Runs;
 use crate::{Persistence, Session};
+
+/// A program built: where it is, where it runs, and the files its plan makes for writing it to
+/// a device.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Built {
+    pub path: PathBuf,
+    pub runs: Runs,
+    pub flashing: Vec<Flashing>,
+}
+
+/// What a plan's flash step made of a program for its device: a file, and the ways to give it to
+/// the device, which `Session::deliver` tries.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Flashing {
+    pub file: PathBuf,
+    pub ways: Vec<Delivery>,
+}
 
 /// A step the toolchain records but does not carry out yet, by what it does.
 #[derive(Clone, Copy)]
@@ -39,29 +57,30 @@ impl Pending {
 
 impl Session {
     /// Carries out the plan of the package whose `build.vun` is `file`, returning the programs
-    /// built, in the order the plan records them.
+    /// built, in the order the plan records them, with what its flash steps made of each.
     ///
     /// # Errors
     /// Returns once what stopped it is reported.
     ///
     /// # Panics
     /// Never: a plan that did not run, or a build that stopped, is reported.
-    pub fn carry_out(&mut self, file: FileId) -> Result<Vec<PathBuf>, ErrorGuaranteed> {
+    pub fn carry_out(&mut self, file: FileId) -> Result<Vec<Built>, ErrorGuaranteed> {
         let (plan, steps, dir) = self.steps(file)?;
-        let mut built = Vec::new();
-        // What each program step built, by the step.
+        let mut built: Vec<Built> = Vec::new();
+        // Where in `built` each program step put what it built, by the step.
         let mut at_step = HashMap::new();
         for (step, action) in steps.iter().enumerate() {
             let pending = match action {
                 Action::Program(options) => {
-                    let path = self.build_program(&dir, options, plan.at, None)?;
-                    at_step.insert(step, path.clone());
-                    built.push(path);
+                    let program = self.build_program(&dir, options, plan.at, None)?;
+                    at_step.insert(step, built.len());
+                    built.push(program);
                     continue;
                 }
-                Action::Flash { program, method: Method::Uf2 { family } } => {
-                    if let Some(path) = at_step.get(program) {
-                        self.write_uf2(path, *family, plan.at)?;
+                Action::Flash { program, method: Method::Uf2 { family, deliver } } => {
+                    if let Some(&at) = at_step.get(program) {
+                        let file = self.write_uf2(&built[at].path, *family, plan.at)?;
+                        built[at].flashing.push(Flashing { file, ways: deliver.clone() });
                     }
                     continue;
                 }
@@ -99,7 +118,7 @@ impl Session {
         file: FileId,
         root: &Path,
         output: Option<&Path>,
-    ) -> Result<Option<PathBuf>, ErrorGuaranteed> {
+    ) -> Result<Option<Built>, ErrorGuaranteed> {
         let (plan, steps, dir) = self.steps(file)?;
         let wanted = root.resolved().ok();
         let rooted = steps.iter().find_map(|action| match action {
@@ -109,6 +128,16 @@ impl Session {
             _ => None,
         });
         rooted.map(|options| self.build_program(&dir, options, plan.at, output)).transpose()
+    }
+
+    /// Builds the program rooted at `file` as a program of its own, which no plan describes.
+    ///
+    /// # Errors
+    /// Returns once what stopped it is reported.
+    pub fn build_alone(&mut self, file: FileId, output: Option<&Path>) -> Result<Built, ErrorGuaranteed> {
+        let path = self.build(file, output)?;
+        let runs = self.shown(file)?.setup.runs;
+        Ok(Built { path, runs, flashing: Vec::new() })
     }
 
     /// The plan of the package whose `build.vun` is `file`, its steps, and the directory their
@@ -131,9 +160,9 @@ impl Session {
 
     /// The program to run among those `built`: the one there is, else `None` once why none is
     /// is reported.
-    pub fn to_run(&mut self, built: Vec<PathBuf>) -> Option<PathBuf> {
-        if built.len() == 1 {
-            return built.into_iter().next();
+    pub fn to_run(&mut self, built: &[Built]) -> Option<Built> {
+        if let [program] = built {
+            return self.runs_here(program).then(|| program.clone());
         }
         let d = if built.is_empty() {
             let msg = Msg::new().text("the plan builds no program to run");
@@ -146,12 +175,29 @@ impl Session {
                 .text(" programs; which to run is not said");
             let d = Diagnostic::error(errors::PLAN_AMBIGUOUS_RUN, msg);
             let d = built.iter().fold(d, |d, program| {
-                d.note(Msg::new().text("it builds ").code(crate::subject::Subject::relative(program)))
+                d.note(Msg::new().text("it builds ").code(crate::subject::Subject::relative(&program.path)))
             });
             d.help(Msg::new().text("name the root file of the program to run"))
         };
         self.diag.error(d);
         None
+    }
+
+    /// Whether `program` runs on this machine; if not, why is reported.
+    fn runs_here(&mut self, program: &Built) -> bool {
+        if program.runs != Runs::Elsewhere {
+            return true;
+        }
+        let msg = Msg::new()
+            .code(crate::subject::Subject::relative(&program.path))
+            .text(" is built for a device, which this machine does not emulate");
+        let help = if program.flashing.is_empty() {
+            Msg::new().text("record how it reaches the device with ").code("b.flash")
+        } else {
+            Msg::new().text("write it to the device with ").code("vun flash")
+        };
+        self.diag.error(Diagnostic::error(errors::PLAN_RUNS_ELSEWHERE, msg).help(help));
+        false
     }
 
     /// Builds the program `options` describe, its root relative to `dir`, in a session for its
@@ -162,7 +208,7 @@ impl Session {
         options: &Options,
         at: OriginId,
         output: Option<&Path>,
-    ) -> Result<PathBuf, ErrorGuaranteed> {
+    ) -> Result<Built, ErrorGuaranteed> {
         let mut session = self.child(Choice::Given(Box::new(options.target.clone())));
         session.codegen.output = options.output;
         session.add_checks(self.checks().iter().chain(options.checks.iter().copied()));
@@ -187,7 +233,10 @@ impl Session {
         let result =
             session.load(&root).ok_or(()).and_then(|file| session.build(file, output).map_err(|_| ()));
         self.diag.absorb(&session.diag);
-        result.map_err(|()| self.diag.failed().expect("a build that stopped is reported"))
+        let runs = Runs::of(&options.target.spec, session.equipped.as_ref());
+        result
+            .map(|path| Built { path, runs, flashing: Vec::new() })
+            .map_err(|()| self.diag.failed().expect("a build that stopped is reported"))
     }
 
     /// A session like this one, compiling for `choice`: its settings, none of its state.

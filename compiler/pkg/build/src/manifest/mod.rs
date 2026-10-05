@@ -87,6 +87,9 @@ pub enum Source {
     Archive { version: Version, hash: Hash, urls: Vec<Uri> },
     /// A package next to this one, by path.
     Path(String),
+    /// A package of the toolchain's library, by its path inside it (`boards/rp2350`): the same
+    /// package on every machine, whichever toolchain is installed.
+    Library(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,6 +116,7 @@ mod field {
     pub(super) const HASH: &str = "hash";
     pub(super) const URLS: &str = "urls";
     pub(super) const PATH: &str = "path";
+    pub(super) const LIBRARY: &str = "library";
     pub(super) const KIND: &str = "kind";
     pub(super) const REPLACE: &str = "replace";
     pub(super) const MAJOR: &str = "major";
@@ -120,8 +124,8 @@ mod field {
 
     pub(super) const PACKAGE: &[&str] =
         &[NAME, ID, VERSION, EDITION, TOOLCHAIN, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS, PRELUDE];
-    pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, KIND];
-    pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH];
+    pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, LIBRARY, KIND];
+    pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH, LIBRARY];
 }
 
 impl Manifest {

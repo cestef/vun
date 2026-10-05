@@ -96,7 +96,7 @@ fn status(name: &str, firmware: &str) -> Option<i32> {
         panic!("{:#?}", reports.iter().map(|d| (d.message.to_string(), at(d), notes(d))).collect::<Vec<_>>())
     });
     let [program] = programs.as_slice() else { panic!("one program is built: {programs:?}") };
-    board.command(program).status().unwrap().code()
+    board.command(&program.path).status().unwrap().code()
 }
 
 #[test]

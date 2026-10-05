@@ -1,15 +1,16 @@
-//! What a fault leaves behind. A board without a console shows nothing of a program that stopped,
-//! so the handlers write where and why into the watchdog's scratch registers, which a soft reset
-//! keeps (datasheet, section 12.9), and reboot to the boot ROM's USB mode: a program that faulted
-//! is a device back on the host's bus, and the next program, or `picotool`, reads what it did.
+//! What a program that stopped leaves behind. A board without a console shows nothing of it, so
+//! a fault or a trap writes where and why into the watchdog's scratch registers, which a soft
+//! reset keeps (datasheet, section 12.9), and reboots to the boot ROM's USB mode: a program that
+//! stopped is a device back on the host's bus, and the next program reads what it did (`take`).
 
 watchdog := 0x400d_8000;
 scratch_first := 0xc;
 /// The boot ROM keeps the scratch registers from the fourth on for its own reboot, so a fault
 /// leaves four words.
 
-/// Marks the scratch registers as holding a fault, in the first of them: `FAUL`.
-marker: u32 = 0x4641_554c;
+/// Marks the scratch registers as holding a fault (`FAUL`) or a trap (`TRAP`), in the first of them.
+fault_marker: u32 = 0x4641_554c;
+trap_marker: u32 = 0x5452_4150;
 
 /// Where a core was stopped, and what it said of why.
 Fault := struct {
@@ -20,6 +21,10 @@ Fault := struct {
     /// The address the memory or bus fault was on, when the status says there is one.
     address: u32,
 };
+
+/// Why the last run stopped: the core faulted, or the program trapped at a site of its own
+/// (`lang.panic.Trap`).
+Stop := enum { fault(Fault), trap(u32) };
 
 /// A scratch register left to programs.
 Index: type = Int(0..4);
@@ -44,20 +49,35 @@ record := (frame: *u32) -> never {
     } else {
         rp2350.core.register(rp2350.core.mmfar_offset).read()
     };
-    scratch(0).write(marker);
+    scratch(0).write(fault_marker);
     scratch(1).write(unsafe frame.offset(frame_pc).read());
     scratch(2).write(status);
     scratch(3).write(address);
     rp2350.rom.bootsel()
 };
 
-/// The fault the last run left, if it left one, forgotten as it is read.
-take := () -> ?Fault {
-    if scratch(0).read() != marker { return .none; }
+/// The trap handler a program gives as its `trap`: records the site, then reboots into the boot
+/// ROM, as a fault does, so a program that trapped is a device on the host's bus and not a
+/// halted one that only the button recovers.
+trap := (t: &lang.panic.Trap) -> never {
+    scratch(0).write(trap_marker);
+    scratch(1).write(t.site);
+    rp2350.rom.bootsel()
+};
+
+/// What the last run left, if it left anything, forgotten as it is read.
+take := () -> ?Stop {
+    marker := scratch(0).read();
     scratch(0).write(0);
-    .some(.{
-        .pc = scratch(1).read(),
-        .status = scratch(2).read(),
-        .address = scratch(3).read(),
-    })
+    if marker == fault_marker {
+        .some(.fault(.{
+            .pc = scratch(1).read(),
+            .status = scratch(2).read(),
+            .address = scratch(3).read(),
+        }))
+    } else if marker == trap_marker {
+        .some(.trap(scratch(1).read()))
+    } else {
+        .none
+    }
 };

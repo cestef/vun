@@ -58,6 +58,8 @@ pub const manifest: Item = Item::new(&["lang", "errors", "manifest"]);
 pub const package: Item = Item::new(&["lang", "errors", "package"]);
 /// A package's plan, which its `build` records (spec 12, section 2).
 pub const plan: Item = Item::new(&["lang", "errors", "plan"]);
+/// Starting a project from a template (`vun new`).
+pub const new: Item = Item::new(&["lang", "errors", "new"]);
 /// Running a namespace's tests through `std.testing.runner` (spec 11).
 pub const test: Item = Item::new(&["lang", "errors", "test"]);
 /// The toolchain's tools and the native libraries they load (decision 131).

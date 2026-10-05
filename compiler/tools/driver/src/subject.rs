@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use vun_build::layout::MANIFEST;
 use vun_diag::{Diagnostic, Msg, errors};
+use vun_fs::Tree;
 use vun_span::EXTENSION;
 
 use crate::Session;
@@ -68,9 +69,7 @@ impl Subject {
     /// How `path` is named to people: below the current directory when it is there.
     #[must_use]
     pub fn relative(path: &Path) -> String {
-        let here = std::env::current_dir().ok();
-        let below = here.as_deref().and_then(|here| path.strip_prefix(here).ok());
-        below.unwrap_or(path).display().to_string()
+        vun_span::SourceFile::below_here(path)
     }
 
     /// The file it names, when it names one: a loose file or a file of a package.
@@ -149,6 +148,20 @@ impl Session {
             files.extend(sources.into_iter().filter(|file| within.is_none_or(|w| file.starts_with(w))));
         }
         files
+    }
+
+    /// The source files `path` names, for a command that reads source and needs no package: what
+    /// [`Self::subject`] covers, and for a directory in no package every source file below it
+    /// (a group of packages, a directory of loose files). `None` once why none is named is
+    /// reported.
+    ///
+    /// # Errors
+    /// Fails when the current directory or the directory named cannot be read.
+    pub fn sources(&mut self, path: Option<&Path>) -> io::Result<Option<Vec<PathBuf>>> {
+        if let Some(dir) = path.filter(|p| p.is_dir() && self.package_around(p).is_none()) {
+            return dir.files_with(EXTENSION).map(Some);
+        }
+        Ok(self.subject(path)?.map(|subject| self.files(&subject)))
     }
 
     /// Reports that `dir` is in no package.

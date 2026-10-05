@@ -11,6 +11,9 @@ use std::process::Command;
 use vun_intern::Symbol;
 
 pub mod gcc;
+mod report;
+
+pub use report::Task;
 
 /// An argument of a tool: text, or a path, passed as the system spells it.
 #[derive(Clone, Debug, PartialEq, Eq)]

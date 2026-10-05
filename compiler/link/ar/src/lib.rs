@@ -2,10 +2,10 @@
 //! `ar` or one its toolchain names) bundles a program's objects, with an index of their symbols
 //! for the linkers that read the library, in every object format those archivers write.
 
-use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed};
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_target::{Name, Readiness, Run, TargetSpec};
-use vun_tool::{Arg, Executable, Invocation, Tool};
+use vun_tool::{Arg, Executable, Invocation, Task, Tool};
 
 pub const INFO: LinkerInfo = LinkerInfo {
     id: Name("ar"),
@@ -43,10 +43,9 @@ impl Linker for ArLinker {
             outputs: vec![plan.output.clone()],
             ..Invocation::default()
         };
-        Executable::new(archiver, archiver).check(&inv).map(drop).map_err(|failure| {
-            let msg =
-                Msg::new().code(archiver).text(" could not archive ").code(plan.output.display().to_string());
-            diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&failure))
-        })
+        Executable::new(archiver, archiver)
+            .check(&inv)
+            .map(drop)
+            .map_err(|failure| diag.error(failure.report(archiver, Task::Archive, &plan.output)))
     }
 }

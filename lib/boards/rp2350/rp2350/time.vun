@@ -1,0 +1,106 @@
+//! The timer (datasheet, chapter 12.8): a counter of microseconds from the crystal, which the
+//! tick generator divides down, and four alarms. `Timer.now` and `Timer.delay` poll the counter;
+//! `Timer.after` waits for alarm 0's interrupt, so a task sleeps the core meanwhile.
+
+/// TIMER0's registers.
+#[layout.c]
+Registers := struct {
+    time_write_high: std.hw.Reg(u32),
+    time_write_low: std.hw.Reg(u32),
+    time_read_high: std.hw.Reg(u32),
+    time_read_low: std.hw.Reg(u32),
+    alarm0: std.hw.Reg(u32),
+    alarm1: std.hw.Reg(u32),
+    alarm2: std.hw.Reg(u32),
+    alarm3: std.hw.Reg(u32),
+    armed: std.hw.Reg(u32),
+    raw_high: std.hw.Reg(u32),
+    raw_low: std.hw.Reg(u32),
+    debug_pause: std.hw.Reg(u32),
+    pause: std.hw.Reg(u32),
+    locked: std.hw.Reg(u32),
+    source: std.hw.Reg(u32),
+    raw_interrupts: std.hw.Reg(u32),
+    interrupt_enable: std.hw.Reg(u32),
+};
+
+timer0 := 0x400b_0000;
+
+/// The tick generator's registers for TIMER0: its control and the crystal cycles in a tick.
+ticks := 0x4010_8000;
+ticks_timer0_ctrl := 0x18;
+ticks_timer0_cycles := 0x1c;
+ticks_enable: u32 = 1;
+ticks_running: u32 = 1 << 1;
+
+/// The reset controller's bit for TIMER0.
+reset_timer0: u32 = 1 << 23;
+
+/// Alarm 0's bit among the alarms' flags and enables.
+alarm0_bit: u32 = 1;
+/// A tick is a microsecond.
+ticks_per_second: u32 = 1_000_000;
+nanos_per_tick := std.time.nanos_per_micro;
+
+/// TIMER0, claimed with the peripherals.
+Timer0 := struct {
+    _held: (),
+
+    claim := unsafe () -> Timer0 { .{ ._held = () } };
+};
+
+/// An alarm firing: its interrupt announces it.
+elapsed: std.task.Event = std.task.Event.init();
+
+/// Alarm 0's interrupt handler, which a program names among its interrupts: announces the alarm.
+on_alarm0 := () {
+    unsafe std.hw.at(Registers, timer0).raw_interrupts.write(alarm0_bit);
+    elapsed.fire();
+};
+
+/// The microsecond counter, running once `init` released and clocked it.
+Timer := struct {
+    _held: Timer0,
+
+    /// Takes TIMER0: its block out of reset, ticking every microsecond of the crystal's cycles,
+    /// alarm 0's interrupt enabled.
+    init := (t: Timer0) -> Timer {
+        rp2350.clocks.run_from_crystal();
+        reset := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets);
+        done := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets + rp2350.gpio.reset_done_offset);
+        reset.write(reset.read() & ~reset_timer0);
+        for done.read() & reset_timer0 != reset_timer0 {}
+        rp2350.clocks.at(ticks + ticks_timer0_cycles).write(rp2350.clocks.crystal_hz / ticks_per_second);
+        rp2350.clocks.at(ticks + ticks_timer0_ctrl).write(ticks_enable);
+        for rp2350.clocks.at(ticks + ticks_timer0_ctrl).read() & ticks_running == 0 {}
+        unsafe std.hw.at(Registers, timer0).interrupt_enable.write(alarm0_bit);
+        rp2350.nvic.enable(rp2350.irq.timer0_0);
+        .{ ._held = t }
+    };
+
+    /// Microseconds since the counter started, read as the datasheet says: high, low, high, until
+    /// the high word holds still.
+    now := (self: &Timer) -> u64 {
+        regs := unsafe std.hw.at(Registers, timer0);
+        mut high := regs.raw_high.read();
+        for {
+            low := regs.raw_low.read();
+            again := regs.raw_high.read();
+            if again == high { return ((again.to(u64) << 32) | low.to(u64)).wrap(u64); }
+            high = again;
+        }
+    };
+
+    /// Waits for `d`, rounded down to the microsecond, with the core running.
+    delay := (self: &Timer, d: std.time.Duration) {
+        until := self.now() + d.as_nanos() / nanos_per_tick;
+        for self.now() < until {}
+    };
+
+    /// Waits for `d` as a task, the core asleep until alarm 0's interrupt.
+    after := (self: &Timer, d: std.time.Duration) -> std.task.Async(()) {
+        regs := unsafe std.hw.at(Registers, timer0);
+        regs.alarm0.write((regs.time_read_low.read() + (d.as_nanos() / nanos_per_tick).wrap(u32)).wrap(u32));
+        yield ..elapsed.wait();
+    };
+};

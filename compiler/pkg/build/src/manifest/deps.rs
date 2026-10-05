@@ -47,12 +47,13 @@ impl Replacement {
 }
 
 impl Source {
-    /// Where a dependency or a replacement comes from: exactly one of `.path` and `.version`
-    /// (with `.hash` and optional `.urls`).
+    /// Where a dependency or a replacement comes from: exactly one of `.path`, `.library` and
+    /// `.version` (with `.hash` and optional `.urls`).
     fn read(fields: &mut Fields<'_, '_>, decl: &Decl<'_>, cx: &mut DiagCx<'_>) -> Option<Self> {
-        match (fields.get(field::PATH), fields.get(field::VERSION)) {
-            (Some(path), None) => path.string(cx).map(Self::Path),
-            (None, Some(version)) => {
+        match (fields.get(field::PATH), fields.get(field::LIBRARY), fields.get(field::VERSION)) {
+            (Some(path), None, None) => path.string(cx).map(Self::Path),
+            (None, Some(path), None) => path.string(cx).map(Self::Library),
+            (None, None, Some(version)) => {
                 let version = version.version(cx);
                 let hash = fields.require(field::HASH).and_then(|d| d.content_hash(cx));
                 let urls = fields.get(field::URLS).map_or(Some(Vec::new()), |d| d.uris(cx));
@@ -63,8 +64,12 @@ impl Source {
             }
             _ => {
                 let msg = Msg::new().code(decl.name).text(" needs exactly one of ");
-                let msg =
-                    msg.code(format!(".{}", field::PATH)).text(" and ").code(format!(".{}", field::VERSION));
+                let msg = msg
+                    .code(format!(".{}", field::PATH))
+                    .text(", ")
+                    .code(format!(".{}", field::LIBRARY))
+                    .text(" and ")
+                    .code(format!(".{}", field::VERSION));
                 cx.error_at(decl.span, Diagnostic::error(errors::MANIFEST_INVALID_FIELD, msg));
                 None
             }

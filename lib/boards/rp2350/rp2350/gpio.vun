@@ -19,6 +19,7 @@ Sio := struct {
     gpio_oe: std.hw.Reg(u32),
     gpio_hi_oe: std.hw.Reg(u32),
     gpio_oe_set: std.hw.Reg(u32),
+    gpio_oe_clr: std.hw.Reg(u32),
 };
 
 sio_address := 0xd000_0000;
@@ -37,6 +38,12 @@ function_sio: u32 = 5;
 function_uart: u32 = 2;
 /// The pad's isolation, set at reset: it holds the pin off its pad until cleared.
 pad_isolation: u32 = 1 << 8;
+/// The pad's input buffer, its pull-up and pull-down, and its drive strength (two bits).
+pad_input: u32 = 1 << 6;
+pad_pull_up: u32 = 1 << 3;
+pad_pull_down: u32 = 1 << 2;
+pad_drive_shift := 4;
+pad_drive_mask: u32 = 3 << 4;
 
 /// The reset controller, holding each block in reset until its bit is cleared.
 resets := 0x4002_0000;
@@ -70,25 +77,68 @@ Pin := struct {
 
     of := (n: Index) -> Pin { .{ ._n = n } };
 
+    _pad := (self: Pin) -> &std.hw.Reg(u32) {
+        unsafe std.hw.at(std.hw.Reg(u32), pads_bank + pad_first + self._n * pad_stride)
+    };
+
+    /// The pad released from its isolation, with `settings` in the fields it has besides.
+    _release := (self: Pin, settings: u32) {
+        pad := self._pad();
+        pad.write((pad.read() & ~(pad_isolation | pad_input | pad_pull_up | pad_pull_down)) | settings);
+    };
+
+    _function := (self: Pin, function: u32) {
+        unsafe std.hw.at(std.hw.Reg(u32), io_bank + ctrl_first + self._n * ctrl_stride).write(function);
+    };
+
     /// The pin joined to a UART's line: its pad released and its function the UART's.
     uart := (self: Pin) {
-        pad := unsafe std.hw.at(std.hw.Reg(u32), pads_bank + pad_first + self._n * pad_stride);
-        pad.write(pad.read() & ~pad_isolation);
-        ctrl := unsafe std.hw.at(std.hw.Reg(u32), io_bank + ctrl_first + self._n * ctrl_stride);
-        ctrl.write(function_uart);
+        self._release(0);
+        self._function(function_uart);
+    };
+
+    /// How hard the pad drives its level.
+    drive := (self: Pin, strength: Drive) -> Pin {
+        pad := self._pad();
+        bits: u32 = match strength {
+            .ma2 => 0,
+            .ma4 => 1,
+            .ma8 => 2,
+            .ma12 => 3,
+        };
+        pad.write((pad.read() & ~pad_drive_mask) | (bits << pad_drive_shift).wrap(u32));
+        self
     };
 
     /// The pin driving its level.
     output := (self: Pin) -> Output {
-        pad := unsafe std.hw.at(std.hw.Reg(u32), pads_bank + pad_first + self._n * pad_stride);
-        pad.write(pad.read() & ~pad_isolation);
-        ctrl := unsafe std.hw.at(std.hw.Reg(u32), io_bank + ctrl_first + self._n * ctrl_stride);
-        ctrl.write(function_sio);
+        self._release(0);
+        self._function(function_sio);
         bit := (1 << self._n).wrap(u32);
         unsafe std.hw.at(Sio, sio_address).gpio_oe_set.write(bit);
         Output.of(bit)
     };
+
+    /// The pin reading its level, held by `pull` where nothing drives it.
+    input := (self: Pin, pull: Pull) -> Input {
+        settings: u32 = pad_input | match pull {
+            .none => 0,
+            .up => pad_pull_up,
+            .down => pad_pull_down,
+        };
+        self._release(settings);
+        self._function(function_sio);
+        bit := (1 << self._n).wrap(u32);
+        unsafe std.hw.at(Sio, sio_address).gpio_oe_clr.write(bit);
+        Input.of(bit)
+    };
 };
+
+/// What holds an input pin's level when nothing drives it.
+Pull := enum { none, up, down };
+
+/// The current a pad drives its pin with, in milliamperes.
+Drive := enum { ma2, ma4, ma8, ma12 };
 
 /// A pin driving its level.
 Output := struct {
@@ -99,4 +149,15 @@ Output := struct {
     high := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_set.write(self._bit); };
     low := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_clr.write(self._bit); };
     toggle := (self: &mut Output) { unsafe std.hw.at(Sio, sio_address).gpio_out_xor.write(self._bit); };
+};
+
+/// A pin reading its level.
+Input := struct {
+    _bit: u32,
+
+    of := (bit: u32) -> Input { .{ ._bit = bit } };
+
+    /// Whether the pin is high.
+    high := (self: &Input) -> bool { unsafe std.hw.at(Sio, sio_address).gpio_in.read() & self._bit != 0 };
+    low := (self: &Input) -> bool { !self.high() };
 };

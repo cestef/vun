@@ -62,6 +62,8 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                     Example { line: "", about: "run the program the plan of the package around this directory builds" },
                     Example { line: "main.vun -- --verbose input.txt", about: "pass arguments to the program" },
                 ]),
+            new::NEW,
+            flash::FLASH,
             CHECK,
             fix::FIX,
             doc::DOC,
@@ -162,9 +164,9 @@ fn build(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
 
 fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(built) = session.built(args, shell)? else { return Ok(session.outcome()) };
-    let Some(program) = session.to_run(built) else { return Ok(session.outcome()) };
-    shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
-    let status = session.command(&program).args(args.values(&ARGS)).status()?;
+    let Some(program) = session.to_run(&built) else { return Ok(session.outcome()) };
+    shell.status(&Started { step: Step::Run, subject: Subject::relative(&program.path) });
+    let status = session.command(&program.path).args(args.values(&ARGS)).status()?;
     // A program ended by a signal has no status to pass on.
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
 }
@@ -192,8 +194,10 @@ mod explain;
 #[cfg(not(target_os = "wasi"))]
 mod ffi;
 mod fix;
+mod flash;
 mod fmt;
 mod inputs;
+mod new;
 mod pkg;
 mod settings;
 mod status;

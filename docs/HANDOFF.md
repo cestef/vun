@@ -180,7 +180,9 @@ naming its exports), 416 (`System.load`), 417 (calling-convention markers), 418
 (`windows.x86.msvc`), 419 (lowering reaches every function the corpus reaches), 420 (the
 readers' bounds, the command line's limits, a repeat's run-time length), 421 (the command line
 sets lint levels), 422 (`expect` reports a lint that does not fire), 423 (a dependency's lint is
-capped at `warn`) and 424 (`#[lint.allow]` on a local or an expression).
+capped at `warn`), 424 (`#[lint.allow]` on a local or an expression) and 430 to 440 (flashing and
+`vun flash`, `.library` dependencies, `vun new`, the build directory, the tool report, `vun doc`, the
+RP2350 trap, interrupts and timer).
 279 (static Linux targets), 282 (`&mut T` where `&T` is), 326
 (section placements) and 345 (impls checked where their witness is made) were the owner's choice.
 
@@ -315,12 +317,20 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
    sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:
    gpio outputs, TIM2 waits, `std.task.run`): serial, systick, clocks past the reset oscillator.
-   The rp2350 board (`lib/boards/rp2350`, Pico 2 W over USB, report `docs/reports/2026-10-04-pico2w.md`)
-   runs on hardware: IMAGE_DEF, `.data`/`.bss`, ROM `reboot` and a fault entry that leaves a record in
-   the watchdog scratch registers (`rp2350.fault.take`) then returns to BOOTSEL; the FPU is enabled at
-   reset; `clocks` and `uart` (PL011 on GP0/GP1) configure right but the loopback byte arrives corrupt (`0xFC`, framing error): unresolved, needs a serial adapter or probe; the fault record's contents are unverified (see the report).
-   Open there: tick/timer, interrupts, the CYW43 LED, `.dfu` and probe flash steps, the Hazard3 cores,
-   native backend as the default for bare targets (they still go through C), ELF names `f1`/`d0`.
+   The rp2350 board (`lib/boards/rp2350`, Pico 2 W over USB, reports `docs/reports/2026-10-04-pico2w.md`
+   and `2026-10-04-pico2w-new-user.md`) runs on hardware: IMAGE_DEF, `.data`/`.bss`, ROM `reboot`, a fault
+   entry leaving a record in the watchdog scratch registers then returning to BOOTSEL, the FPU at reset,
+   SysTick. Written after the second report and built but never run on the board (decisions 431 to 440):
+   the default trap (`rp2350.fault.trap`, reboots into BOOTSEL), NVIC and `Interrupts.external`, TIMER0
+   (`rp2350.time`), pin input, pulls and drive, `rp2350.flash.uf2`, the `templates/rp2350` project and
+   the board README. `vun new`, `vun flash`, `.library` dependencies and `vun doc --deps` are built.
+   Open there: the UART loopback byte arrives corrupt (`0xFC`, framing error; needs an adapter or
+   probe); the fault record is readable only by another Vun program (flash or a USB console would let
+   `picotool` read it); a first-run signal beyond the hidden drive (CYW43 LED driver, USB CDC); the
+   toolchain-versus-library skew (an old `vun` against a newer library reports `unknown field` in a
+   manifest, nothing says the binary is stale); ADC, SPI, I2C, PWM, PIO, USB, flash driver, the
+   Hazard3 cores; native backend as the default for bare targets (they still go through C), ELF
+   names `f1`/`d0`; `.dfu` and probe flash steps.
    Windows: `windows.x86_64.msvc` and `windows.x86.msvc` run through the C backend under Wine;
    the native backend builds neither and needs a COFF code path and `Rules::WIN64` in `Rules::of`.
 2. Kernel runtime: riscv64 numbers; directories, seeking, environment.

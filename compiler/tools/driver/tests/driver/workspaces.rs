@@ -6,8 +6,9 @@ use std::path::{Path, PathBuf};
 use vun_build::layout::MANIFEST;
 use vun_build::lock::{self, Lock};
 use vun_diag::{DiagId, errors};
-use vun_driver::Session;
+use vun_driver::setup::Runs;
 use vun_driver::subject::Subject;
+use vun_driver::{Built, Session};
 
 use crate::common::Fixture;
 
@@ -92,9 +93,30 @@ fn a_member_holding_no_package_is_reported() {
 fn run_takes_the_one_program_built() {
     let fx = Fixture::new("to-run");
     let mut session = fx.session();
-    let program = PathBuf::from("app");
-    assert_eq!(session.to_run(vec![program.clone()]), Some(program.clone()));
-    assert_eq!(session.to_run(Vec::new()), None);
-    assert_eq!(session.to_run(vec![program.clone(), PathBuf::from("tool")]), None);
+    let built = |path: &str, runs| Built { path: PathBuf::from(path), runs, flashing: Vec::new() };
+    let program = built("app", Runs::Here);
+    assert_eq!(session.to_run(std::slice::from_ref(&program)), Some(program.clone()));
+    assert_eq!(session.to_run(&[]), None);
+    assert_eq!(session.to_run(&[program.clone(), built("tool", Runs::Here)]), None);
     assert_eq!(reported(&session), [errors::PLAN_AMBIGUOUS_RUN, errors::PLAN_NOTHING_TO_RUN], "sorted by id");
+}
+
+#[test]
+fn run_refuses_a_program_for_a_device() {
+    let fx = Fixture::new("to-run-elsewhere");
+    let mut session = fx.session();
+    let firmware = Built { path: PathBuf::from("fw"), runs: Runs::Elsewhere, flashing: Vec::new() };
+    assert_eq!(session.to_run(&[firmware]), None);
+    assert_eq!(reported(&session), [errors::PLAN_RUNS_ELSEWHERE]);
+}
+
+#[test]
+fn sources_of_a_directory_in_no_package_are_every_file_below_it() {
+    let fx = Fixture::new("sources-loose");
+    let a = fx.root.write("group/a/a.vun", "");
+    let b = fx.root.write("group/b.vun", "");
+    fx.root.write("group/notes.txt", "");
+    let mut session = fx.session();
+    assert_eq!(session.sources(Some(&fx.root.join("group"))).unwrap(), Some(vec![a, b]));
+    assert!(!session.failed());
 }

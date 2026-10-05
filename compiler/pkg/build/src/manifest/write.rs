@@ -46,6 +46,20 @@ impl Manifest {
         Literal::Record(fields)
     }
 
+    /// The edits giving the `package` declared in `source`, read as `decls`, the name `name` and the
+    /// id `id`: what a project started from a template must have of its own.
+    ///
+    /// # Errors
+    /// Returns why a field cannot be written, or that there is no `package` record with them.
+    pub fn identify(decls: &[Decl<'_>], source: &str, name: &str, id: u64) -> Result<Vec<Edit>, Unwritable> {
+        let package = decls.iter().find(|d| d.name == PACKAGE).and_then(|d| d.value.decls());
+        let field =
+            |wanted| package.and_then(|p| p.iter().find(|d| d.name == wanted)).ok_or(Unwritable::NotRecord);
+        let name = field(field::NAME)?.set(source, &Literal::String(Cow::Borrowed(name)))?;
+        let id = field(field::ID)?.set(source, &Literal::Int(id.into()))?;
+        Ok(vec![name, id])
+    }
+
     /// The `package` declaration of a `build.vun`.
     ///
     /// # Errors
@@ -62,6 +76,7 @@ impl Source {
         let text = |s: String| Literal::String(Cow::Owned(s));
         match self {
             Self::Path(path) => vec![at(field::PATH, Literal::String(Cow::Borrowed(path)))],
+            Self::Library(path) => vec![at(field::LIBRARY, Literal::String(Cow::Borrowed(path)))],
             Self::Archive { version, hash, urls } => {
                 let mut fields = vec![
                     at(field::VERSION, text(version.to_string())),

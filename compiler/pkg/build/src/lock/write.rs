@@ -73,6 +73,7 @@ impl Replaced {
         let with = match &self.with {
             Replacing::Stored(hash) => at(field::HASH, Literal::String(Cow::Owned(hash.to_string()))),
             Replacing::Path(path) => at(field::PATH, Literal::String(Cow::Borrowed(path))),
+            Replacing::Library(path) => at(field::LIBRARY, Literal::String(Cow::Borrowed(path))),
         };
         Literal::Record(vec![
             at(field::NAME, Literal::String(Cow::Borrowed(&self.name))),

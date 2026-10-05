@@ -1,6 +1,7 @@
 //! `vun fmt [--check] [paths]...`: lays out source files as the formatter does (spec 13,
-//! section 5). A path is a file, a directory or a package's directory, as for the other commands;
-//! with none, the package around the current directory. A file that does not parse is left as it
+//! section 5). A path is a file, a directory or a package's directory, as for the other commands,
+//! or a directory in no package, whose every source file is laid out; with none, the package
+//! around the current directory. A file that does not parse is left as it
 //! is, its diagnostics reported.
 
 use std::io;
@@ -31,6 +32,10 @@ pub(super) const FMT: Command<Session> =
         .examples(&[
             Example { line: "", about: "lay out the package around this directory" },
             Example { line: "main.vun", about: "lay out a file in place" },
+            Example {
+                line: "lib/boards",
+                about: "lay out every source file below a directory, packages or not",
+            },
             Example { line: "--check net/ lib.vun", about: "fail when a file is not laid out" },
             Example { line: "--width 100 main.vun", about: "break lines past 100 columns" },
         ]);
@@ -79,8 +84,8 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     let named: Vec<&Path> = args.values(&PATHS).map(Path::new).collect();
     let mut files = Vec::new();
     for path in if named.is_empty() { vec![None] } else { named.into_iter().map(Some).collect() } {
-        let Some(subject) = session.subject(path)? else { return Ok(session.outcome()) };
-        files.extend(session.files(&subject));
+        let Some(found) = session.sources(path)? else { return Ok(session.outcome()) };
+        files.extend(found);
     }
     let mut pending = false;
     for path in &files {

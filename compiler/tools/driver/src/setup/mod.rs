@@ -60,6 +60,22 @@ pub enum Runs {
     Elsewhere,
 }
 
+impl Runs {
+    /// Where programs built for `spec` run, with the machine's tools for it, if its tools file
+    /// names any.
+    #[must_use]
+    pub fn of(spec: &TargetSpec, tools: Option<&TargetTools>) -> Self {
+        match tools.filter(|t| !t.runner.is_empty()) {
+            Some(tools) => {
+                let found = Executable::search(tools.runner[0].as_str()).map_or(Found::Missing, Found::At);
+                Self::Through { command: tools.runner.clone(), found, at: tools.span }
+            }
+            None if Machine::RUNNING.is(spec) => Self::Here,
+            None => Self::Elsewhere,
+        }
+    }
+}
+
 /// Where a part of a build is declared.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum From {
@@ -137,14 +153,7 @@ impl Setup {
             let named = tools.filter(|t| t.sysroot.is_some());
             (root, named.map_or(From::Target, |t| From::Tools(t.span)))
         });
-        let runs = match tools.filter(|t| !t.runner.is_empty()) {
-            Some(tools) => {
-                let found = Executable::search(tools.runner[0].as_str()).map_or(Found::Missing, Found::At);
-                Runs::Through { command: tools.runner.clone(), found, at: tools.span }
-            }
-            None if Machine::RUNNING.is(&spec) => Runs::Here,
-            None => Runs::Elsewhere,
-        };
+        let runs = Runs::of(&spec, tools);
         Self { spec, backend, linkage, programs, sysroot, runs }
     }
 

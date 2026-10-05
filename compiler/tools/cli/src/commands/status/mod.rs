@@ -28,6 +28,8 @@ pub(super) enum Step {
     Fix,
     Build,
     Run,
+    Flash,
+    New,
     Install,
 }
 
@@ -38,6 +40,8 @@ impl Step {
             Self::Fix => "fix",
             Self::Build => "build",
             Self::Run => "run",
+            Self::Flash => "flash",
+            Self::New => "new",
             Self::Install => "install",
         }
     }
@@ -70,6 +74,8 @@ impl Status for Started {
             Step::Fix => Verb::good("Fixing"),
             Step::Build => Verb::good("Building"),
             Step::Run => Verb::good("Running"),
+            Step::Flash => Verb::good("Flashing"),
+            Step::New => Verb::good("Creating"),
             Step::Install => Verb::good("Installing"),
         }
     }

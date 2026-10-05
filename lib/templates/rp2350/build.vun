@@ -1,0 +1,25 @@
+//! Firmware for a Raspberry Pi Pico 2 or Pico 2 W. `vun build` makes `.vun/build/app` and
+//! `.vun/build/app.uf2`; `vun flash` writes the program to a board in BOOTSEL mode (hold the
+//! button while plugging it in).
+
+package := .{
+    .name = "firmware",
+    .id = 0,
+    .version = "0.1.0",
+    .edition = 2026,
+    .target = "bare.thumbv8m_main.eabihf",
+    .include = .{ "build.vun", "app.vun" },
+    .deps = .{ .rp2350 = .{ .library = "boards/rp2350" } },
+};
+
+build := (b: &mut std.build.Build) {
+    board := b.dep(.rp2350, .{});
+    firmware := b.program(.{
+        .root = "app.vun",
+        .target = targets.bare.thumbv8m_main.eabihf,
+        .deps = &[.{ .name = .rp2350, .dep = board }],
+        .memory = rp2350.layout.memory,
+        .sections = rp2350.layout.sections,
+    });
+    b.flash(firmware, rp2350.flash.uf2);
+};

@@ -16,6 +16,7 @@ mod inputs;
 mod library;
 mod locate;
 mod lockfile;
+mod new;
 mod rewrite;
 mod select;
 mod update;
@@ -107,10 +108,12 @@ pub enum DepSource {
 }
 
 impl DepSource {
-    /// Where a package declared in the manifest in `dir` comes from.
-    fn of(dir: &Path, source: &Source) -> Self {
+    /// Where a package declared in the manifest in `dir` comes from, `library` being the
+    /// toolchain's.
+    fn of(library: &Path, dir: &Path, source: &Source) -> Self {
         match source {
             Source::Path(path) => Self::Dir(dir.join(path)),
+            Source::Library(path) => Self::Dir(library.join(path)),
             Source::Archive { hash, version, urls } => {
                 Self::Stored { hash: *hash, version: *version, urls: urls.clone() }
             }
@@ -188,7 +191,7 @@ impl Session {
                 identity: r.identity,
                 dep: Dep {
                     name: Symbol::intern(&r.name),
-                    source: DepSource::of(dir, &r.source),
+                    source: DepSource::of(&self.library, dir, &r.source),
                     kind: DepKind::Vun,
                     span: Some(r.span),
                 },
@@ -197,6 +200,7 @@ impl Session {
                     identity: r.identity,
                     with: match &r.source {
                         Source::Path(path) => Replacing::Path(path.clone()),
+                        Source::Library(path) => Replacing::Library(path.clone()),
                         Source::Archive { hash, .. } => Replacing::Stored(*hash),
                     },
                 },
@@ -204,7 +208,7 @@ impl Session {
             let replace = replace.collect();
             let deps = manifest.deps.iter().map(|d| Dep {
                 name: Symbol::intern(&d.name),
-                source: DepSource::of(dir, &d.source),
+                source: DepSource::of(&self.library, dir, &d.source),
                 kind: d.kind,
                 span: Some(d.span),
             });

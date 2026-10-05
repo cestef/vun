@@ -1,0 +1,12 @@
+//! A hosted program: `vun run main.vun` builds and runs it.
+
+package := .{
+    .name = "hello",
+    .id = 0,
+    .version = "0.1.0",
+    .edition = 2026,
+    .include = .{ "build.vun", "main.vun" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {};

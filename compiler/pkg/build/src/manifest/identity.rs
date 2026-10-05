@@ -52,12 +52,14 @@ impl Manifest {
         Identity { id: self.id, major: self.version.major }
     }
 
-    /// Where it declares a dependency or a replacement by path, which only a package on the
-    /// user's disk may: a stored one names every package by hash.
+    /// Where it declares a dependency or a replacement by path or from the library, which only a
+    /// package on the user's disk may: a stored one names every package by hash.
     pub fn by_path(&self) -> impl Iterator<Item = Span> + '_ {
         let deps = self.deps.iter().map(|d| (&d.source, d.span));
         let replace = self.replace.iter().map(|r| (&r.source, r.span));
-        deps.chain(replace).filter(|(source, _)| matches!(source, Source::Path(_))).map(|(_, span)| span)
+        deps.chain(replace)
+            .filter(|(source, _)| matches!(source, Source::Path(_) | Source::Library(_)))
+            .map(|(_, span)| span)
     }
 
     /// The name of its release, `hal-1.0.0`: the stem of its archives and the directory foreign

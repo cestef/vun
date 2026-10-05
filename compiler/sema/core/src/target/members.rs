@@ -156,7 +156,8 @@ impl<'v> Members<'v> {
     }
 
     /// The UTF-8 text a byte array holds.
-    pub(super) fn text(value: &Value) -> Option<Symbol> {
+    #[must_use]
+    pub fn text(value: &Value) -> Option<Symbol> {
         let Value::Array(bytes) = value else { return None };
         let bytes = bytes
             .iter()

@@ -10,3 +10,8 @@ pub const PLAN_NOTHING_TO_RUN: DiagId = DiagId::new("lang.errors.plan.nothing_to
 pub const PLAN_AMBIGUOUS_RUN: DiagId = DiagId::new("lang.errors.plan.ambiguous_run");
 pub const PLAN_UNKNOWN_SETTING: DiagId = DiagId::new("lang.errors.plan.unknown_setting");
 pub const PLAN_UNFLASHED: DiagId = DiagId::new("lang.errors.plan.unflashed");
+pub const PLAN_RUNS_ELSEWHERE: DiagId = DiagId::new("lang.errors.plan.runs_elsewhere");
+pub const PLAN_NOTHING_TO_FLASH: DiagId = DiagId::new(
+    "lang.errors.plan.nothing_to_flash",
+);
+pub const PLAN_UNDELIVERED: DiagId = DiagId::new("lang.errors.plan.undelivered");

@@ -7,11 +7,11 @@ mod script;
 
 use std::path::Path;
 
-use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed};
 use vun_fs::Edit;
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_target::{Name, Readiness, Run, TargetSpec};
-use vun_tool::{Arg, Executable, Invocation, Tool, gcc};
+use vun_tool::{Arg, Executable, Invocation, Task, Tool, gcc};
 
 pub use script::{Script, Unscripted};
 
@@ -93,11 +93,10 @@ impl Ld<'_> {
         args.extend(compiler.libraries.iter().flat_map(|&library| [gcc::LIBRARY.into(), Arg::Text(library)]));
         let inv = Invocation { args, inputs, outputs: vec![plan.output.clone()], ..Invocation::default() };
         let driver = compiler.command.as_str();
-        Executable::new(driver, driver).check(&inv).map(drop).map_err(|failure| {
-            let msg =
-                Msg::new().code(driver).text(" could not link ").code(plan.output.display().to_string());
-            diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&failure))
-        })
+        Executable::new(driver, driver)
+            .check(&inv)
+            .map(drop)
+            .map_err(|failure| diag.error(failure.report(driver, Task::Link, &plan.output)))
     }
 }
 

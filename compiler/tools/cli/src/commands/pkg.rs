@@ -54,6 +54,7 @@ fn add(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
         Ok(Some(dep)) => {
             let source = match &dep.source {
                 Source::Path(path) => Added::Path(path.clone()),
+                Source::Library(path) => Added::Library(path.clone()),
                 Source::Archive { version, hash, .. } => Added::Archive { version: *version, hash: *hash },
             };
             shell.status(&status::Added { name: dep.name.clone(), source });

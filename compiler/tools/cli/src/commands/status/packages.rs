@@ -62,6 +62,7 @@ impl Report for Fetched {
 /// Where an added dependency comes from.
 pub(in crate::commands) enum Source {
     Path(String),
+    Library(String),
     Archive { version: Version, hash: Hash },
 }
 
@@ -81,6 +82,9 @@ impl Record for Added {
             Source::Path(path) => {
                 Text::of(Style::Strong, self.name.clone()).plain(" at ").plain(path.clone())
             }
+            Source::Library(path) => {
+                Text::of(Style::Strong, self.name.clone()).plain(" from the library at ").plain(path.clone())
+            }
             Source::Archive { version, hash } => Text::of(Style::Strong, format!("{} {version}", self.name))
                 .plain(" ")
                 .append(hash.text(Shown::Short)),
@@ -91,6 +95,7 @@ impl Record for Added {
         let object = Object::new().with("name", self.name.clone());
         match &self.source {
             Source::Path(path) => object.with("path", path.clone()),
+            Source::Library(path) => object.with("library", path.clone()),
             Source::Archive { version, hash } => {
                 object.with("version", version.to_string()).with("hash", hash.to_string())
             }

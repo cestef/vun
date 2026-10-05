@@ -1,7 +1,7 @@
 //! Loading dependencies: the package of each, checked against its hash, as selection chose it;
 //! why one cannot be loaded is a diagnostic, reported where the dependency is needed.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use vun_build::manifest::{DEFAULT_DEPS, DepKind};
 use vun_diag::{ChildKind, Diagnostic, ErrorGuaranteed, Msg, errors};
@@ -80,6 +80,14 @@ impl Session {
             }
             _ => Ok(declared),
         }
+    }
+
+    /// The directories of the packages the package in `dir` declares as dependencies, not the
+    /// library's defaults every package has.
+    pub fn declared_deps(&mut self, dir: &Path) -> Vec<PathBuf> {
+        let Some(key) = self.package_at(dir) else { return Vec::new() };
+        let deps = self.packages.list[&key].deps.clone();
+        deps.iter().filter(|dep| dep.span.is_some()).map(|dep| self.dep_dir(&dep.source)).collect()
     }
 
     /// The package `dep` declares, checked against its hash when it is stored; why not is

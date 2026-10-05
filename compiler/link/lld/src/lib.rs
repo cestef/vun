@@ -9,7 +9,7 @@ mod flavor;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_link::{LinkPlan, Linker, LinkerInfo, Output};
 use vun_target::{Readiness, Run, TargetSpec};
-use vun_tool::{Executable, Invocation, Tool};
+use vun_tool::{Executable, Invocation, Task, Tool};
 
 use flavor::{FLAVORS, FORMATS};
 
@@ -55,10 +55,9 @@ impl Linker for LldLinker {
             outputs: vec![plan.output.clone()],
             ..Invocation::default()
         };
-        Executable::new(program, path).check(&inv).map(drop).map_err(|failure| {
-            let msg =
-                Msg::new().code(program).text(" could not link ").code(plan.output.display().to_string());
-            diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&failure))
-        })
+        Executable::new(program, path)
+            .check(&inv)
+            .map(drop)
+            .map_err(|failure| diag.error(failure.report(program, Task::Link, &plan.output)))
     }
 }

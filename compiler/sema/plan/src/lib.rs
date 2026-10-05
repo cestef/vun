@@ -2,6 +2,8 @@
 //! `build.vun`'s `build`, and each value it records is read here as what it does.
 
 mod action;
+mod method;
 
-pub use action::{Action, Method, Options, Placement, Region, Use};
+pub use action::{Action, Options, Placement, Region, Use};
+pub use method::{Argument, Delivery, Invocation, Method};
 pub use vun_sema::plan::{Plan, Planned, Unplanned};

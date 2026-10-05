@@ -68,7 +68,7 @@ impl Session {
             let Source::Archive { version, .. } = dep.source else { continue };
             let declared = Dep {
                 name: Symbol::intern(&dep.name),
-                source: DepSource::of(dir, &dep.source),
+                source: DepSource::of(&self.library, dir, &dep.source),
                 kind: dep.kind,
                 span: Some(dep.span),
             };

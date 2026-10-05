@@ -2,6 +2,8 @@
 //! mass storage is given a file of them (`std.build.Flash.uf2`), made beside the program from the
 //! bytes its loadable segments put in memory and where they put them.
 
+mod deliver;
+
 use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf};

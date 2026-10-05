@@ -74,15 +74,18 @@ impl Replaced {
         let mut fields = Fields::new(decl, field::REPLACEMENT, cx)?;
         let name = fields.require(field::NAME).and_then(|d| d.string(cx));
         let identity = fields.require(field::ID).and_then(|d| Identity::read(d, cx));
-        let with = match (fields.get(field::HASH), fields.get(field::PATH)) {
-            (Some(hash), None) => hash.content_hash(cx).map(Replacing::Stored),
-            (None, Some(path)) => path.string(cx).map(Replacing::Path),
+        let with = match (fields.get(field::HASH), fields.get(field::PATH), fields.get(field::LIBRARY)) {
+            (Some(hash), None, None) => hash.content_hash(cx).map(Replacing::Stored),
+            (None, Some(path), None) => path.string(cx).map(Replacing::Path),
+            (None, None, Some(path)) => path.string(cx).map(Replacing::Library),
             _ => decl.invalid(
                 Msg::new()
                     .text("a replacement with one of ")
                     .code(format!(".{}", field::HASH))
+                    .text(", ")
+                    .code(format!(".{}", field::PATH))
                     .text(" and ")
-                    .code(format!(".{}", field::PATH)),
+                    .code(format!(".{}", field::LIBRARY)),
                 cx,
             ),
         };

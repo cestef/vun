@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::DEFAULT_DEPS;
+use vun_fs::Tree;
 use vun_trace::tracing;
 
 #[cfg(test)]
@@ -62,6 +63,19 @@ impl Library {
             Some(dir) => Self { dir, found: Found::Installed },
             None => Self { dir: Self::CHECKOUT.into(), found: Found::Checkout },
         }
+    }
+
+    /// The directory of a library holding the templates, each a project `vun new` copies.
+    pub const TEMPLATES: &str = "templates";
+
+    /// The template `vun new` copies when none is named.
+    pub const DEFAULT_TEMPLATE: &str = "hello";
+
+    /// The names of the templates of the library at `dir`.
+    #[must_use]
+    pub fn templates(dir: &Path) -> Vec<String> {
+        let dirs = dir.join(Self::TEMPLATES).entries().unwrap_or_default();
+        dirs.iter().filter(|d| d.is_dir()).filter_map(|d| Some(d.file_name()?.to_str()?.to_owned())).collect()
     }
 
     fn holds_defaults(dir: &Path) -> bool {

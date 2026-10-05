@@ -2,11 +2,12 @@
 //! the programs it builds (decision 356).
 
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
 
 use vun_build::layout::MANIFEST;
 use vun_command::Args;
+use vun_driver::Built;
 use vun_driver::Session;
 use vun_driver::subject::Subject;
 use vun_span::FileId;
@@ -40,7 +41,7 @@ pub(super) trait Inputs {
 
     /// Builds what the path `args` gives names, reporting how it went: the program of a file, or
     /// the programs the plan of each package records.
-    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<PathBuf>>>;
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<Built>>>;
 }
 
 impl Inputs for Session {
@@ -73,7 +74,7 @@ impl Inputs for Session {
         self.ready(path, started, shell).then(|| self.load(path)).flatten()
     }
 
-    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<PathBuf>>> {
+    fn built(&mut self, args: &Args, shell: &mut Shell<'_>) -> io::Result<Option<Vec<Built>>> {
         let started = Instant::now();
         let Some(Named { subject, shown, ready }) = self.named(args, Step::Build, shell)? else {
             return Ok(None);
@@ -92,7 +93,7 @@ impl Inputs for Session {
             };
             planned.and_then(|planned| match planned {
                 Some(program) => Some(vec![program]),
-                None => self.load(file).and_then(|file| self.build(file, output).ok()).map(|p| vec![p]),
+                None => self.load(file).and_then(|file| self.build_alone(file, output).ok()).map(|p| vec![p]),
             })
         } else {
             // A package's plan records its programs; a workspace builds each package's.
@@ -103,7 +104,7 @@ impl Inputs for Session {
             plans.collect::<Option<Vec<_>>>().map(|built| built.concat())
         };
         let concluded = match built.as_deref() {
-            Some([program]) => Subject::relative(program),
+            Some([program]) => Subject::relative(&program.path),
             _ => shown,
         };
         self.conclude(shell, concluded, started);

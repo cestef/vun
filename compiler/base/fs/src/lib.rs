@@ -5,6 +5,7 @@
 mod edit;
 mod executable;
 mod mode;
+mod mounts;
 mod process;
 mod refusal;
 mod relative;
@@ -14,6 +15,7 @@ mod walk;
 pub use edit::{Edit, Part};
 pub use executable::EXECUTABLE;
 pub use mode::{Mode, Modes};
+pub use mounts::Mounts;
 pub use process::PROCESS;
 pub use refusal::Refusal;
 pub use relative::Relative;

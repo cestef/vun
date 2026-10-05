@@ -69,7 +69,7 @@ impl<'a> Cx<'a> {
                             None => annotation,
                         }
                     });
-                Snippet::source(file.text.as_str()).path(file.path.as_str()).annotations(annotations)
+                Snippet::source(file.text.as_str()).path(file.shown()).annotations(annotations)
             })
             .collect()
     }
@@ -102,7 +102,7 @@ impl<'a> Cx<'a> {
                     fix.edits.iter().filter(|e| e.span.file == id).map(|e| {
                         Patch::new(e.span.range.lo as usize..e.span.range.hi as usize, e.text.clone())
                     });
-                Snippet::source(file.text.as_str()).path(file.path.as_str()).patches(patches)
+                Snippet::source(file.text.as_str()).path(file.shown()).patches(patches)
             })
             .collect()
     }

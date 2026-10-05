@@ -38,7 +38,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             } else {
                 note.text(", and ").code(&written).text(" is ").ty(expected.to_string())
             };
-            // A run-time value can be narrowed; a constant only fits a wider type.
+            // A run-time value can be narrowed; a constant is changed, or the type widened.
             let help = if found.stage == Stage::Run {
                 // The compound assignments that narrow without trapping, from the table `compound`.
                 let operators = [Narrowing::Wrap, Narrowing::Sat].map(|n| {
@@ -54,7 +54,10 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                     .text(" to hold the whole range, or narrow the value explicitly; counters can narrow as they update, with ")
                     .code_list(operators)
             } else {
-                Msg::new().text("widen ").code(&written).text(" to hold the value")
+                Msg::new()
+                    .text("use a value within ")
+                    .code(&written)
+                    .text(", or widen it if it is meant to hold this one")
             };
             let d = Diagnostic::error(errors::INT_DOES_NOT_FIT, msg)
                 .child(ChildKind::Note, note)

@@ -1,0 +1,28 @@
+//! The nested vectored interrupt controller (Arm v8-M architecture manual, section B3.4): the
+//! chip's interrupts are masked at reset, and each is enabled by its bit in a set-enable register.
+
+nvic := 0xe000_e100;
+/// The offsets of the set-enable, clear-enable and clear-pending registers.
+iser: Offset = 0x000;
+icer: Offset = 0x080;
+icpr: Offset = 0x180;
+/// The offsets into the controller's registers.
+Offset: type = Int(0..0x200);
+/// The registers hold 32 interrupts each.
+word_bits := 32;
+
+/// The register of the bank at `offset` that holds `irq`, and its bit.
+bank := (offset: Offset, irq: rp2350.irq.Number) -> &std.hw.Reg(u32) {
+    unsafe std.hw.at(std.hw.Reg(u32), nvic + offset + (irq / word_bits) * 4)
+};
+
+bit := (irq: rp2350.irq.Number) -> u32 { (1 << (irq % word_bits)).wrap(u32) };
+
+/// Lets `irq` interrupt the core.
+enable := (irq: rp2350.irq.Number) { bank(iser, irq).write(bit(irq)); };
+
+/// Stops `irq` interrupting the core.
+disable := (irq: rp2350.irq.Number) { bank(icer, irq).write(bit(irq)); };
+
+/// Forgets that `irq` is waiting for the core.
+clear := (irq: rp2350.irq.Number) { bank(icpr, irq).write(bit(irq)); };

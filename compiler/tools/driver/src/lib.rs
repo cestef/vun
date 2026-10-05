@@ -45,6 +45,7 @@ pub use queries::Persistence;
 pub use registry::{Codegen, Link, Linkage, Pick, Picked, Registry, Unchosen, Unfit};
 pub use session::Session;
 pub use shared::Shared;
+pub use steps::{Built, Flashing};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

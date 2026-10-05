@@ -1,0 +1,19 @@
+//! A program that shows it ran. The board has no console, so it ends by restarting into BOOTSEL
+//! with the drive hidden: the host sees the device come back without its mass storage drive, which
+//! a program that never started does not do (`rp2350.rom.bootsel` would show the drive).
+//!
+//! Pin 15 is driven high for a second first, for a LED on it.
+
+start := rp2350.start(.{
+    .main = main,
+    .interrupts = .{ .external = &[.{ .irq = rp2350.irq.timer0_0, .handler = rp2350.time.on_alarm0 }] },
+});
+
+main := (p: rp2350.Peripherals) -> never {
+    mut led := p.gpio.pin(15).output();
+    timer := rp2350.time.Timer.init(p.timer0);
+    led.high();
+    timer.delay(.millis(1000));
+    led.low();
+    rp2350.rom.bootsel_hiding(rp2350.rom.interface_mass_storage)
+};

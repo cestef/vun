@@ -1,0 +1,9 @@
+//! A hosted program: the runtime is a function you call (spec 08).
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    std.fmt.print(&mut out, "hello\n");
+    .ok
+};

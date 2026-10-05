@@ -1,5 +1,7 @@
 //! A source file and where its lines start.
 
+use std::path::Path;
+
 use crate::ByteRange;
 
 /// A one-based line and column, the column counted both in bytes and in characters.
@@ -30,6 +32,20 @@ impl SourceFile {
             .map(|i| u32::try_from(i).expect("source files are smaller than 4 GiB"))
             .collect();
         Self { path, text, line_starts }
+    }
+
+    /// How `path` is named to people: below the current directory when it is there.
+    #[must_use]
+    pub fn below_here(path: &Path) -> String {
+        let here = std::env::current_dir().ok();
+        let below = here.as_deref().and_then(|here| path.strip_prefix(here).ok());
+        below.unwrap_or(path).display().to_string()
+    }
+
+    /// The file's path as people read it in a report.
+    #[must_use]
+    pub fn shown(&self) -> String {
+        Self::below_here(Path::new(&self.path))
     }
 
     #[must_use]

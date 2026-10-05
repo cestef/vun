@@ -18,8 +18,17 @@ pub const Program: Item = Item::new(&["std", "build", "Program"]);
 /// A probe attached to a device.
 pub const Probe: Item = Item::new(&["std", "build", "Probe"]);
 /// A device that takes a program as a file of blocks over USB mass storage, by the family of chip
-/// it is, as the UF2 format's registry numbers them (`0xe48bff59`: the RP2350's secure Arm cores).
+/// it is, as the UF2 format's registry numbers them (`0xe48bff59`: the RP2350's secure Arm cores),
+/// and the ways to give it the file, tried in order until one reaches a device.
 pub const Uf2: Item = Item::new(&["std", "build", "Uf2"]);
+/// The drive every UF2 device shows, which holds a file of this name.
+pub const uf2_drive: Item = Item::new(&["std", "build", "uf2_drive"]);
+/// A way to give a file to a device.
+pub const Delivery: Item = Item::new(&["std", "build", "Delivery"]);
+pub const Drive: Item = Item::new(&["std", "build", "Drive"]);
+/// A program and its arguments, the file among them.
+pub const Invocation: Item = Item::new(&["std", "build", "Invocation"]);
+pub const Argument: Item = Item::new(&["std", "build", "Argument"]);
 /// How a program reaches its device.
 pub const Flash: Item = Item::new(&["std", "build", "Flash"]);
 /// Where a program's tests run.

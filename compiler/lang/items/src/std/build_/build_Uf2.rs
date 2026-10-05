@@ -7,3 +7,4 @@
 )]
 use crate::Item;
 pub const family: Item = Item::new(&["std", "build", "Uf2", "family"]);
+pub const deliver: Item = Item::new(&["std", "build", "Uf2", "deliver"]);
