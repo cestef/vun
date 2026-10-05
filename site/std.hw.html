@@ -1,7 +1,0 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>std.hw</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#Reg">Reg</a></li><li><a href="#at">at</a></li></ul></nav><main><h1><a href="std.html">std</a>.<a href="std.hw.html">hw</a></h1><p>Hardware access: memory-mapped registers over volatile operations.</p>
-<section id="Reg" class="function"><h3><span class="kind">function</span> <a href="#Reg">Reg</a></h3><pre><code>Reg := ($T: type) -&gt; type</code></pre><p>A memory-mapped register holding a <code>T</code>: each read and write reaches the device, exactly as
-written, in the order written. It is laid out as the <code>T</code> it holds, so a <code>#[layout.c]</code> struct of
-registers is laid out as the device's.</p>
-</section><section id="at" class="value"><h3><span class="kind">value</span> <a href="#at">at</a></h3><pre><code>#[panic.never]
-at := unsafe ($T: type, address: usize) -&gt; &amp;T { unsafe { &amp;lang.mem.pointer_at(T, address).* } }</code></pre><p>The registers of the device at <code>address</code>, a <code>T</code> laid out as the device lays them out.</p>
-</section></main></body></html>

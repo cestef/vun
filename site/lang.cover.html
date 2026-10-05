@@ -1,6 +1,0 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>lang.cover</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#size">size</a></li><li><a href="#map">map</a></li></ul></nav><main><h1><a href="lang.html">lang</a>.<a href="lang.cover.html">cover</a></h1><p>Coverage (spec 11, section 6): a program built covered, as <code>vun fuzz</code> builds one, sets the flag
-of each block of its code in <a href="lang.cover.html#map"><code>map</code></a> as the block starts, the flag of the block's number modulo
-<a href="lang.cover.html#size"><code>size</code></a>. <a href="std.testing.fuzz.html"><code>std.testing.fuzz</code></a> reads the flags to tell inputs apart by what they ran.</p>
-<section id="size" class="value"><h3><span class="kind">value</span> <a href="#size">size</a></h3><pre><code>size: usize = 8192</code></pre><p>How many flags the map holds: blocks whose numbers meet modulo it share one.</p>
-</section><section id="map" class="value"><h3><span class="kind">value</span> <a href="#map">map</a></h3><pre><code>mut map: [size]u8 = [0; size]</code></pre><p>The flags: 1 once a block of that number started, since the map was last cleared.</p>
-</section></main></body></html>

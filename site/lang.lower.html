@@ -1,7 +1,0 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>lang.lower</title><link rel="stylesheet" href="style.css"></head><body><nav><a href="index.html">Documentation</a><ul><li><a href="#by">by</a></li><li><a href="#soft">soft</a></li></ul></nav><main><h1><a href="lang.html">lang</a>.<a href="lang.lower.html">lower</a></h1><p>How the compiler lowers what no instruction computes (spec 13, section 3).</p>
-<section id="by" class="function"><h3><span class="kind">function</span> <a href="#by">by</a></h3><pre><code>by: ($F: type, $f: F) -&gt; Attribute(&amp;[Place.decls]) = _</code></pre><p>At run time, the primitive this marks is a call of <code>f</code>, a Vun function taking the primitive's
-parameters: an operation written with those instructions do compute.</p>
-</section><section id="soft" class="function"><h3><span class="kind">function</span> <a href="#soft">soft</a></h3><pre><code>soft: ($F: type, $f: F) -&gt; Attribute(&amp;[Place.decls]) = _</code></pre><p>At run time, where the target's processor computes no float of the type the primitive's first
-parameter names (<a href="lang.target.html#Spec.floats"><code>lang.target.Spec.floats</code></a>), the primitive this marks is a call of <code>f</code>: the
-operation written with integers (<a href="lang.float.soft.html"><code>lang.float.soft</code></a>).</p>
-</section></main></body></html>
