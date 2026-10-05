@@ -54,14 +54,22 @@ impl Crate {
         form: impl Fn(&Self, &Literal<'_>) -> Option<TokenStream>,
     ) -> Read<Vec<Module>> {
         let shape = |what: Msg| self.generator.error(SHAPE, self.arch, what);
-        let registers = self.registers(table);
-        let conditions = Self::conditions(table);
+        let mut modules = Vec::new();
+        // A table of an instruction set with no registers or conditions declares neither.
+        if table.own(REG).is_some() {
+            let registers = self.registers(table);
+            modules
+                .push(registers.ok_or_else(|| shape(Msg::new().text("declares its registers unreadably")))?);
+        }
+        if table.own(COND).is_some() {
+            let conditions = Self::conditions(table);
+            modules.push(
+                conditions.ok_or_else(|| shape(Msg::new().text("declares its conditions unreadably")))?,
+            );
+        }
         let classes = Self::classes(table);
-        let mut modules = vec![
-            registers.ok_or_else(|| shape(Msg::new().text("declares its registers unreadably")))?,
-            conditions.ok_or_else(|| shape(Msg::new().text("declares its conditions unreadably")))?,
-            classes.ok_or_else(|| shape(Msg::new().text("declares its register classes unreadably")))?,
-        ];
+        modules
+            .push(classes.ok_or_else(|| shape(Msg::new().text("declares its register classes unreadably")))?);
         modules.extend(Self::choices(table));
         for &name in self.enums {
             let rust = raw(name);
@@ -91,6 +99,8 @@ impl Crate {
             };
             modules.push(Module { name: name.to_ascii_lowercase(), access: Access::Glob, items, dir: None });
         }
+        let import =
+            self.types.iter().any(|(_, module, _)| *module == "reg").then(|| quote! { use crate::reg; });
         for inst in &table.instructions {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
             let forms = forms.ok_or_else(|| {
@@ -98,7 +108,8 @@ impl Crate {
             })?;
             let (name, count, doc) = (constant(inst.name), forms.len(), &inst.doc);
             let items = quote! {
-                use crate::{reg, table};
+                use crate::table;
+                #import
                 #(#[doc = #doc])*
                 pub(super) const #name: [table::Form; #count] = [#(#forms),*];
             };

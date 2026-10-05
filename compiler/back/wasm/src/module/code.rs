@@ -2,10 +2,11 @@
 //! linker rewrites, padded to a fixed width.
 
 use vun_bytes::{Out, PADDED};
+use vun_isa_wasm32::{Imm, Kind as Position};
 use vun_wasm::format::op::{END, I32_CONST};
 
 use super::link::{Reloc, RelocKind};
-use super::op::{Num, Op};
+use super::op::{Asm, Num, Op, Operand};
 use super::{Kind, Linker, Module, SymbolId};
 
 /// The block type of blocks taking and giving nothing.
@@ -124,12 +125,36 @@ impl Body<'_> {
                 self.relocated(kind, sym.number(), *addend, value);
             }
             Op::Num(n) => self.num(*n),
+            Op::Asm(asm) => self.asm(asm),
         }
     }
 
     fn address(at: u64, addend: i32) -> u32 {
         let at = i64::try_from(at).expect("memory fits") + i64::from(addend);
         u32::try_from(at).expect("addresses of wasm32 fit u32")
+    }
+
+    /// An instruction of a block: its opcode, then each operand as its kind says, then the bytes
+    /// its form ends with.
+    fn asm(&mut self, asm: &Asm) {
+        let form = vun_isa_wasm32::Op::entry(asm.op, asm.form).1;
+        match form.prefix() {
+            Some(prefix) => {
+                self.out.u8(prefix);
+                self.out.uleb(u64::from(form.code()));
+            }
+            None => self.out.u8(u8::try_from(form.code()).expect("unprefixed codes are bytes")),
+        }
+        for (arg, operand) in form.args.iter().zip(&asm.operands) {
+            match (arg.kind, operand) {
+                (Position::Imm(Imm::Signed(_)), Operand::Imm(v)) => {
+                    self.out.sleb(*v);
+                }
+                (_, Operand::Imm(v)) => self.out.uleb(v.cast_unsigned()),
+                (_, Operand::Local(l)) => self.out.uleb(u64::from(*l)),
+            }
+        }
+        self.out.bytes(form.tail);
     }
 
     fn num(&mut self, n: Num) {

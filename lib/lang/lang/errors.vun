@@ -82,6 +82,7 @@ asm := struct {
     no_form := diag.Diag{};
     immediate_too_wide := diag.Diag{};
     register_class := diag.Diag{};
+    stack := diag.Diag{};
     unavailable := diag.Diag{};
 };
 

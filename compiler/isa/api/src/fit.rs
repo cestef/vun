@@ -99,11 +99,42 @@ pub struct Fixed {
     pub size: Option<SizeId>,
 }
 
-/// A form's width and its operands, once a line's fit it.
+/// A value on a stack machine's stack: of the class of locals that holds it, or of any.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Slot {
+    Class(ClassId),
+    Any,
+}
+
+/// What an instruction of a stack machine does to its stack: the values it pops, the last on
+/// top, and the ones it pushes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stack {
+    pub pops: Vec<Slot>,
+    pub pushes: Vec<Slot>,
+}
+
+/// A form's width and its operands, once a line's fit it, and its effect on the stack where the
+/// instruction set has one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Fit<V, P, S> {
     pub size: SizeId,
     pub operands: Vec<Operand<V, P, S>>,
+    pub stack: Option<Stack>,
+}
+
+impl<V, P, S> Fit<V, P, S> {
+    /// A fit of an instruction set with no stack.
+    #[must_use]
+    pub const fn new(size: SizeId, operands: Vec<Operand<V, P, S>>) -> Self {
+        Self { size, operands, stack: None }
+    }
+
+    /// `self`, its form affecting the stack as `stack` says.
+    #[must_use]
+    pub fn on(self, stack: Stack) -> Self {
+        Self { stack: Some(stack), ..self }
+    }
 }
 
 /// Why a form does not take a line's operands.

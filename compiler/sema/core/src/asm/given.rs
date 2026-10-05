@@ -38,7 +38,7 @@ impl Checker<'_, '_, '_> {
     /// else a register or a choice, as the enum's attribute says; `None` for any other.
     pub(super) fn word(&self, ty: Ty, name: Symbol) -> Option<Given> {
         let shape = self.arch.shape();
-        if declared(self.env, shape.cond).ok() == Some(ty) {
+        if shape.cond.and_then(|cond| declared(self.env, cond).ok()) == Some(ty) {
             return Some(Given::Cond(CondId(position(&self.table.conds, name)?)));
         }
         let index = variants_of(self.env, ty).ok()?.iter().position(|&v| v == name)?;

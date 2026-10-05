@@ -2,7 +2,7 @@
 //! and floating-point ones moved or loaded into registers the block leaves free, then its
 //! instructions, then its outputs stored.
 
-use vun_asm::{Blocks, Label, Use};
+use vun_asm::{Blocks, Label, Registered, Use};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Bank, Cx, Need, Needs, RegSet};
 use vun_inline::{Bound, RegRef};

@@ -10,6 +10,8 @@ use crate::Item;
 pub const arm64: Item = Item::new(&["lang", "arch", "arm64"]);
 /// The namespace `lang.arch.thumb`.
 pub const thumb: Item = Item::new(&["lang", "arch", "thumb"]);
+/// The namespace `lang.arch.wasm32`.
+pub const wasm32: Item = Item::new(&["lang", "arch", "wasm32"]);
 /// The namespace `lang.arch.x86_64`.
 pub const x86_64: Item = Item::new(&["lang", "arch", "x86_64"]);
 /// What a form of an instruction set's table, or a width of it, needs of a processor beyond what

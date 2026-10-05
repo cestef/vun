@@ -14,7 +14,7 @@
 
 mod block;
 
-use vun_asm::{Blocks, Label, Place, Untaken, Via};
+use vun_asm::{Label, Place, Registered, Untaken, Via};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Code, Cx, Isel, Needs};
 use vun_inline::{ClassId, RegRef};
@@ -27,11 +27,11 @@ use crate::width::size_of;
 pub type Inst = vun_inline::Inst<Value, Output, Address>;
 pub type Mem = vun_inline::Mem<Value, Output, Address>;
 
-/// What a native architecture adds to its instruction set's facts about blocks (`Blocks`): how
+/// What a native architecture adds to its instruction set's facts about blocks (`Registered`): how
 /// it emits an instruction, and loads and stores an output.
 pub trait Inline: Isel {
     /// The instruction set, as it reads blocks.
-    type Table: Blocks<Reg = Self::Reg>;
+    type Table: Registered<Reg = Self::Reg>;
 
     /// Whether memory a block names at a position of `kind` is one this code addresses.
     ///
@@ -73,11 +73,11 @@ pub trait Inline: Isel {
 }
 
 /// The width of an operation or an operand of `A`.
-pub type Size<A> = <<A as Inline>::Table as Blocks>::Size;
+pub type Size<A> = <<A as Inline>::Table as Registered>::Size;
 /// What an operand position of `A` takes.
-pub type Kind<A> = <<A as Inline>::Table as Blocks>::Kind;
+pub type Kind<A> = <<A as Inline>::Table as Registered>::Kind;
 /// An operand as `A`'s assembler encodes it.
-pub type Encoded<A> = <<A as Inline>::Table as Blocks>::Operand<Address>;
+pub type Encoded<A> = <<A as Inline>::Table as Registered>::Operand<Address>;
 
 /// Where a block's operands are in the function compiled: its bindings in the registers the
 /// plan gives them, in order, and its lines at `labels`.
@@ -86,7 +86,7 @@ pub struct Placed<'a> {
     labels: &'a [Label],
 }
 
-impl<T: Blocks> Place<T, Address> for Placed<'_> {
+impl<T: Registered> Place<T, Address> for Placed<'_> {
     fn bound(&mut self, _: ClassId) -> RegRef {
         self.regs.next().expect("a register for each binding")
     }

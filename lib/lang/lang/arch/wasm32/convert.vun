@@ -1,0 +1,170 @@
+//! Conversions between integer and float types, and extensions of narrow integers.
+
+_w := lang.arch.wasm32;
+
+i32_wrap_i64 := _w.Instruction{ .forms = &[.{ .base = 0xa7, .pops = &[.i64], .pushes = &[.i32] }] };
+
+i32_trunc_f32_s := _w.Instruction{ .forms = &[.{ .base = 0xa8, .pops = &[.f32], .pushes = &[.i32] }] };
+
+i32_trunc_f32_u := _w.Instruction{ .forms = &[.{ .base = 0xa9, .pops = &[.f32], .pushes = &[.i32] }] };
+
+i32_trunc_f64_s := _w.Instruction{ .forms = &[.{ .base = 0xaa, .pops = &[.f64], .pushes = &[.i32] }] };
+
+i32_trunc_f64_u := _w.Instruction{ .forms = &[.{ .base = 0xab, .pops = &[.f64], .pushes = &[.i32] }] };
+
+i64_extend_i32_s := _w.Instruction{ .forms = &[.{ .base = 0xac, .pops = &[.i32], .pushes = &[.i64] }] };
+
+i64_extend_i32_u := _w.Instruction{ .forms = &[.{ .base = 0xad, .pops = &[.i32], .pushes = &[.i64] }] };
+
+i64_trunc_f32_s := _w.Instruction{ .forms = &[.{ .base = 0xae, .pops = &[.f32], .pushes = &[.i64] }] };
+
+i64_trunc_f32_u := _w.Instruction{ .forms = &[.{ .base = 0xaf, .pops = &[.f32], .pushes = &[.i64] }] };
+
+i64_trunc_f64_s := _w.Instruction{ .forms = &[.{ .base = 0xb0, .pops = &[.f64], .pushes = &[.i64] }] };
+
+i64_trunc_f64_u := _w.Instruction{ .forms = &[.{ .base = 0xb1, .pops = &[.f64], .pushes = &[.i64] }] };
+
+f32_convert_i32_s := _w.Instruction{ .forms = &[.{ .base = 0xb2, .pops = &[.i32], .pushes = &[.f32] }] };
+
+f32_convert_i32_u := _w.Instruction{ .forms = &[.{ .base = 0xb3, .pops = &[.i32], .pushes = &[.f32] }] };
+
+f32_convert_i64_s := _w.Instruction{ .forms = &[.{ .base = 0xb4, .pops = &[.i64], .pushes = &[.f32] }] };
+
+f32_convert_i64_u := _w.Instruction{ .forms = &[.{ .base = 0xb5, .pops = &[.i64], .pushes = &[.f32] }] };
+
+f32_demote_f64 := _w.Instruction{ .forms = &[.{ .base = 0xb6, .pops = &[.f64], .pushes = &[.f32] }] };
+
+f64_convert_i32_s := _w.Instruction{ .forms = &[.{ .base = 0xb7, .pops = &[.i32], .pushes = &[.f64] }] };
+
+f64_convert_i32_u := _w.Instruction{ .forms = &[.{ .base = 0xb8, .pops = &[.i32], .pushes = &[.f64] }] };
+
+f64_convert_i64_s := _w.Instruction{ .forms = &[.{ .base = 0xb9, .pops = &[.i64], .pushes = &[.f64] }] };
+
+f64_convert_i64_u := _w.Instruction{ .forms = &[.{ .base = 0xba, .pops = &[.i64], .pushes = &[.f64] }] };
+
+f64_promote_f32 := _w.Instruction{ .forms = &[.{ .base = 0xbb, .pops = &[.f32], .pushes = &[.f64] }] };
+
+i32_reinterpret_f32 := _w.Instruction{ .forms = &[.{ .base = 0xbc, .pops = &[.f32], .pushes = &[.i32] }] };
+
+i64_reinterpret_f64 := _w.Instruction{ .forms = &[.{ .base = 0xbd, .pops = &[.f64], .pushes = &[.i64] }] };
+
+f32_reinterpret_i32 := _w.Instruction{ .forms = &[.{ .base = 0xbe, .pops = &[.i32], .pushes = &[.f32] }] };
+
+f64_reinterpret_i64 := _w.Instruction{ .forms = &[.{ .base = 0xbf, .pops = &[.i64], .pushes = &[.f64] }] };
+
+i32_extend8_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xc0,
+        .pops = &[.i32],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.sign_extension))
+    }]
+};
+
+i32_extend16_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xc1,
+        .pops = &[.i32],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.sign_extension))
+    }]
+};
+
+i64_extend8_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xc2,
+        .pops = &[.i64],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.sign_extension))
+    }]
+};
+
+i64_extend16_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xc3,
+        .pops = &[.i64],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.sign_extension))
+    }]
+};
+
+i64_extend32_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xc4,
+        .pops = &[.i64],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.sign_extension))
+    }]
+};
+
+i32_trunc_sat_f32_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0000,
+        .pops = &[.f32],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i32_trunc_sat_f32_u := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0001,
+        .pops = &[.f32],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i32_trunc_sat_f64_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0002,
+        .pops = &[.f64],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i32_trunc_sat_f64_u := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0003,
+        .pops = &[.f64],
+        .pushes = &[.i32],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i64_trunc_sat_f32_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0004,
+        .pops = &[.f32],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i64_trunc_sat_f32_u := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0005,
+        .pops = &[.f32],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i64_trunc_sat_f64_s := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0006,
+        .pops = &[.f64],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};
+
+i64_trunc_sat_f64_u := _w.Instruction{
+    .forms = &[.{
+        .base = 0xfc0007,
+        .pops = &[.f64],
+        .pushes = &[.i64],
+        .requires = .some(.feature(.saturating_conversion))
+    }]
+};

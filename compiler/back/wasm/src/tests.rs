@@ -107,3 +107,28 @@ fn an_object_written_reads_back_as_its_symbols_and_relocations() {
     assert_eq!(reloc.kind, vun_wasm::RelocKind::GlobalIndexLeb);
     assert_eq!(reloc.index, 0);
 }
+
+/// The table `lang.arch.wasm32` declares says what the backend's numeric instructions are: the
+/// opcode, and the operand types popped and pushed.
+#[test]
+fn numeric_instructions_are_the_ones_the_table_declares() {
+    use vun_isa_wasm32::{Op as Table, Ty};
+
+    let ty = |ty: Ty| match ty {
+        Ty::I32 => ValType::I32,
+        Ty::I64 => ValType::I64,
+        Ty::F32 => ValType::F32,
+        Ty::F64 => ValType::F64,
+        Ty::Local | Ty::Any => panic!("a numeric instruction pops and pushes types"),
+    };
+    for n in Num::ALL {
+        let name = n.mnemonic().replacen('.', "_", 1);
+        let op =
+            Table::ALL.iter().find(|op| op.name() == name).unwrap_or_else(|| panic!("{name} is declared"));
+        let [form] = op.forms() else { panic!("{name} has one form") };
+        let (prefix, code) = n.code();
+        assert_eq!((form.prefix(), form.code()), (prefix, code), "{name}");
+        assert_eq!(form.pops.iter().map(|&t| ty(t)).collect::<Vec<_>>(), n.pops(), "{name}");
+        assert_eq!(form.pushes.iter().map(|&t| ty(t)).collect::<Vec<_>>(), [n.pushes()], "{name}");
+    }
+}

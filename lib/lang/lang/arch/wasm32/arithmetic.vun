@@ -1,0 +1,132 @@
+//! Arithmetic on integers and floats, each popping its operands (the last on top) and pushing its
+//! result.
+
+_w := lang.arch.wasm32;
+
+i32_clz := _w.Instruction{ .forms = &[.{ .base = 0x67, .pops = &[.i32], .pushes = &[.i32] }] };
+
+i32_ctz := _w.Instruction{ .forms = &[.{ .base = 0x68, .pops = &[.i32], .pushes = &[.i32] }] };
+
+i32_popcnt := _w.Instruction{ .forms = &[.{ .base = 0x69, .pops = &[.i32], .pushes = &[.i32] }] };
+
+i32_add := _w.Instruction{ .forms = &[.{ .base = 0x6a, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_sub := _w.Instruction{ .forms = &[.{ .base = 0x6b, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_mul := _w.Instruction{ .forms = &[.{ .base = 0x6c, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_div_s := _w.Instruction{ .forms = &[.{ .base = 0x6d, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_div_u := _w.Instruction{ .forms = &[.{ .base = 0x6e, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_rem_s := _w.Instruction{ .forms = &[.{ .base = 0x6f, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_rem_u := _w.Instruction{ .forms = &[.{ .base = 0x70, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_and := _w.Instruction{ .forms = &[.{ .base = 0x71, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_or := _w.Instruction{ .forms = &[.{ .base = 0x72, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_xor := _w.Instruction{ .forms = &[.{ .base = 0x73, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_shl := _w.Instruction{ .forms = &[.{ .base = 0x74, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_shr_s := _w.Instruction{ .forms = &[.{ .base = 0x75, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_shr_u := _w.Instruction{ .forms = &[.{ .base = 0x76, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_rotl := _w.Instruction{ .forms = &[.{ .base = 0x77, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_rotr := _w.Instruction{ .forms = &[.{ .base = 0x78, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i64_clz := _w.Instruction{ .forms = &[.{ .base = 0x79, .pops = &[.i64], .pushes = &[.i64] }] };
+
+i64_ctz := _w.Instruction{ .forms = &[.{ .base = 0x7a, .pops = &[.i64], .pushes = &[.i64] }] };
+
+i64_popcnt := _w.Instruction{ .forms = &[.{ .base = 0x7b, .pops = &[.i64], .pushes = &[.i64] }] };
+
+i64_add := _w.Instruction{ .forms = &[.{ .base = 0x7c, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_sub := _w.Instruction{ .forms = &[.{ .base = 0x7d, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_mul := _w.Instruction{ .forms = &[.{ .base = 0x7e, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_div_s := _w.Instruction{ .forms = &[.{ .base = 0x7f, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_div_u := _w.Instruction{ .forms = &[.{ .base = 0x80, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_rem_s := _w.Instruction{ .forms = &[.{ .base = 0x81, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_rem_u := _w.Instruction{ .forms = &[.{ .base = 0x82, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_and := _w.Instruction{ .forms = &[.{ .base = 0x83, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_or := _w.Instruction{ .forms = &[.{ .base = 0x84, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_xor := _w.Instruction{ .forms = &[.{ .base = 0x85, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_shl := _w.Instruction{ .forms = &[.{ .base = 0x86, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_shr_s := _w.Instruction{ .forms = &[.{ .base = 0x87, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_shr_u := _w.Instruction{ .forms = &[.{ .base = 0x88, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_rotl := _w.Instruction{ .forms = &[.{ .base = 0x89, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+i64_rotr := _w.Instruction{ .forms = &[.{ .base = 0x8a, .pops = &[.i64, .i64], .pushes = &[.i64] }] };
+
+f32_abs := _w.Instruction{ .forms = &[.{ .base = 0x8b, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_neg := _w.Instruction{ .forms = &[.{ .base = 0x8c, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_ceil := _w.Instruction{ .forms = &[.{ .base = 0x8d, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_floor := _w.Instruction{ .forms = &[.{ .base = 0x8e, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_trunc := _w.Instruction{ .forms = &[.{ .base = 0x8f, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_nearest := _w.Instruction{ .forms = &[.{ .base = 0x90, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_sqrt := _w.Instruction{ .forms = &[.{ .base = 0x91, .pops = &[.f32], .pushes = &[.f32] }] };
+
+f32_add := _w.Instruction{ .forms = &[.{ .base = 0x92, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_sub := _w.Instruction{ .forms = &[.{ .base = 0x93, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_mul := _w.Instruction{ .forms = &[.{ .base = 0x94, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_div := _w.Instruction{ .forms = &[.{ .base = 0x95, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_min := _w.Instruction{ .forms = &[.{ .base = 0x96, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_max := _w.Instruction{ .forms = &[.{ .base = 0x97, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f32_copysign := _w.Instruction{ .forms = &[.{ .base = 0x98, .pops = &[.f32, .f32], .pushes = &[.f32] }] };
+
+f64_abs := _w.Instruction{ .forms = &[.{ .base = 0x99, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_neg := _w.Instruction{ .forms = &[.{ .base = 0x9a, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_ceil := _w.Instruction{ .forms = &[.{ .base = 0x9b, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_floor := _w.Instruction{ .forms = &[.{ .base = 0x9c, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_trunc := _w.Instruction{ .forms = &[.{ .base = 0x9d, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_nearest := _w.Instruction{ .forms = &[.{ .base = 0x9e, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_sqrt := _w.Instruction{ .forms = &[.{ .base = 0x9f, .pops = &[.f64], .pushes = &[.f64] }] };
+
+f64_add := _w.Instruction{ .forms = &[.{ .base = 0xa0, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_sub := _w.Instruction{ .forms = &[.{ .base = 0xa1, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_mul := _w.Instruction{ .forms = &[.{ .base = 0xa2, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_div := _w.Instruction{ .forms = &[.{ .base = 0xa3, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_min := _w.Instruction{ .forms = &[.{ .base = 0xa4, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_max := _w.Instruction{ .forms = &[.{ .base = 0xa5, .pops = &[.f64, .f64], .pushes = &[.f64] }] };
+
+f64_copysign := _w.Instruction{ .forms = &[.{ .base = 0xa6, .pops = &[.f64, .f64], .pushes = &[.f64] }] };

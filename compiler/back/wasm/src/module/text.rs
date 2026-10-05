@@ -3,7 +3,7 @@
 use std::fmt;
 
 use super::Module;
-use super::op::Op;
+use super::op::{Op, Operand};
 
 /// An instruction of `module`, shown in the text format.
 pub struct Text<'m> {
@@ -52,6 +52,17 @@ impl fmt::Display for Text<'_> {
             Op::Address(sym, 0) => write!(f, "i32.const &${}", name(*sym)),
             Op::Address(sym, addend) => write!(f, "i32.const &${}{addend:+}", name(*sym)),
             Op::Num(n) => f.write_str(n.mnemonic()),
+            Op::Asm(asm) => {
+                // The text format spells the first underscore of a table's name as a dot.
+                f.write_str(&vun_isa_wasm32::Op::entry(asm.op, asm.form).0.name().replacen('_', ".", 1))?;
+                for operand in &asm.operands {
+                    match operand {
+                        Operand::Local(l) => write!(f, " {l}")?,
+                        Operand::Imm(v) => write!(f, " {v}")?,
+                    }
+                }
+                Ok(())
+            }
         }
     }
 }

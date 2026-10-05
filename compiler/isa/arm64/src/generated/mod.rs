@@ -115,5 +115,6 @@ mod casl;
 mod casal;
 mod ops;
 pub use ops::*;
+mod names;
 mod mnemonics;
 mod forms;

@@ -19,8 +19,8 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `vun-variants` (`#[derive(Variants)]`: an enum's `ALL`).
 - **Rust views of `lib/lang`** (`compiler/lang`, generated): `vun-grammar` (tokens, nodes, parse
   tables), `vun-items` (a handle per public declaration), `vun-primitives`.
-- **Instruction sets** (`compiler/isa`): `vun-isa` (`Isa`, `Blocks`, `Width`, immediates,
-  `Processor`), `vun-inline` (assembly blocks as data), `vun-isa-{x86_64,arm64,thumb}` (every
+- **Instruction sets** (`compiler/isa`): `vun-isa` (`Isa`, `Blocks` (what sema checks by), `Registered` (what the native and C backends read of registers), `Width`, immediates,
+  `Processor`), `vun-inline` (assembly blocks as data), `vun-isa-{x86_64,arm64,thumb,wasm32}` (every
   instruction once as a table of forms generated from `lang.arch`, read by the encoder, the
   printer, form selection and sema's check of assembly blocks; calling conventions' registers,
   `conventions`).

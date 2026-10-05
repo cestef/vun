@@ -37,6 +37,7 @@ vun-inline = { path = "compiler/isa/inline" }
 vun-isa = { path = "compiler/isa/api" }
 vun-isa-arm64 = { path = "compiler/isa/arm64" }
 vun-isa-thumb = { path = "compiler/isa/thumb" }
+vun-isa-wasm32 = { path = "compiler/isa/wasm32" }
 vun-isa-x86_64 = { path = "compiler/isa/x86_64" }
 vun-intern = { path = "compiler/base/intern" }
 vun-origin = { path = "compiler/base/origin" }

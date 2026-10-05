@@ -1,0 +1,17 @@
+[package]
+name = "vun-isa-wasm32"
+description = "The WebAssembly instruction set: its table generated from lang.arch.wasm32, which sema checks blocks of inline assembly against and the wasm backend encodes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-inline.workspace = true
+vun-isa.workspace = true
+vun-items.workspace = true
+vun-variants.workspace = true

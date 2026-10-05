@@ -1,0 +1,66 @@
+//! Blocks of WebAssembly instructions (spec 07, section 6): the stack machine written as the text
+//! format has it, Vun values bound to locals (`in`, `out`, `inout`) and the stack as the
+//! instructions leave it.
+
+add := (a: i32, b: i32) -> i32 {
+    mut sum: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(a));
+        local_get(in(b));
+        i32_add();
+        local_set(out(sum));
+    });
+    sum
+};
+
+/// An immediate is a constant pushed; a value of 64 bits is a local of its own class.
+widen := (a: i32) -> i64 {
+    mut wide: i64 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(a));
+        i64_extend_i32_u();
+        i64_const(1);
+        i64_shl();
+        local_set(out(wide));
+    });
+    wide
+};
+
+/// Memory is reached by an address on the stack and two immediates: the alignment as a power of
+/// two, and an offset.
+poke := (at: u32, value: u32) {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(at));
+        local_get(in(value));
+        i32_store(2, 0);
+    });
+};
+
+/// `local_tee` writes a local and keeps the value; `drop` discards one.
+count := (n: i32) -> i32 {
+    mut m: i32 = n;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(n));
+        i32_const(1);
+        i32_add();
+        local_tee(inout(m));
+        drop();
+    });
+    m
+};
+
+/// After an instruction that ends the code, any stack goes.
+never_returns := () -> never {
+    unsafe {
+        lang.arch.asm({
+            ..lang.arch.wasm32.names;
+            i32_const(1);
+            unreachable();
+        });
+        lang.hint.unreachable()
+    }
+};

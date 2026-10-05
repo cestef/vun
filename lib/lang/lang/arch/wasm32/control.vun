@@ -1,0 +1,8 @@
+//! What stops the code, or does nothing.
+
+_w := lang.arch.wasm32;
+
+/// Traps.
+unreachable := _w.Instruction{ .forms = &[.{ .base = 0x00, .flow = .ends }] };
+
+nop := _w.Instruction{ .forms = &[.{ .base = 0x01 }] };

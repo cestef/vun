@@ -30,6 +30,9 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
         vun_isa_thumb::Op::ALL.iter().map(|op| (op.name().to_owned(), op.forms().len())).collect();
     assert_eq!(read(Arch::Arm64), arm64);
     assert_eq!(read(Arch::Thumb), thumb);
+    let wasm32: Vec<_> =
+        vun_isa_wasm32::Op::ALL.iter().map(|op| (op.name().to_owned(), op.forms().len())).collect();
+    assert_eq!(read(Arch::Wasm32), wasm32);
 }
 
 /// Naked functions, entered as their code, whose blocks reach a function by its symbol: `hop`

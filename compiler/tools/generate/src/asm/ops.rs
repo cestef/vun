@@ -10,12 +10,13 @@ use crate::names::{constant, pascal, raw};
 
 /// The modules of the `Op` enum, its names and mnemonics, and its forms.
 const OPS: &str = "ops";
+const NAMES: &str = "names";
 const MNEMONICS: &str = "mnemonics";
 const FORMS: &str = "forms";
 
 impl Crate {
     /// The `Op` enum of each instruction, and its mnemonics and forms, each in a module.
-    pub(super) fn ops(instructions: &[Instruction<'_>]) -> [Module; 3] {
+    pub(super) fn ops(instructions: &[Instruction<'_>]) -> [Module; 4] {
         let names: Vec<_> = instructions.iter().map(|i| pascal(i.name)).collect();
         let docs = instructions.iter().map(|i| &i.doc);
         let mnemonics = instructions.iter().map(|i| i.mnemonic.as_deref().unwrap_or(i.name));
@@ -30,19 +31,23 @@ impl Crate {
         };
         let count = instructions.len();
         let declared = instructions.iter().map(|i| i.name);
-        let mnemonic = quote! {
+        let names = quote! {
             use super::Op;
-            /// The name of each instruction as the table declares it, and its mnemonic, in the
-            /// order of `Op`.
+            /// The name of each instruction as the table declares it, in the order of `Op`.
             const NAMES: [&str; #count] = [#(#declared),*];
-            const MNEMONICS: [&str; #count] = [#(#mnemonics),*];
             impl Op {
                 /// Its name, as the table declares it (`bcond`).
                 #[must_use]
                 pub const fn name(self) -> &'static str {
                     NAMES[self as usize]
                 }
-
+            }
+        };
+        let mnemonic = quote! {
+            use super::Op;
+            /// The mnemonic of each instruction, in the order of `Op`.
+            const MNEMONICS: [&str; #count] = [#(#mnemonics),*];
+            impl Op {
                 /// The mnemonic its forms are written with, unless a form names its own.
                 #[must_use]
                 pub const fn mnemonic(self) -> &'static str {
@@ -65,6 +70,7 @@ impl Crate {
         };
         [
             Module { name: OPS.to_owned(), access: Access::Glob, items: ops, dir: None },
+            Module { name: NAMES.to_owned(), access: Access::Impl, items: names, dir: None },
             Module { name: MNEMONICS.to_owned(), access: Access::Impl, items: mnemonic, dir: None },
             Module { name: FORMS.to_owned(), access: Access::Impl, items: forms, dir: None },
         ]

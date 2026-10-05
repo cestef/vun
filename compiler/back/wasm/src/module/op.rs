@@ -1,6 +1,8 @@
 //! Instructions as a typed set: each declares its encoding and, for the validator, the operand
 //! types it pops and the one it pushes, once.
 
+use vun_inline::{FormId, OpId};
+
 use super::{SymbolId, TypeId, ValType};
 
 /// Numeric instructions: an opcode, the operands popped (the last on top) and the result pushed.
@@ -12,6 +14,9 @@ macro_rules! numeric {
         }
 
         impl Num {
+            /// Every one, in the order they are declared.
+            pub const ALL: &'static [Self] = &[$(Self::$name,)*];
+
             /// The prefix byte of an instruction that has one, and its code.
             #[must_use]
             pub const fn code(self) -> (Option<u8>, u32) {
@@ -182,6 +187,24 @@ impl Mem {
     }
 }
 
+/// An operand of an instruction of a block of `lang.arch.wasm32`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Operand {
+    /// A local of the function, by its index.
+    Local(u32),
+    /// An integer immediate.
+    Imm(i64),
+}
+
+/// An instruction of a block of `lang.arch.wasm32`: the form of the instruction its table
+/// declares, which says its opcode and what it pops and pushes, with its operands.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Asm {
+    pub op: OpId,
+    pub form: FormId,
+    pub operands: Vec<Operand>,
+}
+
 /// An instruction. Blocks, loops and `if`s take and give nothing; labels are depths.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Op {
@@ -222,4 +245,6 @@ pub enum Op {
     /// in the indirect function table.
     Address(SymbolId, i32),
     Num(Num),
+    /// An instruction a block of inline assembly writes.
+    Asm(Asm),
 }

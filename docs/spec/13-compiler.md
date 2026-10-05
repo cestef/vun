@@ -1048,7 +1048,14 @@ are declared once in `vun-wasm` (`compiler/object/wasm`) (proposed, decision 388
   segment named by it, which the linker places with the others of that name and gives bounds.
   With one thread (`lang.target.Threads.one`, WASI), storage per thread is the program's and its
   address a datum's; with many, it is refused (`Missing::PerThread`).
-- **Refused.** Inline assembly (wasm32 has no table of instructions yet), naked functions (which
+- **Inline assembly** is a block of `lang.arch.wasm32` (spec 07, section 6): each instruction is
+  its form of the table, encoded as the table says (a prefix byte, a code, LEB128 operands, the
+  form's trailing bytes), and the verifier pops and pushes what the form declares. An input is the
+  local holding its value, an output a local of the block stored to its place after the last
+  instruction, and an `inout` loaded before the first. A block of another instruction set is
+  refused (`Missing::Asm`). The numeric instructions the backend emits itself are the table's
+  (a test compares them).
+- **Refused.** Naked functions (which
   exist only for it) and an address past the start of a function (a function's address is an
   index of the table) are refused with the `Missing` naming each.
 
@@ -1310,7 +1317,7 @@ compiler/
   base/    index  span  intern  origin  diag  query  pass  tool  target  trace  json  codec
            codec-derive  hash  graph  fs  outline  par  suggest  term  bytes  harness  html
   lang/    grammar  items  primitives            Rust views generated from lib/lang
-  isa/     api  inline  x86_64  arm64  thumb     instruction sets, one table each
+  isa/     api  inline  x86_64  arm64  thumb  wasm32     instruction sets, one table each
   object/  core  elf  dwarf  wasm                object files and debug information as data
   front/   desugar  syntax  hir
   sema/    int  float  ty  core  plan            types as values; `core` (`vun-sema`) checks and evaluates

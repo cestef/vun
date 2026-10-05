@@ -303,7 +303,10 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    hovers with values and layouts, type-only inlays, a run lens (`vun.run`). Open: test lenses (no
    `vun test` or `std.testing.runner` exists yet); a run cannot be given input; views narrow to the function (types, MIR) or declaration (values) at the cursor, the others show the file;
    per-editor polish (VS Code commands, Zed has no code lenses); untried in a real editor.
-1. Backends: Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
+1. Backends: inline assembly for wasm32 (`lang.arch.wasm32`, decision 474: a stack table, locals as
+   bindings, `asm.stack`) runs under wasmtime; open there: branches and structured control, calls,
+   globals, atomics and SIMD in the table, float constants, and the `asm` checks (`Check::Asm`)
+   do not apply to wasm blocks. Thumb agrees on every driver program (`linux.arm` through `qemu-arm` on `petal.wg`);
    `macos.arm64` links through both backends (`ld64.lld`, the SDK on `petal.wg` built from Zig's
    stubs) but runs nowhere here: a Mac, or a runner, would test it; riscv64 (`qemu-riscv64` is here, no
    sysroot); the stm32f4 board beyond the blinky (`bare_metal.vun` runs on qemu's STM32F405:

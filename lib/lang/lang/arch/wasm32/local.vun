@@ -1,0 +1,42 @@
+//! Locals and the stack.
+
+_w := lang.arch.wasm32;
+
+/// Pushes the value of a bound local: `local_get(in(a))`.
+local_get := _w.Instruction{ .forms = &[.{
+    .base = 0x20,
+    .args = &[.{ .kind = .local, .access = .read }],
+    .pushes = &[.local],
+}] };
+
+/// Pops into a bound local: `local_set(out(r))`.
+local_set := _w.Instruction{ .forms = &[.{
+    .base = 0x21,
+    .args = &[.{ .kind = .local, .access = .write }],
+    .pops = &[.local],
+}] };
+
+/// Writes the top of the stack into a bound local and leaves it: `local_tee(inout(r))`.
+local_tee := _w.Instruction{ .forms = &[.{
+    .base = 0x22,
+    .args = &[.{ .kind = .local, .access = .read_write }],
+    .pops = &[.local],
+    .pushes = &[.local],
+}] };
+
+/// Pushes a 32-bit integer.
+i32_const := _w.Instruction{ .forms = &[.{
+    .base = 0x41,
+    .args = &[.{ .kind = .imm(.signed(32)) }],
+    .pushes = &[.i32],
+}] };
+
+/// Pushes a 64-bit integer.
+i64_const := _w.Instruction{ .forms = &[.{
+    .base = 0x42,
+    .args = &[.{ .kind = .imm(.signed(64)) }],
+    .pushes = &[.i64],
+}] };
+
+/// Pops a value and drops it.
+drop := _w.Instruction{ .forms = &[.{ .base = 0x1a, .pops = &[.any] }] };

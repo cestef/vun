@@ -16,20 +16,18 @@ use super::check::Term;
 use super::given::Addressing;
 use super::need::Needs;
 use super::parts::Widths;
-use super::table::{Flow, Shape, Table};
+use super::table::{Family, Flow, Shape, Table};
 
 pub(super) const SHAPE: Shape = Shape {
     instruction: x86::Instruction,
     instruction_forms: instruction::forms,
-    family_forms: family::forms,
-    member: x86::Member,
-    member_family: member::family,
+    family: Some(Family { forms: family::forms, member: x86::Member, of: member::family }),
     mnemonic: None,
     form_flow: form::flow,
     needs: Needs { form: form::requires, sized: None },
-    flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
+    flows: &[(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: x86::Size,
-    cond: x86::Cond,
+    cond: Some(x86::Cond),
     class: x86::Class,
     registers: x86::Registers,
     choice: None,

@@ -93,6 +93,7 @@ vun-link-external = { workspace = true, optional = true }
 # The generated assemblers, whose numbering sema's tables must follow.
 vun-isa-arm64.workspace = true
 vun-isa-thumb.workspace = true
+vun-isa-wasm32.workspace = true
 vun-isa-x86_64.workspace = true
 # What a block's instructions need of a processor.
 vun-inline.workspace = true

@@ -1,0 +1,71 @@
+//! Comparisons: each pops its operands (the last on top) and pushes 1 or 0 as an `i32`.
+
+_w := lang.arch.wasm32;
+
+i32_eqz := _w.Instruction{ .forms = &[.{ .base = 0x45, .pops = &[.i32], .pushes = &[.i32] }] };
+
+i32_eq := _w.Instruction{ .forms = &[.{ .base = 0x46, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_ne := _w.Instruction{ .forms = &[.{ .base = 0x47, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_lt_s := _w.Instruction{ .forms = &[.{ .base = 0x48, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_lt_u := _w.Instruction{ .forms = &[.{ .base = 0x49, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_gt_s := _w.Instruction{ .forms = &[.{ .base = 0x4a, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_gt_u := _w.Instruction{ .forms = &[.{ .base = 0x4b, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_le_s := _w.Instruction{ .forms = &[.{ .base = 0x4c, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_le_u := _w.Instruction{ .forms = &[.{ .base = 0x4d, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_ge_s := _w.Instruction{ .forms = &[.{ .base = 0x4e, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i32_ge_u := _w.Instruction{ .forms = &[.{ .base = 0x4f, .pops = &[.i32, .i32], .pushes = &[.i32] }] };
+
+i64_eqz := _w.Instruction{ .forms = &[.{ .base = 0x50, .pops = &[.i64], .pushes = &[.i32] }] };
+
+i64_eq := _w.Instruction{ .forms = &[.{ .base = 0x51, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_ne := _w.Instruction{ .forms = &[.{ .base = 0x52, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_lt_s := _w.Instruction{ .forms = &[.{ .base = 0x53, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_lt_u := _w.Instruction{ .forms = &[.{ .base = 0x54, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_gt_s := _w.Instruction{ .forms = &[.{ .base = 0x55, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_gt_u := _w.Instruction{ .forms = &[.{ .base = 0x56, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_le_s := _w.Instruction{ .forms = &[.{ .base = 0x57, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_le_u := _w.Instruction{ .forms = &[.{ .base = 0x58, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_ge_s := _w.Instruction{ .forms = &[.{ .base = 0x59, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+i64_ge_u := _w.Instruction{ .forms = &[.{ .base = 0x5a, .pops = &[.i64, .i64], .pushes = &[.i32] }] };
+
+f32_eq := _w.Instruction{ .forms = &[.{ .base = 0x5b, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f32_ne := _w.Instruction{ .forms = &[.{ .base = 0x5c, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f32_lt := _w.Instruction{ .forms = &[.{ .base = 0x5d, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f32_gt := _w.Instruction{ .forms = &[.{ .base = 0x5e, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f32_le := _w.Instruction{ .forms = &[.{ .base = 0x5f, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f32_ge := _w.Instruction{ .forms = &[.{ .base = 0x60, .pops = &[.f32, .f32], .pushes = &[.i32] }] };
+
+f64_eq := _w.Instruction{ .forms = &[.{ .base = 0x61, .pops = &[.f64, .f64], .pushes = &[.i32] }] };
+
+f64_ne := _w.Instruction{ .forms = &[.{ .base = 0x62, .pops = &[.f64, .f64], .pushes = &[.i32] }] };
+
+f64_lt := _w.Instruction{ .forms = &[.{ .base = 0x63, .pops = &[.f64, .f64], .pushes = &[.i32] }] };
+
+f64_gt := _w.Instruction{ .forms = &[.{ .base = 0x64, .pops = &[.f64, .f64], .pushes = &[.i32] }] };
+
+f64_le := _w.Instruction{ .forms = &[.{ .base = 0x65, .pops = &[.f64, .f64], .pushes = &[.i32] }] };
+
+f64_ge := _w.Instruction{ .forms = &[.{ .base = 0x66, .pops = &[.f64, .f64], .pushes = &[.i32] }] };

@@ -6,7 +6,7 @@
 use vun_diag::{DiagId, Diagnostic, Msg, errors};
 use vun_hir::tree::ExprId;
 use vun_inline::Inst;
-use vun_isa::{Misfit, Why};
+use vun_isa::{Misfit, Stack, Why};
 use vun_origin::OriginId;
 use vun_sema_ty::Value;
 use vun_sema_ty::item::Site;
@@ -19,7 +19,11 @@ use crate::layout::Shapes;
 
 impl Checker<'_, '_, '_> {
     /// The instruction the call `call` is, or `None` when it is none, which is reported.
-    pub(super) fn inst(&mut self, call: ExprId, labels: &Labels) -> Option<Inst<ExprId, ExprId, ExprId>> {
+    pub(super) fn inst(
+        &mut self,
+        call: ExprId,
+        labels: &Labels,
+    ) -> Option<(Inst<ExprId, ExprId, ExprId>, Option<Stack>)> {
         let (callee, args) = self.args(call)?;
         let origin = self.env.parsed.hir.exprs[call].origin;
         let ops = match self.env.resolve(callee) {
@@ -46,7 +50,7 @@ impl Checker<'_, '_, '_> {
                     Ok(fit) => {
                         let (size, operands) = (fit.size, fit.operands);
                         vun_trace::tracing::trace!(op = op.0, form = form.0, size = size.0, "fitted");
-                        return Some(Inst { op, form, size, operands, origin });
+                        return Some((Inst { op, form, size, operands, origin }, fit.stack));
                     }
                     Err(misfit) => {
                         vun_trace::tracing::trace!(op = op.0, form = form.0, ?fixed, ?misfit, "missed");

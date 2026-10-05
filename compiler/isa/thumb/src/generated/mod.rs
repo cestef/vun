@@ -156,5 +156,6 @@ mod dmb;
 mod isb;
 mod ops;
 pub use ops::*;
+mod names;
 mod mnemonics;
 mod forms;

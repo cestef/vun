@@ -12,8 +12,10 @@ mod inst;
 mod need;
 mod parts;
 mod read;
+mod stack;
 mod table;
 mod thumb;
+mod wasm32;
 mod x86_64;
 
 pub(crate) use check::Checker;
@@ -31,10 +33,11 @@ pub enum Arch {
     X86_64,
     Arm64,
     Thumb,
+    Wasm32,
 }
 
 impl Arch {
-    pub const ALL: &[Self] = &[Self::X86_64, Self::Arm64, Self::Thumb];
+    pub const ALL: &[Self] = &[Self::X86_64, Self::Arm64, Self::Thumb, Self::Wasm32];
 
     /// The namespace declaring its table.
     #[must_use]
@@ -43,6 +46,7 @@ impl Arch {
             Self::X86_64 => lang::arch::x86_64,
             Self::Arm64 => lang::arch::arm64,
             Self::Thumb => lang::arch::thumb,
+            Self::Wasm32 => lang::arch::wasm32,
         }
     }
 
@@ -52,6 +56,7 @@ impl Arch {
             Self::X86_64 => &x86_64::SHAPE,
             Self::Arm64 => &arm64::SHAPE,
             Self::Thumb => &thumb::SHAPE,
+            Self::Wasm32 => &wasm32::SHAPE,
         }
     }
 }

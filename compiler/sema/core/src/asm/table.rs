@@ -42,22 +42,28 @@ pub struct Op {
     pub forms: Vec<Value>,
 }
 
+/// The declarations of an architecture's families of instructions, which share their forms.
+pub(super) struct Family {
+    pub(super) forms: Item,
+    pub(super) member: Item,
+    pub(super) of: Item,
+}
+
 /// The declarations of an architecture its table is read through, and what it tells of its own.
 pub(super) struct Shape {
     pub(super) instruction: Item,
     pub(super) instruction_forms: Item,
-    pub(super) family_forms: Item,
-    pub(super) member: Item,
-    pub(super) member_family: Item,
+    /// Its families, where it has any.
+    pub(super) family: Option<Family>,
     /// Its `Mnemonic` and the field naming the instructions one spells, where it has any.
     pub(super) mnemonic: Option<(Item, Item)>,
     pub(super) form_flow: Item,
     /// How its forms say what a processor needs to have them.
     pub(super) needs: Needs,
-    pub(super) flows: [(Item, Flow); 3],
-    /// The enums of widths, conditions and register classes.
+    pub(super) flows: &'static [(Item, Flow)],
+    /// The enums of widths, conditions (where the instruction set has any) and register classes.
     pub(super) size: Item,
-    pub(super) cond: Item,
+    pub(super) cond: Option<Item>,
     pub(super) class: Item,
     /// Its `Registers`, which an enum naming registers declares what it names with, and its
     /// `Choice`, the kinds of named choice, which an enum of choices declares its kind with.
@@ -169,11 +175,16 @@ impl Query for ArchTable {
         let mut table = Table {
             sizes,
             bits,
-            conds: variants_of(&env, declared(&env, shape.cond)?)?,
+            conds: shape.cond.map(|c| variants_of(&env, declared(&env, c)?)).transpose()?.unwrap_or_default(),
             classes: variants_of(&env, declared(&env, shape.class)?)?,
             ..Table::default()
         };
-        let (instruction, member) = (declared(&env, shape.instruction)?, declared(&env, shape.member)?);
+        let instruction = declared(&env, shape.instruction)?;
+        let family = shape
+            .family
+            .as_ref()
+            .map(|f| Ok::<_, Unevaluated>((declared(&env, f.member)?, f)))
+            .transpose()?;
         let mnemonic = shape.mnemonic.map(|(m, _)| declared(&env, m)).transpose()?;
         let mut mnemonics = Vec::new();
         for child in package.children(&ns.path) {
@@ -187,10 +198,10 @@ impl Query for ArchTable {
                 };
                 let forms = if *ty == instruction {
                     items(&value, shape.instruction_forms)
-                } else if *ty == member {
+                } else if let Some((_, of)) = family.filter(|(member, _)| ty == member) {
                     let members = Members::of(&value).map_err(|_| Unevaluated::Unsupported)?;
-                    let family = members.get(shape.member_family).map_err(|_| Unevaluated::Unsupported)?;
-                    items(family, shape.family_forms)
+                    let shared = members.get(of.of).map_err(|_| Unevaluated::Unsupported)?;
+                    items(shared, of.forms)
                 } else {
                     if Some(*ty) == mnemonic {
                         mnemonics.push((decl, value, child.clone()));

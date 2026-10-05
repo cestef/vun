@@ -2,7 +2,7 @@
 //! it names or its position takes, else a general one of those a call of the C convention
 //! overwrites, its arguments' first, or a floating-point one of those it passes floats in.
 
-use vun_asm::{AsmOperand, Blocks, Use, Width};
+use vun_asm::{AsmOperand, Registered, Use, Width};
 use vun_backend::{Lack, Missing};
 use vun_inline::{Bound, RegRef};
 use vun_lir::{Output, Scalar, Value};
@@ -12,12 +12,12 @@ use super::gnu::{Block, Gnu, Named};
 
 /// A binding's register: a general one, holding an address's word, or a floating-point one,
 /// holding its float at a width.
-pub(super) enum Held<I: Blocks> {
+pub(super) enum Held<I: Registered> {
     General(I::Reg),
     Float { reg: RegRef, ty: Scalar, size: I::Size },
 }
 
-impl<I: Blocks> Held<I> {
+impl<I: Registered> Held<I> {
     /// The register, as a block names it.
     pub(super) fn reg(&self) -> RegRef {
         match *self {
@@ -28,7 +28,7 @@ impl<I: Blocks> Held<I> {
 }
 
 /// The registers of a block's bindings, in order, and the general ones it leaves free.
-pub(super) struct Registers<I: Blocks> {
+pub(super) struct Registers<I: Registered> {
     pub(super) held: Vec<Held<I>>,
     pub(super) free: std::vec::IntoIter<I::Reg>,
 }

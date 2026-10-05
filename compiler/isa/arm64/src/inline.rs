@@ -4,7 +4,7 @@
 //! the addressing mode its form names, and a symbol a branch's target, a page or its low bits.
 
 use vun_inline::{ClassId, Disp, FormId, Inst, OpId, RegRef, SizeId};
-use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place};
+use vun_isa::{AsmOperand, Blocks, Fit, Fixed, Given, Label, Misfit, Place, Registered};
 
 use crate::{
     Access, Arm64, Barrier, Cc, Class, Extend, Form, Kind, Mem, Mode, Op, Operand, Reg, Scale, Size, SysReg,
@@ -36,8 +36,20 @@ impl Arm64 {
 }
 
 impl Blocks for Arm64 {
-    const GENERAL: ClassId = Class::General.id();
     const ARCH: vun_items::Item = vun_items::lang::arch::arm64;
+
+    fn fit<V: Clone, P: Clone, S: Copy>(
+        op: OpId,
+        form: FormId,
+        fixed: Fixed,
+        givens: &[Given<V, P, S>],
+    ) -> Result<Fit<V, P, S>, Misfit> {
+        crate::fit::fit(op, form, fixed, givens)
+    }
+}
+
+impl Registered for Arm64 {
+    const GENERAL: ClassId = Class::General.id();
     type Reg = Reg;
     type Size = Size;
     type Kind = Kind;
@@ -99,15 +111,6 @@ impl Blocks for Arm64 {
             (_, Some(_), Some(_), _) => Err(AsmOperand::Indexed),
             (_, Some(_), None, Disp::Symbol(..)) => Err(AsmOperand::SymbolOffRegister),
         }
-    }
-
-    fn fit<V: Clone, P: Clone, S: Copy>(
-        op: OpId,
-        form: FormId,
-        fixed: Fixed,
-        givens: &[Given<V, P, S>],
-    ) -> Result<Fit<V, P, S>, Misfit> {
-        crate::fit::fit(op, form, fixed, givens)
     }
 
     fn label<S: Copy>(label: Label) -> Operand<S> {

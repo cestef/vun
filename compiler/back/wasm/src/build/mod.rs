@@ -2,6 +2,7 @@
 //! signatures they have and the indirect calls make, then every function's body, in parallel.
 
 mod abi;
+mod asm;
 mod call;
 mod control;
 mod func;

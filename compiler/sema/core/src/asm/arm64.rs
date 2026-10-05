@@ -13,20 +13,18 @@ use vun_items::lang::{
 
 use super::need::Needs;
 use super::parts::Widths;
-use super::table::{Flow, Shape, Table};
+use super::table::{Family, Flow, Shape, Table};
 
 pub(super) const SHAPE: Shape = Shape {
     instruction: a::Instruction,
     instruction_forms: instruction::forms,
-    family_forms: family::forms,
-    member: a::Member,
-    member_family: member::family,
+    family: Some(Family { forms: family::forms, member: a::Member, of: member::family }),
     mnemonic: Some((a::Mnemonic, mnemonic::instructions)),
     form_flow: form::flow,
     needs: Needs { form: form::requires, sized: None },
-    flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
+    flows: &[(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: a::Size,
-    cond: a::Cond,
+    cond: Some(a::Cond),
     class: a::Class,
     registers: a::Registers,
     choice: Some(a::Choice),

@@ -3,7 +3,7 @@
 //! overwrite, two more keeping the stack aligned, and of the flags, which `r4` holds across the
 //! call; the address is built in `r0` from the operand's mode.
 
-use vun_asm::{Blocks, Untaken};
+use vun_asm::{Registered, Untaken};
 use vun_asm_thumb::{
     Cc, Class, Emit, List, Mem, Op, Operand, Reg, Shift, ShiftKind, Size, Special, Thumb, V,
 };

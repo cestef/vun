@@ -1174,7 +1174,10 @@ dependencies = [
  "vun-diag",
  "vun-hash",
  "vun-index",
+ "vun-inline",
  "vun-intern",
+ "vun-isa",
+ "vun-isa-wasm32",
  "vun-lir",
  "vun-lir-passes",
  "vun-origin",
@@ -1409,6 +1412,7 @@ dependencies = [
  "vun-interp",
  "vun-isa-arm64",
  "vun-isa-thumb",
+ "vun-isa-wasm32",
  "vun-isa-x86_64",
  "vun-items",
  "vun-link",
@@ -1679,6 +1683,16 @@ dependencies = [
 
 [[package]]
 name = "vun-isa-thumb"
+version = "0.1.0"
+dependencies = [
+ "vun-inline",
+ "vun-isa",
+ "vun-items",
+ "vun-variants",
+]
+
+[[package]]
+name = "vun-isa-wasm32"
 version = "0.1.0"
 dependencies = [
  "vun-inline",
@@ -2217,6 +2231,7 @@ dependencies = [
  "vun-isa",
  "vun-isa-arm64",
  "vun-isa-thumb",
+ "vun-isa-wasm32",
  "vun-isa-x86_64",
  "vun-items",
  "vun-origin",

@@ -11,7 +11,7 @@ use vun_primitives::arch::Arch as Form;
 
 use super::read::Labels;
 use super::table::{Flow, Table};
-use super::{Arch, Block, arm64, bracket, thumb, x86_64};
+use super::{Arch, Block, arm64, bracket, thumb, wasm32, x86_64};
 use crate::env::Env;
 
 /// A part of an address: a register, one times a scale, bytes, or a declaration's address.
@@ -35,6 +35,7 @@ impl Arch {
             Self::X86_64 => <vun_isa_x86_64::X86_64 as Blocks>::fit(op, form, fixed, givens),
             Self::Arm64 => <vun_isa_arm64::Arm64 as Blocks>::fit(op, form, fixed, givens),
             Self::Thumb => <vun_isa_thumb::Thumb as Blocks>::fit(op, form, fixed, givens),
+            Self::Wasm32 => <vun_isa_wasm32::Wasm32 as Blocks>::fit(op, form, fixed, givens),
         }
     }
 
@@ -43,6 +44,7 @@ impl Arch {
         match self {
             Self::X86_64 => x86_64::memory(parts),
             Self::Arm64 | Self::Thumb => bracket::memory(parts),
+            Self::Wasm32 => None,
         }
     }
 
@@ -58,6 +60,7 @@ impl Arch {
             Self::X86_64 => Some((x86_64::class(table, float)?, width)),
             Self::Arm64 => Some((arm64::class(table, float)?, width)),
             Self::Thumb => Some((thumb::class(table, float)?, width)),
+            Self::Wasm32 => Some((wasm32::class(table, bytes, float)?, width)),
         }
     }
 }
@@ -97,14 +100,20 @@ impl Checker<'_, '_, '_> {
                 Entry::Makes | Entry::Spread => {}
             }
         }
-        let mut insts = Vec::new();
+        let (mut insts, mut stacks) = (Vec::new(), Vec::new());
         let mut fits = true;
         for entry in &entries {
             let Entry::Inst(call) = entry else { continue };
             match self.inst(*call, &labels) {
-                Some(inst) => insts.push(inst),
+                Some((inst, stack)) => {
+                    insts.push(inst);
+                    stacks.push(stack);
+                }
                 None => fits = false,
             }
+        }
+        if fits {
+            fits = self.stack(self.env.parsed.hir.blocks[block].origin, &insts, &stacks);
         }
         let returns = self.returns(&insts);
         let needs = self.table.needs(self.arch, &insts);

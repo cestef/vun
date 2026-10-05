@@ -14,6 +14,7 @@ use vun_tool::Executable;
 
 use crate::common::Fixture;
 
+mod asm;
 mod clang;
 mod objects;
 
@@ -29,8 +30,13 @@ fn run(wasmtime: &Path, program: &Path) -> (Option<i32>, String) {
 /// Builds the corpus program `name` for WASI through the wasm backend, linked by `linker` or by
 /// the target's.
 fn build(name: &str, linker: Option<vun_target::Name>) -> (Fixture, PathBuf) {
-    let fixture = Fixture::new(&format!("wasm-{name}-{}", linker.map_or("own", |l| l.0)));
     let source = std::fs::read_to_string(repo_root().join("corpus/accept/programs").join(name)).unwrap();
+    build_source(name, &source, linker)
+}
+
+/// Builds the program `source`, called `name`, for WASI through the wasm backend.
+fn build_source(name: &str, source: &str, linker: Option<vun_target::Name>) -> (Fixture, PathBuf) {
+    let fixture = Fixture::new(&format!("wasm-{name}-{}", linker.map_or("own", |l| l.0)));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     session.choice = Choice::of(targets::wasi_wasm32::p1);

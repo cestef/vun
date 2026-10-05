@@ -1,6 +1,6 @@
 //! The instruction sets a block of instructions is written in, each a namespace declaring its
-//! table (spec 07, section 6): `x86_64`, `arm64` and `thumb`; and what a block is written with,
-//! whatever its instruction set.
+//! table (spec 07, section 6): `x86_64`, `arm64`, `thumb` and `wasm32`; and what a block is written
+//! with, whatever its instruction set.
 
 /// What a form of an instruction set's table, or a width of it, needs of a processor beyond what
 /// every processor of the set has: a feature of the set (`Feature`, `lang.target.Spec.features`),

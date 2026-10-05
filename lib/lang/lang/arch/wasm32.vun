@@ -1,0 +1,108 @@
+//! WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
+//! instructions of its stack machine with what each pops and pushes, as the toolchain's backend
+//! encodes them. They are declared in `arithmetic`, `compare`, `control`, `convert`, `local` and
+//! `memory`; `vun-isa-wasm32`'s tables are generated from these declarations.
+//!
+//! A block of wasm is the body of a function written as the text format has it, with Vun values
+//! bound to the function's locals: `local_get(in(a))` pushes the value of `a`, `local_set(out(r))`
+//! pops into the place `r`, and an instruction between them takes the stack as it stands. A
+//! register of the table is a local, and its class the value type it holds. A block starts and ends
+//! with an empty stack and has no branches.
+//!
+//! A form's base is its opcode: the prefix byte (`0xfc` for the saturating conversions and the bulk
+//! memory instructions) in bits 16 to 23, and the code, a byte or the LEB128 number after the
+//! prefix, in the low bits.
+
+/// The width of a value a local holds.
+Size := enum { b32, b64 };
+
+/// A class of locals, by the value type it holds: the type a bound Vun value of that size, and
+/// float or not, is held as.
+Class := enum {
+    i32,
+    i64,
+    f32,
+    f64,
+    /// Where the block is checked for another target, a value's size is not known, nor its type.
+    unknown,
+};
+
+/// What a stack position holds: a value type, the type of the form's local (`local_get`), or a
+/// value of any type (`drop`).
+Ty := enum { i32, i64, f32, f64, local, any };
+
+/// What a position of an instruction takes.
+Kind := enum {
+    /// A bound local: a value read (`in`), written (`out`) or both (`inout`).
+    local,
+    /// An integer immediate, LEB128 encoded.
+    imm(Imm),
+};
+
+/// An integer immediate: unsigned or signed, of this many bits.
+Imm := enum { unsigned(u8), signed(u8) };
+
+/// What a form does with an operand.
+Access := enum { read, write, read_write };
+
+/// What a processor has of WebAssembly beyond its first version (`lang.target.Spec.features`).
+Feature := enum {
+    /// The sign-extension instructions (`i32_extend8_s`).
+    sign_extension,
+    /// Conversions of floats to integers that saturate (`i32_trunc_sat_f32_s`).
+    saturating_conversion,
+    /// Copying and filling memory (`memory_copy`).
+    bulk_memory,
+};
+
+/// What a form needs of a processor beyond WebAssembly's first version.
+Need: type = lang.arch.Need(Feature, Size);
+
+/// Where control goes after a form.
+Flow := enum {
+    /// To the next instruction.
+    next,
+    /// Out of the code: it traps.
+    ends,
+};
+
+/// An operand position: what it takes and what the form does with it.
+Arg := struct { kind: Kind, access: Access = .read };
+
+/// A width a form is defined at; the table has one.
+Sized := struct { size: Size, requires: ?Need = .none };
+
+/// One form of an instruction: its opcode, its operands, the values it pops (the last on top)
+/// and pushes, and the bytes after its operands (the memory index of `memory_grow`).
+Form := struct {
+    base: u32,
+    sizes: &[Sized] = &[.{ .size = .b32 }],
+    args: &[Arg] = &[],
+    pops: &[Ty] = &[],
+    pushes: &[Ty] = &[],
+    tail: &[u8] = &[],
+    flow: Flow = .next,
+    /// What a processor needs to have the form, if not every one has it.
+    requires: ?Need = .none,
+};
+
+/// An instruction, named as its declaration is.
+Instruction := struct { forms: &[Form] };
+
+/// What an enum of locals names, written as its attribute; the table has none.
+Registers: type = lang.arch.Registers(Class, Size);
+
+/// Each instruction is called in a block with the operands it takes (spec 07, section 6).
+impl lang.ops.Call(_, ()) for Instruction = lang.arch.called(Instruction);
+
+/// The names a block of instructions is written with, spread first in it
+/// (`lang.arch.asm({ ..lang.arch.wasm32.names; ... })`): the operand forms and the instructions.
+names := struct {
+    ..lang.arch.{ in, out, inout };
+    ..lang.arch.wasm32.arithmetic;
+    ..lang.arch.wasm32.compare;
+    ..lang.arch.wasm32.control;
+    ..lang.arch.wasm32.convert;
+    ..lang.arch.wasm32.local;
+    ..lang.arch.wasm32.memory;
+};

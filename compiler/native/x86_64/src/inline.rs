@@ -3,7 +3,7 @@
 //! calls the runtime between pushes of the flags and of every register a call may overwrite,
 //! over a stack aligned from `rbx`, which the call keeps.
 
-use vun_asm::{AsmOperand, Blocks, Untaken};
+use vun_asm::{AsmOperand, Registered, Untaken};
 use vun_asm_x86_64::{Base, Cc, Class, Emit, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 use vun_codegen::Code;
 use vun_codegen::Cx;

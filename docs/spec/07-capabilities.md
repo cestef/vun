@@ -307,13 +307,23 @@ countdown := (n: u32) -> u32 {
   where the target's code is in its instruction set, `lang.arch.<isa>` for the target's `isa`
   (`thumb` on 32-bit Arm, whose `arch` is `arm`); sema checks a block against its architecture's
   table whatever the target, so a library may hold blocks for several behind `$if`, and a backend
-  given one of another instruction set, or without the block's (wasm), refuses it
-  (`backend.lacks`). A form may need what not every processor of its instruction set has
+  given one of another instruction set refuses it (`backend.lacks`). A form may need what not every processor of its instruction set has
   (`requires: ?Need`, each table's `Need` being `lang.arch.Need(Feature, Size)`: a feature of the
   table's `Feature`, or a floating-point unit computing floats of a width; Thumb's `ldrexd` and
   `strexd` are Arm's application profile's), which the checked block records; a block compiled for a target of its instruction set whose processor lacks one
   (`lang.target.Spec.features`) is refused where it is lowered (`asm.unavailable`), and code picks
   its instructions by `lang.target.has(.feature)` at compile time.
+- **A stack machine** (`lang.arch.wasm32`) has no registers: an instruction pops and pushes the
+  values its form declares (`pops`, `pushes`, of the types `i32`, `i64`, `f32`, `f64`, the type of
+  the form's local, or any), and a block is the body of a function as the text format writes it.
+  A binding is a local, where `local_get(in(a))` pushes the value of `a`, `local_set(out(r))` pops
+  into the place `r` and `local_tee(inout(r))` writes it and keeps it; the class of a binding is the
+  value type its Vun type is held as. An instruction takes immediates as operands (`i32_store(2,
+  0)`: the alignment as a power of two, the offset). Sema keeps the stack as the forms leave it and
+  reports a pop from an empty stack, a pop of another type and values left at the end
+  (`asm.stack`); after an instruction that ends the code (`unreachable`) any stack goes. A block
+  starts and ends with an empty stack and has no branches. A block checked for another target
+  holds its bindings in a class of unknown type, which fits any position.
 
 ## 7. Checked unsafe code
 

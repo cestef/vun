@@ -5,7 +5,7 @@
 
 use vun_inline::{ClassId, FormId, OpId, SizeId};
 use vun_isa::imm::held;
-use vun_isa::{Blocks, Fit, Fixed, Given, Label, Misfit, Takes, Why, Writeback, positions, width};
+use vun_isa::{Fit, Fixed, Given, Label, Misfit, Registered, Takes, Why, Writeback, positions, width};
 
 use crate::{Base, Cc, Class, Kind, Mem, Op, Operand, Reg, Size, X86_64, Xmm};
 
@@ -110,5 +110,5 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     for p in &positions {
         p.kind.fits(size, &p.given).map_err(|why| p.misfit(why))?;
     }
-    Ok(Fit { size: size.id(), operands: positions.into_iter().map(|p| p.given.operand()).collect() })
+    Ok(Fit::new(size.id(), positions.into_iter().map(|p| p.given.operand()).collect()))
 }

@@ -4,7 +4,7 @@
 
 use std::fmt;
 
-use vun_asm::{AsmOperand, Blocks, Place, Via};
+use vun_asm::{AsmOperand, Place, Registered, Via};
 use vun_asm_arm64::Arm64;
 use vun_asm_thumb::Thumb;
 use vun_asm_x86_64::{Syntax, X86_64};
@@ -65,7 +65,7 @@ impl fmt::Display for Named {
 pub(super) type Block = vun_inline::Block<Value, Output, Named>;
 
 /// What GNU C writes of an instruction set's blocks.
-pub(super) trait Gnu: Blocks {
+pub(super) trait Gnu: Registered {
     /// The lines before and after a block's, setting the assembler's syntax to the listing's and
     /// back.
     const ENTER: &'static [&'static str];
@@ -231,7 +231,7 @@ pub(super) struct Given {
     pub(super) scope: Scope,
 }
 
-impl<I: Blocks> Place<I, Named> for Given {
+impl<I: Registered> Place<I, Named> for Given {
     fn bound(&mut self, _: ClassId) -> RegRef {
         self.regs.next().expect("a register for each binding")
     }

@@ -2,6 +2,8 @@
 //! algorithm of the WebAssembly specification (its appendix), over a stack of operand types and
 //! one of control frames, the stack of an unreachable frame's rest being any types.
 
+mod asm;
+
 use super::invalid::{Invalid, Why};
 use super::op::Op;
 use super::{Func, Kind, Linker, Module, SymbolId, TypeId, ValType};
@@ -202,6 +204,7 @@ impl Check<'_> {
                 self.pop_all(n.pops())?;
                 self.push(n.pushes());
             }
+            Op::Asm(asm) => self.asm(asm)?,
         }
         Ok(())
     }

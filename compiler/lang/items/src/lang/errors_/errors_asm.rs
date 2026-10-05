@@ -18,4 +18,5 @@ pub const immediate_too_wide: Item = Item::new(
     &["lang", "errors", "asm", "immediate_too_wide"],
 );
 pub const register_class: Item = Item::new(&["lang", "errors", "asm", "register_class"]);
+pub const stack: Item = Item::new(&["lang", "errors", "asm", "stack"]);
 pub const unavailable: Item = Item::new(&["lang", "errors", "asm", "unavailable"]);

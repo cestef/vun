@@ -8,7 +8,7 @@ use vun_inline::{ClassId, FormId, Line, OpId, RegRef, SizeId};
 use vun_isa::imm::held;
 use vun_isa::word::Field;
 use vun_isa::{
-    Blocks, Fit, Fixed, Given, Label, Misfit, Place, Takes, Via, Why, Writeback, positions, width,
+    Fit, Fixed, Given, Label, Misfit, Place, Registered, Takes, Via, Why, Writeback, positions, width,
 };
 
 use crate::{Arm64, Barrier, Choice, Class, Kind, Mode, Op, Operand, Size, SysReg, Width};
@@ -171,5 +171,5 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     for p in &positions {
         p.kind.fits(size, &p.given).map_err(|why| p.misfit(why))?;
     }
-    Ok(Fit { size: size.id(), operands: positions.into_iter().map(|p| p.given.operand()).collect() })
+    Ok(Fit::new(size.id(), positions.into_iter().map(|p| p.given.operand()).collect()))
 }

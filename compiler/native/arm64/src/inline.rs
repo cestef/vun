@@ -2,7 +2,7 @@
 //! write calls the runtime between saves of every register a call may overwrite and of the flags
 //! (`nzcv`), the address built in `x16` from the operand's mode.
 
-use vun_asm::Blocks;
+use vun_asm::Registered;
 use vun_asm::Untaken;
 use vun_asm::Via;
 use vun_asm_arm64::{Arm64, Cc, Class, Emit, Mem, Op, Operand, Reg, Size, SysReg, V};

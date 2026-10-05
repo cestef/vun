@@ -13,6 +13,7 @@ mod emit;
 mod ops;
 mod spell;
 mod thumb;
+mod wasm32;
 mod words;
 mod x86_64;
 
@@ -26,6 +27,7 @@ use crate::names::docs;
 
 pub(crate) use arm64::ARM64;
 pub(crate) use thumb::THUMB;
+pub(crate) use wasm32::WASM32;
 pub(crate) use x86_64::X86_64;
 
 /// Where the architectures are declared, relative to the repository root.

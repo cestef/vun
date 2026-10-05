@@ -16,24 +16,22 @@ use vun_sema_ty::Value;
 
 use super::need::{self, Needs};
 use super::parts::Widths;
-use super::table::{Flow, Shape, Table};
+use super::table::{Family, Flow, Shape, Table};
 use crate::target::Members;
 
 pub(super) const SHAPE: Shape = Shape {
     instruction: t::Instruction,
     instruction_forms: instruction::forms,
-    family_forms: family::forms,
-    member: t::Member,
-    member_family: member::family,
+    family: Some(Family { forms: family::forms, member: t::Member, of: member::family }),
     mnemonic: Some((t::Mnemonic, mnemonic::instructions)),
     form_flow: form::flow,
     needs: Needs {
         form: form::requires,
         sized: Some(need::Sized { sizes: form::sizes, size: sized::size, requires: sized::requires }),
     },
-    flows: [(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
+    flows: &[(flow::next, Flow::Next), (flow::jump, Flow::Jump), (flow::ends, Flow::Ends)],
     size: t::Size,
-    cond: t::Cond,
+    cond: Some(t::Cond),
     class: t::Class,
     registers: t::Registers,
     choice: Some(t::Choice),

@@ -1,0 +1,123 @@
+//! Loads and stores, and the size of memory. An access takes its address on the stack and two
+//! immediates: the alignment as a power of two, and an offset added to the address.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+
+i32_load := _w.Instruction{
+    .forms = &[.{ .base = 0x28, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32] }]
+};
+
+i64_load := _w.Instruction{
+    .forms = &[.{ .base = 0x29, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+f32_load := _w.Instruction{
+    .forms = &[.{ .base = 0x2a, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.f32] }]
+};
+
+f64_load := _w.Instruction{
+    .forms = &[.{ .base = 0x2b, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.f64] }]
+};
+
+i32_load8_s := _w.Instruction{
+    .forms = &[.{ .base = 0x2c, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32] }]
+};
+
+i32_load8_u := _w.Instruction{
+    .forms = &[.{ .base = 0x2d, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32] }]
+};
+
+i32_load16_s := _w.Instruction{
+    .forms = &[.{ .base = 0x2e, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32] }]
+};
+
+i32_load16_u := _w.Instruction{
+    .forms = &[.{ .base = 0x2f, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32] }]
+};
+
+i64_load8_s := _w.Instruction{
+    .forms = &[.{ .base = 0x30, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i64_load8_u := _w.Instruction{
+    .forms = &[.{ .base = 0x31, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i64_load16_s := _w.Instruction{
+    .forms = &[.{ .base = 0x32, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i64_load16_u := _w.Instruction{
+    .forms = &[.{ .base = 0x33, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i64_load32_s := _w.Instruction{
+    .forms = &[.{ .base = 0x34, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i64_load32_u := _w.Instruction{
+    .forms = &[.{ .base = 0x35, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64] }]
+};
+
+i32_store := _w.Instruction{
+    .forms = &[.{ .base = 0x36, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+};
+
+i64_store := _w.Instruction{
+    .forms = &[.{ .base = 0x37, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+};
+
+f32_store := _w.Instruction{
+    .forms = &[.{ .base = 0x38, .args = &[_align, _offset], .pops = &[.i32, .f32] }]
+};
+
+f64_store := _w.Instruction{
+    .forms = &[.{ .base = 0x39, .args = &[_align, _offset], .pops = &[.i32, .f64] }]
+};
+
+i32_store8 := _w.Instruction{
+    .forms = &[.{ .base = 0x3a, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+};
+
+i32_store16 := _w.Instruction{
+    .forms = &[.{ .base = 0x3b, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+};
+
+i64_store8 := _w.Instruction{
+    .forms = &[.{ .base = 0x3c, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+};
+
+i64_store16 := _w.Instruction{
+    .forms = &[.{ .base = 0x3d, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+};
+
+i64_store32 := _w.Instruction{
+    .forms = &[.{ .base = 0x3e, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+};
+
+/// Pushes the size of memory in pages.
+memory_size := _w.Instruction{ .forms = &[.{ .base = 0x3f, .pushes = &[.i32], .tail = &[0] }] };
+
+/// Grows memory by the pages popped and pushes its old size, or -1.
+memory_grow := _w.Instruction{
+    .forms = &[.{ .base = 0x40, .pops = &[.i32], .pushes = &[.i32], .tail = &[0] }]
+};
+
+/// Copies bytes: the destination, the source and the length popped.
+memory_copy := _w.Instruction{ .forms = &[.{
+    .base = 0xfc000a,
+    .pops = &[.i32, .i32, .i32],
+    .tail = &[0, 0],
+    .requires = .some(.feature(.bulk_memory)),
+}] };
+
+/// Fills bytes: the destination, the byte and the length popped.
+memory_fill := _w.Instruction{ .forms = &[.{
+    .base = 0xfc000b,
+    .pops = &[.i32, .i32, .i32],
+    .tail = &[0],
+    .requires = .some(.feature(.bulk_memory)),
+}] };

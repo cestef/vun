@@ -30,11 +30,29 @@ pub enum AsmOperand {
     Crowded,
 }
 
-/// An instruction set's facts about blocks of inline assembly.
+/// An instruction set's facts about blocks of inline assembly that sema checks them by.
 pub trait Blocks {
     /// The namespace of the instruction set, `lang.arch.<isa>`, which a block names.
     const ARCH: vun_items::Item;
 
+    /// The width a line's operands give the form `form` of `op`, and each as the form takes it,
+    /// `fixed` what its mnemonic's spelling supplies. A form checked so is one the assembler
+    /// encodes, by the same predicates; an immediate must also be a value the operation's bits
+    /// hold.
+    ///
+    /// # Errors
+    /// Why the form does not take them.
+    fn fit<V: Clone, P: Clone, S: Copy>(
+        op: OpId,
+        form: FormId,
+        fixed: Fixed,
+        givens: &[Given<V, P, S>],
+    ) -> Result<Fit<V, P, S>, Misfit>;
+}
+
+/// An instruction set whose blocks bind values to registers the backend picks, which the native
+/// and C backends read: the registers, and how an operand is as the assembler takes it.
+pub trait Registered: Blocks {
     /// The class of general registers, which values and addresses are held in.
     const GENERAL: ClassId;
 
@@ -79,20 +97,6 @@ pub trait Blocks {
     /// What it does not address.
     fn addressable<V, P, S>(mem: &Mem<V, P, S>, kind: Self::Kind) -> Result<(), AsmOperand>;
 
-    /// The width a line's operands give the form `form` of `op`, and each as the form takes it,
-    /// `fixed` what its mnemonic's spelling supplies. A form checked so is one the assembler
-    /// encodes, by the same predicates; an immediate must also be a value the operation's bits
-    /// hold.
-    ///
-    /// # Errors
-    /// Why the form does not take them.
-    fn fit<V: Clone, P: Clone, S: Copy>(
-        op: OpId,
-        form: FormId,
-        fixed: Fixed,
-        givens: &[Given<V, P, S>],
-    ) -> Result<Fit<V, P, S>, Misfit>;
-
     /// A label, as a branch's target.
     fn label<S: Copy>(label: Label) -> Self::Operand<S>;
 
@@ -103,7 +107,7 @@ pub trait Blocks {
     /// says.
     ///
     /// # Panics
-    /// Panics on memory the assembler does not address ([`Blocks::addressable`]).
+    /// Panics on memory the assembler does not address ([`Registered::addressable`]).
     /// The bindings of `block`, in the order `Block::bindings` gives them, each with the kind of
     /// the position it is at.
     #[must_use]
@@ -200,7 +204,7 @@ pub trait Blocks {
 }
 
 /// Where a block's operands are, as the code it is emitted into has them.
-pub trait Place<I: Blocks + ?Sized, S: Copy> {
+pub trait Place<I: Registered + ?Sized, S: Copy> {
     /// The register of the next binding, of `class`, in the order `Block::bindings` gives them.
     fn bound(&mut self, class: ClassId) -> RegRef;
 
@@ -213,13 +217,13 @@ pub trait Place<I: Blocks + ?Sized, S: Copy> {
 
 /// A binding of a block, with its instruction and the kind of the position it is at: `None` for
 /// an address's register.
-pub struct Use<'a, I: Blocks, V, P, S> {
+pub struct Use<'a, I: Registered, V, P, S> {
     pub inst: &'a Inst<V, P, S>,
     pub kind: Option<I::Kind>,
     pub bound: &'a Bound<V, P>,
 }
 
-impl<I: Blocks, V, P, S> Use<'_, I, V, P, S> {
+impl<I: Registered, V, P, S> Use<'_, I, V, P, S> {
     /// The class of register it is held in.
     ///
     /// # Errors
