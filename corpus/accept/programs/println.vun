@@ -1,0 +1,13 @@
+//! A line written with `println`, and slices copied with `std.mem.copy`.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    from: [4]u8 = [1, 2, 3, 4];
+    mut to: [4]u8 = [0; 4];
+    std.mem.copy(&mut to, &from);
+    std.fmt.println(&mut out, "{} {} {} {}", to[0], to[1], to[2], to[3]);
+    std.fmt.println(&mut out, "done");
+    .ok
+};

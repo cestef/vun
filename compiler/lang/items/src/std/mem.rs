@@ -11,3 +11,5 @@ pub const alloc: Item = Item::new(&["std", "mem", "alloc"]);
 /// An owning pointer (spec 05, section 5): linear, free, and read through with `.*` and `.`.
 /// Freeing it needs the allocator it came from.
 pub const Own: Item = Item::new(&["std", "mem", "Own"]);
+/// Copies `from` over `to`, which must be as long: a difference is a bug, not a short copy.
+pub const copy: Item = Item::new(&["std", "mem", "copy"]);

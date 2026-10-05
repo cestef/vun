@@ -23,3 +23,9 @@ impl lang.mem.Cell($T) {
     /// Makes the cell hold `value`.
     set := unsafe (c: &lang.mem.Cell(T), value: T) { unsafe lang.mem.cell_pointer(T, c).write(value); };
 }
+
+/// Copies `from` over `to`, which must be as long: a difference is a bug, not a short copy.
+copy := ($T: type, to: &mut [T], from: &[T]) {
+    if to.len() != from.len() { lang.panic.fail(.message("mem.copy: the slices differ in length")); }
+    unsafe { lang.mem.copy(T, lang.mem.items_pointer(T, to), lang.mem.items_pointer(T, from), from.len()); }
+};

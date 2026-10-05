@@ -147,9 +147,10 @@ impl Unifier<'_, '_, '_> {
                     self.parts(&constructor, ty, &[*len, *elem]);
                 }
             }
+            // A slice type names its items in an array's too, which has the impls of its slice.
             ExprKind::Array(items) => {
-                if let ([Entry::One(item)], Ok(constructor)) = (items.as_slice(), env.form(Form::Slice)) {
-                    self.parts(&constructor, ty, &[*item]);
+                if let ([Entry::One(item)], Some(found)) = (items.as_slice(), ty.and_then(|t| t.items())) {
+                    self.unify(*item, &Value::Type(found));
                 }
             }
             ExprKind::Tuple(items) => {

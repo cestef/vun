@@ -14,8 +14,8 @@ decode_raw := (input: &[u8]) { _ = Packet.decode(input); };
 #[test]
 memcpy_4k := (b: &mut testing.Bench) {
     src: [4096]u8 = [0; 4096];
-    mut dst: [4096]u8;
-    for b.loop() { mem.copy(&out dst, &src); b.keep(&dst); }
+    mut dst: [4096]u8 = [0; 4096];
+    for b.loop() { mem.copy(&mut dst, &src); b.keep(&dst); }
 };
 
 #[test]

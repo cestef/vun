@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use vun_grammar::TokenKind;
 use vun_hir::db::{FileRef, FileText};
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_origin::{OriginId, OriginTable, Via};
@@ -46,10 +47,16 @@ impl<'a, 'db> Env<'a, 'db> {
     }
 
     /// The code `expr`, written here: it keeps the call evaluated in and every binder bound, so
-    /// its names mean what they mean here.
+    /// its names mean what they mean here. A splice of code, `$c`, is that code, as it was written
+    /// where it was.
     #[must_use]
     pub fn code(&self, expr: ExprId) -> Code {
         let hir = &self.parsed.hir;
+        if let ExprKind::Prefix { op: TokenKind::Dollar, operand } = hir.exprs[expr].kind
+            && let Ok(Value::Code(code)) = self.eval(operand)
+        {
+            return code;
+        }
         let mut bound: Vec<_> = self
             .bindings
             .iter()

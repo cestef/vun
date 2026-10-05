@@ -28,9 +28,13 @@ pub const Binary: Item = Item::new(&["std", "fmt", "Binary"]);
 pub const number: Item = Item::new(&["std", "fmt", "number"]);
 /// `n` and what it counts, `1 argument`, `2 arguments`.
 pub const counted: Item = Item::new(&["std", "fmt", "counted"]);
+/// Writes the pieces of `format`, as `print` does, with the arguments as a tuple.
+pub const write: Item = Item::new(&["std", "fmt", "write"]);
 /// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
 /// with the format string is reported inside it, at the bytes it covers.
 pub const print: Item = Item::new(&["std", "fmt", "print"]);
+/// `print` and then a line break.
+pub const println: Item = Item::new(&["std", "fmt", "println"]);
 /// Room for the digits of the widest integer in the smallest base.
 pub const digits_max: Item = Item::new(&["std", "fmt", "digits_max"]);
 pub const minus: Item = Item::new(&["std", "fmt", "minus"]);

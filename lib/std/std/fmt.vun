@@ -59,9 +59,8 @@ counted := (n: usize, one: &[u8], many: &[u8]) -> &static [u8] {
     number(n) ++ " " ++ many
 };
 
-/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
-/// with the format string is reported inside it, at the bytes it covers.
-print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..args: A) -> Result((), W.Error) {
+/// Writes the pieces of `format`, as `print` does, with the arguments as a tuple.
+write := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, args: A) -> Result((), W.Error) {
     $if .err(bad) = parse($format) {
         $std.diag.error(.{
             .at = .some(format.within(bad.at)),
@@ -106,6 +105,18 @@ print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..arg
         }
     }
     .ok(())
+};
+
+/// Writes `format` to `w`, each `{}` replaced by the next of `args`, one for each `{}`. A problem
+/// with the format string is reported inside it, at the bytes it covers.
+print := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..args: A) -> Result((), W.Error) {
+    write(w, $format, args)
+};
+
+/// `print` and then a line break.
+println := ($W: Writer, w: &mut W, $format: lang.meta.Code(&[u8]), $A: type, ..args: A) -> Result((), W.Error) {
+    write(w, $format, args)?;
+    w.write_all("\n")
 };
 
 /// Room for the digits of the widest integer in the smallest base.
