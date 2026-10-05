@@ -107,6 +107,15 @@ impl Reads {
     }
 }
 
+impl Env<'_, '_> {
+    /// Whether `expr` reads a local its body computes when it runs, which no `$` form or `$`
+    /// argument can know when compiling.
+    #[must_use]
+    pub fn reads_run_time_local(&self, expr: ExprId) -> bool {
+        Reads::local(self, expr).is_some()
+    }
+}
+
 impl Visitor for Reads {
     fn expr(&mut self, hir: &Hir, expr: ExprId) {
         if let ExprKind::Name(_) = hir.exprs[expr].kind {

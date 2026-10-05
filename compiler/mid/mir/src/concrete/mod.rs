@@ -59,6 +59,7 @@ impl Concrete {
             .env(cx)
             .ok_or(Unready::Unevaluated { at: i.f.literal.expr.origin, why: Unevaluated::Absent })?;
         body.evaluate(&env)?;
+        body.compile_time_arguments(&env)?;
         body.propagate(&env, &i.args);
         body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
         body.covered(&env, cx.get::<CoverageOf>(&()), i);
@@ -106,6 +107,27 @@ impl Body {
                 let Some(value) = stmt.value.compile_time(env) else { continue };
                 let value = value.map_err(|why| Unready::Unevaluated { at: stmt.origin, why })?;
                 stmt.value = Rvalue::Use(Operand::Const(value));
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether every `$` argument of a call is known here: one reading a local the body computes
+    /// when it runs is passed only to a compile-time call, which binds it, never to a call in
+    /// code generated.
+    fn compile_time_arguments(&self, env: &Env<'_, '_>) -> Result<(), Unready> {
+        let constants = self.constants();
+        let unknown = |operand: &Operand| match operand {
+            Operand::Const(_) => false,
+            Operand::Place(place) => {
+                self.locals[place.local].name.is_some() || constants[place.local].is_none()
+            }
+        };
+        for stmt in self.blocks.iter().flat_map(|(_, b)| &b.stmts) {
+            let Rvalue::Call { callee: Operand::Const(callee), args } = &stmt.value else { continue };
+            let Some(comptime) = Callable::of(callee.clone()).and_then(|c| c.comptime(env)) else { continue };
+            if comptime.iter().zip(args).any(|(&c, arg)| c && unknown(arg)) {
+                return Err(Unready::Unevaluated { at: stmt.origin, why: Unevaluated::Runtime });
             }
         }
         Ok(())

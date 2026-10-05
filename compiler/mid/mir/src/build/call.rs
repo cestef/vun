@@ -12,6 +12,7 @@ use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
 use vun_sema::typeck::Operation;
+use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::{Builder, Unbuilt};
@@ -136,6 +137,9 @@ impl Builder<'_, '_, '_> {
                 let quote = Rvalue::Quote { expr, at: self.stepped() };
                 self.typed_temp(quote, self.type_of(expr).map(TyKind::code), origin)
             }
+            // What reads a local of this body has its value only where the body runs, which a
+            // compile-time call binds to the parameter.
+            Passed::Known { expr, ty } if self.known_only_when_running(expr, ty) => self.operand(expr)?,
             Passed::Known { expr, ty } => {
                 self.typed_temp(self.comptime(expr, ty), self.type_of(expr).or(ty), origin)
             }
@@ -146,6 +150,14 @@ impl Builder<'_, '_, '_> {
                 self.temp(Rvalue::Aggregate { kind: Aggregate::Tuple, parts }, origin)
             }
         })
+    }
+
+    /// Whether the `$` argument `expr` reads a local this body computes when it runs: one
+    /// compile-time evaluation cannot give a value, though a local holding a type or a constant
+    /// it can.
+    fn known_only_when_running(&self, expr: ExprId, ty: Option<Ty>) -> bool {
+        self.env().reads_run_time_local(expr)
+            && matches!(self.env().eval_as(expr, ty), Err(Unevaluated::Runtime))
     }
 
     /// `frame.resume()` or `frame.end()` on a frame, which answers its interface's `resume` and

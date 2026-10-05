@@ -1,0 +1,25 @@
+//! A call of a function whose `$` parameters take run-time locals of the function being
+//! evaluated at compile time is evaluated with the values those locals hold there.
+
+has := ($A: type) -> bool {
+    for t in [u8, u16] {
+        if lang.meta.same(type, t, A) { return true; }
+    }
+    false
+};
+
+pick := () -> u32 {
+    $if has(u16) { 1 } else { 2 }
+};
+
+stmt := () -> u32 {
+    mut n: u32 = 0;
+    $if has(u16) { n = 1; }
+    n
+};
+
+#[test]
+chosen := () {
+    assert(pick() == 1);
+    assert(stmt() == 1);
+};

@@ -3,6 +3,7 @@
 use crate::common::Fixture;
 use vun_diag::errors;
 
+mod arguments;
 mod control;
 mod embed;
 mod reports;
