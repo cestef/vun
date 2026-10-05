@@ -261,6 +261,11 @@ io := struct {
     unwritable_file := diag.Diag{};
 };
 
+/// The API documentation of packages (spec 12, section 7).
+doc := struct {
+    foreign_output := diag.Diag{};
+};
+
 /// The command line (spec 12, section 7).
 cli := struct {
     unknown_command := diag.Diag{};

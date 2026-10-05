@@ -429,7 +429,7 @@ package's directory, and with none the package around the current directory, its
 | `vun fix [path] [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
-| `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7) |
+| `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7); it writes only into a directory that is empty, absent or marked `.vun-doc` by an earlier run (`doc.foreign_output`), so a site's own `index.html` is never overwritten |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |

@@ -121,3 +121,36 @@ build := (b: &mut std.build.Build) {};
     assert_eq!(built_with(&dir, &[]), Outcome::Failure);
     assert_eq!(built_with(&dir, &["std.lints.naming.case=warn"]), Outcome::Success);
 }
+
+/// `vun doc <package> -o <out>`, its outcome.
+fn documented(package: &std::path::Path, out: &std::path::Path) -> Outcome {
+    let argv = ["doc", package.to_str().unwrap(), "-o", out.to_str().unwrap()].map(str::to_owned);
+    let (mut session, mut stdout, mut stderr) = (Session::new(), Vec::new(), Vec::new());
+    PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut stdout, &mut stderr)).unwrap()
+}
+
+#[test]
+fn the_documentation_is_written_only_where_it_owns_the_directory() {
+    let dir = Scratch::new("doc-output");
+    let manifest = "\
+package := .{
+    .name = \"lone\",
+    .id = 0x0000_0000_0000_0f03,
+    .version = \"0.0.0\",
+    .edition = 2026,
+    .include = .{ \"build.vun\", \"lone.vun\" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {};
+";
+    dir.write("pkg/build.vun", manifest);
+    dir.write("pkg/lone.vun", "WriteAll := () -> u8 { 0 };\n");
+    let package = dir.join("pkg");
+    let landing = dir.write("site/index.html", "mine");
+    let (ours, foreign) = (dir.join("ours"), dir.join("site"));
+    assert_eq!(documented(&package, &foreign), Outcome::Failure);
+    assert_eq!(std::fs::read_to_string(landing).unwrap(), "mine");
+    assert_eq!(documented(&package, &ours), Outcome::Success);
+    assert_eq!(documented(&package, &ours), Outcome::Success);
+}

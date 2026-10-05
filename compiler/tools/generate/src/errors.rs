@@ -25,8 +25,10 @@ pub(crate) const GENERATOR: Generator = Generator {
     keeps: &[],
 };
 
-/// The module listing every diagnostic and its explanation page.
+/// The module listing every diagnostic.
 const ALL_MODULE: &str = "all";
+/// The module giving each diagnostic's explanation page.
+const PAGES_MODULE: &str = "pages";
 
 const EMPTY: DiagId = DiagId::new("generate.errors.empty");
 
@@ -78,10 +80,14 @@ fn emit(sources: &[Source<'_>]) -> Read<Vec<Module>> {
         pub const DECLARED_IN: &str = #declared_in;
         #[doc = #all_doc]
         pub const ALL: &[DiagId] = &[#(#names),*];
+    };
+    let pages = quote! {
+        use crate::DiagId;
         /// The explanation page of each diagnostic, relative to the library.
         pub const EXPLANATIONS: &[(DiagId, &str)] = &[#(#pages),*];
     };
     modules.push(Module::sibling(ALL_MODULE.to_owned(), &all));
+    modules.push(Module::sibling(PAGES_MODULE.to_owned(), &pages));
     Ok(modules)
 }
 

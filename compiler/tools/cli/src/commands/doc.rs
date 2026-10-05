@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use vun_build::layout::MANIFEST;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
+use vun_diag::{Diagnostic, Msg, errors};
 use vun_doc::Docs;
 use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
@@ -26,6 +27,8 @@ const OUTPUT: Param = Param::option("output")
     .values(Values::Path(PathKind::Dir));
 /// The directory under the work directory the site is written to.
 const DOCS: &str = "doc";
+/// The file that marks a directory as one `vun doc` writes in.
+const STAMP: &str = ".vun-doc";
 
 pub(super) const DOC: Command<Session> = Command::run("doc", "write the API documentation of packages", doc)
     .params(&[PACKAGES, DEPS, LIBRARY, OUTPUT])
@@ -37,6 +40,33 @@ pub(super) const DOC: Command<Session> = Command::run("doc", "write the API docu
             about: "document the project and the toolchain's library, for the site to serve",
         },
     ]);
+
+/// The directory the documentation is written to.
+struct Output(PathBuf);
+
+impl Output {
+    /// Whether the documentation may be written here: the directory is absent, empty or stamped.
+    fn open(&self) -> io::Result<bool> {
+        match std::fs::read_dir(&self.0) {
+            Ok(mut entries) => Ok(entries.next().is_none() || self.0.join(STAMP).exists()),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(true),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn refusal(&self) -> Diagnostic {
+        let msg = Msg::new()
+            .code(self.0.display().to_string())
+            .text(" holds files ")
+            .code("vun doc")
+            .text(" did not write");
+        Diagnostic::error(errors::DOC_FOREIGN_OUTPUT, msg).help(
+            Msg::new()
+                .text("write the documentation into an empty directory, such as ")
+                .code("site/public/api"),
+        )
+    }
+}
 
 /// Where the documentation was written.
 struct Documented {
@@ -85,6 +115,13 @@ fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     }
     let work = session.work(&packages[0].join(MANIFEST));
     let dir = args.value(&OUTPUT).map_or_else(|| work.join(DOCS), PathBuf::from);
+    let output = Output(dir);
+    if !output.open()? {
+        session.diag.error(output.refusal());
+        return Ok(session.outcome());
+    }
+    let dir = output.0;
+    dir.join(STAMP).put("")?;
     for written in docs.site() {
         dir.join(&written.path).put(written.contents)?;
     }

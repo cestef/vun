@@ -68,5 +68,7 @@ pub const tool: Item = Item::new(&["lang", "errors", "tool"]);
 pub const toolchain: Item = Item::new(&["lang", "errors", "toolchain"]);
 /// Reading and writing files.
 pub const io: Item = Item::new(&["lang", "errors", "io"]);
+/// The API documentation of packages (spec 12, section 7).
+pub const doc: Item = Item::new(&["lang", "errors", "doc"]);
 /// The command line (spec 12, section 7).
 pub const cli: Item = Item::new(&["lang", "errors", "cli"]);
