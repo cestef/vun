@@ -141,7 +141,8 @@ impl Typer<'_, '_, '_> {
             None => (None, object.ty),
         };
         let elem = ty.items()?;
-        if written.ty.interval().is_some() {
+        // An index of an empty type, such as the one of `for i in 0..0`, is never read: any item.
+        if written.ty.interval().is_some() || written.ty.is_empty() {
             return Some(Known { ty: elem, stage });
         }
         if written.ty.bounds().is_none() {

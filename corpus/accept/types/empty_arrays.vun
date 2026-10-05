@@ -1,0 +1,23 @@
+//! Arrays and slices of no items compare and order like any others: the loop over their items runs
+//! never, and its index, of an empty type, is never read (spec 02, section 3).
+
+less := (a: &[u8], b: &[u8]) -> bool { a < b };
+equal := (a: &[u8], b: &[u8]) -> bool { a == b };
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    none: [0]u32 = [];
+    other: [0]u32 = [];
+    if none == other and equal("", "") and less("", "a") and !less("a", "") and !less("", "") { .ok } else {
+        .code(1)
+    }
+};
+
+#[test]
+nothing_equals_nothing := () {
+    a: [0]u8 = [];
+    b: [0]u8 = [];
+    std.testing.assert(a == b);
+    std.testing.assert(!(a < b) and a <= b);
+};

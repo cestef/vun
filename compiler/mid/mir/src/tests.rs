@@ -16,7 +16,7 @@ fn body(origins: &OriginTable, edit: impl FnOnce(&mut Body)) -> Body {
     let stmt = Stmt { place: Place::of(ret), value: Rvalue::Use(Operand::Place(Place::of(param))), origin };
     let mut blocks = IndexVec::new();
     blocks.push(Block { stmts: vec![stmt], term: Terminator { kind: TerminatorKind::Return, origin } });
-    let mut body = Body { locals, params: vec![param], ret, blocks, origin };
+    let mut body = Body { locals, params: vec![param], ret, blocks, origin, coroutine: false };
     edit(&mut body);
     body
 }

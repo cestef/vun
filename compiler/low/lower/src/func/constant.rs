@@ -68,7 +68,10 @@ impl Lowering<'_, '_> {
         base: u64,
         at: OriginId,
     ) -> Result<(), Unlowered> {
-        let unsupported = || Unlowered::unsupported(at, Form::Constant);
+        let unsupported = || {
+            vun_trace::tracing::debug!(value = ?value, %ty, "a constant that cannot be encoded as this type");
+            Unlowered::unsupported(at, Form::Constant)
+        };
         let cx = self.types.cx;
         if let (Constant::Int(n), Some((int, _))) = (value, self.types.int(ty)) {
             self.int(n, int.bytes(0), &mut out.bytes, base);

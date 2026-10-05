@@ -66,7 +66,7 @@ impl Builder<'_, '_, '_> {
                 let typed = self.typed().ok_or(Unbuilt::at(origin))?;
                 let known = typed.types.get(index).map(|k| k.ty);
                 let run = known.is_some_and(|t| t.bounds().is_some());
-                if !run && known.is_none_or(|t| t.interval().is_none()) {
+                if !run && known.is_none_or(|t| t.interval().is_none() && !t.is_empty()) {
                     return Err(Unbuilt::at(origin));
                 }
                 let place = self.through_borrows(*object)?;

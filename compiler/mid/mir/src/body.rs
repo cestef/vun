@@ -27,6 +27,9 @@ pub struct Body {
     pub ret: Local,
     pub blocks: IndexVec<BlockId, Block>,
     pub origin: OriginId,
+    /// Whether this is a coroutine function's body, though folding what is known when compiling
+    /// may have left it no `yield`: `bounds.empty(never, ..)` ends the loop that yields.
+    pub coroutine: bool,
 }
 
 impl Body {
@@ -80,13 +83,13 @@ impl Body {
         let value = Rvalue::Aggregate { kind: Aggregate::Variant { ty, name }, parts };
         let stmts = vec![Stmt { place: Place::of(ret), value, origin }];
         let block = Block { stmts, term: Terminator { kind: TerminatorKind::Return, origin } };
-        Some(Self { locals, params, ret, blocks: IndexVec::from(vec![block]), origin })
+        Some(Self { locals, params, ret, blocks: IndexVec::from(vec![block]), origin, coroutine: false })
     }
 
-    /// Whether this is a coroutine function's body: one that yields.
+    /// Whether this is a coroutine function's body: its frames are what a call gives.
     #[must_use]
     pub fn suspends(&self) -> bool {
-        self.blocks.iter().any(|(_, b)| matches!(b.term.kind, TerminatorKind::Yield { .. }))
+        self.coroutine
     }
 }
 

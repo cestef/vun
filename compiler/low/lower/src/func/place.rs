@@ -139,6 +139,11 @@ impl FnLower<'_, '_, '_> {
         };
         let stride = self.l.types.shape(item, self.at)?.layout.size;
         let index_ty = self.ty(local)?;
+        // An index of an empty type, the loop variable over no items, is never held: nothing runs
+        // that reaches this item, so it is placed at the start.
+        if index_ty.is_empty() {
+            return Ok(Reached { addr: from.addr, ty: item, len: None });
+        }
         // Bounds select a run of the items.
         if index_ty.bounds().is_some() {
             let bounds = self.local(local).ok_or_else(unsupported)?;

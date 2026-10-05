@@ -186,7 +186,9 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
                 })?;
             }
             self.at = block.term.origin;
-            self.term(id, &block.term.kind)?;
+            self.term(id, &block.term.kind).inspect_err(|u| {
+                vun_trace::tracing::debug!(block = id.index(), why = %u, "a terminator unlowered");
+            })?;
         }
         Ok(())
     }

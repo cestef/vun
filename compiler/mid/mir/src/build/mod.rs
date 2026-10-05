@@ -205,7 +205,14 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
         let end = hir.blocks[*body].tail.map_or(hir.blocks[*body].origin, |t| hir.exprs[t].origin);
         b.assign(Place::of(ret), Rvalue::Use(result), end);
         b.blocks[b.current].term = Terminator { kind: TerminatorKind::Return, origin: end };
-        let mut body = Body { locals: b.locals, params: args, ret, blocks: b.blocks, origin };
+        let mut body = Body {
+            locals: b.locals,
+            params: args,
+            ret,
+            blocks: b.blocks,
+            origin,
+            coroutine: hir.suspends(literal),
+        };
         body.prune();
         // A coroutine's body ends with what its frame gives when done, not the frame.
         let result = signature.map(|s| s.result);
