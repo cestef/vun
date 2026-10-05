@@ -27,6 +27,8 @@ import {helix} from 'codemirror-helix';
 
 import {applyFix, caretFixes, published} from './fixes';
 import {coloredBlocks, highlighting} from './highlight';
+import {markLines, pointedLines} from './lines';
+import {type Pointing, type Span, focusProblem, showSpans, spansExtension, spansField} from './spans';
 
 // The document as the server names it.
 export const URI = 'file:///main.vun';
@@ -94,12 +96,16 @@ export class Editor {
   private client: LSPClient | undefined;
   // Helix's keys and modes, or none.
   private readonly keys = new Compartment();
+  private readonly spans: ReturnType<typeof spansField>;
 
   // `changed` is called with the text after each edit, `run` on Ctrl or Cmd and Enter.
-  constructor(parent: HTMLElement, code: string, changed: (code: string) => void, run: () => void) {
+  constructor(parent: HTMLElement, code: string, changed: (code: string) => void, run: () => void, pointing: Pointing) {
+    this.spans = spansField(pointing);
     const extensions: Extension[] = [
       Prec.highest(keymap.of([{key: 'Mod-Enter', run: () => (run(), true)}])),
       this.keys.of(PLAIN),
+      spansExtension(pointing, this.spans, (step) => this.step(step)),
+      pointedLines,
       setup,
       blinking,
       keymap.of([indentWithTab]),
@@ -139,6 +145,38 @@ export class Editor {
   // Edits with Helix's keys and modes, or with the usual ones: a block caret outside insert mode.
   helix(on: boolean) {
     this.view.dispatch({effects: this.keys.reconfigure(on ? HELIX : PLAIN)});
+  }
+
+  // The spans a build's problems point at, replacing the last build's.
+  show(spans: Span[]) {
+    this.view.dispatch({effects: showSpans.of(spans)});
+  }
+
+  // Draws the spans of `problem` stronger; none with `undefined`.
+  focus(problem: number | undefined) {
+    this.view.dispatch({effects: focusProblem.of(problem)});
+  }
+
+  // Marks the lines `numbers` name, none with an empty list.
+  point(numbers: number[]) {
+    this.view.dispatch({effects: markLines.of(numbers)});
+  }
+
+  // The primary spans, in the order of the text.
+  private primaries(): Span[] {
+    return this.view.state.field(this.spans).held.spans.filter((span) => span.role === 'primary').sort((a, b) => a.from - b.from);
+  }
+
+  // Moves the caret to the next problem's primary span after it, or the one before, wrapping.
+  step(direction: 1 | -1): boolean {
+    const all = this.primaries();
+    if (all.length === 0) return false;
+    const at = this.view.state.selection.main.from;
+    const ahead = direction === 1 ? all.find((span) => span.from > at) : [...all].reverse().find((span) => span.from < at);
+    const span = ahead ?? (direction === 1 ? all[0] : all[all.length - 1]);
+    this.select(span.from, span.to);
+    this.focus(span.problem);
+    return true;
   }
 
   // Selects the text from `from` to `to` and shows it.

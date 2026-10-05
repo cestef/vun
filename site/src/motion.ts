@@ -8,6 +8,9 @@ import {REDUCED} from './svg';
 
 export type Ease = (t: number) => number;
 
+// A move, resolved with whether it played through: false when another took its place.
+export type Move = Promise<boolean>;
+
 // The easings of Motion Canvas the scenes use.
 export const ease = {
   linear: (t: number) => t,
@@ -57,13 +60,13 @@ export class Value<T> {
     this.apply(value);
   }
 
-  // Moves to `target` over `seconds`; stopped by the next `to` or `set`.
-  to(target: T, seconds: number, easing: Ease = ease.inOutCubic): Promise<void> {
+  // Moves to `target` over `seconds`; stopped by the next `to` or `set`. Says whether it got there.
+  to(target: T, seconds: number, easing: Ease = ease.inOutCubic): Move {
     this.moving?.cancel();
     if (REDUCED.matches || seconds <= 0) {
       this.moving = undefined;
       this.show(target);
-      return Promise.resolve();
+      return Promise.resolve(true);
     }
     const from = this.current;
     return new Promise((done) => {
@@ -75,14 +78,14 @@ export class Value<T> {
           if (start < 0) start = now;
           const t = Math.min(1, (now - start) / (seconds * 1000));
           this.show(mix(from, target, easing(t)));
-          if (t === 1) done();
+          if (t === 1) done(true);
           return t < 1;
         },
       };
       this.moving = {
         cancel: () => {
           live = false;
-          done();
+          done(false);
         },
       };
       running.add(tween);
@@ -90,18 +93,43 @@ export class Value<T> {
     });
   }
 
-  // Moves through each `[target, seconds, easing]` in turn.
-  async through(...steps: [T, number, Ease?][]): Promise<void> {
-    for (const [target, seconds, easing] of steps) await this.to(target, seconds, easing);
+  // Moves through each `[target, seconds, easing]` in turn, and stops where another move cut it.
+  async through(...steps: [T, number, Ease?][]): Move {
+    for (const [target, seconds, easing] of steps) if (!(await this.to(target, seconds, easing))) return false;
+    return true;
   }
 }
 
-export const wait = (seconds: number) =>
-  REDUCED.matches ? Promise.resolve() : new Promise<void>((done) => setTimeout(done, seconds * 1000));
+export const wait = (seconds: number): Move =>
+  REDUCED.matches ? Promise.resolve(true) : new Promise((done) => setTimeout(() => done(true), seconds * 1000));
 
-export const after = async (seconds: number, then: () => Promise<unknown>) => {
+// Plays `then` after `seconds`, unless a newer move of its `Latest` came first.
+export const after = async (seconds: number, then: () => Promise<unknown>, live: () => boolean = () => true): Move => {
   await wait(seconds);
-  await then();
+  return live() && (await then()) !== false;
 };
 
-export const all = (...moves: Promise<unknown>[]) => Promise.all(moves).then(() => undefined);
+export const all = async (...moves: Promise<unknown>[]): Move => (await Promise.all(moves)).every((done) => done !== false);
+
+// The newest of a kind of move: each `begin` ends the one before, which asks its token between steps.
+export class Latest {
+  private epoch = 0;
+
+  begin(): () => boolean {
+    const mine = ++this.epoch;
+    return () => mine === this.epoch;
+  }
+}
+
+// Resolves when the page is shown: a hidden tab runs no frames, so nothing is queued for it.
+export const visible = () =>
+  document.hidden
+    ? new Promise<void>((done) => {
+        const shown = () => {
+          if (document.hidden) return;
+          document.removeEventListener('visibilitychange', shown);
+          done();
+        };
+        document.addEventListener('visibilitychange', shown);
+      })
+    : Promise.resolve();

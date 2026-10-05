@@ -6,7 +6,7 @@
 
 import {MOODS, type MoodName} from '../../assets/motion/src/mascot/moods';
 import {type Face, MASCOT, type Point, eyePath, mouthPath, outline} from '../../assets/motion/src/mascot/shape';
-import {Value, all, ease} from './motion';
+import {type Move, Value, all, ease} from './motion';
 import {Node} from './node';
 import {make} from './svg';
 
@@ -20,6 +20,10 @@ export class Mascot {
   private readonly pose: Node;
   private readonly face: Value<Face>;
   private readonly lids: Value<number>[];
+  // Where the mascot stands on its ground: the height a hop returns to, or an interrupted one.
+  ground = 0;
+  // Whether a hop is in the air.
+  hopping = false;
 
   private readonly eyes: SVGPathElement[];
   private readonly sockets: SVGGElement[];
@@ -67,18 +71,32 @@ export class Mascot {
     this.pose.set({scale: [pose.stretch, 1 / pose.stretch], rotation: pose.lean});
   }
 
-  // Blends into `mood`, blinking over the change of the eyes.
-  feel(mood: MoodName, duration = 0.4): Promise<void> {
+  // Where it stands now is its ground.
+  stand() {
+    this.ground = this.root.place.get().y;
+  }
+
+  // Ends a hop or a squash in progress, returning to the ground and opening the eyes.
+  settle(duration = 0.12): Move {
+    return all(
+      this.root.to({y: this.ground}, duration, ease.outCubic),
+      this.squash.to({scale: [1, 1]}, duration, ease.outCubic),
+      ...this.lids.map((lid) => lid.to(1, duration, ease.outCubic)),
+    );
+  }
+
+  // Blends into `mood`, blinking over the change of the eyes unless `blinking` is off.
+  feel(mood: MoodName, duration = 0.4, blinking = true): Move {
     const {face, pose} = MOODS[mood];
     return all(
       this.face.to(face, duration, ease.inOutCubic),
-      this.blink(duration),
+      blinking ? this.blink(duration) : Promise.resolve(true),
       this.pose.place.to({...this.pose.place.get(), scale: [pose.stretch, 1 / pose.stretch]}, duration, ease.outBack),
       this.pose.to({rotation: pose.lean}, duration, ease.inOutCubic),
     );
   }
 
-  blink(duration = 0.3): Promise<void> {
+  blink(duration = 0.3): Move {
     return all(
       ...this.lids.map((lid) =>
         lid.through([SHUT, duration * 0.35, ease.inCubic], [SHUT, duration * 0.15], [1, duration * 0.5, ease.outCubic]),
@@ -87,12 +105,12 @@ export class Mascot {
   }
 
   // Looks towards `look`, in units of the view box.
-  glance(look: Point, duration = 0.3): Promise<void> {
+  glance(look: Point, duration = 0.3): Move {
     return this.face.to({...this.face.get(), look}, duration, ease.inOutCubic);
   }
 
   // Squashes as if landing, `depth` of its height.
-  land(depth = 0.14): Promise<void> {
+  land(depth = 0.14): Move {
     return this.squash.place.through(
       [{...this.squash.place.get(), scale: [1 + depth, 1 - depth]}, 0.1, ease.outCubic],
       [{...this.squash.place.get(), scale: [1 - depth / 3, 1 + depth / 3]}, 0.14, ease.inOutCubic],
@@ -100,23 +118,33 @@ export class Mascot {
     );
   }
 
-  // A hop of `height` units: crouches, rises stretched, falls and lands.
-  async hop(height: number, air = 0.26): Promise<void> {
-    const {y} = this.root.place.get();
-    await this.squash.to({scale: [1.1, 0.9]}, 0.08, ease.outCubic);
-    await all(
+  // A hop of `height` units: crouches, rises stretched, falls and lands; false when cut short.
+  async hop(height: number, air = 0.2): Move {
+    const {ground} = this;
+    this.hopping = true;
+    try {
+      return await this.leap(height, air, ground);
+    } finally {
+      this.hopping = false;
+    }
+  }
+
+  private async leap(height: number, air: number, ground: number): Move {
+    if (!(await this.squash.to({scale: [1.1, 0.9]}, 0.05, ease.outCubic))) return false;
+    const up = await all(
       this.squash.place.through(
         [{...this.squash.place.get(), scale: [0.93, 1.08]}, air * 0.6, ease.outCubic],
         [{...this.squash.place.get(), scale: [1, 1]}, air * 0.4],
       ),
-      this.root.to({y: y - height}, air, ease.outCubic),
+      this.root.to({y: ground - height}, air, ease.outCubic),
     );
-    await all(this.root.to({y}, air * 0.8, ease.inCubic), this.squash.to({scale: [0.95, 1.06]}, air * 0.8));
-    await this.land();
+    if (!up) return false;
+    const down = await all(this.root.to({y: ground}, air * 0.8, ease.inCubic), this.squash.to({scale: [0.95, 1.06]}, air * 0.8));
+    return down && this.land();
   }
 
   // Swells and settles once, slowly, as in sleep.
-  breathe(): Promise<void> {
+  breathe(): Move {
     return this.squash.place.through(
       [{...this.squash.place.get(), scale: [1.04, 0.96]}, 0.8, ease.inOutSine],
       [{...this.squash.place.get(), scale: [1, 1]}, 0.8, ease.inOutSine],

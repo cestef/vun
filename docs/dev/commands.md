@@ -65,7 +65,8 @@ and the hash of its tree beside it), writes `release.json` (`cargo xtask release
 The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs
 from a directory laid out as a forge's (`releases/download/<version>/`,
 `releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at
-the root installs the latest release for a first time. From a checkout instead of a release,
+the root installs the latest release for a first time; it checks the archive against the release's
+signed `SHA256SUMS` first (`VUN_INSTALL_KEY` for a mirror's key). From a checkout instead of a release,
 `cargo xtask install` builds `vun` (the `dist` profile; `--profile release` or `--profile dev`
 for a faster build) and installs it as the toolchain of the workspace's version, replacing that
 version and making it the default `~/.local/bin/vun` links to.
@@ -106,8 +107,14 @@ key: `openssl pkeyutl -sign -rawin -inkey key.pem -in release.json -out release.
 
 ## The site and its playground
 
-`site/` is a Vite project (pnpm): the landing page and the playground, which runs the compiler
-built for WASI in the browser. Build the compiler first, on a remote, and copy it back:
+`site/` is a Vite project (pnpm): the landing page (`/`), the playground (`/play/`) and the course
+(`/learn/`, lessons in `site/lessons/`, checked by `pnpm check:lessons`), which run the compiler
+built for WASI in the browser. A page is a directory with an `index.html`, so addresses carry no
+`.html`; the site's plugin redirects `/play` to `/play/` in the dev and preview servers as a static
+host does, and serves the repository's `install.sh` at `/install.sh` (the landing page shows it
+as download, read, run, never piped into a shell). Icons are one table (`src/icons.ts`, declared
+in pages as `data-icon`) and keys are one table (`src/keys.ts`, `data-action` on buttons; `F1`
+lists them). Build the compiler first, on a remote, and copy it back:
 
 ```sh
 cargo xtask remote --host am3.wg -- cargo build -p vun-cli --target wasm32-wasip1 --profile dist

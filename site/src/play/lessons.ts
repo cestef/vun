@@ -41,10 +41,64 @@ export interface Outcome {
 }
 
 // Lines without the space at their ends, and the text without the lines at its ends.
-const tidy = (text: string) => text.replace(/[ \t]+$/gm, '').trim();
+export const tidy = (text: string) => text.replace(/[ \t]+$/gm, '').trim();
+
+// How one thing a lesson asks stands after a run: not asked of yet, met, or missed, and what the
+// run did instead.
+export type Standing = 'pending' | 'met' | 'missed';
+
+export interface Verdict {
+  // What is asked, as a line.
+  name: string;
+  standing: Standing;
+  // What the run did instead, when it missed.
+  found?: string;
+  // For output of several lines, how each line stands, so that a long output is one row and a strip.
+  cells?: Standing[];
+}
+
+const quoted = (text: string) => `\`${text}\``;
+
+// Each thing `expect` asks, judged by `outcome`; every one is pending before a run.
+export function verdicts(expect: Expect, outcome: Outcome | undefined): Verdict[] {
+  const judged = (name: string, ok: boolean | undefined, found?: string): Verdict => ({
+    name,
+    standing: ok === undefined ? 'pending' : ok ? 'met' : 'missed',
+    ...(ok === false && found !== undefined ? {found} : {}),
+  });
+  if (expect.error !== undefined) {
+    const refused = outcome === undefined ? undefined : !outcome.built;
+    const ids = outcome?.diagnostics.filter((d) => d.severity === 'error').map((d) => d.id) ?? [];
+    return [
+      judged('the compiler refuses the program', refused, 'it built'),
+      judged(`with ${quoted(expect.error)}`, refused === false ? undefined : outcome && ids.includes(expect.error), ids.length > 0 ? `it said ${ids.map(quoted).join(', ')}` : 'it said nothing'),
+    ];
+  }
+  const built = outcome?.built;
+  const ends = expect.exit ?? 0;
+  const ended = outcome === undefined || !outcome.built ? undefined : outcome.trap === undefined && outcome.exit === ends;
+  const list = [
+    judged('it builds', built, `${outcome?.diagnostics.filter((d) => d.severity === 'error').length ?? 0} error(s)`),
+    judged(ends === 0 ? 'it ends normally' : `it exits with ${ends}`, ended, outcome?.trap === undefined ? `it exited with ${outcome?.exit}` : `it trapped: ${outcome.trap}`),
+  ];
+  if (expect.output === undefined) return list;
+  const wanted = tidy(expect.output).split('\n');
+  const got = outcome === undefined || !outcome.built ? undefined : tidy(outcome.output).split('\n').filter((line, i, all) => line !== '' || all.length > 1);
+  const name = wanted.length === 1 ? `prints ${quoted(wanted[0])}` : `prints the ${wanted.length} lines asked for`;
+  if (got === undefined) return [...list, {name, standing: 'pending', ...(wanted.length > 1 ? {cells: wanted.map((): Standing => 'pending')} : {})}];
+  const first = wanted.findIndex((line, i) => got[i] !== line);
+  const extra = got.length - wanted.length;
+  const ok = first < 0 && extra <= 0;
+  const found =
+    first >= 0
+      ? got[first] === undefined
+        ? `line ${first + 1}: nothing was printed, not ${quoted(wanted[first])}`
+        : `line ${first + 1}: it printed ${quoted(got[first])}, not ${quoted(wanted[first])}`
+      : `${extra} extra line(s) after the last one asked for`;
+  const cells = wanted.length === 1 ? undefined : [...wanted.map((line, i): Standing => (got[i] === line ? 'met' : 'missed')), ...Array.from({length: Math.max(0, extra)}, (): Standing => 'missed')];
+  return [...list, {name, standing: ok ? 'met' : 'missed', ...(ok ? {} : {found}), ...(cells === undefined ? {} : {cells})}];
+}
 
 export function judge(expect: Expect, outcome: Outcome): boolean {
-  if (expect.error !== undefined) return !outcome.built && outcome.diagnostics.some((d) => d.severity === 'error' && d.id === expect.error);
-  if (!outcome.built || outcome.trap !== undefined || outcome.exit !== (expect.exit ?? 0)) return false;
-  return expect.output === undefined || tidy(outcome.output) === tidy(expect.output);
+  return verdicts(expect, outcome).every((verdict) => verdict.standing === 'met');
 }

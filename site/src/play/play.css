@@ -1,24 +1,4 @@
-/* The playground: the source beside what building and running it reported, one screen high. */
-
-body.play { height: 100svh; }
-.playground { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 1520px; margin: 0 auto; padding: 4px 16px 16px; }
-
-.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
-.tools button { padding: 6px 12px; border-radius: 9px; color: var(--muted); transition: color 0.15s, background-color 0.15s, transform 0.15s; }
-.tools button:hover { color: var(--ink); background: var(--echo); }
-.tools button:active { transform: scale(0.96); }
-.tools .helix[aria-pressed='true'] { color: var(--ink); background: var(--echo); }
-
-.run { display: flex; align-items: center; gap: 10px; }
-.tools .run { color: var(--background); background: var(--accent); font-weight: 600; }
-.tools .run:hover { color: var(--background); background: var(--accent); filter: brightness(1.06); }
-.tools .run.running { background: var(--ink); }
-.run:disabled { opacity: 0.5; cursor: progress; }
-.run kbd { font: inherit; font-size: 11px; font-weight: 400; opacity: 0.75; }
-
-.panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; }
-.pane { min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--code-border); border-radius: 16px; background: var(--code-background); overflow: hidden; }
-.pane.source > .cm-editor { flex: 1; min-height: 0; }
+/* The editor's own look: its tools, colors, caret and tooltips. The layout around it is `workbench.css`. */
 
 /* Code colored by the grammar: the light color inline, the dark one as `--shiki-dark` */
 @media (prefers-color-scheme: dark) {
@@ -54,117 +34,9 @@ pre.shiki { margin: 0; padding: 0; background: transparent !important; white-spa
 .cm-fixes button:hover { border-color: var(--code-string); }
 .cm-fixes kbd { font: inherit; font-size: 11px; color: var(--code-comment); }
 
-/* The report */
-.report { flex: 1; min-height: 0; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; line-height: 1.5; color: var(--code-text); }
-
-.diagnostic { flex: none; padding: 12px 14px; border: 1px solid var(--code-border); border-left: 3px solid var(--code-comment); border-radius: 10px; background: var(--code-bar); animation: arrive 0.2s ease-out; }
-.diagnostic.error { border-left-color: var(--accent); }
-.diagnostic.warning { border-left-color: var(--code-keyword); }
-.diagnostic header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; color: var(--ink); font-weight: 600; }
-.diagnostic .message { flex: 1; min-width: 12ch; }
-.severity { padding: 0 6px; border-radius: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; background: var(--echo); color: var(--code-comment); }
-.severity.error { background: var(--accent); color: var(--background); }
-.severity.warning { background: var(--code-keyword); color: var(--background); }
-.diagnostic .id { font-size: 11px; font-weight: 400; color: var(--code-comment); border-bottom: 1px dashed currentColor; }
-.diagnostic .id:not(:disabled):hover, .diagnostic .id.open { color: var(--accent); }
-.diagnostic .id:disabled { border-bottom: none; cursor: default; }
-
-code.part { padding: 0 0.3em; border-radius: 4px; background: var(--echo); font-weight: inherit; }
-code.part.type { color: var(--code-literal); }
-
-.place { margin: 4px 0 0; color: var(--code-comment); font-size: 11.5px; }
-button.place:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-
-.excerpt { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; margin: 8px 0 4px; padding: 8px 10px; border-radius: 8px; background: var(--code-background); overflow-x: auto; white-space: pre; }
-.excerpt .number { color: var(--code-comment); text-align: right; user-select: none; }
-.range { border-radius: 3px; text-decoration: underline 2px; text-underline-offset: 4px; }
-.range.primary { text-decoration-color: var(--code-comment); }
-.range.primary.error { text-decoration-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-.range.primary.warning { text-decoration-color: var(--code-keyword); background: color-mix(in srgb, var(--code-keyword) 14%, transparent); }
-.range.label { text-decoration-color: var(--code-literal); }
-.excerpt .note { font-size: 11.5px; }
-.excerpt .note::before { content: '└ '; }
-.note.primary.error { color: var(--accent); }
-.note.primary.warning { color: var(--code-keyword); }
-.note.label { color: var(--code-literal); }
-
-.child { margin: 6px 0 0; }
-.child b { color: var(--code-comment); font-weight: 600; }
-.child.help b { color: var(--code-string); }
-
-.fix { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-top: 8px; padding: 5px 10px; border: 1px solid var(--code-border); border-radius: 8px; text-align: left; transition: border-color 0.15s, background-color 0.15s; }
-.fix:not(:disabled):hover { border-color: var(--code-string); background: var(--code-background); }
-.fix .apply { color: var(--code-string); font-weight: 700; }
-.fix:disabled { opacity: 0.55; cursor: default; }
-.fix.applied { opacity: 1; border-color: var(--code-string); }
-.fix.stale { border-color: var(--accent); }
-.safety { font-size: 10.5px; color: var(--code-comment); border: 1px solid var(--code-border); border-radius: 4px; padding: 0 4px; }
-
-.page { margin-top: 10px; padding: 4px 14px; border-radius: 8px; background: var(--code-background); line-height: 1.6; }
-.page h1 { font-size: 14px; }
-.page h2 { font-size: 13px; }
-.page pre.shiki { padding: 8px 0; }
-
-.summary { flex: none; margin: 0; color: var(--code-comment); }
-.summary.built::before { content: '✓ '; color: var(--code-string); }
-.summary.failed::before { content: '✗ '; color: var(--accent); }
-
-.program { flex: none; margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--code-bar); color: var(--ink); font-size: 13px; line-height: 1.45; white-space: pre-wrap; animation: arrive 0.2s ease-out; }
-
-/* The bars under both panes, one alike: the report's status, Helix's mode line and command line */
-.status, .pane .cm-hx-status-panel, .pane .cm-hx-command-panel { margin: 0; padding: 8px 16px; border-top: 1px solid var(--code-border); background: var(--code-bar); font-family: inherit; font-size: 12px; line-height: 1.5; color: var(--code-comment); }
+/* The bars under the editor, one alike: Helix's mode line and command line */
+.pane .cm-hx-status-panel, .pane .cm-hx-command-panel { margin: 0; padding: 8px 16px; border-top: 1px solid var(--code-border); background: var(--code-bar); font-family: inherit; font-size: 12px; line-height: 1.5; color: var(--code-comment); }
 .pane .cm-panels-bottom { border-top: none; }
-/* Helix's command line, while no command is typed and it says nothing */
 .pane .cm-hx-command-panel:not(:has(input, .cm-hx-command-panel-flex > span:last-child:not(:empty))) { display: none; }
 
 @keyframes arrive { from { opacity: 0; transform: translateY(4px); } }
-
-@media (max-width: 760px) {
-  body.play { height: auto; }
-  .stage { min-height: 0; }
-  .panes { grid-template-columns: minmax(0, 1fr); }
-  .pane.source { height: 55svh; }
-  .pane.output { min-height: 40svh; }
-}
-
-/* The guide: one lesson beside the editor, and the way through them */
-.playground { flex-direction: row; align-items: stretch; gap: 16px; }
-.stage { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
-.tools { justify-content: flex-end; }
-
-.guide { flex: none; width: 300px; display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; padding: 4px 4px 4px 0; font-size: 13.5px; line-height: 1.6; scrollbar-width: thin; }
-.guide h1 { margin: 0; font-size: 18px; }
-.guide .text p { margin: 0 0 10px; color: var(--text); }
-.guide .text p:last-child { margin-bottom: 0; }
-.guide a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-
-.steps { display: flex; flex-wrap: wrap; gap: 5px; }
-.steps button { width: 26px; height: 26px; border: 1px solid var(--code-border); border-radius: 50%; font-size: 11.5px; line-height: 1; color: var(--muted); transition: color 0.15s, border-color 0.15s, background-color 0.15s; }
-.steps button:hover { color: var(--ink); border-color: var(--muted); }
-.steps button.done { color: var(--code-string); border-color: var(--code-string); }
-.steps button[aria-selected='true'] { color: var(--background); background: var(--accent); border-color: var(--accent); }
-
-.task { padding: 12px 14px; border: 1px solid var(--code-border); border-radius: 12px; background: var(--code-bar); }
-.task .goal { display: flex; gap: 10px; margin: 0; color: var(--ink); }
-.task .check { flex: none; width: 16px; height: 16px; margin-top: 4px; border: 1.5px solid var(--muted); border-radius: 50%; transition: background-color 0.2s, border-color 0.2s; }
-.task.done .check { border-color: var(--code-string); background: var(--code-string); box-shadow: inset 0 0 0 3px var(--code-bar); }
-.task .hint { margin: 10px 0 0; padding-top: 10px; border-top: 1px dashed var(--code-border); color: var(--muted); }
-.task .expected { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--code-border); color: var(--muted); font-size: 12.5px; }
-.task .expected pre { margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--code-background); color: var(--ink); font: inherit; white-space: pre-wrap; }
-
-.aids { display: flex; align-items: center; gap: 4px; margin-top: auto; padding-top: 4px; font-size: 13px; }
-.aids .space { flex: 1; }
-.aids button { padding: 5px 10px; border-radius: 9px; color: var(--muted); transition: color 0.15s, background-color 0.15s, transform 0.15s; }
-.aids button:hover:not(:disabled) { color: var(--ink); background: var(--echo); }
-.aids button:active:not(:disabled) { transform: scale(0.96); }
-.aids button:disabled { opacity: 0.35; cursor: default; }
-.aids button[hidden] { display: none; }
-.aids .next.ready { color: var(--background); background: var(--accent); font-weight: 600; }
-.aids .next.ready:hover:not(:disabled) { color: var(--background); background: var(--accent); filter: brightness(1.06); }
-
-@media (max-width: 1100px) {
-  .playground { flex-direction: column; }
-  .guide { width: auto; overflow: visible; }
-  .stage { min-height: 70svh; }
-}
-.steps button.done[aria-selected='true'] { box-shadow: 0 0 0 2px var(--background), 0 0 0 3.5px var(--code-string); }

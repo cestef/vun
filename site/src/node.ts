@@ -1,6 +1,6 @@
 // A group placed, turned and scaled about a pivot of its own, as a node of the motion scenes.
 
-import {Value} from './motion';
+import {type Move, Value} from './motion';
 import {make} from './svg';
 
 export interface Place {
@@ -34,7 +34,7 @@ export class Node {
   }
 
   // Moves the part `change` names, keeping the rest.
-  to(change: Partial<Place>, seconds: number, easing?: (t: number) => number): Promise<void> {
+  to(change: Partial<Place>, seconds: number, easing?: (t: number) => number): Move {
     return this.place.to({...this.place.get(), ...change}, seconds, easing);
   }
 

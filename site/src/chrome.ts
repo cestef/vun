@@ -1,6 +1,7 @@
 // What every page has: the mark in the bar, the theme button.
 
 import source from '../../assets/logo/mark/adaptive.svg?raw';
+import {icons} from './icons';
 import {make, read} from './svg';
 import {themed} from './theme';
 
@@ -19,4 +20,5 @@ function mark(): SVGSVGElement {
 export function chrome() {
   for (const slot of document.querySelectorAll('[data-mark]')) slot.replaceWith(mark());
   themed(document.querySelector<HTMLButtonElement>('button.theme'));
+  icons();
 }

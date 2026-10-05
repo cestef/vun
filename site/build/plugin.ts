@@ -5,14 +5,17 @@
 // - `virtual:highlight`: the grammar and themes the playground highlights with.
 // - `virtual:lessons`: the guide of the playground, a tour of the language in `site/lessons`.
 // - `virtual:toolchain`: the build of the compiler served, by the hash of its bytes.
+// - `install.sh`: the repository's installer, served as text for a reader to download and read
+//   before running it; the page never asks anyone to pipe it into a shell.
 // - `play/vun.wasm` and `play/library.json`: the compiler built for WASI and the library it
 //   compiles against, which the playground runs in the browser. The compiler is built with
 //   `cargo build -p vun-cli --target wasm32-wasip1 --profile dist`.
 
 import {createHash} from 'node:crypto';
+import {existsSync} from 'node:fs';
 
 import {parse} from 'smol-toml';
-import type {Plugin} from 'vite';
+import type {Connect, Plugin} from 'vite';
 
 import {highlighting} from './highlight';
 import {lessons} from './lessons';
@@ -52,16 +55,30 @@ const LIBRARY = 'lib';
 
 // The files served beside the pages, by their path there.
 const ASSETS: Record<string, () => Buffer | string> = {
+  'install.sh': () => source('install.sh'),
   'play/vun.wasm': () => bytes(COMPILER),
   'play/library.json': () => JSON.stringify(Object.fromEntries(files(LIBRARY).map((path) => [path, source(`${LIBRARY}/${path}`)]))),
 };
 
-const TYPES: Record<string, string> = {'.wasm': 'application/wasm', '.json': 'application/json'};
+const TYPES: Record<string, string> = {'.wasm': 'application/wasm', '.json': 'application/json', '.sh': 'text/plain; charset=utf-8'};
+
+// A page is a directory with an `index.html`, served at its name as a static host serves it: a
+// request without the closing slash is sent to the one with it.
+function pages(base: string): Connect.NextHandleFunction {
+  return (request, response, next) => {
+    const [path, query] = (request.url ?? '').split('?');
+    const name = path.slice(base.length);
+    if (name === '' || path.endsWith('/') || name.includes('.') || !existsSync(`${REPOSITORY_DIR}site/${name}/index.html`)) return next();
+    response.statusCode = 301;
+    response.setHeader('Location', `${path}/${query === undefined ? '' : `?${query}`}`);
+    response.end();
+  };
+}
 
 const PREFIX = 'virtual:';
 
 // The directories a change in which makes the virtual modules again.
-const WATCHED = ['assets/', 'site/lessons/', 'editors/vscode/syntaxes/', 'target/wasm32-wasip1/dist/'];
+const WATCHED = ['install.sh', 'assets/', 'site/lessons/', 'editors/vscode/syntaxes/', 'target/wasm32-wasip1/dist/'];
 
 export function site(): Plugin {
   let base = '/';
@@ -73,7 +90,9 @@ export function site(): Plugin {
     generateBundle() {
       for (const [fileName, made] of Object.entries(ASSETS)) this.emitFile({type: 'asset', fileName, source: made()});
     },
+    configurePreviewServer: (server) => void server.middlewares.use(pages(base)),
     configureServer(server) {
+      server.middlewares.use(pages(base));
       server.middlewares.use((request, response, next) => {
         const path = request.url?.split('?')[0].slice(base.length) ?? '';
         const made = ASSETS[path];

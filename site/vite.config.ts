@@ -20,7 +20,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL('index.html', import.meta.url)),
-        play: fileURLToPath(new URL('play.html', import.meta.url)),
+        play: fileURLToPath(new URL('play/index.html', import.meta.url)),
+        learn: fileURLToPath(new URL('learn/index.html', import.meta.url)),
       },
     },
   },

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>learn vun</title>
+    <meta name="description" content="Learn Vun by fixing small programs, with the compiler as the teacher." />
+    <link rel="icon" href="../../assets/logo/icon/light.svg" type="image/svg+xml" />
+  </head>
+  <body class="play learn">
+    <header class="bar">
+      <a class="home" href="../" aria-label="vun"><span data-mark></span></a>
+      <nav>
+        <a href="./" aria-current="page">learn</a>
+        <a href="../play/">play</a>
+        <a href="https://github.com/cestef/vun">github</a>
+        <button class="theme" type="button" aria-label="theme"></button>
+      </nav>
+    </header>
+
+    <main class="course">
+      <aside class="brief" data-brief aria-label="lesson">
+        <div class="where">
+          <button type="button" class="lessons" data-action="map" data-keycaps aria-expanded="false" data-map-button><span data-icon="book"></span><span data-map-summary></span><span class="caret" data-icon="chevron-down"></span></button>
+          <nav class="pips" data-pips aria-label="progress"></nav>
+          <ol class="map" data-map-list hidden></ol>
+        </div>
+        <h1 data-title></h1>
+        <div class="text" data-text></div>
+
+        <section class="task" data-task>
+          <header><span data-icon="locate"></span><h2>Your task</h2><span class="tally" data-tally></span></header>
+          <p class="goal" data-goal></p>
+          <ul class="checks" data-checks></ul>
+        </section>
+
+        <section class="coaching" data-helpbox>
+          <button type="button" class="ask" data-action="hint" data-keycaps data-help><span data-icon="bulb"></span><span data-help-label></span></button>
+          <ol class="rungs" data-rungs aria-hidden="true"></ol>
+          <div class="coach" data-coach></div>
+        </section>
+
+        <footer class="moves">
+          <button type="button" class="tool" data-action="reset"><span data-icon="reset"></span>Reset</button>
+          <a class="tool" data-action="playground" data-open href="../play/" target="_blank" rel="noopener"><span data-icon="external"></span>Playground</a>
+          <span class="space"></span>
+          <button type="button" class="step" data-action="previous-lesson" aria-label="Previous lesson"><span data-icon="chevron-left"></span></button>
+          <button type="button" class="step next" data-action="next-lesson"><span>Next</span><span data-icon="chevron-right"></span></button>
+        </footer>
+      </aside>
+
+      <div class="workbench" data-workspace>
+        <div class="tools">
+          <button type="button" class="tool" data-action="helix" data-helix aria-pressed="false"><span data-icon="keyboard"></span>Helix keys</button>
+          <button type="button" class="run" data-action="run" data-keycaps data-run disabled><span class="glyph go" data-icon="play"></span><span class="glyph halt" data-icon="stop"></span><span data-run-label>Run</span></button>
+        </div>
+        <section class="pane source" data-editor></section>
+        <section class="dock" data-dock>
+          <div class="tabs" data-tabs role="tablist"></div>
+          <div class="views" data-views></div>
+        </section>
+        <footer class="status">
+          <span class="dot" data-dot></span><span data-status>loading the compiler</span>
+          <span class="space"></span>
+          <button type="button" class="hint" data-action="keys" data-keycaps><span data-icon="keyboard"></span>Shortcuts</button>
+        </footer>
+      </div>
+    </main>
+    <script type="module" src="/src/learn/main.ts"></script>
+  </body>
+</html>
