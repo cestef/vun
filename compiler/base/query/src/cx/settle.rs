@@ -31,9 +31,12 @@ pub(crate) struct Settle<'db> {
 pub(crate) enum Found {
     /// It does not hold, or cannot be told to without computing.
     Fails,
-    /// Another thread is looking at it, or it is reached again through its own reads: verifying
-    /// in order tells.
+    /// Another thread is looking at it: verifying in order tells.
     Unsure,
+    /// It reaches a memo being looked at above it, or one that does: verifying in order tells.
+    /// The same from any memo reaching it, so it is kept, and no memo of a cycle is looked at
+    /// again by each path that reaches it.
+    Cyclic,
     Holds,
     /// Being looked at by the thread that recorded it.
     Looking,
@@ -97,13 +100,14 @@ impl Settle<'_> {
         }
         let at = (table.id, slot, self.revision);
         if path.contains(&(table.id, slot)) {
-            return (Found::Unsure, None);
+            return (Found::Cyclic, None);
         }
         match self.db.settled.pin().try_insert(at, Found::Looking) {
             Ok(_) => {}
             Err(recorded) if *recorded.current == Found::Looking => return (Found::Unsure, None),
             Err(recorded) => return (*recorded.current, Some(memo.fingerprint)),
         }
+        table.counts.add(Event::Looked);
         let durable = self.db.durable(memo.durability, self.revision);
         let found = if durable {
             Found::Holds
@@ -121,7 +125,8 @@ impl Settle<'_> {
                 memo.verified.set(self.revision);
             }
         }
-        // An unsure memo is left to verifying in order, as are those reaching it.
+        // An unsure memo is left to verifying in order, as are those reaching it; another thread
+        // may settle it meanwhile, so it is looked at again.
         if found == Found::Unsure {
             self.db.settled.pin().remove(&at);
         } else {

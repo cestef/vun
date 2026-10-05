@@ -3,6 +3,7 @@
 //! names.
 
 use super::Runs;
+use crate::tally::Event;
 use crate::{Cx, Db, Query, Reuse};
 
 /// How many items the total adds, an input.
@@ -83,4 +84,47 @@ fn only_what_changed_is_computed_again() {
 #[test]
 fn what_verifying_ahead_finds_is_checked() {
     settles(Reuse::Check);
+}
+
+/// How many nodes of the ring below there are.
+const NODES: u32 = 16;
+
+/// A node of a ring where each reads the next two: a cycle through every node, and 2^n paths
+/// around it.
+struct Node;
+impl Query for Node {
+    const NAME: &'static str = "node";
+    type Key = u32;
+    type Value = u32;
+    fn compute(cx: &Cx<'_>, key: &u32) -> u32 {
+        (1..=2).map(|step| cx.get::<Self>(&((key + step) % NODES))).fold(*key, u32::max)
+    }
+    fn cycle(_: &Cx<'_>, key: &u32, _: &crate::Cycle) -> u32 {
+        *key
+    }
+}
+
+/// The ring read from many nodes, and a text's length parity, which a new revision recomputes to
+/// the same value: verifying it looks at the whole ring before it reads the parity.
+struct Ring;
+impl Query for Ring {
+    const NAME: &'static str = "ring";
+    type Key = ();
+    type Value = u32;
+    fn compute(cx: &Cx<'_>, (): &()) -> u32 {
+        let even = cx.get::<super::Parity>(&"a");
+        (0..NODES).map(|key| cx.get::<Node>(&key)).fold(u32::from(even), u32::max)
+    }
+}
+
+#[test]
+fn a_cycle_is_looked_at_once_by_every_path_reaching_it() {
+    let db = Db::reusing(Reuse::Trust);
+    db.set::<super::Text>(&"a", "four".into());
+    let ring = db.get::<Ring>(&());
+    db.set::<super::Text>(&"a", "five".into());
+    let looked = db.tally().total(Event::Looked);
+    assert_eq!(db.get::<Ring>(&()), ring);
+    let looked = db.tally().total(Event::Looked) - looked;
+    assert!(looked <= u64::from(NODES) * 2, "{looked} memos looked at among {NODES}");
 }

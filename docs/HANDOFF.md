@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 441 (verifying ahead keeps cyclic memos), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
@@ -188,11 +188,6 @@ RP2350 trap, interrupts and timer).
 
 ## Known gaps in landed work
 
-- Verifying a stored build ahead (`Settle`, `vun-query`) guards a cycle of memos by the path it
-  walks but records no memo found unsure, so a graph with a cycle is explored exponentially: an
-  interface declared by a call (`Debug: lang.Interface = Rendering("debug")` under `#[lang.derive]`)
-  made `Witnesses`, `Derives` and the typing of the call a cycle, and `vun fix` on any file spun
-  for minutes (decision 402). Declare interfaces as literals; the engine should still not spin.
 - An `impl` member may leave its parameters' types and its result to the requirement
   (decisions 403, 404), including a member of a witness a `#[lang.derive]` function builds and a
   result naming the witness's own member (`Result(usize, Error)`); a function written as an

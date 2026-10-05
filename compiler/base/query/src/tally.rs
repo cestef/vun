@@ -44,6 +44,8 @@ events! {
     ValueRead => "values",
     /// A memo of an earlier revision or process found to hold by verifying its reads in order.
     Held => "held",
+    /// A memo looked at by verifying ahead, once in a revision unless another thread had it.
+    Looked => "looked",
     /// A memo found to hold by verifying ahead, over threads.
     Settled => "settled",
     /// A memo reading shared inputs alone found to hold at once, their fingerprint unchanged.
