@@ -268,7 +268,7 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 - Loose files stay in no namespace (`test.no_namespace`): a namespace is a package's, and the
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
-- Compile-time evaluation is still most of a cold `vun test lib/std` (about 9 s on `am3.wg`: 87 000 calls, 2.4 s of the interpreter's own time, mostly lints and std code a `$` runs). Left: one function (the runner with its tests inlined, 22 000 promoted slots) takes 2.2 s in `promote` while the workers wait, and each compile-time call still costs about 28 microseconds (memo table probes, hashing keys that hold arrays, `Env` set-up).
+- A cold `vun test lib/std` takes about 4.5 s on `am3.wg` (24.8 s before the profiling of 2026-10-06). What is left is spread out: `mir`, `typed`, lint rules run as Vun code (`call{ f="reports" }`, 18 000 compile-time calls), and writing the memos (0.6 s). `VUN_LOG=vun_lir_passes::promote=trace` reports what each slot promotion cost.
 
 ## Next steps, most useful first
 

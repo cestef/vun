@@ -67,6 +67,9 @@ pub const runner: Item = Item::new(&["std", "testing", "runner"]);
 /// `options` name, the benchmarks alone when it asks for them measured, and writes a line for
 /// each to the standard output, then the totals. A test marked `test.ignore` is not run.
 pub const run: Item = Item::new(&["std", "testing", "run"]);
+/// Lists or runs the test `f`, declared as `decl`, when `options` choose it, and counts and writes
+/// what became of it. Not inlined, so that the function running every test stays small.
+pub const step: Item = Item::new(&["std", "testing", "step"]);
 /// What became of the test `f`, named `name`: a unit test runs once, a benchmark's loop once or
 /// measured as `options` ask, a property over the cases they ask for, whose arguments are
 /// generated, the smallest failing one's written to `out`.

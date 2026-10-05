@@ -164,24 +164,37 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
     };
     run_time := std.time.Stopwatch.start();
     $for c in std.meta.collect(ns, test) {
-        if options.list and options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
-            write(&mut out, &Line.listed(.{ .name = c.decl.name, .kind = $kind(c.ns.$(c.decl.name)) }))?;
-        } else if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
-            lap := std.time.Stopwatch.start();
-            outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
-                .some(ignored) => Outcome.ignored(ignored),
-                .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
-            };
-            totals.count(&outcome);
-            write(
-                &mut out,
-                &Line.test(.{ .name = c.decl.name, .outcome = outcome, .nanos = lap.elapsed_nanos() })
-            )?;
-        }
+        step(c.ns.$(c.decl.name), c.decl, sys, options, &mut out, &mut totals)?;
     }
     totals.nanos = run_time.elapsed_nanos();
     write(&mut out, &Line.totals(totals))?;
     .ok(totals)
+};
+
+/// Lists or runs the test `f`, declared as `decl`, when `options` choose it, and counts and writes
+/// what became of it. Not inlined, so that the function running every test stays small.
+#[opt.inline(.never)]
+step := (
+    $F: type,
+    $f: F,
+    $decl: lang.meta.Decl,
+    sys: &mut std.os.System,
+    options: &Options,
+    out: &mut std.os.Stream,
+    totals: &mut Totals
+) -> Result((), std.os.Error) {
+    if options.list and options.chosen(decl.name) and options.runs($kind(F, f)) {
+        write(out, &Line.listed(.{ .name = decl.name, .kind = $kind(F, f) }))?;
+    } else if options.chosen(decl.name) and options.runs($kind(F, f)) {
+        lap := std.time.Stopwatch.start();
+        outcome := match std.meta.attr(lang.meta.Decl, decl, Ignored) {
+            .some(ignored) => Outcome.ignored(ignored),
+            .none => tested(F, f, decl.name, sys, options, out)?,
+        };
+        totals.count(&outcome);
+        write(out, &Line.test(.{ .name = decl.name, .outcome = outcome, .nanos = lap.elapsed_nanos() }))?;
+    }
+    .ok(())
 };
 
 /// What became of the test `f`, named `name`: a unit test runs once, a benchmark's loop once or
