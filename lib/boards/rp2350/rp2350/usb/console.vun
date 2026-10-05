@@ -1,0 +1,51 @@
+//! A serial console over USB: text written to it appears on the host's port (`/dev/ttyACM0`,
+//! `screen`, `picocom`), once the host has opened it. A program that writes before then waits.
+
+/// A console, which `std.fmt.print` writes to.
+Console := struct {
+    _device: rp2350.usb.Device,
+
+    /// Starts the device and connects.
+    open := () -> Console {
+        .{ ._device = rp2350.usb.Device.start() }
+    };
+
+    /// Services the bus once.
+    poll := (self: &mut Console) { self._device.poll(); };
+
+    /// Services the bus, then sends up to a packet of `bytes` if the host has opened the port:
+    /// how many it sent.
+    send := (self: &mut Console, bytes: &[u8]) -> usize {
+        self._device.poll();
+        if self._device.ready() { self._device.send(bytes) } else { 0 }
+    };
+
+    /// Whether the host opened the port.
+    ready := (self: &Console) -> bool { self._device.ready() };
+
+    /// Services the bus until the host opens the port, or until `timer` reads `until`
+    /// microseconds; whether it did.
+    wait := (self: &mut Console, timer: &rp2350.time.Timer, until: u64) -> bool {
+        for !self._device.ready() {
+            if timer.now() > until { return false; }
+            self._device.poll();
+        }
+        true
+    };
+};
+
+/// The reasons a console takes no more.
+Error := enum { closed };
+
+impl std.fmt.Writer for Console {
+    Error: type = rp2350.usb.console.Error;
+    closed: rp2350.usb.console.Error = .closed;
+    /// Sends some of `bytes`, once the host has opened the port.
+    write := (self, bytes) {
+        mut sent: usize = 0;
+        for sent == 0 {
+            sent = self.send(bytes);
+        }
+        .ok(sent)
+    };
+}

@@ -1,0 +1,23 @@
+//! A probe for what `picotool info` shows of a reboot's parameters. See `app.vun`.
+
+package := .{
+    .name = "param_probe",
+    .id = 0x0000_0000_0000_0016,
+    .version = "0.1.0",
+    .edition = 2026,
+    .target = "bare.thumbv8m_main.eabihf",
+    .include = .{ "build.vun", "app.vun" },
+    .deps = .{ .rp2350 = .{ .library = "boards/rp2350" } },
+};
+
+build := (b: &mut std.build.Build) {
+    board := b.dep(.rp2350, .{});
+    firmware := b.program(.{
+        .root = "app.vun",
+        .target = targets.bare.thumbv8m_main.eabihf,
+        .deps = &[.{ .name = .rp2350, .dep = board }],
+        .memory = rp2350.layout.memory,
+        .sections = rp2350.layout.sections,
+    });
+    b.flash(firmware, rp2350.flash.uf2);
+};

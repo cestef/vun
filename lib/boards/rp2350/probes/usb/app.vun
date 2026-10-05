@@ -1,0 +1,23 @@
+//! Prints to the host over USB: `picocom /dev/ttyACM0` (or `screen`) shows a line a second. The
+//! board returns to BOOTSEL by itself after 90 seconds, whatever the program is doing, so a
+//! program that hangs needs no button.
+
+start := rp2350.start(.{ .main = main });
+
+/// A copy of a record the C compiler makes calls `memcpy`, which no C library provides here.
+memory := std.os.memory.exports;
+
+main := (p: rp2350.Peripherals) -> never {
+    rp2350.rom.reboot(rp2350.rom.reboot_bootsel, 90_000, 0, 0);
+    timer := rp2350.time.Timer.init(p.timer0);
+    mut console := rp2350.usb.console.Console.open();
+    if console.wait(&timer, (timer.now() + 60_000_000).wrap(u64)) {
+        mut count: u32 = 0;
+        for count < 30 {
+            std.fmt.print(&mut console, "hello from vun {}\n", count);
+            timer.delay(.millis(1000));
+            count = (count + 1).wrap(u32);
+        }
+    }
+    rp2350.rom.bootsel()
+};

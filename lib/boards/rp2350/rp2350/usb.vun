@@ -1,0 +1,422 @@
+//! The USB controller as a device (datasheet, chapter 12.7), polled: `Device.poll` reads what
+//! happened on the bus and answers it. The host reads the descriptors of `usb.descriptors`, sets
+//! an address and a configuration, and opens the serial port; bytes then go out through
+//! endpoint 1 (`Device.send`).
+
+/// The controller's registers.
+#[layout.c]
+Registers := struct {
+    address: std.hw.Reg(u32),
+    _host: [15]u32,
+    main_ctrl: std.hw.Reg(u32),
+    sof_write: std.hw.Reg(u32),
+    sof_read: std.hw.Reg(u32),
+    sie_ctrl: std.hw.Reg(u32),
+    sie_status: std.hw.Reg(u32),
+    int_ep_ctrl: std.hw.Reg(u32),
+    buff_status: std.hw.Reg(u32),
+    buff_cpu_should_handle: std.hw.Reg(u32),
+    ep_abort: std.hw.Reg(u32),
+    ep_abort_done: std.hw.Reg(u32),
+    ep_stall_arm: std.hw.Reg(u32),
+    nak_poll: std.hw.Reg(u32),
+    ep_nak_stop: std.hw.Reg(u32),
+    muxing: std.hw.Reg(u32),
+    power: std.hw.Reg(u32),
+    phy_direct: std.hw.Reg(u32),
+    phy_direct_override: std.hw.Reg(u32),
+    phy_trim: std.hw.Reg(u32),
+    linestate_tuning: std.hw.Reg(u32),
+    interrupts: std.hw.Reg(u32),
+    interrupt_enable: std.hw.Reg(u32),
+    interrupt_force: std.hw.Reg(u32),
+    interrupt_status: std.hw.Reg(u32),
+
+    get := () -> &Registers { unsafe std.hw.at(Registers, registers_at) };
+};
+
+registers_at := 0x5011_0000;
+/// The 4 KiB of memory shared with the controller, holding the setup packet, each endpoint's
+/// control words and its buffers.
+shared := 0x5010_0000;
+
+/// The shared memory's fixed places: the setup packet, the endpoints' control words (1 to 15, in
+/// and out), their buffer control words (0 to 15), and endpoint 0's buffer.
+setup_at := 0x00;
+endpoint_control_at := 0x08;
+buffer_control_at := 0x80;
+ep0_buffer_at := 0x100;
+/// The buffers the other endpoints use, one packet each.
+tx_buffer_at := 0x180;
+rx_buffer_at := 0x1c0;
+notify_buffer_at := 0x200;
+packet := 64;
+
+main_controller_enable: u32 = 1;
+sie_ep0_interrupt_1buf: u32 = 0x2000_0000;
+sie_pullup: u32 = 1 << 16;
+sie_bus_reset: u32 = 1 << 19;
+sie_setup: u32 = 1 << 17;
+muxing_to_phy: u32 = 1;
+muxing_softcon: u32 = 8;
+power_vbus_detect: u32 = 4 | 8;
+reset_usbctrl: u32 = 1 << 28;
+
+/// An endpoint's control word: enabled, interrupting per buffer, of a type, its buffer at an
+/// offset.
+ctrl_enable: u32 = 1 << 31;
+ctrl_interrupt_per_buffer: u32 = 1 << 29;
+ctrl_bulk: u32 = 2 << 26;
+ctrl_interrupt: u32 = 3 << 26;
+
+/// A buffer control word: the bytes in the buffer, whether the controller or the program holds
+/// it, and the data toggle.
+buf_full: u32 = 1 << 15;
+buf_last: u32 = 1 << 14;
+buf_data1: u32 = 1 << 13;
+buf_select: u32 = 1 << 12;
+buf_stall: u32 = 1 << 11;
+buf_available: u32 = 1 << 10;
+
+/// Bits of the buffer status register: endpoint 0 in and out, and endpoint 1 in.
+status_ep0_in: u32 = 1;
+status_ep0_out: u32 = 1 << 1;
+status_tx: u32 = 1 << 2;
+
+/// A request's type field (its bits 5 and 6) and the requests this device answers.
+type_standard: u8 = 0x00;
+type_class: u8 = 0x20;
+type_mask: u8 = 0x60;
+get_status: u8 = 0;
+clear_feature: u8 = 1;
+set_address: u8 = 5;
+get_descriptor: u8 = 6;
+set_configuration: u8 = 9;
+set_interface: u8 = 11;
+set_line_coding: u8 = 0x20;
+get_line_coding: u8 = 0x21;
+set_control_line_state: u8 = 0x22;
+send_break: u8 = 0x23;
+descriptor_device: u16 = 1;
+descriptor_configuration: u16 = 2;
+descriptor_string: u16 = 3;
+
+/// The bytes of a packet.
+Chunk: type = Int(0..=64);
+
+/// A place in the shared memory, and an endpoint's number.
+Offset: type = Int(0..4096);
+Endpoint: type = Int(0..16);
+
+/// The word of the shared memory at `offset`, and the byte.
+word := (offset: Offset) -> &std.hw.Reg(u32) { unsafe std.hw.at(std.hw.Reg(u32), shared + offset) };
+byte := (offset: Offset) -> &std.hw.Reg(u8) { unsafe std.hw.at(std.hw.Reg(u8), shared + offset) };
+
+/// Endpoint `n`'s buffer control word, in or out.
+buffer_control := (n: Endpoint, out: bool) -> &std.hw.Reg(u32) {
+    word(buffer_control_at + n * 8 + if out { 4 } else { 0 })
+};
+
+/// Endpoint `n`'s control word, in or out; `n` is 1 or more.
+endpoint_control := (n: Int(1..16), out: bool) -> &std.hw.Reg(u32) {
+    word(endpoint_control_at + (n - 1) * 8 + if out { 4 } else { 0 })
+};
+
+/// Hands the buffer to the controller: written without the bit that says so, then with it, a few
+/// of the controller's clock cycles later.
+arm := (control: &std.hw.Reg(u32), value: u32) {
+    control.write(value);
+    control.read();
+    control.read();
+    control.read();
+    control.write(value | buf_available);
+};
+
+/// What the host asked, from the setup packet.
+Request := struct {
+    kind: u8,
+    number: u8,
+    value: u16,
+    index: u16,
+    length: u16,
+
+    read := () -> Request {
+        low := word(setup_at).read();
+        high := word(setup_at + 4).read();
+        .{
+            .kind = (low & 0xff).wrap(u8),
+            .number = ((low >> 8) & 0xff).wrap(u8),
+            .value = (low >> 16).wrap(u16),
+            .index = (high & 0xffff).wrap(u16),
+            .length = (high >> 16).wrap(u16),
+        }
+    };
+};
+
+/// Where a control transfer is.
+Stage := enum {
+    /// Nothing is under way.
+    idle,
+    /// Sending the data of a reply, packet by packet.
+    reply,
+    /// The host acknowledges the reply with an empty packet it sends.
+    acknowledged,
+    /// The empty packet the program sends to say it did what was asked.
+    done,
+    /// The same for `SET_ADDRESS`, after which the address changes.
+    done_then_address,
+    /// The host's data of `SET_LINE_CODING`, which the program takes and ignores.
+    taking_line_coding,
+};
+
+/// The controller, polled.
+Device := struct {
+    stage: Stage,
+    reply: rp2350.usb.descriptors.Source,
+    reply_len: usize,
+    reply_sent: usize,
+    reply_chunk: usize,
+    reply_data1: bool,
+    address: u8,
+    configured: bool,
+    /// The host opened the port: its `DTR` line is up.
+    open: bool,
+    tx_data1: bool,
+    /// How many requests were answered, for a program that shows what the device did.
+    requests: u32,
+    /// The numbers of the last four requests, the latest in the lowest byte.
+    history: u32,
+    /// How many times the host reset the bus.
+    resets: u32,
+
+    /// Starts the clock and the controller, and connects to the bus.
+    start := () -> Device {
+        rp2350.usb.clock.run();
+        resets := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets);
+        done := unsafe std.hw.at(std.hw.Reg(u32), rp2350.gpio.resets + rp2350.gpio.reset_done_offset);
+        resets.write(resets.read() | reset_usbctrl);
+        resets.write(resets.read() & ~reset_usbctrl);
+        for done.read() & reset_usbctrl != reset_usbctrl {}
+        for i in 0..1024 {
+            word(i * 4).write(0);
+        }
+        regs := Registers.get();
+        regs.muxing.write(muxing_to_phy | muxing_softcon);
+        regs.power.write(power_vbus_detect);
+        regs.main_ctrl.write(main_controller_enable);
+        regs.sie_ctrl.write(sie_ep0_interrupt_1buf);
+        regs.sie_ctrl.write(sie_ep0_interrupt_1buf | sie_pullup);
+        .{
+            .stage = .idle,
+            .reply = .device,
+            .reply_len = 0,
+            .reply_sent = 0,
+            .reply_chunk = 0,
+            .reply_data1 = true,
+            .address = 0,
+            .configured = false,
+            .open = false,
+            .tx_data1 = false,
+            .requests = 0,
+            .history = 0,
+            .resets = 0,
+        }
+    };
+
+    /// Whether a program may send: the host configured the device and opened the port.
+    ready := (self: &Device) -> bool { self.configured and self.open };
+
+    /// Answers what happened on the bus since the last call.
+    poll := (self: &mut Device) {
+        regs := Registers.get();
+        status := regs.sie_status.read();
+        if status & sie_bus_reset != 0 {
+            regs.sie_status.write(sie_bus_reset);
+            self.reset();
+        }
+        if status & sie_setup != 0 {
+            request := Request.read();
+            regs.sie_status.write(sie_setup);
+            self.setup(request);
+        }
+        bits := regs.buff_status.read();
+        if bits & status_ep0_in != 0 {
+            regs.buff_status.write(status_ep0_in);
+            self.sent();
+        }
+        if bits & status_ep0_out != 0 {
+            regs.buff_status.write(status_ep0_out);
+            self.received();
+        }
+        if bits & status_tx != 0 {
+            regs.buff_status.write(status_tx);
+        }
+    };
+
+    /// The bus was reset: address zero, no configuration, and the other endpoints off.
+    reset := (self: &mut Device) {
+        Registers.get().address.write(0);
+        self.resets = (self.resets + 1).wrap(u32);
+        self.stage = .idle;
+        self.configured = false;
+        self.open = false;
+        self.tx_data1 = false;
+        for i in 0..30 {
+            word(endpoint_control_at + i * 4).write(0);
+        }
+    };
+
+    /// Answers a request on endpoint 0.
+    setup := (self: &mut Device, request: Request) {
+        self.stage = .idle;
+        self.requests = (self.requests + 1).wrap(u32);
+        self.history = ((self.history << 8) | request.number.to(u32)).wrap(u32);
+        buffer_control(0, false).write(buf_data1 | buf_select);
+        buffer_control(0, true).write(buf_data1 | buf_select);
+        kind := request.kind & type_mask;
+        n := request.number;
+        if kind == type_standard and n == get_descriptor {
+            self.describe(request);
+        } else if kind == type_standard and n == set_address {
+            self.address = (request.value & 0x7f).wrap(u8);
+            self.acknowledge(.done_then_address);
+        } else if kind == type_standard and n == set_configuration {
+            self.configure();
+            self.acknowledge(.done);
+        } else if kind == type_standard and n == get_status {
+            self.answer(.status, request.length);
+        } else if kind == type_standard and (n == clear_feature or n == set_interface) {
+            self.acknowledge(.done);
+        } else if kind == type_class and n == set_control_line_state {
+            self.open = request.value & 1 != 0;
+            self.acknowledge(.done);
+        } else if kind == type_class and n == send_break {
+            self.acknowledge(.done);
+        } else if kind == type_class and n == set_line_coding {
+            self.stage = .taking_line_coding;
+            arm(buffer_control(0, true), 64 | buf_data1 | buf_select);
+        } else if kind == type_class and n == get_line_coding {
+            self.answer(.line_coding, request.length);
+        } else {
+            self.stall();
+        }
+    };
+
+    /// Answers `GET_DESCRIPTOR`.
+    describe := (self: &mut Device, request: Request) {
+        what := request.value >> 8;
+        which := request.value & 0xff;
+        if what == descriptor_device {
+            self.answer(.device, request.length);
+        } else if what == descriptor_configuration {
+            self.answer(.configuration, request.length);
+        } else if what == descriptor_string and which == 0 {
+            self.answer(.language, request.length);
+        } else if what == descriptor_string and which == 1 {
+            self.answer(.manufacturer, request.length);
+        } else if what == descriptor_string and which == 2 {
+            self.answer(.product, request.length);
+        } else {
+            self.stall();
+        }
+    };
+
+    /// Enables the endpoints of the one configuration.
+    configure := (self: &mut Device) {
+        endpoint_control(1, false).write(
+            ctrl_enable | ctrl_interrupt_per_buffer | ctrl_bulk | tx_buffer_at.wrap(u32)
+        );
+        endpoint_control(2, true).write(
+            ctrl_enable | ctrl_interrupt_per_buffer | ctrl_bulk | rx_buffer_at.wrap(u32)
+        );
+        endpoint_control(3, false)
+            .write(ctrl_enable | ctrl_interrupt_per_buffer | ctrl_interrupt | notify_buffer_at.wrap(u32));
+        buffer_control(1, false).write(0);
+        buffer_control(2, true).write(0);
+        buffer_control(3, false).write(0);
+        self.tx_data1 = false;
+        self.configured = true;
+    };
+
+    /// Replies with `source`, as much of it as the host asked for.
+    answer := (self: &mut Device, source: rp2350.usb.descriptors.Source, asked: u16) {
+        self.reply = source;
+        self.reply_len = if source.len() < asked.to(usize) { source.len() } else { asked.to(usize) };
+        self.reply_sent = 0;
+        self.reply_data1 = true;
+        self.stage = .reply;
+        self.send_chunk();
+    };
+
+    /// Sends the next packet of the reply on endpoint 0.
+    send_chunk := (self: &mut Device) {
+        left := (self.reply_len - self.reply_sent).wrap(usize);
+        n: Chunk = if left < packet { left } else { packet };
+        for i in 0..n {
+            byte(ep0_buffer_at + i).write(self.reply.byte((self.reply_sent + i).wrap(usize)));
+        }
+        self.reply_chunk = n.to(usize);
+        mut value: u32 = n.wrap(u32) | buf_full | buf_select;
+        if self.reply_data1 { value = value | buf_data1; }
+        if n == left { value = value | buf_last; }
+        self.reply_data1 = !self.reply_data1;
+        arm(buffer_control(0, false), value);
+    };
+
+    /// Sends the empty packet that ends a request, and goes on to `stage` once it is taken.
+    acknowledge := (self: &mut Device, stage: Stage) {
+        self.stage = stage;
+        arm(buffer_control(0, false), buf_data1 | buf_full | buf_last | buf_select);
+    };
+
+    /// Refuses the request, until the next one.
+    stall := (self: &mut Device) {
+        Registers.get().ep_stall_arm.write(3);
+        buffer_control(0, false).write(buf_stall | buf_select);
+        buffer_control(0, true).write(buf_stall | buf_select);
+    };
+
+    /// The host took the packet sent on endpoint 0.
+    sent := (self: &mut Device) {
+        if self.stage == .reply {
+            self.reply_sent = (self.reply_sent + self.reply_chunk).wrap(usize);
+            if self.reply_sent < self.reply_len {
+                self.send_chunk();
+            } else {
+                self.stage = .acknowledged;
+                arm(buffer_control(0, true), buf_data1 | buf_last | buf_select);
+            }
+        } else if self.stage == .done_then_address {
+            Registers.get().address.write(self.address.to(u32));
+            self.stage = .idle;
+        } else {
+            self.stage = .idle;
+        }
+    };
+
+    /// The host sent a packet on endpoint 0.
+    received := (self: &mut Device) {
+        if self.stage == .taking_line_coding {
+            self.acknowledge(.done);
+        } else {
+            self.stage = .idle;
+        }
+    };
+
+    /// Sends up to a packet of `bytes` on endpoint 1, returning how many it took: none while the
+    /// last packet is still waiting for the host.
+    send := (self: &mut Device, bytes: &[u8]) -> usize {
+        control := buffer_control(1, false);
+        if control.read() & buf_available != 0 { return 0; }
+        have := bytes.len();
+        n: Chunk = if have < packet { have } else { packet };
+        for i in 0..n {
+            byte(tx_buffer_at + i).write(bytes[i]);
+        }
+        mut value: u32 = n.wrap(u32) | buf_full | buf_select;
+        if self.tx_data1 { value = value | buf_data1; }
+        self.tx_data1 = !self.tx_data1;
+        arm(control, value);
+        n
+    };
+};

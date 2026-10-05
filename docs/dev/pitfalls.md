@@ -162,19 +162,27 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Boards without a console
 
-- A RP2350 has no readable mailbox across a ROM reboot (SRAM comes back zero); the watchdog
-  scratch registers survive (`rp2350.fault`). Their contents can be read back with no UART by
-  answering one question per BOOTSEL entry: `lsusb -v -d 2e8a:000f` shows a mass storage
-  interface or not (`rom.bootsel_hiding`). Never call a ROM routine before reading its table
-  pointer back: it is at `0x16` on Arm, not `0x18`.
+- Never call a ROM routine before reading its table pointer back: it is at `0x16` on Arm, not
+  `0x18`.
 - A register is a value: `r := self.regs.control` copies it and `r.write` hits the copy. Take
   `&self.regs.control`. Check a struct of registers against the datasheet's offsets (a missing
   reserved word shifted every register after it).
 - `vun flash` loads the `.uf2` beside the program; `picotool load` of the extensionless
   `.vun/build/app` itself needs `-t elf`. Either races a reboot: retry, or `picotool reboot -f -u`.
-- The fault and trap record is in registers `picotool save -r` refuses (`Save range crosses
-  unmapped memory`); a stock tool cannot read it, and SRAM does not survive the ROM reboot. A
-  reader needs a program (`rp2350.fault.take`) or, to be written, flash or a USB console.
+- SRAM does not survive the ROM's reboot into BOOTSEL: filled with their own addresses, every
+  word of `0x20001000` to `0x2007f000` and `0x20080000` to `0x20082000` read back zero
+  (`probes/sram`). The watchdog scratch registers survive, but `picotool save -r` refuses them
+  (`Save range crosses unmapped memory`). What `picotool info -a` prints are the reboot's two
+  parameters, as "reboot param 0" and "reboot param 1" (`probes/param`): `rom.reboot`'s `p0` and
+  `p1`, 32 bits each, except that bits 0 and 1 of `p0` hide BOOTSEL's interfaces. A program with
+  no console can leave a record there.
+- The USB controller needs a system clock of at least 48 MHz: from the crystal's 12 MHz the host
+  sees the device and resets it, and its first requests are never answered (`device descriptor
+  read/64, error -71`). `rp2350.usb.clock.run` starts the system PLL (150 MHz) and keeps the
+  peripheral clock on the crystal.
+- Debugging with no console: `probes/usb` and `probes/param` show the pattern, a program that
+  reboots into BOOTSEL with what it saw as the parameters, and an early `rom.reboot(.., 90_000,
+  ..)` that returns the board by itself if the program hangs.
 
 ## Editors
 

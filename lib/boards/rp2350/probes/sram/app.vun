@@ -1,0 +1,34 @@
+//! Which SRAM survives a reboot into BOOTSEL? Fills SRAM with the address of each word, then
+//! reboots into BOOTSEL. On the host, with the board back in BOOTSEL:
+//!
+//!     picotool save -r 0x20001000 0x2007f000 main.bin
+//!     picotool save -r 0x20080000 0x20082000 scratch.bin
+//!
+//! A word that still holds its own address survived; zeros mean the ROM or the reset cleared it.
+//! Where something survives, a record kept there is read by `picotool save -r` with no program of
+//! ours. The program's own variables are at the bottom of SRAM and its stack at the top, so the
+//! first 4 KiB and the last 4 KiB of the main banks are left alone.
+
+/// The main banks, between the program's variables and its stack, and the two small banks above.
+main_first: usize = 0x2000_1000;
+main_last: usize = 0x2007_f000;
+scratch_first: usize = 0x2008_0000;
+scratch_last: usize = 0x2008_2000;
+word := 4;
+
+start := rp2350.start(.{ .main = main });
+
+/// Fills `first` up to `last` with the address of each word.
+fill := (first: usize, last: usize) {
+    mut address: usize = first;
+    for address < last {
+        unsafe { lang.mem.pointer_at(u32, address).write(address.wrap(u32)); }
+        address = (address + word).wrap(usize);
+    }
+};
+
+main := (p: rp2350.Peripherals) -> never {
+    fill(main_first, main_last);
+    fill(scratch_first, scratch_last);
+    rp2350.rom.bootsel()
+};

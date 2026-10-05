@@ -1,0 +1,15 @@
+//! What does `picotool info -a` show as "reboot param 0" and "reboot param 1" after the program
+//! reboots into BOOTSEL with its own words as the parameters? If they come back as written, a
+//! stop can leave a record any host with `picotool` reads.
+
+start := rp2350.start(.{ .main = main });
+
+main := (p: rp2350.Peripherals) -> never {
+    rp2350.rom.reboot(
+        rp2350.rom.reboot_bootsel | rp2350.rom.no_return_on_success,
+        10,
+        0xdead_beec,
+        0xcafe_babe
+    );
+    for {}
+};
