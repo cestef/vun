@@ -198,3 +198,7 @@ Traps that cost a session before. Add one when it costs you time.
 - The same holds for `cargo gen` on a host: the next `rsync --delete` of the working copy puts
   back the old generated files, and a build there fails on what they lack. Copy every generated
   directory back (`rsync host:<dir>/ <dir>/`) right after each `cargo gen`.
+- A `vun` older than the library it runs against reads a package of the library that uses newer
+  manifest fields and reports each as `manifest.unknown_field`. A toolchain with `.requires`
+  (442) says it is too old instead; one without cannot, so update the toolchain first when a
+  library manifest "has unknown fields" nobody misspelled.

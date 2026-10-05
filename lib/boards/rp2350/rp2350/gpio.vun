@@ -91,9 +91,10 @@ Pin := struct {
         unsafe std.hw.at(std.hw.Reg(u32), io_bank + ctrl_first + self._n * ctrl_stride).write(function);
     };
 
-    /// The pin joined to a UART's line: its pad released and its function the UART's.
+    /// The pin joined to a UART's line: its pad released, with its input on for a receiver, and
+    /// its function the UART's.
     uart := (self: Pin) {
-        self._release(0);
+        self._release(pad_input);
         self._function(function_uart);
     };
 

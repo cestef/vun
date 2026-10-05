@@ -64,6 +64,7 @@ package := .{
     .version = "0.3.1",
     .edition = 2026,
     .toolchain = "0.4.2",                 // exact; another `vun` hands off to it (section 6)
+    .requires = "0.4.0",                  // the oldest `vun` that reads this manifest; read first
     .target = "bare.thumbv7em.eabihf",    // what the package is written for; the machine's when absent
     .include = .{ "build.vun", "blinky.vun", "blinky", "LICENSE" },   // what the hash covers
     .prelude = .{ "std.prelude" },        // the default; `.{}` for none (spec 01, section 8)
@@ -348,6 +349,10 @@ through its hashes, every archive are the project's. An installed toolchain keep
 to; the default and the running toolchain are not removed. A first installation runs the
 repository's `install.sh`, which unpacks this machine's archive of the latest release somewhere
 temporary and lets it run `vun toolchain update`.
+
+A package says which toolchains read it with `.requires`, the oldest one: a `vun` below it reports
+that (`manifest.toolchain_too_old`) and nothing about the fields it does not know, which a newer
+toolchain may have added.
 
 A package pins a toolchain with `.toolchain` in its `build.vun`. A `vun` loading a project that
 pins another version installs that version when missing and hands the command to it (it replaces

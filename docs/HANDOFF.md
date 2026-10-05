@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 441 (verifying ahead keeps cyclic memos), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
@@ -320,10 +320,10 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    (`rp2350.time`), pin input, pulls and drive, `rp2350.flash.uf2`, the `templates/rp2350` project and
    the board README. `vun new`, `vun flash`, `.library` dependencies and `vun doc --deps` are built.
    Open there: the UART loopback byte arrives corrupt (`0xFC`, framing error; needs an adapter or
-   probe); the fault record is readable only by another Vun program (flash or a USB console would let
+   probe; the registers, divisor and control bits read right against the PL011, but the pad of a UART
+   pin had its input off until 442, which a receiver on GP1 needs, unrun); the fault record is readable only by another Vun program (flash or a USB console would let
    `picotool` read it); a first-run signal beyond the hidden drive (CYW43 LED driver, USB CDC); the
-   toolchain-versus-library skew (an old `vun` against a newer library reports `unknown field` in a
-   manifest, nothing says the binary is stale); ADC, SPI, I2C, PWM, PIO, USB, flash driver, the
+   ADC, SPI, I2C, PWM, PIO, USB, flash driver, the
    Hazard3 cores; native backend as the default for bare targets (they still go through C), ELF
    names `f1`/`d0`; `.dfu` and probe flash steps.
    Windows: `windows.x86_64.msvc` and `windows.x86.msvc` run through the C backend under Wine;
