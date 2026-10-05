@@ -11,6 +11,9 @@ pub const MANIFEST_MISSING_FIELD: DiagId = DiagId::new(
 pub const MANIFEST_UNKNOWN_FIELD: DiagId = DiagId::new(
     "lang.errors.manifest.unknown_field",
 );
+pub const MANIFEST_TOOLCHAIN_TOO_OLD: DiagId = DiagId::new(
+    "lang.errors.manifest.toolchain_too_old",
+);
 pub const MANIFEST_INVALID_FIELD: DiagId = DiagId::new(
     "lang.errors.manifest.invalid_field",
 );

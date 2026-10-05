@@ -57,7 +57,7 @@ fn every_manifest_reads() {
 #[test]
 fn reads_every_field() {
     let text = r#"package := .{
-        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2",
+        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2", .requires = "0.1.0",
         .include = .{ "build.vun", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
             .hal = .{ .version = "1.3.0", .hash = "blake3:k3f2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .urls = .{ "https://x" } },
@@ -71,6 +71,7 @@ fn reads_every_field() {
     assert!(ids.is_empty(), "{ids:?}");
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
+    assert_eq!(m.requires, Version::parse("0.1.0"));
     assert_eq!(m.include, ["build.vun", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
@@ -93,6 +94,21 @@ fn reads_every_field() {
         (hal.identity, &hal.source),
         "{written}"
     );
+}
+
+#[test]
+fn a_newer_manifest_is_reported_as_such_and_nothing_else() {
+    let newer = Manifest::running();
+    let newer = format!("{}.{}.{}", newer.major, newer.minor, newer.patch + 1);
+    let text = format!(
+        r#"package := .{{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .requires = "{newer}",
+            .include = .{{ "build.vun" }}, .from_the_future = 1 }};"#
+    );
+    assert_eq!(manifest(&text), (None, vec![errors::MANIFEST_TOOLCHAIN_TOO_OLD]));
+    let running = Manifest::running().to_string();
+    let text = text.replace(&newer, &running).replace(".from_the_future = 1", "");
+    let (read, ids) = manifest(&text);
+    assert_eq!((read.unwrap().requires, ids), (Some(Manifest::running()), Vec::new()));
 }
 
 #[test]

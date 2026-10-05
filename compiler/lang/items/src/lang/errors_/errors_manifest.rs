@@ -15,6 +15,9 @@ pub const missing_field: Item = Item::new(
 pub const unknown_field: Item = Item::new(
     &["lang", "errors", "manifest", "unknown_field"],
 );
+pub const toolchain_too_old: Item = Item::new(
+    &["lang", "errors", "manifest", "toolchain_too_old"],
+);
 pub const invalid_field: Item = Item::new(
     &["lang", "errors", "manifest", "invalid_field"],
 );

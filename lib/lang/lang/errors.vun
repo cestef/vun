@@ -189,6 +189,7 @@ manifest := struct {
     missing_package := diag.Diag{};
     missing_field := diag.Diag{};
     unknown_field := diag.Diag{};
+    toolchain_too_old := diag.Diag{};
     invalid_field := diag.Diag{};
     uneditable := diag.Diag{};
 };

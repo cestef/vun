@@ -11,7 +11,7 @@ mod tests;
 mod version;
 mod write;
 
-use vun_diag::{DiagCx, Diagnostic, Msg, errors};
+use vun_diag::{ChildKind, DiagCx, Diagnostic, Msg, errors};
 use vun_span::{FileId, Span};
 use vun_syntax::literal::Decl;
 
@@ -35,6 +35,8 @@ pub struct Manifest {
     pub edition: u16,
     /// The exact toolchain the launcher runs, if pinned.
     pub toolchain: Option<Version>,
+    /// The oldest toolchain that reads this manifest and builds the package.
+    pub requires: Option<Version>,
     /// The path in the package `targets` the package is written for, as `--target` takes it;
     /// checking or building one of its files chooses it instead of the machine's.
     pub target: Option<String>,
@@ -108,6 +110,7 @@ mod field {
     pub(super) const VERSION: &str = "version";
     pub(super) const EDITION: &str = "edition";
     pub(super) const TOOLCHAIN: &str = "toolchain";
+    pub(super) const REQUIRES: &str = "requires";
     pub(super) const TARGET: &str = "target";
     pub(super) const INCLUDE: &str = "include";
     pub(super) const DEPS: &str = "deps";
@@ -122,8 +125,10 @@ mod field {
     pub(super) const MAJOR: &str = "major";
     pub(super) const INDEX: &str = "index";
 
-    pub(super) const PACKAGE: &[&str] =
-        &[NAME, ID, VERSION, EDITION, TOOLCHAIN, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS, PRELUDE];
+    pub(super) const PACKAGE: &[&str] = &[
+        NAME, ID, VERSION, EDITION, TOOLCHAIN, REQUIRES, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS,
+        PRELUDE,
+    ];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, LIBRARY, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH, LIBRARY];
 }
@@ -147,23 +152,55 @@ impl Manifest {
         decl.invalid_with(Msg::new().text("a list naming ").code(MANIFEST), Some(help), cx)
     }
 
+    /// The toolchain that is reading: this build's version.
+    ///
+    /// # Panics
+    /// If the workspace's version is not `major.minor.patch`.
+    #[must_use]
+    pub fn running() -> Version {
+        Version::parse(env!("CARGO_PKG_VERSION")).expect("the workspace's version is one")
+    }
+
+    /// Reports a manifest that asks for a newer toolchain than the one reading it; its other
+    /// fields may be ones this toolchain does not know, so they are not read.
+    fn outdated(fields: &Fields<'_, '_>, cx: &mut DiagCx<'_>) -> bool {
+        let Some(decl) = fields.get(field::REQUIRES) else { return false };
+        let Some(required) = decl.version(cx) else { return false };
+        let running = Self::running();
+        if required <= running {
+            return false;
+        }
+        let msg = Msg::new()
+            .text("this package requires toolchain ")
+            .code(required.to_string())
+            .text(", this is ")
+            .code(running.to_string());
+        let help = Msg::new().text("update the toolchain with ").code("vun toolchain update");
+        let diag = Diagnostic::error(errors::MANIFEST_TOOLCHAIN_TOO_OLD, msg).child(ChildKind::Help, help);
+        cx.error_at(decl.span, diag);
+        true
+    }
+
     /// Reads the manifest from the declarations of a `build.vun`; `file` locates a missing `package`.
     pub fn read(decls: &[Decl<'_>], file: FileId, cx: &mut DiagCx<'_>) -> Option<Self> {
         let Some(package) = decls.iter().find(|d| d.name == PACKAGE) else {
             let msg = Msg::new().text("no ").code(PACKAGE).text(" declaration");
             let help = Msg::new().text("declare ").code(format!("{PACKAGE} := .{{ .name = \"...\", ... }};"));
-            let d = Diagnostic::error(errors::MANIFEST_MISSING_PACKAGE, msg)
-                .child(vun_diag::ChildKind::Help, help);
+            let d = Diagnostic::error(errors::MANIFEST_MISSING_PACKAGE, msg).child(ChildKind::Help, help);
             cx.error_at(Span::new(file, 0, 0), d);
             return None;
         };
         let mut fields = Fields::new(package, field::PACKAGE, cx)?;
+        if Self::outdated(&fields, cx) {
+            return None;
+        }
         // Every field is read before any result is used, so that one run reports every problem.
         let name = fields.require(field::NAME).and_then(|d| d.string(cx));
         let id = fields.require(field::ID).and_then(|d| d.int(cx));
         let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
         let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| d.version(cx).map(Some));
+        let requires = fields.get(field::REQUIRES).map_or(Some(None), |d| d.version(cx).map(Some));
         let target = fields.get(field::TARGET).map_or(Some(None), |d| d.string(cx).map(Some));
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
@@ -180,6 +217,7 @@ impl Manifest {
             version: version?,
             edition: edition?,
             toolchain: toolchain?,
+            requires: requires?,
             target: target?,
             include: include?,
             deps: deps?,
