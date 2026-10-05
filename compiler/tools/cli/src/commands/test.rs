@@ -29,6 +29,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
         NAMES,
         vun_driver::testing::SEED,
         vun_driver::testing::CASES,
+        vun_driver::testing::JOBS,
         vun_driver::codegen::BACKEND,
         vun_driver::codegen::LINKER,
         vun_driver::program::OUTPUT,
@@ -36,6 +37,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
     .sets(&[COMPILE])
     .examples(&[
         Example { line: "", about: "run the tests of the package around this directory" },
+        Example { line: "--jobs 1", about: "run them in one process, in the order they are declared" },
         Example { line: "net/", about: "run the tests of a directory and the namespaces in it" },
         Example { line: "main.vun crc_vector", about: "run one test of a file" },
         Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
@@ -148,6 +150,19 @@ fn tested(
     let Some(program) = program else { return Ok(None) };
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
     let options = vun_driver::testing::Options::of(args, mode);
+    // Tests run each in a process of its own, as many at once as asked; benchmarks and fuzzing
+    // measure and guide, so they run alone and in order.
+    let jobs = args
+        .count(&vun_driver::testing::JOBS)
+        .and_then(|n| usize::try_from(n).ok())
+        .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from));
+    if mode == Mode::Test && jobs > 1 {
+        let listed = session.list_tests(&program, names.iter().copied(), options)?;
+        if listed.len() > 1 {
+            let reported = session.run_tests_parallel(&program, &listed, options, jobs, shell)?;
+            return Ok(Some(reported.passed));
+        }
+    }
     let reported = session.run_tests(&program, names.iter().copied(), options)?.report(shell)?;
     Ok(Some(reported.passed))
 }

@@ -9,10 +9,13 @@ cases_option := "--cases";
 bench_option := "--bench";
 /// The option fuzzing the properties alone, over as many cases as `--cases` asks.
 fuzz_option := "--fuzz";
+/// The option writing the name and kind of each test chosen, running none.
+list_option := "--list";
 
 /// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
 /// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
-/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, and the other arguments name
+/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, `--list` writes the tests that would run and runs none, and
+/// the other arguments name
 /// the tests to run, every one if none does.
 Options := struct {
     args: std.os.Args,
@@ -20,6 +23,7 @@ Options := struct {
     cases: usize,
     bench: bool,
     fuzz: bool,
+    list: bool,
 
     /// The options `args` ask for; `.none` when an option has no number after it.
     of := (args: std.os.Args) -> ?Options {
@@ -29,6 +33,7 @@ Options := struct {
             .cases = std.testing.property.cases,
             .bench = false,
             .fuzz = false,
+            .list = false,
         };
         // The option the next argument is the number of.
         mut after: ?&[u8] = .none;
@@ -51,6 +56,8 @@ Options := struct {
                         options.bench = true;
                     } else if arg == fuzz_option {
                         options.fuzz = true;
+                    } else if arg == list_option {
+                        options.list = true;
                     },
                 }
             }
@@ -87,7 +94,7 @@ Options := struct {
                     after = false;
                 } else if Options.option(arg) {
                     after = true;
-                } else if arg == bench_option or arg == fuzz_option {
+                } else if arg == bench_option or arg == fuzz_option or arg == list_option {
                 } else if arg == name {
                     return true;
                 } else {

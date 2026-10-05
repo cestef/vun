@@ -2,13 +2,19 @@
 //! root file as any program is, and the lines it writes, read as typed values and reported.
 
 mod build;
+mod parallel;
 mod report;
 
-pub use report::{Reported, Run, Tested};
+pub use report::{Collected, Reported, Run, Tested};
 
 use vun_command::{Args, Param, Values};
 use vun_data::{FromData, ToData};
 
+pub const JOBS: Param = Param::option("jobs")
+    .short('j')
+    .about("how many tests run at once, each in a process of its own; the machine's cores if not given, 1 runs them in one process, in order")
+    .values(Values::Count)
+    .env("VUN_TEST_JOBS");
 pub const SEED: Param = Param::option("seed")
     .about("draw the cases of every property from this seed, as a falsified one reports it")
     .values(Values::Count);
@@ -23,6 +29,8 @@ pub const FUZZED: Param = Param::option("cases")
 /// fuzzed: what `vun bench` and `vun fuzz` pass.
 const BENCH: Param = Param::flag("bench");
 const FUZZ: Param = Param::flag("fuzz");
+/// The runner's option writing the tests it would run, and running none.
+const LIST: Param = Param::flag("list");
 
 /// How many cases `vun fuzz` runs of each property unless `--cases` asks for another count.
 const FUZZED_CASES: u64 = 10_000;
@@ -77,6 +85,15 @@ pub enum Line {
     Test(Ran),
     Totals(Totals),
     Argument(Argument),
+    /// A test the runner lists when asked to list (`std.testing.Listed`).
+    Listed(Listed),
+}
+
+/// A test the runner lists: its name, as declared, and its kind (`std.testing.Kind`).
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Listed {
+    pub name: String,
+    pub kind: String,
 }
 
 /// An argument of a property's smallest failing case (`std.testing.Argument`): its parameter's
@@ -185,7 +202,7 @@ pub struct Place {
 
 /// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed,
 /// and how long the run took in nanoseconds.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ToData, FromData)]
 pub struct Totals {
     pub passed: usize,
     pub trapped: usize,

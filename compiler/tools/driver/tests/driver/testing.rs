@@ -70,7 +70,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
         let file = session.load(&manifest).unwrap();
         let ns = session.tested(file, Some(fixture.root.path())).unwrap();
         let program = session.build_tests(file, ns, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
-        let run = std::process::Command::new(program).output().unwrap();
+        let run = std::process::Command::new(&program).output().unwrap();
         let lines: Vec<Line> = String::from_utf8(run.stdout).unwrap().lines().filter_map(Line::of).collect();
         let at =
             |file: &std::path::Path, line, column| Place { file: file.display().to_string(), line, column };
@@ -86,7 +86,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             match line {
                 Line::Test(ran) => assert!(ran.nanos.is_some(), "{backend}: {}", ran.name),
                 Line::Totals(totals) => assert!(totals.nanos.is_some(), "{backend}"),
-                Line::Argument(_) => {}
+                Line::Argument(_) | Line::Listed(_) => {}
             }
         }
         // Site ids are the program's own and times vary: compared apart from them.
@@ -101,7 +101,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
                     Line::Test(Ran { name, outcome, nanos: None })
                 }
                 Line::Totals(totals) => Line::Totals(Totals { nanos: None, ..totals }),
-                line @ Line::Argument(_) => line,
+                line @ (Line::Argument(_) | Line::Listed(_)) => line,
             })
             .collect();
         let expected = [
@@ -122,6 +122,25 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
+        // Listed, then run each in a process of its own three at a time, they end as they ran.
+        let names = session.list_tests(&program, Vec::<String>::new(), Options::default()).unwrap();
+        assert_eq!(names, ["adds", "fails", "indexes", "last", "skipped"], "{backend}");
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let reported = session
+            .run_tests_parallel(
+                &program,
+                &names,
+                Options::default(),
+                3,
+                &mut Shell::plain(&mut out, &mut err),
+            )
+            .unwrap();
+        let mut passed: Vec<(String, bool)> =
+            reported.tests.iter().map(|t| (t.ran.name.clone(), t.ran.outcome == Outcome::Passed)).collect();
+        passed.sort();
+        let want = [("adds", true), ("fails", false), ("indexes", false), ("last", true), ("skipped", false)];
+        assert_eq!(passed, want.map(|(n, p)| (n.to_owned(), p)), "{backend}");
+        assert!(!reported.passed, "{backend}");
     }
 }
 
@@ -199,7 +218,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
                 Line::Test(Ran { name, outcome, .. }) => {
                     Some((name.clone(), outcome.trap().and_then(|t| t.said.clone()?.message)))
                 }
-                Line::Totals(_) | Line::Argument(_) => None,
+                Line::Totals(_) | Line::Argument(_) | Line::Listed(_) => None,
             })
             .collect();
         let failed =
@@ -218,7 +237,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         assert_eq!(said, expected, "{backend}");
         let totals = lines.iter().find_map(|l| match l {
             Line::Totals(totals) => Some(Totals { nanos: None, ..*totals }),
-            Line::Test(_) | Line::Argument(_) => None,
+            Line::Test(_) | Line::Argument(_) | Line::Listed(_) => None,
         });
         assert_eq!(
             totals,
@@ -238,7 +257,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             .iter()
             .filter_map(|l| match l {
                 Line::Argument(argument) => Some(argument),
-                Line::Test(_) | Line::Totals(_) => None,
+                Line::Test(_) | Line::Totals(_) | Line::Listed(_) => None,
             })
             .collect();
         let shrunk = [
@@ -247,7 +266,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             ("p", "{\"a\":11,\"flag\":true}"),
             ("t", "[6,true]"),
             ("xs", "[0,100,0]"),
-            ("x", "\"0x1.000002p+0\""),
+            ("x", "1.0000001"),
             ("input", "\"\\u0000\\u0000\\u0000\""),
         ]
         .map(|(name, json)| Argument {

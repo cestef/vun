@@ -96,10 +96,18 @@ Totals := struct {
     };
 };
 
-/// A line the runner writes: a test run and what became of it, then the totals.
+/// A line the runner writes: a test run and what became of it, then the totals; asked to list,
+/// the tests it would run and nothing of them.
 Line := enum {
     test(Ran),
     totals(Totals),
+    listed(Listed),
+};
+
+/// A test the runner lists: its name, as declared, and what kind of test it is.
+Listed := struct {
+    name: &[u8],
+    kind: Kind,
 };
 
 /// A line the runner writes before a falsified property's line, one per parameter: the argument
@@ -155,7 +163,9 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
     };
     run_time := std.time.Stopwatch.start();
     $for c in std.meta.collect(ns, test) {
-        if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
+        if options.list and options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
+            write(&mut out, &Line.listed(.{ .name = c.decl.name, .kind = $kind(c.ns.$(c.decl.name)) }))?;
+        } else if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
             lap := std.time.Stopwatch.start();
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),

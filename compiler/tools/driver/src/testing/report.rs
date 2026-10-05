@@ -4,7 +4,7 @@
 use std::ffi::OsStr;
 use std::io::{self, BufRead, BufReader, PipeReader};
 use std::path::{Path, PathBuf};
-use std::process::Child;
+use std::process::{Child, ExitStatus};
 
 use vun_data::{Object, ToData};
 use vun_term::{Document, Nanos, Noun, Record, Shell, Status, Style, Text, Verb};
@@ -43,9 +43,28 @@ impl Session {
         names: impl IntoIterator<Item = S>,
         options: Options,
     ) -> io::Result<Run> {
+        self.start_tests(
+            program,
+            names.into_iter().map(|n| n.as_ref().to_os_string()).collect(),
+            options,
+            false,
+        )
+    }
+
+    /// Starts `program` running the tests `names` and `options` ask for, or only listing them.
+    pub(super) fn start_tests(
+        &self,
+        program: &Path,
+        names: Vec<std::ffi::OsString>,
+        options: Options,
+        list: bool,
+    ) -> io::Result<Run> {
         let (reader, writer) = io::pipe()?;
         let mut command = self.command(program);
         command.args(names).args(options.args());
+        if list {
+            command.arg(super::LIST.long_form());
+        }
         let child = command.stdout(writer.try_clone()?).stderr(writer).spawn()?;
         Ok(Run { program: program.to_path_buf(), child, lines: BufReader::new(reader) })
     }
@@ -58,13 +77,38 @@ pub struct Reported {
     pub passed: bool,
 }
 
+/// What a run of the tests' program wrote, read: the tests, the totals if it got to them, the lines
+/// no test claimed, and how the program ended.
+pub struct Collected {
+    pub program: PathBuf,
+    pub tests: Vec<Tested>,
+    pub totals: Option<Totals>,
+    pub output: Vec<String>,
+    pub status: ExitStatus,
+}
+
+impl Collected {
+    /// Whether the program ran to its totals and no test trapped or was falsified.
+    #[must_use]
+    pub fn clean(&self) -> bool {
+        self.status.success() && self.totals.is_some_and(|t| t.trapped == 0 && t.falsified == 0)
+    }
+}
+
 impl Run {
-    /// Reports each test as it ends, with what it wrote, then the totals; what the program wrote
-    /// after its last test is reported as its output.
+    /// The lines the program writes, until it ends; the program is left to be waited for.
+    pub(super) fn lines(self) -> io::Result<Vec<io::Result<String>>> {
+        let Self { mut child, lines, .. } = self;
+        let all = lines.lines().collect();
+        child.wait()?;
+        Ok(all)
+    }
+
+    /// Reads what the program writes until it ends, calling `ended` with each test as it ends.
     ///
     /// # Errors
-    /// Fails when the program's output cannot be read or reported.
-    pub fn report(mut self, shell: &mut Shell<'_>) -> io::Result<Reported> {
+    /// Fails when the program's output cannot be read.
+    pub fn collect(mut self, ended: &mut dyn FnMut(&Tested)) -> io::Result<Collected> {
         let (mut totals, mut output, mut arguments, mut tests) = (None, Vec::new(), Vec::new(), Vec::new());
         for text in self.lines.lines() {
             let text = text?;
@@ -72,24 +116,35 @@ impl Run {
                 Some(Line::Test(ran)) => {
                     let (arguments, output) = (std::mem::take(&mut arguments), std::mem::take(&mut output));
                     let tested = Tested { ran, arguments, output };
-                    shell.status(&tested);
+                    ended(&tested);
                     tests.push(tested);
                 }
                 Some(Line::Argument(argument)) => arguments.push(argument),
-                Some(Line::Totals(ended)) => totals = Some(ended),
+                Some(Line::Totals(done)) => totals = Some(done),
+                Some(Line::Listed(_)) => {}
                 None => output.push(text),
             }
         }
-        if !output.is_empty() {
-            let name = self.program.display().to_string();
-            shell.result(&Document { kind: "output", name, text: output.join("\n") })?;
-        }
         let status = self.child.wait()?;
-        if let Some(totals) = totals {
+        Ok(Collected { program: self.program, tests, totals, output, status })
+    }
+
+    /// Reports each test as it ends, with what it wrote, then the totals; what the program wrote
+    /// after its last test is reported as its output.
+    ///
+    /// # Errors
+    /// Fails when the program's output cannot be read or reported.
+    pub fn report(self, shell: &mut Shell<'_>) -> io::Result<Reported> {
+        let collected = self.collect(&mut |tested| shell.status(tested))?;
+        if !collected.output.is_empty() {
+            let name = collected.program.display().to_string();
+            shell.result(&Document { kind: "output", name, text: collected.output.join("\n") })?;
+        }
+        if let Some(totals) = collected.totals {
             shell.status(&Tally(totals));
         }
-        let clean = totals.is_some_and(|t| t.trapped == 0 && t.falsified == 0);
-        Ok(Reported { tests, passed: status.success() && clean })
+        let passed = collected.clean();
+        Ok(Reported { tests: collected.tests, passed })
     }
 }
 
@@ -192,7 +247,7 @@ impl Status for Tested {
 }
 
 /// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed.
-struct Tally(Totals);
+pub(super) struct Tally(pub(super) Totals);
 
 impl Record for Tally {
     fn kind(&self) -> &'static str {
