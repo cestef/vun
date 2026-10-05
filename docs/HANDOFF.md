@@ -260,8 +260,6 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   need the `Sim` its test holds mutably while `run` does).
 - Benchmarks (decision 384) report one measurement: no statistics over samples, no
   `--measure instructions`, no baselines in `.vun/bench/` nor `--fail-over`.
-- A `$for` over a `.{ }` literal does not lower ("not supported in compiled code yet"); over an
-  array it does.
 - A pattern-only form where a value is expected is never reported: `&xs[..]` parses its
   subscript as a `Rest` (patterns share the expression grammar), HIR lowering makes it
   `ExprKind::Error` through the `_` arm of `Lower::expr_kind` with no diagnostic (it has no
@@ -334,10 +332,7 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    with the `node`, `Packet`, `crc32` stand-ins). Lints: the grammar generator still reads a PascalCase table
    name as "an enum" (`TokenKind` holds `#[lint.allow]`), which the table's shape could say.
    Vectors: comparisons to `Mask(n)`, vector instructions in the backends, `std.simd.dispatch`
-   over `#[target.require]`. A trap in a `$` form inside a declaration's value is reported twice,
-   by the form and by the value. A function evaluated while a `$if` step is typed cannot pass
-   one of its run-time locals to a `$` parameter (`same(type, t, A)` inside a `for`:
-   `comptime.unsupported`), though the same call evaluates at compile time elsewhere.
+   over `#[target.require]`.
 5. Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters.
 6. `std`: `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 7. Evaluator: loans inside aggregate arguments, memory per nesting level. Packaging: signed

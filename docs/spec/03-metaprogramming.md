@@ -41,7 +41,8 @@ not in scope after it, since which branch is generated is known only once the co
 both branches may declare the same names. A `$if` may test a pattern, `$if .err(e) = parse(s)`, as
 `if` does: the test runs at compile time, and the branch it selects is typed and lowered as a step
 with the pattern's binders bound, at compile time, to the parts they take. A `$for` has no value
-and is never a block's value.
+and is never a block's value. It steps through the items of an array, of a tuple, each typed by
+its own, or of a range.
 `$if` used as a value, last in a block or in an expression, has the value of the branch it
 selects (spec 02, section 1). `$` on any other expression computes it at compile time;
 `$(if c { a } else { b })` computes the whole `if`.
@@ -297,7 +298,9 @@ generators that observe their own output, which is what makes impls and memoizat
   reads no local its body computes when it runs.
   Statements, and so a `mut $` local, and exclusive borrows run only inside a compile-time call,
   in the evaluator: a `$` form using one outside a call is `comptime.unsupported`. A `$` form
-  inside another is part of it, run when it runs, never on its own.
+  inside another is part of it, run when it runs, never on its own. A function run at compile time
+  may pass a local it computes to a `$` parameter of what it calls, the call binding its value; a
+  call in generated code may not (`comptime.runtime`).
 - **Target semantics.** Compile-time code uses the target's layout, word size and endianness
   (guarantee 4).
 - **Traps.** A trap that fires during evaluation (a division by zero, a failed `.to`, spec 04) is
