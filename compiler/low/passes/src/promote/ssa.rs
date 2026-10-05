@@ -115,22 +115,38 @@ impl<'f> Promotion<'f> {
         self.rewrite(&removed);
     }
 
-    /// The definition of `slot` reaching the start of `block`.
+    /// The definition of `slot` reaching the start of `block`: that reaching the end of its only
+    /// predecessor, and a parameter where several meet.
     fn start(&mut self, block: Block, slot: Slot) -> Value {
-        if let Some(&value) = self.starts.get(&(block, slot)) {
-            return value;
-        }
-        let value = if self.preds[block].is_empty() {
-            self.unset(slot)
-        } else {
-            let ty = self.uses.promoted[&slot];
-            let param = self.func.values.push(ValueData { ty, def: Def::Param(block, 0) });
-            self.params.entry(block).or_default().push((slot, param));
-            self.pending.push((block, slot, param));
-            param
+        let mut path = Vec::new();
+        let mut at = block;
+        let value = loop {
+            if let Some(&value) = self.starts.get(&(at, slot)) {
+                break value;
+            }
+            path.push(at);
+            match self.preds[at][..] {
+                [] => break self.unset(slot),
+                [pred] if path.len() <= self.preds.len() => match self.ends.get(&(pred, slot)) {
+                    Some(&value) => break value,
+                    None => at = pred,
+                },
+                _ => break self.parameter(at, slot),
+            }
         };
-        self.starts.insert((block, slot), value);
+        for visited in path {
+            self.starts.insert((visited, slot), value);
+        }
         value
+    }
+
+    /// A parameter of `block` for `slot`, whose predecessors pass it their definitions.
+    fn parameter(&mut self, block: Block, slot: Slot) -> Value {
+        let ty = self.uses.promoted[&slot];
+        let param = self.func.values.push(ValueData { ty, def: Def::Param(block, 0) });
+        self.params.entry(block).or_default().push((slot, param));
+        self.pending.push((block, slot, param));
+        param
     }
 
     fn unset(&mut self, slot: Slot) -> Value {
@@ -148,30 +164,36 @@ impl<'f> Promotion<'f> {
     }
 
     /// Replaces each parameter all of whose predecessors pass one value, or itself, by that
-    /// value, until none is left.
+    /// value, until none is left: a replacement asks again for the parameters it was passed to.
     fn drop_trivial(&mut self) {
         let mut params: Vec<(Slot, Value)> = self.params.values().flatten().copied().collect();
-        params.sort_unstable_by_key(|&(_, param)| param);
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for &(slot, param) in &params {
-                if self.replaced.contains(param) {
-                    continue;
-                }
-                let passed: Set<Value> = self.incoming[&param]
-                    .iter()
-                    .map(|&(_, v)| self.replaced.resolve(v))
-                    .filter(|&v| v != param)
-                    .collect();
-                let one = match passed.len() {
-                    0 => self.unset(slot),
-                    1 => *passed.iter().next().expect("one"),
-                    _ => continue,
-                };
-                self.replaced.insert(param, one);
-                changed = true;
+        params.sort_unstable_by_key(|&(_, param)| std::cmp::Reverse(param));
+        let slots: Map<Value, Slot> = params.iter().map(|&(slot, param)| (param, slot)).collect();
+        let mut receivers: Map<Value, Vec<Value>> = Map::default();
+        for &(_, param) in &params {
+            for &(_, passed) in &self.incoming[&param] {
+                receivers.entry(passed).or_default().push(param);
             }
+        }
+        let mut asked: Vec<Value> = params.iter().map(|&(_, param)| param).collect();
+        while let Some(param) = asked.pop() {
+            if self.replaced.contains(param) {
+                continue;
+            }
+            let passed: Set<Value> = self.incoming[&param]
+                .iter()
+                .map(|&(_, v)| self.replaced.resolve(v))
+                .filter(|&v| v != param)
+                .collect();
+            let one = match passed.len() {
+                0 => self.unset(slots[&param]),
+                1 => *passed.iter().next().expect("one"),
+                _ => continue,
+            };
+            self.replaced.insert(param, one);
+            let passed_on = receivers.remove(&param).unwrap_or_default();
+            asked.extend(passed_on.iter().copied());
+            receivers.entry(one).or_default().extend(passed_on);
         }
     }
 
