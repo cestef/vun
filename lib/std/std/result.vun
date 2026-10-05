@@ -24,4 +24,31 @@ impl Result($T, $E) {
     /// The value, dropping the error.
     #[panic.never]
     ok := (r: Result(T, E)) -> ?T { match r { .ok(v) => .some(v), .err(_) => .none } };
+    /// The error, dropping the value.
+    #[panic.never]
+    err := (r: Result(T, E)) -> ?E { match r { .ok(_) => .none, .err(e) => .some(e) } };
+    /// The value passed through `f`, which may fail.
+    and_then := (r: Result(T, E), $U: type, $C: lang.ops.Call((T), Result(U, E)), f: C) -> Result(U, E) {
+        match r { .ok(v) => f(v), .err(e) => .err(e) }
+    };
+    /// The result, or what `f` gives for its error.
+    or_else := (r: Result(T, E), $F: type, $C: lang.ops.Call((E), Result(T, F)), f: C) -> Result(T, F) {
+        match r { .ok(v) => .ok(v), .err(e) => f(e) }
+    };
+    /// The value, or what `f` gives for the error.
+    unwrap_or_else := (r: Result(T, E), $C: lang.ops.Call((E), T), f: C) -> T {
+        match r { .ok(v) => v, .err(e) => f(e) }
+    };
+    /// The value passed through `f`, or `default` on an error.
+    map_or := (r: Result(T, E), $U: type, default: U, $C: lang.ops.Call((T), U), f: C) -> U {
+        match r { .ok(v) => f(v), .err(_) => default }
+    };
+    /// Whether it holds a value and `f` holds for it.
+    is_ok_and := (r: Result(T, E), $C: lang.ops.Call((&T), bool), f: C) -> bool {
+        match r { .ok(v) => f(&v), .err(_) => false }
+    };
+    /// The error, or a trap with `message` when it holds a value.
+    expect_err := (r: Result(T, E), $message: &[u8]) -> E {
+        match r { .ok(_) => lang.panic.fail(.message(message)), .err(e) => e }
+    };
 }

@@ -1,0 +1,100 @@
+//! Exponentials and logarithms by range reduction and a series on the small remainder. Each
+//! result is within a few units in the last place, not correctly rounded.
+
+/// ln 2 as a high part with trailing zero bits, so `k * ln_2_high` is exact, and the rest.
+ln_2_high: f64 = 6.93147180369123816490e-01;
+ln_2_low: f64 = 1.90821492927058770002e-10;
+inv_ln_2: f64 = 1.44269504088896338700e+00;
+/// Where `exp` overflows and where it underflows to zero.
+exp_over: f64 = 709.782712893384;
+exp_under: f64 = -745.1332191019412;
+/// 2^54, to bring a subnormal into the normal range.
+two_54: f64 = 18_014_398_509_481_984.0;
+/// The least normal number.
+normal_min: f64 = 2.2250738585072014e-308;
+
+/// 2^k for `k` in the normal range.
+pow2 := (k: std.math.Exponent) -> f64 {
+    std.math.round.from_bits((((k + 1023).to(u64)) << 52).to(u64))
+};
+
+exp := (x: f64) -> f64 {
+    if std.math.round.is_nan(x) { return x; }
+    if x > exp_over { return std.math.round.infinity; }
+    if x < exp_under { return 0.0; }
+    kf := std.math.round.round_even(x * inv_ln_2);
+    k := lang.float.to_int(f64, kf, std.math.Exponent);
+    r := (x - kf * ln_2_high) - kf * ln_2_low;
+    mut sum: f64 = 1.0;
+    mut n: f64 = 14.0;
+    for n > 0.0 {
+        sum = 1.0 + r / n * sum;
+        n = n - 1.0;
+    }
+    // Two factors, so neither leaves the normal range.
+    half: std.math.Exponent = (k / 2).to(std.math.Exponent);
+    sum * pow2(half) * pow2((k - half).to(std.math.Exponent))
+};
+
+ln := (x: f64) -> f64 {
+    if std.math.round.is_nan(x) or x < 0.0 { return std.math.round.not_a_number; }
+    if x == 0.0 { return -std.math.round.infinity; }
+    if x == std.math.round.infinity { return x; }
+    mut scaled: f64 = x;
+    mut k: std.math.Exponent = 0;
+    if x < normal_min {
+        scaled = x * two_54;
+        k = -54;
+    }
+    b := std.math.round.bits(scaled);
+    k = (k + (b >> 52).to(std.math.Exponent) - 1023).to(std.math.Exponent);
+    mut m: f64 = std.math.round.from_bits((b & std.math.round.fraction_mask) | 0x3ff0_0000_0000_0000);
+    if m > 1.4142135623730951 {
+        m = m * 0.5;
+        k = (k + 1).to(std.math.Exponent);
+    }
+    // ln m = 2 atanh s, with s small.
+    s := (m - 1.0) / (m + 1.0);
+    s2 := s * s;
+    mut sum: f64 = 0.0;
+    mut n: f64 = 12.0;
+    for n >= 0.0 {
+        sum = 1.0 / (2.0 * n + 1.0) + s2 * sum;
+        n = n - 1.0;
+    }
+    kf := lang.float.from_int(k, f64);
+    kf * ln_2_high + (kf * ln_2_low + 2.0 * s * sum)
+};
+
+/// The logarithm in base 2.
+log2 := (x: f64) -> f64 { ln(x) * inv_ln_2 };
+
+/// The logarithm in base 10.
+log10 := (x: f64) -> f64 { ln(x) * 0.4342944819032518 };
+
+/// 2 to the power `x`.
+exp2 := (x: f64) -> f64 { exp(x * ln_2_high + x * ln_2_low) };
+
+/// `x` to the whole power `n`, by squaring.
+powi := (x: f64, n: i32) -> f64 {
+    mut by: u64 = n.abs().to(u64);
+    mut base: f64 = x;
+    mut result: f64 = 1.0;
+    for by > 0 {
+        if (by & 1) == 1 { result = result * base; }
+        base = base * base;
+        by = by >> 1;
+    }
+    if n < 0 { 1.0 / result } else { result }
+};
+
+/// `x` to the power `y`.
+pow := (x: f64, y: f64) -> f64 {
+    if y == 0.0 or x == 1.0 { return 1.0; }
+    if std.math.round.is_nan(x) or std.math.round.is_nan(y) { return std.math.round.not_a_number; }
+    whole := std.math.round.trunc(y) == y and std.math.round.abs(y) < 2_147_483_648.0;
+    if whole { return powi(x, lang.float.to_int(f64, y, i32)); }
+    if x < 0.0 { return std.math.round.not_a_number; }
+    if x == 0.0 { return if y > 0.0 { 0.0 } else { std.math.round.infinity }; }
+    exp(y * ln(x))
+};

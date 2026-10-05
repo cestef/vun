@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.collections.array`.
 pub const array: Item = Item::new(&["std", "collections", "array"]);
+/// The namespace `std.collections.bitset`.
+pub const bitset: Item = Item::new(&["std", "collections", "bitset"]);
 /// The namespace `std.collections.deque`.
 pub const deque: Item = Item::new(&["std", "collections", "deque"]);
 /// The namespace `std.collections.heap`.
@@ -16,6 +18,8 @@ pub const heap: Item = Item::new(&["std", "collections", "heap"]);
 pub const map: Item = Item::new(&["std", "collections", "map"]);
 /// The namespace `std.collections.set`.
 pub const set: Item = Item::new(&["std", "collections", "set"]);
+/// The namespace `std.collections.sorted`.
+pub const sorted: Item = Item::new(&["std", "collections", "sorted"]);
 /// The namespace `std.collections.tests`.
 pub const tests: Item = Item::new(&["std", "collections", "tests"]);
 /// The namespace `std.collections.vec`.
@@ -32,3 +36,7 @@ pub const Deque: Item = Item::new(&["std", "collections", "Deque"]);
 pub const BinaryHeap: Item = Item::new(&["std", "collections", "BinaryHeap"]);
 /// Up to `n` items held in the value itself, with no allocator.
 pub const ArrayVec: Item = Item::new(&["std", "collections", "ArrayVec"]);
+/// Small integers held once, a bit each.
+pub const BitSet: Item = Item::new(&["std", "collections", "BitSet"]);
+/// Values by key, kept in the order of the keys.
+pub const SortedMap: Item = Item::new(&["std", "collections", "SortedMap"]);

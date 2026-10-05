@@ -16,6 +16,29 @@ Duration := struct {
 
     /// Its length in nanoseconds.
     as_nanos := (self: &Duration) -> u64 { self._nanos };
+    /// Its length in whole milliseconds.
+    as_millis := (self: &Duration) -> u64 { self._nanos / nanos_per_milli };
+    /// Its length in whole microseconds.
+    as_micros := (self: &Duration) -> u64 { self._nanos / nanos_per_micro };
+    /// Whether it is no time at all.
+    is_zero := (self: &Duration) -> bool { self._nanos == 0 };
+    /// The span of both, none where it passes what the type holds.
+    checked_add := (self: &Duration, other: Duration) -> ?Duration {
+        match (self._nanos + other._nanos).try_to(u64) {
+            .some(n) => .some(.{ ._nanos = n }),
+            .none => .none,
+        }
+    };
+    /// This span less `other`, none for a longer one.
+    checked_sub := (self: &Duration, other: Duration) -> ?Duration {
+        if other._nanos > self._nanos { .none } else {
+            .some(.{ ._nanos = (self._nanos - other._nanos).to(u64) })
+        }
+    };
+    /// This span less `other`, no time at all for a longer one.
+    saturating_sub := (self: &Duration, other: Duration) -> Duration {
+        .{ ._nanos = if other._nanos > self._nanos { 0 } else { (self._nanos - other._nanos).to(u64) } }
+    };
     /// Its whole seconds.
     whole_seconds := (self: &Duration) -> u64 { self._nanos / nanos_per_second };
     /// The nanoseconds past its whole seconds.
@@ -72,3 +95,19 @@ Stopwatch := struct {
         }
     };
 };
+
+impl std.fmt.Format for Duration {
+    /// In the largest unit it reaches with two decimals, as integers: `1.50s`, `2.00ms`, `850ns`.
+    format := ($W: std.fmt.Writer, value, w) {
+        n := value.as_nanos();
+        if n >= nanos_per_second {
+            std.fmt.print(w, "{}.{:0>2}s", n / nanos_per_second, (n % nanos_per_second) / 10_000_000)
+        } else if n >= nanos_per_milli {
+            std.fmt.print(w, "{}.{:0>2}ms", n / nanos_per_milli, (n % nanos_per_milli) / 10_000)
+        } else if n >= nanos_per_micro {
+            std.fmt.print(w, "{}.{:0>2}us", n / nanos_per_micro, (n % nanos_per_micro) / 10)
+        } else {
+            std.fmt.print(w, "{}ns", n)
+        }
+    };
+}

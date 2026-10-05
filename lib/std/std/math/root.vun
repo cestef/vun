@@ -1,0 +1,62 @@
+//! The square root, correctly rounded: the significand's integer square root with a bit of
+//! sticky remainder, rounded once to nearest, ties to even, as the instruction does.
+
+/// What a significand shifted up to the root's width holds: below 2^118.
+Wide: type = Int(0..(1 << 118));
+
+/// The integer square root of `n`, and whether `n` was not a square.
+isqrt := (n: Wide) -> (Wide, bool) {
+    mut rest: Wide = n;
+    mut root: Wide = 0;
+    mut bit: Wide = 1 << 116;
+    for bit != 0 {
+        if rest >= root + bit {
+            rest = (rest - (root + bit)).to(Wide);
+            root = ((root >> 1) + bit).to(Wide);
+        } else {
+            root = (root >> 1).to(Wide);
+        }
+        bit = (bit >> 2).to(Wide);
+    }
+    (root, rest != 0)
+};
+
+sqrt := (x: f64) -> f64 {
+    b := std.math.round.bits(x);
+    if std.math.round.is_nan(x) or (b & std.math.round.magnitude_mask) == 0 { return x; }
+    if std.math.round.is_sign_negative(x) { return std.math.round.not_a_number; }
+    if b == std.math.round.infinity_bits { return x; }
+    field := (b >> 52).to(std.math.Exponent);
+    mut m: u64 = b & std.math.round.fraction_mask;
+    mut e: std.math.Exponent = -1074;
+    if field == 0 {
+        // A subnormal: shifted up until its leading one is at bit 52.
+        for m < 0x0010_0000_0000_0000 {
+            m = (m << 1).to(u64);
+            e = (e - 1).to(std.math.Exponent);
+        }
+    } else {
+        m = m | 0x0010_0000_0000_0000;
+        e = (field - 1075).to(std.math.Exponent);
+    }
+    // The exponent is made even, so it halves.
+    if e % 2 != 0 {
+        m = (m << 1).to(u64);
+        e = (e - 1).to(std.math.Exponent);
+    }
+    wide: Wide = (m.to(Wide) << 64).to(Wide);
+    (root, sticky) := isqrt(wide);
+    // The root has 59 bits: 53 are kept, 6 decide the rounding.
+    mut keep: u64 = (root >> 6).to(u64);
+    low := (root & 63).to(u64);
+    mut power: std.math.Exponent = (6 + (e - 64) / 2).to(std.math.Exponent);
+    if low > 32 or (low == 32 and (sticky or (keep & 1) == 1)) {
+        keep = (keep + 1).to(u64);
+        if keep == 0x0020_0000_0000_0000 {
+            keep = 0x0010_0000_0000_0000;
+            power = (power + 1).to(std.math.Exponent);
+        }
+    }
+    field_out := (power + 1075).to(u64);
+    std.math.round.from_bits(((field_out << 52).to(u64)) | (keep & std.math.round.fraction_mask))
+};

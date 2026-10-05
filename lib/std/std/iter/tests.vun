@@ -1,0 +1,79 @@
+//! Tests of the iterator adapters, and the combinators of options and results.
+
+/// The items of `xs`, by value.
+nums := (xs: &[u8]) -> std.iter.Iter(u8) {
+    for x in xs.iter() { yield x.*; }
+};
+
+#[test]
+adapters_cut_and_step_through_items := () {
+    xs := [1, 2, 3, 4, 5, 6, 7, 8];
+    std.testing.assert(nums(&xs).skip(3).count() == 5 and nums(&xs).skip(100).count() == 0);
+    std.testing.assert(nums(&xs).take_while([] (x: &u8) { x.* < 4 }).count() == 3);
+    std.testing.assert(nums(&xs).skip_while([] (x: &u8) { x.* < 4 }).count() == 5);
+    std.testing.assert(nums(&xs).step_by(3).count() == 3 and nums(&xs).step_by(0).count() == 8);
+    mut seen: u32 = 0;
+    nums(&xs).inspect([&mut seen] (x: &u8) { seen += x.*.to(u32); }).for_each([] (x: u8) {});
+    std.testing.assert(seen == 36);
+};
+
+#[test]
+consumers_search_and_reduce := () {
+    xs := [4, 9, 2, 7, 5];
+    std.testing.assert(nums(&xs).any([] (x: &u8) { x.* == 7 }) and !nums(&xs).any([] (x: &u8) { x.* == 8 }));
+    std.testing.assert(nums(&xs).all([] (x: &u8) { x.* > 1 }) and !nums(&xs).all([] (x: &u8) { x.* > 2 }));
+    std.testing.assert(nums(&xs).find([] (x: &u8) { x.* > 5 }) == Option(u8).some(9));
+    std.testing.assert(nums(&xs).position([] (x: &u8) { x.* == 2 }) == Option(usize).some(2));
+    std.testing.assert(nums(&xs).position([] (x: &u8) { x.* == 3 }) == Option(usize).none);
+    std.testing.assert(nums(&xs).last() == Option(u8).some(5) and nums(&xs).nth(1) == Option(u8).some(9));
+    std.testing.assert(nums(&xs).min() == Option(u8).some(2) and nums(&xs).max() == Option(u8).some(9));
+    std.testing.assert(nums(&xs).reduce([] (a: u8, b: u8) { std.cmp.max(u8, a, b) }) == Option(u8).some(9));
+    none := std.iter.repeat(u8, 1, 0);
+    std.testing.assert(none.min() == Option(u8).none);
+};
+
+#[test]
+constructors_and_collect := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := std.mem.alloc.Fixed.init(&mut storage);
+    v := std.iter.repeat(u16, 7, 5).collect(std.mem.alloc.Fixed, &mut a).expect("room");
+    std.testing.assert(v.len() == 5 and v.items()[4] == 7);
+    v.deinit(std.mem.alloc.Fixed, &mut a);
+    std.testing.assert(std.iter.once(u8, 3).count() == 1);
+};
+
+#[test]
+options_combine := () {
+    some: ?u8 = .some(4);
+    none: ?u8 = .none;
+    std.testing.assert(some.and_then([] (x: u8) -> ?u8 { if x > 3 { .some(x) } else { .none } }) == some);
+    std.testing.assert(none.otherwise(some) == some and some.otherwise(none) == some);
+    std.testing.assert(
+        none.unwrap_or_else([] () -> u8 { 9 }) == 9 and some.map_or(0, [] (x: u8) -> u8 { (x + 1).to(u8) })
+            == 5
+    );
+    std.testing.assert(
+        some.filter([] (x: &u8) { x.* > 5 }) == none and some.is_some_and([] (x: &u8) { x.* == 4 })
+    );
+    std.testing.assert(
+        some.zip(u8, some) == Option((u8, u8)).some((4, 4)) and some.zip(u8, none) == Option((u8, u8)).none
+    );
+    mut taken := some;
+    std.testing.assert(taken.take() == some and taken == none);
+    std.testing.assert(taken.replace(2) == none and taken == Option(u8).some(2));
+};
+
+#[test]
+results_combine := () {
+    ok: Result(u8, u8) = .ok(4);
+    bad: Result(u8, u8) = .err(1);
+    std.testing.assert(ok.err() == Option(u8).none and bad.err() == Option(u8).some(1));
+    std.testing.assert(
+        bad.unwrap_or_else([] (e: u8) -> u8 { (e + 10).to(u8) }) == 11 and ok.map_or(
+            0,
+            [] (x: u8) -> u8 { (x * 2).to(u8) }
+        ) == 8
+    );
+    std.testing.assert(ok.is_ok_and([] (x: &u8) { x.* == 4 }) and !bad.is_ok_and([] (x: &u8) { x.* == 4 }));
+    std.testing.assert(bad.expect_err("err") == 1);
+};

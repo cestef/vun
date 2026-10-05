@@ -1,0 +1,106 @@
+//! Tests of `std.math`.
+
+/// Whether `x` is within `tolerance` of `want`, relative to `want`.
+near := (x: f64, want: f64, tolerance: f64) -> bool {
+    if want == 0.0 { return std.math.round.abs(x) <= tolerance; }
+    std.math.round.abs((x - want) / want) <= tolerance
+};
+
+#[test]
+classes_and_signs_are_read_from_the_encoding := () {
+    nan := 0.0 / 0.0;
+    inf := 1.0 / 0.0;
+    std.testing.assert(nan.is_nan() and !inf.is_nan() and inf.is_infinite() and !nan.is_finite());
+    std.testing.assert((-0.0).is_sign_negative() and !(0.0).is_sign_negative());
+    std.testing.assert((2.5).copysign(-1.0) == -2.5 and (-2.5).copysign(1.0) == 2.5);
+    std.testing.assert((-3.0).abs() == 3.0 and (3.0).abs() == 3.0 and (-2.0).signum() == -1.0);
+    std.testing.assert((1.0).min(nan) == 1.0 and nan.max(2.0) == 2.0 and (5.0).clamp(0.0, 3.0) == 3.0);
+};
+
+#[test]
+rounding_goes_the_way_each_function_says := () {
+    std.testing.assert((2.7).trunc() == 2.0 and (-2.7).trunc() == -2.0);
+    std.testing.assert((2.7).floor() == 2.0 and (-2.2).floor() == -3.0 and (-2.0).floor() == -2.0);
+    std.testing.assert((2.2).ceil() == 3.0 and (-2.7).ceil() == -2.0 and (2.0).ceil() == 2.0);
+    std.testing.assert((2.5).round() == 3.0 and (-2.5).round() == -3.0 and (2.4).round() == 2.0);
+    std.testing.assert((2.5).round_even() == 2.0 and (3.5).round_even() == 4.0 and (-0.5).round_even()
+            == 0.0);
+    std.testing.assert((2.75).fract() == 0.75);
+    std.testing.assert((-0.4).trunc().is_sign_negative());
+    std.testing.assert((1e300).floor() == 1e300);
+};
+
+#[test]
+the_square_root_is_exact_to_the_last_bit := () {
+    std.testing.assert((4.0).sqrt() == 2.0 and (0.25).sqrt() == 0.5 and (0.0).sqrt() == 0.0);
+    std.testing.assert((2.0).sqrt() == 1.4142135623730951);
+    std.testing.assert((3.0).sqrt() == 1.7320508075688772 and (10.0).sqrt() == 3.1622776601683795);
+    std.testing.assert((1e300).sqrt() == 1e150 and (5e-324).sqrt() == 2.2227587494850775e-162);
+    std.testing.assert((-1.0).sqrt().is_nan() and ((1.0 / 0.0).sqrt()) == 1.0 / 0.0);
+    x: f32 = 2.0;
+    std.testing.assert(x.sqrt() == 1.4142135);
+};
+
+#[test]
+exponentials_and_logarithms_match_known_values := () {
+    std.testing.assert((0.0).exp() == 1.0);
+    std.testing.assert(near((1.0).exp(), std.math.e, 4e-16));
+    std.testing.assert(near((10.0).exp(), 22026.465794806718, 4e-16));
+    std.testing.assert(near((-10.0).exp(), 4.5399929762484854e-5, 4e-16));
+    std.testing.assert((710.0).exp() == 1.0 / 0.0 and (-746.0).exp() == 0.0);
+    std.testing.assert((1.0).ln() == 0.0 and near(std.math.e.ln(), 1.0, 4e-16));
+    std.testing.assert(near((10.0).ln(), std.math.ln_10, 4e-16) and near((0.5).ln(), -std.math.ln_2, 4e-16));
+    std.testing.assert(near((8.0).log2(), 3.0, 4e-16) and near((1000.0).log10(), 3.0, 4e-16));
+    std.testing.assert(near((5e-324).ln(), -744.4400719213812, 4e-16));
+    std.testing.assert((0.0).ln() == -1.0 / 0.0 and (-1.0).ln().is_nan());
+};
+
+#[test]
+powers_by_whole_and_real_exponents := () {
+    std.testing.assert((2.0).powi(10) == 1024.0 and (2.0).powi(-2) == 0.25 and (3.0).powi(0) == 1.0);
+    std.testing.assert((2.0).pow(0.5) == (2.0).pow(0.5) and near((2.0).pow(0.5), std.math.sqrt_2, 4e-16));
+    std.testing.assert(near((9.0).pow(1.5), 27.0, 4e-16) and (-2.0).pow(3.0) == -8.0);
+    std.testing.assert((-2.0).pow(0.5).is_nan() and (0.0).pow(2.5) == 0.0);
+};
+
+#[test]
+trigonometry_matches_known_values := () {
+    std.testing.assert((0.0).sin() == 0.0 and (0.0).cos() == 1.0);
+    std.testing.assert(near((1.0).sin(), 0.8414709848078965, 4e-16));
+    std.testing.assert(near((1.0).cos(), 0.5403023058681398, 4e-16));
+    std.testing.assert(near(std.math.pi.sin(), 1.2246467991473532e-16, 1e-9));
+    std.testing.assert(near((std.math.pi / 2.0).cos(), 6.123233995736766e-17, 1e-9));
+    std.testing.assert(near((100.0).sin(), -0.5063656411097588, 4e-15));
+    std.testing.assert(near((-3.0).tan(), 0.1425465430742778, 4e-15));
+    std.testing.assert(near((1.0).atan(), 0.7853981633974483, 4e-16) and (0.0).atan() == 0.0);
+    std.testing.assert(near((1e10).atan(), 1.5707963266948965, 4e-16));
+    std.testing.assert(near((0.5).asin(), 0.5235987755982989, 4e-16));
+    std.testing.assert(near((0.5).acos(), 1.0471975511965979, 4e-16));
+    std.testing.assert((1.0 / 0.0).sin().is_nan());
+};
+
+#[test]
+atan2_picks_the_quadrant := () {
+    pi := std.math.pi;
+    std.testing.assert(
+        near((1.0).atan2(1.0), pi / 4.0, 4e-16) and near((1.0).atan2(-1.0), 3.0 * pi / 4.0, 4e-16)
+    );
+    std.testing.assert(
+        near((-1.0).atan2(-1.0), -3.0 * pi / 4.0, 4e-16) and near((-1.0).atan2(1.0), -pi / 4.0, 4e-16)
+    );
+    std.testing.assert((0.0).atan2(1.0) == 0.0 and (0.0).atan2(-1.0) == pi and (1.0).atan2(0.0) == pi / 2.0);
+    std.testing.assert((-0.0).atan2(-1.0) == -pi and (0.0).atan2(0.0) == 0.0);
+};
+
+#[test]
+hyperbolics_and_conversions := () {
+    std.testing.assert(
+        near((1.0).sinh(), 1.1752011936438014, 4e-16) and near((1.0).cosh(), 1.5430806348152437, 4e-16)
+    );
+    std.testing.assert(near((0.5).tanh(), 0.46211715726000974, 4e-16) and (30.0).tanh() == 1.0);
+    std.testing.assert(near((3.0).hypot(4.0), 5.0, 4e-16));
+    std.testing.assert(
+        near((180.0).to_radians(), std.math.pi, 4e-16) and near(std.math.pi.to_degrees(), 180.0, 4e-16)
+    );
+    std.testing.assert(near((8.0).log(2.0), 3.0, 4e-16));
+};

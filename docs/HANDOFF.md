@@ -344,10 +344,17 @@ dependencies capped at `warn`, `expect`, `#[lint.allow]` on locals).
    Added in 481 (proposed): `std.rand`, `std.seq.sort`, `std.codec`, `std.hash.{crc32,adler32}`.
    Open there: operating system entropy for `std.rand` (`getrandom`, WASI `random_get`, Windows
    `ProcessPrng`: a runtime symbol on each system), a stable sort (needs a scratch slice or an
-   allocator) and a pattern-defeating quicksort for speed, `BTreeMap`, `std.math`'s float functions
-   (`sqrt`, `floor`, `pow`, `ln`, trigonometry: each needs a `lang.float` primitive and a lowering
-   per backend first), `std.os.{env,process,net}` and directories, and `std.json` reading (the
-   writer exists). Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
+   allocator) and a pattern-defeating quicksort for speed, `std.os.{env,process,net}` and
+   directories, and `std.json` reading (the writer exists). Added in 488 (proposed): `std.math`
+   (float functions written in Vun on the encoding and on integers, not on primitives, so every
+   backend gives the same bits: `sqrt` is correctly rounded, the rest within a few ulp), iterator
+   adapters and consumers, option and result combinators, `std.text.num` integer parsing, slice
+   shapes with a stable merge sort over caller-given room, `Vec` extras, `BitSet`, `SortedMap`
+   (sorted vectors, O(n) insert: a real `BTreeMap` is still open) and `Duration` arithmetic and
+   formatting. Open there: float parsing and printing (`std.fmt` has no `Format` for floats), a
+   correctly rounded `exp`/`ln`/`sin`, `f16` math through `f64` is rounded twice for the
+   transcendental functions, `Iter.sum` (a generic `+` of a range type needs a design), `rev` and
+   `peekable`, `Vec.drain`, `Vec.split_off`. Added in 484 (proposed): `HashSet`, `Deque`, `BinaryHeap` and the integer
    methods of `std.int.math`. `ArrayVec(n, T)` is built on 485 (`lang.mem.Uninit`).
    Open there: `==` of arrays of no items (`[0]u32`) does not compile. `for i in 0..0` types the
    index `never`, so typing reports `types.bad_index` at `std.seq`'s `a[i]`; past that the MIR

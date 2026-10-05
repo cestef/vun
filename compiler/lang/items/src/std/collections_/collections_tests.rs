@@ -41,3 +41,12 @@ pub const a_map_keys_by_bytes: Item = Item::new(
 pub const a_map_visits_every_entry_once: Item = Item::new(
     &["std", "collections", "tests", "a_map_visits_every_entry_once"],
 );
+pub const a_vec_retains_dedups_and_resizes: Item = Item::new(
+    &["std", "collections", "tests", "a_vec_retains_dedups_and_resizes"],
+);
+pub const a_bit_set_holds_small_integers_once: Item = Item::new(
+    &["std", "collections", "tests", "a_bit_set_holds_small_integers_once"],
+);
+pub const a_sorted_map_keeps_its_keys_in_order: Item = Item::new(
+    &["std", "collections", "tests", "a_sorted_map_keeps_its_keys_in_order"],
+);

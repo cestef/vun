@@ -6,4 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.iter.tests`.
+pub const tests: Item = Item::new(&["std", "iter", "tests"]);
 pub const Iter: Item = Item::new(&["std", "iter", "Iter"]);
+/// `item`, `n` times.
+pub const repeat: Item = Item::new(&["std", "iter", "repeat"]);
+/// `item`, once.
+pub const once: Item = Item::new(&["std", "iter", "once"]);

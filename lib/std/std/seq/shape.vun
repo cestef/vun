@@ -1,0 +1,124 @@
+//! Moving items in a slice and cutting it into runs (spec 05): methods of every `[T]`, and so of
+//! every `[n]T`. A stable sort needs room as long as the slice, which the caller gives.
+
+impl lang.mem.Slice($T) {
+    /// Sets each item to `item`.
+    fill := (xs: &mut [T], item: T) {
+        for i in 0..xs.len() { xs[i] = item; }
+    };
+
+    /// Copies the items of `source` over these, which must be as many.
+    copy_from := (xs: &mut [T], source: &[T]) {
+        if xs.len() != source.len() { lang.panic.fail(.message("the slices differ in length")); }
+        for i in 0..xs.len() { xs[i] = source[i]; }
+    };
+
+    /// Moves the items `n` places toward the start, the first `n` going to the end.
+    rotate_left := (xs: &mut [T], n: usize) {
+        len := xs.len();
+        if len == 0 { return; }
+        by := n % len;
+        xs[0..by].reverse();
+        xs[by..].reverse();
+        xs.reverse();
+    };
+
+    /// Moves the items `n` places toward the end, the last `n` coming to the start.
+    rotate_right := (xs: &mut [T], n: usize) {
+        len := xs.len();
+        if len == 0 { return; }
+        xs.rotate_left((len - n % len).to(usize));
+    };
+
+    /// The runs of `n` items, the last with what is left; `n` of 0 gives none.
+    chunks := (xs: &[T], n: usize) -> std.iter.Iter(&[T]) {
+        mut rest: &[T] = xs;
+        for n > 0 and rest.len() > 0 {
+            take := std.cmp.min(usize, n, rest.len());
+            yield rest[0..take];
+            rest = rest[take..];
+        }
+    };
+
+    /// Every run of `n` items next to each other, none when there are fewer; `n` of 0 gives none.
+    windows := (xs: &[T], n: usize) -> std.iter.Iter(&[T]) {
+        if n > 0 and n <= xs.len() {
+            for start in 0..=(xs.len() - n) {
+                yield xs[start..(start + n).to(usize)];
+            }
+        }
+    };
+
+    /// How many of the leading items `before` holds for, in a slice where it holds for a run of
+    /// them and then for none: where the first it does not hold for is.
+    partition_point := (xs: &[T], $F: lang.ops.Call((&T), bool), before: F) -> usize {
+        mut low: usize = 0;
+        mut high := xs.len();
+        for low < high {
+            mid: usize = (low + (high - low) / 2).to(usize);
+            if before(&xs[mid]) { low = (mid + 1).to(usize); } else { high = mid; }
+        }
+        low
+    };
+
+    /// Keeps the first of each run of equal items at the start of the slice and gives how many
+    /// that is; the items after them are in no order.
+    dedup := (xs: &mut [T]) -> usize {
+        if xs.len() == 0 { return 0; }
+        mut kept: usize = 1;
+        for i in 1..xs.len() {
+            if xs[i] != xs[kept - 1] {
+                xs.swap(kept, i);
+                kept += 1;
+            }
+        }
+        kept
+    };
+
+    /// Puts the items in ascending order by `<`, items that are equal keeping their order;
+    /// `room` is as long as the slice.
+    sort_stable := (xs: &mut [T], room: &mut [T]) {
+        xs.sort_stable_by(room, [] (a: &T, b: &T) { a.* < b.* });
+    };
+
+    /// Puts the items in the order `less` gives, items neither goes before keeping their order;
+    /// `room` is as long as the slice. Runs are merged by doubling widths.
+    sort_stable_by := (xs: &mut [T], room: &mut [T], $F: lang.ops.Call((&T, &T), bool), less: F) {
+        n := xs.len();
+        if n != room.len() { lang.panic.fail(.message("the room is not as long as the slice")); }
+        mut width: usize = 1;
+        for width < n {
+            mut start: usize = 0;
+            for start < n {
+                mid := std.cmp.min(usize, (start + width).to(usize), n);
+                end := std.cmp.min(usize, (start + 2 * width).to(usize), n);
+                mut left := start;
+                mut right := mid;
+                mut out := start;
+                for left < mid and right < end {
+                    if less(&xs[right], &xs[left]) {
+                        room[out] = xs[right];
+                        right += 1;
+                    } else {
+                        room[out] = xs[left];
+                        left += 1;
+                    }
+                    out += 1;
+                }
+                for left < mid {
+                    room[out] = xs[left];
+                    left += 1;
+                    out += 1;
+                }
+                for right < end {
+                    room[out] = xs[right];
+                    right += 1;
+                    out += 1;
+                }
+                start = end;
+            }
+            for i in 0..n { xs[i] = room[i]; }
+            width = (width * 2).to(usize);
+        }
+    };
+}

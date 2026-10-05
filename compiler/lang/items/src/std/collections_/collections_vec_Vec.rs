@@ -48,6 +48,17 @@ pub const truncate: Item = Item::new(&["std", "collections", "vec", "Vec", "trun
 pub const clear: Item = Item::new(&["std", "collections", "vec", "Vec", "clear"]);
 /// Adds the items of `more`, copies of them.
 pub const extend: Item = Item::new(&["std", "collections", "vec", "Vec", "extend"]);
+/// Keeps the items `keep` holds for, in their order. The others are not dropped: ones
+/// owning memory are taken away first.
+pub const retain: Item = Item::new(&["std", "collections", "vec", "Vec", "retain"]);
+/// Keeps the first of each run of equal items.
+pub const dedup: Item = Item::new(&["std", "collections", "vec", "Vec", "dedup"]);
+/// Makes it hold `n` items: the first `n` it has, or those and copies of `item`.
+pub const resize: Item = Item::new(&["std", "collections", "vec", "Vec", "resize"]);
+/// Adds the items of `more`.
+pub const extend_iter: Item = Item::new(
+    &["std", "collections", "vec", "Vec", "extend_iter"],
+);
 /// Gives the buffer back to `a`, which it came from. Items owning memory are taken away
 /// first: they are not dropped.
 pub const deinit: Item = Item::new(&["std", "collections", "vec", "Vec", "deinit"]);

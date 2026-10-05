@@ -36,3 +36,17 @@ pub const a_slice_is_reversed_and_swapped: Item = Item::new(
 pub const a_sorted_slice_is_searched_by_halves: Item = Item::new(
     &["std", "seq", "tests", "a_sorted_slice_is_searched_by_halves"],
 );
+pub const slices_are_filled_copied_and_rotated: Item = Item::new(
+    &["std", "seq", "tests", "slices_are_filled_copied_and_rotated"],
+);
+pub const slices_are_cut_into_runs: Item = Item::new(
+    &["std", "seq", "tests", "slices_are_cut_into_runs"],
+);
+pub const a_run_of_equal_items_keeps_its_first: Item = Item::new(
+    &["std", "seq", "tests", "a_run_of_equal_items_keeps_its_first"],
+);
+/// A key and an order of arrival.
+pub const Keyed: Item = Item::new(&["std", "seq", "tests", "Keyed"]);
+pub const the_stable_sort_keeps_the_order_of_equal_items: Item = Item::new(
+    &["std", "seq", "tests", "the_stable_sort_keeps_the_order_of_equal_items"],
+);

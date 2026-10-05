@@ -36,6 +36,8 @@ pub const iter: Item = Item::new(&["std", "iter"]);
 pub const lints: Item = Item::new(&["std", "lints"]);
 /// The namespace `std.log`.
 pub const log: Item = Item::new(&["std", "log"]);
+/// The namespace `std.math`.
+pub const math: Item = Item::new(&["std", "math"]);
 /// The namespace `std.mem`.
 pub const mem: Item = Item::new(&["std", "mem"]);
 /// The namespace `std.meta`.

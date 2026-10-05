@@ -21,4 +21,57 @@ impl Option($T) {
     ok_or := (o: ?T, $E: type, error: E) -> Result(T, E) {
         match o { .some(v) => .ok(v), .none => .err(error) }
     };
+    /// The value passed through `f`, which may give none.
+    and_then := (o: ?T, $U: type, $F: lang.ops.Call((T), ?U), f: F) -> ?U {
+        match o { .some(v) => f(v), .none => .none }
+    };
+    /// The value, or `other` when there is none.
+    #[panic.never]
+    otherwise := (o: ?T, other: ?T) -> ?T { match o { .some(v) => .some(v), .none => other } };
+    /// The value, or what `f` gives when there is none.
+    or_else := (o: ?T, $F: lang.ops.Call((), ?T), f: F) -> ?T {
+        match o { .some(v) => .some(v), .none => f() }
+    };
+    /// The value, or what `f` gives when there is none.
+    unwrap_or_else := (o: ?T, $F: lang.ops.Call((), T), f: F) -> T {
+        match o { .some(v) => v, .none => f() }
+    };
+    /// The value passed through `f`, or `default` when there is none.
+    map_or := (o: ?T, $U: type, default: U, $F: lang.ops.Call((T), U), f: F) -> U {
+        match o { .some(v) => f(v), .none => default }
+    };
+    /// The value if `keep` holds for it.
+    filter := (o: ?T, $F: lang.ops.Call((&T), bool), keep: F) -> ?T {
+        match o {
+            .some(v) => if keep(&v) { .some(v) } else { .none },
+            .none => .none,
+        }
+    };
+    /// Whether there is a value and `f` holds for it.
+    is_some_and := (o: ?T, $F: lang.ops.Call((&T), bool), f: F) -> bool {
+        match o { .some(v) => f(&v), .none => false }
+    };
+    /// Both values as a pair, none if either is.
+    zip := (o: ?T, $U: type, other: ?U) -> ?(T, U) {
+        match o {
+            .some(a) => match other { .some(b) => .some((a, b)), .none => .none },
+            .none => .none,
+        }
+    };
+    /// A result holding the value, or what `f` gives when there is none.
+    ok_or_else := (o: ?T, $E: type, $F: lang.ops.Call((), E), f: F) -> Result(T, E) {
+        match o { .some(v) => .ok(v), .none => .err(f()) }
+    };
+    /// Takes the value out, leaving none.
+    take := (o: &mut ?T) -> ?T {
+        taken := o.*;
+        o.* = .none;
+        taken
+    };
+    /// Puts `value` in, giving back what was there.
+    replace := (o: &mut ?T, value: T) -> ?T {
+        taken := o.*;
+        o.* = .some(value);
+        taken
+    };
 }

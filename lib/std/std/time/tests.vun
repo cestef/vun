@@ -1,0 +1,20 @@
+//! Tests of `std.time`.
+
+#[test]
+durations_add_subtract_and_show_in_their_unit := () {
+    one := std.time.Duration.millis(1500);
+    std.testing.assert(one.as_millis() == 1500 and one.as_micros() == 1_500_000 and !one.is_zero());
+    std.testing.assert(one.checked_add(std.time.Duration.seconds(1)).expect("fits").as_millis() == 2500);
+    std.testing.assert(one.checked_sub(std.time.Duration.seconds(2)) == Option(std.time.Duration).none);
+    std.testing.assert(one.saturating_sub(std.time.Duration.seconds(2)).is_zero());
+    mut slab := std.text.Slab(64).empty();
+    std.fmt.print(
+        &mut slab,
+        "{} {} {} {}",
+        one,
+        std.time.Duration.nanos(2500),
+        std.time.Duration.nanos(850),
+        std.time.Duration.millis(3)
+    ).expect("room");
+    std.testing.assert(slab.bytes() == "1.50s 2.50us 850ns 3.00ms");
+};

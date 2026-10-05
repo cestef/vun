@@ -1,0 +1,90 @@
+//! Classifying and rounding floats, written on the encoding and on whole numbers, so every
+//! backend gives the same bits. The functions take an `f64`; the methods of `std.math` bring
+//! every float type through it.
+
+sign_mask: u64 = 0x8000_0000_0000_0000;
+magnitude_mask: u64 = 0x7fff_ffff_ffff_ffff;
+fraction_mask: u64 = 0x000f_ffff_ffff_ffff;
+infinity_bits: u64 = 0x7ff0_0000_0000_0000;
+/// From this magnitude up, every float is a whole number already: 2^52.
+whole_from: f64 = 4_503_599_627_370_496.0;
+infinity: f64 = 1.0 / 0.0;
+not_a_number: f64 = 0.0 / 0.0;
+
+bits := (x: f64) -> u64 { lang.float.bits(f64, x) };
+
+from_bits := (b: u64) -> f64 { lang.float.from_bits(f64, b) };
+
+is_nan := (x: f64) -> bool { (bits(x) & magnitude_mask) > infinity_bits };
+
+is_infinite := (x: f64) -> bool { (bits(x) & magnitude_mask) == infinity_bits };
+
+is_finite := (x: f64) -> bool { (bits(x) & magnitude_mask) < infinity_bits };
+
+/// Whether the sign bit is set: of a negative number, `-0.0`, and a NaN made negative.
+is_sign_negative := (x: f64) -> bool { (bits(x) >> 63) == 1 };
+
+abs := (x: f64) -> f64 { from_bits(bits(x) & magnitude_mask) };
+
+/// The magnitude of `x` with the sign of `sign`.
+copysign := (x: f64, sign: f64) -> f64 {
+    from_bits((bits(x) & magnitude_mask) | (bits(sign) & sign_mask))
+};
+
+/// 1 or -1 by the sign bit; a NaN stays one.
+signum := (x: f64) -> f64 { if is_nan(x) { x } else { copysign(1.0, x) } };
+
+/// The lesser; the other when one is a NaN.
+min := (x: f64, y: f64) -> f64 {
+    if is_nan(x) { return y; }
+    if is_nan(y) { return x; }
+    if x < y { x } else { y }
+};
+
+/// The greater; the other when one is a NaN.
+max := (x: f64, y: f64) -> f64 {
+    if is_nan(x) { return y; }
+    if is_nan(y) { return x; }
+    if x > y { x } else { y }
+};
+
+/// `x` held between `low` and `high`; a NaN stays one.
+clamp := (x: f64, low: f64, high: f64) -> f64 {
+    if x < low { low } else if x > high { high } else { x }
+};
+
+/// `x` without its fraction, the sign of a zero kept.
+trunc := (x: f64) -> f64 {
+    if !(abs(x) < whole_from) { return x; }
+    whole := lang.float.to_int(f64, x, i64);
+    copysign(lang.float.from_int(whole, f64), x)
+};
+
+/// The greatest whole number at most `x`.
+floor := (x: f64) -> f64 {
+    t := trunc(x);
+    if t > x { t - 1.0 } else { t }
+};
+
+/// The least whole number at least `x`.
+ceil := (x: f64) -> f64 {
+    t := trunc(x);
+    if t < x { t + 1.0 } else { t }
+};
+
+/// The nearest whole number, halves away from zero.
+round := (x: f64) -> f64 {
+    t := trunc(x);
+    if abs(x - t) >= 0.5 { t + copysign(1.0, x) } else { t }
+};
+
+/// The nearest whole number, halves to the even one.
+round_even := (x: f64) -> f64 {
+    t := trunc(x);
+    d := abs(x - t);
+    odd := abs(t - 2.0 * trunc(t / 2.0)) == 1.0;
+    if d > 0.5 or (d == 0.5 and odd) { t + copysign(1.0, x) } else { t }
+};
+
+/// What is left of `x` past `trunc(x)`.
+fract := (x: f64) -> f64 { x - trunc(x) };

@@ -204,6 +204,7 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 | `vun_sema::asm=trace` | each form an assembly line was tried against and why it missed |
 | `vun_sema::typeck=trace` | each compile-time evaluation while typing that gave no value, where and why (`Runtime`, `Unsupported`, ...) |
 | `vun_codegen=trace` | each instruction selected |
+| `vun_lower::assemble=debug,trace` | each function the program holds (trace) and each callee it lacks (debug), as `file#expr bound [x_]` |
 | `vun_backend_wasm=debug,trace` | each wasm function lowered, each instruction's code |
 | `vun_link_lld=debug` | each `wasm-ld` run |
 | `vun_link_wasm=debug` | each wasm link in process |

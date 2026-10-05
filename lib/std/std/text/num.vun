@@ -1,0 +1,48 @@
+//! Reading integers from text: an optional sign and the digits of a radix from 2 to 36, with no
+//! space around them. The magnitude is held below 2^120, so a longer number is an overflow
+//! whatever integer type it is read into.
+
+/// Why a text is not an integer of the type asked.
+Problem := enum {
+    /// There are no digits.
+    empty,
+    /// A byte is not a digit of the radix.
+    invalid_digit,
+    /// The number does not fit the type.
+    overflow,
+};
+
+/// What an integer's magnitude is held in while it is read.
+Magnitude: type = Int(0..(1 << 120));
+
+/// The magnitude of the digits of `text` in `radix`.
+magnitude := (text: &[u8], radix: Int(2..=36)) -> Result(Magnitude, Problem) {
+    if text.len() == 0 { return .err(.empty); }
+    mut acc: Magnitude = 0;
+    for byte in text.iter() {
+        digit := match std.text.ascii.digit(byte.*, radix.to(u8)) {
+            .some(d) => d,
+            .none => return .err(.invalid_digit),
+        };
+        match (acc * radix + digit).try_to(Magnitude) {
+            .some(next) => { acc = next; },
+            .none => return .err(.overflow),
+        }
+    }
+    .ok(acc)
+};
+
+/// The integer of type `T` that `text` writes in `radix`, with a `-` or `+` before its digits.
+parse := ($T: std.int.Integer, text: &[u8], radix: Int(2..=36)) -> Result(T, Problem) {
+    negative := text.len() > 0 and text[0] == "-"[0];
+    signed := text.len() > 0 and (negative or text[0] == "+"[0]);
+    digits := if signed { text[1..] } else { text };
+    mag := magnitude(digits, radix)?;
+    match (if negative { 0 - mag } else { mag }).try_to(T) {
+        .some(v) => .ok(v),
+        .none => .err(.overflow),
+    }
+};
+
+/// The integer of type `T` that `text` writes in decimal.
+parse_decimal := ($T: std.int.Integer, text: &[u8]) -> Result(T, Problem) { parse(T, text, 10) };

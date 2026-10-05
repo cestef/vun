@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.text.ascii`.
 pub const ascii: Item = Item::new(&["std", "text", "ascii"]);
+/// The namespace `std.text.num`.
+pub const num: Item = Item::new(&["std", "text", "num"]);
 /// The namespace `std.text.string`.
 pub const string: Item = Item::new(&["std", "text", "string"]);
 /// The namespace `std.text.tests`.
@@ -31,6 +33,16 @@ pub const trim: Item = Item::new(&["std", "text", "trim"]);
 pub const lines: Item = Item::new(&["std", "text", "lines"]);
 /// Whether `a` and `b` are the same text, the case of ASCII letters aside.
 pub const eq_ignore_case: Item = Item::new(&["std", "text", "eq_ignore_case"]);
+/// `text` without `prefix` at its start, none if it does not start with it.
+pub const strip_prefix: Item = Item::new(&["std", "text", "strip_prefix"]);
+/// `text` without `suffix` at its end, none if it does not end with it.
+pub const strip_suffix: Item = Item::new(&["std", "text", "strip_suffix"]);
+/// The runs of `text` between white space, none of them empty.
+pub const split_whitespace: Item = Item::new(&["std", "text", "split_whitespace"]);
+/// Makes each ASCII letter of `text` upper case, in place.
+pub const make_upper: Item = Item::new(&["std", "text", "make_upper"]);
+/// Makes each ASCII letter of `text` lower case, in place.
+pub const make_lower: Item = Item::new(&["std", "text", "make_lower"]);
 /// Why a `Slab` took no more bytes.
 pub const Full: Item = Item::new(&["std", "text", "Full"]);
 /// Up to `n` bytes held inline: written to as any writer, read back as a slice.

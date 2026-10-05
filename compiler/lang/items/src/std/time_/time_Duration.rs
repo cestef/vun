@@ -12,6 +12,20 @@ pub const millis: Item = Item::new(&["std", "time", "Duration", "millis"]);
 pub const seconds: Item = Item::new(&["std", "time", "Duration", "seconds"]);
 /// Its length in nanoseconds.
 pub const as_nanos: Item = Item::new(&["std", "time", "Duration", "as_nanos"]);
+/// Its length in whole milliseconds.
+pub const as_millis: Item = Item::new(&["std", "time", "Duration", "as_millis"]);
+/// Its length in whole microseconds.
+pub const as_micros: Item = Item::new(&["std", "time", "Duration", "as_micros"]);
+/// Whether it is no time at all.
+pub const is_zero: Item = Item::new(&["std", "time", "Duration", "is_zero"]);
+/// The span of both, none where it passes what the type holds.
+pub const checked_add: Item = Item::new(&["std", "time", "Duration", "checked_add"]);
+/// This span less `other`, none for a longer one.
+pub const checked_sub: Item = Item::new(&["std", "time", "Duration", "checked_sub"]);
+/// This span less `other`, no time at all for a longer one.
+pub const saturating_sub: Item = Item::new(
+    &["std", "time", "Duration", "saturating_sub"],
+);
 /// Its whole seconds.
 pub const whole_seconds: Item = Item::new(&["std", "time", "Duration", "whole_seconds"]);
 /// The nanoseconds past its whole seconds.

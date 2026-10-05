@@ -123,6 +123,11 @@ formats of those widths, one constructor as integers are one (`Int`), so the ope
 float semantics. Operations that trade precision for speed are explicit functions:
 `lang.float.mul_add(a, b, c)`, `v.reduce_add(.pairwise(8))` with a specified reduction tree. They
 are vectorizable and reproducible at once. There are no implicit int/float conversions.
+Float functions that are not operators are `std.math`, written in the language on the encoding
+and on integers, so every backend gives the same bits: the rounding functions, `abs`, `copysign`,
+`min` and `max` and `sqrt` are exact (`sqrt` is correctly rounded), and the exponentials,
+logarithms and trigonometric functions are within a few units in the last place. A float type
+narrower than `f64` computes in `f64` and rounds once.
 
 A float literal has the float type expected of it, and `f64` where nothing expects one, at
 compile time and at run time alike: `nan := 0.0 / 0.0` is an `f64`. At compile time a float is its

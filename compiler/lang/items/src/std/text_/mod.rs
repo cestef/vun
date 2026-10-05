@@ -2,6 +2,8 @@
 pub mod text_Full;
 pub mod text_Slab;
 pub mod text_ascii;
+pub mod text_num;
+pub mod text_num_Problem;
 pub mod text_string;
 pub mod text_string_Failed;
 pub mod text_string_String;

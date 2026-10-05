@@ -150,3 +150,75 @@ a_map_visits_every_entry_once := () {
     std.testing.assert(sum == 21);
     m.deinit(Fixed, &mut a);
 };
+
+#[test]
+a_vec_retains_dedups_and_resizes := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u32).empty();
+    for i in 0..10 { v.push(Fixed, &mut a, i).expect("room"); }
+    v.retain([] (x: &u32) { x.* % 3 != 0 });
+    std.testing.assert(v.items() == [1, 2, 4, 5, 7, 8]);
+    v.resize(Fixed, &mut a, 8, 0).expect("room");
+    std.testing.assert(v.len() == 8 and v.items()[7] == 0);
+    v.resize(Fixed, &mut a, 2, 0).expect("room");
+    std.testing.assert(v.items() == [1, 2]);
+    v.push(Fixed, &mut a, 2).expect("room");
+    v.push(Fixed, &mut a, 2).expect("room");
+    v.dedup();
+    std.testing.assert(v.items() == [1, 2]);
+    v.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_bit_set_holds_small_integers_once := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut s := std.collections.BitSet.empty();
+    std.testing.assert(s.is_empty() and !s.contains(3));
+    std.testing.assert(
+        s.insert(Fixed, &mut a, 3).expect("room") and !s.insert(Fixed, &mut a, 3).expect("room")
+    );
+    s.insert(Fixed, &mut a, 64).expect("room");
+    s.insert(Fixed, &mut a, 130).expect("room");
+    std.testing.assert(s.count() == 3 and s.contains(64) and s.contains(130) and !s.contains(65));
+    std.testing.assert(s.iter().count() == 3 and s.iter().nth(1) == Option(usize).some(64));
+    std.testing.assert(s.remove(64) and !s.remove(64) and s.count() == 2);
+    mut other := std.collections.BitSet.empty();
+    other.insert(Fixed, &mut a, 3).expect("room");
+    other.insert(Fixed, &mut a, 7).expect("room");
+    s.union_with(Fixed, &mut a, &other).expect("room");
+    std.testing.assert(s.count() == 3 and s.contains(7));
+    s.intersect_with(&other);
+    std.testing.assert(s.count() == 2 and s.contains(3) and s.contains(7) and !s.contains(130));
+    s.difference_with(&other);
+    std.testing.assert(s.is_empty());
+    s.deinit(Fixed, &mut a);
+    other.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_sorted_map_keeps_its_keys_in_order := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := std.collections.SortedMap(u32, u16).empty();
+    for k in [5, 1, 9, 3, 7] { m.insert(Fixed, &mut a, k, (k * 10).to(u16)).expect("room"); }
+    std.testing.assert(
+        m.len() == 5 and m.get(&3) == Option(&u16).some(&30) and m.get(&4) == Option(&u16).none
+    );
+    std.testing.assert(m.insert(Fixed, &mut a, 3, 33).expect("room") == Option(u16).some(30));
+    std.testing.assert(m.first().expect("some").0.* == 1 and m.last().expect("some").0.* == 9);
+    mut previous: u32 = 0;
+    mut ordered := true;
+    for (k, _) in m.entries() {
+        if k.* < previous { ordered = false; }
+        previous = k.*;
+    }
+    std.testing.assert(ordered and m.entries().count() == 5);
+    std.testing.assert(
+        m.remove(&5) == Option(u16).some(50) and m.remove(&5) == Option(u16).none and m.len() == 4
+    );
+    m.get_mut(&1).expect("some").* = 11;
+    std.testing.assert(m.get(&1) == Option(&u16).some(&11) and m.contains(&9) and !m.contains(&5));
+    m.deinit(Fixed, &mut a);
+};

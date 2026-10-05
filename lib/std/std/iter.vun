@@ -1,6 +1,8 @@
 //! Iteration is suspension (spec 06, section 3): an iterator is a coroutine yielding its items,
 //! and adapters are coroutine functions over one, methods of every frame.
 
+..std.mem.alloc.{ Allocator };
+
 Iter := ($T: type) -> lang.Interface { lang.Coroutine(T, ()) };
 
 /// What every iterator can be turned into or summed up as: methods of each coroutine frame that
@@ -68,4 +70,150 @@ impl lang.Coroutine($Self, $T, $R) {
         for _ in self { n += 1; }
         n
     };
+    /// The items after the first `n`.
+    skip := (self: Self, n: usize) -> Iter(T) {
+        mut left := n;
+        for item in self {
+            if left > 0 { left -= 1; } else { yield item; }
+        }
+    };
+    /// The items before the first that `keep` does not hold for.
+    take_while := (self: Self, $F: lang.ops.Call((&T), bool), keep: F) -> Iter(T) {
+        for item in self {
+            if !keep(&item) { break; }
+            yield item;
+        }
+    };
+    /// The items from the first that `dropped` does not hold for.
+    skip_while := (self: Self, $F: lang.ops.Call((&T), bool), dropped: F) -> Iter(T) {
+        mut skipping := true;
+        for item in self {
+            if skipping and dropped(&item) { continue; }
+            skipping = false;
+            yield item;
+        }
+    };
+    /// The first item and then every `n`th after it; an `n` of 0 is 1.
+    step_by := (self: Self, n: usize) -> Iter(T) {
+        mut until: usize = 0;
+        for item in self {
+            if until == 0 {
+                yield item;
+                until = if n == 0 { 0 } else { (n - 1).to(usize) };
+            } else {
+                until -= 1;
+            }
+        }
+    };
+    /// Each item, after `f` has seen it.
+    inspect := (self: Self, $F: lang.ops.Call((&T), ()), f: F) -> Iter(T) {
+        for item in self {
+            f(&item);
+            yield item;
+        }
+    };
+    /// `f` called with each item.
+    for_each := (self: Self, $F: lang.ops.Call((T), ()), f: F) {
+        for item in self { f(item); }
+    };
+    /// Whether `f` holds for any item; it stops at the first.
+    any := (self: Self, $F: lang.ops.Call((&T), bool), f: F) -> bool {
+        for item in self {
+            if f(&item) { return true; }
+        }
+        false
+    };
+    /// Whether `f` holds for every item; it stops at the first it does not.
+    all := (self: Self, $F: lang.ops.Call((&T), bool), f: F) -> bool {
+        for item in self {
+            if !f(&item) { return false; }
+        }
+        true
+    };
+    /// The first item `f` holds for.
+    find := (self: Self, $F: lang.ops.Call((&T), bool), f: F) -> ?T {
+        for item in self {
+            if f(&item) { return .some(item); }
+        }
+        .none
+    };
+    /// The position of the first item `f` holds for.
+    position := (self: Self, $F: lang.ops.Call((&T), bool), f: F) -> ?usize {
+        mut at: usize = 0;
+        for item in self {
+            if f(&item) { return .some(at); }
+            at += 1;
+        }
+        .none
+    };
+    /// The last item.
+    last := (self: Self) -> ?T {
+        mut found: ?T = .none;
+        for item in self { found = .some(item); }
+        found
+    };
+    /// The item at position `n`, from 0.
+    nth := (self: Self, n: usize) -> ?T {
+        mut at: usize = 0;
+        for item in self {
+            if at == n { return .some(item); }
+            at += 1;
+        }
+        .none
+    };
+    /// The items combined by `f`, the first as it is; none if there are none.
+    reduce := (self: Self, $F: lang.ops.Call((T, T), T), f: F) -> ?T {
+        mut acc: ?T = .none;
+        for item in self {
+            acc = match acc {
+                .some(so_far) => .some(f(so_far, item)),
+                .none => .some(item),
+            };
+        }
+        acc
+    };
+    /// The least item by `<`, the first of equal ones.
+    min := (self: Self) -> ?T {
+        mut found: ?T = .none;
+        for item in self {
+            found = match found {
+                .some(best) => if item < best { .some(item) } else { .some(best) },
+                .none => .some(item),
+            };
+        }
+        found
+    };
+    /// The greatest item by `<`, the last of equal ones.
+    max := (self: Self) -> ?T {
+        mut found: ?T = .none;
+        for item in self {
+            found = match found {
+                .some(best) => if best < item { .some(item) } else { .some(best) },
+                .none => .some(item),
+            };
+        }
+        found
+    };
+    /// The items in a new `Vec`, which the caller owns; on an allocation error it is given back.
+    collect := (self: Self, $A: Allocator, a: &mut A) -> Result(std.collections.Vec(T), A.Error) {
+        mut out := std.collections.Vec(T).empty();
+        for item in self {
+            match out.push(A, a, item) {
+                .ok(_) => {},
+                .err(e) => {
+                    out.deinit(A, a);
+                    return .err(e);
+                },
+            }
+        }
+        .ok(out)
+    };
 }
+
+/// `item`, `n` times.
+repeat := ($T: type, item: T, n: usize) -> Iter(T) {
+    for _ in 0..n { yield item; }
+};
+
+/// `item`, once.
+once := ($T: type, item: T) -> Iter(T) { yield item; };

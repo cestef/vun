@@ -235,3 +235,60 @@ a_code_point_is_read_back_as_it_was_written := (cp: Int(0..=0x10FFFF)) {
     read := std.text.utf16.decode(encoded.units());
     std.testing.assert(read == Option((u32, usize)).some((cp.to(u32), encoded.units().len())));
 };
+
+#[test]
+integers_are_read_in_any_radix := () {
+    std.testing.assert(std.text.num.parse(u32, "1234", 10) == Result(u32, std.text.num.Problem).ok(1234));
+    std.testing.assert(std.text.num.parse(i32, "-42", 10) == Result(i32, std.text.num.Problem).ok(-42));
+    std.testing.assert(std.text.num.parse(i32, "+7", 10) == Result(i32, std.text.num.Problem).ok(7));
+    std.testing.assert(std.text.num.parse(u8, "ff", 16) == Result(u8, std.text.num.Problem).ok(255));
+    std.testing.assert(std.text.num.parse(u8, "101", 2) == Result(u8, std.text.num.Problem).ok(5));
+    std.testing.assert(
+        std.text.num.parse(i64, "-9223372036854775808", 10) == Result(i64, std.text.num.Problem).ok(
+            -9223372036854775808
+        )
+    );
+    std.testing.assert(
+        std.text.num.parse_decimal(u64, "18446744073709551615") == Result(u64, std.text.num.Problem).ok(
+            18446744073709551615
+        )
+    );
+};
+
+#[test]
+integers_that_are_not_are_refused := () {
+    std.testing.assert(std.text.num.parse_decimal(u32, "") == Result(u32, std.text.num.Problem).err(.empty));
+    std.testing.assert(std.text.num.parse_decimal(u32, "-") == Result(u32, std.text.num.Problem).err(.empty));
+    std.testing.assert(
+        std.text.num.parse_decimal(u32, "12a") == Result(u32, std.text.num.Problem).err(.invalid_digit)
+    );
+    std.testing.assert(
+        std.text.num.parse_decimal(u8, "256") == Result(u8, std.text.num.Problem).err(.overflow)
+    );
+    std.testing.assert(
+        std.text.num.parse_decimal(u8, "-1") == Result(u8, std.text.num.Problem).err(.overflow)
+    );
+    std.testing.assert(
+        std.text.num.parse_decimal(i8, "-129") == Result(i8, std.text.num.Problem).err(.overflow)
+    );
+    std.testing.assert(
+        std.text.num.parse_decimal(u64, "99999999999999999999999999999999999999999") == Result(
+            u64,
+            std.text.num.Problem
+        ).err(.overflow)
+    );
+};
+
+#[test]
+text_is_stripped_split_and_recased := () {
+    std.testing.assert(std.text.strip_prefix("foobar", "foo") == Option(&[u8]).some("bar"));
+    std.testing.assert(std.text.strip_prefix("foobar", "bar") == Option(&[u8]).none);
+    std.testing.assert(std.text.strip_suffix("foobar", "bar") == Option(&[u8]).some("foo"));
+    std.testing.assert(std.text.split_whitespace("  a bc\t d \n").count() == 3);
+    std.testing.assert(std.text.split_whitespace("   ").count() == 0);
+    mut word: [5]u8 = "HeLlo".*;
+    std.text.make_lower(&mut word);
+    std.testing.assert(word == "hello".*);
+    std.text.make_upper(&mut word);
+    std.testing.assert(word == "HELLO".*);
+};

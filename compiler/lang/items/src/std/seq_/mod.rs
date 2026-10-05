@@ -2,3 +2,4 @@
 pub mod seq_Sequence;
 pub mod seq_sort;
 pub mod seq_tests;
+pub mod seq_tests_Keyed;

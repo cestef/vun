@@ -6,6 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.time.tests`.
+pub const tests: Item = Item::new(&["std", "time", "tests"]);
 pub const nanos_per_micro: Item = Item::new(&["std", "time", "nanos_per_micro"]);
 pub const nanos_per_milli: Item = Item::new(&["std", "time", "nanos_per_milli"]);
 pub const nanos_per_second: Item = Item::new(&["std", "time", "nanos_per_second"]);

@@ -71,3 +71,12 @@ pub const text_that_is_no_utf8_or_does_not_fit_is_not_turned: Item = Item::new(
 pub const a_code_point_is_read_back_as_it_was_written: Item = Item::new(
     &["std", "text", "tests", "a_code_point_is_read_back_as_it_was_written"],
 );
+pub const integers_are_read_in_any_radix: Item = Item::new(
+    &["std", "text", "tests", "integers_are_read_in_any_radix"],
+);
+pub const integers_that_are_not_are_refused: Item = Item::new(
+    &["std", "text", "tests", "integers_that_are_not_are_refused"],
+);
+pub const text_is_stripped_split_and_recased: Item = Item::new(
+    &["std", "text", "tests", "text_is_stripped_split_and_recased"],
+);

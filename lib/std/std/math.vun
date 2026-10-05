@@ -1,0 +1,103 @@
+//! Math on floats (spec 04, section 2): classifying and rounding, roots, powers, exponentials,
+//! logarithms and trigonometry, as methods of every float type, and the constants. All are
+//! written in Vun on the encoding and on integers, so they give the same bits on every backend.
+//! Rounding, `sqrt`, the sign functions and `min`/`max` are exact; the rest are within a few
+//! units in the last place. A float type narrower than `f64` computes in `f64` and rounds once.
+
+/// The ratio of a circle's circumference to its diameter.
+pi: f64 = 3.141592653589793;
+/// A full turn in radians: 2π.
+tau: f64 = 6.283185307179586;
+/// The base of natural logarithms.
+e: f64 = 2.718281828459045;
+ln_2: f64 = 0.6931471805599453;
+ln_10: f64 = 2.302585092994046;
+sqrt_2: f64 = 1.4142135623730951;
+
+/// A binary exponent: far past what a float holds, so a few steps of arithmetic stay inside.
+Exponent: type = Int(-2200..=2200);
+
+impl lang.Float($bits) {
+    abs := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.abs) };
+    signum := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.signum) };
+    trunc := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.trunc) };
+    floor := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.floor) };
+    ceil := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.ceil) };
+    /// The nearest whole number, halves away from zero.
+    round := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.round) };
+    /// The nearest whole number, halves to the even one.
+    round_even := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.round_even) };
+    /// What is left past `trunc`.
+    fract := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.round.fract) };
+    sqrt := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.root.sqrt) };
+    exp := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.exp.exp) };
+    exp2 := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.exp.exp2) };
+    /// The natural logarithm.
+    ln := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.exp.ln) };
+    log2 := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.exp.log2) };
+    log10 := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.exp.log10) };
+    sin := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.sin) };
+    cos := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.cos) };
+    tan := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.tan) };
+    asin := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.asin) };
+    acos := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.acos) };
+    atan := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.atan) };
+    sinh := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.sinh) };
+    cosh := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.cosh) };
+    tanh := (x: lang.Float(bits)) -> lang.Float(bits) { std.math.lift(x, std.math.trig.tanh) };
+
+    /// Whether the value is not a number.
+    is_nan := (x: lang.Float(bits)) -> bool { std.math.round.is_nan(x.nearest(f64)) };
+    is_infinite := (x: lang.Float(bits)) -> bool { std.math.round.is_infinite(x.nearest(f64)) };
+    is_finite := (x: lang.Float(bits)) -> bool { std.math.round.is_finite(x.nearest(f64)) };
+    /// Whether the sign bit is set: of a negative number, `-0.0`, and a NaN made negative.
+    is_sign_negative := (x: lang.Float(bits)) -> bool { std.math.round.is_sign_negative(x.nearest(f64)) };
+
+    /// The magnitude of the value with the sign of `sign`.
+    copysign := (x: lang.Float(bits), sign: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.round.copysign(x.nearest(f64), sign.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The lesser; the other when one is a NaN.
+    min := (x: lang.Float(bits), y: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.round.min(x.nearest(f64), y.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The greater; the other when one is a NaN.
+    max := (x: lang.Float(bits), y: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.round.max(x.nearest(f64), y.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The value held between `low` and `high`.
+    clamp := (x: lang.Float(bits), low: lang.Float(bits), high: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.round.clamp(x.nearest(f64), low.nearest(f64), high.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The value to the whole power `n`.
+    powi := (x: lang.Float(bits), n: i32) -> lang.Float(bits) {
+        std.math.exp.powi(x.nearest(f64), n).nearest(lang.Float(bits))
+    };
+    /// The value to the power `y`.
+    pow := (x: lang.Float(bits), y: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.exp.pow(x.nearest(f64), y.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The logarithm in base `base`.
+    log := (x: lang.Float(bits), base: lang.Float(bits)) -> lang.Float(bits) {
+        (std.math.exp.ln(x.nearest(f64)) / std.math.exp.ln(base.nearest(f64))).nearest(lang.Float(bits))
+    };
+    /// The angle of the point `(x, self)` from the positive x axis.
+    atan2 := (y: lang.Float(bits), x: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.trig.atan2(y.nearest(f64), x.nearest(f64)).nearest(lang.Float(bits))
+    };
+    /// The length of the hypotenuse with legs `x` and `y`.
+    hypot := (x: lang.Float(bits), y: lang.Float(bits)) -> lang.Float(bits) {
+        std.math.trig.hypot(x.nearest(f64), y.nearest(f64)).nearest(lang.Float(bits))
+    };
+    to_radians := (x: lang.Float(bits)) -> lang.Float(bits) {
+        (x.nearest(f64) * (std.math.pi / 180.0)).nearest(lang.Float(bits))
+    };
+    to_degrees := (x: lang.Float(bits)) -> lang.Float(bits) {
+        (x.nearest(f64) * (180.0 / std.math.pi)).nearest(lang.Float(bits))
+    };
+}
+
+/// `x` through `f` as an `f64`, rounded back once.
+lift := ($T: type, x: T, $F: lang.ops.Call((f64), f64), f: F) -> T {
+    f(x.nearest(f64)).nearest(T)
+};

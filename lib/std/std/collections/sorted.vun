@@ -1,0 +1,107 @@
+//! `SortedMap(K, V)`: values by key, kept in the order `<` gives the keys, over two `Vec`s. A
+//! lookup is a binary search; an insert or a remove moves the items after it. It is linear and
+//! holds no allocator, as `Vec` is: the one passed to a call that grows it is the one `deinit`
+//! must be given.
+
+..std.mem.alloc.{ Allocator };
+
+SortedMap := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
+    _keys: std.collections.Vec(K),
+    _values: std.collections.Vec(V),
+
+    /// A map holding nothing, which owns no memory yet.
+    empty := () -> SortedMap(K, V) {
+        .{ ._keys = std.collections.Vec(K).empty(), ._values = std.collections.Vec(V).empty() }
+    };
+
+    /// How many keys it holds.
+    len := (self: &SortedMap(K, V)) -> usize { self._keys.len() };
+    /// Whether it holds none.
+    is_empty := (self: &SortedMap(K, V)) -> bool { self._keys.is_empty() };
+
+    /// Where `key` is, or would be put: the position of the first key that is not before it.
+    lower_bound := (self: &SortedMap(K, V), key: &K) -> usize {
+        self._keys.items().partition_point([&key] (k: &K) { k.* < key.* })
+    };
+
+    /// The position of `key`.
+    find := (self: &SortedMap(K, V), key: &K) -> ?usize {
+        at := self.lower_bound(key);
+        if at < self._keys.len() and !(key.* < self._keys.items()[at]) { .some(at) } else { .none }
+    };
+
+    /// The value of `key`.
+    get := (self: &SortedMap(K, V), key: &K) -> ?&V {
+        match self.find(key) {
+            .some(at) => .some(&self._values.items()[at]),
+            .none => .none,
+        }
+    };
+
+    /// The value of `key`, to change.
+    get_mut := (self: &mut SortedMap(K, V), key: &K) -> ?&mut V {
+        match self.find(key) {
+            .some(at) => .some(&mut self._values.items_mut()[at]),
+            .none => .none,
+        }
+    };
+
+    /// Whether `key` is in it.
+    contains := (self: &SortedMap(K, V), key: &K) -> bool { self.find(key) != Option(usize).none };
+
+    /// Sets the value of `key`, giving the one it had.
+    insert := (self: &mut SortedMap(K, V), $A: Allocator, a: &mut A, key: K, value: V) -> Result(?V, A.Error) {
+        at := self.lower_bound(&key);
+        if at < self._keys.len() and !(key < self._keys.items()[at]) {
+            old := self._values.items()[at];
+            self._values.items_mut()[at] = value;
+            return .ok(.some(old));
+        }
+        self._keys.insert(A, a, at, key)?;
+        self._values.insert(A, a, at, value)?;
+        .ok(.none)
+    };
+
+    /// Takes `key` away, giving its value.
+    remove := (self: &mut SortedMap(K, V), key: &K) -> ?V {
+        match self.find(key) {
+            .some(at) => {
+                self._keys.remove(at);
+                .some(self._values.remove(at))
+            },
+            .none => .none,
+        }
+    };
+
+    /// The least key and its value.
+    first := (self: &SortedMap(K, V)) -> ?(&K, &V) {
+        if self.is_empty() { .none } else { .some((&self._keys.items()[0], &self._values.items()[0])) }
+    };
+
+    /// The greatest key and its value.
+    last := (self: &SortedMap(K, V)) -> ?(&K, &V) {
+        n := self.len();
+        if n == 0 { return .none; }
+        .some((&self._keys.items()[n - 1], &self._values.items()[n - 1]))
+    };
+
+    /// Each key and its value, least key first.
+    entries := (self: &SortedMap(K, V)) -> std.iter.Iter((&K, &V)) {
+        for i in 0..self.len() {
+            yield (&self._keys.items()[i], &self._values.items()[i]);
+        }
+    };
+
+    /// Holds nothing again, the buffers kept.
+    clear := (self: &mut SortedMap(K, V)) {
+        self._keys.clear();
+        self._values.clear();
+    };
+
+    /// Gives the buffers back to `a`, which they came from.
+    deinit := (self: SortedMap(K, V), $A: Allocator, a: &mut A) {
+        .{ ._keys = keys, ._values = values } := self;
+        keys.deinit(A, a);
+        values.deinit(A, a);
+    };
+} };

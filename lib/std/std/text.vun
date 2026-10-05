@@ -54,6 +54,39 @@ eq_ignore_case := (a: &[u8], b: &[u8]) -> bool {
     true
 };
 
+/// `text` without `prefix` at its start, none if it does not start with it.
+strip_prefix := (text: &[u8], prefix: &[u8]) -> ?&[u8] {
+    if text.starts_with(prefix) { .some(text[prefix.len()..]) } else { .none }
+};
+
+/// `text` without `suffix` at its end, none if it does not end with it.
+strip_suffix := (text: &[u8], suffix: &[u8]) -> ?&[u8] {
+    if text.ends_with(suffix) { .some(text[0..text.len() - suffix.len()]) } else { .none }
+};
+
+/// The runs of `text` between white space, none of them empty.
+split_whitespace := (text: &[u8]) -> std.iter.Iter(&[u8]) {
+    mut rest: &[u8] = text;
+    for {
+        rest = trim_start(rest);
+        if rest.len() == 0 { break; }
+        mut end: usize = 0;
+        for end < rest.len() and !std.text.ascii.is_space(rest[end]) { end += 1; }
+        yield rest[0..end];
+        rest = rest[end..];
+    }
+};
+
+/// Makes each ASCII letter of `text` upper case, in place.
+make_upper := (text: &mut [u8]) {
+    for i in 0..text.len() { text[i] = std.text.ascii.to_upper(text[i]); }
+};
+
+/// Makes each ASCII letter of `text` lower case, in place.
+make_lower := (text: &mut [u8]) {
+    for i in 0..text.len() { text[i] = std.text.ascii.to_lower(text[i]); }
+};
+
 /// Why a `Slab` took no more bytes.
 Full := enum { full };
 

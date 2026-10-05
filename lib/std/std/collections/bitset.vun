@@ -1,0 +1,105 @@
+//! `BitSet`: small integers held once, a bit each, over a `Vec` of words. It grows to hold the
+//! largest it was given, from an allocator the caller passes, and is linear as `Vec` is: the
+//! allocator that grew it is the one `deinit` must be given.
+
+..std.mem.alloc.{ Allocator };
+
+/// Bits in a word.
+word_bits: usize = 64;
+one: u64 = 1;
+
+BitSet := #[kind.linear] #[kind.free] struct {
+    _words: std.collections.Vec(u64),
+
+    /// A set holding nothing, which owns no memory yet.
+    empty := () -> BitSet { .{ ._words = std.collections.Vec(u64).empty() } };
+
+    /// Whether `i` is in it.
+    contains := (self: &BitSet, i: usize) -> bool {
+        word := i / word_bits;
+        match self._words.get(word) {
+            .some(w) => ((w.* >> (i % word_bits)) & 1) == 1,
+            .none => false,
+        }
+    };
+
+    /// Puts `i` in it, giving whether it was not there.
+    insert := (self: &mut BitSet, $A: Allocator, a: &mut A, i: usize) -> Result(bool, A.Error) {
+        word := i / word_bits;
+        for self._words.len() <= word { self._words.push(A, a, 0)?; }
+        bit: u64 = (one << (i % word_bits)).wrap(u64);
+        w := &mut self._words.items_mut()[word];
+        added := (w.* & bit) == 0;
+        w.* = w.* | bit;
+        .ok(added)
+    };
+
+    /// Takes `i` out of it, giving whether it was there.
+    remove := (self: &mut BitSet, i: usize) -> bool {
+        word := i / word_bits;
+        if word >= self._words.len() { return false; }
+        bit: u64 = (one << (i % word_bits)).wrap(u64);
+        w := &mut self._words.items_mut()[word];
+        present := (w.* & bit) != 0;
+        w.* = w.* ^ (w.* & bit);
+        present
+    };
+
+    /// How many it holds.
+    count := (self: &BitSet) -> usize {
+        mut n: usize = 0;
+        for w in self._words.items().iter() { n += w.*.count_ones(); }
+        n
+    };
+
+    /// Whether it holds none.
+    is_empty := (self: &BitSet) -> bool { self.count() == 0 };
+
+    /// Takes all out, the buffer kept.
+    clear := (self: &mut BitSet) { self._words.clear(); };
+
+    /// What it holds, least first.
+    iter := (self: &BitSet) -> std.iter.Iter(usize) {
+        for (at, w) in self._words.items().enumerate() {
+            mut rest: u64 = w.*;
+            for rest != 0 {
+                low := rest.trailing_zeros();
+                yield (at * word_bits + low).to(usize);
+                rest = rest & (rest - 1).wrap(u64);
+            }
+        }
+    };
+
+    /// Puts in it everything `other` holds.
+    union_with := (self: &mut BitSet, $A: Allocator, a: &mut A, other: &BitSet) -> Result((), A.Error) {
+        for self._words.len() < other._words.len() { self._words.push(A, a, 0)?; }
+        xs := self._words.items_mut();
+        for (i, w) in other._words.items().enumerate() { xs[i] = xs[i] | w.*; }
+        .ok(())
+    };
+
+    /// Keeps what `other` holds too.
+    intersect_with := (self: &mut BitSet, other: &BitSet) {
+        xs := self._words.items_mut();
+        for i in 0..xs.len() {
+            xs[i] = match other._words.get(i) { .some(w) => xs[i] & w.*, .none => 0 };
+        }
+    };
+
+    /// Takes out what `other` holds.
+    difference_with := (self: &mut BitSet, other: &BitSet) {
+        xs := self._words.items_mut();
+        for i in 0..xs.len() {
+            match other._words.get(i) {
+                .some(w) => { xs[i] = xs[i] ^ (xs[i] & w.*); },
+                .none => {},
+            }
+        }
+    };
+
+    /// Gives the buffer back to `a`, which it came from.
+    deinit := (self: BitSet, $A: Allocator, a: &mut A) {
+        .{ ._words = words } := self;
+        words.deinit(A, a);
+    };
+};

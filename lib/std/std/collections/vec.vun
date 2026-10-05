@@ -123,6 +123,47 @@ Vec := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
         .ok(())
     };
 
+    /// Keeps the items `keep` holds for, in their order. The others are not dropped: ones
+    /// owning memory are taken away first.
+    retain := (self: &mut Vec(T), $F: lang.ops.Call((&T), bool), keep: F) {
+        xs := self.items_mut();
+        count := xs.len();
+        mut kept: usize = 0;
+        for i in 0..count {
+            if keep(&xs[i]) {
+                if kept != i { xs.swap(kept, i); }
+                kept += 1;
+            }
+        }
+        self._len = kept;
+    };
+
+    /// Keeps the first of each run of equal items.
+    dedup := (self: &mut Vec(T)) {
+        kept := self.items_mut().dedup();
+        self._len = kept;
+    };
+
+    /// Makes it hold `n` items: the first `n` it has, or those and copies of `item`.
+    resize := (self: &mut Vec(T), $A: Allocator, a: &mut A, n: usize, item: T) -> Result((), A.Error) {
+        if n <= self._len {
+            self._len = n;
+            return .ok(());
+        }
+        self.reserve(A, a, (n - self._len).to(usize))?;
+        for self._len < n { self.push(A, a, item)?; }
+        .ok(())
+    };
+
+    /// Adds the items of `more`.
+    extend_iter := (self: &mut Vec(T), $A: Allocator, a: &mut A, $G: std.iter.Iter(T), more: G) -> Result(
+        (),
+        A.Error
+    ) {
+        for item in more { self.push(A, a, item)?; }
+        .ok(())
+    };
+
     /// Gives the buffer back to `a`, which it came from. Items owning memory are taken away
     /// first: they are not dropped.
     deinit := (self: Vec(T), $A: Allocator, a: &mut A) {
