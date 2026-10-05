@@ -2,3 +2,4 @@
 pub mod time_Clock;
 pub mod time_Duration;
 pub mod time_Instant;
+pub mod time_Stopwatch;

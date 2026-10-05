@@ -12,5 +12,7 @@ pub const falsified: Item = Item::new(&["std", "testing", "Totals", "falsified"]
 pub const ignored: Item = Item::new(&["std", "testing", "Totals", "ignored"]);
 pub const measured: Item = Item::new(&["std", "testing", "Totals", "measured"]);
 pub const fuzzed: Item = Item::new(&["std", "testing", "Totals", "fuzzed"]);
+/// How long the run took in nanoseconds, none where the system gave no clock.
+pub const nanos: Item = Item::new(&["std", "testing", "Totals", "nanos"]);
 /// Counts `outcome`.
 pub const count: Item = Item::new(&["std", "testing", "Totals", "count"]);

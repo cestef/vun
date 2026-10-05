@@ -15,3 +15,6 @@ pub const Duration: Item = Item::new(&["std", "time", "Duration"]);
 pub const Clock: Item = Item::new(&["std", "time", "Clock"]);
 /// A reading of a clock: nanoseconds since the clock's start.
 pub const Instant: Item = Item::new(&["std", "time", "Instant"]);
+/// The monotonic clock read at a start, to tell how long it has been since. A system that gives
+/// no clock tells nothing.
+pub const Stopwatch: Item = Item::new(&["std", "time", "Stopwatch"]);

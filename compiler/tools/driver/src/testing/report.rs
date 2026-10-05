@@ -160,15 +160,19 @@ impl Record for Tested {
     fn text(&self) -> Text {
         let output = self.output.iter().map(|line| Text::from(line.clone()));
         let lines = self.said().into_iter().chain(output);
-        lines.fold(Text::of(Style::Strong, self.ran.name.clone()), |text, line| {
-            text.newline().append(Verb::under(line))
-        })
+        let name = Text::of(Style::Strong, self.ran.name.clone());
+        let name = match self.ran.nanos {
+            Some(nanos) => name.append(Text::of(Style::Dim, format!(" {}", Nanos::from(nanos)))),
+            None => name,
+        };
+        lines.fold(name, |text, line| text.newline().append(Verb::under(line)))
     }
 
     fn fields(&self) -> Object<'static> {
         Object::new()
             .with("name", self.ran.name.clone())
             .with("outcome", self.ran.outcome.to_data())
+            .with("nanos", self.ran.nanos.to_data())
             .with("arguments", self.arguments.to_data())
             .with("output", self.output.clone())
     }
@@ -196,7 +200,7 @@ impl Record for Tally {
     }
 
     fn text(&self) -> Text {
-        let Totals { passed, trapped, falsified, ignored, measured, fuzzed } = self.0;
+        let Totals { passed, trapped, falsified, ignored, measured, fuzzed, nanos } = self.0;
         let counts = [
             PASSED.count(passed),
             TRAPPED.count(trapped),
@@ -205,14 +209,18 @@ impl Record for Tally {
             MEASURED.count(measured),
             FUZZED.count(fuzzed),
         ];
-        Text::join(counts.map(|count| Text::from(count.to_string())), ", ")
+        let counts = Text::join(counts.map(|count| Text::from(count.to_string())), ", ");
+        match nanos {
+            Some(nanos) => counts.append(Text::of(Style::Dim, format!(" in {}", Nanos::from(nanos)))),
+            None => counts,
+        }
     }
 
     fn fields(&self) -> Object<'static> {
-        let Totals { passed, trapped, falsified, ignored, measured, fuzzed } = self.0;
+        let Totals { passed, trapped, falsified, ignored, measured, fuzzed, nanos } = self.0;
         let object = Object::new().with("passed", passed).with("trapped", trapped);
         let object = object.with("falsified", falsified).with("ignored", ignored);
-        object.with("measured", measured).with("fuzzed", fuzzed)
+        object.with("measured", measured).with("fuzzed", fuzzed).with("nanos", nanos.to_data())
     }
 }
 

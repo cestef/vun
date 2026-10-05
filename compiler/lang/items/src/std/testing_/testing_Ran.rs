@@ -8,3 +8,4 @@
 use crate::Item;
 pub const name: Item = Item::new(&["std", "testing", "Ran", "name"]);
 pub const outcome: Item = Item::new(&["std", "testing", "Ran", "outcome"]);
+pub const nanos: Item = Item::new(&["std", "testing", "Ran", "nanos"]);

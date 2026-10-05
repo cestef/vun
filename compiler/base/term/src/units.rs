@@ -35,6 +35,13 @@ impl fmt::Display for Nanos {
     }
 }
 
+impl From<u64> for Nanos {
+    fn from(nanos: u64) -> Self {
+        #[expect(clippy::cast_precision_loss, reason = "a time, shown with three digits")]
+        Self(nanos as f64)
+    }
+}
+
 /// A size in bytes, in the largest binary unit it reaches, with one decimal past bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Bytes(pub u64);

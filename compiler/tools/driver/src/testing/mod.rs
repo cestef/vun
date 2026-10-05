@@ -87,11 +87,13 @@ pub struct Argument {
     pub value: vun_data::Value<'static>,
 }
 
-/// A test run: its name, as declared, and what became of it.
+/// A test run: its name, as declared, what became of it, and how long it took in nanoseconds
+/// (`None` where the system gave the program no clock).
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Ran {
     pub name: String,
     pub outcome: Outcome,
+    pub nanos: Option<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
@@ -181,7 +183,8 @@ pub struct Place {
     pub column: u32,
 }
 
-/// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed.
+/// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed,
+/// and how long the run took in nanoseconds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Totals {
     pub passed: usize,
@@ -190,6 +193,7 @@ pub struct Totals {
     pub ignored: usize,
     pub measured: usize,
     pub fuzzed: usize,
+    pub nanos: Option<u64>,
 }
 
 /// An argument as a failing case's report shows it: `x = 200`, its value as JSON.

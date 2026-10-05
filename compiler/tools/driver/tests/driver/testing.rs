@@ -45,7 +45,7 @@ skipped := () { assert(false); };
 ";
 
 fn ran(name: &str, outcome: Outcome) -> Line {
-    Line::Test(Ran { name: name.to_owned(), outcome })
+    Line::Test(Ran { name: name.to_owned(), outcome, nanos: None })
 }
 
 #[test]
@@ -81,14 +81,27 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
         let index =
             Said { message: Some("an index past the last item".to_owned()), at: Some(at(&more, 4, 8)) };
         let trapped = |said: &Said| Outcome::Trapped(Trapped { site: 0, said: Some(said.clone()) });
-        // Site ids are the program's own: compared apart from them.
+        // Every test and the run were timed by the program's clock.
+        for line in &lines {
+            match line {
+                Line::Test(ran) => assert!(ran.nanos.is_some(), "{backend}: {}", ran.name),
+                Line::Totals(totals) => assert!(totals.nanos.is_some(), "{backend}"),
+                Line::Argument(_) => {}
+            }
+        }
+        // Site ids are the program's own and times vary: compared apart from them.
         let sites: Vec<Line> = lines
             .into_iter()
             .map(|line| match line {
-                Line::Test(Ran { name, outcome: Outcome::Trapped(t) }) => {
-                    Line::Test(Ran { name, outcome: Outcome::Trapped(Trapped { site: 0, ..t }) })
+                Line::Test(Ran { name, outcome, .. }) => {
+                    let outcome = match outcome {
+                        Outcome::Trapped(t) => Outcome::Trapped(Trapped { site: 0, ..t }),
+                        outcome => outcome,
+                    };
+                    Line::Test(Ran { name, outcome, nanos: None })
                 }
-                line => line,
+                Line::Totals(totals) => Line::Totals(Totals { nanos: None, ..totals }),
+                line @ Line::Argument(_) => line,
             })
             .collect();
         let expected = [
@@ -97,7 +110,15 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             ran("indexes", trapped(&index)),
             ran("last", Outcome::Passed),
             ran("skipped", Outcome::Ignored(Ignored { reason: "not yet".to_owned() })),
-            Line::Totals(Totals { passed: 2, trapped: 2, falsified: 0, ignored: 1, measured: 0, fuzzed: 0 }),
+            Line::Totals(Totals {
+                passed: 2,
+                trapped: 2,
+                falsified: 0,
+                ignored: 1,
+                measured: 0,
+                fuzzed: 0,
+                nanos: None,
+            }),
         ];
         assert_eq!(sites, expected, "{backend}");
         assert_eq!(run.status.code(), Some(1), "{backend}");
@@ -175,7 +196,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         let said: Vec<(String, Option<String>)> = lines
             .iter()
             .filter_map(|line| match line {
-                Line::Test(Ran { name, outcome }) => {
+                Line::Test(Ran { name, outcome, .. }) => {
                     Some((name.clone(), outcome.trap().and_then(|t| t.said.clone()?.message)))
                 }
                 Line::Totals(_) | Line::Argument(_) => None,
@@ -196,12 +217,20 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         ];
         assert_eq!(said, expected, "{backend}");
         let totals = lines.iter().find_map(|l| match l {
-            Line::Totals(totals) => Some(*totals),
+            Line::Totals(totals) => Some(Totals { nanos: None, ..*totals }),
             Line::Test(_) | Line::Argument(_) => None,
         });
         assert_eq!(
             totals,
-            Some(Totals { passed: 2, trapped: 0, falsified: 7, ignored: 0, measured: 0, fuzzed: 0 }),
+            Some(Totals {
+                passed: 2,
+                trapped: 0,
+                falsified: 7,
+                ignored: 0,
+                measured: 0,
+                fuzzed: 0,
+                nanos: None
+            }),
             "{backend}"
         );
         // The smallest failing arguments, each a line before its test's.

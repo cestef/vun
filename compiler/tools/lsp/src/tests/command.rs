@@ -108,7 +108,7 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
             at: Some(Place { file, line: 2, column: 21 }),
         };
         let trapped = Trapped { site: 0, said: Some(said) };
-        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Trapped(trapped.clone()) };
+        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Trapped(trapped.clone()), nanos: None };
         let tested = testing::Tested { ran, arguments: Vec::new(), output: Vec::new() };
         client.server.tested(uri.clone(), vec![tested]);
         let asked: Vec<_> = client.server.outbox.drain(..).filter_map(|m| m.method).collect();
@@ -124,7 +124,7 @@ fn each_test_of_a_package_file_has_a_lens_running_it() {
         assert_eq!(traps, [(1, 20)], "{published:?}");
         // A property's trap names the arguments of its failing case.
         let falsified = Falsified { trapped, seed: 7, case: 0, shrinks: 1 };
-        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Falsified(falsified) };
+        let ran = Ran { name: "adds".to_owned(), outcome: Outcome::Falsified(falsified), nanos: None };
         let arguments = vec![Argument { name: "x".to_owned(), value: 200_u64.into() }];
         client.server.tested(uri.clone(), vec![testing::Tested { ran, arguments, output: Vec::new() }]);
         client.server.outbox.clear();

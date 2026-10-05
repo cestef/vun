@@ -44,3 +44,31 @@ Instant := struct {
         Duration.nanos((self._nanos - earlier._nanos).to(u64))
     };
 };
+
+/// The monotonic clock read at a start, to tell how long it has been since. A system that gives
+/// no clock tells nothing.
+Stopwatch := struct {
+    _started: ?Instant,
+
+    /// A stopwatch started now.
+    start := () -> Stopwatch { .{ ._started = std.os.now(.monotonic).ok() } };
+
+    /// The time since it started, none where the system gave no clock.
+    elapsed := (self: &Stopwatch) -> ?Duration {
+        match self._started {
+            .some(started) => match std.os.now(.monotonic) {
+                .ok(now) => .some(now.since(&started)),
+                .err(_) => .none,
+            },
+            .none => .none,
+        }
+    };
+
+    /// The nanoseconds since it started, none where the system gave no clock.
+    elapsed_nanos := (self: &Stopwatch) -> ?u64 {
+        match self.elapsed() {
+            .some(span) => .some(span.as_nanos()),
+            .none => .none,
+        }
+    };
+};

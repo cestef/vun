@@ -80,6 +80,8 @@ Totals := struct {
     ignored: usize,
     measured: usize,
     fuzzed: usize,
+    /// How long the run took in nanoseconds, none where the system gave no clock.
+    nanos: ?u64,
 
     /// Counts `outcome`.
     count := (self: &mut Totals, outcome: &Outcome) {
@@ -108,10 +110,12 @@ Argued := ($T: type) -> type { enum { argument(Argument(T)) } };
 /// JSON by its type.
 Argument := ($T: type) -> type { struct { name: &[u8], value: T } };
 
-/// A test run: its name, as declared, and what became of it.
+/// A test run: its name, as declared, what became of it, and how long it took in nanoseconds,
+/// none where the system gave no clock.
 Ran := struct {
     name: &[u8],
     outcome: Outcome,
+    nanos: ?u64,
 };
 
 /// The status of a run in which a test trapped.
@@ -146,18 +150,25 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
         .falsified = 0,
         .ignored = 0,
         .measured = 0,
-        .fuzzed = 0
+        .fuzzed = 0,
+        .nanos = .none
     };
+    run_time := std.time.Stopwatch.start();
     $for c in std.meta.collect(ns, test) {
         if options.chosen(c.decl.name) and options.runs($kind(c.ns.$(c.decl.name))) {
+            lap := std.time.Stopwatch.start();
             outcome := match std.meta.attr(lang.meta.Decl, c.decl, Ignored) {
                 .some(ignored) => Outcome.ignored(ignored),
                 .none => tested(c.ns.$(c.decl.name), c.decl.name, sys, options, &mut out)?,
             };
             totals.count(&outcome);
-            write(&mut out, &Line.test(.{ .name = c.decl.name, .outcome = outcome }))?;
+            write(
+                &mut out,
+                &Line.test(.{ .name = c.decl.name, .outcome = outcome, .nanos = lap.elapsed_nanos() })
+            )?;
         }
     }
+    totals.nanos = run_time.elapsed_nanos();
     write(&mut out, &Line.totals(totals))?;
     .ok(totals)
 };

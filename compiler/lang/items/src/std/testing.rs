@@ -53,7 +53,8 @@ pub const Argued: Item = Item::new(&["std", "testing", "Argued"]);
 /// An argument of a property's failing case: its parameter's name, and its value, written as
 /// JSON by its type.
 pub const Argument: Item = Item::new(&["std", "testing", "Argument"]);
-/// A test run: its name, as declared, and what became of it.
+/// A test run: its name, as declared, what became of it, and how long it took in nanoseconds,
+/// none where the system gave no clock.
 pub const Ran: Item = Item::new(&["std", "testing", "Ran"]);
 /// The status of a run in which a test trapped.
 pub const failed: Item = Item::new(&["std", "testing", "failed"]);
