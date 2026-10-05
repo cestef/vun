@@ -2,6 +2,7 @@
 //! recomputed where used, which hold no register, and what each point needs, as the
 //! architecture's instruction compilers describe it. The plan made is checked in debug builds.
 
+use vun_index::Idx;
 use vun_lir::{Block, Function, Inst, Scalar, Value};
 use vun_regalloc::{Allocation, Bank, Describe, Machine, Needs, Out, Remade};
 
@@ -64,11 +65,18 @@ impl<A: Isel> Describe for Described<'_, '_, A> {
 }
 
 impl<A: Isel> Cx<'_, A> {
-    /// Whether `v` is a comparison the branch ending its block makes.
+    /// Whether `v` is a comparison the branch ending its block makes. Found for every value at
+    /// once, when first asked: the allocator asks for each instruction.
     fn is_fused(&self, v: Value) -> bool {
-        self.f.blocks.iter().any(|(block, data)| {
-            matches!(data.term, vun_lir::Terminator::Branch { cond, .. } if cond == v)
-                && self.fused(block).is_some_and(|fused| fused.value == v)
-        })
+        let fused = self.fusing.get_or_init(|| {
+            let mut fused = vec![false; self.f.values.len()];
+            for (block, _) in self.f.blocks.iter() {
+                if let Some(made) = self.fused(block) {
+                    fused[made.value.index()] = true;
+                }
+            }
+            fused
+        });
+        fused[v.index()]
     }
 }

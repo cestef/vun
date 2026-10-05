@@ -60,6 +60,8 @@ pub struct Cx<'a, A: Arch> {
     marks: Vec<(u64, OriginId)>,
     /// The steps of the frame, where each takes effect.
     unwind: Vec<(u64, Step)>,
+    /// Which values the branch ending their block makes (`Cx::is_fused`), found when first asked.
+    fusing: std::cell::OnceCell<Vec<bool>>,
 }
 
 /// A function's machine code.
@@ -139,6 +141,7 @@ pub fn compile<A: Isel>(
         // The prologue comes from the function itself.
         marks: vec![(0, f.origin)],
         unwind: Vec::new(),
+        fusing: std::cell::OnceCell::new(),
     };
     if !naked {
         A::prologue(&mut cx)?;
