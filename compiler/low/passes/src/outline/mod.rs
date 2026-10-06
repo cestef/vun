@@ -6,7 +6,8 @@
 //!
 //! A block stays where it is when it names a register that is the caller's state (`Registered::keeps`:
 //! the stack, frame and link registers) and not scratch, and in a naked function, whose code is its blocks. A
-//! function keeps all its blocks when one stays, since the backend would still not express it.
+//! function keeps all its blocks when one stays, since the backend would still not express it, and
+//! when two name the same register, which may carry state from one to the other.
 //! So does a function whose blocks and calls are only what its asm needs around it: moving its
 //! block would leave a function that does nothing but call another. A function bound by
 //! `#[stack.max]` keeps its blocks too, since a call would add to the bound.
@@ -15,15 +16,15 @@
 mod tests;
 
 use vun_index::Idx;
-use vun_inline::Bound;
+use vun_inline::{Bound, RegRef};
 use vun_isa::{Blocks, Registered};
 use vun_isa_arm64::Arm64;
 use vun_isa_thumb::Thumb;
 use vun_isa_x86_64::X86_64;
 use vun_lir::func::Function;
 use vun_lir::{
-    AbiType, Alias, Asm, AsmCheck, Builder, Callee, Conv, Ext, FuncId, InstKind, Linkage, Scalar, Signature,
-    Terminator, Unit,
+    AbiType, Alias, Asm, AsmCheck, Builder, Callee, Conv, Ext, FuncId, Inst, InstKind, Linkage, Scalar,
+    Signature, Terminator, Unit,
 };
 use vun_origin::OriginId;
 
@@ -31,6 +32,9 @@ use vun_origin::OriginId;
 trait Keeps {
     /// Whether the block reads or writes state of the function holding it.
     fn keeps(&self) -> bool;
+
+    /// The general registers the block names, or its forms use unnamed.
+    fn names(&self) -> Vec<RegRef>;
 }
 
 impl Keeps for Asm {
@@ -40,6 +44,15 @@ impl Keeps for Asm {
             Arm64::ARCH => Arm64::keeps(self),
             Thumb::ARCH => Thumb::keeps(self),
             _ => false,
+        }
+    }
+
+    fn names(&self) -> Vec<RegRef> {
+        match self.arch {
+            X86_64::ARCH => X86_64::named(self).map(X86_64::reference).collect(),
+            Arm64::ARCH => Arm64::named(self).map(Arm64::reference).collect(),
+            Thumb::ARCH => Thumb::named(self).map(Thumb::reference).collect(),
+            _ => Vec::new(),
         }
     }
 }
@@ -58,6 +71,7 @@ impl Outline for Unit {
             f.outline_into(first, &mut thunks);
         }
         let moved = thunks.len();
+        vun_trace::tracing::debug!(moved, functions = first, "outlined blocks of assembly");
         for thunk in thunks {
             self.functions.push(thunk);
         }
@@ -72,6 +86,10 @@ trait Moves {
     /// Replaces each block of this function that may move by a call of a function holding it,
     /// which is pushed on `thunks`, the unit's `first` functions being before them.
     fn outline_into(&mut self, first: usize, thunks: &mut Vec<Function>);
+
+    /// Whether two of the blocks `insts` name the same register: one may pass state to the other
+    /// through it, which separate functions would not keep.
+    fn shares_registers(&self, insts: &[Inst]) -> bool;
 
     /// Whether the function has anything of its own besides its blocks of assembly.
     fn holds_more(&self) -> bool;
@@ -90,7 +108,7 @@ impl Moves for Function {
         }
         let insts: Vec<_> = self.blocks.iter().flat_map(|(_, block)| block.insts.iter().copied()).collect();
         let names = |&i: &_| matches!(&self.insts[i].kind, InstKind::Asm(asm, _) if asm.keeps());
-        if insts.iter().any(names) {
+        if insts.iter().any(names) || self.shares_registers(&insts) {
             return;
         }
         for inst in insts {
@@ -100,6 +118,20 @@ impl Moves for Function {
             thunks.push(thunk);
             self.insts[inst].kind = InstKind::Call { callee, args };
         }
+    }
+
+    fn shares_registers(&self, insts: &[Inst]) -> bool {
+        let mut seen = Vec::new();
+        for &inst in insts {
+            let InstKind::Asm(asm, _) = &self.insts[inst].kind else { continue };
+            let mut names = asm.names();
+            names.dedup();
+            if names.iter().any(|r| seen.contains(r)) {
+                return true;
+            }
+            seen.extend(names);
+        }
+        false
     }
 
     fn holds_more(&self) -> bool {
