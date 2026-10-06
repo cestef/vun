@@ -1,0 +1,136 @@
+//! The i64x2 lane instructions.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+i64x2_abs := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c0,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_neg := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c1,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_all_true := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c3,
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i64x2_bitmask := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c4,
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i64x2_extend_low_i32x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c7,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extend_high_i32x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c8,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extend_low_i32x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00c9,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extend_high_i32x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00ca,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_shl := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00cb,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_shr_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00cc,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_shr_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00cd,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_add := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00ce,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_sub := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d1,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_mul := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d5,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extmul_low_i32x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00dc,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extmul_high_i32x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00dd,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extmul_low_i32x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00de,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extmul_high_i32x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00df,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

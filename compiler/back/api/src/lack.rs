@@ -12,6 +12,8 @@ use vun_target::Name;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Missing {
     Int128,
+    /// A vector of 128 bits as a value of the program: only a block of assembly holds one.
+    Vector,
     /// A scalar of this many bytes in one register, wider than the register.
     Wider(u64),
     Half,
@@ -106,6 +108,7 @@ impl Missing {
                 );
             }
             Missing::Int128 => Msg::new().text("128-bit integers"),
+            Missing::Vector => Msg::new().text("128-bit vectors as values"),
             Missing::Wider(n) => Msg::new().text("a value of ").num(n).text(" bytes in one register"),
             Missing::Half => Msg::new().code("f16"),
             Missing::Float => Msg::new().text("floating-point values"),

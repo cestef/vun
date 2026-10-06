@@ -1,9 +1,7 @@
 //! Instructions as a typed set: each declares its encoding and, for the validator, the operand
 //! types it pops and the one it pushes, once.
 
-use vun_inline::{FormId, OpId};
-use vun_isa_wasm32::{Class, Yields};
-
+use super::asm::Asm;
 use super::{SymbolId, TypeId, ValType};
 
 /// Numeric instructions: an opcode, the operands popped (the last on top) and the result pushed.
@@ -186,61 +184,6 @@ impl Mem {
     pub fn accesses(self) -> Option<(Access, Access)> {
         MEMS.iter().find(|(m, ..)| *m == self).map(|&(_, load, store)| (load, store))
     }
-}
-
-/// An operand of an instruction of a block of `lang.arch.wasm32`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Operand {
-    /// A local of the function, by its index.
-    Local(u32),
-    /// An integer immediate.
-    Imm(i64),
-    /// One of a kind of named choice, by its index.
-    Choice(u8),
-    /// A function called or a global read or written, by its symbol.
-    Symbol(SymbolId),
-}
-
-impl Asm {
-    /// The branch depths its operands give, in order.
-    pub fn depths(&self) -> impl Iterator<Item = u32> + '_ {
-        self.operands.iter().filter_map(|o| match o {
-            Operand::Imm(depth) => u32::try_from(*depth).ok(),
-            _ => None,
-        })
-    }
-
-    /// The symbol its operands name, if one.
-    #[must_use]
-    pub fn symbol(&self) -> Option<SymbolId> {
-        self.operands.iter().find_map(|o| match o {
-            Operand::Symbol(symbol) => Some(*symbol),
-            _ => None,
-        })
-    }
-
-    /// The type of the value the block it opens gives, where its operands name one.
-    #[must_use]
-    pub fn yields(&self) -> Option<ValType> {
-        self.operands.iter().find_map(|o| match o {
-            Operand::Choice(at) => Some(match Yields::ALL[usize::from(*at)].class() {
-                Class::F32 => ValType::F32,
-                Class::F64 => ValType::F64,
-                Class::I64 => ValType::I64,
-                Class::I32 | Class::Unknown => ValType::I32,
-            }),
-            _ => None,
-        })
-    }
-}
-
-/// An instruction of a block of `lang.arch.wasm32`: the form of the instruction its table
-/// declares, which says its opcode and what it pops and pushes, with its operands.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Asm {
-    pub op: OpId,
-    pub form: FormId,
-    pub operands: Vec<Operand>,
 }
 
 /// An instruction. Blocks, loops and `if`s take and give nothing; labels are depths.

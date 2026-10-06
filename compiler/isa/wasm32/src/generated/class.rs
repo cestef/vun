@@ -6,15 +6,18 @@ pub enum Class {
     I64,
     F32,
     F64,
+    /// A vector of 128 bits, which lives on the stack: no Vun type is held as one.
+    V128,
     /// Where the block is checked for another target, a value's size is not known, nor its type.
     Unknown,
 }
 impl Class {
-    pub const ALL: [Self; 5usize] = [
+    pub const ALL: [Self; 6usize] = [
         Self::I32,
         Self::I64,
         Self::F32,
         Self::F64,
+        Self::V128,
         Self::Unknown,
     ];
 }

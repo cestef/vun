@@ -20,3 +20,5 @@ pub const bulk_memory: Item = Item::new(
 );
 /// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
 pub const atomics: Item = Item::new(&["lang", "arch", "wasm32", "Feature", "atomics"]);
+/// Vectors of 128 bits (`v128_load`, `i32x4_add`).
+pub const simd128: Item = Item::new(&["lang", "arch", "wasm32", "Feature", "simd128"]);

@@ -4,9 +4,8 @@ use vun_isa::Nest;
 use vun_isa_wasm32::{Control, Flow, Ty};
 
 use super::Check;
-use crate::module::ValType;
+use crate::module::asm::{Asm, Operand, Typed};
 use crate::module::invalid::Why;
-use crate::module::op::{Asm, Operand};
 
 impl Check<'_> {
     /// An instruction of a block, popping and pushing what its form declares: the type of its
@@ -19,12 +18,8 @@ impl Check<'_> {
             _ => None,
         });
         let ty = |ty: Ty| match ty {
-            Ty::I32 => Ok(Some(ValType::I32)),
-            Ty::I64 => Ok(Some(ValType::I64)),
-            Ty::F32 => Ok(Some(ValType::F32)),
-            Ty::F64 => Ok(Some(ValType::F64)),
             Ty::Local => local.clone().unwrap_or(Err(Why::Unbalanced)).map(Some),
-            Ty::Any => Ok(None),
+            _ => Ok(ty.val_type()),
         };
         for &popped in form.pops.iter().rev() {
             match ty(popped)? {

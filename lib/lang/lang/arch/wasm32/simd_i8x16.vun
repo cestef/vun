@@ -1,0 +1,157 @@
+//! The i8x16 lane instructions.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+i8x16_abs := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0060,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_neg := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0061,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_popcnt := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0062,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_all_true := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0063,
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i8x16_bitmask := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0064,
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i8x16_narrow_i16x8_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0065,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_narrow_i16x8_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0066,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_shl := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006b,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_shr_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006c,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_shr_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006d,
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_add := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006e,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_add_sat_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006f,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_add_sat_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0070,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_sub := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0071,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_sub_sat_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0072,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_sub_sat_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0073,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_min_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0076,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_min_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0077,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_max_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0078,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_max_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0079,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_avgr_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd007b,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

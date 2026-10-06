@@ -8,6 +8,7 @@ mod blocks;
 mod fit;
 pub mod imm;
 mod need;
+mod stack;
 mod width;
 pub mod word;
 
@@ -15,10 +16,10 @@ use std::fmt;
 
 pub use blocks::{AsmOperand, Blocks, Place, Registered, Use};
 pub use fit::{
-    ChoiceId, Fit, Fixed, FloatBits, Given, Misfit, Nest, Position, Scope, Slot, Stack, Takes, Why,
-    Writeback, positions, width,
+    ChoiceId, Fit, Fixed, FloatBits, Given, Misfit, Position, Takes, Why, Writeback, positions, width,
 };
 pub use need::{Enumerated, Need, Processor};
+pub use stack::{Nest, Scope, Slot, Stack};
 
 use vun_codec::{Decode, Encode};
 pub use width::Width;

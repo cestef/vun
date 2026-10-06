@@ -5,8 +5,9 @@ use vun_bytes::{Out, PADDED};
 use vun_isa_wasm32::{Imm, Kind as Position};
 use vun_wasm::format::op::{END, I32_CONST};
 
+use super::asm::{Asm, Operand};
 use super::link::{Reloc, RelocKind};
-use super::op::{Asm, Num, Op, Operand};
+use super::op::{Num, Op};
 use super::{Kind, Linker, Module, SymbolId};
 
 /// The block type of blocks taking and giving nothing.

@@ -13,7 +13,8 @@ use vun_lir::{Asm, InstKind, Output, Slot, Value};
 
 use super::abi::val;
 use super::func::Lower;
-use crate::module::op::{Asm as Instruction, Op, Operand as Local};
+use crate::module::asm::{Asm as Instruction, Operand as Local};
+use crate::module::op::Op;
 
 impl Lower<'_> {
     /// Emits the block `block`.

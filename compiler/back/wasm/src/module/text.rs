@@ -3,7 +3,8 @@
 use std::fmt;
 
 use super::Module;
-use super::op::{Op, Operand};
+use super::asm::Operand;
+use super::op::Op;
 
 /// An instruction of `module`, shown in the text format.
 pub struct Text<'m> {

@@ -8,6 +8,7 @@ use vun_diag::{DiagId, Msg};
 use vun_syntax::literal::{Decl, Literal};
 
 use super::Table;
+use super::ops::CHUNK;
 use crate::generate::{Access, Generator, Module, Read};
 use crate::names::{constant, pascal, raw};
 
@@ -26,6 +27,9 @@ const COND: &str = "Cond";
 const CLASS: &str = "Class";
 /// The enum of the kinds of named choice, which an architecture declares where it has any.
 const CHOICE: &str = "Choice";
+
+/// The directories the instructions' modules are filed in, a chunk of them each.
+const FORMS_DIR: &str = "forms";
 
 const SHAPE: DiagId = DiagId::new("generate.asm.shape");
 
@@ -101,7 +105,7 @@ impl Crate {
         }
         let import =
             self.types.iter().any(|(_, module, _)| *module == "reg").then(|| quote! { use crate::reg; });
-        for inst in &table.instructions {
+        for (at, inst) in table.instructions.iter().enumerate() {
             let forms = inst.forms.iter().map(|f| form(self, f)).collect::<Option<Vec<_>>>();
             let forms = forms.ok_or_else(|| {
                 shape(Msg::new().text("declares a form of ").code(inst.name).text(" unreadably"))
@@ -111,9 +115,10 @@ impl Crate {
                 use crate::table;
                 #import
                 #(#[doc = #doc])*
-                pub(super) const #name: [table::Form; #count] = [#(#forms),*];
+                pub(crate) const #name: [table::Form; #count] = [#(#forms),*];
             };
-            modules.push(Module { name: inst.name.to_owned(), access: Access::Sibling, items, dir: None });
+            let dir = format!("{FORMS_DIR}_{}", at / CHUNK);
+            modules.push(Module { name: inst.name.to_owned(), access: Access::Crate, items, dir: Some(dir) });
         }
         modules.extend(Self::ops(&table.instructions));
         Ok(modules)

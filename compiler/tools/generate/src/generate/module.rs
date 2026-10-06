@@ -29,6 +29,8 @@ pub(crate) enum Access {
     Glob,
     /// Through the module's path: `pub mod name`.
     Path,
+    /// Through the crate's paths: `pub(crate) mod name`.
+    Crate,
     /// It only adds methods to the types of its siblings, reached through them: `mod name`.
     Impl,
     /// Its items are its siblings' alone, which name them by path: `mod name`.
@@ -75,6 +77,7 @@ impl Generator {
             match m.access {
                 Access::Glob => quote! { mod #name; pub use #name::*; },
                 Access::Path => quote! { pub mod #name; },
+                Access::Crate => quote! { pub(crate) mod #name; },
                 Access::Impl | Access::Sibling => quote! { mod #name; },
             }
         };
@@ -87,9 +90,18 @@ impl Generator {
                 None => root.push(declared(module)),
             }
         }
+        // A directory whose modules are the crate's alone is re-exported to the crate alone.
+        let reached = |dir: &str| {
+            let mut own = modules.iter().filter(|m| m.dir.as_deref() == Some(dir));
+            own.any(|m| m.access != Access::Crate)
+        };
         root.extend(dirs.keys().map(|dir| {
-            let dir = raw(dir);
-            quote! { mod #dir; pub use #dir::*; }
+            let name = raw(dir);
+            if reached(dir) {
+                quote! { mod #name; pub use #name::*; }
+            } else {
+                quote! { mod #name; pub(crate) use #name::*; }
+            }
         }));
         let mut files = BTreeMap::from([(format!("{ROOT}.rs"), format(quote! { #(#root)* }))]);
         for (dir, declared) in dirs {

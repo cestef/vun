@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{Choice, Control, Imm, Kind, Op, Ty};
+use crate::{Choice, Control, Feature, Imm, Kind, Op, Ty};
 
 #[test]
 fn opcodes_are_unique_to_an_instruction() {
@@ -48,6 +48,16 @@ fn a_branch_takes_depths_and_a_block_is_empty_or_of_a_type() {
                 }
                 Control::Reopen | Control::Close | Control::None => {}
             }
+        }
+    }
+}
+
+#[test]
+fn every_vector_instruction_needs_the_feature_and_no_other_does() {
+    for op in Op::ALL {
+        for form in op.forms() {
+            let needs = matches!(form.requires, Some(vun_isa::Need::Feature(Feature::Simd128)));
+            assert_eq!(needs, form.prefix() == Some(0xfd), "{}", op.name());
         }
     }
 }

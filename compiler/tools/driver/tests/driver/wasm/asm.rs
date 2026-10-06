@@ -9,7 +9,7 @@ use super::{build_source, run};
 /// an addition, 2 from `local_tee` and `drop`, 6 from a 64-bit shift, 1 from the size of memory,
 /// 1 from an atomic addition, 2 from an atomic compare and exchange, 3 from a loop that adds 4, 3,
 /// 2 and 1, 5 and 6 from float constants, 4 from the two arms of an `if`, 7 from a block giving a
-/// value, 8 from a branch table, 10 from a call and 11 from the stack pointer.
+/// value, 8 from a branch table, 10 from a call, 11 from the stack pointer and 12 from vectors.
 const PROGRAM: &str = r"
 add := (a: i32, b: i32) -> i32 {
     mut sum: i32 = 0;
@@ -218,6 +218,20 @@ stack_top := () -> u32 {
     sp
 };
 
+lanes := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        i32x4_splat();
+        v128_const(0x0000000200000001, 0x0000000400000003);
+        i32x4_add();
+        i32x4_extract_lane(3);
+        local_set(out(r));
+    });
+    r
+};
+
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut status: u32 = 0;
@@ -235,6 +249,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if dispatch(0) == 10 and dispatch(1) == 20 and dispatch(5) == 0 { status +%= 8; }
     if call_twice(21) == 42 { status +%= 10; }
     if stack_top() > 0 { status +%= 11; }
+    if lanes(10) == 14 { status +%= 12; }
     mut then: i32 = 0;
     mut otherwise: i32 = 0;
     pick(1, &mut then);
@@ -248,5 +263,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 fn a_block_of_wasm_instructions_computes_what_the_program_in_vun_does() {
     let Some(wasmtime) = Executable::search("wasmtime") else { return };
     let (_fixture, linked) = build_source("asm", PROGRAM, None);
-    assert_eq!(run(&wasmtime, &linked).0, Some(108));
+    assert_eq!(run(&wasmtime, &linked).0, Some(120));
 }

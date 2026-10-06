@@ -206,3 +206,18 @@ stack_top := () -> u32 {
     });
     sp
 };
+
+/// A vector lives on the stack: made from a scalar, added to a constant, and a lane taken.
+lanes := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        i32x4_splat();
+        v128_const(0x0000000200000001, 0x0000000400000003);
+        i32x4_add();
+        i32x4_extract_lane(3);
+        local_set(out(r));
+    });
+    r
+};

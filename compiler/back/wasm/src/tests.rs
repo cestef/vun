@@ -5,7 +5,8 @@ use vun_inline::{FormId, OpId};
 use vun_intern::Symbol;
 use vun_isa_wasm32::Op as Table;
 
-use crate::module::op::{Asm, Num, Op, Operand};
+use crate::module::asm::{Asm, Operand};
+use crate::module::op::{Num, Op};
 use crate::module::{Binding, Def, Func, FuncType, Invalid, Kind, Linker, Module, Sym, ValType, Why};
 
 /// A module of one exported function of `ty` with `body`, the stack pointer and table named.
@@ -116,13 +117,9 @@ fn an_object_written_reads_back_as_its_symbols_and_relocations() {
 fn numeric_instructions_are_the_ones_the_table_declares() {
     use vun_isa_wasm32::{Op as Table, Ty};
 
-    let ty = |ty: Ty| match ty {
-        Ty::I32 => ValType::I32,
-        Ty::I64 => ValType::I64,
-        Ty::F32 => ValType::F32,
-        Ty::F64 => ValType::F64,
-        Ty::Local | Ty::Any => panic!("a numeric instruction pops and pushes types"),
-    };
+    use crate::module::asm::Typed;
+
+    let ty = |ty: Ty| ty.val_type().expect("a numeric instruction pops and pushes types");
     for n in Num::ALL {
         let name = n.mnemonic().replacen('.', "_", 1);
         let op =

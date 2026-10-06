@@ -1,0 +1,188 @@
+//! Loads, stores and constants of vectors.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+v128_load := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0000,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load8x8_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0001,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load8x8_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0002,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load16x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0003,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load16x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0004,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load32x2_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0005,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load32x2_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0006,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load8_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0007,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load16_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0008,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load32_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0009,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load64_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000a,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_store := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000b,
+    .args = &[_align, _offset],
+    .pops = &[.i32, .v128],
+    .requires = _simd,
+}] };
+
+v128_const := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000c,
+    .args = &[_half, _half],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load8_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0054,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load16_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0055,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load32_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0056,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load64_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0057,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_store8_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0058,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .requires = _simd,
+}] };
+
+v128_store16_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0059,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .requires = _simd,
+}] };
+
+v128_store32_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd005a,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .requires = _simd,
+}] };
+
+v128_store64_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd005b,
+    .args = &[_align, _offset, _lane],
+    .pops = &[.i32, .v128],
+    .requires = _simd,
+}] };
+
+v128_load32_zero := _w.Instruction{ .forms = &[.{
+    .base = 0xfd005c,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+v128_load64_zero := _w.Instruction{ .forms = &[.{
+    .base = 0xfd005d,
+    .args = &[_align, _offset],
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

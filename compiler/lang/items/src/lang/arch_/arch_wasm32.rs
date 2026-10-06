@@ -22,6 +22,30 @@ pub const local: Item = Item::new(&["lang", "arch", "wasm32", "local"]);
 pub const memory: Item = Item::new(&["lang", "arch", "wasm32", "memory"]);
 /// The namespace `lang.arch.wasm32.rmw`.
 pub const rmw: Item = Item::new(&["lang", "arch", "wasm32", "rmw"]);
+/// The namespace `lang.arch.wasm32.simd_bitwise`.
+pub const simd_bitwise: Item = Item::new(&["lang", "arch", "wasm32", "simd_bitwise"]);
+/// The namespace `lang.arch.wasm32.simd_compare`.
+pub const simd_compare: Item = Item::new(&["lang", "arch", "wasm32", "simd_compare"]);
+/// The namespace `lang.arch.wasm32.simd_compare_2`.
+pub const simd_compare_2: Item = Item::new(
+    &["lang", "arch", "wasm32", "simd_compare_2"],
+);
+/// The namespace `lang.arch.wasm32.simd_f32x4`.
+pub const simd_f32x4: Item = Item::new(&["lang", "arch", "wasm32", "simd_f32x4"]);
+/// The namespace `lang.arch.wasm32.simd_f64x2`.
+pub const simd_f64x2: Item = Item::new(&["lang", "arch", "wasm32", "simd_f64x2"]);
+/// The namespace `lang.arch.wasm32.simd_i16x8`.
+pub const simd_i16x8: Item = Item::new(&["lang", "arch", "wasm32", "simd_i16x8"]);
+/// The namespace `lang.arch.wasm32.simd_i32x4`.
+pub const simd_i32x4: Item = Item::new(&["lang", "arch", "wasm32", "simd_i32x4"]);
+/// The namespace `lang.arch.wasm32.simd_i64x2`.
+pub const simd_i64x2: Item = Item::new(&["lang", "arch", "wasm32", "simd_i64x2"]);
+/// The namespace `lang.arch.wasm32.simd_i8x16`.
+pub const simd_i8x16: Item = Item::new(&["lang", "arch", "wasm32", "simd_i8x16"]);
+/// The namespace `lang.arch.wasm32.simd_lane`.
+pub const simd_lane: Item = Item::new(&["lang", "arch", "wasm32", "simd_lane"]);
+/// The namespace `lang.arch.wasm32.simd_memory`.
+pub const simd_memory: Item = Item::new(&["lang", "arch", "wasm32", "simd_memory"]);
 /// The namespace `lang.arch.wasm32.symbol`.
 pub const symbol: Item = Item::new(&["lang", "arch", "wasm32", "symbol"]);
 /// The width of a value a local holds.

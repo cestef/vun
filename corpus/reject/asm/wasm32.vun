@@ -1,7 +1,8 @@
 //! What a block of WebAssembly instructions reports of its blocks (spec 07, section 6): an `end`
 //! or a branch that leaves the block of assembly, an `else` with no `if`, a block left open, and
 //! values on the stack where a block ends, a block that does not give the value it is typed with, and
-//! a call without the arguments its function takes (their types are checked for the target only).
+//! a call without the arguments its function takes (their types are checked for the target only),
+//! a vector taken as a scalar, and a lane past the vector's.
 
 lines := () {
     unsafe lang.arch.asm({
@@ -91,5 +92,25 @@ call_without_its_argument := () {
     unsafe lang.arch.asm({
         ..lang.arch.wasm32.names;
         call(twice); //~ asm.stack
+    });
+};
+
+vector_where_a_scalar_is_taken := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        v128_const(0, 0);
+        i32_const(1);
+        i32_add(); //~ asm.stack
+        drop();
+        drop();
+    });
+};
+
+lane_past_the_immediate := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        v128_const(0, 0);
+        i32x4_extract_lane(300); //~ asm.immediate_too_wide
+        drop();
     });
 };

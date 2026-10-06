@@ -10,5 +10,7 @@ pub const i32: Item = Item::new(&["lang", "arch", "wasm32", "Class", "i32"]);
 pub const i64: Item = Item::new(&["lang", "arch", "wasm32", "Class", "i64"]);
 pub const f32: Item = Item::new(&["lang", "arch", "wasm32", "Class", "f32"]);
 pub const f64: Item = Item::new(&["lang", "arch", "wasm32", "Class", "f64"]);
+/// A vector of 128 bits, which lives on the stack: no Vun type is held as one.
+pub const v128: Item = Item::new(&["lang", "arch", "wasm32", "Class", "v128"]);
 /// Where the block is checked for another target, a value's size is not known, nor its type.
 pub const unknown: Item = Item::new(&["lang", "arch", "wasm32", "Class", "unknown"]);

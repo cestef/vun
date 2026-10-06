@@ -10,5 +10,6 @@ pub const i32: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "i32"]);
 pub const i64: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "i64"]);
 pub const f32: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "f32"]);
 pub const f64: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "f64"]);
+pub const v128: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "v128"]);
 pub const local: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "local"]);
 pub const any: Item = Item::new(&["lang", "arch", "wasm32", "Ty", "any"]);

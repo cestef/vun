@@ -1,0 +1,136 @@
+//! The f32x4 lane instructions.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+f32x4_demote_f64x2_zero := _w.Instruction{ .forms = &[.{
+    .base = 0xfd005e,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_ceil := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0067,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_floor := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0068,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_trunc := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0069,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_nearest := _w.Instruction{ .forms = &[.{
+    .base = 0xfd006a,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_abs := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e0,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_neg := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e1,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_sqrt := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e3,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_add := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e4,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_sub := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e5,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_mul := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e6,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_div := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e7,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_min := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e8,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_max := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00e9,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_pmin := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00ea,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_pmax := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00eb,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_convert_i32x4_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00fa,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_convert_i32x4_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00fb,
+    .pops = &[.v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

@@ -53,6 +53,7 @@ impl Ty {
             Self::I64 => class(Class::I64),
             Self::F32 => class(Class::F32),
             Self::F64 => class(Class::F64),
+            Self::V128 => class(Class::V128),
             Self::Local => local.map_or(Slot::Any, |id| class(Class::of(id))),
             Self::Any => Slot::Any,
         }

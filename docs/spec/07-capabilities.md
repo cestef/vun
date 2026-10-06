@@ -333,7 +333,9 @@ countdown := (n: u32) -> u32 {
   carry the same. `call(f)` calls a function by name: it pops the parameters of `f`'s type and
   pushes its result (each a scalar, of the class a local of that type has; a type of no bytes is
   passed in nothing). `global_get(stack_pointer)` and `global_set` name a global the linker defines
-  (`lang.arch.wasm32.Global`). There is no `return`: a block inlined into another function would return from
+  (`lang.arch.wasm32.Global`). The vector instructions (`v128_load`, `i32x4_add`, ...) need the feature `simd128`; a vector
+  lives on the stack only, as no Vun type is held as one: a block loads or builds it (`v128_const`
+  takes the low and then the high 64 bits), computes and stores it or takes a lane. There is no `return`: a block inlined into another function would return from
   that one. after `br` the rest of its block is unreached, as after `unreachable`. A local read where
   another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
   write one `out` or `inout`, and a place named again is one local. A block checked for another

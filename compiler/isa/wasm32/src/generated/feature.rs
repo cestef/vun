@@ -10,24 +10,28 @@ pub enum Feature {
     BulkMemory,
     /// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
     Atomics,
+    /// Vectors of 128 bits (`v128_load`, `i32x4_add`).
+    Simd128,
 }
 impl Feature {
-    pub const ALL: [Self; 4usize] = [
+    pub const ALL: [Self; 5usize] = [
         Self::SignExtension,
         Self::SaturatingConversion,
         Self::BulkMemory,
         Self::Atomics,
+        Self::Simd128,
     ];
 }
 impl Feature {
     /// Its name, as the table writes it.
     #[must_use]
     pub const fn name(self) -> &'static str {
-        const NAMES: [&str; 4usize] = [
+        const NAMES: [&str; 5usize] = [
             "sign_extension",
             "saturating_conversion",
             "bulk_memory",
             "atomics",
+            "simd128",
         ];
         NAMES[self as usize]
     }

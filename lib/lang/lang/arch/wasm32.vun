@@ -1,7 +1,7 @@
 //! WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
 //! instructions of its stack machine with what each pops and pushes, as the toolchain's backend
 //! encodes them. They are declared in `arithmetic`, `atomic`, `compare`, `control`, `convert`,
-//! `local`, `memory`, `rmw` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
+//! `local`, `memory`, `rmw`, `simd_*` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
 //! declarations.
 //!
 //! A block of wasm is the body of a function written as the text format has it, with Vun values
@@ -28,13 +28,15 @@ Class := enum {
     i64,
     f32,
     f64,
+    /// A vector of 128 bits, which lives on the stack: no Vun type is held as one.
+    v128,
     /// Where the block is checked for another target, a value's size is not known, nor its type.
     unknown,
 };
 
 /// What a stack position holds: a value type, the type of the form's local (`local_get`), or a
 /// value of any type (`drop`).
-Ty := enum { i32, i64, f32, f64, local, any };
+Ty := enum { i32, i64, f32, f64, v128, local, any };
 
 /// What a position of an instruction takes.
 Kind := enum {
@@ -81,6 +83,8 @@ Feature := enum {
     bulk_memory,
     /// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
     atomics,
+    /// Vectors of 128 bits (`v128_load`, `i32x4_add`).
+    simd128,
 };
 
 /// What a form needs of a processor beyond WebAssembly's first version.
@@ -162,5 +166,16 @@ names := struct {
     ..lang.arch.wasm32.local;
     ..lang.arch.wasm32.memory;
     ..lang.arch.wasm32.rmw;
+    ..lang.arch.wasm32.simd_bitwise;
+    ..lang.arch.wasm32.simd_compare;
+    ..lang.arch.wasm32.simd_compare_2;
+    ..lang.arch.wasm32.simd_f32x4;
+    ..lang.arch.wasm32.simd_f64x2;
+    ..lang.arch.wasm32.simd_i16x8;
+    ..lang.arch.wasm32.simd_i32x4;
+    ..lang.arch.wasm32.simd_i64x2;
+    ..lang.arch.wasm32.simd_i8x16;
+    ..lang.arch.wasm32.simd_lane;
+    ..lang.arch.wasm32.simd_memory;
     ..lang.arch.wasm32.symbol;
 };

@@ -1,0 +1,94 @@
+//! Comparisons lane by lane, each lane all ones where it holds. (continued)
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+f64x2_eq := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0047,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_ne := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0048,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_lt := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0049,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_gt := _w.Instruction{ .forms = &[.{
+    .base = 0xfd004a,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_le := _w.Instruction{ .forms = &[.{
+    .base = 0xfd004b,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_ge := _w.Instruction{ .forms = &[.{
+    .base = 0xfd004c,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_eq := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d6,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_ne := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d7,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_lt_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d8,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_gt_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00d9,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_le_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00da,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_ge_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd00db,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

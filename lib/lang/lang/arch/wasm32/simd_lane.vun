@@ -1,0 +1,182 @@
+//! Vectors made of scalars and scalars taken from them, and lanes rearranged.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_lane: _w.Arg = .{ .kind = .imm(.unsigned(8)) };
+_half: _w.Arg = .{ .kind = .imm(.bits(64)) };
+
+_simd: ?_w.Need = .some(.feature(.simd128));
+
+i8x16_shuffle := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000d,
+    .args = &[
+        _lane, _lane, _lane, _lane, _lane, _lane, _lane, _lane,
+        _lane, _lane, _lane, _lane, _lane, _lane, _lane, _lane,
+    ],
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_swizzle := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000e,
+    .pops = &[.v128, .v128],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd000f,
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i16x8_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0010,
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i32x4_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0011,
+    .pops = &[.i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0012,
+    .pops = &[.i64],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0013,
+    .pops = &[.f32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_splat := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0014,
+    .pops = &[.f64],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i8x16_extract_lane_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0015,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i8x16_extract_lane_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0016,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i8x16_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0017,
+    .args = &[_lane],
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i16x8_extract_lane_s := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0018,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i16x8_extract_lane_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0019,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i16x8_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001a,
+    .args = &[_lane],
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i32x4_extract_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001b,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i32],
+    .requires = _simd,
+}] };
+
+i32x4_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001c,
+    .args = &[_lane],
+    .pops = &[.v128, .i32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+i64x2_extract_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001d,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.i64],
+    .requires = _simd,
+}] };
+
+i64x2_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001e,
+    .args = &[_lane],
+    .pops = &[.v128, .i64],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f32x4_extract_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd001f,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.f32],
+    .requires = _simd,
+}] };
+
+f32x4_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0020,
+    .args = &[_lane],
+    .pops = &[.v128, .f32],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };
+
+f64x2_extract_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0021,
+    .args = &[_lane],
+    .pops = &[.v128],
+    .pushes = &[.f64],
+    .requires = _simd,
+}] };
+
+f64x2_replace_lane := _w.Instruction{ .forms = &[.{
+    .base = 0xfd0022,
+    .args = &[_lane],
+    .pops = &[.v128, .f64],
+    .pushes = &[.v128],
+    .requires = _simd,
+}] };

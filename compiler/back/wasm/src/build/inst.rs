@@ -91,6 +91,7 @@ impl Lower<'_> {
             ValType::I64 => Op::I64Const((bits as u64).cast_signed()),
             ValType::F32 => Op::F32Const(bits as u32),
             ValType::F64 => Op::F64Const(bits as u64),
+            ValType::V128 => return Err(Missing::Vector),
         });
         Ok(())
     }

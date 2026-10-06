@@ -2,6 +2,7 @@
 //! imported and defined functions, data segments, and the symbols relocations name. It is
 //! checked by [`Module::verify`] and written by [`Module::write`].
 
+pub mod asm;
 mod code;
 mod invalid;
 mod link;

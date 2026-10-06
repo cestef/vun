@@ -58,6 +58,7 @@ pub enum Ty {
     I64,
     F32,
     F64,
+    V128,
     Local,
     Any,
 }

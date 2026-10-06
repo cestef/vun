@@ -18,7 +18,8 @@ what the corpus waits for. Decisions awaiting the owner are the rows marked `pro
 The owner's queue, in order:
 
 1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).
-2. wasm32 inline assembly: calls, globals, SIMD ([`open/backends.md`](open/backends.md)).
+2. Backends: wasm32 `call_indirect` and bound vectors, the Cranelift register table for `Outline`
+   ([`open/backends.md`](open/backends.md)).
 
 ## For the owner
 

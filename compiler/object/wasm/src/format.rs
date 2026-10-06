@@ -59,10 +59,11 @@ pub enum ValType {
     I64 = 0x7e,
     F32 = 0x7d,
     F64 = 0x7c,
+    V128 = 0x7b,
 }
 
 impl ValType {
-    pub const ALL: [Self; 4] = [Self::I32, Self::I64, Self::F32, Self::F64];
+    pub const ALL: [Self; 5] = [Self::I32, Self::I64, Self::F32, Self::F64, Self::V128];
 
     #[must_use]
     pub const fn code(self) -> u8 {
@@ -83,6 +84,7 @@ impl std::fmt::Display for ValType {
             Self::I64 => "i64",
             Self::F32 => "f32",
             Self::F64 => "f64",
+            Self::V128 => "v128",
         })
     }
 }
