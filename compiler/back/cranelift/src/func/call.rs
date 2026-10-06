@@ -10,6 +10,7 @@ use vun_origin::OriginId;
 
 use super::Lower;
 use crate::names::Named;
+use crate::plan::Returned;
 
 impl Lower<'_, '_> {
     /// Calls `callee`, giving its result if `defines` says the instruction has one.
@@ -20,7 +21,18 @@ impl Lower<'_, '_> {
         defines: bool,
         at: OriginId,
     ) -> Result<Option<Val>, Lack> {
-        let args = self.get_all(args);
+        let cx = self.cx;
+        let owned;
+        let plan = match callee {
+            Callee::Func(f) => cx.plan(Address::Func(*f), at)?,
+            Callee::Import(i) => cx.plan(Address::Import(*i), at)?,
+            Callee::Indirect(_, signature) => {
+                owned = cx.isa.plan(signature).map_err(|m| m.at(at))?;
+                Some(&owned)
+            }
+        };
+        let plan = plan.expect("what is called is a function");
+        let (args, result) = self.arguments(plan, args);
         let call = match callee {
             Callee::Func(f) => {
                 let target = self.func_ref(Address::Func(*f), at)?;
@@ -30,13 +42,16 @@ impl Lower<'_, '_> {
                 let target = self.func_ref(Address::Import(*i), at)?;
                 self.b.ins().call(target, &args)
             }
-            Callee::Indirect(target, signature) => {
-                let signature = self.cx.isa.signature(signature).map_err(|m| m.at(at))?;
-                let signature = self.b.import_signature(signature);
+            Callee::Indirect(target, _) => {
+                let signature = self.b.import_signature(plan.signature.clone());
                 let target = self.get(*target);
                 self.b.ins().call_indirect(signature, target, &args)
             }
         };
+        if let (Returned::Parts(parts), Some(to)) = (&plan.returned, result) {
+            let returned = self.b.inst_results(call).to_vec();
+            self.store_parts(parts, to, &returned);
+        }
         Ok(defines.then(|| self.b.inst_results(call)[0]))
     }
 
@@ -45,7 +60,7 @@ impl Lower<'_, '_> {
         if let Some(&declared) = self.refs.get(&target) {
             return Ok(declared);
         }
-        let signature = self.cx.signature(target, at)?.expect("what is called is a function").clone();
+        let signature = self.cx.plan(target, at)?.expect("what is called is a function").signature.clone();
         let signature = self.b.import_signature(signature);
         let name = self.b.func.declare_imported_user_function(target.name());
         let data = ExtFuncData {

@@ -66,10 +66,10 @@ fn a_block_moves_into_a_function_taking_what_it_reads_and_the_address_of_what_it
 #[test]
 fn a_block_naming_a_register_a_naked_function_and_a_function_of_nothing_else_stay() {
     let reg = Operand::Reg(RegRef { class: vun_inline::ClassId(0), number: 4 });
-    let (mut named, _) = unit(Conv::Vun, true, vec![reg]);
-    assert_eq!(named.outline(), 0);
-    let (mut naked, _) = unit(Conv::Naked, true, Vec::new());
-    assert_eq!(naked.outline(), 0);
+    let (mut with_reg, _) = unit(Conv::Vun, true, vec![reg]);
+    assert_eq!(with_reg.outline(), 0);
+    let (mut bare, _) = unit(Conv::Naked, true, Vec::new());
+    assert_eq!(bare.outline(), 0);
     let (mut alone, _) = unit(Conv::Vun, false, Vec::new());
     assert_eq!(alone.outline(), 0);
     assert_eq!(alone.functions.len(), 1);

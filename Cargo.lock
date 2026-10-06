@@ -1350,6 +1350,8 @@ dependencies = [
  "target-lexicon",
  "vun-abi",
  "vun-asm",
+ "vun-asm-arm64",
+ "vun-asm-x86_64",
  "vun-backend",
  "vun-codegen",
  "vun-diag",

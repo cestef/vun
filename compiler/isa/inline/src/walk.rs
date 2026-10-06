@@ -100,6 +100,7 @@ impl<V, P, S> Block<V, P, S> {
     /// Whether an instruction names a register itself, rather than binding a value to one the
     /// backend picks or one a binding names (`in(e).at(r)`): such a block reads or writes state
     /// of the function it is in.
+    #[must_use]
     pub fn names_registers(&self) -> bool {
         let named = |base: &Option<Base<V, P>>| matches!(base, Some(Base::Reg(_)));
         self.insts.iter().flat_map(|inst| &inst.operands).any(|operand| match operand {

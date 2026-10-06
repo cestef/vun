@@ -11,8 +11,11 @@ use target_lexicon::{
 use vun_abi::Rules;
 use vun_backend::Missing;
 use vun_intern::Symbol;
+use vun_lir::Signature;
 use vun_object::{Format, Machine};
 use vun_target::{Convention, Name, Profile, TargetSpec};
+
+use crate::plan::Placed;
 
 /// An architecture the backend generates code for, by the feature that brings its Cranelift
 /// support: its name among targets', the machine of its objects and Cranelift's name for it.
@@ -20,13 +23,17 @@ struct Arch {
     name: Name,
     machine: Machine,
     architecture: Architecture,
+    place: Place,
 }
 
+/// How a signature's records are placed under a convention of the architecture.
+type Place = fn(&Signature, Convention) -> Result<Placed, Missing>;
+
 macro_rules! arches {
-    ($($feature:literal => $name:literal, $machine:expr, $architecture:expr;)*) => {
+    ($($feature:literal => $name:literal, $machine:expr, $architecture:expr, $place:expr;)*) => {
         const ARCHES: &[Arch] = &[$(
             #[cfg(feature = $feature)]
-            Arch { name: Name($name), machine: $machine, architecture: $architecture },
+            Arch { name: Name($name), machine: $machine, architecture: $architecture, place: $place },
         )*];
 
         /// The architectures compiled in, as targets name them.
@@ -38,8 +45,11 @@ macro_rules! arches {
 }
 
 arches! {
-    "x86_64" => "x86_64", Machine::X86_64, Architecture::X86_64;
-    "arm64" => "arm64", Machine::Aarch64, Architecture::Aarch64(Aarch64Architecture::Aarch64);
+    "x86_64" => "x86_64", Machine::X86_64, Architecture::X86_64,
+        |s, c| Placed::by(s, vun_asm_x86_64::conventions::CONVENTIONS, c, true);
+    // Cranelift has no struct arguments on arm64: a large record is copied and passed by address.
+    "arm64" => "arm64", Machine::Aarch64, Architecture::Aarch64(Aarch64Architecture::Aarch64),
+        |s, c| Placed::by(s, vun_asm_arm64::conventions::CONVENTIONS, c, false);
 }
 
 /// An object format the backend writes: its name among targets', Cranelift's name for it, the
@@ -94,6 +104,8 @@ pub(crate) struct Isa {
     pub(crate) format: Format,
     /// How the target's C convention passes values, where this crate declares it.
     pub(crate) rules: Option<&'static Rules>,
+    convention: Convention,
+    place: Place,
 }
 
 impl Isa {
@@ -152,6 +164,18 @@ impl Isa {
             .finish(settings::Flags::new(flags))
             .expect("the settings suit the architecture");
         let rules = Rules::of(convention);
-        Ok(Self { target, machine: arch.machine, format: written.writer, rules })
+        Ok(Self {
+            target,
+            machine: arch.machine,
+            format: written.writer,
+            rules,
+            convention,
+            place: arch.place,
+        })
+    }
+
+    /// Where a call of the C convention `signature` places its records.
+    pub(crate) fn place(&self, signature: &Signature) -> Result<Placed, Missing> {
+        (self.place)(signature, self.convention)
     }
 }

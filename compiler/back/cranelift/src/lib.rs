@@ -10,6 +10,7 @@ mod func;
 mod isa;
 mod listing;
 mod names;
+mod plan;
 mod relocs;
 #[cfg(test)]
 mod tests;

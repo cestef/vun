@@ -41,7 +41,10 @@ impl Lower<'_, '_> {
                 }
             }
             Terminator::Return(value) => {
-                let values: Vec<_> = value.iter().map(|&v| self.get(v)).collect();
+                let values = match self.returning {
+                    Some((at, parts)) => self.load_parts(parts, at),
+                    None => value.iter().map(|&v| self.get(v)).collect(),
+                };
                 self.b.ins().return_(&values);
             }
             Terminator::Unreachable => {

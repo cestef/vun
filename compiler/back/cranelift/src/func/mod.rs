@@ -5,6 +5,7 @@ mod call;
 mod cast;
 mod copy;
 mod inst;
+mod record;
 mod term;
 
 use std::collections::HashMap;
@@ -19,12 +20,14 @@ use vun_lir::analysis::{Cfg, Loops, Order};
 use vun_lir::{Address, Block, FuncId, Function, ImportId, ImportKind, Slot, Unit, Value};
 use vun_origin::OriginId;
 
+use crate::abi::Plan;
 use crate::isa::Isa;
+use crate::plan::Parts;
 
-/// What a signature is passed as, or what Cranelift lacks of it: a call of a function it cannot
+/// How a signature is passed, or what Cranelift lacks of it: a call of a function it cannot
 /// pass to is refused where it is, and the function holding the call is left to the assisting
 /// backend.
-type Passed = Result<ir::Signature, Missing>;
+type Passed = Result<Plan, Missing>;
 
 /// What every function's lowering reads: the unit, the processor and the signature of each
 /// function reached and import.
@@ -38,20 +41,19 @@ pub(crate) struct Cx<'a> {
 impl<'a> Cx<'a> {
     /// The context of `unit`, whose functions `reached` holds.
     pub(crate) fn new(unit: &'a Unit, isa: &'a Isa, reached: &vun_lir::analysis::Reached) -> Self {
-        let funcs =
-            unit.functions.iter().map(|(id, f)| reached.contains(id).then(|| isa.signature(&f.signature)));
+        let funcs = unit.functions.iter().map(|(id, f)| reached.contains(id).then(|| isa.plan(&f.signature)));
         let imports = unit.imports.iter().map(|(_, import)| match &import.kind {
-            ImportKind::Func(signature) => Some(isa.signature(signature)),
+            ImportKind::Func(signature) => Some(isa.plan(signature)),
             ImportKind::Data => None,
         });
         Self { unit, isa, funcs: funcs.collect(), imports: imports.collect() }
     }
 
-    /// The signature of the function or import at `address`, if it is one.
+    /// How the function or import at `address` is passed to, if it is one.
     ///
     /// # Errors
     /// Returns what Cranelift lacks of it, at `at`.
-    pub(crate) fn signature(&self, address: Address, at: OriginId) -> Result<Option<&ir::Signature>, Lack> {
+    pub(crate) fn plan(&self, address: Address, at: OriginId) -> Result<Option<&Plan>, Lack> {
         let passed = match address {
             Address::Func(f) => self.funcs[f].as_ref(),
             Address::Import(i) => self.imports[i].as_ref(),
@@ -71,6 +73,9 @@ pub(crate) struct Lowered {
 struct Lower<'a, 'b> {
     cx: &'a Cx<'a>,
     f: &'a Function,
+    plan: &'a Plan,
+    /// Where a record returned in registers is written, and what it is made of.
+    returning: Option<(ir::Value, &'a Parts)>,
     b: FunctionBuilder<'b>,
     ptr: Type,
     values: IndexVec<Value, Option<ir::Value>>,
@@ -90,16 +95,17 @@ impl Cx<'_> {
     /// # Panics
     /// If `id` is not reached.
     pub(crate) fn lower(&self, id: FuncId, f: &Function) -> Result<Lowered, Lack> {
-        let signature = self.signature(Address::Func(id), f.origin)?;
-        let signature = signature.expect("a function has a signature").clone();
+        let plan = self.plan(Address::Func(id), f.origin)?.expect("a function has a signature");
         let mut func = ir::Function::with_name_signature(
             ir::UserFuncName::user(0, id.index().try_into().expect("ids fit u32")),
-            signature,
+            plan.signature.clone(),
         );
         let mut context = FunctionBuilderContext::new();
         let mut lower = Lower {
             cx: self,
             f,
+            plan,
+            returning: None,
             b: FunctionBuilder::new(&mut func, &mut context),
             ptr: self.isa.target.pointer_type(),
             values: IndexVec::filled(None, f.values.len()),
@@ -122,14 +128,12 @@ impl Lower<'_, '_> {
         let f = self.f;
         let entry = f.entry().expect("a function has a body");
         let order = Order::of(f, &Loops::of(f, &Cfg::of(f)));
+        let mut passed = Vec::new();
         for &block in order.blocks() {
             let made = self.b.create_block();
             if block == entry {
                 self.b.append_block_params_for_function_params(made);
-                let passed = self.b.block_params(made).to_vec();
-                for (&param, value) in f.blocks[block].params.iter().zip(passed) {
-                    self.values[param] = Some(value);
-                }
+                passed = self.b.block_params(made).to_vec();
             } else {
                 for &param in &f.blocks[block].params {
                     let ty = self.ty(f.ty(param), f.origin)?;
@@ -146,6 +150,7 @@ impl Lower<'_, '_> {
                 self.b.create_sized_stack_slot(StackSlotData::new(StackSlotKind::ExplicitSlot, size, shift));
             self.slots[slot] = Some(made);
         }
+        self.bind(&f.blocks[entry].params, passed);
         for &block in order.blocks() {
             if block != entry {
                 self.b.switch_to_block(self.blocks[block].expect("made above"));

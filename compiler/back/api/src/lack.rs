@@ -20,6 +20,8 @@ pub enum Missing {
     Atomic,
     /// A C record passed or returned by value.
     Record,
+    /// A signature the backend would place differently from the target's convention.
+    Placement,
     Naked,
     /// A call of a C function's variadic arguments.
     Variadic,
@@ -109,6 +111,9 @@ impl Missing {
             Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),
             Missing::Record => Msg::new().text("C records passed by value"),
+            Missing::Placement => {
+                Msg::new().text("this signature placed as the target's convention places it")
+            }
             Missing::Naked => Msg::new().text("naked functions"),
             Missing::Variadic => Msg::new().text("variadic arguments of C functions"),
             Missing::Section => Msg::new().text("link sections"),

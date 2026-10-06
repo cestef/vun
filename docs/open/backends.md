@@ -47,11 +47,9 @@ template and README (decisions 431 to 440).
 
 ## Cranelift
 
-- C records by value are handed to the assist: `swap`, `spin` and `scale` of the backend tests
-  (two-register results, records in memory). A LIR pass cannot lower them (LIR has no multiple
-  results or by-value memory argument), so the backend would do it, from `vun_abi::Passing`
-  (`Loc::Split`, `Ret::Split` as multiple returns, `Loc::Copied` as `StructArgument`), refusing a
-  signature whose scalars Cranelift would place differently.
+- C records by value are lowered from `vun_abi::Passing` (decision 503). Still handed over: a record
+  part of an odd size (3, 5, 6 or 7 bytes in a register), a struct argument not a multiple of 8
+  bytes or aligned past 8, a signature AAPCS64 places differently from Cranelift's counting.
 - `Outline` keeps a function whose block names a register. The runtime's blocks name scratch
   registers (`mov(rdi, ...)`); only the stack, frame and link registers are the caller's state, so
   an architecture's table of those would outline most of them.

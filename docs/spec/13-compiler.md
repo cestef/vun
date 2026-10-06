@@ -1315,9 +1315,17 @@ pointers are kept (the chain is what stack walks read) and no unwind tables are 
 Position-independent code is used, so on arm64 every symbol goes through the GOT; thread-local
 data uses the `elf_gd` model and imports `__tls_get_addr`.
 
+A C record passed by value is lowered from `vun_abi::Passing`, the classifier native, wasm and
+thumb read: its parts in registers become scalars loaded from and stored to the record (a result
+as several return values), a record in memory is a struct argument (x86_64) or a copy passed by
+address (arm64), and a result in memory is Cranelift's struct return. Cranelift places scalars by
+its own rules, so the backend walks the classifier's placements the way Cranelift counts registers
+and stack and refuses a signature where they differ (`Missing::Placement`; AAPCS64 closes the
+registers a record did not fit).
+
 What Cranelift does not express is a typed `Lack` per function: inline assembly, naked
-functions, C records passed by value, wide integers under the C convention and floats passed as
-integers in variadic calls. A backend without `Feature::InlineAsm` has each block of assembly
+functions, C records it would place differently or whose register part is not a scalar's size,
+wide integers under the C convention and floats passed as integers in variadic calls. A backend without `Feature::InlineAsm` has each block of assembly
 outlined first (`vun_lir_passes::Outline`): the block moves into an internal function of its own,
 taking what it reads as parameters and the address of each place it writes, and the function it
 came from needs nothing of the backend, unless one of its blocks names a register itself (the

@@ -12,8 +12,8 @@ workspace = true
 
 [features]
 default = ["x86_64", "arm64"]
-x86_64 = ["cranelift-codegen/x86"]
-arm64 = ["cranelift-codegen/arm64"]
+x86_64 = ["cranelift-codegen/x86", "dep:vun-asm-x86_64"]
+arm64 = ["cranelift-codegen/arm64", "dep:vun-asm-arm64"]
 
 [dependencies]
 cranelift-codegen.workspace = true
@@ -21,6 +21,8 @@ cranelift-frontend.workspace = true
 target-lexicon.workspace = true
 vun-abi.workspace = true
 vun-asm.workspace = true
+vun-asm-arm64 = { workspace = true, optional = true }
+vun-asm-x86_64 = { workspace = true, optional = true }
 vun-backend.workspace = true
 vun-codegen.workspace = true
 vun-diag.workspace = true

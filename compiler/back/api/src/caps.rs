@@ -9,8 +9,9 @@ use crate::Emits;
 /// What a backend does that a program may require of it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Feature {
-    /// Passes and returns C records by value itself; a backend without it refuses a function that
-    /// does (`Missing::Record`), which an assisting backend compiles instead.
+    /// Passes and returns every C record by value itself; a backend without it may refuse a
+    /// function that does (`Missing::Record`, `Missing::Placement`), which an assisting backend
+    /// compiles instead.
     CAbi,
     /// Native vectors; otherwise vectors are lowered to scalars.
     Vectors,
