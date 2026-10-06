@@ -12,6 +12,7 @@ use vun_backend::Backend;
 use vun_fetch::{Scheme, Schemes};
 use vun_intern::Symbol;
 use vun_link::Linker;
+use vun_server::Server;
 
 mod roster;
 
@@ -23,6 +24,7 @@ pub struct Registry {
     backends: Roster<dyn Backend>,
     linkers: Roster<dyn Linker>,
     schemes: Roster<dyn Scheme>,
+    servers: Roster<dyn Server>,
 }
 
 /// Where a component comes from (decision 498).
@@ -43,6 +45,12 @@ impl Named for dyn Backend {
 impl Named for dyn Linker {
     fn called(&self) -> &str {
         self.info().id.0
+    }
+}
+
+impl Named for dyn Server {
+    fn called(&self) -> &str {
+        self.name()
     }
 }
 
@@ -125,6 +133,31 @@ impl Registry {
     /// Registers `scheme` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
     pub fn add_scheme_from(&mut self, scheme: Box<dyn Scheme>, from: Provider) {
         self.schemes.add(scheme.into(), from);
+    }
+
+    /// Registers `server`, linked in, as [`Registry::add_backend`] does a backend.
+    pub fn add_server(&mut self, server: Box<dyn Server>) {
+        self.add_server_from(server, Provider::Linked);
+    }
+
+    /// Registers `server` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
+    pub fn add_server_from(&mut self, server: Box<dyn Server>, from: Provider) {
+        self.servers.add(server.into(), from);
+    }
+
+    pub fn servers(&self) -> impl Iterator<Item = &'static str> {
+        self.servers.iter().map(Server::name)
+    }
+
+    #[must_use]
+    pub fn server(&self, name: &str) -> Option<&dyn Server> {
+        self.servers.get(name).map(|r| &*r.item as &dyn Server)
+    }
+
+    /// Where the server `name` comes from.
+    #[must_use]
+    pub fn server_from(&self, name: &str) -> Option<&Provider> {
+        self.servers.get(name).map(|r| &r.from)
     }
 
     pub fn backends(&self) -> impl Iterator<Item = &dyn Backend> {

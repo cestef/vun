@@ -14,9 +14,6 @@ use vun_target::Machine;
 
 use crate::cargo;
 
-/// The directory of the component crates, relative to the repository root.
-const CRATES: &str = "compiler/components";
-
 /// A component crate: the library it builds and the profile it is in.
 pub(crate) struct Crate {
     package: String,
@@ -25,24 +22,21 @@ pub(crate) struct Crate {
 }
 
 impl Crate {
-    /// The component crates of the workspace at `root`.
+    /// The component crates of the workspace at `root`: those declaring `package.metadata.vun-component`.
     ///
     /// # Errors
     /// Returns why cargo reports no metadata, or a crate names no profile.
     pub(crate) fn all(root: &Path) -> io::Result<Vec<Self>> {
         let metadata = cargo::metadata(root).map_err(io::Error::other)?;
         let metadata = vun_data::json::parse(&metadata).map_err(io::Error::other)?;
-        let inside = root.join(CRATES);
         let mut crates = Vec::new();
         for package in metadata["packages"].items() {
-            let (Some(name), Some(manifest)) = (package["name"].as_str(), package["manifest_path"].as_str())
-            else {
-                continue;
-            };
-            if !Path::new(manifest).starts_with(&inside) {
+            let Some(name) = package["name"].as_str() else { continue };
+            let declared = &package["metadata"]["vun-component"];
+            if declared.is_null() {
                 continue;
             }
-            let profile = package["metadata"]["vun-component"]["profile"].as_str();
+            let profile = declared["profile"].as_str();
             let profile = profile.and_then(Profile::named).ok_or_else(|| {
                 io::Error::other(format!("{name} names no profile in its `package.metadata.vun-component`"))
             })?;

@@ -61,7 +61,7 @@ jj git push --tag 0.1.0
 machine (`--no-default-features --features dist`: it links only what is not a component; Linux with
 `cargo zigbuild` against glibc 2.28, dynamically linked so that `vun ffi bind` can load libclang),
 builds the component libraries (`cargo xtask components [--tool zigbuild] [--target <t>]`, from
-`compiler/components/*`, each crate's `[package.metadata.vun-component] profile`), packs it with
+every crate with a `[package.metadata.vun-component] profile`), packs it with
 the library and each component beside it (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`,
 `vun-<kind>-<id>-<arch>-<os>.tar.gz` for each component, and the build's record beside it), writes `release.json` (`cargo xtask release <dir> --tag
 <tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand.
@@ -264,7 +264,7 @@ GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence 
 `vun-cli` builds what its features name; the default has all of them. `backends` and `linkers`
 group the code generators and linkers (each is also a feature: `backend-llvm`, `link-wild`, ...),
 `native-x86_64`, `native-arm64` and `native-thumb` the architectures of the native backend,
-`ffi` is `vun ffi bind` (libclang), `lsp` is `vun util lsp`, `mimalloc` the allocator. A build
+`ffi` is `vun ffi bind` (libclang), `lsp` is `vun util lsp` linked in (the release has it as a library), `mimalloc` the allocator. A build
 without a component reports it where it is asked for: no backend or linker of that name, `util
 lsp` unavailable. `cargo check -p vun-cli --no-default-features` is the smallest toolchain, and
 `--features backend-c,link-gnu` adds to it. `vun-driver` has the same features with no default

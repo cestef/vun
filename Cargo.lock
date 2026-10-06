@@ -1499,6 +1499,7 @@ dependencies = [
  "vun-build",
  "vun-clang",
  "vun-command",
+ "vun-component-server-lsp",
  "vun-data",
  "vun-diag",
  "vun-disasm",
@@ -1511,7 +1512,6 @@ dependencies = [
  "vun-hir",
  "vun-intern",
  "vun-link",
- "vun-lsp",
  "vun-mir",
  "vun-origin",
  "vun-query",
@@ -1562,6 +1562,7 @@ dependencies = [
 name = "vun-command"
 version = "0.1.0"
 dependencies = [
+ "vun-codec",
  "vun-data",
  "vun-diag",
  "vun-origin",
@@ -1692,6 +1693,18 @@ dependencies = [
  "vun-fetch",
  "vun-http",
  "vun-scheme-component",
+]
+
+[[package]]
+name = "vun-component-server-lsp"
+version = "0.1.0"
+dependencies = [
+ "vun-command",
+ "vun-component",
+ "vun-diag",
+ "vun-driver",
+ "vun-lsp",
+ "vun-server",
 ]
 
 [[package]]
@@ -1834,6 +1847,7 @@ dependencies = [
  "vun-sema",
  "vun-sema-plan",
  "vun-sema-ty",
+ "vun-server",
  "vun-span",
  "vun-suggest",
  "vun-syntax",
@@ -2715,6 +2729,17 @@ dependencies = [
  "vun-sema-int",
  "vun-span",
  "vun-syntax",
+]
+
+[[package]]
+name = "vun-server"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-command",
+ "vun-component",
+ "vun-diag",
+ "vun-trace",
 ]
 
 [[package]]

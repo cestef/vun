@@ -18,7 +18,7 @@ workspace = true
 default = ["backends", "linkers", "schemes", "planned", "components", "ffi", "lsp", "mimalloc"]
 # What a release's `vun` links (`cargo xtask package`): the backends and linkers not built yet, and
 # the loader of every other, which are components beside it.
-dist = ["planned", "components", "ffi", "lsp", "mimalloc"]
+dist = ["planned", "components", "ffi", "mimalloc"]
 # Every code generator and every linker the driver can register; each is also a feature of its own.
 backends = [
     "backend-c",
@@ -68,7 +68,7 @@ components = ["vun-driver/components"]
 # `vun ffi bind`, which loads libclang.
 ffi = ["dep:vun-bind", "dep:vun-clang"]
 # `vun util lsp`.
-lsp = ["dep:vun-lsp"]
+lsp = ["dep:vun-component-server-lsp"]
 # The allocator for many threads.
 mimalloc = ["dep:mimalloc"]
 
@@ -89,7 +89,7 @@ vun-hir.workspace = true
 vun-intern.workspace = true
 vun-data.workspace = true
 vun-link.workspace = true
-vun-lsp = { workspace = true, optional = true }
+vun-component-server-lsp = { workspace = true, optional = true }
 vun-mir.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true

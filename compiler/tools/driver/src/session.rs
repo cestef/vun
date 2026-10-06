@@ -77,8 +77,6 @@ pub struct Session {
     pub memory: Vec<vun_link::MemoryRegion>,
     /// Where its sections lie in `memory`, from its package's plan.
     pub sections: Vec<vun_link::SectionPlacement>,
-    /// What `vun util lsp` runs: the language server the program installs, as `vun` does.
-    pub language_server: Option<fn(&mut Session) -> std::io::Result<vun_command::Outcome>>,
     /// How the program running the session writes its `check` command, for messages that
     /// suggest it; `None` where no command line runs the session.
     pub check: Option<String>,
@@ -123,7 +121,6 @@ impl Session {
             equipped: None,
             memory: Vec::new(),
             sections: Vec::new(),
-            language_server: None,
             check: None,
             shown_errors: 0,
         }
@@ -132,6 +129,16 @@ impl Session {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// A session of a program that runs for long or often, as `vun` does: its queries are saved
+    /// between runs, and the memos of the libraries are shared with the other projects.
+    #[must_use]
+    pub fn persistent() -> Self {
+        let mut session = Self::new();
+        session.persistence = Persistence::On;
+        session.shared = Some(session.store.memos());
+        session
     }
 
     /// Reads a source file; a read failure becomes a diagnostic.

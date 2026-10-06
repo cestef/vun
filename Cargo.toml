@@ -25,6 +25,7 @@ vun-component-link-wild = { path = "compiler/components/link-wild", default-feat
 vun-component-link-mold = { path = "compiler/components/link-mold", default-features = false }
 vun-component-link-ar = { path = "compiler/components/link-ar", default-features = false }
 vun-component-link-lld = { path = "compiler/components/link-lld", default-features = false }
+vun-component-server-lsp = { path = "compiler/tools/server-lsp", default-features = false }
 vun-component-scheme-https = { path = "compiler/components/scheme-https", default-features = false }
 vun-component-link-wasm = { path = "compiler/components/link-wasm", default-features = false }
 vun-codec = { path = "compiler/base/codec" }
@@ -32,6 +33,7 @@ vun-codec-derive = { path = "compiler/base/codec-derive" }
 vun-derive-core = { path = "compiler/base/derive-core" }
 vun-data-derive = { path = "compiler/base/data-derive" }
 vun-literal-derive = { path = "compiler/front/literal-derive" }
+vun-server = { path = "compiler/tools/server" }
 vun-lsp-protocol = { path = "compiler/tools/lsp-protocol" }
 vun-data = { path = "compiler/base/data" }
 vun-uri = { path = "compiler/base/uri" }

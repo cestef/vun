@@ -58,9 +58,9 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `pieces`); `vun-regalloc`. `vun-backend-cranelift` (LIR through Cranelift, native assisting through `vun_codegen::Assist`; `Assembly` writes the object). Stubs: qbe, llvm, external.
 - **Components** (decision 498): `vun-component` (`compiler/base/component`: the C-ABI boundary,
   `Interface`, `Component::{open,within,call}`, `descriptor!` and `export!`; the one `unsafe`
-  module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component` and `vun-scheme-component` (`compiler/pkg/component`; the
+  module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component`, `vun-scheme-component` (`compiler/pkg/component`) and `vun-server` (`compiler/tools/server`, with the `Server` trait; the
   interface of each kind, `Remote` the host's `Backend`, `Linker` or `Scheme` over a component), and the
-  libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, ...).
+  libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, `server-lsp`, the one in `compiler/tools/` since it serves a driver session).
   The driver's `Registry::load` registers what a directory holds, `vun toolchain show` says where
   each comes from.
 - **Native backend** (`compiler/native`, TPDE's layers): `vun-native` (the `Native` trait, whose

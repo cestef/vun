@@ -52,6 +52,7 @@ mod runtime;
 mod scheme;
 mod select;
 mod sequences;
+mod server;
 mod settings;
 mod sim;
 mod staged;

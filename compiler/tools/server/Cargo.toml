@@ -1,0 +1,18 @@
+[package]
+name = "vun-server"
+description = "Servers as components: programs that run until their client leaves, served from a library."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-command.workspace = true
+vun-component.workspace = true
+vun-diag.workspace = true
+vun-trace.workspace = true

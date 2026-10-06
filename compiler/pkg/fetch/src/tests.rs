@@ -41,7 +41,7 @@ fn unknown_schemes_and_formats_are_named() {
     struct Network;
 
     impl Scheme for Network {
-        fn name(&self) -> &str {
+        fn name(&self) -> &'static str {
             "https"
         }
 

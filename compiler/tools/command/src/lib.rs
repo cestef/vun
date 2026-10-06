@@ -175,7 +175,7 @@ impl<Cx> Program<Cx> {
 /// The group command that shows help for the commands after it.
 pub const HELP_COMMAND: &str = "help";
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub enum Outcome {
     Success,
     Failure,

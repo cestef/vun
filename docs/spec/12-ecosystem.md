@@ -317,7 +317,7 @@ Four things decide how a program is built, each declared in one place:
 |------|----|-------|
 | toolchain | one release of `vun`: the executable and its library | a directory, `~/.local/share/vun/toolchains/<version>/` once installed |
 | target | what a program runs on: a `lang.target.Spec` | the package `targets`, `targets.<os>.<arch>.<abi>` (spec 13, section 7) |
-| component | a backend, a linker or a URL scheme, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
+| component | a backend, a linker, a URL scheme or a server, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
 | tools | the programs of this machine building and running for a target | the machine's tools file |
 
 `vun toolchain show` says which toolchain runs and what it holds, each component with where it comes from (`linked`, or its library); `vun target list` lists the
@@ -372,15 +372,15 @@ checks the archive against the signed checksums before anything runs; the `vun t
 it runs then checks the manifest's signature and the tree's hash.
 
 **Components.** A part of the toolchain a crate declares an interface for is a component:
-backends, linkers and URL schemes (`https`, with its TLS stack) today, and any kind a later crate adds
+backends, linkers, URL schemes (`https`, with its TLS stack) and servers (the language server) today, and any kind a later crate adds
 (a kind is a name, the set is open).
 The registry lists components, none is special. A component is provided one of two ways, which
 differ only in transport. A *linked* one is compiled into `vun` (a Cargo feature), called
 directly. A *loaded* one is a dynamic library in the toolchain's `components/` directory
 (`<name>.so`, `.dylib` or `.dll`, or the directory `VUN_COMPONENTS` names), opened on first use.
 Both answer the same typed requests (`Backend::info`, `emit`, `division`, `frame_sizes`;
-`Linker::info`, `runs`, `link`; `Scheme::name`, `read`), so the crate implementing `Backend`, `Linker`
-or `Scheme` is the same either way and a cdylib crate only exports it. A failure of a library
+`Linker::info`, `runs`, `link`; `Scheme::name`, `read`; `Server::name`, `serve`), so the crate implementing `Backend`, `Linker`,
+`Scheme` or `Server` is the same either way and a cdylib crate only exports it. A failure of a library
 crosses as the messages of its error and of each source (`Cause`). The first registered of a name is the one a build uses,
 so a toolchain linking a component has it before a library of the same name.
 

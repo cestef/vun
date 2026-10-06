@@ -1,5 +1,5 @@
 //! The components of the toolchain's `components` directory (decision 498): libraries each
-//! serving a backend, a linker or a URL scheme, registered beside those linked in.
+//! serving a backend, a linker, a URL scheme or a server, registered beside those linked in.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -12,6 +12,7 @@ use vun_component::{Component, Fault, Interface, Kind};
 use vun_data::FromData;
 use vun_link_component::Linkers;
 use vun_scheme_component::Schemes;
+use vun_server::Servers;
 use vun_target::Machine;
 use vun_trace::tracing::{debug, warn};
 
@@ -26,6 +27,7 @@ enum Served {
     Backend(vun_backend_component::Remote),
     Linker(vun_link_component::Remote),
     Scheme(vun_scheme_component::Remote),
+    Server(vun_server::Remote),
 }
 
 impl Served {
@@ -34,6 +36,7 @@ impl Served {
         (Backends::KIND, |c| vun_backend_component::Remote::of(c).map(Self::Backend)),
         (Linkers::KIND, |c| vun_link_component::Remote::of(c).map(Self::Linker)),
         (Schemes::KIND, |c| vun_scheme_component::Remote::of(c).map(Self::Scheme)),
+        (Servers::KIND, |c| vun_server::Remote::of(c).map(Self::Server)),
     ];
 
     /// What the component is called: its kind and its backend's or linker's id
@@ -44,6 +47,7 @@ impl Served {
                 format!("{}-{}", Backends::KIND, vun_backend::Backend::info(backend).id)
             }
             Self::Linker(linker) => format!("{}-{}", Linkers::KIND, vun_link::Linker::info(linker).id),
+            Self::Server(server) => format!("{}-{}", Servers::KIND, vun_server::Server::name(server)),
             Self::Scheme(scheme) => format!("{}-{}", Schemes::KIND, vun_fetch::Scheme::name(scheme)),
         }
     }
@@ -148,6 +152,9 @@ impl Registry {
                 }
                 Ok(Served::Scheme(scheme)) => {
                     self.add_scheme_from(Box::new(scheme), Provider::Loaded(path));
+                }
+                Ok(Served::Server(server)) => {
+                    self.add_server_from(Box::new(server), Provider::Loaded(path));
                 }
                 Err(Fault::Open { source, .. }) => {
                     debug!(library = %path.display(), %source, "not a component");

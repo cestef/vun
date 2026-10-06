@@ -5,7 +5,7 @@ use std::process::ExitCode;
 mod commands;
 
 use commands::{CHECK_PATH, PROGRAM};
-use vun_driver::{Persistence, Session};
+use vun_driver::Session;
 
 /// The compiler allocates many small, short-lived values from many threads, where mimalloc is
 /// faster than the system allocator.
@@ -15,13 +15,9 @@ static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 fn main() -> ExitCode {
     vun_trace::Config::from_env().install();
-    let mut session = Session::new();
-    session.persistence = Persistence::On;
-    session.shared = Some(session.store.memos());
+    let mut session = Session::persistent();
     #[cfg(feature = "lsp")]
-    {
-        session.language_server = Some(vun_lsp::serve);
-    }
+    session.registry.add_server(Box::new(vun_component_server_lsp::component()));
     session.check = PROGRAM.invocation(&CHECK_PATH);
     PROGRAM.main(&mut session)
 }

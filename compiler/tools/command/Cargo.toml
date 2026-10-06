@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-codec.workspace = true
 vun-suggest.workspace = true
 vun-diag.workspace = true
 vun-term.workspace = true

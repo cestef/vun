@@ -1,5 +1,5 @@
 //! `vun toolchain show`: the running toolchain's version, where it and its library are, and the
-//! backends, linkers and URL schemes it has.
+//! backends, linkers, URL schemes and servers it has.
 
 use std::io;
 
@@ -48,7 +48,15 @@ fn show(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome>
         handles: Names::Any,
         outputs: Vec::new(),
     });
-    shell.table(&backends.chain(linkers).chain(schemes).collect::<Vec<_>>())?;
+    let servers = r.servers().map(|name| Component {
+        kind: Kind::Server,
+        from: r.server_from(name).cloned().unwrap_or(Provider::Linked),
+        name: name.to_owned(),
+        readiness: Readiness::Ready,
+        handles: Names::Any,
+        outputs: Vec::new(),
+    });
+    shell.table(&backends.chain(linkers).chain(schemes).chain(servers).collect::<Vec<_>>())?;
     Ok(Outcome::Success)
 }
 
@@ -119,6 +127,7 @@ enum Kind {
     Backend,
     Linker,
     Scheme,
+    Server,
 }
 
 impl Kind {
@@ -127,6 +136,7 @@ impl Kind {
             Self::Backend => "backend",
             Self::Linker => "linker",
             Self::Scheme => "scheme",
+            Self::Server => "server",
         }
     }
 }
