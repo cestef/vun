@@ -70,8 +70,10 @@ impl Kind {
             }
             Given::Label(_) => Operand::Label(Label::new(0)),
             Given::Symbol(s) => Operand::Sym(*s),
-            // Nothing writes an address back, and no position names a choice or takes a list.
-            Given::Mem { .. } | Given::Choice { .. } | Given::List(_) => return Err(Why::Kind),
+            // Nothing writes an address back, and no position names a choice, takes a list or a float.
+            Given::Mem { .. } | Given::Choice { .. } | Given::List(_) | Given::Float(_) => {
+                return Err(Why::Kind);
+            }
         };
         match operand {
             _ if !self.takes(size, &operand) => {

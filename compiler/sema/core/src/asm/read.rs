@@ -9,8 +9,9 @@ use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_hir::resolve::Res;
 use vun_hir::tree::{Arg, BinderId, Entry, ExprId, ExprKind};
 use vun_inline::{Bound, Disp, Line, Mem};
-use vun_isa::Writeback;
+use vun_isa::{FloatBits, Writeback};
 use vun_primitives::arch::Arch as Form;
+use vun_sema_float::Format;
 use vun_sema_ty::Value;
 
 use super::check::{Checker, Term};
@@ -61,6 +62,10 @@ impl Checker<'_, '_, '_> {
         }
         match self.env.eval(arg) {
             Ok(Value::Int(n)) => Some(Given::Imm(n.to_i128().and_then(|n| i64::try_from(n).ok()))),
+            Ok(Value::Float(float)) if self.arch.shape().floats => {
+                let single = u32::try_from(float.converted(Format::F32).bits).ok()?;
+                Some(Given::Float(FloatBits { single, double: float.converted(Format::F64).bits }))
+            }
             Ok(Value::Variant { ty, name, payload }) if payload.is_empty() => {
                 self.word(ty, name).or_else(|| {
                     let msg = Msg::new().text("this value names nothing of the architecture");

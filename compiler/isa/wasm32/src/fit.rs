@@ -1,7 +1,7 @@
 //! Fitting a line's operands to a wasm form: a position takes what its kind says, a local bound
 //! as its access reads or writes it, an immediate the bits hold; the width is the table's one.
 
-use vun_inline::{Bound, ClassId, FormId, OpId};
+use vun_inline::{Bound, ClassId, FormId, OpId, Operand};
 use vun_isa::{Fit, Fixed, Given, Misfit, Nest, Scope, Slot, Stack, Why};
 
 use crate::{Access, Arg, Choice, Class, Control, Imm, Kind, Op, Size, Ty, Yields};
@@ -21,6 +21,7 @@ impl Arg {
             },
             (Kind::Imm(imm), Given::Imm(Some(value))) if imm.holds(*value) => Ok(()),
             (Kind::Depths, Given::Imm(Some(value))) if DEPTH.holds(*value) => Ok(()),
+            (Kind::Imm(Imm::Bits(bits)), Given::Float(float)) if float.at(bits).is_some() => Ok(()),
             (Kind::Imm(_) | Kind::Depths, Given::Imm(_)) => Err(Why::Wide),
             (Kind::Choice(choice), Given::Choice { of, index })
                 if of.0 == choice as u8 && usize::from(*index) < choice.count() =>
@@ -104,6 +105,14 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     };
     let scope = scope.ok_or(Misfit::Operand { at: 0, why: Why::Wide })?;
     let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes), scope };
-    let operands = givens.iter().cloned().map(Given::operand).collect();
-    Ok(Fit::new(Size::B32.id(), operands).on(stack))
+    let operands = givens.iter().enumerate().map(|(at, given)| {
+        let arg = form.args.get(at).or(form.args.last());
+        match (given, arg.map(|arg| arg.kind)) {
+            (Given::Float(float), Some(Kind::Imm(Imm::Bits(bits)))) => {
+                Operand::Imm(i64::from_ne_bytes(float.at(bits).unwrap_or_default().to_ne_bytes()))
+            }
+            _ => given.clone().operand(),
+        }
+    });
+    Ok(Fit::new(Size::B32.id(), operands.collect()).on(stack))
 }

@@ -38,7 +38,8 @@ pub const Choice: Item = Item::new(&["lang", "arch", "wasm32", "Choice"]);
 /// The type a block gives where it gives a value (`block(yield_i32)`).
 pub const Yields: Item = Item::new(&["lang", "arch", "wasm32", "Yields"]);
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
-/// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
+/// float, written as they are, little endian: as a float literal (`f32_const(1.0)`, rounded to
+/// 32 bits) or as the bits (`f32_const(0x3f800000)`).
 pub const Imm: Item = Item::new(&["lang", "arch", "wasm32", "Imm"]);
 /// What a form does with an operand.
 pub const Access: Item = Item::new(&["lang", "arch", "wasm32", "Access"]);

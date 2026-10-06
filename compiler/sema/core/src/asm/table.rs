@@ -73,6 +73,8 @@ pub(super) struct Shape {
     pub(super) widths: Widths,
     /// The bits of each width.
     pub(super) bits: &'static [(Item, u32)],
+    /// Whether a float literal is an operand, given as the bits of each format.
+    pub(super) floats: bool,
 }
 
 /// An architecture's table: its instructions in order, the names of its widths, conditions and

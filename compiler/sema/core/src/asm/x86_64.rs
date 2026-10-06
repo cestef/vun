@@ -33,6 +33,7 @@ pub(super) const SHAPE: Shape = Shape {
     choice: None,
     widths: Widths { of: form::sizes, size: None, types: None, encoding: None },
     bits: &BITS,
+    floats: false,
 };
 
 /// The bits of each width.

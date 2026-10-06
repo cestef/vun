@@ -319,8 +319,8 @@ countdown := (n: u32) -> u32 {
   A binding is a local, where `local_get(in(a))` pushes the value of `a`, `local_set(out(r))` pops
   into the place `r` and `local_tee(inout(r))` writes it and keeps it; the class of a binding is the
   value type its Vun type is held as. An instruction takes immediates as operands (`i32_store(2,
-  0)`: the alignment as a power of two, the offset; `f32_const(0x3f000000)`: a float is written as
-  its bits). Sema keeps the stack as the forms leave it and
+  0)`: the alignment as a power of two, the offset; `f32_const(0.5)`: a float literal, rounded to the
+  instruction's format, or its bits, `f32_const(0x3f000000)`). Sema keeps the stack as the forms leave it and
   reports a pop from an empty stack, a pop of another type and values left at the end
   (`asm.stack`); after an instruction that ends the code (`unreachable`) any stack goes. A block
   starts and ends with an empty stack. Structured control is `block`, `loop`, `if_`, `else_`,

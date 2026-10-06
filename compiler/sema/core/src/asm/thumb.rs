@@ -42,6 +42,7 @@ pub(super) const SHAPE: Shape = Shape {
         encoding: Some((t::Encoding, encoded)),
     },
     bits: &BITS,
+    floats: false,
 };
 
 /// The bits of each width.

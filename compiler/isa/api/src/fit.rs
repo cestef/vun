@@ -21,6 +21,9 @@ pub enum Given<V, P, S> {
     },
     /// An integer; `None` when no 64 bits hold it.
     Imm(Option<i64>),
+    /// A float literal, where the instruction set takes one: only the forms taking its bits
+    /// accept it.
+    Float(FloatBits),
     Cond(CondId),
     /// One of the choices a position names: the kind of choice, in the order of the table's
     /// `Choice`, and its index among that kind's (`ish` of a barrier).
@@ -67,12 +70,32 @@ impl<V, P, S> Given<V, P, S> {
             Self::Reg { reg, .. } => Operand::Reg(reg),
             Self::Bound { bound, .. } => Operand::Bound(bound),
             Self::Imm(imm) => Operand::Imm(imm.unwrap_or_default()),
+            Self::Float(float) => Operand::Imm(i64::from_ne_bytes(float.double.to_ne_bytes())),
             Self::Cond(cond) => Operand::Cond(cond),
             Self::Choice { index, .. } => Operand::Choice(index),
             Self::Mem { mem, .. } => Operand::Mem(mem),
             Self::Label(line) => Operand::Label(line),
             Self::Symbol(symbol) => Operand::Symbol(symbol),
             Self::List(regs) => Operand::List(regs.into_iter().map(|(reg, _)| reg).collect()),
+        }
+    }
+}
+
+/// A float literal as the bits each binary format stores it in, rounded to the format.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FloatBits {
+    pub single: u32,
+    pub double: u64,
+}
+
+impl FloatBits {
+    /// The bits of the format of `width` bits, if it is one of them.
+    #[must_use]
+    pub const fn at(self, width: u8) -> Option<u64> {
+        match width {
+            32 => Some(self.single as u64),
+            64 => Some(self.double),
+            _ => None,
         }
     }
 }

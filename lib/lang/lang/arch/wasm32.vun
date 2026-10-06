@@ -56,7 +56,8 @@ Choice := enum { yields };
 Yields := enum { yield_i32, yield_i64, yield_f32, yield_f64 };
 
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
-/// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
+/// float, written as they are, little endian: as a float literal (`f32_const(1.0)`, rounded to
+/// 32 bits) or as the bits (`f32_const(0x3f800000)`).
 Imm := enum { unsigned(u8), signed(u8), bits(u8) };
 
 /// What a form does with an operand.

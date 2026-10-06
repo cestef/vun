@@ -28,6 +28,7 @@ pub(super) const SHAPE: Shape = Shape {
     choice: Some(wasm::Choice),
     widths: Widths { of: form::sizes, size: Some(sized::size), types: None, encoding: None },
     bits: &BITS,
+    floats: true,
 };
 
 /// The bits of each width.

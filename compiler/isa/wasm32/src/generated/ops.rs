@@ -188,9 +188,9 @@ pub enum Op {
     I32Const,
     /// Pushes a 64-bit integer.
     I64Const,
-    /// Pushes a 32-bit float, given by its bits.
+    /// Pushes a 32-bit float, given as a literal or by its bits.
     F32Const,
-    /// Pushes a 64-bit float, given by its bits.
+    /// Pushes a 64-bit float, given as a literal or by its bits.
     F64Const,
     /// Pops a value and drops it.
     Drop,

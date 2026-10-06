@@ -142,7 +142,7 @@ more := (x: f64) -> f64 {
     unsafe lang.arch.asm({
         ..lang.arch.wasm32.names;
         local_get(in(x));
-        f64_const(0x3ff8000000000000);
+        f64_const(1.5);
         f64_add();
         local_set(out(r));
     });
