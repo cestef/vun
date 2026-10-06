@@ -121,9 +121,8 @@ fn a_block_returning_with_the_stack_moved_traps_through_native_code_and_c() {
 #[test]
 fn a_wasm_block_writing_past_its_memory_or_moving_the_stack_traps_under_the_asm_checks() {
     let target = targets::wasi_wasm32::p1;
-    // The value is held in a local that is changed, so that it is an `i64` and not a constant.
     let write = "local_get(in(p)); local_get(in(n)); i64_store(3, {past})";
-    let source = |past| writing("wasm32", write, past).replace("n: u64 = 7;", "mut n: u64 = 6; n +%= 1;");
+    let source = |past| writing("wasm32", write, past);
     let run = |past| {
         let name = format!("checks-asm-wasm32-{past}");
         checked_run(&name, target, "wasm", &[Check::Asm], &source(past))

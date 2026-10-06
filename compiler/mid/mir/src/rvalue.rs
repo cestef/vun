@@ -130,6 +130,22 @@ impl Rvalue {
         }
     }
 
+    /// The operands a constant may replace: all of them, but the values a block binds, which stay
+    /// in the locals typing gave their type, as an instruction takes a value at that type and a
+    /// constant's own is the narrowest its value fits.
+    pub fn constant_operands_mut(&mut self) -> Vec<&mut Operand> {
+        match self {
+            Self::Asm(asm) => asm
+                .reads_mut()
+                .filter_map(|read| match read {
+                    vun_inline::Read::Symbol(symbol) => Some(symbol),
+                    vun_inline::Read::Value(_) => None,
+                })
+                .collect(),
+            _ => self.operands_mut(),
+        }
+    }
+
     /// The operands this reads, in order.
     #[must_use]
     pub fn operands(&self) -> Vec<&Operand> {

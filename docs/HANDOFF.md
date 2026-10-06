@@ -18,7 +18,7 @@ what the corpus waits for. Decisions awaiting the owner are the rows marked `pro
 The owner's queue, in order:
 
 1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).
-2. Backends: the rp2350 on hardware, wasm constants bound narrower than their type
+2. Backends: the rp2350 on hardware
    ([`open/backends.md`](open/backends.md)).
 
 ## For the owner

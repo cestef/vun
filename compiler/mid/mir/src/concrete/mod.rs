@@ -145,7 +145,7 @@ impl Body {
             let constant = |local: Local| constants[local].clone();
             let mut changed = false;
             for (_, block) in self.blocks.iter_mut() {
-                let operands = block.stmts.iter_mut().flat_map(|s| s.value.operands_mut());
+                let operands = block.stmts.iter_mut().flat_map(|s| s.value.constant_operands_mut());
                 for operand in operands.chain(block.term.kind.operands_mut()) {
                     if let Operand::Place(place) = operand
                         && place.projection.is_empty()

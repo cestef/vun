@@ -5,9 +5,7 @@
 - Inline assembly (`lang.arch.wasm32`, decisions 474, 501, 504 to 507, 512) runs under wasmtime, with atomics
   and structured control (blocks giving a value, `br_table`). Calls name functions, and globals are
   the linker's (`stack_pointer`). SIMD is the proposal's vectors, on the stack and bound to 16-byte Vun vectors
-  (507, 510); `call_indirect` goes through the linker's table (509). Open: a constant bound to
-  a wasm block keeps its narrowest type, so an immutable local with a literal initializer reaches an
-  `i64` position as an `i32` and the module is invalid (bind a local that is changed).
+  (507, 510); `call_indirect` goes through the linker's table (509).
 - The backend refuses naked functions and addresses past a function's start, and reports no frame
   sizes or debug information.
 - A WASI stack overflow is the engine's raw memory fault unless built with `--checks stack` (473),

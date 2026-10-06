@@ -30,8 +30,18 @@ impl Rebind<ExprId, ExprId, ExprId> for Bindings<'_, '_, '_, '_> {
     type Symbol = Operand;
     type Error = Unbuilt;
 
+    /// A constant is held by a temporary of the type the block was checked with: its own type is
+    /// the narrowest its value fits, which a position of the instruction would not take.
     fn value(&mut self, value: ExprId) -> Result<Operand, Unbuilt> {
-        self.0.operand(value)
+        let operand = self.0.operand(value)?;
+        let ty = self.0.type_of(value);
+        match operand {
+            Operand::Const(ref constant) if ty.is_some() && constant.ty() != ty => {
+                let origin = self.0.env.parsed.hir.exprs[value].origin;
+                Ok(self.0.typed_temp(Rvalue::Use(operand), ty, origin))
+            }
+            _ => Ok(operand),
+        }
     }
 
     fn place(&mut self, place: ExprId) -> Result<Place, Unbuilt> {
