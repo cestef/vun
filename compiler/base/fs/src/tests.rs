@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Edit, Mode, Modes, Refusal, Relative, Scratch, Tree, WORK};
+use super::{Captured, Edit, Mode, Modes, Refusal, Relative, Scratch, Tree, WORK};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -151,4 +151,17 @@ fn a_directory_is_made_with_its_parents_and_may_be_there() {
     deep.make().unwrap();
     deep.make().unwrap();
     assert!(deep.is_dir());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_command_ends_with_its_process_not_with_a_daemon_holding_its_streams() {
+    let started = std::time::Instant::now();
+    // The background command keeps the streams as long as it sleeps.
+    let mut command = std::process::Command::new("sh");
+    command.args(["-c", "echo out; echo err >&2; sleep 5 & exit 3"]);
+    let output = Captured::run(&mut command).unwrap();
+    assert_eq!((output.stdout, output.stderr), (b"out\n".to_vec(), b"err\n".to_vec()));
+    assert_eq!(output.status.code(), Some(3));
+    assert!(started.elapsed() < std::time::Duration::from_secs(3));
 }

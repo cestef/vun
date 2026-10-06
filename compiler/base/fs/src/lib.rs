@@ -2,6 +2,7 @@
 //! everything built from a walk (hashes, corpus runs, snapshots) is deterministic, writes that
 //! create what they need, directories replaced whole, and the executable bit.
 
+mod captured;
 mod edit;
 mod executable;
 mod mode;
@@ -12,6 +13,7 @@ mod relative;
 mod scratch;
 mod walk;
 
+pub use captured::Captured;
 pub use edit::{Edit, Part};
 pub use executable::EXECUTABLE;
 pub use mode::{Mode, Modes};

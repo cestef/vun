@@ -57,6 +57,9 @@ Traps that cost a session before. Add one when it costs you time.
 - `BackendCaps` is a `Feature` set; unimplemented backends are `vun_backend::Planned`;
   `Store::stage` returns a per-process `Staging` guard removed on drop; `xtask`, `vun-command`
   and `generate` declare tool-local diagnostic ids.
+- A program run through a runner is read through files, `vun_fs::Captured`, not `Command::output`:
+  `wine64` leaves a `wineserver` that holds the pipes for about 8 seconds, so a run through pipes
+  lasts as long as the daemon, in the tests and in the run times `vun debug compare` reports.
 
 ## Sema
 

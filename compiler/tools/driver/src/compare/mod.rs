@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 pub use diff::{Difference, Stream};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
+use vun_fs::Captured;
 use vun_intern::Symbol;
 use vun_span::FileId;
 
@@ -71,7 +72,7 @@ impl Session {
             let mut runs = Vec::new();
             for _ in 0..times.max(1) {
                 let started = Instant::now();
-                let output = self.command(&program).output().map_err(|e| {
+                let output = Captured::run(&mut self.command(&program)).map_err(|e| {
                     let msg = Msg::new().text("cannot run ").code(program.display().to_string());
                     self.diag.error(Diagnostic::error(errors::BACKEND_TOOL, msg).caused_by(&e))
                 })?;
