@@ -31,7 +31,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 
 #[test]
 fn a_pack_gathers_the_arguments_after_the_others() {
-    assert_eq!(backend::status("packs", PACKS), Some(48));
+    assert_eq!(backend::status_across("packs", PACKS), Some(48));
 }
 
 /// `snprintf(buffer, 16, "%d %.1f %lld", 42, 2.5, -7)`: 9 bytes, `42 2.5 -7`, and 100 more

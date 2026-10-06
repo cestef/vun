@@ -11,7 +11,7 @@ use crate::common::Fixture;
 mod component;
 mod run;
 
-pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_on};
+pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_across, status_on};
 
 /// The test program `name`, a file of `programs/` beside these tests, which
 /// `vun debug compare` runs as the tests do.
@@ -133,7 +133,7 @@ fn deferred_code_runs_at_run_time_though_it_has_a_value_at_compile_time() {
 
 #[test]
 fn borrowed_constants_and_placed_fields_run_through_each_backend() {
-    assert_eq!(status("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
+    assert_eq!(status_across("backend-borrowed", &program("borrowed.vun")), Some(1 + 4 + 8 + 32));
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn arithmetic_records_atomics_and_matches_run_as_they_mean() {
     // Division and remainder of each signedness, shifts, bit operations, signed comparisons,
     // nine parameters, records passed and returned in registers and in memory under the C
     // convention, atomics, a match on integers and a copy of 320 bytes: 24, as computed by hand.
-    assert_eq!(status("backend-mix", &program("mix.vun")), Some(24));
+    assert_eq!(status_across("backend-mix", &program("mix.vun")), Some(24));
 }
 
 /// The status the C library runtime exits with when a program traps (`std.os.libc.trapped`).
@@ -163,10 +163,10 @@ main := (sys: &mut std.os.System) -> std.os.Exit {{
 
 #[test]
 fn assertions_and_failures_trap_at_run_time() {
-    assert_eq!(status("backend-assert-holds", &checking("assert(n == 1);")), Some(7));
-    assert_eq!(status("backend-assert-fails", &checking("assert(n > 1);")), Some(TRAPPED));
+    assert_eq!(status_across("backend-assert-holds", &checking("assert(n == 1);")), Some(7));
+    assert_eq!(status_across("backend-assert-fails", &checking("assert(n > 1);")), Some(TRAPPED));
     let expect = "o: ?usize = if n > 1 { .some(n) } else { .none }; _ = o.expect(\"one argument\");";
-    assert_eq!(status("backend-expect", &checking(expect)), Some(TRAPPED));
+    assert_eq!(status_across("backend-expect", &checking(expect)), Some(TRAPPED));
 }
 
 /// The ids of what building `source` through `backend` reports.
@@ -214,37 +214,37 @@ trapping := (n: u32) -> u32 { mut total: u32 = 0; for _ in 0..n { total += 1; } 
 #[test]
 fn floats_compute_compare_and_pass_as_ieee_754_says() {
     // Each check that holds adds its bit: 255 when every one does.
-    assert_eq!(status("backend-floats", &program("floats.vun")), Some(0));
+    assert_eq!(status_across("backend-floats", &program("floats.vun")), Some(0));
 }
 
 #[test]
 fn integers_wider_than_the_backend_run_as_pairs_of_halves() {
-    assert_eq!(status("backend-wide", &program("wide.vun")), Some(0));
+    assert_eq!(status_across("backend-wide", &program("wide.vun")), Some(0));
 }
 
 #[test]
 fn integers_wrap_into_ranges_of_any_size() {
-    assert_eq!(status("backend-wrapped", &program("wrapped.vun")), Some(0));
+    assert_eq!(status_across("backend-wrapped", &program("wrapped.vun")), Some(0));
 }
 
 #[test]
 fn vectors_compute_lane_by_lane_and_reduce_in_the_order_stated() {
-    assert_eq!(status("backend-vectors", &program("vectors.vun")), Some(0));
+    assert_eq!(status_across("backend-vectors", &program("vectors.vun")), Some(0));
 }
 
 #[test]
 fn scalable_vectors_cover_a_length_that_is_no_multiple_of_their_width() {
-    assert_eq!(status("backend-scalable", &program("scalable.vun")), Some(0));
+    assert_eq!(status_across("backend-scalable", &program("scalable.vun")), Some(0));
 }
 
 #[test]
 fn closures_function_values_defers_and_primitives_lower_and_run() {
-    assert_eq!(status("backend-lowered", &program("lowered.vun")), Some(0));
+    assert_eq!(status_across("backend-lowered", &program("lowered.vun")), Some(0));
 }
 
 #[test]
 fn memory_operations_run_whether_their_value_is_kept_or_not() {
-    assert_eq!(status("backend-memory", &program("memory.vun")), Some(0));
+    assert_eq!(status_across("backend-memory", &program("memory.vun")), Some(0));
 }
 
 #[test]
@@ -261,19 +261,19 @@ fn a_method_taking_its_receiver_by_value_is_called_through_a_borrow() {
 
 #[test]
 fn data_aligned_past_every_c_type_is_aligned() {
-    assert_eq!(status("backend-aligned", &program("aligned.vun")), Some(7));
+    assert_eq!(status_across("backend-aligned", &program("aligned.vun")), Some(7));
 }
 
 #[test]
 fn float_rem_and_mul_add_run_as_vun_and_agree_with_compile_time_bit_for_bit() {
     // The number of cases whose run-time result differs from the compile-time one.
-    assert_eq!(status("backend-soft-float", &program("soft_float.vun")), Some(0));
+    assert_eq!(status_across("backend-soft-float", &program("soft_float.vun")), Some(0));
 }
 
 #[test]
 fn f16_runs_as_bits_computed_in_f32_and_agrees_with_compile_time_bit_for_bit() {
     // The number of checks whose run-time result differs from the compile-time one.
-    assert_eq!(status("backend-half", &program("half.vun")), Some(0));
+    assert_eq!(status_across("backend-half", &program("half.vun")), Some(0));
 }
 
 #[test]

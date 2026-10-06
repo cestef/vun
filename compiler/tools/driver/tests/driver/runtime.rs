@@ -4,7 +4,7 @@
 use vun_harness::{ACCEPT, repo_root};
 use vun_items::{Item, targets};
 
-use crate::backend::{self, BACKENDS, build, status, status_on};
+use crate::backend::{self, BACKENDS, build, status_across, status_on};
 use crate::common::Fixture;
 
 /// The types of an ELF program's segments: its program headers' `p_type`, read from the
@@ -86,7 +86,7 @@ fn clocks_are_read_and_a_pause_lasts_on_every_runtime() {
     if !cfg!(target_os = "linux") {
         return;
     }
-    assert_eq!(status("runtime-clocks", &corpus("clocks.vun")), Some(0));
+    assert_eq!(status_across("runtime-clocks", &corpus("clocks.vun")), Some(0));
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn threads_run_beside_the_main_one_and_are_joined_on_every_runtime() {
     if !cfg!(target_os = "linux") {
         return;
     }
-    assert_eq!(status("runtime-threads", &corpus("threads.vun")), Some(36));
+    assert_eq!(status_across("runtime-threads", &corpus("threads.vun")), Some(36));
 }
 
 /// A trap three calls deep, each a call of the function itself, which is not inlined.

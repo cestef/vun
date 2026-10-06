@@ -60,10 +60,16 @@ const CROSS: [Item; 5] = [
     targets::windows_x86::msvc,
 ];
 
-/// Builds `source` through each backend that generates code and runs it, for the machine's
-/// target and each of `CROSS` the machine runs programs of: its exit status, the same through
-/// each (what `vun debug compare` shows).
+/// Builds `source` through each backend that generates code and runs it for the machine's
+/// target: its exit status, the same through each (what `vun debug compare` shows). A program
+/// whose result depends on the target, its calling convention, layout or traps, runs through
+/// [`status_across`] instead.
 pub(crate) fn status(name: &str, source: &str) -> Option<i32> {
+    status_on(name, source, &[])
+}
+
+/// [`status`] for the machine's target and each of `CROSS` the machine runs programs of.
+pub(crate) fn status_across(name: &str, source: &str) -> Option<i32> {
     status_on(name, source, &CROSS)
 }
 
