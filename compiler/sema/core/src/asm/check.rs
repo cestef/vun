@@ -82,8 +82,8 @@ pub(crate) enum Held {
 }
 
 impl Held {
-    pub(crate) fn of(ty: &Ty) -> Self {
-        if Format::of(ty).is_some() {
+    pub(crate) fn of(ty: Ty) -> Self {
+        if Format::of(&ty).is_some() {
             Self::Float
         } else if ty.lanes().is_some() {
             Self::Vector

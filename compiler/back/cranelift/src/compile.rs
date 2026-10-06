@@ -24,16 +24,20 @@ use crate::relocs::Placed;
 pub(crate) enum Support {
     /// The address of a thread's storage, which the general dynamic model asks the loader for.
     TlsGetAddr,
+    /// The copy of a struct argument into the caller's stack, which x86-64 makes with a call.
+    Memcpy,
 }
 
 impl Support {
     /// The libcalls Cranelift may name, and what each is.
-    const CALLS: &[(LibCall, Self)] = &[(LibCall::ElfTlsGetAddr, Self::TlsGetAddr)];
+    const CALLS: &[(LibCall, Self)] =
+        &[(LibCall::ElfTlsGetAddr, Self::TlsGetAddr), (LibCall::Memcpy, Self::Memcpy)];
 
     /// The link symbol of the function.
     pub(crate) const fn symbol(self) -> &'static str {
         match self {
             Self::TlsGetAddr => "__tls_get_addr",
+            Self::Memcpy => "memcpy",
         }
     }
 

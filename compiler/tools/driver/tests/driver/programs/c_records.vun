@@ -1,0 +1,63 @@
+// C records by value of the sizes the convention does not place as whole words: 3, 5, 6 and 7
+// bytes in a register, 20 bytes on the stack, a record aligned to 16 after a word on the stack,
+// and one that does not fit the registers left. The status is the number of checks that fail.
+
+#[layout.c]
+Tri := struct { a: u8, b: u8, c: u8 };
+#[layout.c]
+Five := struct { a: u8, b: u8, c: u8, d: u8, e: u8 };
+#[layout.c]
+Six := struct { a: u16, b: u16, c: u16 };
+#[layout.c]
+Seven := struct { a: u32, b: u16, c: u8 };
+#[layout.c]
+Twenty := struct { a: u32, b: u32, c: u32, d: u32, e: u32 };
+#[layout.c]
+#[layout.align(16)]
+Sixteen := struct { a: u64, b: u64, c: u64, d: u64 };
+#[layout.c]
+Pair := struct { x: u64, y: u64 };
+
+#[abi.c]
+#[opt.inline(.never)]
+tri := (t: Tri) -> Tri { Tri{ .a = t.c, .b = t.a, .c = t.b } };
+#[abi.c]
+#[opt.inline(.never)]
+five := (f: Five) -> Five { Five{ .a = f.e, .b = f.d, .c = f.c, .d = f.b, .e = f.a } };
+#[abi.c]
+#[opt.inline(.never)]
+six := (s: Six) -> Six { Six{ .a = s.c, .b = s.b, .c = s.a } };
+#[abi.c]
+#[opt.inline(.never)]
+seven := (s: Seven) -> Seven { Seven{ .a = (s.a + 1).wrap(u32), .b = (s.b + 1).wrap(u16), .c = (s.c + 1).wrap(u8) } };
+#[abi.c]
+#[opt.inline(.never)]
+twenty := (t: Twenty) -> Twenty { Twenty{ .a = t.e, .b = t.d, .c = t.c, .d = t.b, .e = t.a } };
+#[abi.c]
+#[opt.inline(.never)]
+late := (a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64, s: Sixteen, h: u64) -> u64 {
+    (a + b + c + d + e + f + g + s.a + s.d + h).wrap(u64)
+};
+#[abi.c]
+#[opt.inline(.never)]
+crowded := (a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64, p: Pair, h: u64) -> u64 {
+    (a + b + c + d + e + f + g + p.y + h).wrap(u64)
+};
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut failed: u32 = 0;
+    t := tri(Tri{ .a = 1, .b = 2, .c = 3 });
+    if t.a != 3 or t.b != 1 or t.c != 2 { failed +%= 1; }
+    f := five(Five{ .a = 1, .b = 2, .c = 3, .d = 4, .e = 5 });
+    if f.a != 5 or f.b != 4 or f.c != 3 or f.d != 2 or f.e != 1 { failed +%= 1; }
+    s := six(Six{ .a = 1, .b = 2, .c = 3 });
+    if s.a != 3 or s.b != 2 or s.c != 1 { failed +%= 1; }
+    v := seven(Seven{ .a = 100000, .b = 300, .c = 7 });
+    if v.a != 100001 or v.b != 301 or v.c != 8 { failed +%= 1; }
+    w := twenty(Twenty{ .a = 1, .b = 2, .c = 3, .d = 4, .e = 5 });
+    if w.a != 5 or w.b != 4 or w.c != 3 or w.d != 2 or w.e != 1 { failed +%= 1; }
+    if late(1, 2, 3, 4, 5, 6, 7, Sixteen{ .a = 10, .b = 20, .c = 30, .d = 40 }, 100) != 28 + 10 + 40 + 100 { failed +%= 1; }
+    if crowded(1, 2, 3, 4, 5, 6, 7, Pair{ .x = 10, .y = 20 }, 100) != 28 + 20 + 100 { failed +%= 1; }
+    std.os.Exit.of(failed % 126)
+};

@@ -9,7 +9,7 @@ use vun_backend::Missing;
 use vun_lir::{AbiType, Conv, Ext, Scalar, Signature};
 
 use crate::isa::Isa;
-use crate::plan::{Pass, Placed, Returned};
+use crate::plan::{Param, Pass, Placed, Returned, SLOT, Skip};
 
 impl Isa {
     /// The type of a LIR scalar.
@@ -25,6 +25,22 @@ impl Isa {
             Scalar::I128 => return Err(Missing::Int128),
             Scalar::F16 => return Err(Missing::Half),
             Scalar::V128 => return Err(Missing::Vector),
+        })
+    }
+
+    /// A struct argument of `size` bytes, a multiple of a word.
+    fn struct_argument(size: u64, ptr: AbiParam) -> Result<AbiParam, Missing> {
+        let size = u32::try_from(size).map_err(|_| Missing::Record)?;
+        Ok(AbiParam { purpose: ArgumentPurpose::StructArgument(size), ..ptr })
+    }
+
+    /// The parameter that carries nothing in place of `skip`: a word of the stack is a struct
+    /// argument before one, else an integer, which reaches the stack as the registers are taken.
+    fn skipped(skip: Skip, structs: bool, ptr: AbiParam) -> Result<AbiParam, Missing> {
+        Ok(match skip {
+            Skip::Float => AbiParam::new(types::F64),
+            Skip::Stack if structs => Self::struct_argument(SLOT, ptr)?,
+            Skip::Int | Skip::Stack => AbiParam::new(types::I64),
         })
     }
 
@@ -92,15 +108,19 @@ impl Isa {
         if placed.returned == Returned::Sret {
             out.params.push(AbiParam { purpose: ArgumentPurpose::StructReturn, ..ptr });
         }
-        for (ty, pass) in signature.params.iter().zip(&placed.params) {
+        for (ty, Param { skips, pass }) in signature.params.iter().zip(&placed.params) {
+            for skip in skips {
+                out.params.push(Self::skipped(*skip, matches!(pass, Pass::Struct(_)), ptr)?);
+            }
             match pass {
                 Pass::Values(_) => out.params.extend(self.parts(ty, conv)?),
                 Pass::Parts(parts) => {
                     out.params.extend(parts.lanes.iter().map(|lane| AbiParam::new(lane.ty)));
                 }
-                Pass::Struct(layout) => {
-                    let size = u32::try_from(layout.size).map_err(|_| Missing::Record)?;
-                    out.params.push(AbiParam { purpose: ArgumentPurpose::StructArgument(size), ..ptr });
+                Pass::Struct(layout) => out.params.push(Self::struct_argument(layout.words(), ptr)?),
+                Pass::Words(layout) => {
+                    let words = usize::try_from(layout.words() / SLOT).map_err(|_| Missing::Record)?;
+                    out.params.extend(std::iter::repeat_n(AbiParam::new(types::I64), words));
                 }
                 Pass::Copy(_) => out.params.push(ptr),
             }
@@ -131,6 +151,6 @@ impl Isa {
 pub(crate) struct Plan {
     pub(crate) signature: ir::Signature,
     /// How each parameter of the LIR signature is passed.
-    pub(crate) params: Vec<Pass>,
+    pub(crate) params: Vec<Param>,
     pub(crate) returned: Returned,
 }

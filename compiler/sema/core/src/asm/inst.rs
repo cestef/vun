@@ -89,7 +89,7 @@ impl Checker<'_, '_, '_> {
             if bytes == 0 {
                 return None;
             }
-            let (class, _) = self.arch.register(self.table, Some(bytes), Held::of(&ty))?;
+            let (class, _) = self.arch.register(self.table, Some(bytes), Held::of(ty))?;
             Some(Slot::Class(class))
         };
         // What the form pops itself, a table's index, is above the parameters.

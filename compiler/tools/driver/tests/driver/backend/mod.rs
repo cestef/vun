@@ -144,6 +144,12 @@ fn arithmetic_records_atomics_and_matches_run_as_they_mean() {
     assert_eq!(status_across("backend-mix", &program("mix.vun")), Some(24));
 }
 
+#[test]
+fn c_records_of_every_size_are_passed_and_returned_as_the_convention_places_them() {
+    // The number of checks that fail: 0 when all hold.
+    assert_eq!(status_across("backend-c-records", &program("c_records.vun")), Some(0));
+}
+
 /// The status the C library runtime exits with when a program traps (`std.os.libc.trapped`).
 const TRAPPED: i32 = 101;
 

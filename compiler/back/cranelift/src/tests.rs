@@ -14,7 +14,7 @@ use vun_target::{Convention, Profile};
 use crate::compile::Compilation;
 use crate::failed::Failed;
 use crate::isa::{Isa, NAMES};
-use crate::plan::{Lane, Layout, Parts, Pass, Returned};
+use crate::plan::{Lane, Layout, Parts, Pass, Returned, Skip};
 
 /// What the assisting backend's code is, as far as these tests tell.
 const ASSISTED: u8 = 0xC3;
@@ -91,12 +91,6 @@ fn what_cranelift_does_not_express_is_refused_where_it_is() {
     let float = AbiType::Scalar(Scalar::F64);
     let variadic = Signature { variadic: Some(0), ..signature(Conv::C, vec![float]) };
     assert_eq!(lacks(&unit_of(variadic, None)), Some(Missing::Variadic));
-    let bytes = AbiType::Record(vun_lir::Record {
-        size: 3,
-        align: 1,
-        fields: vec![(0, Scalar::I8), (1, Scalar::I8), (2, Scalar::I8)],
-    });
-    assert_eq!(lacks(&unit_of(signature(Conv::C, vec![bytes]), None)), Some(Missing::Record));
     let wide = AbiType::Wide { limb: Scalar::I64, limbs: 2, ext: vun_lir::Ext::Zero };
     assert_eq!(lacks(&unit_of(signature(Conv::C, vec![wide.clone()]), None)), Some(Missing::Int128));
     assert_eq!(lacks(&unit_of(signature(Conv::Vun, vec![wide]), None)), None);
@@ -132,8 +126,13 @@ fn record(fields: &[(u64, Scalar)], size: u64) -> AbiType {
 fn parts(size: u64, lanes: &[(u64, Type)]) -> Parts {
     Parts {
         layout: Layout { size, align: 8 },
-        lanes: lanes.iter().map(|&(offset, ty)| Lane { offset, ty }).collect(),
+        lanes: lanes.iter().map(|&(offset, ty)| Lane { offset, bytes: u64::from(ty.bytes()), ty }).collect(),
     }
+}
+
+/// How each parameter of `plan` is passed, without what comes before it.
+fn passes(plan: &crate::abi::Plan) -> Vec<&Pass> {
+    plan.params.iter().map(|p| &p.pass).collect()
 }
 
 /// How `arch` plans a call of the C function of `params` and `result`.
@@ -149,7 +148,7 @@ fn a_record_by_value_travels_as_the_convention_places_it() {
     for arch in ["x86_64", "arm64"] {
         let in_registers = parts(16, &[(0, types::I64), (8, types::I64)]);
         let planned = plan(arch, vec![pair()], None).expect(arch);
-        assert_eq!(planned.params, [Pass::Parts(in_registers.clone())], "{arch}");
+        assert_eq!(passes(&planned), [&Pass::Parts(in_registers.clone())], "{arch}");
         assert_eq!(planned.signature.params.len(), 2, "{arch}");
         let returned = plan(arch, Vec::new(), Some(pair())).expect(arch);
         assert_eq!(returned.returned, Returned::Parts(in_registers), "{arch}");
@@ -168,17 +167,66 @@ fn a_record_by_value_travels_as_the_convention_places_it() {
         }
     }
     let x86 = plan("x86_64", vec![mixed], None).expect("x86_64");
-    assert_eq!(x86.params, [Pass::Parts(parts(16, &[(0, types::F64), (8, types::I64)]))]);
+    assert_eq!(passes(&x86), [&Pass::Parts(parts(16, &[(0, types::F64), (8, types::I64)]))]);
     let layout = Layout { size: 24, align: 8 };
-    assert_eq!(plan("x86_64", vec![big()], None).expect("x86_64").params, [Pass::Struct(layout)]);
-    assert_eq!(plan("arm64", vec![big()], None).expect("arm64").params, [Pass::Copy(layout)]);
+    assert_eq!(passes(&plan("x86_64", vec![big()], None).expect("x86_64")), [&Pass::Struct(layout)]);
+    assert_eq!(passes(&plan("arm64", vec![big()], None).expect("arm64")), [&Pass::Copy(layout)]);
+}
+
+/// A record of `size` bytes aligned to `align`, its fields bytes.
+fn bytes(size: u64, align: u64) -> AbiType {
+    let fields = (0..size).map(|at| (at, Scalar::I8)).collect();
+    AbiType::Record(vun_lir::Record { size, align, fields })
+}
+
+fn accepted(arch: &str, signature: Signature) {
+    let compiled = Compilation::of(&unit_of(signature, None), &isa(arch), None, false);
+    assert!(compiled.is_ok(), "{arch}");
 }
 
 #[test]
-fn a_record_the_convention_places_differently_is_refused() {
+fn a_part_of_an_odd_size_travels_in_a_register_wide_enough() {
+    for arch in ["x86_64", "arm64"] {
+        for size in [3, 5, 6, 7] {
+            let planned = plan(arch, vec![bytes(size, 1)], None).expect(arch);
+            let [Pass::Parts(parts)] = passes(&planned)[..] else {
+                panic!("{arch}: {size} bytes in a register")
+            };
+            let wide = if size == 3 { types::I32 } else { types::I64 };
+            assert_eq!(parts.lanes, [Lane { offset: 0, bytes: size, ty: wide }], "{arch}");
+            accepted(arch, signature(Conv::C, vec![bytes(size, 1)]));
+            accepted(arch, Signature { result: Some(bytes(size, 1)), ..signature(Conv::C, Vec::new()) });
+        }
+    }
+}
+
+#[test]
+fn a_struct_argument_is_whole_words_and_may_start_past_the_arguments_so_far() {
+    let ints = || vec![AbiType::Int(Scalar::I64, vun_lir::Ext::Zero); 7];
+    // 20 bytes on the stack take 24, as a struct argument.
+    let odd = plan("x86_64", vec![bytes(20, 4)], None).expect("x86_64");
+    assert_eq!(passes(&odd), [&Pass::Struct(Layout { size: 20, align: 4 })]);
+    accepted("x86_64", signature(Conv::C, vec![bytes(20, 4)]));
+    // Six registers and a word on the stack leave a record aligned to 16 a word to skip.
+    let mut params = ints();
+    params.push(bytes(32, 16));
+    let aligned = plan("x86_64", params.clone(), None).expect("x86_64");
+    assert_eq!(aligned.params[7].skips, [Skip::Stack]);
+    accepted("x86_64", signature(Conv::C, params));
+}
+
+#[test]
+fn registers_a_convention_closes_are_taken_by_parameters_carrying_nothing() {
     let pair = record(&[(0, Scalar::I64), (8, Scalar::I64)], 16);
-    // AAPCS64 closes the registers a record did not fit, which Cranelift does not.
+    // AAPCS64 closes the registers a record did not fit: the one left is skipped, and the
+    // record's words reach the stack.
     let mut params = vec![AbiType::Int(Scalar::I64, vun_lir::Ext::Zero); 7];
     params.push(pair);
-    assert_eq!(plan("arm64", params, None).err(), Some(Missing::Placement));
+    params.push(AbiType::Int(Scalar::I64, vun_lir::Ext::Zero));
+    let planned = plan("arm64", params.clone(), None).expect("arm64");
+    assert_eq!(planned.params[7].skips, [Skip::Int]);
+    assert_eq!(planned.params[7].pass, Pass::Words(Layout { size: 16, align: 8 }));
+    // The integer after it is on the stack too, with no register left for it.
+    assert_eq!(planned.params[8].skips, []);
+    accepted("arm64", signature(Conv::C, params));
 }

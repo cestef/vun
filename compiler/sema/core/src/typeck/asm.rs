@@ -74,7 +74,7 @@ impl Typer<'_, '_, '_> {
         for &(_, value) in &bindings {
             let Some(known) = self.found.types.get(&value).copied() else { continue };
             let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size).filter(|_| targeted);
-            bound.insert(value, arch.register(&table, bytes, Held::of(&known.ty)));
+            bound.insert(value, arch.register(&table, bytes, Held::of(known.ty)));
         }
         let mut diag = DiagCtxt::new();
         let checked = Checker {

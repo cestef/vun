@@ -49,6 +49,5 @@ template and README (decisions 431 to 440).
 
 ## Cranelift
 
-- C records by value are lowered from `vun_abi::Passing` (decision 503). Still handed over: a record
-  part of an odd size (3, 5, 6 or 7 bytes in a register), a struct argument not a multiple of 8
-  bytes or aligned past 8, a signature AAPCS64 places differently from Cranelift's counting.
+- C records by value are lowered from `vun_abi::Passing` (decisions 503, 511); a signature whose
+  placements still differ from Cranelift's is handed over (`Missing::Placement`).

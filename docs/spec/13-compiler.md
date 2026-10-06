@@ -1320,8 +1320,14 @@ thumb read: its parts in registers become scalars loaded from and stored to the 
 as several return values), a record in memory is a struct argument (x86_64) or a copy passed by
 address (arm64), and a result in memory is Cranelift's struct return. Cranelift places scalars by
 its own rules, so the backend walks the classifier's placements the way Cranelift counts registers
-and stack and refuses a signature where they differ (`Missing::Placement`; AAPCS64 closes the
-registers a record did not fit).
+and stack and takes what the convention leaves unused with parameters that carry nothing (`Skip`: a
+register AAPCS64 closed after a record did not fit, a word of the stack before a record aligned
+past 8), so that what follows is where the convention puts it. A part of 3, 5, 6 or 7 bytes is
+read and written in pieces, a struct argument takes whole words from a copy of its own, and where
+the processor has no struct arguments (arm64) a record on the stack is passed as integer words once
+the registers are taken. A signature whose placements still differ is refused
+(`Missing::Placement`). x86-64 copies a struct argument with a call of `memcpy`, which the runtime
+provides.
 
 What Cranelift does not express is a typed `Lack` per function: inline assembly, naked
 functions, C records it would place differently or whose register part is not a scalar's size,
