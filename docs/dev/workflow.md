@@ -46,7 +46,8 @@ it); the design rules are in [`spec/00-principles.md`](../spec/00-principles.md)
 
 | Document | Holds |
 |----------|-------|
-| [`HANDOFF.md`](../HANDOFF.md) | current state, open decisions and next steps, nothing durable |
+| [`HANDOFF.md`](../HANDOFF.md) | what is in flight and next, under 40 lines, nothing durable |
+| [`open/`](../open/) | what is open, one file per area; an item leaves when done |
 | [`dev/repository.md`](repository.md) | where things are, generated directories |
 | [`dev/assets.md`](assets.md) | the brand: cards, videos, sound, emoji, stickers, diagrams, stream kit |
 | [`dev/commands.md`](commands.md) | checks, running, inspecting, cross builds, measuring speed |
@@ -56,5 +57,5 @@ it); the design rules are in [`spec/00-principles.md`](../spec/00-principles.md)
 | [`spec/decisions.md`](../spec/decisions.md) | every decision and its reasoning |
 
 A fact learned while working goes where it lasts: a rule of the language in the spec and
-`decisions.md`, a command or tool in `commands.md`, a trap in `pitfalls.md`. `HANDOFF.md` keeps
-only what is open.
+`decisions.md`, a command or tool in `commands.md`, a trap in `pitfalls.md`. What is open goes in
+the `open/` file of its area; `HANDOFF.md` keeps only the next session's start.
