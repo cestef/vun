@@ -60,7 +60,13 @@ impl Backend for CraneliftBackend {
         let isa = Isa::of(request.target, request.profile)
             .map_err(|missing| diag.error(missing.diagnostic(INFO.id)))?;
         let assisted = request.assist.assists(request.target);
-        let handover = |ids: &[_]| request.assist.compile(request, ids);
+        let handover = |ids: &[_]| {
+            for &id in ids {
+                let name = request.lines.name(request.unit.functions[id].origin);
+                vun_trace::tracing::debug!(id = vun_index::Idx::index(id), ?name, "handed over");
+            }
+            request.assist.compile(request, ids)
+        };
         let compiled =
             Compilation::of(request.unit, &isa, assisted.then_some(&handover as _), request.listing)
                 .map_err(|failed| diag.error(failed.diagnostic(INFO.id)))?;
