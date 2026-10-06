@@ -7,6 +7,8 @@ use vun_hir::tree::{ExprId, ExprKind, Hir};
 use vun_hir::visit::{Visitor, walk_expr};
 use vun_origin::OriginId;
 
+use vun_diag::Msg;
+
 use super::Typer;
 
 /// The members read in an expression.
@@ -22,6 +24,17 @@ impl Visitor for Places {
 }
 
 impl Typer<'_, '_, '_> {
+    /// What to do about the mutable `place`, compared above without being narrowed (spec 04,
+    /// rule 4): a binding of it is narrowed.
+    pub(super) fn unnarrowed(place: &str) -> Msg {
+        let name = place.rsplit('.').next().unwrap_or(place).trim_start_matches('_');
+        Msg::new()
+            .code(place)
+            .text(" is a mutable place, which a comparison does not narrow; bind it first, ")
+            .code(format!("{name} := {place};"))
+            .text(", and use the binding")
+    }
+
     /// The expression written at `at`.
     pub(super) fn written_at(&self, at: OriginId) -> Option<ExprId> {
         self.hir().exprs.iter().find(|(_, e)| e.origin == at).map(|(e, _)| e)

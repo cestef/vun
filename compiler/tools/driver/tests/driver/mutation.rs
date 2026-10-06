@@ -152,6 +152,6 @@ wrong_returned: Int(returned()..=returned()) = 8;
     // and returned as any other. A loan in a result is not supported, so `escaped` has no value
     // and its annotation is not checked.
     let found = fixture.reported(&file);
-    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT; 4], "{found:?}");
 }

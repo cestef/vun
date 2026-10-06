@@ -64,7 +64,9 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                 Msg::new()
                     .text("widen ")
                     .code(&written)
-                    .text(" to hold the whole range, or narrow the value explicitly; counters can narrow as they update, with ")
+                    .text(" to hold the whole range, or narrow the value with ")
+                    .code_list([".to", ".wrap", ".sat"])
+                    .text("; counters can narrow as they update, with ")
                     .code_list(operators)
             } else {
                 Msg::new()
@@ -135,17 +137,6 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
             let msg = Msg::new().text("read the value it borrows: ").code(deref);
             Fix::insert(msg, Safety::Unsafe, end, deref).preferred()
         })
-    }
-
-    /// What to do about the mutable `place`, compared above without being narrowed (spec 04,
-    /// rule 4): a binding of it is narrowed.
-    fn unnarrowed(place: &str) -> Msg {
-        let name = place.rsplit('.').next().unwrap_or(place).trim_start_matches('_');
-        Msg::new()
-            .code(place)
-            .text(" is a mutable place, which a comparison does not narrow; bind it first, ")
-            .code(format!("{name} := {place};"))
-            .text(", and use the binding")
     }
 
     /// The fix taking away the borrow written at `at`, when what it borrows is already accepted
