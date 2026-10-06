@@ -18,3 +18,5 @@ pub const saturating_conversion: Item = Item::new(
 pub const bulk_memory: Item = Item::new(
     &["lang", "arch", "wasm32", "Feature", "bulk_memory"],
 );
+/// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
+pub const atomics: Item = Item::new(&["lang", "arch", "wasm32", "Feature", "atomics"]);

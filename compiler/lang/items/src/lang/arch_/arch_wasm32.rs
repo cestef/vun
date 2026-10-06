@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `lang.arch.wasm32.arithmetic`.
 pub const arithmetic: Item = Item::new(&["lang", "arch", "wasm32", "arithmetic"]);
+/// The namespace `lang.arch.wasm32.atomic`.
+pub const atomic: Item = Item::new(&["lang", "arch", "wasm32", "atomic"]);
 /// The namespace `lang.arch.wasm32.compare`.
 pub const compare: Item = Item::new(&["lang", "arch", "wasm32", "compare"]);
 /// The namespace `lang.arch.wasm32.control`.
@@ -18,6 +20,8 @@ pub const convert: Item = Item::new(&["lang", "arch", "wasm32", "convert"]);
 pub const local: Item = Item::new(&["lang", "arch", "wasm32", "local"]);
 /// The namespace `lang.arch.wasm32.memory`.
 pub const memory: Item = Item::new(&["lang", "arch", "wasm32", "memory"]);
+/// The namespace `lang.arch.wasm32.rmw`.
+pub const rmw: Item = Item::new(&["lang", "arch", "wasm32", "rmw"]);
 /// The width of a value a local holds.
 pub const Size: Item = Item::new(&["lang", "arch", "wasm32", "Size"]);
 /// A class of locals, by the value type it holds: the type a bound Vun value of that size, and

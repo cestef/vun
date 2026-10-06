@@ -8,22 +8,26 @@ pub enum Feature {
     SaturatingConversion,
     /// Copying and filling memory (`memory_copy`).
     BulkMemory,
+    /// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
+    Atomics,
 }
 impl Feature {
-    pub const ALL: [Self; 3usize] = [
+    pub const ALL: [Self; 4usize] = [
         Self::SignExtension,
         Self::SaturatingConversion,
         Self::BulkMemory,
+        Self::Atomics,
     ];
 }
 impl Feature {
     /// Its name, as the table writes it.
     #[must_use]
     pub const fn name(self) -> &'static str {
-        const NAMES: [&str; 3usize] = [
+        const NAMES: [&str; 4usize] = [
             "sign_extension",
             "saturating_conversion",
             "bulk_memory",
+            "atomics",
         ];
         NAMES[self as usize]
     }

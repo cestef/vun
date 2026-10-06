@@ -1,7 +1,7 @@
 //! WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
 //! instructions of its stack machine with what each pops and pushes, as the toolchain's backend
-//! encodes them. They are declared in `arithmetic`, `compare`, `control`, `convert`, `local` and
-//! `memory`; `vun-isa-wasm32`'s tables are generated from these declarations.
+//! encodes them. They are declared in `arithmetic`, `atomic`, `compare`, `control`, `convert`,
+//! `local`, `memory` and `rmw`; `vun-isa-wasm32`'s tables are generated from these declarations.
 //!
 //! A block of wasm is the body of a function written as the text format has it, with Vun values
 //! bound to the function's locals: `local_get(in(a))` pushes the value of `a`, `local_set(out(r))`
@@ -53,6 +53,8 @@ Feature := enum {
     saturating_conversion,
     /// Copying and filling memory (`memory_copy`).
     bulk_memory,
+    /// Atomic memory accesses (`i32_atomic_load`, `memory_atomic_notify`).
+    atomics,
 };
 
 /// What a form needs of a processor beyond WebAssembly's first version.
@@ -100,9 +102,11 @@ impl lang.ops.Call(_, ()) for Instruction = lang.arch.called(Instruction);
 names := struct {
     ..lang.arch.{ in, out, inout };
     ..lang.arch.wasm32.arithmetic;
+    ..lang.arch.wasm32.atomic;
     ..lang.arch.wasm32.compare;
     ..lang.arch.wasm32.control;
     ..lang.arch.wasm32.convert;
     ..lang.arch.wasm32.local;
     ..lang.arch.wasm32.memory;
+    ..lang.arch.wasm32.rmw;
 };

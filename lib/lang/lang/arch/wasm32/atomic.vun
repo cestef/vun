@@ -1,0 +1,106 @@
+//! Atomic memory accesses of the threads proposal (prefix `0xfe`), needing the `atomics` feature.
+//! An access takes its address on the stack and the alignment, which must be the width's own, and
+//! an offset, as the plain loads and stores do. Accesses to memory that is not shared are allowed,
+//! waiting is not. Narrow forms (`8`, `16`, `32`) zero-extend what they read.
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+
+/// Wakes waiters: the address and the count popped, the number woken pushed.
+memory_atomic_notify := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0000, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+/// Waits while the 32-bit value is the one given: the address, the value and the timeout in
+/// nanoseconds popped, 0 (woken), 1 (not equal) or 2 (timed out) pushed.
+memory_atomic_wait32 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0001, .args = &[_align, _offset], .pops = &[.i32, .i32, .i64], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+/// As `memory_atomic_wait32`, for a 64-bit value.
+memory_atomic_wait64 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0002, .args = &[_align, _offset], .pops = &[.i32, .i64, .i64], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+/// Orders every access before it with every one after it.
+atomic_fence := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0003, .args = &[], .pops = &[], .pushes = &[], .tail = &[0],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+/// Pushes the value at the address popped.
+i32_atomic_load := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0010, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_load := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0011, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_load8_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0012, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_load16_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0013, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_load8_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0014, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_load16_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0015, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_load32_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0016, .args = &[_align, _offset], .pops = &[.i32], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+/// Stores the value popped at the address popped.
+i32_atomic_store := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0017, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_store := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0018, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_store8 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0019, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_store16 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe001a, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_store8 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe001b, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_store16 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe001c, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_store32 := _w.Instruction{ .forms = &[.{
+    .base = 0xfe001d, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .requires = .some(.feature(.atomics)),
+}] };

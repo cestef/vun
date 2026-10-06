@@ -3,7 +3,7 @@
 ## wasm
 
 - Inline assembly (`lang.arch.wasm32`, decision 474) runs under wasmtime. Open: branches and
-  structured control, calls, globals, atomics, SIMD, float constants; `Check::Asm` does not apply to
+  structured control, calls, globals, SIMD, float constants; `Check::Asm` does not apply to
   wasm blocks.
 - The backend refuses naked functions and addresses past a function's start, and reports no frame
   sizes or debug information.
