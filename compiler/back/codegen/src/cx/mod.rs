@@ -3,18 +3,16 @@
 //! the walk follows the plan, running its moves before and after each point and on each edge.
 
 mod call;
-mod compiled;
 mod describe;
 mod exit;
 mod moves;
 mod saves;
 mod values;
 
-pub use compiled::Compiled;
 pub use exit::{Fused, Layout};
 
 use vun_asm::{Isa, Label};
-use vun_backend::{Lack, Missing};
+use vun_backend::{Compiled, Lack, Missing};
 use vun_dwarf::Step;
 use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::{Cfg, Loops, Order};

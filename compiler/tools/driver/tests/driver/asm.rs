@@ -37,7 +37,7 @@ fn tables_number_instructions_and_forms_as_the_assemblers_do() {
 
 /// Naked functions, entered as their code, whose blocks reach a function by its symbol: `hop`
 /// calls it, `leap` jumps to it, and it ends the program with 7.
-const NAKED: &str = "\
+pub(crate) const NAKED: &str = "\
 #[abi.naked]
 hop := () -> never {
     unsafe {

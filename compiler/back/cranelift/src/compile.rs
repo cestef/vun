@@ -4,8 +4,7 @@ use cranelift_codegen::control::ControlPlane;
 use cranelift_codegen::ir::{ExternalName, LibCall};
 use cranelift_codegen::{CodegenError, Context, FinalizedRelocTarget};
 use vun_asm::{Code, Reloc};
-use vun_backend::Lack;
-use vun_codegen::Compiled;
+use vun_backend::{Assisted, Compiled, Lack};
 use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::Reached;
 use vun_lir::{Address, FuncId, ImportId, Unit};
@@ -44,7 +43,7 @@ impl Support {
 
 /// What compiles the functions given by their ids, which Cranelift cannot express: another
 /// backend's code for them.
-pub(crate) type Assist<'a> = &'a dyn Fn(&[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack>;
+pub(crate) type Assist<'a> = &'a dyn Fn(&[FuncId]) -> Assisted;
 
 /// What a relocation of compiled code names.
 #[derive(Clone, Copy)]

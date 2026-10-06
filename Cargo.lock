@@ -1233,6 +1233,7 @@ dependencies = [
 name = "vun-asm"
 version = "0.1.0"
 dependencies = [
+ "vun-codec",
  "vun-inline",
  "vun-isa",
  "vun-object",
@@ -1287,6 +1288,7 @@ dependencies = [
  "vun-asm",
  "vun-codec",
  "vun-diag",
+ "vun-dwarf",
  "vun-hash",
  "vun-inline",
  "vun-intern",
@@ -1558,6 +1560,7 @@ dependencies = [
  "vun-abi",
  "vun-asm",
  "vun-backend",
+ "vun-codec",
  "vun-dwarf",
  "vun-index",
  "vun-lir",
@@ -1611,7 +1614,6 @@ dependencies = [
  "vun-backend",
  "vun-backend-component",
  "vun-backend-cranelift",
- "vun-backend-native",
  "vun-component",
 ]
 
@@ -1907,6 +1909,7 @@ name = "vun-dwarf"
 version = "0.1.0"
 dependencies = [
  "vun-bytes",
+ "vun-codec",
  "vun-object",
 ]
 
@@ -2509,6 +2512,7 @@ name = "vun-object"
 version = "0.1.0"
 dependencies = [
  "vun-bytes",
+ "vun-codec",
  "vun-elf",
  "vun-fs",
  "vun-index",
@@ -2867,6 +2871,7 @@ dependencies = [
  "tracing",
  "vun-data",
  "vun-term",
+ "vun-variants",
 ]
 
 [[package]]

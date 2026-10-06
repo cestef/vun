@@ -284,13 +284,20 @@ install|update --profile` and `component list|add|remove`, `.components` in `bui
 
 - Every ready kind is a component. The size budget is dropped (decision 499). A kind not yet
   moved: none; the dist `vun` links the planned stubs, `Short` and the loader.
-- Cranelift's library links the native backend itself, for the functions Cranelift cannot
-  express (the library is 6.6 MiB, native's another 2); the assist should go through the host,
-  and a component naming another it needs should bring it.
-- A library's timings and timeline do not reach the host's report; its logs follow `VUN_LOG`.
-- Every library is opened when a registry is made (a few hundred microseconds each); the release
-  manifest could carry each one's facts so that choosing opens none.
-- The cost of encoding a unit per call is not measured against a linked backend.
+- The assist of a backend that cannot express everything is the host's: the first registered
+  backend with `Feature::Assist` that assists for the target (native, linked or a library), asked
+  through the boundary (`Ask::Assist`). A component that cannot work without another has no way
+  to say so: Cranelift without native in the toolchain refuses the programs holding assembly,
+  and a release's profiles are what keep them together.
+- A library's timings and timeline reach the host's report only from the thread of the call: what a library times on threads of its own pool is lost; its logs follow `VUN_LOG`.
+- Opening a library costs 100 to 200 microseconds (measured with `VUN_LOG=vun_component=debug`),
+  so every library is opened when a registry is made; no manifest facts are needed to choose.
+- The boundary's cost, measured building the standard library's `hello` through the native
+  backend on am3 (arm64): a loaded library 650 ms wall against 585 ms linked (777 against 685 with
+  one thread). The unit (280 KB) and its code (160 KB) are encoded once per call; the asks of
+  source lines were 11,000 of 27 microseconds until a call remembered each origin it asked
+  (`Memo`). `--timings` shows `component <kind>` (the call, its own time the boundary's) and
+  `component ask`.
 - `export` defines `vun_component` in each rlib it is set on: a build with every feature of the
   workspace at once would link several into one executable.
 

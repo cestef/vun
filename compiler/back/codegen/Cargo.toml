@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-codec.workspace = true
 vun-abi.workspace = true
 vun-asm.workspace = true
 vun-backend.workspace = true

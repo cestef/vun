@@ -3,8 +3,12 @@
 //! Nothing above LIR knows about any backend. A backend declares its facts once, in a
 //! [`BackendInfo`]; support and capability checks are derived from it (spec 13, section 7).
 
+mod assist;
+mod compiled;
 mod lack;
 
+pub use assist::{Assist, Assisted, Unassisted};
+pub use compiled::Compiled;
 pub use lack::{AsmOperand, Lack, Missing};
 
 mod caps;
@@ -112,6 +116,8 @@ pub enum Feature {
     /// Checks each function's frame before the stack moves to it (`StackCheck`), which the `stack`
     /// checks need.
     StackChecks,
+    /// Compiles the functions another backend cannot express ([`Backend::assist`]).
+    Assist,
 }
 
 /// Everything known about a backend without running it.
@@ -229,6 +235,8 @@ pub struct Request<'a> {
     pub unit: &'a Unit,
     pub target: &'a TargetSpec,
     pub lines: &'a dyn Lines,
+    /// What compiles the functions the backend cannot express.
+    pub assist: &'a dyn Assist,
     pub profile: Profile,
     /// Whether to add a listing of the code to the artifacts ([`Emits::Listing`]).
     pub listing: bool,
@@ -270,6 +278,11 @@ pub trait Backend {
 
     /// How it divides integers no wider than its widest on `target`: by an instruction, unless
     /// it emits the processor's own and the processor has none (`Legalize`).
+    /// What compiles functions for another backend, if it does (`Feature::Assist`).
+    fn assist(&self) -> Option<&dyn Assist> {
+        None
+    }
+
     fn division(&self, target: &TargetSpec) -> Division {
         let _ = target;
         Division::Computed

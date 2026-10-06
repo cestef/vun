@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-codec.workspace = true
 vun-bytes.workspace = true
 vun-elf.workspace = true
 vun-index.workspace = true

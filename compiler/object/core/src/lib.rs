@@ -11,6 +11,7 @@ mod write;
 
 pub use machine::{Float, Machine};
 
+use vun_codec::{Decode, Encode};
 use vun_index::{IndexVec, index};
 
 index! {
@@ -20,7 +21,7 @@ index! {
 
 /// What the linker writes at a relocation, whatever the machine; each machine numbers the kinds
 /// it has (`Machine::elf_relocation`, `Machine::macho_relocation`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum RelocKind {
     /// The symbol's address, 64 bits.
     Abs64,

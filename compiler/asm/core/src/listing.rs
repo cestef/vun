@@ -2,12 +2,13 @@
 //! bytes, as `vun debug dump code` prints it.
 
 use std::fmt;
+use vun_codec::{Decode, Encode};
 
 use crate::Label;
 use crate::buffer::Code;
 
 /// A line of a listing.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Line<T> {
     /// An instruction, `len` bytes from `at`.
     Inst { at: u64, len: u32, inst: T },

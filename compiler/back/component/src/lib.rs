@@ -2,6 +2,7 @@
 //! served through, [`Remote`] the `Backend` the host calls it by. A backend is the same crate
 //! linked in or loaded; only the transport differs.
 
+mod memo;
 mod protocol;
 mod remote;
 mod serve;

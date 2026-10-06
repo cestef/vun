@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use vun_backend::{BackendInfo, Emitted, Lines};
+use vun_backend::{Assist, Assisted, BackendInfo, Emitted, Lines, Request};
 use vun_codec::{Decode, Encode, Malformed};
 use vun_diag::DiagCtxt;
 use vun_intern::Symbol;
@@ -18,7 +18,17 @@ pub enum Call<'a> {
     Info,
     Emit(Box<Emit<'a>>),
     Division(Cow<'a, TargetSpec>),
-    FrameSizes { unit: Cow<'a, Unit>, report: Cow<'a, [u8]> },
+    FrameSizes {
+        unit: Cow<'a, Unit>,
+        report: Cow<'a, [u8]>,
+    },
+    /// Whether the backend compiles for another's functions, for a target.
+    Assists(Cow<'a, TargetSpec>),
+    /// The code of functions another backend cannot express, of a unit to emit.
+    Assist {
+        emit: Box<Emit<'a>>,
+        ids: Vec<FuncId>,
+    },
 }
 
 /// What a backend is asked to generate code for: a [`vun_backend::Request`] without its lines,
@@ -29,6 +39,32 @@ pub struct Emit<'a> {
     pub target: Cow<'a, TargetSpec>,
     pub profile: Profile,
     pub listing: bool,
+}
+
+impl<'a> Emit<'a> {
+    /// The request this asks, over the host's `asking` for lines and assistance.
+    #[must_use]
+    pub fn request<'r>(&'r self, asking: &'r (impl Lines + Assist)) -> Request<'r> {
+        Request {
+            unit: &self.unit,
+            target: &self.target,
+            lines: asking,
+            assist: asking,
+            profile: self.profile,
+            listing: self.listing,
+        }
+    }
+
+    /// What `request` asks, to send.
+    #[must_use]
+    pub fn of(request: &Request<'a>) -> Self {
+        Self {
+            unit: Cow::Borrowed(request.unit),
+            target: Cow::Borrowed(request.target),
+            profile: request.profile,
+            listing: request.listing,
+        }
+    }
 }
 
 #[derive(Encode, Decode)]
@@ -42,31 +78,41 @@ pub enum Reply {
     },
     Division(Division),
     FrameSizes(Vec<(FuncId, u64)>),
+    Assists(bool),
+    /// The code, or none if the backend does not assist.
+    Assisted(Option<Assisted>),
 }
 
-/// What a backend asks of the host while it emits: each method of `Lines`.
+/// What a backend asks of the host while it emits: each method of `Lines` and of the request's
+/// `Assist`.
 #[derive(Debug, Encode, Decode)]
 pub enum Ask {
     Line(OriginId),
     Declaration(OriginId),
     Inlined(OriginId),
+    Assists(Box<TargetSpec>),
+    Assist(Vec<FuncId>),
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Encode, Decode)]
 pub enum Answer {
     Line(Option<vun_backend::Line>),
     Declaration(Vec<Symbol>),
     Inlined(Option<(OriginId, OriginId)>),
+    Assists(bool),
+    Assisted(Assisted),
 }
 
 impl Ask {
-    /// The answer `lines` gives.
+    /// The answer the request's lines and assist give.
     #[must_use]
-    pub fn answered_by(&self, lines: &dyn Lines) -> Answer {
-        match *self {
-            Self::Line(origin) => Answer::Line(lines.line(origin)),
-            Self::Declaration(origin) => Answer::Declaration(lines.declaration(origin)),
-            Self::Inlined(origin) => Answer::Inlined(lines.inlined(origin)),
+    pub fn answered_by(&self, request: &Request<'_>) -> Answer {
+        match self {
+            Self::Line(origin) => Answer::Line(request.lines.line(*origin)),
+            Self::Declaration(origin) => Answer::Declaration(request.lines.declaration(*origin)),
+            Self::Inlined(origin) => Answer::Inlined(request.lines.inlined(*origin)),
+            Self::Assists(target) => Answer::Assists(request.assist.assists(target)),
+            Self::Assist(ids) => Answer::Assisted(request.assist.compile(request, ids)),
         }
     }
 }
@@ -117,7 +163,53 @@ impl Reply {
     }
 }
 
+impl Reply {
+    /// Whether the backend assists, if this answers `Assists`.
+    ///
+    /// # Errors
+    /// As [`Reply::info`].
+    pub fn assists(self) -> Result<bool, Malformed> {
+        match self {
+            Self::Assists(yes) => Ok(yes),
+            _ => Err(Malformed::Invariant),
+        }
+    }
+
+    /// The code it made, if this answers `Assist` and the backend assists.
+    ///
+    /// # Errors
+    /// As [`Reply::info`]; also if the backend does not assist.
+    pub fn assisted(self) -> Result<Assisted, Malformed> {
+        match self {
+            Self::Assisted(Some(code)) => Ok(code),
+            _ => Err(Malformed::Invariant),
+        }
+    }
+}
+
 impl Answer {
+    /// Whether the host's assist compiles for the target, if this answers `Assists`.
+    ///
+    /// # Errors
+    /// Returns [`Malformed::Invariant`] for the answer to another question.
+    pub fn assists(self) -> Result<bool, Malformed> {
+        match self {
+            Self::Assists(yes) => Ok(yes),
+            _ => Err(Malformed::Invariant),
+        }
+    }
+
+    /// The code the host's assist made, if this answers `Assist`.
+    ///
+    /// # Errors
+    /// As [`Answer::assists`].
+    pub fn assisted(self) -> Result<Assisted, Malformed> {
+        match self {
+            Self::Assisted(code) => Ok(code),
+            _ => Err(Malformed::Invariant),
+        }
+    }
+
     /// The line, if this answers `Line`.
     ///
     /// # Errors

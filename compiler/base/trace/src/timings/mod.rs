@@ -13,9 +13,13 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, OnceLock};
 use std::time::{Duration, Instant};
 
+use vun_variants::Variants;
+
+mod relay;
 mod report;
 mod timeline;
 
+pub use relay::{Relay, Relaying};
 pub use report::{Report, Row};
 pub use timeline::Timeline;
 
@@ -26,7 +30,8 @@ pub struct Activity {
     pub name: &'static str,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Variants)]
+#[repr(u32)]
 pub enum Kind {
     /// A step of the driver, as reading packages or generating code.
     Stage,
@@ -34,6 +39,16 @@ pub enum Kind {
     Query,
     /// A query's saved values read.
     Read,
+    /// A call of a component, as the host sees it.
+    Component,
+}
+
+impl Kind {
+    /// The kind a library numbered (`kind as u32`), if this build has it.
+    #[must_use]
+    pub fn numbered(number: u32) -> Option<Self> {
+        Self::ALL.get(usize::try_from(number).ok()?).copied()
+    }
 }
 
 /// The switch and the table of every activity timed.
@@ -72,8 +87,17 @@ thread_local! {
 /// whose open activities nest.
 #[must_use = "the activity is timed until the timer is dropped"]
 pub struct Timer {
-    running: Option<(Activity, Arc<Sums>)>,
+    running: Running,
     thread: PhantomData<*const ()>,
+}
+
+/// Where a timer's time goes.
+enum Running {
+    Off,
+    /// Into this process's table.
+    Here(Activity, Arc<Sums>),
+    /// To the host, which times it (see [`Relay`]).
+    Relayed,
 }
 
 impl Timings {
@@ -110,10 +134,27 @@ impl Activity {
         Self { kind: Kind::Read, name }
     }
 
-    /// Times the activity until the timer returned is dropped.
+    #[must_use]
+    pub const fn component(name: &'static str) -> Self {
+        Self { kind: Kind::Component, name }
+    }
+
+    /// Times the activity until the timer returned is dropped: in the host's table where a
+    /// relay takes it, else in this process's.
     pub fn start(self) -> Timer {
         if !Timings::enabled() {
-            return Timer { running: None, thread: PhantomData };
+            return Timer { running: Running::Off, thread: PhantomData };
+        }
+        if Relaying::begin(self) {
+            return Timer { running: Running::Relayed, thread: PhantomData };
+        }
+        self.start_here()
+    }
+
+    /// Times the activity in this process's table, whatever relay there is.
+    pub fn start_here(self) -> Timer {
+        if !Timings::enabled() {
+            return Timer { running: Running::Off, thread: PhantomData };
         }
         let sums = SUMS.with_borrow_mut(|sums| {
             Arc::clone(
@@ -122,13 +163,17 @@ impl Activity {
             )
         });
         OPEN.with_borrow_mut(|open| open.push(Open { started: Instant::now(), inner: Duration::ZERO }));
-        Timer { running: Some((self, sums)), thread: PhantomData }
+        Timer { running: Running::Here(self, sums), thread: PhantomData }
     }
 }
 
 impl Drop for Timer {
     fn drop(&mut self) {
-        let Some((activity, sums)) = self.running.take() else { return };
+        let (activity, sums) = match std::mem::replace(&mut self.running, Running::Off) {
+            Running::Off => return,
+            Running::Relayed => return Relaying::end(),
+            Running::Here(activity, sums) => (activity, sums),
+        };
         let (started, total, inner) = OPEN.with_borrow_mut(|open| {
             let this = open.pop().expect("a timer closes the activity it opened");
             let total = this.started.elapsed();

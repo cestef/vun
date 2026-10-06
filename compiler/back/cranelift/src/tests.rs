@@ -2,8 +2,8 @@
 //! it cannot express is refused where it is, and the object reads back.
 
 use vun_asm::Reloc;
+use vun_backend::Compiled;
 use vun_backend::{Lack, Missing};
-use vun_codegen::Compiled;
 use vun_intern::Symbol;
 use vun_lir::testing::{origin, sum};
 use vun_lir::{AbiType, Builder, Conv, FuncId, InstKind, Linkage, Scalar, Signature, Terminator, Unit};

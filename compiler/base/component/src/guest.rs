@@ -4,12 +4,27 @@ use std::panic::{self, AssertUnwindSafe};
 use std::sync::Once;
 
 use vun_codec::Malformed;
-use vun_trace::Config;
+use vun_trace::{Activity, Config, Relay, Relaying, Timings};
 
-use crate::abi::{Descriptor, Host, Owned, Slice, Status};
+use crate::abi::{Beat, Descriptor, Host, Owned, Relay as Forward, Slice, Status};
 use crate::{Fault, Interface, Wire};
 
 static TRACE: Once = Once::new();
+
+/// The relay of a library: each beat goes to the host's table.
+struct Forwarding(Forward);
+
+impl Relay for Forwarding {
+    fn begin(&self, activity: Activity) {
+        // SAFETY: the host's function, given a name that lives as long as this library.
+        unsafe { (self.0)(Beat::Begin, activity.kind as u32, Slice::of(activity.name.as_bytes())) };
+    }
+
+    fn end(&self) {
+        // SAFETY: as above; the name is not read at the end.
+        unsafe { (self.0)(Beat::End, 0, Slice::of(&[])) };
+    }
+}
 
 impl Host {
     /// Asks the host. The host failing is a panic here, which [`answer`] reports as the
@@ -45,6 +60,10 @@ pub unsafe fn answer<I: Interface>(
     TRACE.call_once(|| Config { timings: false, timeline: None, ..Config::from_env() }.install());
     // SAFETY: by the caller.
     let (request, host) = unsafe { (input.bytes(), &*host) };
+    let _relaying = host.relay.map(|relay| {
+        Timings::enable();
+        Relaying::to(Box::new(Forwarding(relay)))
+    });
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
         let call = Wire::open::<I::Call<'static>>(request)?;
         let ask = |ask: I::Ask| host.ask::<I>(&ask);

@@ -3,16 +3,15 @@
 //! is placed beside its own, calling the same convention, so a function of either calls the
 //! other.
 
-use vun_backend::{Lack, Request};
 use vun_lir::FuncId;
 use vun_target::TargetSpec;
 
-use crate::Compiled;
+use crate::{Compiled, Lack, Request};
 
 /// The code of functions, each by its id.
 pub type Assisted = Result<Vec<(FuncId, Compiled<()>)>, Lack>;
 
-pub trait Assist: Send + Sync {
+pub trait Assist {
     /// Whether it compiles for `target`.
     fn assists(&self, target: &TargetSpec) -> bool;
 
@@ -21,4 +20,17 @@ pub trait Assist: Send + Sync {
     /// # Errors
     /// Returns what it cannot compile either.
     fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Assisted;
+}
+
+/// No assistance: what a program that needs none is compiled with.
+pub struct Unassisted;
+
+impl Assist for Unassisted {
+    fn assists(&self, _: &TargetSpec) -> bool {
+        false
+    }
+
+    fn compile(&self, _: &Request<'_>, _: &[FuncId]) -> Assisted {
+        unreachable!("a backend asks for assistance only where `assists` says it is there")
+    }
 }

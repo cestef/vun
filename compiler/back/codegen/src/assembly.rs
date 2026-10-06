@@ -2,7 +2,7 @@
 //! it, a symbol per function, datum and import, the relocations of both, and the line table of
 //! the functions' code. Every backend that compiles functions into bytes places them here.
 
-use crate::Compiled;
+use vun_backend::Compiled;
 use vun_index::IndexVec;
 use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Storage, Unit};
 

@@ -2,13 +2,14 @@
 //! never approximated.
 
 pub use vun_asm::AsmOperand;
+use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_target::Name;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Missing {
     Int128,
     /// A scalar of this many bytes in one register, wider than the register.
@@ -55,7 +56,7 @@ pub enum Missing {
     Unavailable(Needed),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Lack {
     pub missing: Missing,
     pub at: OriginId,

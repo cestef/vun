@@ -14,6 +14,7 @@ workspace = true
 vun-codec.workspace = true
 vun-abi.workspace = true
 vun-asm.workspace = true
+vun-dwarf.workspace = true
 vun-inline.workspace = true
 vun-lir.workspace = true
 vun-lir-passes.workspace = true

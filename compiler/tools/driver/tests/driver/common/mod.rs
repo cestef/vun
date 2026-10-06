@@ -153,3 +153,20 @@ pub(crate) fn built_component(package: &str) -> std::path::PathBuf {
     let exe = std::env::current_exe().unwrap();
     exe.parent().and_then(std::path::Path::parent).unwrap().to_path_buf()
 }
+
+/// A directory holding the libraries of the component crates `packages`, each built as
+/// [`built_component`] does, and only those: the profile's directory holds every library built
+/// so far.
+pub(crate) fn components_of(fixture: &Fixture, packages: &[&str]) -> std::path::PathBuf {
+    use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+
+    use vun_fs::Edit;
+
+    let dir = fixture.root.path().join("components");
+    for package in packages {
+        let file = format!("{DLL_PREFIX}{}{DLL_SUFFIX}", package.replace('-', "_"));
+        let library = std::fs::read(built_component(package).join(&file)).expect("the library is built");
+        dir.join(&file).put(library).unwrap();
+    }
+    dir
+}

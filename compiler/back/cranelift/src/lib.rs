@@ -14,13 +14,11 @@ mod relocs;
 #[cfg(test)]
 mod tests;
 
-use std::sync::Arc;
-
 use vun_backend::{
     Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Part, Readiness,
     Request, Widest,
 };
-use vun_codegen::{Assembly, Assist};
+use vun_codegen::Assembly;
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Name, Names};
@@ -44,20 +42,9 @@ pub const INFO: BackendInfo = BackendInfo {
     runs: &[],
 };
 
-/// The backend, and the one that compiles what it cannot express (inline assembly and naked
-/// functions): without it, a program holding them is refused.
-#[derive(Default)]
-pub struct CraneliftBackend {
-    assist: Option<Arc<dyn Assist>>,
-}
-
-impl CraneliftBackend {
-    /// The backend, with `assist` compiling what it cannot express for the targets it assists.
-    #[must_use]
-    pub fn assisted_by(assist: Arc<dyn Assist>) -> Self {
-        Self { assist: Some(assist) }
-    }
-}
+/// The backend. What it cannot express (inline assembly and naked functions) goes to the
+/// request's assist: without one for the target, a program holding them is refused.
+pub struct CraneliftBackend;
 
 impl Backend for CraneliftBackend {
     fn info(&self) -> &BackendInfo {
@@ -72,10 +59,11 @@ impl Backend for CraneliftBackend {
     ) -> Result<(), ErrorGuaranteed> {
         let isa = Isa::of(request.target, request.profile)
             .map_err(|missing| diag.error(missing.diagnostic(INFO.id)))?;
-        let assist = self.assist.as_deref().filter(|by| by.assists(request.target));
-        let handover = |ids: &[_]| assist.map_or(Ok(Vec::new()), |by| by.compile(request, ids));
-        let compiled = Compilation::of(request.unit, &isa, assist.map(|_| &handover as _), request.listing)
-            .map_err(|failed| diag.error(failed.diagnostic(INFO.id)))?;
+        let assisted = request.assist.assists(request.target);
+        let handover = |ids: &[_]| request.assist.compile(request, ids);
+        let compiled =
+            Compilation::of(request.unit, &isa, assisted.then_some(&handover as _), request.listing)
+                .map_err(|failed| diag.error(failed.diagnostic(INFO.id)))?;
         let support: Vec<&str> = compiled.support.iter().map(|s| s.symbol()).collect();
         let assembly = Assembly {
             unit: request.unit,

@@ -1317,8 +1317,8 @@ data uses the `elf_gd` model and imports `__tls_get_addr`.
 
 What Cranelift does not express is a typed `Lack` per function: inline assembly, naked
 functions, C records passed by value, wide integers under the C convention and floats passed as
-integers in variadic calls. A backend built with an assist (`vun_codegen::Assist`, native in the
-driver's registry) compiles those functions instead, and the two halves are linked as one
+integers in variadic calls. The request carries an assist (`vun_backend::Assist`, which the driver's registry
+answers with the first backend that has `Feature::Assist`, native) that compiles those functions instead, and the two halves are linked as one
 object; without one the build is refused naming what is missing. Formats are ELF, architectures
 x86_64 and arm64 (Cargo features `cranelift-x86_64`, `cranelift-arm64`); vectors are not
 lowered. Frame sizes are reported (`stack.max`).

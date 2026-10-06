@@ -67,6 +67,7 @@ impl fmt::Display for Kind {
             Self::Stage => "stage",
             Self::Query => "query",
             Self::Read => "read",
+            Self::Component => "component",
         })
     }
 }

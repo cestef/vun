@@ -1,4 +1,5 @@
 use vun_intern::Symbol;
+use vun_trace::{Activity, Timings};
 
 use crate::abi::{ABI, Descriptor, Owned, Slice, Status};
 use crate::{Asked, Cause, Component, Fault, Interface, Kind, RELEASE, Wire};
@@ -12,6 +13,7 @@ struct Polite;
 
 impl Greeter for Polite {
     fn greet(&self, name: Symbol, ask: &dyn Fn(u32) -> u32) -> String {
+        let _timed = Activity::stage("greet").start();
         assert!(name.as_str() != "panic", "told to");
         format!("{} x{}", name.as_str(), ask(u32::try_from(name.as_str().len()).unwrap()))
     }
@@ -113,4 +115,15 @@ fn a_cause_keeps_the_messages_of_an_error_and_its_sources() {
     let cause = Cause::of(&Outer(std::io::Error::other("the disk")));
     assert_eq!(cause.messages().collect::<Vec<_>>(), ["cannot read it", "the disk"]);
     assert_eq!(Wire::open::<Cause>(&Wire::seal(&cause)), Ok(cause));
+}
+
+#[test]
+fn what_a_component_times_is_timed_in_the_hosts_table_inside_the_call() {
+    Timings::enable();
+    component().call::<Greeting>(&Symbol::intern("vun"), &|n: u32| n).unwrap();
+    let rows = Timings::report().unwrap().rows;
+    let row = |activity| rows.iter().find(|r| r.activity == activity).expect("timed");
+    let (call, greet) = (row(Activity::component("greeting")), row(Activity::stage("greet")));
+    assert_eq!((call.runs, greet.runs), (1, 1));
+    assert!(call.own + greet.total <= call.total, "the call's own time excludes what it ran inside");
 }

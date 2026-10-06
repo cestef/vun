@@ -4,12 +4,13 @@
 //! pointer and return address pushed, the frame pointer set, callee-saved registers saved, and
 //! around each return the frame torn down.
 
+use vun_codec::{Decode, Encode};
 use vun_object::{Contents, Object, Reloc, RelocKind, SymbolId};
 
 use vun_bytes::Out;
 
 /// A step of a function's frame, at the code offset it takes effect.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Step {
     /// The frame pointer and the return address are stored: the caller's frame starts two
     /// words above the stack pointer.

@@ -17,3 +17,4 @@ vun-term.workspace = true
 vun-data.workspace = true
 tracing.workspace = true
 boxcar.workspace = true
+vun-variants.workspace = true

@@ -88,7 +88,7 @@ pub fn sum(b: &mut Builder, n: Value, origin: OriginId, calls: bool) {
 }
 
 /// The instructions of `code`, as the listing prints them.
-pub fn text<T: Display>(code: &vun_codegen::Compiled<T>) -> Vec<String> {
+pub fn text<T: Display>(code: &vun_backend::Compiled<T>) -> Vec<String> {
     code.code
         .listing
         .iter()

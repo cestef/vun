@@ -18,10 +18,12 @@ pub use fit::{
     ChoiceId, Fit, Fixed, Given, Misfit, Position, Slot, Stack, Takes, Why, Writeback, positions, width,
 };
 pub use need::{Enumerated, Need, Processor};
+
+use vun_codec::{Decode, Encode};
 pub use width::Width;
 
 /// A place in a function's code that jumps name.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Label(u32);
 
 impl Label {

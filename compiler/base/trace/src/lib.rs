@@ -31,7 +31,7 @@ pub use tracing;
 use vun_term::{Color, ColorChoice, Stream};
 
 pub use filter::Filter;
-pub use timings::{Activity, Kind, Report, Row, Timeline, Timer, Timings};
+pub use timings::{Activity, Kind, Relay, Relaying, Report, Row, Timeline, Timer, Timings};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Format {

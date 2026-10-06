@@ -9,10 +9,9 @@
 mod tests;
 
 use vun_backend::{
-    ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, HeldFloats, Lack, Missing,
-    Readiness, Request, Widest,
+    ArtifactSink, Assist, Assisted, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, HeldFloats,
+    Lack, Missing, Readiness, Request, Widest,
 };
-use vun_codegen::{Assist, Assisted};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::FuncId;
 use vun_lir_passes::legalize::{Division, Half};
@@ -94,7 +93,7 @@ pub const INFO: BackendInfo = BackendInfo {
     formats: Names::Only(&FORMAT_NAMES),
     caps: BackendCaps {
         emits: Emits::Object,
-        features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo],
+        features: &[Feature::CAbi, Feature::FrameSizes, Feature::DebugInfo, Feature::Assist],
         widest: Widest::Register,
         half: Half::Promoted,
         floats: HeldFloats::Computed,
@@ -154,6 +153,10 @@ impl Assist for NativeBackend {
 impl Backend for NativeBackend {
     fn info(&self) -> &BackendInfo {
         &INFO
+    }
+
+    fn assist(&self) -> Option<&dyn Assist> {
+        Some(self)
     }
 
     fn division(&self, target: &TargetSpec) -> Division {

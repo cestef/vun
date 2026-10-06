@@ -2,6 +2,7 @@
 //! labels patched when the function ends, relocations, and what the first instruction emitted of
 //! which the processor has no form needed.
 
+use vun_codec::{Decode, Encode};
 use vun_inline::Needed;
 use vun_isa::{Need, Processor, Width};
 use vun_object::RelocKind;
@@ -11,7 +12,7 @@ use crate::{Isa, Label, Unpatched};
 
 /// An address the linker writes into the code: `target` plus `addend`, at `offset`, as `kind`
 /// says.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Reloc<S> {
     pub offset: u64,
     pub target: S,
@@ -34,6 +35,7 @@ pub struct Buffer<I: Isa, S: Copy> {
 }
 
 /// A function's finished code.
+#[derive(Encode, Decode)]
 pub struct Code<T, S> {
     pub bytes: Vec<u8>,
     pub relocs: Vec<Reloc<S>>,

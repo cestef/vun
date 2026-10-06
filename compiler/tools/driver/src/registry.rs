@@ -1,3 +1,4 @@
+mod assist;
 mod choose;
 #[cfg(feature = "components")]
 mod components;

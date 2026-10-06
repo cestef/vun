@@ -8,7 +8,7 @@ use vun_backend::Lines;
 use vun_index::IndexVec;
 use vun_lir::{FuncId, Unit};
 
-use vun_codegen::Compiled;
+use vun_backend::Compiled;
 
 pub struct Listing<'a, T> {
     pub unit: &'a Unit,

@@ -13,8 +13,9 @@ pub mod width;
 use std::fmt::Display;
 
 use vun_asm::Isa;
+use vun_backend::Compiled;
 use vun_backend::{Artifact, Emits, Emitted, Lack, Part, Request};
-use vun_codegen::{Assembly, Compiled, Isel, Processor};
+use vun_codegen::{Assembly, Isel, Processor};
 use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::Reached;
 use vun_lir::unit::Unit;

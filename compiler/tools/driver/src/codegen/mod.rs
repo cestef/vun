@@ -188,6 +188,7 @@ impl Session {
             unit: &unit,
             target: &target,
             lines: &SourceLines,
+            assist: &self.registry.assist(),
             profile: self.codegen.profile,
             listing: listed == Listed::Yes,
         };

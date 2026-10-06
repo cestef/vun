@@ -8,7 +8,7 @@ use std::ffi::c_void;
 
 /// The version of this layout: the first thing a loader reads of a library, before it trusts
 /// any other field.
-pub const ABI: u32 = 1;
+pub const ABI: u32 = 2;
 
 /// The symbol every component exports: a function returning its [`Descriptor`].
 pub const ENTRY: &[u8] = b"vun_component\0";
@@ -137,6 +137,18 @@ pub struct Descriptor {
 // SAFETY: a descriptor is immutable static data: numbers, a static string and functions.
 unsafe impl Sync for Descriptor {}
 
+/// What a library tells the host of an activity it times: it began, or the innermost one ended.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Beat {
+    Begin = 0,
+    End = 1,
+}
+
+/// How the host times what a component does: a beat, the number of the activity's kind and its
+/// name, a string of the library, which stays mapped.
+pub type Relay = unsafe extern "C" fn(Beat, u32, Slice);
+
 /// What the host lends a component for one call: how it asks the host, answered in the host's
 /// own terms.
 #[repr(C)]
@@ -144,4 +156,6 @@ pub struct Host {
     pub(crate) context: *const c_void,
     pub(crate) ask: unsafe extern "C" fn(*const c_void, Slice, *mut Owned) -> Status,
     pub(crate) free: Free,
+    /// Where the component's timings go, when the host is timing.
+    pub(crate) relay: Option<Relay>,
 }

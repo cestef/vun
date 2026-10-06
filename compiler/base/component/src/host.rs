@@ -1,5 +1,6 @@
 //! The host's side: opening a component, calling it, answering what it asks.
 
+use std::cell::RefCell;
 use std::ffi::c_void;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
@@ -7,8 +8,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use vun_trace::tracing::debug;
+use vun_trace::{Activity, Timer, Timings};
 
-use crate::abi::{ABI, Descriptor, Host, Owned, Slice, Status};
+use crate::abi::{ABI, Beat, Descriptor, Host, Owned, Relay, Slice, Status};
 use crate::{Asked, Fault, Interface, RELEASE, Wire};
 
 /// A component opened: its descriptor, valid for the process.
@@ -102,8 +104,11 @@ impl Component {
             return Err(Fault::Kind { found: self.kind().to_owned(), expected: I::KIND });
         }
         let started = Instant::now();
+        let _timer = Activity::component(I::KIND.0).start();
         let request = Wire::seal(call);
-        let host = Host { context: (&raw const ask).cast(), ask: Self::answer::<I>, free: Owned::release };
+        let relay = Timings::enabled().then_some(Self::relay as Relay);
+        let host =
+            Host { context: (&raw const ask).cast(), ask: Self::answer::<I>, free: Owned::release, relay };
         let mut out = Owned::EMPTY;
         // SAFETY: the component's own function, given a host that lives through the call, a live
         // request and an `out`.
@@ -130,6 +135,7 @@ impl Component {
         input: Slice,
         out: *mut Owned,
     ) -> Status {
+        let _timer = Activity::component("ask").start();
         // SAFETY: `context` is the `ask` of the call in progress, which lives through it.
         let ask = unsafe { *context.cast::<Asked<'_, I>>() };
         // SAFETY: a live slice, by the component.
@@ -145,5 +151,23 @@ impl Component {
         // SAFETY: writable, by the component.
         unsafe { out.write(Owned::new(bytes)) };
         status
+    }
+
+    /// Times in the host's table what a component times: each beat of the library is the start or
+    /// the end of an activity here, nested under the call.
+    unsafe extern "C" fn relay(beat: Beat, kind: u32, name: Slice) {
+        thread_local! {
+            /// The activities the component has begun on this thread, innermost last.
+            static BEGUN: RefCell<Vec<Option<Timer>>> = const { RefCell::new(Vec::new()) };
+        }
+        BEGUN.with_borrow_mut(|begun| match beat {
+            Beat::Begin => {
+                // SAFETY: a name of the library, which stays mapped for the process.
+                let name = std::str::from_utf8(unsafe { name.bytes::<'static>() }).ok();
+                let kind = vun_trace::Kind::numbered(kind);
+                begun.push(kind.zip(name).map(|(kind, name)| Activity { kind, name }.start_here()));
+            }
+            Beat::End => drop(begun.pop()),
+        });
     }
 }

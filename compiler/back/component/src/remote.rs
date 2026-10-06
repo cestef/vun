@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use vun_backend::{ArtifactSink, Backend, BackendInfo, Request};
+use vun_backend::{ArtifactSink, Assist, Assisted, Backend, BackendInfo, Feature, Request};
 use vun_codec::Malformed;
 use vun_component::{Component, Fault};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
@@ -60,13 +60,8 @@ impl Backend for Remote {
         out: &mut dyn ArtifactSink,
         diag: &mut DiagCtxt,
     ) -> Result<(), ErrorGuaranteed> {
-        let call = Call::Emit(Box::new(Emit {
-            unit: Cow::Borrowed(request.unit),
-            target: Cow::Borrowed(request.target),
-            profile: request.profile,
-            listing: request.listing,
-        }));
-        let reply = self.component.call::<Backends>(&call, &|ask| ask.answered_by(request.lines));
+        let call = Call::Emit(Box::new(Emit::of(request)));
+        let reply = self.component.call::<Backends>(&call, &|ask| ask.answered_by(request));
         let reply = reply.and_then(|reply| reply.emitted().map_err(Fault::Malformed));
         let (emitted, theirs, failed) = reply.map_err(|fault| fault.report(self.info.id.0, diag))?;
         let failure = diag.absorb(&theirs);
@@ -79,6 +74,10 @@ impl Backend for Remote {
         Fault::conclude(self.info.id.0, failed, failure, diag)
     }
 
+    fn assist(&self) -> Option<&dyn Assist> {
+        self.info.caps.has(Feature::Assist).then_some(self)
+    }
+
     fn division(&self, target: &TargetSpec) -> Division {
         self.infallible(&Call::Division(Cow::Borrowed(target)), Reply::division)
     }
@@ -86,5 +85,18 @@ impl Backend for Remote {
     fn frame_sizes(&self, unit: &Unit, report: &[u8]) -> Vec<(FuncId, u64)> {
         let call = Call::FrameSizes { unit: Cow::Borrowed(unit), report: Cow::Borrowed(report) };
         self.infallible(&call, Reply::frame_sizes)
+    }
+}
+
+impl Assist for Remote {
+    fn assists(&self, target: &TargetSpec) -> bool {
+        self.infallible(&Call::Assists(Cow::Borrowed(target)), Reply::assists)
+    }
+
+    fn compile(&self, request: &Request<'_>, ids: &[vun_lir::FuncId]) -> Assisted {
+        let call = Call::Assist { emit: Box::new(Emit::of(request)), ids: ids.to_vec() };
+        let reply = self.component.call::<Backends>(&call, &|ask| ask.answered_by(request));
+        let reply = reply.and_then(|reply| reply.assisted().map_err(Fault::Malformed));
+        reply.unwrap_or_else(|fault| panic!("backend component {}: {fault}", self.info.id))
     }
 }

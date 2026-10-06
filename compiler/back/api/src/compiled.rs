@@ -1,10 +1,12 @@
 //! A function's machine code as the framework leaves it.
 
+use vun_codec::{Decode, Encode};
 use vun_dwarf::Step;
 use vun_lir::Address;
 use vun_origin::OriginId;
 
 /// A function's machine code.
+#[derive(Encode, Decode)]
 pub struct Compiled<T> {
     pub code: vun_asm::Code<T, Address>,
     /// The bytes its frame takes below the frame pointer.

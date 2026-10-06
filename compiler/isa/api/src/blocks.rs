@@ -2,13 +2,14 @@
 //! of its table a block names, by their index in declaration order, and its operands as the
 //! assembler takes them. Every backend emitting blocks, native code or GNU C, reads them here.
 
+use vun_codec::{Decode, Encode};
 use vun_inline::{Base, Block, Bound, ClassId, FormId, Inst, Line, Mem, OpId, Operand, RegRef};
 
 use crate::word::Access;
 use crate::{Fit, Fixed, Given, Label, Misfit, Via, Width};
 
 /// Operands of inline assembly a backend may have no encoding or no register for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum AsmOperand {
     /// Memory with an index register.
     Indexed,

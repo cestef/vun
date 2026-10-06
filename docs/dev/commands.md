@@ -288,7 +288,9 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   after `--` runs some (`-- cold/check`). `cargo bench` builds with the release profile.
 - `--timings` (or `VUN_TIMINGS=1`) reports each stage and query's own and total time and its
   longest run, with how work spread over threads; `--memos` (or `VUN_MEMOS=1`) what each query
-  did with its memos.
+  did with its memos. Each call of a component is a `component <kind>` row whose own time is
+  the boundary's cost (encoding, copying, decoding); what a library times on the thread of the
+  call shows under it, as stages and queries do.
 - `--timeline <file>` (or `VUN_TIMELINE=<file>`) writes every run of each stage and query on each
   thread, for Perfetto or `chrome://tracing`: which runs overlapped, how busy the workers were,
   what the main thread waited on. Gaps on the main thread are untimed work: time it as a stage.

@@ -11,14 +11,16 @@
 //!
 //! This is the one module of the toolchain besides `vun-par`'s pool that uses `unsafe` (the
 //! workspace denies it). Each block is the end of a pointer crossing, and the invariants are
-//! three, each held where the pointer is made:
+//! four, each held where the pointer is made:
 //!
 //! - a descriptor is read for its layout's number first, so that a library of another layout is
 //!   refused before any other field is trusted, and its release must be this one's;
 //! - a [`Slice`](abi::Slice) is a borrow of the caller's bytes, used only inside the call, and an
 //!   [`Owned`](abi::Owned) is read once and freed by the allocator that made it;
 //! - the host's `ask` is a borrow of the closure of the call in progress, and the component
-//!   uses it only inside that call, on the thread of the call (a [`Asked`] is not `Sync`).
+//!   uses it only inside that call, on the thread of the call (a [`Asked`] is not `Sync`);
+//! - a name a library gives the host to time an activity under is a string of the library, which
+//!   stays mapped, and is read only by the host's table.
 //!
 //! A panic never unwinds across the boundary: each side catches its own and reports it as a
 //! [`Status`](abi::Status). Libraries are never unloaded.

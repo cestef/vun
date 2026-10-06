@@ -19,8 +19,8 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["x86_64", "arm64"]
-x86_64 = ["vun-backend-cranelift/x86_64", "vun-backend-native/x86_64"]
-arm64 = ["vun-backend-cranelift/arm64", "vun-backend-native/arm64"]
+x86_64 = ["vun-backend-cranelift/x86_64"]
+arm64 = ["vun-backend-cranelift/arm64"]
 # Defines the library's entry symbol: set to build the library, never to link the crate in.
 export = []
 
@@ -29,4 +29,3 @@ vun-component.workspace = true
 vun-backend-component.workspace = true
 vun-backend.workspace = true
 vun-backend-cranelift = { workspace = true }
-vun-backend-native = { workspace = true }

@@ -55,7 +55,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `BackendInfo`, `Lack`, `Traced`); `vun-backend-c` (C99 as data, one printer, shards);
   `vun-backend-wasm`; `vun-codegen` (the framework over `Arch` and `Isel`: assignments,
   registers, frames, jumps, fusion, callee-saved registers for loops, snippets and their encoder,
-  `pieces`); `vun-regalloc`. `vun-backend-cranelift` (LIR through Cranelift, native assisting through `vun_codegen::Assist`; `Assembly` writes the object). Stubs: qbe, llvm, external.
+  `pieces`); `vun-regalloc`. `vun-backend-cranelift` (LIR through Cranelift, assisted through the request's `vun_backend::Assist`; `Assembly` writes the object). Stubs: qbe, llvm, external.
 - **Components** (decision 498): `vun-component` (`compiler/base/component`: the C-ABI boundary,
   `Interface`, `Component::{open,within,call}`, `descriptor!` and `export!`; the one `unsafe`
   module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component`, `vun-scheme-component` (`compiler/pkg/component`) `vun-server` (`compiler/tools/server`, with the `Server` trait) and `vun-renderer` (`compiler/render/api`, with the `Renderer` trait, `Short` and `Remote`), `vun-binder` (`compiler/tools/binder`, with the `Binder` trait and what binding gives; the
