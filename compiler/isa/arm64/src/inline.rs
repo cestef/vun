@@ -91,6 +91,10 @@ impl Registered for Arm64 {
         RegRef { class: Self::GENERAL, number: r as u8 }
     }
 
+    fn kept(r: Reg) -> bool {
+        r.kept()
+    }
+
     fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
             Some(Kind::Gpr(..) | Kind::Shifted(_) | Kind::Extended) | None => Ok((Self::GENERAL, None)),

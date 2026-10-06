@@ -52,6 +52,3 @@ template and README (decisions 431 to 440).
 - C records by value are lowered from `vun_abi::Passing` (decision 503). Still handed over: a record
   part of an odd size (3, 5, 6 or 7 bytes in a register), a struct argument not a multiple of 8
   bytes or aligned past 8, a signature AAPCS64 places differently from Cranelift's counting.
-- `Outline` keeps a function whose block names a register. The runtime's blocks name scratch
-  registers (`mov(rdi, ...)`); only the stack, frame and link registers are the caller's state, so
-  an architecture's table of those would outline most of them.

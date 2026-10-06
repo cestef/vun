@@ -1,5 +1,6 @@
 use vun_index::Idx;
 use vun_inline::{Block, Bound, FormId, Inst, OpId, Operand, RegRef, SizeId};
+use vun_isa_x86_64::Reg;
 use vun_lir::testing::origin;
 use vun_lir::{
     AbiType, Alias, Builder, Callee, Conv, Ext, InstKind, Linkage, Output, Scalar, Signature, Target,
@@ -64,10 +65,12 @@ fn a_block_moves_into_a_function_taking_what_it_reads_and_the_address_of_what_it
 }
 
 #[test]
-fn a_block_naming_a_register_a_naked_function_and_a_function_of_nothing_else_stay() {
-    let reg = Operand::Reg(RegRef { class: vun_inline::ClassId(0), number: 4 });
-    let (mut with_reg, _) = unit(Conv::Vun, true, vec![reg]);
-    assert_eq!(with_reg.outline(), 0);
+fn a_block_naming_the_stack_pointer_a_naked_function_and_a_function_of_nothing_else_stay() {
+    let reg = |number| Operand::Reg(RegRef { class: vun_inline::ClassId(0), number });
+    let (mut with_stack, _) = unit(Conv::Vun, true, vec![reg(Reg::Rsp as u8)]);
+    assert_eq!(with_stack.outline(), 0);
+    let (mut with_scratch, _) = unit(Conv::Vun, true, vec![reg(Reg::Rdi as u8)]);
+    assert_eq!(with_scratch.outline(), 1);
     let (mut bare, _) = unit(Conv::Naked, true, Vec::new());
     assert_eq!(bare.outline(), 0);
     let (mut alone, _) = unit(Conv::Vun, false, Vec::new());

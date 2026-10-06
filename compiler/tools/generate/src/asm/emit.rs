@@ -16,6 +16,8 @@ use crate::names::{constant, pascal, raw};
 /// what it names: the class and the width, as `lang.arch.Registers` fields.
 const REG: &str = "Reg";
 const REGISTERS: &str = "Registers";
+/// The enum of the general registers that are the caller's state.
+const KEPT: &str = "Kept";
 const CLASS_FIELD: &str = "class";
 const SIZE_FIELD: &str = "size";
 /// The class `Reg`'s registers are of, and the variant an optional width is written in.
@@ -141,12 +143,23 @@ impl Crate {
         let variants: Vec<_> = regs.iter().map(|r| pascal(r.name)).collect();
         let docs = regs.iter().map(|r| crate::names::docs(&r.doc));
         let (count, width_count) = (regs.len(), named.len().max(1));
+        let kept = table.own(KEPT)?.value.members()?;
+        let kept = kept
+            .iter()
+            .map(|k| regs.iter().any(|r| r.name == k.name).then(|| pascal(k.name)))
+            .collect::<Option<Vec<_>>>()?;
         let items = quote! {
             /// A general register, by its encoding.
             #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub enum Reg { #(#(#[doc = #docs])* #variants,)* }
             impl Reg {
                 pub const ALL: [Self; #count] = [#(Self::#variants),*];
+
+                /// Whether it is the state of the function holding a block, not scratch.
+                #[must_use]
+                pub const fn kept(self) -> bool {
+                    matches!(self, #(Self::#kept)|*)
+                }
             }
             /// Each register's name at each width, narrowest first.
             pub(crate) const NAMES: [[&str; #width_count]; #count] = [#(#rows),*];

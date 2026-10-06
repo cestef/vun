@@ -18,6 +18,9 @@ pub const sse: Item = Item::new(&["lang", "arch", "x86_64", "sse"]);
 pub const Size: Item = Item::new(&["lang", "arch", "x86_64", "Size"]);
 /// A general register, by its encoding, named at 64 bits.
 pub const Reg: Item = Item::new(&["lang", "arch", "x86_64", "Reg"]);
+/// The general registers that are the state of the function holding a block, not scratch: the
+/// stack and frame pointers. A block naming one stays in its function (`Outline`).
+pub const Kept: Item = Item::new(&["lang", "arch", "x86_64", "Kept"]);
 /// A general register named at 32 bits.
 pub const R32: Item = Item::new(&["lang", "arch", "x86_64", "R32"]);
 /// A general register named at 16 bits.

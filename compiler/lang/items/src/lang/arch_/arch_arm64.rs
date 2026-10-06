@@ -21,6 +21,10 @@ pub const Size: Item = Item::new(&["lang", "arch", "arm64", "Size"]);
 /// A general register. Register 31 is the stack pointer in some operands and the zero register
 /// in others: the two are distinct registers, and each operand kind takes the one its field means.
 pub const Reg: Item = Item::new(&["lang", "arch", "arm64", "Reg"]);
+/// The general registers that are the state of the function holding a block, not scratch: the
+/// frame pointer, the link register and the stack pointer. A block naming one stays in its
+/// function (`Outline`).
+pub const Kept: Item = Item::new(&["lang", "arch", "arm64", "Kept"]);
 /// A general register named at 64 bits, in the order of `Reg`.
 pub const X: Item = Item::new(&["lang", "arch", "arm64", "X"]);
 /// A general register named at 32 bits, in the order of `Reg`.

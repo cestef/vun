@@ -4,8 +4,8 @@
 //! in the caller becomes a call of it. The function holding the rest of the code then needs
 //! nothing of the backend that cannot express the block, and only the small functions do.
 //!
-//! A block stays where it is when it names a register itself (`Block::names_registers`), which is
-//! the caller's state it reads or writes, and in a naked function, whose code is its blocks. A
+//! A block stays where it is when it names a register that is the caller's state (`Registered::keeps`:
+//! the stack, frame and link registers) and not scratch, and in a naked function, whose code is its blocks. A
 //! function keeps all its blocks when one stays, since the backend would still not express it.
 //! So does a function whose blocks and calls are only what its asm needs around it: moving its
 //! block would leave a function that does nothing but call another. A function bound by
@@ -16,12 +16,33 @@ mod tests;
 
 use vun_index::Idx;
 use vun_inline::Bound;
+use vun_isa::{Blocks, Registered};
+use vun_isa_arm64::Arm64;
+use vun_isa_thumb::Thumb;
+use vun_isa_x86_64::X86_64;
 use vun_lir::func::Function;
 use vun_lir::{
     AbiType, Alias, Asm, AsmCheck, Builder, Callee, Conv, Ext, FuncId, InstKind, Linkage, Scalar, Signature,
     Terminator, Unit,
 };
 use vun_origin::OriginId;
+
+/// A block of one of the instruction sets whose registers are known.
+trait Keeps {
+    /// Whether the block reads or writes state of the function holding it.
+    fn keeps(&self) -> bool;
+}
+
+impl Keeps for Asm {
+    fn keeps(&self) -> bool {
+        match self.arch {
+            X86_64::ARCH => X86_64::keeps(self),
+            Arm64::ARCH => Arm64::keeps(self),
+            Thumb::ARCH => Thumb::keeps(self),
+            _ => false,
+        }
+    }
+}
 
 pub trait Outline {
     /// Moves each block of inline assembly that may move into a function of its own, returning
@@ -68,7 +89,7 @@ impl Moves for Function {
             return;
         }
         let insts: Vec<_> = self.blocks.iter().flat_map(|(_, block)| block.insts.iter().copied()).collect();
-        let names = |&i: &_| matches!(&self.insts[i].kind, InstKind::Asm(asm, _) if asm.names_registers());
+        let names = |&i: &_| matches!(&self.insts[i].kind, InstKind::Asm(asm, _) if asm.keeps());
         if insts.iter().any(names) {
             return;
         }

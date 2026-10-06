@@ -95,6 +95,10 @@ impl Registered for Thumb {
         RegRef { class: Self::GENERAL, number: r.number() }
     }
 
+    fn kept(r: Reg) -> bool {
+        r.kept()
+    }
+
     fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
             Some(Kind::Gpr(_) | Kind::Split | Kind::Shifted) | None => Ok((Self::GENERAL, None)),

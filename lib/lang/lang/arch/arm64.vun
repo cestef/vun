@@ -19,6 +19,11 @@ Reg := enum {
     zr,
 };
 
+/// The general registers that are the state of the function holding a block, not scratch: the
+/// frame pointer, the link register and the stack pointer. A block naming one stays in its
+/// function (`Outline`).
+Kept := enum { x29, x30, sp };
+
 /// A general register named at 64 bits, in the order of `Reg`.
 #[Registers{ .class = .general, .size = .some(.b64) }]
 X := enum {

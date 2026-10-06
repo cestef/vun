@@ -85,6 +85,17 @@ pub trait Registered: Blocks {
     /// A general register, as a block names it.
     fn reference(r: Self::Reg) -> RegRef;
 
+    /// Whether `r` is the state of the function holding a block (the stack, frame and link
+    /// registers) and not scratch.
+    fn kept(r: Self::Reg) -> bool;
+
+    /// Whether `block` reads or writes state of the function holding it: it names a register
+    /// that is not scratch, or its forms use one unnamed.
+    #[must_use]
+    fn keeps<V, P, S>(block: &Block<V, P, S>) -> bool {
+        Self::named(block).any(Self::kept)
+    }
+
     /// The class of register a value bound at a position of `kind` is held in, and the register
     /// the position takes, if one; `None` is an address's register, a general one.
     ///

@@ -24,6 +24,10 @@ pub const system: Item = Item::new(&["lang", "arch", "thumb", "system"]);
 pub const Size: Item = Item::new(&["lang", "arch", "thumb", "Size"]);
 /// A general register, by its encoding.
 pub const Reg: Item = Item::new(&["lang", "arch", "thumb", "Reg"]);
+/// The general registers that are the state of the function holding a block, not scratch: the
+/// frame pointers, the stack pointer, the link register and the program counter. A block naming
+/// one stays in its function (`Outline`).
+pub const Kept: Item = Item::new(&["lang", "arch", "thumb", "Kept"]);
 /// A floating-point register, by its number as a single-precision one: `v{2k}` is also the
 /// double-precision `d{k}`, which overlaps `s{2k}` and `s{2k+1}`.
 pub const V: Item = Item::new(&["lang", "arch", "thumb", "V"]);

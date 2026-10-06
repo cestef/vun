@@ -22,6 +22,10 @@ vun-target.workspace = true
 vun-diag.workspace = true
 vun-intern.workspace = true
 vun-inline.workspace = true
+vun-isa.workspace = true
+vun-isa-arm64.workspace = true
+vun-isa-thumb.workspace = true
+vun-isa-x86_64.workspace = true
 vun-par.workspace = true
 
 [dev-dependencies]

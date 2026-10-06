@@ -74,6 +74,11 @@ impl Reg {
         Self::Sp,
         Self::Zr,
     ];
+    /// Whether it is the state of the function holding a block, not scratch.
+    #[must_use]
+    pub const fn kept(self) -> bool {
+        matches!(self, Self::X29 | Self::X30 | Self::Sp)
+    }
 }
 /// Each register's name at each width, narrowest first.
 pub(crate) const NAMES: [[&str; 2usize]; 33usize] = [

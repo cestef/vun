@@ -1328,8 +1328,9 @@ functions, C records it would place differently or whose register part is not a 
 wide integers under the C convention and floats passed as integers in variadic calls. A backend without `Feature::InlineAsm` has each block of assembly
 outlined first (`vun_lir_passes::Outline`): the block moves into an internal function of its own,
 taking what it reads as parameters and the address of each place it writes, and the function it
-came from needs nothing of the backend, unless one of its blocks names a register itself (the
-caller's state, or scratch it clobbers) or it holds nothing but its asm, and then the whole
+came from needs nothing of the backend, unless one of its blocks names a register that is the
+caller's state (the stack, frame and link registers, which each instruction set's table declares
+as `Kept`) or it holds nothing but its asm, and then the whole
 function is handed over as before. The request carries an assist (`vun_backend::Assist`, which the driver's registry
 answers with the first backend that has `Feature::Assist`, native) that compiles those functions instead, and the two halves are linked as one
 object; without one the build is refused naming what is missing. Formats are ELF, architectures

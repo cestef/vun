@@ -87,6 +87,10 @@ impl Registered for X86_64 {
         RegRef { class: Self::GENERAL, number: r as u8 }
     }
 
+    fn kept(r: Reg) -> bool {
+        r.kept()
+    }
+
     fn binding(kind: Option<Kind>) -> Result<(ClassId, Option<Reg>), AsmOperand> {
         match kind {
             Some(Kind::Cl) => Ok((Self::GENERAL, Some(Reg::Rcx))),
