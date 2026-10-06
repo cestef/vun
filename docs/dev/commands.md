@@ -298,6 +298,13 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   /tmp/v.perf target/release/vun check f.vun`, then `perf report -i /tmp/v.perf --no-children
   --sort symbol --stdio -g none`. A benchmark alone: `target/release/deps/<bench>-<hash> --bench
   --profile-time 5 <filter>` under `perf record`. Bound every run with `timeout`.
+- A profile on the laptop with [stax](https://stax.bearcove.eu) (`stax record -- <binary> <args>`,
+  then `stax top --sort self|total` and `stax flame -d <depth>`; needs `staxd`, `stax-server` and
+  `kernel.perf_event_mlock_kb=65536`): build the binary apart, `RUSTFLAGS="-C
+  force-frame-pointers=yes" CARGO_PROFILE_RELEASE_DEBUG=1 CARGO_TARGET_DIR=target/profiling cargo
+  build --release -p vun-cli`, without frame pointers stacks stop after a few frames. Profile a run
+  from the second one on: the first computes and saves the libraries' memos, which costs more than
+  a build of a small program. `hello` is too short to sample; use `vun check lib/std`.
 - The language server (`vun util lsp`) times each message as a stage named by its method, and
   `publish diagnostics`; `VUN_LOG=vun_lsp=debug` logs each message handled with how long it
   took, in the editor's server log.

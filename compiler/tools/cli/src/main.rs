@@ -25,5 +25,9 @@ fn main() -> ExitCode {
     #[cfg(feature = "ffi")]
     session.registry.binders.link(Box::new(vun_component_binder_c::component()));
     session.check = PROGRAM.invocation(&CHECK_PATH);
-    PROGRAM.main(&mut session)
+    let code = PROGRAM.main(&mut session);
+    // The memos are saved, and the process ends: freeing every table first takes longer than a
+    // build of a small program.
+    std::mem::forget(session);
+    code
 }
