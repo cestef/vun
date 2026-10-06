@@ -193,3 +193,15 @@ fn styled_lines_are_pieces_on_the_stream_people_read() {
     let plain = |text| line(Stream::Stderr, vec![piece(None, text)]);
     assert_eq!(lines, [plain("plain"), plain("unended")]);
 }
+
+#[test]
+fn a_percentage_is_a_number_with_or_without_its_sign() {
+    assert_eq!("3%".parse(), Ok(Percent(3.0)));
+    assert_eq!("2.5".parse(), Ok(Percent(2.5)));
+    for text in ["", "%", "-1", "x%", "nan"] {
+        assert_eq!(text.parse::<Percent>(), Err(NoPercent), "{text}");
+    }
+    assert_eq!(Percent(3.04).to_string(), "3.0%");
+    assert_eq!(Instructions(4_560.0).to_string(), "4.56 k instr");
+    assert_eq!(Instructions(12.0).to_string(), "12.0 instr");
+}

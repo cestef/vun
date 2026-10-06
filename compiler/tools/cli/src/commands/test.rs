@@ -2,7 +2,7 @@
 //! namespace, runs it and reports each test as it ends (spec 11). The path is a file, a directory
 //! or a package's directory; with none, the package around the current directory, which a first
 //! word naming nothing on disk is the first test's name for. `vun bench`
-//! runs the benchmarks alone, measured, through the same program, and `vun fuzz` the properties
+//! runs the benchmarks alone, measured over samples, through the same program, and `vun fuzz` the properties
 //! alone, fuzzed, through it built covered.
 
 use std::io;
@@ -48,6 +48,11 @@ pub(super) const BENCH: Command<Session> =
         .params(&[
             PATH,
             NAMES,
+            vun_driver::testing::MEASURE,
+            vun_driver::testing::SAMPLES,
+            vun_driver::testing::BASELINE,
+            vun_driver::testing::SAVE,
+            vun_driver::testing::FAIL_OVER,
             vun_driver::codegen::BACKEND,
             vun_driver::codegen::LINKER,
             vun_driver::program::OUTPUT,
@@ -56,6 +61,15 @@ pub(super) const BENCH: Command<Session> =
         .examples(&[
             Example { line: "", about: "measure the benchmarks of the package around this directory" },
             Example { line: "main.vun memcpy_4k", about: "measure one benchmark of a file" },
+            Example { line: "--save", about: "keep the results as the baseline, in `.vun/bench/`" },
+            Example {
+                line: "--fail-over 3%",
+                about: "fail when a benchmark got more than 3% slower than the baseline",
+            },
+            Example {
+                line: "--measure instructions",
+                about: "count instructions, which noise does not move",
+            },
         ]);
 
 pub(super) const FUZZ: Command<Session> =
@@ -149,6 +163,11 @@ fn tested(
     session.conclude(shell, shown, started);
     let Some(program) = program else { return Ok(None) };
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
+    if mode == Mode::Bench {
+        let plan = vun_driver::testing::Plan::of(args);
+        let package = root.parent().unwrap_or(root);
+        return Ok(Some(session.bench(&program, package, names, &plan, shell)?));
+    }
     let options = vun_driver::testing::Options::of(args, mode);
     // Tests run each in a process of its own, as many at once as asked; benchmarks and fuzzing
     // measure and guide, so they run alone and in order.

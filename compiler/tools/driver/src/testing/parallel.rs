@@ -11,7 +11,8 @@ use std::time::Instant;
 
 use vun_term::{Document, Shell};
 
-use super::report::{Collected, Tally};
+use super::report::Collected;
+use super::tally::Tally;
 use super::{Line, Options, Reported, Totals};
 use crate::Session;
 

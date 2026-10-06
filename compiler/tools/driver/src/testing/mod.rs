@@ -1,10 +1,15 @@
 //! Running tests (spec 11): the program `std.testing.runner` gives for a namespace, built from a
 //! root file as any program is, and the lines it writes, read as typed values and reported.
 
+mod bench;
 mod build;
 mod parallel;
 mod report;
+mod tally;
 
+pub use bench::{
+    BASELINE, Baseline, Comparison, FAIL_OVER, MEASURE, Measure, Plan, SAMPLES, SAVE, Statistics, Verdict,
+};
 pub use report::{Collected, Reported, Run, Tested};
 
 use vun_command::{Args, Param, Values};
@@ -158,8 +163,15 @@ impl Measured {
     #[must_use]
     pub fn per_iteration(self) -> f64 {
         #[expect(clippy::cast_precision_loss, reason = "an average, shown")]
-        let (nanos, iterations) = (self.nanos as f64, self.iterations.max(1) as f64);
-        nanos / iterations
+        self.per_iteration_of(self.nanos as f64)
+    }
+
+    /// `total`, a quantity measured over all the runs of the body, for one run.
+    #[must_use]
+    pub fn per_iteration_of(self, total: f64) -> f64 {
+        #[expect(clippy::cast_precision_loss, reason = "an average, shown")]
+        let iterations = self.iterations.max(1) as f64;
+        total / iterations
     }
 }
 

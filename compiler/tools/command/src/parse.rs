@@ -182,6 +182,7 @@ impl Param {
                 Msg::new().text("choose ").text(what).text(", as ").code(declared_in).text(" declares them")
             }
             Values::Count => Msg::new().text("write a whole number, such as ").code("100"),
+            Values::Percent => Msg::new().text("write a percentage, such as ").code("3%"),
             Values::Place => {
                 Msg::new().text("write a line and a column counted from 1, such as ").code("12:5")
             }

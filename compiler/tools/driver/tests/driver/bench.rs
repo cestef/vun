@@ -2,7 +2,8 @@
 //! benchmarks alone run, each until its loop has taken `std.testing.bench.least`.
 
 use vun_build::layout::MANIFEST;
-use vun_driver::testing::{Measured, Mode, Options, Outcome};
+use vun_driver::testing::{Baseline, Measure, Measured, Mode, Options, Outcome, Plan};
+use vun_term::Percent;
 use vun_term::Shell;
 
 use crate::common::Fixture;
@@ -57,4 +58,47 @@ fn a_benchmark_runs_once_as_a_test_and_alone_when_measured() {
     };
     assert_eq!(name, "sums");
     assert!(*iterations > 1 && *nanos >= LEAST_NANOS, "{measured:#?}");
+}
+
+fn plan(measure: Measure, save: bool, fail_over: Option<Percent>) -> Plan {
+    Plan { measure, samples: 2, baseline: "base".to_owned(), save, fail_over }
+}
+
+#[test]
+fn benchmarks_are_sampled_kept_as_a_baseline_and_compared_with_it() {
+    if !cfg!(target_os = "linux") {
+        return;
+    }
+    let fixture = Fixture::new("testing-bench-baseline");
+    let mut app = Fixture::manifest("benched", PACKAGE + 1, "0.1.0");
+    app.include.push(app.name.clone());
+    let dir = fixture.write("", &app, BENCHMARKS);
+    let manifest = fixture.root.write(dir.join(MANIFEST), [app.source().unwrap().as_str(), BUILD].concat());
+    let mut session = fixture.session();
+    let file = session.load(&manifest).unwrap();
+    let ns = session.tested(file, Some(fixture.root.path())).unwrap();
+    let program = session.build_tests(file, ns, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let bench = |plan: Plan| {
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let passed =
+            session.bench(&program, &dir, &[], &plan, &mut Shell::plain(&mut out, &mut err)).unwrap();
+        (passed, String::from_utf8(out).unwrap() + &String::from_utf8(err).unwrap())
+    };
+    assert_eq!(Baseline::read(&dir, "base").unwrap(), None);
+    let (passed, _) = bench(plan(Measure::Time, true, None));
+    assert!(passed);
+    let kept = Baseline::read(&dir, "base").unwrap().unwrap();
+    assert_eq!(kept.measure, Measure::Time);
+    let statistics = kept.benchmarks["sums"];
+    assert_eq!(kept.benchmarks.len(), 1);
+    assert_eq!(statistics.samples, 2);
+    assert!(statistics.median > 0.0, "{statistics:?}");
+    // The same program, a threshold no noise reaches.
+    let (passed, _) = bench(plan(Measure::Time, false, Some(Percent(1000.0))));
+    assert!(passed);
+    // Instructions are counted where `perf` counts them, else the run is timed and says why.
+    let (passed, said) = bench(plan(Measure::Instructions, true, None));
+    assert!(passed, "{said}");
+    let kept = Baseline::read(&dir, "base").unwrap().unwrap();
+    assert!(kept.benchmarks.contains_key("sums"), "{kept:?}");
 }

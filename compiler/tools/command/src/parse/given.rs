@@ -3,6 +3,7 @@
 
 use vun_diag::Diagnostic;
 use vun_span::Place;
+use vun_term::Percent;
 
 use super::{LONG, OPTIONS_END, SHORT};
 use crate::{Args, Arity, GLOBAL, Param, ParamKind, Program, Values};
@@ -71,6 +72,7 @@ impl Args {
             Values::Choice(_) | Values::Catalog(_) => names.contains(&value),
             Values::Count => value.parse::<u64>().is_ok(),
             Values::Place => value.parse::<Place>().is_ok(),
+            Values::Percent => value.parse::<Percent>().is_ok(),
             Values::Text | Values::Path(_) => true,
         };
         if !valid {

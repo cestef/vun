@@ -54,7 +54,7 @@ impl Param {
         let short = self.short.map(|c| format!(" -s {c}")).unwrap_or_default();
         let value = match (self.takes_value(), self.values) {
             (false, _) => String::new(),
-            (true, Values::Text | Values::Count | Values::Place) => " -x".to_owned(),
+            (true, Values::Text | Values::Count | Values::Place | Values::Percent) => " -x".to_owned(),
             (true, Values::Path(_)) => " -r -F".to_owned(),
             (true, Values::Choice(names) | Values::Catalog(Catalog { names, .. })) => {
                 format!(" -x -a {}", Tree::fish_quote(&names().join(" ")))

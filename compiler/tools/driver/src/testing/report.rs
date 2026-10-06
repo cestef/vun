@@ -4,21 +4,16 @@
 use std::ffi::OsStr;
 use std::io::{self, BufRead, BufReader, PipeReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ExitStatus};
+use std::process::{Child, Command, ExitStatus};
 
 use vun_data::{Object, ToData};
 use vun_term::{Document, Nanos, Noun, Record, Shell, Status, Style, Text, Verb};
 
+use super::tally::Tally;
 use super::{Argument, Falsified, Fuzzed, Line, Options, Outcome, Ran, Totals};
 use crate::Session;
 
-const PASSED: Noun = Noun { one: "passed", many: "passed" };
-const TRAPPED: Noun = Noun { one: "trapped", many: "trapped" };
-const FALSIFIED: Noun = Noun { one: "falsified", many: "falsified" };
-const IGNORED: Noun = Noun { one: "ignored", many: "ignored" };
-const MEASURED: Noun = Noun { one: "measured", many: "measured" };
 const ITERATIONS: Noun = Noun { one: "iteration", many: "iterations" };
-const FUZZED: Noun = Noun { one: "fuzzed", many: "fuzzed" };
 const CASES: Noun = Noun { one: "case", many: "cases" };
 const STREAMS: Noun = Noun { one: "stream", many: "streams" };
 const FLAGS: Noun = Noun { one: "flag", many: "flags" };
@@ -51,6 +46,23 @@ impl Session {
         )
     }
 
+    /// The command running `program` for the tests `names` and `options` ask for, or only
+    /// listing them.
+    pub(super) fn tests_command(
+        &self,
+        program: &Path,
+        names: Vec<std::ffi::OsString>,
+        options: Options,
+        list: bool,
+    ) -> Command {
+        let mut command = self.command(program);
+        command.args(names).args(options.args());
+        if list {
+            command.arg(super::LIST.long_form());
+        }
+        command
+    }
+
     /// Starts `program` running the tests `names` and `options` ask for, or only listing them.
     pub(super) fn start_tests(
         &self,
@@ -59,14 +71,16 @@ impl Session {
         options: Options,
         list: bool,
     ) -> io::Result<Run> {
+        Run::spawn(program, self.tests_command(program, names, options, list))
+    }
+}
+
+impl Run {
+    /// Starts `command`, which runs `program`, reading its standard output and error.
+    pub(super) fn spawn(program: &Path, mut command: Command) -> io::Result<Self> {
         let (reader, writer) = io::pipe()?;
-        let mut command = self.command(program);
-        command.args(names).args(options.args());
-        if list {
-            command.arg(super::LIST.long_form());
-        }
         let child = command.stdout(writer.try_clone()?).stderr(writer).spawn()?;
-        Ok(Run { program: program.to_path_buf(), child, lines: BufReader::new(reader) })
+        Ok(Self { program: program.to_path_buf(), child, lines: BufReader::new(reader) })
     }
 }
 
@@ -242,49 +256,6 @@ impl Status for Tested {
             Outcome::Falsified(_) => Verb::failed("Falsified"),
             Outcome::Measured(_) => Verb::good("Measured"),
             Outcome::Fuzzed(_) => Verb::good("Fuzzed"),
-        }
-    }
-}
-
-/// How many tests passed, trapped, were falsified, were not run, were measured and were fuzzed.
-pub(super) struct Tally(pub(super) Totals);
-
-impl Record for Tally {
-    fn kind(&self) -> &'static str {
-        "tested"
-    }
-
-    fn text(&self) -> Text {
-        let Totals { passed, trapped, falsified, ignored, measured, fuzzed, nanos } = self.0;
-        let counts = [
-            PASSED.count(passed),
-            TRAPPED.count(trapped),
-            FALSIFIED.count(falsified),
-            IGNORED.count(ignored),
-            MEASURED.count(measured),
-            FUZZED.count(fuzzed),
-        ];
-        let counts = Text::join(counts.map(|count| Text::from(count.to_string())), ", ");
-        match nanos {
-            Some(nanos) => counts.append(Text::of(Style::Dim, format!(" in {}", Nanos::from(nanos)))),
-            None => counts,
-        }
-    }
-
-    fn fields(&self) -> Object<'static> {
-        let Totals { passed, trapped, falsified, ignored, measured, fuzzed, nanos } = self.0;
-        let object = Object::new().with("passed", passed).with("trapped", trapped);
-        let object = object.with("falsified", falsified).with("ignored", ignored);
-        object.with("measured", measured).with("fuzzed", fuzzed).with("nanos", nanos.to_data())
-    }
-}
-
-impl Status for Tally {
-    fn verb(&self) -> Verb {
-        if self.0.trapped == 0 && self.0.falsified == 0 {
-            Verb::good("Tested")
-        } else {
-            Verb::failed("Tested")
         }
     }
 }

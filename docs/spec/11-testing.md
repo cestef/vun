@@ -180,12 +180,20 @@ themselves.
   what makes it stays.
 - `vun test` runs a benchmark as a test: its loop runs the body once. `vun bench [path] [names]`
   builds the same program and runs the benchmarks alone, measured (the runner's `--bench`): each
-  reports `measured` with how many times its body ran and how long that took, shown per
-  iteration. Not yet: the statistics, instruction counts and baselines below.
-- `--measure time` (default natively): statistics over wall-clock samples.
-- `--measure instructions`: counts LIR operations in the interpreter; deterministic, suitable as a CI
-  gate. Natively, hardware counters where available; on Cortex-M, the DWT cycle counter.
-- Baselines live in `.vun/bench/`; `--fail-over 3%` fails the run on regression.
+  reports `measured` with how many times its body ran and how long that took. `vun bench` takes
+  `--samples n` (10) of that, each a run of the program, and reports per benchmark the median time
+  per iteration, the spread (the median absolute deviation as a part of the median), the number of
+  samples and of outliers, which lie more than 1.5 interquartile ranges past the quartiles and are
+  left out of the mean and range (decision 600).
+- `--measure time` (default): wall-clock samples. `--measure instructions`: the instructions the
+  process retires in user mode, counted with `perf stat`, per iteration; where that is not possible
+  the run is timed instead and reports why (decision 601). Not yet: the interpreter's count of LIR
+  operations, which is deterministic, and on Cortex-M the DWT cycle counter.
+- Baselines live in `.vun/bench/<name>.json` of the package (decision 602): `--save` keeps the
+  statistics of a run as the baseline `--baseline <name>` names (`base`), and a run shows the
+  change of each median against it. A change is a regression when it is more than `--fail-over 3%`
+  and more than the noise, the larger spread of the two runs; with `--fail-over` given, a
+  regression fails the run.
 
 ## 6. Other checks
 

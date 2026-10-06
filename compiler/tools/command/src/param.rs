@@ -2,6 +2,7 @@
 //! default comes from. Help, parsing, validation and completions all read the same declaration.
 
 use vun_span::Place;
+use vun_term::Percent;
 
 /// A parameter, declared as a constant with the builders below:
 /// `Param::option("target").about("...").values(Values::Text).env("VUN_TARGET")`.
@@ -51,6 +52,8 @@ pub enum Values {
     Count,
     /// A place in a file, `line:column` counted from 1.
     Place,
+    /// A percentage, such as `3` or `2.5%`.
+    Percent,
 }
 
 /// A table of names described by what they are and where they are declared.
@@ -166,7 +169,7 @@ impl Param {
     pub fn choices(&self) -> Option<Vec<&'static str>> {
         match self.values {
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => Some(names()),
-            Values::Text | Values::Path(_) | Values::Count | Values::Place => None,
+            Values::Text | Values::Path(_) | Values::Count | Values::Place | Values::Percent => None,
         }
     }
 }
@@ -224,6 +227,12 @@ impl Args {
     /// The number a count parameter is given; parsing checked that it is one.
     #[must_use]
     pub fn count(&self, param: &Param) -> Option<u64> {
+        self.value(param)?.parse().ok()
+    }
+
+    /// The percentage a percent parameter is given; parsing checked that it is one.
+    #[must_use]
+    pub fn percent(&self, param: &Param) -> Option<Percent> {
         self.value(param)?.parse().ok()
     }
 

@@ -53,7 +53,7 @@ impl Param {
     /// The shape of its values in the signature of `command`, adding a completer for choices.
     fn nu_shape(&self, command: &str, completers: &mut Vec<Completer>) -> String {
         match self.values {
-            Values::Text | Values::Place => "string".to_owned(),
+            Values::Text | Values::Place | Values::Percent => "string".to_owned(),
             Values::Count => "int".to_owned(),
             Values::Path(_) => "path".to_owned(),
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => {

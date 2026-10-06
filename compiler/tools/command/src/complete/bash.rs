@@ -72,7 +72,7 @@ impl Values {
     /// The statement completing a value of these, ending in `;`.
     fn bash_reply(self) -> String {
         match self {
-            Self::Text | Self::Count | Self::Place => "COMPREPLY=();".to_owned(),
+            Self::Text | Self::Count | Self::Place | Self::Percent => "COMPREPLY=();".to_owned(),
             Self::Path(_) => "COMPREPLY=($(compgen -f -- \"$cur\"));".to_owned(),
             Self::Choice(names) | Self::Catalog(Catalog { names, .. }) => {
                 format!("COMPREPLY=($(compgen -W \"{}\" -- \"$cur\"));", names().join(" "))
