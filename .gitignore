@@ -12,3 +12,4 @@ assets/motion/node_modules
 assets/motion/generated
 assets/motion/output
 assets/stream/obs
+/.once/
