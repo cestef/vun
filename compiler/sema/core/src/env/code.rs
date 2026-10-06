@@ -66,11 +66,11 @@ impl<'a, 'db> Env<'a, 'db> {
             })
             .collect();
         bound.sort_by_key(|s| s.binder);
-        Code {
-            expr: ExprRef::new(self.file.clone(), hir, expr),
-            within: self.instance.clone().map(Arc::new),
-            bound: Arc::from(bound),
-        }
+        Code::new(
+            ExprRef::new(self.file.clone(), hir, expr),
+            self.instance.clone().map(Arc::new),
+            Arc::from(bound),
+        )
     }
 
     /// The environment `code` was written in, with the types typing found there: the call's

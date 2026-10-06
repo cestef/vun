@@ -108,11 +108,11 @@ impl Frame {
     /// The instantiation of the coroutine function making frames of this type.
     #[must_use]
     pub fn instantiation(&self) -> crate::call::Instantiation {
-        let f = crate::call::Func {
-            literal: self.literal.clone(),
-            within: self.within.clone().map(std::sync::Arc::new),
-            staged: self.staged.clone(),
-        };
+        let f = crate::call::Func::new(
+            self.literal.clone(),
+            self.within.clone().map(std::sync::Arc::new),
+            self.staged.clone(),
+        );
         crate::call::Instantiation::new(f, self.args.clone())
     }
 }

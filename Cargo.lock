@@ -1815,9 +1815,11 @@ name = "vun-diag"
 version = "0.1.0"
 dependencies = [
  "vun-codec",
+ "vun-intern",
  "vun-origin",
  "vun-span",
  "vun-term",
+ "vun-variants",
 ]
 
 [[package]]

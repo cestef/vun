@@ -298,6 +298,16 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   /tmp/v.perf target/release/vun check f.vun`, then `perf report -i /tmp/v.perf --no-children
   --sort symbol --stdio -g none`. A benchmark alone: `target/release/deps/<bench>-<hash> --bench
   --profile-time 5 <filter>` under `perf record`. Bound every run with `timeout`.
+- Memory per nesting level of compile-time calls: evaluate a recursion through an annotation
+  (`depth := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + depth(n - 1)).sat(u32) } };
+  c: Int(depth(N)..=depth(N)) = 1;`) for two depths, each from nothing (`rm -rf .vun`,
+  `VUN_STORE=$(mktemp -d)`), under `/usr/bin/time -f "%M KB"`, and divide the difference of the
+  peaks by the difference of depths: 8 KB a level in the dev profile (it was 12). The heap shows
+  in `valgrind --tool=massif` of a build without the `mimalloc` feature (`cargo build -p vun-cli
+  --no-default-features`), the stack in the frame sizes of the calls one level goes through
+  (`objdump -d -C` and the first `sub sp, sp, #n` of `Frame::call`, `Frame::execute`,
+  `Cx::computed`, ...). A `Value` is held in each level's arguments, locals and memos, so its size
+  is the lever (`vun-sema-ty`'s tests guard it).
 - A profile on the laptop with [stax](https://stax.bearcove.eu) (`stax record -- <binary> <args>`,
   then `stax top --sort self|total` and `stax flame -d <depth>`; needs `staxd`, `stax-server` and
   `kernel.perf_event_mlock_kb=65536`): build the binary apart, `RUSTFLAGS="-C

@@ -36,22 +36,68 @@ impl Instance {
 /// A function value: a function literal, and the instantiation it was evaluated in, whose
 /// parameters its body sees too: a method of `Pair(u8)` sees `T` bound to `u8`, and a closure in
 /// a body with `$n: u8` sees `n`.
+///
+/// Shared, so that a value holding one is a pointer wide: a compile-time call keeps its arguments
+/// and results in every frame it nests.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub struct Func {
+pub struct Func(Arc<FuncParts>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct FuncParts {
     pub literal: ExprRef,
     pub within: Option<Arc<Instantiation>>,
     /// The `$for` bindings of the entries that generated it, which its body sees too.
     pub staged: Arc<[Staging]>,
 }
 
+impl Func {
+    #[must_use]
+    pub fn new(literal: ExprRef, within: Option<Arc<Instantiation>>, staged: Arc<[Staging]>) -> Self {
+        Self(Arc::new(FuncParts { literal, within, staged }))
+    }
+
+    /// This function written at `literal` instead, in the same call.
+    #[must_use]
+    pub fn at(&self, literal: ExprRef) -> Self {
+        Self::new(literal, self.within.clone(), self.staged.clone())
+    }
+}
+
+impl std::ops::Deref for Func {
+    type Target = FuncParts;
+
+    fn deref(&self) -> &FuncParts {
+        &self.0
+    }
+}
+
 /// A code value (spec 03, section 4): an expression, and what it was written under, where its
 /// names resolve (hygiene by construction): the instantiation and every binder bound there.
-/// A quote `#{ e }` is one, and so is an argument for a `Code(T)` parameter.
+/// A quote `#{ e }` is one, and so is an argument for a `Code(T)` parameter. Shared, as a
+/// function is.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
-pub struct Code {
+pub struct Code(Arc<CodeParts>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct CodeParts {
     pub expr: ExprRef,
     pub within: Option<Arc<Instantiation>>,
     pub bound: Arc<[Staging]>,
+}
+
+impl Code {
+    #[must_use]
+    pub fn new(expr: ExprRef, within: Option<Arc<Instantiation>>, bound: Arc<[Staging]>) -> Self {
+        Self(Arc::new(CodeParts { expr, within, bound }))
+    }
+}
+
+impl std::ops::Deref for Code {
+    type Target = CodeParts;
+
+    fn deref(&self) -> &CodeParts {
+        &self.0
+    }
 }
 
 /// A coroutine's frame at compile time (spec 06): its call, the block of its body it resumes at
@@ -106,7 +152,7 @@ impl Instantiation {
     /// The function literal `f`, outside any call, with no parameter bound.
     #[must_use]
     pub fn plain(f: ExprRef) -> Self {
-        Self { f: Func { literal: f, within: None, staged: Arc::from([]) }, args: Arc::from([]) }
+        Self { f: Func::new(f, None, Arc::from([])), args: Arc::from([]) }
     }
 
     /// Whether this is its function literal outside any call, with no parameter bound.

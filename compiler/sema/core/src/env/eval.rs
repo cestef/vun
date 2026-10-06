@@ -181,11 +181,11 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn func(&self, literal: ExprId) -> Func {
         let within = self.instance.clone().map(Arc::new);
-        Func {
-            literal: ExprRef::new(self.file.clone(), &self.parsed.hir, literal),
+        Func::new(
+            ExprRef::new(self.file.clone(), &self.parsed.hir, literal),
             within,
-            staged: Arc::from(self.staged.as_slice()),
-        }
+            Arc::from(self.staged.as_slice()),
+        )
     }
 
     /// The type the `struct` or `enum` literal `literal` evaluates to here, identified by the

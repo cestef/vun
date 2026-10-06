@@ -8,7 +8,7 @@ use vun_diag::{DiagCtxt, Diagnostic, Msg, errors};
 use vun_hir::db::Parsed;
 use vun_hir::tree::{Entry, ExprId, ExprKind, List, Param, PatKind};
 use vun_query::Cx;
-use vun_sema_ty::call::{Func, Instantiation};
+use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Closure, Signature, Ty, TyKind, Value};
@@ -261,7 +261,7 @@ impl Enclosing for Instantiation {
             Some(within) if within.f.literal.expr.id == enclosing => within.body(cx),
             _ => {
                 let literal = ExprRef::new(file.clone(), hir, enclosing);
-                Some(Self::new(Func { literal, ..self.f.clone() }, Vec::new()))
+                Some(Self::new(self.f.at(literal), Vec::new()))
             }
         }
     }

@@ -6,6 +6,13 @@ use vun_sema_int::{Integer, Interval};
 use super::{TyKind, Value};
 use crate::float::FloatType;
 
+/// Every nested compile-time call keeps its arguments, locals and result alive, so the size of a
+/// value is paid at each level: a function and a piece of code are shared, not held inline.
+#[test]
+fn a_value_is_small_where_each_nested_call_holds_several() {
+    assert!(std::mem::size_of::<Value>() <= 80, "a value is {} bytes", std::mem::size_of::<Value>());
+}
+
 #[test]
 fn equal_types_are_one_and_ranges_are_sets() {
     let u8 = TyKind::int(&Interval::closed(0.into(), 255.into()).unwrap());
