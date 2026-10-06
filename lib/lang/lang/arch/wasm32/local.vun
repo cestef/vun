@@ -38,5 +38,19 @@ i64_const := _w.Instruction{ .forms = &[.{
     .pushes = &[.i64],
 }] };
 
+/// Pushes a 32-bit float, given by its bits.
+f32_const := _w.Instruction{ .forms = &[.{
+    .base = 0x43,
+    .args = &[.{ .kind = .imm(.bits(32)) }],
+    .pushes = &[.f32],
+}] };
+
+/// Pushes a 64-bit float, given by its bits.
+f64_const := _w.Instruction{ .forms = &[.{
+    .base = 0x44,
+    .args = &[.{ .kind = .imm(.bits(64)) }],
+    .pushes = &[.f64],
+}] };
+
 /// Pops a value and drops it.
 drop := _w.Instruction{ .forms = &[.{ .base = 0x1a, .pops = &[.any] }] };

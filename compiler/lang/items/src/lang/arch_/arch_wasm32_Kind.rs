@@ -8,5 +8,5 @@
 use crate::Item;
 /// A bound local: a value read (`in`), written (`out`) or both (`inout`).
 pub const local: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "local"]);
-/// An integer immediate, LEB128 encoded.
+/// An integer immediate.
 pub const imm: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "imm"]);

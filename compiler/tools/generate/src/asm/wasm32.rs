@@ -37,6 +37,7 @@ const CRATE: Crate = Crate {
         ("Kind", "imm", &["Imm"]),
         ("Imm", "unsigned", &["u8"]),
         ("Imm", "signed", &["u8"]),
+        ("Imm", "bits", &["u8"]),
         ("Need", "feature", &["Feature"]),
         ("Need", "float", &["Size"]),
     ],

@@ -8,3 +8,4 @@
 use crate::Item;
 pub const unsigned: Item = Item::new(&["lang", "arch", "wasm32", "Imm", "unsigned"]);
 pub const signed: Item = Item::new(&["lang", "arch", "wasm32", "Imm", "signed"]);
+pub const bits: Item = Item::new(&["lang", "arch", "wasm32", "Imm", "bits"]);

@@ -37,12 +37,13 @@ Ty := enum { i32, i64, f32, f64, local, any };
 Kind := enum {
     /// A bound local: a value read (`in`), written (`out`) or both (`inout`).
     local,
-    /// An integer immediate, LEB128 encoded.
+    /// An integer immediate.
     imm(Imm),
 };
 
-/// An integer immediate: unsigned or signed, of this many bits.
-Imm := enum { unsigned(u8), signed(u8) };
+/// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
+/// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
+Imm := enum { unsigned(u8), signed(u8), bits(u8) };
 
 /// What a form does with an operand.
 Access := enum { read, write, read_write };

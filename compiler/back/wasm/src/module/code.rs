@@ -150,6 +150,9 @@ impl Body<'_> {
                 (Position::Imm(Imm::Signed(_)), Operand::Imm(v)) => {
                     self.out.sleb(*v);
                 }
+                (Position::Imm(Imm::Bits(bits)), Operand::Imm(v)) => {
+                    self.out.bytes(&v.to_le_bytes()[..usize::from(bits / 8)]);
+                }
                 (_, Operand::Imm(v)) => self.out.uleb(v.cast_unsigned()),
                 (_, Operand::Local(l)) => self.out.uleb(u64::from(*l)),
             }

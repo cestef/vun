@@ -173,6 +173,8 @@ mod local_set;
 mod local_tee;
 mod i32_const;
 mod i64_const;
+mod f32_const;
+mod f64_const;
 mod drop;
 mod i32_load;
 mod i64_load;

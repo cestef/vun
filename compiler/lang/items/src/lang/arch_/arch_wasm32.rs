@@ -32,7 +32,8 @@ pub const Class: Item = Item::new(&["lang", "arch", "wasm32", "Class"]);
 pub const Ty: Item = Item::new(&["lang", "arch", "wasm32", "Ty"]);
 /// What a position of an instruction takes.
 pub const Kind: Item = Item::new(&["lang", "arch", "wasm32", "Kind"]);
-/// An integer immediate: unsigned or signed, of this many bits.
+/// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
+/// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
 pub const Imm: Item = Item::new(&["lang", "arch", "wasm32", "Imm"]);
 /// What a form does with an operand.
 pub const Access: Item = Item::new(&["lang", "arch", "wasm32", "Access"]);

@@ -8,7 +8,7 @@ use super::{build_source, run};
 /// Each function is a block, and the exit status tells which ones computed what Vun does: 42 from
 /// an addition, 2 from `local_tee` and `drop`, 6 from a 64-bit shift, 1 from the size of memory,
 /// 1 from an atomic addition, 2 from an atomic compare and exchange, 3 from a loop that adds 4, 3,
-/// 2 and 1 and 4 from the two arms of an `if`.
+/// 2 and 1, 5 and 6 from float constants and 4 from the two arms of an `if`.
 const PROGRAM: &str = r"
 add := (a: i32, b: i32) -> i32 {
     mut sum: i32 = 0;
@@ -124,6 +124,30 @@ pick := (flag: i32, cell: &mut i32) {
     });
 };
 
+half := (x: f32) -> f32 {
+    mut r: f32 = 0.0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        f32_const(0x3f000000);
+        f32_mul();
+        local_set(out(r));
+    });
+    r
+};
+
+more := (x: f64) -> f64 {
+    mut r: f64 = 0.0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        f64_const(0x3ff8000000000000);
+        f64_add();
+        local_set(out(r));
+    });
+    r
+};
+
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut status: u32 = 0;
@@ -135,6 +159,8 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if fetch_add(&mut cell, 2) == 40 and cell == 42 { status +%= 1; }
     if exchange(&mut cell, 42, 7) == 42 and cell == 7 { status +%= 2; }
     if tri(4) == 10 { status +%= 3; }
+    if half(8.0) == 4.0 { status +%= 5; }
+    if more(2.0) == 3.5 { status +%= 6; }
     mut then: i32 = 0;
     mut otherwise: i32 = 0;
     pick(1, &mut then);
@@ -148,5 +174,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 fn a_block_of_wasm_instructions_computes_what_the_program_in_vun_does() {
     let Some(wasmtime) = Executable::search("wasmtime") else { return };
     let (_fixture, linked) = build_source("asm", PROGRAM, None);
-    assert_eq!(run(&wasmtime, &linked).0, Some(61));
+    assert_eq!(run(&wasmtime, &linked).0, Some(72));
 }

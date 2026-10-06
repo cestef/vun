@@ -16,5 +16,9 @@ pub const local_tee: Item = Item::new(&["lang", "arch", "wasm32", "local", "loca
 pub const i32_const: Item = Item::new(&["lang", "arch", "wasm32", "local", "i32_const"]);
 /// Pushes a 64-bit integer.
 pub const i64_const: Item = Item::new(&["lang", "arch", "wasm32", "local", "i64_const"]);
+/// Pushes a 32-bit float, given by its bits.
+pub const f32_const: Item = Item::new(&["lang", "arch", "wasm32", "local", "f32_const"]);
+/// Pushes a 64-bit float, given by its bits.
+pub const f64_const: Item = Item::new(&["lang", "arch", "wasm32", "local", "f64_const"]);
 /// Pops a value and drops it.
 pub const drop: Item = Item::new(&["lang", "arch", "wasm32", "local", "drop"]);

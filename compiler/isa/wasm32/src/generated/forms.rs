@@ -2,7 +2,7 @@
 use super::Op;
 use crate::table::Form;
 /// The forms of each instruction, in the order of `Op`.
-const FORMS: [&[Form]; 245usize] = [
+const FORMS: [&[Form]; 247usize] = [
     &super::i32_clz::I32_CLZ,
     &super::i32_ctz::I32_CTZ,
     &super::i32_popcnt::I32_POPCNT,
@@ -171,6 +171,8 @@ const FORMS: [&[Form]; 245usize] = [
     &super::local_tee::LOCAL_TEE,
     &super::i32_const::I32_CONST,
     &super::i64_const::I64_CONST,
+    &super::f32_const::F32_CONST,
+    &super::f64_const::F64_CONST,
     &super::drop::DROP,
     &super::i32_load::I32_LOAD,
     &super::i64_load::I64_LOAD,

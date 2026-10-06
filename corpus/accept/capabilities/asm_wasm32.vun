@@ -109,3 +109,16 @@ pick := (flag: i32, cell: &mut i32) {
         end();
     });
 };
+
+/// A float constant is its bits, as the format stores them: `0x3f000000` is 0.5 of 32 bits.
+half := (x: f32) -> f32 {
+    mut r: f32 = 0.0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        f32_const(0x3f000000);
+        f32_mul();
+        local_set(out(r));
+    });
+    r
+};

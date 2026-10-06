@@ -10,15 +10,17 @@ pub(crate) use crate::reg::Size;
 pub enum Kind {
     /// A bound local: a value read (`in`), written (`out`) or both (`inout`).
     Local,
-    /// An integer immediate, LEB128 encoded.
+    /// An integer immediate.
     Imm(Imm),
 }
 
-/// An integer immediate: unsigned or signed, of this many bits.
+/// An integer immediate: unsigned or signed, of this many bits; or the bits of a float, written
+/// as they are.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Imm {
     Unsigned(u8),
     Signed(u8),
+    Bits(u8),
 }
 
 impl Imm {
@@ -28,6 +30,8 @@ impl Imm {
         match self {
             Self::Unsigned(bits) => value >= 0 && (bits >= 63 || value < 1 << bits),
             Self::Signed(bits) => bits >= 64 || (value >= -(1 << (bits - 1)) && value < 1 << (bits - 1)),
+            // The bits of a float, whether the integer written is signed or not.
+            Self::Bits(bits) => bits >= 64 || (value >= -(1 << (bits - 1)) && value < 1 << bits),
         }
     }
 }
