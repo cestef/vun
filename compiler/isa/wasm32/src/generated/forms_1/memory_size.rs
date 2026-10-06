@@ -6,5 +6,6 @@ pub(crate) const MEMORY_SIZE: [table::Form; 1usize] = [
         .tail(&[0])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

@@ -14,5 +14,6 @@ pub(crate) const I16X8_EXTRACT_LANE_U: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

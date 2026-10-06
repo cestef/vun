@@ -4,5 +4,6 @@ pub(crate) const I32X4_BITMASK: [table::Form; 1usize] = [
     table::Form::new(0x00fd_00a4, &[], &[table::Ty::V128], &[table::Ty::I32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

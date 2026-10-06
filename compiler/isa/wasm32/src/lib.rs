@@ -16,7 +16,7 @@ mod tests;
 pub use reg::Size;
 pub use table::{
     Access, Arg, Choice, Class, Control, Feature, Flow, Form, Global, Imm, Kind, Need, Op, Processor, Ty,
-    Yields,
+    Written, Yields,
 };
 
 /// The instruction set.

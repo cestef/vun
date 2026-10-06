@@ -8,8 +8,14 @@
 use crate::Item;
 pub const entry: Item = Item::new(&["std", "os", "wasi", "start", "entry"]);
 pub const trap: Item = Item::new(&["std", "os", "wasi", "start", "trap"]);
-/// The operations of the checks of unsafe code a WASI program may be built with: its stack's.
+/// The operations of the checks of unsafe code, for a program built with checks: those over
+/// the shadow, in memory the program grows.
 pub const checks: Item = Item::new(&["std", "os", "wasi", "start", "checks"]);
+/// The check of the stack, for a program built with it: its frames against the bounds the
+/// linker gives.
+pub const stack_checks: Item = Item::new(
+    &["std", "os", "wasi", "start", "stack_checks"],
+);
 pub const write: Item = Item::new(&["std", "os", "wasi", "start", "write"]);
 pub const read: Item = Item::new(&["std", "os", "wasi", "start", "read"]);
 pub const open_file: Item = Item::new(&["std", "os", "wasi", "start", "open_file"]);

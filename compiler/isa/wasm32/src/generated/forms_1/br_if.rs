@@ -14,5 +14,6 @@ pub(crate) const BR_IF: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::BranchIf)
+        .writes(table::Written::None)
         .requires(None),
 ];

@@ -4,5 +4,6 @@ pub(crate) const F64_FLOOR: [table::Form; 1usize] = [
     table::Form::new(0x0000_009c, &[], &[table::Ty::F64], &[table::Ty::F64])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

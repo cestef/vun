@@ -1243,7 +1243,12 @@ in registers a call may overwrite, none saved.
     site)` and `asm_stack(site, before, after)`. The native backend calls `asm_write` before
     each instruction whose form writes memory, with the address that operand computes, and
     `asm_stack` where a block that returns moved the stack pointer. The C backend checks the
-    stack pointer only, which needs no encoder.
+    stack pointer only, which needs no encoder. The wasm backend calls `asm_write` before each
+    instruction whose form writes memory (`Form::writes`: a number of bytes, or the count the
+    instruction pops), with the address it pops first plus its offset, and `asm_stack` where a
+    block that sets the stack pointer and returns left it moved. The WASI runtime exports the
+    operations over a shadow in linear memory it grows the first time a check needs it
+    (`std.os.wasi.map`, `std.check.mapped`).
   - Under the `stack` checks, lowering gives each function it checks in a `StackCheck`
     (`vun_lir::Function::stack_check`): the runtime's `lang.check.stack(frame, site)` and the site
     it fails at. The backend calls it with the lowest address of the frame it is about to give the

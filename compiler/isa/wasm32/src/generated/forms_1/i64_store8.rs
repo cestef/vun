@@ -18,5 +18,6 @@ pub(crate) const I64_STORE8: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Bytes(1))
         .requires(None),
 ];

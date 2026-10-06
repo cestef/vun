@@ -9,5 +9,6 @@ pub(crate) const I64_GE_S: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

@@ -71,36 +71,36 @@ i64_atomic_load32_u := _w.Instruction{ .forms = &[.{
 
 /// Stores the value popped at the address popped.
 i32_atomic_store := _w.Instruction{ .forms = &[.{
-    .base = 0xfe0017, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .base = 0xfe0017, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i64_atomic_store := _w.Instruction{ .forms = &[.{
-    .base = 0xfe0018, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .base = 0xfe0018, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i32_atomic_store8 := _w.Instruction{ .forms = &[.{
-    .base = 0xfe0019, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .base = 0xfe0019, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i32_atomic_store16 := _w.Instruction{ .forms = &[.{
-    .base = 0xfe001a, .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
+    .base = 0xfe001a, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i64_atomic_store8 := _w.Instruction{ .forms = &[.{
-    .base = 0xfe001b, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .base = 0xfe001b, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i64_atomic_store16 := _w.Instruction{ .forms = &[.{
-    .base = 0xfe001c, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .base = 0xfe001c, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };
 
 i64_atomic_store32 := _w.Instruction{ .forms = &[.{
-    .base = 0xfe001d, .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
+    .base = 0xfe001d, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[],
     .requires = .some(.feature(.atomics)),
 }] };

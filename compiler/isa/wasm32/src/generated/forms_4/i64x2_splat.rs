@@ -4,5 +4,6 @@ pub(crate) const I64X2_SPLAT: [table::Form; 1usize] = [
     table::Form::new(0x00fd_0012, &[], &[table::Ty::I64], &[table::Ty::V128])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

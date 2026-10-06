@@ -4,5 +4,6 @@ pub(crate) const F32_TRUNC: [table::Form; 1usize] = [
     table::Form::new(0x0000_008f, &[], &[table::Ty::F32], &[table::Ty::F32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

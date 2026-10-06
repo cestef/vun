@@ -6,6 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.os.wasi.memory`.
+pub const memory: Item = Item::new(&["std", "os", "wasi", "memory"]);
+/// The namespace `std.os.wasi.poll`.
+pub const poll: Item = Item::new(&["std", "os", "wasi", "poll"]);
 /// The namespace `std.os.wasi.random`.
 pub const random: Item = Item::new(&["std", "os", "wasi", "random"]);
 /// The namespace `std.os.wasi.stack`.
@@ -31,12 +35,6 @@ pub const clock_time_get: Item = Item::new(&["std", "os", "wasi", "clock_time_ge
 pub const poll_oneoff: Item = Item::new(&["std", "os", "wasi", "poll_oneoff"]);
 /// The numbers preview 1 gives its clocks.
 pub const clocks: Item = Item::new(&["std", "os", "wasi", "clocks"]);
-/// What `poll_oneoff` waits for (`subscription`): here a clock, tag 0, its union's case.
-pub const Subscription: Item = Item::new(&["std", "os", "wasi", "Subscription"]);
-/// The clock `id` reaching `timeout` nanoseconds from now (`subscription_clock`).
-pub const Timeout: Item = Item::new(&["std", "os", "wasi", "Timeout"]);
-/// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
-pub const Event: Item = Item::new(&["std", "os", "wasi", "Event"]);
 /// The error preview 1 reports as `number` (its `errno`, numbered its own way): `acces`,
 /// `exist`, `intr`, `isdir`, `nametoolong`, `noent`, `notdir` and `perm`.
 pub const error: Item = Item::new(&["std", "os", "wasi", "error"]);

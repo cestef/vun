@@ -4,5 +4,6 @@ pub(crate) const F64_CONVERT_I64_U: [table::Form; 1usize] = [
     table::Form::new(0x0000_00ba, &[], &[table::Ty::I64], &[table::Ty::F64])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

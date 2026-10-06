@@ -18,5 +18,6 @@ pub(crate) const V128_STORE: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Bytes(16))
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

@@ -63,39 +63,39 @@ i64_load32_u := _w.Instruction{
 };
 
 i32_store := _w.Instruction{
-    .forms = &[.{ .base = 0x36, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+    .forms = &[.{ .base = 0x36, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i32] }]
 };
 
 i64_store := _w.Instruction{
-    .forms = &[.{ .base = 0x37, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+    .forms = &[.{ .base = 0x37, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .i64] }]
 };
 
 f32_store := _w.Instruction{
-    .forms = &[.{ .base = 0x38, .args = &[_align, _offset], .pops = &[.i32, .f32] }]
+    .forms = &[.{ .base = 0x38, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .f32] }]
 };
 
 f64_store := _w.Instruction{
-    .forms = &[.{ .base = 0x39, .args = &[_align, _offset], .pops = &[.i32, .f64] }]
+    .forms = &[.{ .base = 0x39, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .f64] }]
 };
 
 i32_store8 := _w.Instruction{
-    .forms = &[.{ .base = 0x3a, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+    .forms = &[.{ .base = 0x3a, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i32] }]
 };
 
 i32_store16 := _w.Instruction{
-    .forms = &[.{ .base = 0x3b, .args = &[_align, _offset], .pops = &[.i32, .i32] }]
+    .forms = &[.{ .base = 0x3b, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i32] }]
 };
 
 i64_store8 := _w.Instruction{
-    .forms = &[.{ .base = 0x3c, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+    .forms = &[.{ .base = 0x3c, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i64] }]
 };
 
 i64_store16 := _w.Instruction{
-    .forms = &[.{ .base = 0x3d, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+    .forms = &[.{ .base = 0x3d, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i64] }]
 };
 
 i64_store32 := _w.Instruction{
-    .forms = &[.{ .base = 0x3e, .args = &[_align, _offset], .pops = &[.i32, .i64] }]
+    .forms = &[.{ .base = 0x3e, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i64] }]
 };
 
 /// Pushes the size of memory in pages.
@@ -108,7 +108,7 @@ memory_grow := _w.Instruction{
 
 /// Copies bytes: the destination, the source and the length popped.
 memory_copy := _w.Instruction{ .forms = &[.{
-    .base = 0xfc000a,
+    .base = 0xfc000a, .writes = .counted,
     .pops = &[.i32, .i32, .i32],
     .tail = &[0, 0],
     .requires = .some(.feature(.bulk_memory)),
@@ -116,7 +116,7 @@ memory_copy := _w.Instruction{ .forms = &[.{
 
 /// Fills bytes: the destination, the byte and the length popped.
 memory_fill := _w.Instruction{ .forms = &[.{
-    .base = 0xfc000b,
+    .base = 0xfc000b, .writes = .counted,
     .pops = &[.i32, .i32, .i32],
     .tail = &[0],
     .requires = .some(.feature(.bulk_memory)),

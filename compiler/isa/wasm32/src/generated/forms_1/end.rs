@@ -4,5 +4,6 @@ pub(crate) const END: [table::Form; 1usize] = [
     table::Form::new(0x0000_000b, &[], &[], &[])
         .flow(table::Flow::Next)
         .control(table::Control::Close)
+        .writes(table::Written::None)
         .requires(None),
 ];

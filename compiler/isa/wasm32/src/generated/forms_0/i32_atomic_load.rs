@@ -19,5 +19,6 @@ pub(crate) const I32_ATOMIC_LOAD: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

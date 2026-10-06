@@ -5,5 +5,6 @@ pub(crate) const UNREACHABLE: [table::Form; 1usize] = [
     table::Form::new(0x0000_0000, &[], &[], &[])
         .flow(table::Flow::Ends)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

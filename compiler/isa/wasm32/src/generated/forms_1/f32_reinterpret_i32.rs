@@ -4,5 +4,6 @@ pub(crate) const F32_REINTERPRET_I32: [table::Form; 1usize] = [
     table::Form::new(0x0000_00be, &[], &[table::Ty::I32], &[table::Ty::F32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

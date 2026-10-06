@@ -12,6 +12,7 @@ use crate::common::Fixture;
 mod allocations;
 mod asm;
 mod stack;
+mod wasi;
 
 /// The status a program ends with when a check fails (`std.os.trapped`).
 const TRAPPED: Option<i32> = Some(101);
@@ -96,9 +97,16 @@ fn a_read_past_a_slot_traps_the_same_way_through_each_backend() {
 #[test]
 fn a_runtime_without_the_operations_of_the_checks_is_refused() {
     let fixture = Fixture::new("checks-unsupported");
-    let path = fixture.root.write("main.vun", THIRD);
+    // A board's code with no runtime of its own exports none of the operations.
+    let path = fixture.root.write(
+        "main.vun",
+        "\
+#[link.export(\"first\")]
+first := (xs: &[4]u8) -> u8 { unsafe lang.mem.pointer_to([4]u8, xs).cast(u8).read() };
+",
+    );
     let mut session = fixture.session();
-    session.choice = Choice::of(targets::wasi_wasm32::p1);
+    session.choice = Choice::of(targets::bare_thumbv7em::eabihf);
     session.add_checks([Check::Pointers]);
     let file = session.load(&path).unwrap();
     let _ = session.compile(file);

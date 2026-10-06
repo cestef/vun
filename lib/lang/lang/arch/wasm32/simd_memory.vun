@@ -98,7 +98,7 @@ v128_load64_splat := _w.Instruction{ .forms = &[.{
 }] };
 
 v128_store := _w.Instruction{ .forms = &[.{
-    .base = 0xfd000b,
+    .base = 0xfd000b, .writes = .bytes(16),
     .args = &[_align, _offset],
     .pops = &[.i32, .v128],
     .requires = _simd,
@@ -144,28 +144,28 @@ v128_load64_lane := _w.Instruction{ .forms = &[.{
 }] };
 
 v128_store8_lane := _w.Instruction{ .forms = &[.{
-    .base = 0xfd0058,
+    .base = 0xfd0058, .writes = .bytes(1),
     .args = &[_align, _offset, _lane],
     .pops = &[.i32, .v128],
     .requires = _simd,
 }] };
 
 v128_store16_lane := _w.Instruction{ .forms = &[.{
-    .base = 0xfd0059,
+    .base = 0xfd0059, .writes = .bytes(2),
     .args = &[_align, _offset, _lane],
     .pops = &[.i32, .v128],
     .requires = _simd,
 }] };
 
 v128_store32_lane := _w.Instruction{ .forms = &[.{
-    .base = 0xfd005a,
+    .base = 0xfd005a, .writes = .bytes(4),
     .args = &[_align, _offset, _lane],
     .pops = &[.i32, .v128],
     .requires = _simd,
 }] };
 
 v128_store64_lane := _w.Instruction{ .forms = &[.{
-    .base = 0xfd005b,
+    .base = 0xfd005b, .writes = .bytes(8),
     .args = &[_align, _offset, _lane],
     .pops = &[.i32, .v128],
     .requires = _simd,

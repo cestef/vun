@@ -11,5 +11,6 @@ pub(crate) const CALL: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::Call)
+        .writes(table::Written::None)
         .requires(None),
 ];

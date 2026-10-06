@@ -11,5 +11,6 @@ pub(crate) const MEMORY_COPY: [table::Form; 1usize] = [
         .tail(&[0, 0])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Counted)
         .requires(Some(table::Need::Feature(table::Feature::BulkMemory))),
 ];

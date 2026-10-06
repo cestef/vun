@@ -9,5 +9,6 @@ pub(crate) const I64X2_EXTMUL_HIGH_I32X4_U: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

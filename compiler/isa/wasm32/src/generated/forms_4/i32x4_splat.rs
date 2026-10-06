@@ -4,5 +4,6 @@ pub(crate) const I32X4_SPLAT: [table::Form; 1usize] = [
     table::Form::new(0x00fd_0011, &[], &[table::Ty::I32], &[table::Ty::V128])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

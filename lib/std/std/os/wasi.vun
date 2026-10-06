@@ -42,37 +42,15 @@ fd_prestat_dir_name: unsafe (fd: i32, path: *u8, length: usize) -> u16 = _;
 #[link.symbol("clock_time_get"), link.library(module), abi.c]
 clock_time_get: unsafe (clock: u32, precision: u64, time: *u64) -> u16 = _;
 #[link.symbol("poll_oneoff"), link.library(module), abi.c]
-poll_oneoff: unsafe (subscriptions: *Subscription, events: *Event, count: usize, happened: *usize) -> u16 = _;
+poll_oneoff: unsafe (
+    subscriptions: *std.os.wasi.poll.Subscription,
+    events: *std.os.wasi.poll.Event,
+    count: usize,
+    happened: *usize
+) -> u16 = _;
 
 /// The numbers preview 1 gives its clocks.
 clocks: std.os.Clocks = .{ .monotonic = 1, .real = 0 };
-
-/// What `poll_oneoff` waits for (`subscription`): here a clock, tag 0, its union's case.
-#[layout.c]
-Subscription := struct {
-    userdata: u64,
-    tag: u8,
-    clock: Timeout,
-};
-
-/// The clock `id` reaching `timeout` nanoseconds from now (`subscription_clock`).
-#[layout.c]
-Timeout := struct {
-    id: u32,
-    timeout: u64,
-    precision: u64,
-    flags: u16,
-};
-
-/// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
-#[layout.c]
-Event := struct {
-    userdata: u64,
-    error: u16,
-    kind: u8,
-    bytes: u64,
-    flags: u16,
-};
 
 /// The error preview 1 reports as `number` (its `errno`, numbered its own way): `acces`,
 /// `exist`, `intr`, `isdir`, `nametoolong`, `noent`, `notdir` and `perm`.
@@ -211,8 +189,15 @@ start := ($main: std.os.Main) -> type { struct {
         unsafe proc_exit(std.os.trapped)
     };
 
-    /// The operations of the checks of unsafe code a WASI program may be built with: its stack's.
-    checks := if std.check.stack.enabled() {
+    /// The operations of the checks of unsafe code, for a program built with checks: those over
+    /// the shadow, in memory the program grows.
+    checks := if lang.check.current.len() > 0 { std.check.exports(std.os.wasi.memory.state, exit) } else {
+        struct {}
+    };
+
+    /// The check of the stack, for a program built with it: its frames against the bounds the
+    /// linker gives.
+    stack_checks := if std.check.stack.enabled() {
         std.check.stack.exports(std.os.wasi.stack.bottom, std.os.wasi.stack.top, exit)
     } else {
         struct {}
@@ -250,7 +235,7 @@ start := ($main: std.os.Main) -> type { struct {
     /// Waits for the monotonic clock to pass `span` from now.
     #[link.export(std.os.symbols.pause)]
     pause := (span: std.time.Duration) -> Result((), std.os.Error) {
-        subscription := Subscription{
+        subscription := std.os.wasi.poll.Subscription{
             .userdata = 0,
             .tag = 0,
             .clock = .{
@@ -260,12 +245,12 @@ start := ($main: std.os.Main) -> type { struct {
                 .flags = 0
             },
         };
-        mut event := Event{ .userdata = 0, .error = 0, .kind = 0, .bytes = 0, .flags = 0 };
+        mut event := std.os.wasi.poll.Event{ .userdata = 0, .error = 0, .kind = 0, .bytes = 0, .flags = 0 };
         mut happened: usize = 0;
         outcome(
             unsafe poll_oneoff(
-                std.ptr.to(Subscription, &subscription),
-                std.ptr.to(Event, &event),
+                std.ptr.to(std.os.wasi.poll.Subscription, &subscription),
+                std.ptr.to(std.os.wasi.poll.Event, &event),
                 1,
                 std.ptr.to(usize, &happened)
             )

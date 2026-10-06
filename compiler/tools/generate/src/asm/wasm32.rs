@@ -28,6 +28,7 @@ const CRATE: Crate = Crate {
         ("Ty", "table", "Ty"),
         ("Flow", "table", "Flow"),
         ("Control", "table", "Control"),
+        ("Written", "table", "Written"),
         ("Choice", "table", "Choice"),
         ("Feature", "table", "Feature"),
         ("Need", "table", "Need"),
@@ -37,6 +38,7 @@ const CRATE: Crate = Crate {
     payloads: &[
         ("Kind", "imm", &["Imm"]),
         ("Kind", "choice", &["Choice"]),
+        ("Written", "bytes", &["u8"]),
         ("Imm", "unsigned", &["u8"]),
         ("Imm", "signed", &["u8"]),
         ("Imm", "bits", &["u8"]),
@@ -66,7 +68,8 @@ fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
     }
     let flow = c.variant("Flow", field("flow")?)?;
     let control = c.variant("Control", field("control")?)?;
-    form = quote! { #form.flow(#flow).control(#control) };
+    let writes = c.value("Written", field("writes")?)?;
+    form = quote! { #form.flow(#flow).control(#control).writes(#writes) };
     let requires = option(field("requires")?, |need| c.value("Need", need))?;
     Some(quote! { #form.requires(#requires) })
 }

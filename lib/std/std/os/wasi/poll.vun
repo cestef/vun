@@ -1,0 +1,28 @@
+//! What preview 1's `poll_oneoff` takes and gives, as the host lays it out.
+
+/// What `poll_oneoff` waits for (`subscription`): here a clock, tag 0, its union's case.
+#[layout.c]
+Subscription := struct {
+    userdata: u64,
+    tag: u8,
+    clock: Timeout,
+};
+
+/// The clock `id` reaching `timeout` nanoseconds from now (`subscription_clock`).
+#[layout.c]
+Timeout := struct {
+    id: u32,
+    timeout: u64,
+    precision: u64,
+    flags: u16,
+};
+
+/// What happened to a subscription (`event`, its `event_fd_readwrite` unused for a clock).
+#[layout.c]
+Event := struct {
+    userdata: u64,
+    error: u16,
+    kind: u8,
+    bytes: u64,
+    flags: u16,
+};

@@ -18,5 +18,6 @@ pub(crate) const I32_ATOMIC_RMW16_OR_U: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Bytes(2))
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

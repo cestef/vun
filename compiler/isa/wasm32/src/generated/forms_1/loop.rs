@@ -5,6 +5,7 @@ pub(crate) const LOOP: [table::Form; 2usize] = [
         .tail(&[64])
         .flow(table::Flow::Next)
         .control(table::Control::OpenLoop)
+        .writes(table::Written::None)
         .requires(None),
     table::Form::new(
             0x0000_0003,
@@ -19,5 +20,6 @@ pub(crate) const LOOP: [table::Form; 2usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::OpenLoop)
+        .writes(table::Written::None)
         .requires(None),
 ];

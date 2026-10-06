@@ -18,5 +18,6 @@ pub(crate) const F32_STORE: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Bytes(4))
         .requires(None),
 ];

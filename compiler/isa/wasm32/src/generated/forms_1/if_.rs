@@ -6,6 +6,7 @@ pub(crate) const IF_: [table::Form; 2usize] = [
         .tail(&[64])
         .flow(table::Flow::Next)
         .control(table::Control::OpenIf)
+        .writes(table::Written::None)
         .requires(None),
     table::Form::new(
             0x0000_0004,
@@ -20,5 +21,6 @@ pub(crate) const IF_: [table::Form; 2usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::OpenIf)
+        .writes(table::Written::None)
         .requires(None),
 ];

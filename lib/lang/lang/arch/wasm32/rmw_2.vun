@@ -1,0 +1,139 @@
+//! Atomic read-modify-write instructions: `xor`, `xchg` and `cmpxchg`. (continued)
+
+_w := lang.arch.wasm32;
+
+_align: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+_offset: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+
+i32_atomic_rmw_xor := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003a, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw_xor := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003b, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw8_xor_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003c, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw16_xor_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003d, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw8_xor_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003e, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw16_xor_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe003f, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw32_xor_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0040, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw_xchg := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0041, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw_xchg := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0042, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw8_xchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0043, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw16_xchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0044, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i32], .pushes = &[
+        .i32
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw8_xchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0045, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw16_xchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0046, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw32_xchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0047, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i64], .pushes = &[
+        .i64
+    ],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw_cmpxchg := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0048, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i32, .i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw_cmpxchg := _w.Instruction{ .forms = &[.{
+    .base = 0xfe0049, .writes = .bytes(8), .args = &[_align, _offset], .pops = &[.i32, .i64, .i64], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw8_cmpxchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe004a, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i32, .i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i32_atomic_rmw16_cmpxchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe004b, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i32, .i32], .pushes = &[.i32],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw8_cmpxchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe004c, .writes = .bytes(1), .args = &[_align, _offset], .pops = &[.i32, .i64, .i64], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw16_cmpxchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe004d, .writes = .bytes(2), .args = &[_align, _offset], .pops = &[.i32, .i64, .i64], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };
+
+i64_atomic_rmw32_cmpxchg_u := _w.Instruction{ .forms = &[.{
+    .base = 0xfe004e, .writes = .bytes(4), .args = &[_align, _offset], .pops = &[.i32, .i64, .i64], .pushes = &[.i64],
+    .requires = .some(.feature(.atomics)),
+}] };

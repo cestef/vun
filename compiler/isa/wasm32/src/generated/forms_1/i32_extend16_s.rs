@@ -4,5 +4,6 @@ pub(crate) const I32_EXTEND16_S: [table::Form; 1usize] = [
     table::Form::new(0x0000_00c1, &[], &[table::Ty::I32], &[table::Ty::I32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::SignExtension))),
 ];

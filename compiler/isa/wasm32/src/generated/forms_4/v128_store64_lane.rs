@@ -22,5 +22,6 @@ pub(crate) const V128_STORE64_LANE: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::Bytes(8))
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

@@ -4,5 +4,6 @@ pub(crate) const F32_CONVERT_I32_S: [table::Form; 1usize] = [
     table::Form::new(0x0000_00b2, &[], &[table::Ty::I32], &[table::Ty::F32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(None),
 ];

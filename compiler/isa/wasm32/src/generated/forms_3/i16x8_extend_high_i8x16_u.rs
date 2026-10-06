@@ -4,5 +4,6 @@ pub(crate) const I16X8_EXTEND_HIGH_I8X16_U: [table::Form; 1usize] = [
     table::Form::new(0x00fd_008a, &[], &[table::Ty::V128], &[table::Ty::V128])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

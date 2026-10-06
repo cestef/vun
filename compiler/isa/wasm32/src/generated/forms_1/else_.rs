@@ -4,5 +4,6 @@ pub(crate) const ELSE_: [table::Form; 1usize] = [
     table::Form::new(0x0000_0005, &[], &[], &[])
         .flow(table::Flow::Next)
         .control(table::Control::Reopen)
+        .writes(table::Written::None)
         .requires(None),
 ];

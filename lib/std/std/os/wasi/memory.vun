@@ -1,0 +1,24 @@
+//! The linear memory of a WASI program, which grows by whole pages and is never given back.
+
+/// The bytes of a page of linear memory, which grows by whole pages.
+page: usize = 65536;
+
+/// `bytes` of linear memory more, in whole pages, the engine backing them where they are touched;
+/// 0 where the memory cannot grow.
+map := (bytes: usize) -> usize {
+    pages: u32 = ((bytes + page - 1) / page).wrap(u32);
+    mut old: u32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(pages));
+        memory_grow();
+        local_set(out(old));
+    });
+    if old == 0xffff_ffff { 0 } else { (old * 65536).wrap(usize) }
+};
+
+/// Memory grown is never given back.
+unmap := (address: usize, bytes: usize) {};
+
+/// The state of the checks of unsafe code, in memory grown the first time a check needs it.
+state := () -> std.check.State { std.check.mapped(map, unmap) };

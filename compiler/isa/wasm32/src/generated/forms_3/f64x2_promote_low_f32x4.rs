@@ -4,5 +4,6 @@ pub(crate) const F64X2_PROMOTE_LOW_F32X4: [table::Form; 1usize] = [
     table::Form::new(0x00fd_005f, &[], &[table::Ty::V128], &[table::Ty::V128])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

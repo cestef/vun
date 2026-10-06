@@ -1,10 +1,29 @@
 //! Instructions in the text format, as listings show them: symbols by name, blocks indented.
 
-use std::fmt;
+use std::fmt::{self, Write};
 
 use super::Module;
 use super::asm::Operand;
+use super::invalid::Invalid;
 use super::op::Op;
+
+impl Module {
+    /// The instructions just before the one `invalid` names and that one, in the text format,
+    /// each with its place.
+    #[must_use]
+    pub fn around(&self, invalid: &Invalid) -> String {
+        let Some(func) = self.funcs.get(invalid.func) else { return String::new() };
+        let from = invalid.at.saturating_sub(AROUND);
+        let shown = func.body.iter().enumerate().skip(from).take(invalid.at - from + 1);
+        shown.fold(String::new(), |mut text, (at, op)| {
+            let _ = writeln!(text, "{at:5}  {}", Text { module: self, op });
+            text
+        })
+    }
+}
+
+/// How many instructions before a failing one a report shows.
+const AROUND: usize = 12;
 
 /// An instruction of `module`, shown in the text format.
 pub struct Text<'m> {

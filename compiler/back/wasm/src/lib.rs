@@ -57,7 +57,7 @@ impl Backend for WasmBackend {
         let module = build::module(request.unit, request.lines, request.target.threads)
             .map_err(|lack| diag.error(lack.diagnostic(INFO.id)))?;
         if let Err(invalid) = module.verify() {
-            panic!("the wasm backend made an invalid module: {invalid}");
+            panic!("the wasm backend made an invalid module: {invalid}\n{}", module.around(&invalid));
         }
         out.put(Artifact { part: Part::Whole, kind: Emits::Object, bytes: module.write() });
         if request.listing {

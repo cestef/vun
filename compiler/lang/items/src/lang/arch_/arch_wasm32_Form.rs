@@ -14,5 +14,6 @@ pub const pushes: Item = Item::new(&["lang", "arch", "wasm32", "Form", "pushes"]
 pub const tail: Item = Item::new(&["lang", "arch", "wasm32", "Form", "tail"]);
 pub const flow: Item = Item::new(&["lang", "arch", "wasm32", "Form", "flow"]);
 pub const control: Item = Item::new(&["lang", "arch", "wasm32", "Form", "control"]);
+pub const writes: Item = Item::new(&["lang", "arch", "wasm32", "Form", "writes"]);
 /// What a processor needs to have the form, if not every one has it.
 pub const requires: Item = Item::new(&["lang", "arch", "wasm32", "Form", "requires"]);

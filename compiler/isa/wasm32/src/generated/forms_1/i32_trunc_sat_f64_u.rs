@@ -4,5 +4,6 @@ pub(crate) const I32_TRUNC_SAT_F64_U: [table::Form; 1usize] = [
     table::Form::new(0x00fc_0003, &[], &[table::Ty::F64], &[table::Ty::I32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::SaturatingConversion))),
 ];

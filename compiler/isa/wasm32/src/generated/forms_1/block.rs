@@ -5,6 +5,7 @@ pub(crate) const BLOCK: [table::Form; 2usize] = [
         .tail(&[64])
         .flow(table::Flow::Next)
         .control(table::Control::Open)
+        .writes(table::Written::None)
         .requires(None),
     table::Form::new(
             0x0000_0002,
@@ -19,5 +20,6 @@ pub(crate) const BLOCK: [table::Form; 2usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::Open)
+        .writes(table::Written::None)
         .requires(None),
 ];

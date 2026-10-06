@@ -117,3 +117,25 @@ fn a_block_returning_with_the_stack_moved_traps_through_native_code_and_c() {
         }
     }
 }
+
+#[test]
+fn a_wasm_block_writing_past_its_memory_or_moving_the_stack_traps_under_the_asm_checks() {
+    let target = targets::wasi_wasm32::p1;
+    // The value is held in a local that is changed, so that it is an `i64` and not a constant.
+    let write = "local_get(in(p)); local_get(in(n)); i64_store(3, {past})";
+    let source = |past| writing("wasm32", write, past).replace("n: u64 = 7;", "mut n: u64 = 6; n +%= 1;");
+    let run = |past| {
+        let name = format!("checks-asm-wasm32-{past}");
+        checked_run(&name, target, "wasm", &[Check::Asm], &source(past))
+    };
+    let unchecked = checked_run("checks-asm-wasm32-none", target, "wasm", &[], &source(0));
+    assert!(matches!(unchecked, Ran::Exited(Some(7)) | Ran::Elsewhere));
+    if let (Ran::Exited(within), Ran::Exited(past)) = (run(0), run(8)) {
+        assert_eq!((within, past), (Some(7), TRAPPED));
+    }
+    let shift = "global_get(stack_pointer); i32_const(16); i32_sub(); global_set(stack_pointer)";
+    let ran = checked_run("checks-asm-wasm32-stack", target, "wasm", &[Check::Asm], &moving("wasm32", shift));
+    if let Ran::Exited(status) = ran {
+        assert_eq!(status, TRAPPED);
+    }
+}

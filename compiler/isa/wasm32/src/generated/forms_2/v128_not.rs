@@ -4,5 +4,6 @@ pub(crate) const V128_NOT: [table::Form; 1usize] = [
     table::Form::new(0x00fd_004d, &[], &[table::Ty::V128], &[table::Ty::V128])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

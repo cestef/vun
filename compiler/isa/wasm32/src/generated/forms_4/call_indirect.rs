@@ -12,5 +12,6 @@ pub(crate) const CALL_INDIRECT: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::CallIndirect)
+        .writes(table::Written::None)
         .requires(None),
 ];

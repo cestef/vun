@@ -22,6 +22,8 @@ pub const local: Item = Item::new(&["lang", "arch", "wasm32", "local"]);
 pub const memory: Item = Item::new(&["lang", "arch", "wasm32", "memory"]);
 /// The namespace `lang.arch.wasm32.rmw`.
 pub const rmw: Item = Item::new(&["lang", "arch", "wasm32", "rmw"]);
+/// The namespace `lang.arch.wasm32.rmw_2`.
+pub const rmw_2: Item = Item::new(&["lang", "arch", "wasm32", "rmw_2"]);
 /// The namespace `lang.arch.wasm32.simd_bitwise`.
 pub const simd_bitwise: Item = Item::new(&["lang", "arch", "wasm32", "simd_bitwise"]);
 /// The namespace `lang.arch.wasm32.simd_compare`.
@@ -81,6 +83,8 @@ pub const Need: Item = Item::new(&["lang", "arch", "wasm32", "Need"]);
 pub const Control: Item = Item::new(&["lang", "arch", "wasm32", "Control"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "wasm32", "Flow"]);
+/// What a form writes to memory, at the address it pops first (the offset of its operand added).
+pub const Written: Item = Item::new(&["lang", "arch", "wasm32", "Written"]);
 /// An operand position: what it takes and what the form does with it.
 pub const Arg: Item = Item::new(&["lang", "arch", "wasm32", "Arg"]);
 /// A width a form is defined at; the table has one.

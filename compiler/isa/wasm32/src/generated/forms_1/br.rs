@@ -15,5 +15,6 @@ pub(crate) const BR: [table::Form; 1usize] = [
         )
         .flow(table::Flow::Next)
         .control(table::Control::Branch)
+        .writes(table::Written::None)
         .requires(None),
 ];

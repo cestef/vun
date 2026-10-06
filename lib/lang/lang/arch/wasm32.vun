@@ -1,7 +1,7 @@
 //! WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
 //! instructions of its stack machine with what each pops and pushes, as the toolchain's backend
 //! encodes them. They are declared in `arithmetic`, `atomic`, `compare`, `control`, `convert`,
-//! `local`, `memory`, `rmw`, `simd_*` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
+//! `local`, `memory`, `rmw`, `rmw_2`, `simd_*` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
 //! declarations.
 //!
 //! A block of wasm is the body of a function written as the text format has it, with Vun values
@@ -125,6 +125,15 @@ Flow := enum {
     ends,
 };
 
+/// What a form writes to memory, at the address it pops first (the offset of its operand added).
+Written := enum {
+    none,
+    /// This many bytes.
+    bytes(u8),
+    /// As many as the last value it pops, `memory_copy` and `memory_fill`.
+    counted,
+};
+
 /// An operand position: what it takes and what the form does with it.
 Arg := struct { kind: Kind, access: Access = .read };
 
@@ -142,6 +151,7 @@ Form := struct {
     tail: &[u8] = &[],
     flow: Flow = .next,
     control: Control = .none,
+    writes: Written = .none,
     /// What a processor needs to have the form, if not every one has it.
     requires: ?Need = .none,
 };
@@ -169,6 +179,7 @@ names := struct {
     ..lang.arch.wasm32.local;
     ..lang.arch.wasm32.memory;
     ..lang.arch.wasm32.rmw;
+    ..lang.arch.wasm32.rmw_2;
     ..lang.arch.wasm32.simd_bitwise;
     ..lang.arch.wasm32.simd_compare;
     ..lang.arch.wasm32.simd_compare_2;

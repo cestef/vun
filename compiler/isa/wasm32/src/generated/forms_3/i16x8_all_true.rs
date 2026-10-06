@@ -4,5 +4,6 @@ pub(crate) const I16X8_ALL_TRUE: [table::Form; 1usize] = [
     table::Form::new(0x00fd_0083, &[], &[table::Ty::V128], &[table::Ty::I32])
         .flow(table::Flow::Next)
         .control(table::Control::None)
+        .writes(table::Written::None)
         .requires(Some(table::Need::Feature(table::Feature::Simd128))),
 ];

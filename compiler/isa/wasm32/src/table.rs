@@ -96,6 +96,16 @@ pub enum Control {
     CallIndirect,
 }
 
+/// What a form writes to memory, at the address it pops first, the offset of its operand added.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Written {
+    None,
+    /// This many bytes.
+    Bytes(u8),
+    /// As many as the last value it pops.
+    Counted,
+}
+
 /// An operand position: what it takes and what the form does with it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Arg {
@@ -126,13 +136,24 @@ pub struct Form {
     pub tail: &'static [u8],
     pub flow: Flow,
     pub control: Control,
+    pub writes: Written,
     pub requires: Option<Need>,
 }
 
 impl Form {
     #[must_use]
     pub const fn new(base: u32, args: &'static [Arg], pops: &'static [Ty], pushes: &'static [Ty]) -> Self {
-        Self { base, args, pops, pushes, tail: &[], flow: Flow::Next, control: Control::None, requires: None }
+        Self {
+            base,
+            args,
+            pops,
+            pushes,
+            tail: &[],
+            flow: Flow::Next,
+            control: Control::None,
+            writes: Written::None,
+            requires: None,
+        }
     }
 
     #[must_use]
@@ -148,6 +169,11 @@ impl Form {
     #[must_use]
     pub const fn control(self, control: Control) -> Self {
         Self { control, ..self }
+    }
+
+    #[must_use]
+    pub const fn writes(self, writes: Written) -> Self {
+        Self { writes, ..self }
     }
 
     #[must_use]
