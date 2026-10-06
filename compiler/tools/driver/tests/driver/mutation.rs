@@ -109,3 +109,49 @@ wrong: Int(run()..=run()) = 1;
     // `twice` passes on the borrow it was lent, and what `bump` writes comes back through both.
     assert_eq!(fixture.check(&file), [errors::INT_DOES_NOT_FIT]);
 }
+
+#[test]
+fn loans_nested_in_arguments_change_what_they_reach() {
+    let fixture = Fixture::new("comptime-mut-nested");
+    let file = fixture.root.write(
+        "nested.vun",
+        "\
+Counter := struct { n: &mut u32 };
+Both := struct { a: &mut u32, b: &mut u32 };
+Outer := struct { c: Counter, k: u32 };
+Slot := enum { full(&mut u32), empty };
+bump := (c: Counter) { c.n.* +|= 1; };
+pair := (a: (&mut u32, u32)) { a.0.* +|= a.1; };
+both := (p: Both) { p.a.* +|= 1; p.b.* +|= 10; };
+deep := (o: Outer) { bump(o.c); bump(o.c); };
+fill := (s: Slot) { match s { .full(r) => { r.* +|= 3; }, .empty => {} } };
+first := (c: Counter) -> &mut u32 { c.n };
+wrap := (n: &mut u32) -> Counter { Counter{ .n = n } };
+one := () -> u32 { mut n: u32 = 1; bump(Counter{ .n = &mut n }); n };
+tuple := () -> u32 { mut n: u32 = 1; pair((&mut n, 5)); n };
+fields := () -> u32 { mut x: u32 = 0; mut y: u32 = 0; both(Both{ .a = &mut x, .b = &mut y }); (x + y).sat(u32) };
+levels := () -> u32 { mut n: u32 = 0; deep(Outer{ .c = Counter{ .n = &mut n }, .k = 0 }); n };
+payload := () -> u32 { mut n: u32 = 4; fill(Slot.full(&mut n)); n };
+returned := () -> u32 { mut n: u32 = 0; first(Counter{ .n = &mut n }).* = 7; n };
+escaped := () -> u32 { mut n: u32 = 0; wrap(&mut n).n.* = 9; n };
+two: Int(one()..=one()) = 2;
+six: Int(tuple()..=tuple()) = 6;
+eleven: Int(fields()..=fields()) = 11;
+twice: Int(levels()..=levels()) = 2;
+seven: Int(payload()..=payload()) = 7;
+set: Int(returned()..=returned()) = 7;
+unknown: Int(escaped()..=escaped()) = 0;
+wrong_one: Int(one()..=one()) = 1;
+wrong_tuple: Int(tuple()..=tuple()) = 5;
+wrong_levels: Int(levels()..=levels()) = 1;
+wrong_returned: Int(returned()..=returned()) = 8;
+",
+    );
+    // Each annotation holds exactly the value its call evaluates to, but the `wrong` ones: a loan
+    // nested in an aggregate argument is lent as storage past the arguments, followed, passed on
+    // and returned as any other. A loan in a result is not supported, so `escaped` has no value
+    // and its annotation is not checked.
+    let found = fixture.reported(&file);
+    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    assert_eq!(ids, [errors::INT_DOES_NOT_FIT; 4], "{found:?}");
+}

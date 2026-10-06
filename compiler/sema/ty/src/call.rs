@@ -22,7 +22,14 @@ impl Instance {
     /// This call as the instantiation binding every parameter to its argument.
     #[must_use]
     pub fn instantiation(&self) -> Instantiation {
-        Instantiation::new(self.f.clone(), self.args.iter().cloned().map(Some).collect())
+        self.instantiation_of(self.args.len())
+    }
+
+    /// This call as the instantiation binding the first `params` parameters to their arguments:
+    /// what follows them is storage lent to the call, which no parameter holds.
+    #[must_use]
+    pub fn instantiation_of(&self, params: usize) -> Instantiation {
+        Instantiation::new(self.f.clone(), self.args.iter().take(params).cloned().map(Some).collect())
     }
 }
 

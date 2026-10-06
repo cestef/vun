@@ -14,12 +14,18 @@ use vun_sema_ty::trap::Unevaluated;
 use crate::machine::Frame;
 
 impl Frame<'_, '_, '_> {
+    /// The role of `local`; none for the storage of what was lent to this call, past the body's
+    /// locals.
+    pub(crate) fn role(&self, local: Local) -> Option<&Role> {
+        self.body.locals.get(local).map(|l| &l.role)
+    }
+
     /// What `local` holds; a `mut` static's is known at run time only.
     pub(crate) fn local(&self, local: Local) -> Result<Value, Unevaluated> {
-        match &self.body.locals[local].role {
-            Role::StaticMut(_) => Err(Unevaluated::Runtime),
+        match self.role(local) {
+            Some(Role::StaticMut(_)) => Err(Unevaluated::Runtime),
             // A top-level binding's storage holds its value, which never changes.
-            Role::Static(decl) => {
+            Some(Role::Static(decl)) => {
                 self.locals[local].clone().map_or_else(|| self.env.cx.get::<DeclValue>(decl), Ok)
             }
             _ => self.locals[local].clone().ok_or(Unevaluated::Unsupported),
@@ -50,8 +56,8 @@ impl Frame<'_, '_, '_> {
 
     /// The value at `parts` under `local`, borrowed where it is held.
     pub(crate) fn reach(&self, local: Local, parts: &[Part]) -> Result<Cow<'_, Value>, Unevaluated> {
-        match (&self.body.locals[local].role, &self.locals[local]) {
-            (Role::StaticMut(_), _) => Err(Unevaluated::Runtime),
+        match (self.role(local), &self.locals[local]) {
+            (Some(Role::StaticMut(_)), _) => Err(Unevaluated::Runtime),
             (_, Some(held)) => held.at(parts),
             _ => Ok(Cow::Owned(self.local(local)?.at(parts)?.into_owned())),
         }
@@ -93,7 +99,7 @@ impl Frame<'_, '_, '_> {
         if self.locals[local].is_none() {
             self.locals[local] = Some(self.local(local)?);
         }
-        if matches!(self.body.locals[local].role, Role::StaticMut(_)) {
+        if matches!(self.role(local), Some(Role::StaticMut(_))) {
             return Err(Unevaluated::Runtime);
         }
         self.locals[local].as_mut().ok_or(Unevaluated::Unsupported)?.replace(parts, value)

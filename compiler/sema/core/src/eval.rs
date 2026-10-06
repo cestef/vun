@@ -33,7 +33,8 @@ pub struct Metered {
     pub value: Result<Value, Unevaluated>,
     pub steps: u64,
     /// By parameter, what a parameter borrowed exclusively holds when the call returns: the
-    /// value its caller's loan reaches then; `None` for the other parameters.
+    /// value its caller's loan reaches then; `None` for the other parameters. After them, what
+    /// each storage lent after the arguments holds, as the loans nested in an argument reach it.
     pub written: Vec<Option<Value>>,
 }
 

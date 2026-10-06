@@ -14,6 +14,8 @@ use vun_sema_ty::call::Instance;
 use vun_sema_ty::trap::Reason;
 use vun_sema_ty::trap::Unevaluated;
 
+use crate::loans::Loans;
+
 /// One call's locals.
 pub struct Frame<'b, 'a, 'db> {
     pub(crate) body: &'b Body,
@@ -40,18 +42,25 @@ pub(crate) enum Exit {
 }
 
 impl<'b, 'a, 'db> Frame<'b, 'a, 'db> {
-    /// A frame running `body` for `call`, its arguments in the parameters.
+    /// A frame running `body` for `call`, its arguments in the parameters, and what the loans
+    /// nested in them reach, which follow the arguments, in storage past the body's locals.
     ///
     /// # Errors
     /// Returns [`Unevaluated::Unsupported`] when the arguments do not match the parameters.
     pub fn new(cx: &'a Cx<'db>, body: &'b Body, call: &Instance) -> Result<Self, Unevaluated> {
-        if call.args.len() != body.params.len() {
+        let params = body.params.len();
+        if call.args.len() < params {
             return Err(Unevaluated::Unsupported);
         }
-        let env = call.instantiation().running(cx).ok_or(Unevaluated::Absent)?;
-        let mut locals = IndexVec::filled(None, body.locals.len());
-        for (&param, arg) in body.params.iter().zip(&call.args) {
-            locals[param] = Some(arg.clone());
+        let env = call.instantiation_of(params).running(cx).ok_or(Unevaluated::Absent)?;
+        let (arguments, lent) = call.args.split_at(params);
+        let mut locals = IndexVec::filled(None, body.locals.len() + lent.len());
+        for (&param, arg) in body.params.iter().zip(arguments) {
+            locals[param] = Some(arg.clone().relocate(params, body.locals.len()));
+        }
+        for (at, value) in lent.iter().enumerate() {
+            locals[Local::new(body.locals.len() + at)] =
+                Some(value.clone().relocate(params, body.locals.len()));
         }
         Ok(Self { body, env, locals, steps: 0, fuel: call.f.fuel(cx) })
     }
