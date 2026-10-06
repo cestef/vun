@@ -26,6 +26,8 @@ pub const errors: Item = Item::new(&["lang", "errors"]);
 pub const float: Item = Item::new(&["lang", "float"]);
 /// The namespace `lang.flow`.
 pub const flow: Item = Item::new(&["lang", "flow"]);
+/// The namespace `lang.gate`.
+pub const gate: Item = Item::new(&["lang", "gate"]);
 /// The namespace `lang.hint`.
 pub const hint: Item = Item::new(&["lang", "hint"]);
 /// The namespace `lang.int`.

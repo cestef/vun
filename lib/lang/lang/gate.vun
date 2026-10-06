@@ -1,0 +1,12 @@
+//! Language features a package opts into (spec 12, section 2).
+
+/// A language feature: a rule of the language not yet settled, so that only the packages that ask
+/// for it, with `.features` in their manifest, may use what is behind it.
+Feature := enum {
+    /// `#[comptime.deferred]` (spec 03, section 4).
+    deferred,
+};
+
+/// Attribute: the declaration is usable from its own package, and from the packages that enable
+/// `feature`.
+behind: ($feature: Feature) -> Attribute(&[Place.decls]) = _;

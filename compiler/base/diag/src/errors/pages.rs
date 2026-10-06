@@ -23,6 +23,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (SYNTAX_NESTING_TOO_DEEP, "lang/lang/errors/syntax/nesting_too_deep.md"),
     (SYNTAX_UNKNOWN_BORROW, "lang/lang/errors/syntax/unknown_borrow.md"),
     (ATTR_MISPLACED, "lang/lang/errors/attr/misplaced.md"),
+    (GATE_DISABLED, "lang/lang/errors/gate/disabled.md"),
     (LINT_UNKNOWN, "lang/lang/errors/lint/unknown.md"),
     (LINT_UNFULFILLED, "lang/lang/errors/lint/unfulfilled.md"),
     (INT_DOES_NOT_FIT, "lang/lang/errors/int/does_not_fit.md"),

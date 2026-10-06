@@ -9,6 +9,7 @@ use vun_diag::DiagCtxt;
 use vun_intern::Symbol;
 use vun_query::{Cx, Query};
 use vun_span::Span;
+use vun_target::Features;
 
 pub use vun_span::{FileRef, PackageId};
 
@@ -24,6 +25,8 @@ pub struct PackageData {
     pub prelude: Vec<Vec<Symbol>>,
     /// Where the manifest declares the prelude.
     pub prelude_span: Option<Span>,
+    /// The language features its manifest enables.
+    pub features: Features,
     /// The names inside the package `targets` of the target it is written for; empty when the
     /// manifest names none.
     pub target: Vec<Symbol>,

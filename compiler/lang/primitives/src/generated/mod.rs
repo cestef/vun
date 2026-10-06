@@ -7,6 +7,7 @@ pub mod comptime;
 pub mod diag;
 pub mod float;
 pub mod flow;
+pub mod gate;
 pub mod hint;
 pub mod int;
 pub mod kind;

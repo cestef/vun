@@ -8,7 +8,9 @@ use vun_intern::Symbol;
 
 mod c;
 mod check;
+mod chosen;
 mod convention;
+mod feature;
 mod floats;
 mod machine;
 mod name;
@@ -20,7 +22,9 @@ mod trace;
 
 pub use c::{Atomics, Attributes, BuildsFor, CCompiler, CInt, CTypes, FrameSizes};
 pub use check::{Check, Checks};
+pub use chosen::Chosen;
 pub use convention::Convention;
+pub use feature::{Feature, Features};
 pub use floats::Floats;
 pub use machine::Machine;
 pub use name::Name;

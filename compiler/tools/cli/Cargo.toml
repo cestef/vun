@@ -14,6 +14,56 @@ path = "src/main.rs"
 [lints]
 workspace = true
 
+[features]
+default = ["backends", "linkers", "ffi", "lsp", "mimalloc"]
+# Every code generator and every linker the driver can register; each is also a feature of its own.
+backends = [
+    "backend-c",
+    "backend-native",
+    "native-x86_64",
+    "native-arm64",
+    "native-thumb",
+    "backend-wasm",
+    "backend-cranelift",
+    "backend-qbe",
+    "backend-llvm",
+    "backend-external",
+]
+linkers = [
+    "link-wild",
+    "link-mold",
+    "link-ar",
+    "link-lld",
+    "link-wasm",
+    "link-gnu",
+    "link-msvc",
+    "link-external",
+]
+backend-c = ["vun-driver/backend-c"]
+backend-native = ["vun-driver/backend-native"]
+native-x86_64 = ["vun-driver/native-x86_64"]
+native-arm64 = ["vun-driver/native-arm64"]
+native-thumb = ["vun-driver/native-thumb"]
+backend-wasm = ["vun-driver/backend-wasm"]
+backend-cranelift = ["vun-driver/backend-cranelift"]
+backend-qbe = ["vun-driver/backend-qbe"]
+backend-llvm = ["vun-driver/backend-llvm"]
+backend-external = ["vun-driver/backend-external"]
+link-wild = ["vun-driver/link-wild"]
+link-mold = ["vun-driver/link-mold"]
+link-ar = ["vun-driver/link-ar"]
+link-lld = ["vun-driver/link-lld"]
+link-wasm = ["vun-driver/link-wasm"]
+link-gnu = ["vun-driver/link-gnu"]
+link-msvc = ["vun-driver/link-msvc"]
+link-external = ["vun-driver/link-external"]
+# `vun ffi bind`, which loads libclang.
+ffi = ["dep:vun-bind", "dep:vun-clang"]
+# `vun util lsp`.
+lsp = ["dep:vun-lsp"]
+# The allocator for many threads.
+mimalloc = ["dep:mimalloc"]
+
 [dependencies]
 vun-sema-ty.workspace = true
 vun-backend.workspace = true
@@ -22,7 +72,7 @@ vun-command.workspace = true
 vun-diag.workspace = true
 vun-disasm.workspace = true
 vun-doc.workspace = true
-vun-driver.workspace = true
+vun-driver = { workspace = true }
 vun-fetch.workspace = true
 vun-fmt.workspace = true
 vun-fs.workspace = true
@@ -32,7 +82,7 @@ vun-http.workspace = true
 vun-intern.workspace = true
 vun-data.workspace = true
 vun-link.workspace = true
-vun-lsp.workspace = true
+vun-lsp = { workspace = true, optional = true }
 vun-mir.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true
@@ -44,9 +94,9 @@ vun-target.workspace = true
 vun-term.workspace = true
 vun-trace.workspace = true
 
-# What a compiler running under WASI has no use for or cannot load: libclang, and an allocator
-# for many threads.
+# What a compiler running under WASI cannot load: libclang, and an allocator for many threads;
+# the features that bring them have no effect there.
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-vun-bind.workspace = true
-vun-clang.workspace = true
-mimalloc.workspace = true
+vun-bind = { workspace = true, optional = true }
+vun-clang = { workspace = true, optional = true }
+mimalloc = { workspace = true, optional = true }

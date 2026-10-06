@@ -25,6 +25,7 @@ macro_rules! register {
 impl Registry {
     /// Every backend and linker compiled into this toolchain.
     #[must_use]
+    #[allow(unused_mut, reason = "a toolchain built without features registers nothing")]
     pub fn with_defaults() -> Self {
         let mut r = Self::default();
         register!(r.add_backend {

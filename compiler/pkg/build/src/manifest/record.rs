@@ -91,6 +91,8 @@ pub(crate) trait Record {
     fn paths(&self, cx: &mut DiagCx<'_>) -> Option<Vec<String>>;
     /// One of the names in `table`, written `.name`.
     fn choice<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<T>;
+    /// A list of names in `table`, each written `.name`.
+    fn choices<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<Vec<T>>;
     /// The items of a list, each read by `read` as a record at the list's source.
     fn items<T>(
         &self,
@@ -189,6 +191,10 @@ impl Record for Decl<'_> {
                 self.invalid_with(Msg::new().text("one of ").code_list(names), help, cx)
             }
         }
+    }
+
+    fn choices<T: Copy>(&self, table: &[(&str, T)], cx: &mut DiagCx<'_>) -> Option<Vec<T>> {
+        self.items(|item, cx| item.choice(table, cx), cx)
     }
 
     fn items<T>(

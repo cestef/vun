@@ -10,14 +10,20 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["x86_64", "arm64", "thumb"]
+x86_64 = ["dep:vun-native-x86_64"]
+arm64 = ["dep:vun-native-arm64"]
+thumb = ["dep:vun-native-thumb"]
+
 [dependencies]
 vun-backend.workspace = true
 vun-diag.workspace = true
 vun-lir-passes.workspace = true
 vun-native.workspace = true
-vun-native-arm64.workspace = true
-vun-native-thumb.workspace = true
-vun-native-x86_64.workspace = true
+vun-native-arm64 = { workspace = true, optional = true }
+vun-native-thumb = { workspace = true, optional = true }
+vun-native-x86_64 = { workspace = true, optional = true }
 vun-object.workspace = true
 vun-target.workspace = true
 

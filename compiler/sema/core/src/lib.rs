@@ -14,6 +14,7 @@ pub mod decl;
 pub mod env;
 pub mod eval;
 pub mod fuel;
+pub mod gate;
 pub mod kinds;
 pub mod layout;
 pub mod link;

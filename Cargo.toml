@@ -80,7 +80,7 @@ vun-wasm = { path = "compiler/object/wasm" }
 vun-dwarf = { path = "compiler/object/dwarf" }
 vun-backend-wasm = { path = "compiler/back/wasm" }
 vun-backend-c = { path = "compiler/back/c" }
-vun-backend-native = { path = "compiler/native/backend" }
+vun-backend-native = { path = "compiler/native/backend", default-features = false }
 vun-native = { path = "compiler/native/core" }
 vun-native-x86_64 = { path = "compiler/native/x86_64" }
 vun-native-arm64 = { path = "compiler/native/arm64" }
@@ -114,7 +114,7 @@ vun-bind = { path = "compiler/tools/bind" }
 vun-clang = { path = "compiler/tools/clang" }
 vun-command = { path = "compiler/tools/command" }
 vun-harness = { path = "compiler/base/harness" }
-vun-driver = { path = "compiler/tools/driver" }
+vun-driver = { path = "compiler/tools/driver", default-features = false }
 vun-lsp = { path = "compiler/tools/lsp" }
 vun-cli = { path = "compiler/tools/cli" }
 vun-xtask = { path = "compiler/tools/xtask" }

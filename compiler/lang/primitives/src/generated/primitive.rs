@@ -24,6 +24,8 @@ pub enum Primitive {
     Float(float::Float),
     /// `lang.flow`
     Flow(flow::Flow),
+    /// `lang.gate`
+    Gate(gate::Gate),
     /// `lang.hint`
     Hint(hint::Hint),
     /// `lang.int`
@@ -75,6 +77,7 @@ impl Primitive {
             .chain(diag::Diag::ALL.iter().map(|&p| Self::Diag(p)))
             .chain(float::Float::ALL.iter().map(|&p| Self::Float(p)))
             .chain(flow::Flow::ALL.iter().map(|&p| Self::Flow(p)))
+            .chain(gate::Gate::ALL.iter().map(|&p| Self::Gate(p)))
             .chain(hint::Hint::ALL.iter().map(|&p| Self::Hint(p)))
             .chain(int::Int::ALL.iter().map(|&p| Self::Int(p)))
             .chain(kind::Kind::ALL.iter().map(|&p| Self::Kind(p)))
@@ -107,6 +110,7 @@ impl Primitive {
             Self::Diag(_) => diag::Diag::NAMESPACE,
             Self::Float(_) => float::Float::NAMESPACE,
             Self::Flow(_) => flow::Flow::NAMESPACE,
+            Self::Gate(_) => gate::Gate::NAMESPACE,
             Self::Hint(_) => hint::Hint::NAMESPACE,
             Self::Int(_) => int::Int::NAMESPACE,
             Self::Kind(_) => kind::Kind::NAMESPACE,
@@ -140,6 +144,7 @@ impl Primitive {
             Self::Diag(p) => p.item(),
             Self::Float(p) => p.item(),
             Self::Flow(p) => p.item(),
+            Self::Gate(p) => p.item(),
             Self::Hint(p) => p.item(),
             Self::Int(p) => p.item(),
             Self::Kind(p) => p.item(),
@@ -173,6 +178,7 @@ impl Primitive {
             Self::Diag(p) => p.name(),
             Self::Float(p) => p.name(),
             Self::Flow(p) => p.name(),
+            Self::Gate(p) => p.name(),
             Self::Hint(p) => p.name(),
             Self::Int(p) => p.name(),
             Self::Kind(p) => p.name(),

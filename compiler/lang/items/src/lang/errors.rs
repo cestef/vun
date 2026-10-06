@@ -10,6 +10,8 @@ use crate::Item;
 pub const syntax: Item = Item::new(&["lang", "errors", "syntax"]);
 /// Attributes (spec 02, section 5).
 pub const attr: Item = Item::new(&["lang", "errors", "attr"]);
+/// Language features (spec 12, section 2).
+pub const gate: Item = Item::new(&["lang", "errors", "gate"]);
 /// Lints and their configuration (spec 10, section 4).
 pub const lint: Item = Item::new(&["lang", "errors", "lint"]);
 /// Range integers (spec 04).

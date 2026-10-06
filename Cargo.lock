@@ -1603,6 +1603,7 @@ dependencies = [
  "vun-span",
  "vun-suggest",
  "vun-syntax",
+ "vun-target",
  "vun-trace",
 ]
 
@@ -2342,6 +2343,7 @@ dependencies = [
  "vun-codec",
  "vun-data",
  "vun-intern",
+ "vun-variants",
 ]
 
 [[package]]

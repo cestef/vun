@@ -17,7 +17,7 @@ workspace = true
 libfuzzer-sys.workspace = true
 vun-diag.workspace = true
 vun-disasm.workspace = true
-vun-driver.workspace = true
+vun-driver = { workspace = true, features = ["default"] }
 vun-elf.workspace = true
 vun-fmt.workspace = true
 vun-grammar.workspace = true

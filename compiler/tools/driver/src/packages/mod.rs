@@ -33,6 +33,7 @@ use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_sema::target::TargetPath;
 use vun_span::{FileId, PackageId, Span};
+use vun_target::Features;
 use vun_trace::tracing;
 use vun_uri::Uri;
 
@@ -73,6 +74,7 @@ pub struct Package {
     pub release: Option<(Identity, Version)>,
     /// The toolchain it pins (`.toolchain`), which builds it.
     pub toolchain: Option<Version>,
+    pub features: Features,
     /// The target it is written for (`.target`), the names inside the package `targets`.
     pub target: Vec<Symbol>,
     /// The identities it replaces; only the project's apply.
@@ -233,6 +235,7 @@ impl Session {
                 snapshot: taken.snapshot,
                 release: Some((identity, manifest.version)),
                 toolchain: manifest.toolchain,
+                features: manifest.features,
                 target: manifest.target.iter().flat_map(|t| TargetPath::parse(t).0).collect(),
                 replace,
             };
@@ -285,6 +288,7 @@ impl Session {
                 sources: Sources::default(),
                 release: None,
                 toolchain: None,
+                features: Features::default(),
                 target: Vec::new(),
                 replace: Vec::new(),
             };

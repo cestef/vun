@@ -11,9 +11,13 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-native", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-wasm", "link-gnu", "link-msvc", "link-external"]
+default = ["backend-c", "backend-native", "native-x86_64", "native-arm64", "native-thumb", "backend-wasm", "backend-cranelift", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-wasm", "link-gnu", "link-msvc", "link-external"]
 backend-c = ["dep:vun-backend-c"]
 backend-native = ["dep:vun-backend-native"]
+# The architectures the native backend compiles for; it lists none of those left out.
+native-x86_64 = ["backend-native", "vun-backend-native/x86_64"]
+native-arm64 = ["backend-native", "vun-backend-native/arm64"]
+native-thumb = ["backend-native", "vun-backend-native/thumb"]
 backend-wasm = ["dep:vun-backend-wasm"]
 backend-cranelift = ["dep:vun-backend-cranelift"]
 backend-qbe = ["dep:vun-backend-qbe"]

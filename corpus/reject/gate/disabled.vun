@@ -1,0 +1,5 @@
+//! A declaration behind a language feature is usable only by a package that enables it, with
+//! `.features` in its manifest (spec 12, section 2); a file outside any package enables none.
+
+#[comptime.deferred] //~ gate.disabled
+check := ($cond: lang.meta.Code(bool)) {};

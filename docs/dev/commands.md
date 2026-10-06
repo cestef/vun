@@ -252,6 +252,19 @@ It links; no machine here runs what it links.
 GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence clang for
 `linux.arm.kernel`. Kernel targets link `-static -nostdlib -l gcc`.
 
+## Cargo features
+
+`vun-cli` builds what its features name; the default has all of them. `backends` and `linkers`
+group the code generators and linkers (each is also a feature: `backend-llvm`, `link-wild`, ...),
+`native-x86_64`, `native-arm64` and `native-thumb` the architectures of the native backend,
+`ffi` is `vun ffi bind` (libclang), `lsp` is `vun util lsp`, `mimalloc` the allocator. A build
+without a component reports it where it is asked for: no backend or linker of that name, `util
+lsp` unavailable. `cargo check -p vun-cli --no-default-features` is the smallest toolchain, and
+`--features backend-c,link-gnu` adds to it. `vun-driver` has the same features with no default
+for its dependents, so a dependent chooses (`xtask` and `fuzz` take them all).
+
+Language features are another thing: a package's `.features` (spec 12, section 2).
+
 ## Measuring speed
 
 ```sh

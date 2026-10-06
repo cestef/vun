@@ -15,8 +15,11 @@ use vun_backend::{
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::{Division, Half};
 use vun_native::Native;
+#[cfg(feature = "arm64")]
 use vun_native_arm64::Arm;
+#[cfg(feature = "thumb")]
 use vun_native_thumb::Thumb2;
+#[cfg(feature = "x86_64")]
 use vun_native_x86_64::X86;
 use vun_object::{Float, Format, Machine};
 use vun_target::{Name, Names, TargetSpec};
@@ -43,29 +46,33 @@ const FORMATS: [(Name, Format, &[Machine]); 2] = [
     (Name("macho"), Format::MachO, &[Machine::Aarch64]),
 ];
 
-const ARCHES: [Arch; 3] = [
-    Arch {
-        name: Name("x86_64"),
-        machine: X86::machine,
-        follows: |t| X86::convention(t).is_some(),
-        object: X86::object,
-        division: X86::division,
-    },
-    Arch {
-        name: Name("arm64"),
-        machine: Arm::machine,
-        follows: |t| Arm::convention(t).is_some(),
-        object: Arm::object,
-        division: Arm::division,
-    },
-    Arch {
-        name: Name("arm"),
-        machine: Thumb2::machine,
-        follows: |t| Thumb2::convention(t).is_some(),
-        object: Thumb2::object,
-        division: Thumb2::division,
-    },
-];
+/// The architectures compiled in, each by the feature that brings its crate: its name among
+/// targets' and the compilation of a unit into an object.
+macro_rules! arches {
+    ($($feature:literal => $name:literal, $arch:ty;)*) => {
+        const ARCHES: &[Arch] = &[$(
+            #[cfg(feature = $feature)]
+            Arch {
+                name: Name($name),
+                machine: <$arch>::machine,
+                follows: |t| <$arch>::convention(t).is_some(),
+                object: <$arch>::object,
+                division: <$arch>::division,
+            },
+        )*];
+
+        const NAMES: &[Name] = &[$(
+            #[cfg(feature = $feature)]
+            Name($name),
+        )*];
+    };
+}
+
+arches! {
+    "x86_64" => "x86_64", X86;
+    "arm64" => "arm64", Arm;
+    "thumb" => "arm", Thumb2;
+}
 
 const FORMAT_NAMES: [Name; FORMATS.len()] = {
     let mut names = [Name(""); FORMATS.len()];
@@ -77,19 +84,9 @@ const FORMAT_NAMES: [Name; FORMATS.len()] = {
     names
 };
 
-const NAMES: [Name; ARCHES.len()] = {
-    let mut names = [Name(""); ARCHES.len()];
-    let mut i = 0;
-    while i < ARCHES.len() {
-        names[i] = ARCHES[i].name;
-        i += 1;
-    }
-    names
-};
-
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("native"),
-    arches: Names::Only(&NAMES),
+    arches: Names::Only(NAMES),
     formats: Names::Only(&FORMAT_NAMES),
     caps: BackendCaps {
         emits: Emits::Object,

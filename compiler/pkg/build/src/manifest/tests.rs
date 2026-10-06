@@ -6,6 +6,7 @@ use vun_span::{EXTENSION, FileId, SourceFiles};
 use vun_syntax::cst::Cst;
 use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
+use vun_target::{Feature, Features};
 
 use super::{DepKind, Identity, Manifest, Source, Version};
 use crate::layout::MANIFEST;
@@ -58,6 +59,7 @@ fn every_manifest_reads() {
 fn reads_every_field() {
     let text = r#"package := .{
         .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2", .requires = "0.1.0",
+        .features = .{ .deferred },
         .include = .{ "build.vun", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
             .hal = .{ .version = "1.3.0", .hash = "blake3:k3f2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", .urls = .{ "https://x" } },
@@ -72,6 +74,7 @@ fn reads_every_field() {
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
     assert_eq!(m.requires, Version::parse("0.1.0"));
+    assert_eq!(m.features, Features::of([Feature::Deferred]));
     assert_eq!(m.include, ["build.vun", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
     let deps: Vec<_> = m.deps.iter().map(|d| (d.name.as_str(), d.kind)).collect();
@@ -88,6 +91,7 @@ fn reads_every_field() {
     );
     let written = m.source().unwrap();
     let again = manifest(&written).0.unwrap();
+    assert_eq!(again.features, m.features, "{written}");
     assert_eq!(again.deps[3].source, m.deps[3].source, "{written}");
     assert_eq!(
         (again.replace[0].identity, &again.replace[0].source),
@@ -145,6 +149,11 @@ fn reports_where_the_manifest_is_wrong() {
         (
             r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1,
                 .include = .{ "build.vun", "../secrets" } };"#,
+            &[errors::MANIFEST_INVALID_FIELD],
+        ),
+        (
+            r#"package := .{ .name = "a", .id = 1, .version = "1.0.0", .edition = 1, .include = .{ "build.vun" },
+                .features = .{ .deferd } };"#,
             &[errors::MANIFEST_INVALID_FIELD],
         ),
     ];

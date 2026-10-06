@@ -25,6 +25,11 @@ attr := struct {
     misplaced := diag.Diag{};
 };
 
+/// Language features (spec 12, section 2).
+gate := struct {
+    disabled := diag.Diag{};
+};
+
 /// Lints and their configuration (spec 10, section 4).
 lint := struct {
     unknown := diag.Diag{};

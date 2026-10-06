@@ -3,6 +3,8 @@ mod syntax;
 pub use syntax::*;
 mod attr;
 pub use attr::*;
+mod gate;
+pub use gate::*;
 mod lint;
 pub use lint::*;
 mod int;

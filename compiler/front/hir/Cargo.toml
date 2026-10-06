@@ -27,6 +27,7 @@ vun-grammar.workspace = true
 vun-desugar.workspace = true
 vun-hash.workspace = true
 vun-query.workspace = true
+vun-target.workspace = true
 
 [dev-dependencies]
 vun-fs.workspace = true

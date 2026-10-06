@@ -6,6 +6,7 @@ package := .{
     .version = "0.0.0",
     .edition = 2026,
     .include = .{ "build.vun", "std.vun", "std" },
+    .features = .{ .deferred },
     .deps = .{},
 };
 

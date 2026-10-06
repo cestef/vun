@@ -23,7 +23,7 @@ vun-term.workspace = true
 vun-span.workspace = true
 vun-harness.workspace = true
 vun-hash.workspace = true
-vun-driver.workspace = true
+vun-driver = { workspace = true, features = ["default"] }
 vun-build.workspace = true
 vun-target.workspace = true
 vun-fetch.workspace = true

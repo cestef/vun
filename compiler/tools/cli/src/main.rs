@@ -9,7 +9,7 @@ use vun_driver::{Persistence, Session};
 
 /// The compiler allocates many small, short-lived values from many threads, where mimalloc is
 /// faster than the system allocator.
-#[cfg(not(target_os = "wasi"))]
+#[cfg(all(feature = "mimalloc", not(target_os = "wasi")))]
 #[global_allocator]
 static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -19,7 +19,10 @@ fn main() -> ExitCode {
     session.persistence = Persistence::On;
     session.shared = Some(session.store.memos());
     session.schemes.install(vun_http::SCHEMES);
-    session.language_server = Some(vun_lsp::serve);
+    #[cfg(feature = "lsp")]
+    {
+        session.language_server = Some(vun_lsp::serve);
+    }
     session.check = PROGRAM.invocation(&CHECK_PATH);
     PROGRAM.main(&mut session)
 }

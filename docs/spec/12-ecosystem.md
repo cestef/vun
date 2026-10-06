@@ -97,6 +97,11 @@ build := (b: &mut std.build.Build) {
 
 - `.prelude` lists the namespaces whose public names every file of the package sees
   unqualified, so that tools resolve names from the manifest alone.
+- `.features` lists the language features the package enables, each written `.name`
+  (`lang.gate.Feature`). A declaration marked `#[gate.behind(feature)]` is usable from its own
+  package and from the packages enabling `feature`; any other use is `gate.disabled`. A feature
+  is a rule of the language not yet settled, so a package opts in to it; a file outside any
+  package enables none. A manifest naming a feature the toolchain lacks is `manifest.invalid_field`.
 - A directory holds a package when its `build.vun` declares `package`. A file belongs to the package
   of the nearest such directory above it. Any other `build.vun` is an ordinary source file, such as
   the namespace `std.build`.

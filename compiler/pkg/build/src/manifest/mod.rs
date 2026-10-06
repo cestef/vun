@@ -19,6 +19,7 @@ pub use identity::Identity;
 use record::{Fields, Record};
 pub use version::Version;
 use vun_hash::Hash;
+use vun_target::{Feature, Features};
 use vun_uri::Uri;
 
 use crate::layout::MANIFEST;
@@ -37,6 +38,8 @@ pub struct Manifest {
     pub toolchain: Option<Version>,
     /// The oldest toolchain that reads this manifest and builds the package.
     pub requires: Option<Version>,
+    /// The language features the package enables (spec 12, section 2).
+    pub features: Features,
     /// The path in the package `targets` the package is written for, as `--target` takes it;
     /// checking or building one of its files chooses it instead of the machine's.
     pub target: Option<String>,
@@ -116,6 +119,7 @@ mod field {
     pub(super) const DEPS: &str = "deps";
     pub(super) const MEMBERS: &str = "members";
     pub(super) const PRELUDE: &str = "prelude";
+    pub(super) const FEATURES: &str = "features";
     pub(super) const HASH: &str = "hash";
     pub(super) const URLS: &str = "urls";
     pub(super) const PATH: &str = "path";
@@ -127,7 +131,7 @@ mod field {
 
     pub(super) const PACKAGE: &[&str] = &[
         NAME, ID, VERSION, EDITION, TOOLCHAIN, REQUIRES, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS,
-        PRELUDE,
+        PRELUDE, FEATURES,
     ];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, LIBRARY, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH, LIBRARY];
@@ -201,6 +205,10 @@ impl Manifest {
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
         let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| d.version(cx).map(Some));
         let requires = fields.get(field::REQUIRES).map_or(Some(None), |d| d.version(cx).map(Some));
+        let features = fields.get(field::FEATURES).map_or(Some(Features::default()), |d| {
+            let table: Vec<_> = Feature::ALL.iter().map(|&f| (f.name(), f)).collect();
+            d.choices(&table, cx).map(Features::of)
+        });
         let target = fields.get(field::TARGET).map_or(Some(None), |d| d.string(cx).map(Some));
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
@@ -217,6 +225,7 @@ impl Manifest {
             version: version?,
             edition: edition?,
             toolchain: toolchain?,
+            features: features?,
             requires: requires?,
             target: target?,
             include: include?,

@@ -3,6 +3,7 @@
 
 mod c_layout;
 mod frozen;
+mod gated;
 mod holes;
 mod impls;
 mod layout;
@@ -133,6 +134,7 @@ impl Visitor for Checker<'_, '_, '_> {
             self.open_length(hir, len);
         }
         self.member(hir, expr);
+        self.gated(hir, expr);
         self.rest(hir, expr);
         if let ExprKind::Fn { .. } = hir.exprs[expr].kind {
             let f = ExprRef::new(self.env.file.clone(), hir, expr);

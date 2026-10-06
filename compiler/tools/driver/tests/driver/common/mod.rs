@@ -16,6 +16,7 @@ use vun_fs::Scratch;
 use vun_hash::Hash;
 use vun_query::Db;
 use vun_span::{EXTENSION, SourceFiles, Span};
+use vun_target::Features;
 
 /// Where the tests of one build share the libraries' memos, so that `lang` and `std` are
 /// computed once per target and set of checks rather than in every session.
@@ -44,6 +45,7 @@ impl Fixture {
             version: Version::parse(version).unwrap(),
             edition: EDITION,
             toolchain: None,
+            features: Features::default(),
             requires: None,
             target: None,
             include: vec![MANIFEST.into(), Path::new(name).with_extension(EXTENSION).display().to_string()],
