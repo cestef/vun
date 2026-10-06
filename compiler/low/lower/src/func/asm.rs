@@ -2,7 +2,7 @@
 //! its place, and a symbol the address of the function, link symbol or static it names. A block
 //! of the target's instruction set uses only forms its processor has.
 
-use vun_inline::Rebind;
+use vun_inline::{Bound, Rebind, RegRef};
 use vun_items::lang::check as operations;
 use vun_lir::{Address, AsmCheck, InstKind, Output, Value};
 use vun_mir::{Asm, Operand, Place};
@@ -11,6 +11,7 @@ use vun_sema_ty::Value as Constant;
 use vun_target::Check;
 
 use super::{FnLower, Storage};
+use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
 /// The bindings of a block, lowered in order.
@@ -32,9 +33,26 @@ impl Rebind<Operand, Place, Operand> for Binder<'_, '_, '_, '_> {
         self.0.scalar_operand(&value)
     }
 
+    /// A vector is read from a copy of it in a slot of the block's own, which the block writes
+    /// back to: what it does with it is not the vector's.
+    fn input(&mut self, value: Operand, reg: Option<RegRef>) -> Result<Bound<Value, Output>, Unlowered> {
+        let vector = self.0.operand_ty(&value).filter(|ty| ty.lanes().is_some());
+        let (Some(ty), Operand::Place(place)) = (vector, &value) else {
+            return Ok(Bound::In { value: self.value(value)?, reg });
+        };
+        let from = self.0.reach(place)?.ok_or_else(|| self.unsupported())?.addr;
+        let Repr::Memory(layout) = self.0.l.types.repr(ty, self.0.at)? else {
+            return Err(self.unsupported());
+        };
+        let slot = self.0.b.slot(layout.size, layout.align, self.0.at);
+        let addr = self.0.b.slot_addr(slot, self.0.at);
+        self.0.copy_value(from, addr, ty)?;
+        Ok(Bound::InOut { place: Output { addr, ty: self.0.held_of(ty)? }, reg })
+    }
+
     fn place(&mut self, place: Place) -> Result<Output, Unlowered> {
         let reached = self.0.reach(&place)?.ok_or_else(|| self.unsupported())?;
-        Ok(Output { addr: reached.addr, ty: self.0.scalar_of(reached.ty)? })
+        Ok(Output { addr: reached.addr, ty: self.0.held_of(reached.ty)? })
     }
 
     fn symbol(&mut self, symbol: Operand) -> Result<Address, Unlowered> {

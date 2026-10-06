@@ -10,13 +10,11 @@ use vun_hir::tree::{Arg, BlockId, Entry, ExprId, ExprKind, Hir};
 use vun_hir::visit::{self, Visitor};
 use vun_primitives::Primitive;
 use vun_primitives::arch::Arch as Form;
-use vun_sema_float::Format;
 use vun_sema_ty::TyKind;
-use vun_sema_ty::float::FloatType;
 use vun_sema_ty::item::Site;
 
 use super::{Known, Stage, Typer};
-use crate::asm::{Arch, ArchTable, Checker, Table};
+use crate::asm::{Arch, ArchTable, Checker, Held, Table};
 use crate::callable::Callable;
 use crate::layout::Shapes;
 use crate::target::TargetOf;
@@ -76,10 +74,7 @@ impl Typer<'_, '_, '_> {
         for &(_, value) in &bindings {
             let Some(known) = self.found.types.get(&value).copied() else { continue };
             let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size).filter(|_| targeted);
-            let float = Format::of(&known.ty).is_some();
-            if let Some(register) = arch.register(&table, bytes, float) {
-                bound.insert(value, register);
-            }
+            bound.insert(value, arch.register(&table, bytes, Held::of(&known.ty)));
         }
         let mut diag = DiagCtxt::new();
         let checked = Checker {

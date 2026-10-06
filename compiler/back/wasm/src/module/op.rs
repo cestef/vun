@@ -160,22 +160,30 @@ pub struct Mem {
 /// A load or a store of a [`Mem`]: its code and its name in the text format.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Access {
+    /// The byte before the code, where the instruction is of a proposal's.
+    pub prefix: Option<u8>,
     pub code: u8,
     pub mnemonic: &'static str,
 }
 
 /// Loads and stores by their [`Mem`].
-const MEMS: [(Mem, Access, Access); 6] = [
+const MEMS: [(Mem, Access, Access); 7] = [
     (Mem { ty: ValType::I32, bytes: 4 }, access(0x28, "i32.load"), access(0x36, "i32.store")),
     (Mem { ty: ValType::I64, bytes: 8 }, access(0x29, "i64.load"), access(0x37, "i64.store")),
     (Mem { ty: ValType::F32, bytes: 4 }, access(0x2a, "f32.load"), access(0x38, "f32.store")),
     (Mem { ty: ValType::F64, bytes: 8 }, access(0x2b, "f64.load"), access(0x39, "f64.store")),
     (Mem { ty: ValType::I32, bytes: 1 }, access(0x2d, "i32.load8_u"), access(0x3a, "i32.store8")),
     (Mem { ty: ValType::I32, bytes: 2 }, access(0x2f, "i32.load16_u"), access(0x3b, "i32.store16")),
+    (Mem { ty: ValType::V128, bytes: 16 }, vector(0x00, "v128.load"), vector(0x0b, "v128.store")),
 ];
 
 const fn access(code: u8, mnemonic: &'static str) -> Access {
-    Access { code, mnemonic }
+    Access { prefix: None, code, mnemonic }
+}
+
+/// An access of the vectors proposal, whose codes follow the byte `0xfd`.
+const fn vector(code: u8, mnemonic: &'static str) -> Access {
+    Access { prefix: Some(0xfd), code, mnemonic }
 }
 
 impl Mem {

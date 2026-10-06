@@ -18,7 +18,7 @@ mod thumb;
 mod wasm32;
 mod x86_64;
 
-pub(crate) use check::Checker;
+pub(crate) use check::{Checker, Held};
 pub use table::{ArchTable, Flow, Op, Table};
 use vun_codec::{Decode, Encode};
 use vun_hir::tree::ExprId;

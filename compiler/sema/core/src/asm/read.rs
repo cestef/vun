@@ -178,7 +178,13 @@ impl Checker<'_, '_, '_> {
     /// `in(value)`, `out(value)` or `inout(value)`: in a register of the class and width the
     /// value's type needs.
     fn bound(&mut self, form: Form, value: ExprId) -> Option<Given> {
-        let (class, size) = *self.bound.get(&value)?;
+        let (class, size) = match *self.bound.get(&value)? {
+            Some(held) => held,
+            None => {
+                let msg = Msg::new().text("this value is held in no register of the architecture");
+                return self.unknown(value, msg, None);
+            }
+        };
         let bound = match form {
             Form::r#in => Bound::In { value, reg: None },
             Form::out => Bound::Out { place: value, reg: None },
@@ -201,7 +207,7 @@ impl Checker<'_, '_, '_> {
         let Some(Given::Reg { reg, size }) = named else {
             return self.unknown(register, Msg::new().text("this is no register"), None);
         };
-        let size = size.or_else(|| self.bound.get(&value)?.1);
+        let size = size.or_else(|| self.bound.get(&value)?.as_ref()?.1);
         Some(Given::Bound { bound: bound.at(reg), class: reg.class, size })
     }
 }

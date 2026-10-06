@@ -9,13 +9,11 @@ use vun_inline::Inst;
 use vun_inline::Operand;
 use vun_isa::{Misfit, Scope, Slot, Stack, Why};
 use vun_origin::OriginId;
-use vun_sema_float::Format;
 use vun_sema_ty::Ty;
 use vun_sema_ty::Value;
-use vun_sema_ty::float::FloatType;
 use vun_sema_ty::item::Site;
 
-use super::check::Checker;
+use super::check::{Checker, Held};
 use super::parts::Parts;
 use super::read::Labels;
 use super::table::declared;
@@ -91,7 +89,7 @@ impl Checker<'_, '_, '_> {
             if bytes == 0 {
                 return None;
             }
-            let (class, _) = self.arch.register(self.table, Some(bytes), Format::of(&ty).is_some())?;
+            let (class, _) = self.arch.register(self.table, Some(bytes), Held::of(&ty))?;
             Some(Slot::Class(class))
         };
         // What the form pops itself, a table's index, is above the parameters.

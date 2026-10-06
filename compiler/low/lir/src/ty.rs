@@ -16,6 +16,9 @@ pub enum Scalar {
     F32,
     F64,
     Ptr,
+    /// A 128-bit vector, which only a block of inline assembly holds: it reads and writes one in
+    /// memory, no value is of this type.
+    V128,
 }
 
 impl Scalar {
@@ -30,7 +33,7 @@ impl Scalar {
             Self::I16 | Self::F16 => 16,
             Self::I32 | Self::F32 => 32,
             Self::I64 | Self::F64 => 64,
-            Self::I128 => 128,
+            Self::I128 | Self::V128 => 128,
             Self::Ptr => pointer_bits,
         }
     }
@@ -82,6 +85,7 @@ impl Scalar {
             Self::F32 => "f32",
             Self::F64 => "f64",
             Self::Ptr => "ptr",
+            Self::V128 => "v128",
         }
     }
 }

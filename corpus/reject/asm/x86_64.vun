@@ -1,7 +1,7 @@
 //! What a block of x86-64 instructions reports (spec 07, section 6): a call of no instruction, an
 //! operand of no kind, a name the table and the block do not have, operands no form takes,
 //! immediates too wide, registers of another class, an output that is no place, a block outside
-//! `unsafe`, and instructions of two architectures.
+//! `unsafe`, instructions of two architectures and a vector bound where none is held.
 
 helper := () {};
 
@@ -41,5 +41,14 @@ mixed := () {
         ..lang.arch.x86_64.names;
         ret();
         lang.arch.arm64.control.ret(); //~ asm.unknown_arch
+    });
+};
+
+V: type = lang.simd.Vector(4, i32);
+
+vector_in_no_register := (v: V) {
+    unsafe lang.arch.asm({
+        ..lang.arch.x86_64.names;
+        mov(rax, in(v)); //~ asm.unknown_operand
     });
 };

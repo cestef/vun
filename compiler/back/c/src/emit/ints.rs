@@ -81,6 +81,7 @@ impl Emitter<'_> {
         match s {
             Scalar::I128 => Err(Missing::Int128.at(at)),
             Scalar::F16 => Err(Missing::Half.at(at)),
+            Scalar::V128 => Err(Missing::Vector.at(at)),
             Scalar::F32 => Ok(Ty::Float),
             Scalar::F64 => Ok(Ty::Double),
             Scalar::Ptr => Ok(Ty::address()),
@@ -144,7 +145,9 @@ impl Emitter<'_> {
             Scalar::Ptr => {
                 self.literal(bits, self.unit.pointer_bits, at)?.cast(self.word()).cast(Ty::address())
             }
-            Scalar::I128 | Scalar::F16 => return Err(self.scalar(s, at).expect_err("refused by `scalar`")),
+            Scalar::I128 | Scalar::F16 | Scalar::V128 => {
+                return Err(self.scalar(s, at).expect_err("refused by `scalar`"));
+            }
         })
     }
 }

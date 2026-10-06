@@ -24,6 +24,7 @@ impl Isa {
             Scalar::Ptr => self.target.pointer_type(),
             Scalar::I128 => return Err(Missing::Int128),
             Scalar::F16 => return Err(Missing::Half),
+            Scalar::V128 => return Err(Missing::Vector),
         })
     }
 

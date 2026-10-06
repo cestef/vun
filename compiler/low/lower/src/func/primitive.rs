@@ -204,6 +204,18 @@ impl FnLower<'_, '_, '_> {
         }
     }
 
+    /// The scalar a block reads and writes a place of `ty` as: its own, or the 128 bits of a vector.
+    pub(super) fn held_of(&self, ty: Ty) -> Result<Scalar, Unlowered> {
+        match self.l.types.repr(ty, self.at)? {
+            crate::repr::Repr::Memory(layout)
+                if layout.size == Scalar::V128.bytes(0) && ty.lanes().is_some() =>
+            {
+                Ok(Scalar::V128)
+            }
+            _ => self.scalar_of(ty),
+        }
+    }
+
     pub(super) fn scalar_of(&self, ty: Ty) -> Result<Scalar, Unlowered> {
         match self.l.types.repr(ty, self.at)? {
             crate::repr::Repr::Scalar(s) => Ok(s),

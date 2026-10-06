@@ -61,6 +61,7 @@ pub(super) fn val(ty: Scalar) -> Result<ValType, Missing> {
         Scalar::F64 => Ok(ValType::F64),
         Scalar::I128 => Err(Missing::Int128),
         Scalar::F16 => Err(Missing::Half),
+        Scalar::V128 => Ok(ValType::V128),
     }
 }
 

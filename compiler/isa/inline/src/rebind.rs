@@ -1,6 +1,6 @@
 //! Carrying a block from one representation to the next, binding by binding.
 
-use crate::{Base, Block, Bound, Disp, Inst, Mem, Operand};
+use crate::{Base, Block, Bound, Disp, Inst, Mem, Operand, RegRef};
 
 /// How the bindings of one representation become those of the next, or why one cannot.
 pub trait Rebind<V, P, S> {
@@ -12,6 +12,19 @@ pub trait Rebind<V, P, S> {
     /// # Errors
     /// Why the value has no counterpart.
     fn value(&mut self, value: V) -> Result<Self::Value, Self::Error>;
+
+    /// How an input is bound: as the value it is by default, or as a place where the next
+    /// representation holds the value in memory, read before the block.
+    ///
+    /// # Errors
+    /// Why the value has no counterpart.
+    fn input(
+        &mut self,
+        value: V,
+        reg: Option<RegRef>,
+    ) -> Result<Bound<Self::Value, Self::Place>, Self::Error> {
+        Ok(Bound::In { value: self.value(value)?, reg })
+    }
 
     /// # Errors
     /// Why the place has no counterpart.
@@ -89,7 +102,7 @@ impl<V, P> Base<V, P> {
 impl<V, P> Bound<V, P> {
     fn rebind<S, R: Rebind<V, P, S>>(self, to: &mut R) -> Result<Bound<R::Value, R::Place>, R::Error> {
         Ok(match self {
-            Self::In { value, reg } => Bound::In { value: to.value(value)?, reg },
+            Self::In { value, reg } => to.input(value, reg)?,
             Self::Out { place, reg } => Bound::Out { place: to.place(place)?, reg },
             Self::InOut { place, reg } => Bound::InOut { place: to.place(place)?, reg },
         })

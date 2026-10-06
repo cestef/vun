@@ -6,7 +6,7 @@ use vun_asm::{Blocks, Label, Registered, Use};
 use vun_backend::{AsmOperand, Lack, Missing};
 use vun_codegen::{Bank, Cx, Need, Needs, RegSet};
 use vun_inline::{Bound, RegRef};
-use vun_lir::{Address, Asm, AsmCheck, Output, Value};
+use vun_lir::{Address, Asm, AsmCheck, Output, Scalar, Value};
 
 use super::{Inline, Inlined, Placed, Size, sized};
 
@@ -20,6 +20,13 @@ impl Inlined for Asm {
             && self.arch != A::Table::ARCH
         {
             return Err(Missing::Asm.at(first.origin));
+        }
+        for bound in self.bindings() {
+            if let Bound::Out { place, .. } | Bound::InOut { place, .. } = bound
+                && place.ty == Scalar::V128
+            {
+                return Err(Missing::Vector.at(self.insts[0].origin));
+            }
         }
         for inst in &self.insts {
             let lack = |o| Missing::AsmOperand(o).at(inst.origin);

@@ -336,8 +336,11 @@ countdown := (n: u32) -> u32 {
   on top of the stack, as of the type of `f`, which is not called; the index of a function value is
   its address. `global_get(stack_pointer)` and `global_set` name a global the linker defines
   (`lang.arch.wasm32.Global`). The vector instructions (`v128_load`, `i32x4_add`, ...) need the feature `simd128`; a vector
-  lives on the stack only, as no Vun type is held as one: a block loads or builds it (`v128_const`
-  takes the low and then the high 64 bits), computes and stores it or takes a lane. There is no `return`: a block inlined into another function would return from
+  lives on the stack, and a Vun vector of 16 bytes (`lang.simd.Vector(4, i32)`) binds as a value
+  held in a local of that type: `in(v)` reads it, `out(v)` and `inout(v)` write it, as the integer
+  and float types do. A block may also load, build (`v128_const` takes the low and then the high
+  64 bits), compute and store one. Only wasm32 holds vectors in a binding; the other
+  architectures report the value as held in no register. There is no `return`: a block inlined into another function would return from
   that one. after `br` the rest of its block is unreached, as after `unreachable`. A local read where
   another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
   write one `out` or `inout`, and a place named again is one local. A block checked for another

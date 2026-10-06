@@ -12,6 +12,10 @@ use vun_primitives::arch::Arch as Form;
 use super::read::Labels;
 use super::table::{Flow, Table};
 use super::{Arch, Block, arm64, bracket, thumb, wasm32, x86_64};
+use vun_sema_float::Format;
+use vun_sema_ty::Ty;
+use vun_sema_ty::float::FloatType;
+
 use crate::env::Env;
 
 /// A part of an address: a register, one times a scale, bytes, or a declaration's address.
@@ -48,19 +52,43 @@ impl Arch {
         }
     }
 
-    /// The class and width of register a value of `bytes` bytes is held in, a float or not.
+    /// The class and width of register a value of `bytes` bytes is held in, as `held` says; none
+    /// where the architecture holds no value so.
     pub(crate) fn register(
         self,
         table: &Table,
         bytes: Option<u64>,
-        float: bool,
+        held: Held,
     ) -> Option<(ClassId, Option<SizeId>)> {
         let width = bytes.and_then(|b| table.width(b));
-        match self {
-            Self::X86_64 => Some((x86_64::class(table, float)?, width)),
-            Self::Arm64 => Some((arm64::class(table, float)?, width)),
-            Self::Thumb => Some((thumb::class(table, float)?, width)),
-            Self::Wasm32 => Some((wasm32::class(table, bytes, float)?, width)),
+        let float = held == Held::Float;
+        match (self, held) {
+            (Self::Wasm32, _) => Some((wasm32::class(table, bytes, held)?, width)),
+            (_, Held::Vector) => None,
+            (Self::X86_64, _) => Some((x86_64::class(table, float)?, width)),
+            (Self::Arm64, _) => Some((arm64::class(table, float)?, width)),
+            (Self::Thumb, _) => Some((thumb::class(table, float)?, width)),
+        }
+    }
+}
+
+/// What a value a block binds is held as: by its type, not its size alone, as a 128-bit integer
+/// and a vector are both 16 bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Held {
+    Int,
+    Float,
+    Vector,
+}
+
+impl Held {
+    pub(crate) fn of(ty: &Ty) -> Self {
+        if Format::of(ty).is_some() {
+            Self::Float
+        } else if ty.lanes().is_some() {
+            Self::Vector
+        } else {
+            Self::Int
         }
     }
 }
@@ -73,7 +101,7 @@ pub(crate) struct Checker<'c, 'a, 'db> {
     /// The operand form of `lang.arch` each callee of the block calls, as it was typed.
     pub(crate) forms: &'c BTreeMap<ExprId, Form>,
     /// The class and width of register the value of each binding needs.
-    pub(crate) bound: &'c BTreeMap<ExprId, (ClassId, Option<SizeId>)>,
+    pub(crate) bound: &'c BTreeMap<ExprId, Option<(ClassId, Option<SizeId>)>>,
     /// Whether the block is of the target's instruction set, so that the widths of values are
     /// known.
     pub(crate) targeted: bool,

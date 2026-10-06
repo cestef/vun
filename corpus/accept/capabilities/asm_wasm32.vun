@@ -235,3 +235,19 @@ lanes := (x: i32) -> i32 {
     });
     r
 };
+
+/// A vector a program holds is bound as a value: read into a vector on the stack, and written back
+/// from one.
+V: type = lang.simd.Vector(4, i32);
+
+doubled := (v: V) -> V {
+    mut r: V = v;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(v));
+        local_get(in(v));
+        i32x4_add();
+        local_set(out(r));
+    });
+    r
+};

@@ -87,7 +87,9 @@ impl Body<'_> {
             }
             Op::Load(mem) | Op::Store(mem) => {
                 let (load, store) = mem.accesses().expect("verified accesses have codes");
-                out.u8(if matches!(op, Op::Load(_)) { load.code } else { store.code });
+                let access = if matches!(op, Op::Load(_)) { load } else { store };
+                out.bytes(access.prefix.as_slice());
+                out.u8(access.code);
                 out.uleb(u64::from(mem.bytes.trailing_zeros()));
                 out.uleb(0);
             }
