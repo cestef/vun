@@ -85,9 +85,9 @@ echo := (s: &mut Serial) -> Async(never) {
 ```
 
 Slices, ranges, maps and generator functions all implement `Iter`. Adapters are coroutine
-functions too: `std.iter` gives every frame `enumerate`, `map`, `filter`, `take` and `count`, by an
-impl without an interface over `lang.Coroutine`, and slices and arrays have `enumerate` over their
-items' borrows. The optimizer flattens simple
+functions too: `std.iter` gives every frame `enumerate`, `map`, `filter`, `take`, `count`, `sum` (into a total type the
+caller names) and `peekable`, by an impl without an interface over `lang.Coroutine`, and slices and
+arrays have `enumerate` and `rev` over their items' borrows. The optimizer flattens simple
 iterators into plain loops.
 
 ## 4. Executors

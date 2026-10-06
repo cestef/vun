@@ -53,6 +53,13 @@ pub const truncate: Item = Item::new(&["std", "collections", "vec", "Vec", "trun
 pub const clear: Item = Item::new(&["std", "collections", "vec", "Vec", "clear"]);
 /// Adds the items of `more`, copies of them.
 pub const extend: Item = Item::new(&["std", "collections", "vec", "Vec", "extend"]);
+/// A vector of the items from `at` on, taken away from this one.
+pub const split_off: Item = Item::new(
+    &["std", "collections", "vec", "Vec", "split_off"],
+);
+/// The items from `from` up to `to`, taken away as they are given; the items after them close
+/// the gap when the iterator is ended, or done.
+pub const drain: Item = Item::new(&["std", "collections", "vec", "Vec", "drain"]);
 /// Keeps the items `keep` holds for, in their order. The others are not dropped: ones
 /// owning memory are taken away first.
 pub const retain: Item = Item::new(&["std", "collections", "vec", "Vec", "retain"]);

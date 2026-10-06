@@ -6,8 +6,12 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.iter.peek`.
+pub const peek: Item = Item::new(&["std", "iter", "peek"]);
 /// The namespace `std.iter.tests`.
 pub const tests: Item = Item::new(&["std", "iter", "tests"]);
+/// An iterator whose next item can be looked at, over a frame.
+pub const Peekable: Item = Item::new(&["std", "iter", "Peekable"]);
 pub const Iter: Item = Item::new(&["std", "iter", "Iter"]);
 /// `item`, `n` times.
 pub const repeat: Item = Item::new(&["std", "iter", "repeat"]);

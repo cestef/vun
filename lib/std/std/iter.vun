@@ -3,6 +3,9 @@
 
 ..std.mem.alloc.{ Allocator };
 
+/// An iterator whose next item can be looked at, over a frame.
+Peekable: ($T: type, $F: Iter(T)) -> type = std.iter.peek.Peekable;
+
 Iter := ($T: type) -> lang.Interface { lang.Coroutine(T, ()) };
 
 /// What every iterator can be turned into or summed up as: methods of each coroutine frame that
@@ -161,6 +164,16 @@ impl lang.Coroutine($Self, $T, $R) {
         }
         .none
     };
+    /// The items added up into a total of type `A`: it traps when the total leaves `A` (spec 04,
+    /// rule 9), as each `+=` does, so `A` is the range the caller expects the total in.
+    sum := (self: Self, $A: std.int.Integer) -> A {
+        mut total := (0).to(A);
+        for item in self { total += item; }
+        total
+    };
+    /// The items, with the next one to look at before it is taken: the frame is given back by
+    /// `end` once it is done with.
+    peekable := (self: Self) -> Peekable(T, Self) { Peekable(T, Self).of(self) };
     /// The items combined by `f`, the first as it is; none if there are none.
     reduce := (self: Self, $F: lang.ops.Call((T, T), T), f: F) -> ?T {
         mut acc: ?T = .none;

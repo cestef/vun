@@ -17,8 +17,6 @@
   `std.os.{env,process,net}` and directories, `std.json` reading beyond the pull reader. `BTreeMap`
   has no range queries or entries to change yet.
 - `std.math`: correctly rounded `exp`/`ln`/`sin`; `f16` transcendentals round twice.
-- Iterators: `Iter.sum` (a generic `+` of a range type needs a design), `rev`, `peekable`;
-  `Vec.drain`, `Vec.split_off`.
 - A helper in `std.int` for an arithmetic shift or sign mask (signed bit tricks need `.wrap` round
   trips).
 - A `mut x := e` takes the range of `e`, so `x -= 1` traps at its low end: annotate it.

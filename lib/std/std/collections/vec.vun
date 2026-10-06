@@ -17,8 +17,13 @@ Vec := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
     /// A vector with room for `n` items.
     with_capacity := ($A: Allocator, a: &mut A, n: usize) -> Result(Vec(T), A.Error) {
         mut v := Vec(T).empty();
-        v.reserve(A, a, n)?;
-        .ok(v)
+        match v.reserve(A, a, n) {
+            .ok(_) => .ok(v),
+            .err(e) => {
+                v.deinit(A, a);
+                .err(e)
+            },
+        }
     };
 
     /// How many items it holds.
@@ -129,6 +134,38 @@ Vec := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
             self._len += 1;
         }
         .ok(())
+    };
+
+    /// A vector of the items from `at` on, taken away from this one.
+    split_off := (self: &mut Vec(T), $A: Allocator, a: &mut A, at: usize) -> Result(Vec(T), A.Error) {
+        if at > self._len { lang.panic.fail(.message("split_off past the end")); }
+        mut tail := Vec(T).with_capacity(A, a, (self._len - at).sat(usize))?;
+        unsafe {
+            lang.mem.copy(T, tail._items, self._items.offset(at.to(isize)), (self._len - at).sat(usize));
+        }
+        tail._len = (self._len - at).sat(usize);
+        self._len = at;
+        .ok(tail)
+    };
+
+    /// The items from `from` up to `to`, taken away as they are given; the items after them close
+    /// the gap when the iterator is ended, or done.
+    drain := (self: &mut Vec(T), from: usize, to: usize) -> std.iter.Iter(T) {
+        if from > to or to > self._len { lang.panic.fail(.message("drain past the end")); }
+        held := self._len;
+        self._len = from;
+        defer {
+            unsafe {
+                lang.mem.copy(
+                    T,
+                    self._items.offset(from.to(isize)),
+                    self._items.offset(to.to(isize)),
+                    (held - to).sat(usize)
+                );
+            }
+            self._len = (from + (held - to)).sat(usize);
+        };
+        for i in from..to { yield unsafe self._items.offset(i.to(isize)).read(); }
     };
 
     /// Keeps the items `keep` holds for, in their order. The others are not dropped: ones

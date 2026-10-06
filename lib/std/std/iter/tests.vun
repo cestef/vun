@@ -33,6 +33,34 @@ consumers_search_and_reduce := () {
 };
 
 #[test]
+sum_adds_into_the_total_type_asked := () {
+    xs := [200, 100, 255];
+    std.testing.assert(nums(&xs).sum(u16) == 555 and nums(&xs).sum(i64) == 555);
+    std.testing.assert(std.iter.repeat(u8, 1, 0).sum(u8) == 0);
+};
+
+#[test]
+a_slice_is_read_backwards := () {
+    xs := [1, 2, 3];
+    mut it := xs.rev();
+    std.testing.assert(
+        it.resume() == .yielded(&3) and it.resume() == .yielded(&2) and it.resume() == .yielded(&1)
+    );
+    std.testing.assert(xs.rev().count() == 3);
+    it.end();
+};
+
+#[test]
+a_peeked_item_is_still_taken := () {
+    xs := [3, 4];
+    mut it := nums(&xs).peekable();
+    std.testing.assert(it.peek().expect("item").* == 3 and it.peek().expect("item").* == 3);
+    std.testing.assert(it.next() == Option(u8).some(3) and it.next() == Option(u8).some(4));
+    std.testing.assert(it.peek().is_none() and it.next() == Option(u8).none);
+    it.end();
+};
+
+#[test]
 constructors_and_collect := () {
     mut storage: [4096]u8 = [0; 4096];
     mut a := std.mem.alloc.Fixed.init(&mut storage);

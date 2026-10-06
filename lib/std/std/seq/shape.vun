@@ -40,6 +40,15 @@ impl lang.mem.Slice($T) {
         }
     };
 
+    /// The items from the last to the first, as borrows.
+    rev := (xs: &[T]) -> std.iter.Iter(&T) {
+        mut at := xs.len();
+        for at > 0 {
+            at -= 1;
+            yield &xs[at];
+        }
+    };
+
     /// Every run of `n` items next to each other, none when there are fewer; `n` of 0 gives none.
     windows := (xs: &[T], n: usize) -> std.iter.Iter(&[T]) {
         if n > 0 and n <= xs.len() {

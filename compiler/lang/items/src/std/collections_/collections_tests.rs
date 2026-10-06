@@ -53,3 +53,6 @@ pub const a_sorted_map_keeps_its_keys_in_order: Item = Item::new(
 pub const a_vec_pushes_into_the_room_it_reserved: Item = Item::new(
     &["std", "collections", "tests", "a_vec_pushes_into_the_room_it_reserved"],
 );
+pub const a_vec_splits_off_and_drains: Item = Item::new(
+    &["std", "collections", "tests", "a_vec_splits_off_and_drains"],
+);

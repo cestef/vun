@@ -1,0 +1,34 @@
+//! `Peekable(T, F)`: an iterator whose next item can be looked at before it is taken.
+
+/// The frame `F`, which yields `T`, with the item looked at and not yet taken.
+Peekable := ($T: type, $F: std.iter.Iter(T)) -> type { #[kind.linear] struct {
+    _frame: F,
+    _ahead: ?T,
+    _done: bool,
+
+    /// `frame`, nothing looked at yet.
+    of := (frame: F) -> Peekable(T, F) { .{ ._frame = frame, ._ahead = .none, ._done = false } };
+
+    /// The next item, which stays the next: none when there are no more.
+    peek := (self: &mut Peekable(T, F)) -> ?&T {
+        if self._ahead == .none and !self._done {
+            match self._frame.resume() {
+                .yielded(item) => { self._ahead = .some(item); },
+                .done(_) => { self._done = true; },
+            }
+        }
+        match &self._ahead {
+            .some(item) => .some(item),
+            .none => .none,
+        }
+    };
+
+    /// Takes the next item away: none when there are no more.
+    next := (self: &mut Peekable(T, F)) -> ?T {
+        self.peek();
+        self._ahead.take()
+    };
+
+    /// Gives the frame up, which runs what it deferred.
+    end := (self: Peekable(T, F)) { self._frame.end(); };
+} };

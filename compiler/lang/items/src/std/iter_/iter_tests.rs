@@ -14,6 +14,15 @@ pub const adapters_cut_and_step_through_items: Item = Item::new(
 pub const consumers_search_and_reduce: Item = Item::new(
     &["std", "iter", "tests", "consumers_search_and_reduce"],
 );
+pub const sum_adds_into_the_total_type_asked: Item = Item::new(
+    &["std", "iter", "tests", "sum_adds_into_the_total_type_asked"],
+);
+pub const a_slice_is_read_backwards: Item = Item::new(
+    &["std", "iter", "tests", "a_slice_is_read_backwards"],
+);
+pub const a_peeked_item_is_still_taken: Item = Item::new(
+    &["std", "iter", "tests", "a_peeked_item_is_still_taken"],
+);
 pub const constructors_and_collect: Item = Item::new(
     &["std", "iter", "tests", "constructors_and_collect"],
 );
