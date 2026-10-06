@@ -33,11 +33,16 @@ Where the code for each part lives. The workspace layout and its layering rules 
 - **Sema** (`compiler/sema`): `vun-sema-int` (exact integers, intervals), `vun-sema-float`
   (compile-time IEEE floats), `vun-sema-ty` (types, values, relations, borrows table, item keys,
   `call` values: `Func`, `Instance`, `Instantiation`; `trap`: traps and `Unevaluated`),
-  `vun-sema` (the query cycle: `env/` evaluation, calls read once by `Env::passing`; `typeck/` the
-  `Typer`, operators through interface impls, narrowing, staged `$for`/`$if`; `layout/`
-  (`Shapes`), `witness/`, `check/`, `target/` (targets read from values), `asm/`, `apply/`),
-  `vun-sema-plan` (`std.build` plans). Methods of `vun-sema` on the lower crates' types are
-  extension traits (`Instantiate`, `Parameters`, `Attributed`, `Apply`, ...).
+  `vun-sema` (the query cycle: `env/` evaluation, calls read once by `Env::passing`; `layout/`
+  (`Shapes`), `witness/`, `target/` (targets read from values), `apply/`, `omitted/` (`$`
+  arguments left out); `typed/` what typing finds, `Typed` and `TypedDecl` through the installed
+  `Typist`), `vun-sema-typeck` (the `Typer`: operators through interface impls, narrowing, staged
+  `$for`/`$if`; its `Typing` is the typist), `vun-sema-asm` (blocks of instructions against the
+  architectures' tables; `Assembly` is the assembler), `vun-sema-check` (checking a file),
+  `vun-sema-lint` (lints run as Vun code), `vun-sema-plan` (`std.build` plans). What sema needs of
+  a crate above it is an interface with an `Installed` implementation (`Evaluator`, `Typist`,
+  `Assembler`, `Framer`); the driver installs them. Methods of `vun-sema` on the lower crates'
+  types are extension traits (`Instantiate`, `Parameters`, `Attributed`, `Apply`, ...).
 - **Middle** (`compiler/mid`): `vun-mir` (places with projections, `build/` per form, `Concrete`
   bodies, `Programs`), `vun-mir-passes` (places, borrows, panics), `vun-interp` (runs MIR at
   compile time, loans for `&mut`), `vun-sanitize` (run-time checks of unsafe code).

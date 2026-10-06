@@ -10,7 +10,7 @@ use vun_origin::Resolve;
 use vun_sema::decl::{DeclType, DeclValue};
 use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
-use vun_sema::typeck::{Operation, Typed};
+use vun_sema::typed::{Operation, Typed};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_span::{FileId, SourceMap};

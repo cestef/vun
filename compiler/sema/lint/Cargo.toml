@@ -20,7 +20,6 @@ vun-origin.workspace = true
 vun-primitives.workspace = true
 vun-query.workspace = true
 vun-sema.workspace = true
-vun-sema-int.workspace = true
 vun-sema-plan.workspace = true
 vun-sema-ty.workspace = true
 vun-span.workspace = true

@@ -20,7 +20,7 @@ use vun_sema_ty::{Signature, Ty, TyKind, Value};
 use super::Env;
 use crate::callable::Written;
 use crate::decl::TypedDecl;
-use crate::typeck::{GaveUp, Typed};
+use crate::typed::{GaveUp, Typed};
 
 /// The types a place gives the parts of a function literal; why for a part it cannot give here,
 /// such as a result that names a member of a `$` parameter an instantiation binds.

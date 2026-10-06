@@ -55,6 +55,7 @@ vun-sema-asm.workspace = true
 vun-sema-check.workspace = true
 vun-sema-lint.workspace = true
 vun-sema-plan.workspace = true
+vun-sema-typeck.workspace = true
 vun-sema-ty.workspace = true
 vun-fetch.workspace = true
 vun-uri.workspace = true

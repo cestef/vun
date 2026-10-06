@@ -38,7 +38,7 @@ use vun_hir::tree::{ExprKind, Name};
 use vun_origin::Resolve;
 use vun_sema::decl::TypedDecl;
 use vun_sema::site::{Declaration, NameSite};
-use vun_sema::typeck::{Known, Typed};
+use vun_sema::typed::{Known, Typed};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef, Site};
 use vun_span::{FileId, Span};

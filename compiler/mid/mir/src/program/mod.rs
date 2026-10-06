@@ -15,7 +15,7 @@ use vun_query::{Cx, Cycle, Query};
 use vun_sema::callable::Generic;
 use vun_sema::decl::{DeclType, DeclValue};
 use vun_sema::eval::Instantiate;
-use vun_sema::typeck::Leaves;
+use vun_sema::typed::Leaves;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::trap::Unevaluated;

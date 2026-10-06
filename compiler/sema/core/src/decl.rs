@@ -7,7 +7,6 @@ use std::sync::Arc;
 use vun_codec::{Decode, Encode};
 use vun_hir::db::{FileRef, Package, Parsed};
 use vun_hir::tree::{DeclId, ExprKind, Hir, PatKind};
-use vun_hir::visit::Visitor;
 use vun_intern::Symbol;
 use vun_primitives::Primitive;
 use vun_primitives::check::Check;
@@ -22,7 +21,7 @@ use crate::callable::Callable;
 use crate::env::Env;
 use crate::target::TargetConstant;
 use crate::target::TargetOf;
-use crate::typeck::{Known, Stage, TypedBody, Typer};
+use crate::typed::{Known, Stage, TypedBody, Typists};
 
 pub struct DeclValue;
 
@@ -145,9 +144,8 @@ impl Query for TypedDecl {
             None => Env::of(cx, &decl.file)?,
         };
         let env = env.staging(staged);
-        let mut typer = Typer::new(&env, Stage::Compile);
-        typer.decl(&env.parsed.hir, decl.decl.id);
-        Some(Arc::new(typer.finish(0)))
+        let typist = cx.db().resource::<Typists>().get().cloned()?;
+        Some(Arc::new(typist.declaration(&env, decl.decl.id)))
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {

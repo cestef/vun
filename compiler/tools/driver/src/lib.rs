@@ -21,6 +21,7 @@ mod pages;
 mod plan;
 mod positions;
 pub mod program;
+mod provided;
 mod queries;
 mod reduce;
 mod registry;

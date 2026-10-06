@@ -25,4 +25,5 @@ vun-sema-float.workspace = true
 vun-sema-int.workspace = true
 vun-sema-lint.workspace = true
 vun-sema-ty.workspace = true
+vun-sema-typeck.workspace = true
 vun-suggest.workspace = true

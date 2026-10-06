@@ -5,7 +5,7 @@ use vun_diag::{Diagnostic, Msg};
 use vun_hir::db::Parsed;
 use vun_origin::OriginId;
 use vun_query::Cx;
-use vun_sema::typeck::{Leaves, Typed};
+use vun_sema::typed::{Leaves, Typed};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;
 

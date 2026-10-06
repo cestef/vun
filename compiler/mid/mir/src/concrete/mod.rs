@@ -13,7 +13,7 @@ use vun_sema::callable::Parameters;
 use vun_sema::checks::ChecksOf;
 use vun_sema::cover::CoverageOf;
 use vun_sema::env::Env;
-use vun_sema::typeck::Typed;
+use vun_sema::typed::Typed;
 use vun_sema_ty::Value;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::trap::Unevaluated;

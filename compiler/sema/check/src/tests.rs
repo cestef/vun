@@ -10,6 +10,7 @@ fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
     use vun_intern::Symbol;
 
     let db = vun_query::Db::new();
+    db.resource::<vun_sema::typed::Typists>().install(std::sync::Arc::new(vun_sema_typeck::Typing));
     let (lang, user) = (PackageId::Stored(Hash::of(b"lang")), PackageId::Stored(Hash::of(b"app")));
     let text = "type: type = _;\nInt: ($r: Range) -> type = _;\nRange: type = _;\nbool := enum { false, true };\nu8 := Int(0..=255);\n";
     let files = |name: &str| vec![format!("{name}.vun")];

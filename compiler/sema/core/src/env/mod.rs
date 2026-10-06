@@ -52,7 +52,7 @@ use vun_sema_ty::{Ty, Value};
 use vun_span::{SourceFiles, SourceMap};
 
 use crate::member::{Found, MemberValue, Members};
-use crate::typeck;
+use crate::typed;
 
 #[derive(Clone)]
 pub struct Env<'a, 'db> {
@@ -70,7 +70,7 @@ pub struct Env<'a, 'db> {
     /// What typing found in the body evaluated in, so far while it is typed: forms typed by
     /// their context, such as `.{ }` and `.name`, and calls whose `$` arguments are inferred
     /// evaluate only with it.
-    types: Option<Arc<typeck::Found>>,
+    types: Option<Arc<typed::Found>>,
 }
 
 impl<'a, 'db> Env<'a, 'db> {
@@ -171,7 +171,7 @@ impl<'a, 'db> Env<'a, 'db> {
 
     /// This environment, evaluating with the types `types` found.
     #[must_use]
-    pub fn typed_by(mut self, types: Option<Arc<typeck::Found>>) -> Self {
+    pub fn typed_by(mut self, types: Option<Arc<typed::Found>>) -> Self {
         self.types = types;
         self
     }
@@ -179,7 +179,7 @@ impl<'a, 'db> Env<'a, 'db> {
     /// This environment, evaluating with the types typing found for the steps `path` of the body
     /// it is typed by, each inside the one before: a `$for` step's or a tested `$if` branch's.
     #[must_use]
-    pub fn stepping(mut self, path: &[typeck::Step]) -> Self {
+    pub fn stepping(mut self, path: &[typed::Step]) -> Self {
         for step in path {
             self.types =
                 self.types.and_then(|found| found.steps.get(step).map(|typed| Arc::clone(&typed.found)));

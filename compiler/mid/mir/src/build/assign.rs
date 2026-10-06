@@ -6,7 +6,7 @@ use vun_desugar::COMPOUND;
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind};
 use vun_origin::OriginId;
-use vun_sema::typeck::Operation;
+use vun_sema::typed::Operation;
 
 use super::operator::Side;
 use super::{Builder, Unbuilt};

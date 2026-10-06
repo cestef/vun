@@ -83,6 +83,7 @@ vun-sema-plan = { path = "compiler/sema/plan" }
 vun-sema-lint = { path = "compiler/sema/lint" }
 vun-sema-check = { path = "compiler/sema/check" }
 vun-sema-asm = { path = "compiler/sema/asm" }
+vun-sema-typeck = { path = "compiler/sema/typeck" }
 vun-mir = { path = "compiler/mid/mir" }
 vun-mir-passes = { path = "compiler/mid/passes" }
 vun-sanitize = { path = "compiler/mid/sanitize" }

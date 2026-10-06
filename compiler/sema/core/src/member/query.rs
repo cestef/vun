@@ -11,7 +11,7 @@ use vun_sema_ty::{Nominal, Ty, TyKind, Value};
 use super::{Found, Members};
 use crate::decl::TypedDecl;
 use crate::env::Env;
-use crate::typeck::Known;
+use crate::typed::Known;
 
 /// The type of the declaration `name` among a struct type's members, evaluated where the struct
 /// was built: `Eq(u8).eq` is `(&u8, &u8) -> bool`.

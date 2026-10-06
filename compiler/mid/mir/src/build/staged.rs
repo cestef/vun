@@ -7,7 +7,7 @@ use std::sync::Arc;
 use vun_hir::tree::{Cond, Entry, ExprId, List, PatKind, Staged, Stmt as HirStmt};
 use vun_origin::OriginId;
 use vun_sema::env::Selected;
-use vun_sema::typeck::Step;
+use vun_sema::typed::Step;
 use vun_sema_ty::Value;
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::Node;

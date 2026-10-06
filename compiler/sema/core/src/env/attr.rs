@@ -6,7 +6,7 @@ use vun_primitives::Primitive;
 use vun_sema_ty::{Marker, Signature, Value};
 
 use super::Env;
-use crate::typeck::{Stage, Typer};
+use crate::typed::Typists;
 
 impl Env<'_, '_> {
     /// The attributes of the literal `literal`: written on it (`#[kind.linear] struct { }`) or on
@@ -51,9 +51,8 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn values(&self, attrs: &[ExprId]) -> Vec<Value> {
         let value = |attr: ExprId| {
-            let mut typer = Typer::new(self, Stage::Compile);
-            typer.typed(attr);
-            self.clone().typed_by(Some(typer.finish(0).found)).eval(attr).ok()
+            let typist = self.cx.db().resource::<Typists>().get().cloned()?;
+            self.clone().typed_by(Some(typist.expression(self, attr))).eval(attr).ok()
         };
         attrs.iter().filter_map(|&attr| value(attr)).collect()
     }

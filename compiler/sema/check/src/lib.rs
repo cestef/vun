@@ -30,7 +30,7 @@ use vun_sema_ty::trap::Unevaluated;
 
 use vun_sema::decl::{DeclValue, TypedDecl};
 use vun_sema::env::Env;
-use vun_sema::typeck::Reported;
+use vun_sema::typed::Reported;
 use vun_sema::visible::Home;
 
 /// What checking a file reports; `None` for a file the driver did not read.

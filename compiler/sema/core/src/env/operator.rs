@@ -12,7 +12,7 @@ use vun_sema_ty::{Ty, TyKind, Value};
 use super::Env;
 use crate::callable::Callable;
 use crate::member::MemberValue;
-use crate::typeck::omitted::{Plan, Unifier};
+use crate::omitted::{Plan, Unifier};
 
 /// An operand at compile time: its value, of the type typing found for it where it did, which a
 /// string literal's value does not tell (`"ab"` is a `&static [2]u8`, not of its bytes alone).

@@ -11,7 +11,7 @@ use vun_primitives::meta::Meta;
 use vun_sema::callable::Callable;
 use vun_sema::env::Passed;
 use vun_sema::member::{MemberType, MemberValue};
-use vun_sema::typeck::Operation;
+use vun_sema::typed::Operation;
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, TyKind, Value};
 

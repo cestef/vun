@@ -1939,10 +1939,12 @@ dependencies = [
  "vun-sanitize",
  "vun-scheme-component",
  "vun-sema",
+ "vun-sema-asm",
  "vun-sema-check",
  "vun-sema-lint",
  "vun-sema-plan",
  "vun-sema-ty",
+ "vun-sema-typeck",
  "vun-server",
  "vun-span",
  "vun-suggest",
@@ -2790,6 +2792,28 @@ dependencies = [
  "vun-hir",
  "vun-inline",
  "vun-intern",
+ "vun-items",
+ "vun-origin",
+ "vun-primitives",
+ "vun-query",
+ "vun-sema-float",
+ "vun-sema-int",
+ "vun-sema-ty",
+ "vun-span",
+ "vun-syntax",
+ "vun-target",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-sema-asm"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-diag",
+ "vun-hir",
+ "vun-inline",
+ "vun-intern",
  "vun-isa",
  "vun-isa-arm64",
  "vun-isa-thumb",
@@ -2799,13 +2823,9 @@ dependencies = [
  "vun-origin",
  "vun-primitives",
  "vun-query",
+ "vun-sema",
  "vun-sema-float",
- "vun-sema-int",
  "vun-sema-ty",
- "vun-span",
- "vun-suggest",
- "vun-syntax",
- "vun-target",
  "vun-trace",
 ]
 
@@ -2827,6 +2847,7 @@ dependencies = [
  "vun-sema-int",
  "vun-sema-lint",
  "vun-sema-ty",
+ "vun-sema-typeck",
  "vun-suggest",
 ]
 
@@ -2861,7 +2882,6 @@ dependencies = [
  "vun-primitives",
  "vun-query",
  "vun-sema",
- "vun-sema-int",
  "vun-sema-plan",
  "vun-sema-ty",
  "vun-span",
@@ -2904,6 +2924,29 @@ dependencies = [
  "vun-sema-int",
  "vun-span",
  "vun-syntax",
+]
+
+[[package]]
+name = "vun-sema-typeck"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-desugar",
+ "vun-diag",
+ "vun-grammar",
+ "vun-hash",
+ "vun-hir",
+ "vun-intern",
+ "vun-items",
+ "vun-origin",
+ "vun-primitives",
+ "vun-sema",
+ "vun-sema-float",
+ "vun-sema-int",
+ "vun-sema-ty",
+ "vun-span",
+ "vun-suggest",
+ "vun-trace",
 ]
 
 [[package]]

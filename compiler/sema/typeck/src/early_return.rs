@@ -1,0 +1,53 @@
+//! `return e`, whose value the function's result type accepts, and `e?` (appendix B): `match lang.ops.Try.branch(e) { .go(v) => v, .stop(r) => return r }`,
+//! through the table `early_return`. Its value has the type `go` carries, and what `stop` carries
+//! must be accepted by the function's result type.
+
+use vun_desugar::{EARLY_RETURN, EarlyReturnRow};
+use vun_hir::tree::ExprId;
+use vun_items::Item;
+use vun_sema_ty::Ty;
+
+use super::{Known, Typer};
+use vun_sema::member::{Found, MemberType, Members};
+
+impl Typer<'_, '_, '_> {
+    /// `return value`: the value typed as the result, checked against it; it does not end.
+    pub(super) fn returned(&mut self, value: Option<ExprId>) -> Option<Known> {
+        if let Some(value) = value {
+            let result = self.result.clone().and_then(|result| self.expecting(value, result));
+            let found = self.typed_as(value, result);
+            if let (Some(found), Some(result)) = (found, result) {
+                self.expect(self.hir().exprs[value].origin, found, result, self.written);
+            }
+        }
+        self.never()
+    }
+
+    pub(super) fn early_return(&mut self, expr: ExprId, operand: ExprId) -> Option<Known> {
+        let known = self.typed(operand)?;
+        let &EarlyReturnRow { function, go, stop } = EARLY_RETURN.first()?;
+        let Some(witness) = self.witness_of(function.parent()?, known.ty) else {
+            self.unimplemented(operand, function.parent(), known.ty);
+            return None;
+        };
+        let function = function.symbol();
+        let branch = self.env().cx.get::<MemberType>(&(witness, function)).ok()?.ty.signature()?.result;
+        self.finding().methods.insert(expr, (witness, function));
+        let (value, stopped) = (self.payload(branch, go)?, self.payload(branch, stop)?);
+        if let Some(Ok(result)) = self.result
+            && !result.accepts(&stopped)
+        {
+            let origin = self.hir().exprs[expr].origin;
+            self.expect(origin, Known { ty: stopped, stage: known.stage }, result, self.written);
+        }
+        Some(Known { ty: value, stage: known.stage })
+    }
+
+    /// The type the variant `variant` of the enum type `ty` carries.
+    fn payload(&self, ty: Ty, variant: Item) -> Option<Ty> {
+        match self.env().cx.get::<Members>(&ty)?.find(variant.symbol()) {
+            Found::Variant(v) => v.payload.first()?.as_ref().ok().copied(),
+            _ => None,
+        }
+    }
+}

@@ -32,7 +32,7 @@ use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::env::Env;
-use vun_sema::typeck::{Step, Typed, TypedBody};
+use vun_sema::typed::{Step, Typed, TypedBody};
 use vun_sema_ty::Ty;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::trap::Unevaluated;

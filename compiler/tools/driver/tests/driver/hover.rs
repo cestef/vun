@@ -1,6 +1,6 @@
 //! What hovering shows (spec 13, section 6): the name, its type and stage, and its layout.
 
-use vun_sema::typeck::Stage;
+use vun_sema::typed::Stage;
 use vun_sema_ty::{TyKind, Value};
 
 use crate::common::Fixture;

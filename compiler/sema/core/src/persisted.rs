@@ -17,7 +17,7 @@ use crate::member::{MemberType, MemberValue, Members};
 use crate::target::{Chosen, TargetOf};
 use crate::testing::{Runner, Tests};
 use crate::trace::TraceOf;
-use crate::typeck::{Reported, Typed};
+use crate::typed::{Reported, Typed};
 use crate::witness::{Conformance, Derives, Impls, Requirement, Witnesses};
 
 pub const PERSISTED: &[fn(&Db)] = &[

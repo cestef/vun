@@ -6,7 +6,7 @@ use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
 use vun_sema::env::Env;
-use vun_sema::typeck::Step;
+use vun_sema::typed::Step;
 use vun_sema_ty::call::{Code, Staging};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Ty, Value};

@@ -14,7 +14,7 @@ use vun_sema_ty::{TyKind, Value};
 
 use super::Env;
 use crate::decl::{DeclType, DeclValue};
-use crate::typeck::{Known, Stage};
+use crate::typed::{Known, Stage};
 
 impl Env<'_, '_> {
     /// What the path `object.name` leads to: the member `name` of the namespace `object` is.

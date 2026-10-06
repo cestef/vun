@@ -6,7 +6,7 @@ use vun_hir::tree::{Arg, Entry, ExprId};
 use vun_origin::OriginId;
 use vun_sema::callable::Callable;
 use vun_sema::member::MemberValue;
-use vun_sema::typeck::Operation;
+use vun_sema::typed::Operation;
 use vun_sema_ty::Ty;
 
 use super::{Builder, Unbuilt};

@@ -12,6 +12,7 @@ knows about any backend; nothing above the linker adapter knows about any linker
    v
  HIR                   desugaring into `lang` items (appendix B), name resolution
    |  vun-sema        demand-driven, parallel: type checking and compile-time evaluation interleaved
+   |                  (`vun-sema-typeck`, `-asm`, `-check`, `-lint` beside it)
    v
  MIR                   control-flow graph over places; one body per instantiation
    |  MIR passes        checks: place states, kinds, borrows, scoping, panic.never, stack
@@ -1364,7 +1365,8 @@ compiler/
   isa/     api  inline  x86_64  arm64  thumb  wasm32     instruction sets, one table each
   object/  core  elf  dwarf  wasm                object files and debug information as data
   front/   desugar  syntax  hir
-  sema/    int  float  ty  core  plan            types as values; `core` (`vun-sema`) checks and evaluates
+  sema/    int  float  ty  core  typeck  asm  check  lint  plan
+                                                 types as values; `core` (`vun-sema`) evaluates, the rest checks
   mid/     mir  passes  interp  sanitize
   low/     lir  lower  abi  passes
   back/    api  codegen  regalloc  c  wasm  cranelift  qbe  llvm  external
@@ -1395,7 +1397,9 @@ Rules:
   `sema` < `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `components` < `tools`; the order is
   declared once in `xtask/src/layers.rs` and checked by `cargo xtask layers`. Where a later stage implements something an earlier one
   needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
-  implements it).
+  implements it), and the same holds inside a group: `vun-sema` defines `Typist` and `Assembler`,
+  which `vun-sema-typeck` and `vun-sema-asm` implement, since evaluation needs typed bodies and
+  typing needs evaluation. The driver installs each (`Installed`).
 - Components declare their facts once (`BackendInfo`, `LinkerInfo`); support checks derive from
   them. Tables declared once generate their enums and lookups (tokens, diagnostic ids, commands).
 - Every arena is an `IndexVec` addressed by its own index newtype (`vun-index`).

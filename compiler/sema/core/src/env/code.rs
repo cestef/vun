@@ -19,7 +19,7 @@ use vun_syntax::lexer;
 use super::Env;
 use crate::callable::Parameters;
 use crate::eval::Instantiate;
-use crate::typeck::Typed;
+use crate::typed::Typed;
 
 impl<'a, 'db> Env<'a, 'db> {
     /// Where the bytes `bytes` of the string literal the code `code` writes are written: a part

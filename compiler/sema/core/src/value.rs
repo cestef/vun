@@ -11,7 +11,7 @@ use vun_sema_ty::trap::Unevaluated;
 
 use crate::decl::TypedDecl;
 use crate::env::Env;
-use crate::typeck::Typed;
+use crate::typed::Typed;
 
 /// The value of an expression: in the body of the function holding it, typed plain, or else in
 /// the value of the member declaration holding it, as that declaration's value is evaluated.

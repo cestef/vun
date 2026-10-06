@@ -157,7 +157,7 @@ impl Instantiate for Instantiation {
     }
 
     fn running<'a, 'db>(&self, cx: &'a Cx<'db>) -> Option<Env<'a, 'db>> {
-        let types = cx.get::<crate::typeck::Typed>(&self.body(cx)?);
+        let types = cx.get::<crate::typed::Typed>(&self.body(cx)?);
         Some(Env::within(cx, self)?.typed_by(types.map(|t| Arc::clone(&t.found))))
     }
 

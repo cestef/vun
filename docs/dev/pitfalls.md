@@ -75,7 +75,7 @@ Traps that cost a session before. Add one when it costs you time.
   `Typer::known_value` (annotations and `$` arguments, typed first when evaluating needs it),
   never through the bare `Typer::env()`: without what typing found, a call whose `$` arguments
   are inferred (`TypeOf(x)`) or a form typed by its context has no value, and the call stays
-  silently untyped. `VUN_LOG=vun_sema::typeck=trace` shows each evaluation that gave no value.
+  silently untyped. `VUN_LOG=vun_sema_typeck=trace` shows each evaluation that gave no value.
 - A `None` from a typing function with no report is a silent give-up. `Typer::expr` records the
   form where it starts (`Found::gave_up`, why as a `GaveUp`): a form left untyped with nothing
   under it reported or given up on. Where a lookup giving the form's own type returns an

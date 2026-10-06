@@ -13,7 +13,7 @@ use vun_mir_passes::panics::PanicChecks;
 use vun_mir_passes::places::PlaceStates;
 use vun_origin::Resolve;
 use vun_query::Query;
-use vun_sema::typeck::Typed;
+use vun_sema::typed::Typed;
 use vun_sema_check::Checked;
 use vun_sema_lint::Linted;
 use vun_sema_ty::call::Instantiation;

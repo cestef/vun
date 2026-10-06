@@ -9,7 +9,7 @@ use vun_intern::Symbol;
 use vun_origin::Resolve;
 use vun_sema::decl::{DeclType, DeclValue};
 use vun_sema::site::{Declaration, NameSite};
-use vun_sema::typeck::{Known, Stage};
+use vun_sema::typed::{Known, Stage};
 use vun_sema::value::ExprValue;
 use vun_sema_ty::item::{DeclRef, ExprRef, Site};
 use vun_sema_ty::{Nominal, TyKind, Value};
