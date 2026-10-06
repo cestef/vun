@@ -1,0 +1,21 @@
+[package]
+name = "vun-renderer"
+description = "Renderers as components: diagnostics shown for people, served from a library."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-component.workspace = true
+vun-diag.workspace = true
+vun-origin.workspace = true
+vun-render-short.workspace = true
+vun-span.workspace = true
+vun-term.workspace = true
+vun-trace.workspace = true

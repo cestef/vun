@@ -282,9 +282,8 @@ install|update --profile` and `component list|add|remove`, `.components` in `bui
 `release.yml` building them. Run end to end on am3 (arm64): package, release, sign, install the
 `minimal` profile, add Cranelift, build and compare, tamper with a library. Open:
 
-- Kinds still linked, in the order they are worth moving: the diagnostic renderers
-  (a `DiagSink`; the library asks the host to resolve origins and read source). Each is an
-  `Interface` and a crate under `compiler/components/`. The size budget is dropped (decision 499).
+- Every ready kind is a component. The size budget is dropped (decision 499). A kind not yet
+  moved: none; the dist `vun` links the planned stubs, `Short` and the loader.
 - Cranelift's library links the native backend itself, for the functions Cranelift cannot
   express (the library is 6.6 MiB, native's another 2); the assist should go through the host,
   and a component naming another it needs should bring it.

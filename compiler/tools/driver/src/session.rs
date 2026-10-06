@@ -31,7 +31,7 @@ use vun_target::TargetSpec;
 use vun_term::Shell;
 use vun_trace::tracing;
 
-use crate::formats::Format;
+use crate::formats;
 use crate::packages::{Library, Packages};
 use crate::registry::Codegen;
 use crate::{Persistence, Registry};
@@ -44,7 +44,7 @@ pub struct Session {
     pub origins: &'static OriginTable,
     pub diag: DiagCtxt,
     /// How diagnostics are shown.
-    pub format: &'static Format,
+    pub format: Symbol,
     pub packages: Packages,
     /// Where default dependencies are found.
     pub library: PathBuf,
@@ -105,7 +105,7 @@ impl Session {
             origins: OriginTable::global(),
             db,
             diag: DiagCtxt::default(),
-            format: Format::DEFAULT,
+            format: Symbol::intern(formats::DEFAULT),
             packages: Packages::default(),
             library: Library::find().dir,
             store: Store::user(),
@@ -286,7 +286,7 @@ impl Session {
     /// format, and takes them out; the session stays failed if one was an error.
     pub fn emit(&mut self, shell: &mut Shell<'_>) {
         let diag = std::mem::take(&mut self.diag);
-        let mut sink = shell.diagnostics(self.format.sink);
+        let mut sink = shell.diagnostics(self.registry.renderer(self.format));
         for d in diag.sorted(self) {
             sink.emit(d, self, self.sources);
         }

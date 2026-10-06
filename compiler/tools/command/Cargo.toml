@@ -17,6 +17,6 @@ vun-diag.workspace = true
 vun-term.workspace = true
 vun-origin.workspace = true
 vun-span.workspace = true
-vun-render-short.workspace = true
+vun-renderer.workspace = true
 vun-render-json.workspace = true
 vun-data.workspace = true

@@ -15,7 +15,7 @@ path = "src/main.rs"
 workspace = true
 
 [features]
-default = ["backends", "linkers", "schemes", "planned", "components", "ffi", "lsp", "mimalloc"]
+default = ["backends", "linkers", "schemes", "renderers", "planned", "components", "ffi", "lsp", "mimalloc"]
 # What a release's `vun` links (`cargo xtask package`): the backends and linkers not built yet, and
 # the loader of every other, which are components beside it.
 dist = ["planned", "components", "mimalloc"]
@@ -40,6 +40,7 @@ linkers = [
     "link-gnu",
 ]
 schemes = ["scheme-https"]
+renderers = ["renderer-terminal", "renderer-ariadne"]
 # The backends and linkers declared for targets to name, not built yet: they register as planned.
 planned = ["backend-qbe", "backend-llvm", "backend-external", "link-msvc", "link-external"]
 backend-c = ["vun-driver/backend-c"]
@@ -61,6 +62,8 @@ link-lld = ["vun-driver/link-lld"]
 link-wasm = ["vun-driver/link-wasm"]
 link-gnu = ["vun-driver/link-gnu"]
 scheme-https = ["vun-driver/scheme-https"]
+renderer-terminal = ["vun-driver/renderer-terminal"]
+renderer-ariadne = ["vun-driver/renderer-ariadne"]
 link-msvc = ["vun-driver/link-msvc"]
 link-external = ["vun-driver/link-external"]
 # Backends and linkers loaded from the toolchain's `components` directory.

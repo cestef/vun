@@ -1,13 +1,13 @@
 //! Running a program: the global options, the selected command, and a binary's `main`.
 
-use std::io::{self, Write};
+use std::io;
 use std::process::ExitCode;
 
 use vun_data::Object;
 use vun_diag::{Color, DiagCtxt, DiagId, DiagSink, Diagnostic, Msg};
 use vun_origin::OriginTable;
 use vun_render_json::JsonRenderer;
-use vun_render_short::ShortRenderer;
+use vun_renderer::{Renderer, Short};
 use vun_span::SourceFiles;
 use vun_term::{ColorChoice, Document, Env, Format, Out, Record, Shell, Stream, Text, Verbosity};
 
@@ -36,33 +36,30 @@ impl Context for DiagCtxt {
 
     fn finish(&mut self, shell: &mut Shell<'_>) {
         let (origins, sources) = (OriginTable::new(), SourceFiles::new());
-        let mut sink = shell.diagnostics(|out, color| Box::new(ShortRenderer::new(out, color)));
+        let mut sink = shell.diagnostics(&Short);
         for d in self.sorted(&origins) {
             sink.emit(d, &origins, &sources);
         }
     }
 }
 
-/// A renderer of diagnostics for people, writing to a stream in its colors.
-pub type HumanSink = for<'w> fn(&'w mut dyn Write, Color) -> Box<dyn DiagSink + 'w>;
-
 /// Where a shell shows diagnostics.
 pub trait Diagnostics {
     /// The sink for diagnostics: `human` on standard error, as text or as lines of pieces, or
     /// JSON lines on standard output.
-    fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_>;
+    fn diagnostics(&mut self, human: &dyn Renderer) -> Box<dyn DiagSink + '_>;
 }
 
 impl Diagnostics for Shell<'_> {
-    fn diagnostics(&mut self, human: HumanSink) -> Box<dyn DiagSink + '_> {
+    fn diagnostics(&mut self, human: &dyn Renderer) -> Box<dyn DiagSink + '_> {
         match self.format() {
             Format::Human => {
                 let color = self.err.color();
-                human(self.err.writer(), color)
+                human.sink(self.err.writer(), color)
             }
             Format::Json => Box::new(JsonRenderer::new(self.out.writer())),
             // Plain, for the stream to cut into lines of pieces.
-            Format::Styled => human(self.err.writer(), Color::Never),
+            Format::Styled => human.sink(self.err.writer(), Color::Never),
         }
     }
 }

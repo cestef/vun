@@ -11,7 +11,7 @@ publish.workspace = true
 workspace = true
 
 [features]
-default = ["backend-c", "backend-native", "native-x86_64", "native-arm64", "native-thumb", "backend-wasm", "backend-cranelift", "cranelift-x86_64", "cranelift-arm64", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-wasm", "link-gnu", "link-msvc", "link-external", "scheme-https", "components"]
+default = ["backend-c", "backend-native", "native-x86_64", "native-arm64", "native-thumb", "backend-wasm", "backend-cranelift", "cranelift-x86_64", "cranelift-arm64", "backend-qbe", "backend-llvm", "backend-external", "link-wild", "link-mold", "link-ar", "link-lld", "link-wasm", "link-gnu", "link-msvc", "link-external", "scheme-https", "renderer-terminal", "renderer-ariadne", "components"]
 backend-c = ["dep:vun-component-backend-c"]
 backend-native = ["dep:vun-component-backend-native"]
 # The architectures the native backend compiles for; it lists none of those left out.
@@ -33,6 +33,8 @@ link-lld = ["dep:vun-component-link-lld"]
 link-wasm = ["dep:vun-component-link-wasm"]
 link-gnu = ["dep:vun-component-link-gnu"]
 scheme-https = ["dep:vun-component-scheme-https"]
+renderer-terminal = ["dep:vun-component-renderer-terminal"]
+renderer-ariadne = ["dep:vun-component-renderer-ariadne"]
 link-msvc = ["dep:vun-link-msvc"]
 link-external = ["dep:vun-link-external"]
 # Backends and linkers loaded from the toolchain's `components` directory (decision 498): where a
@@ -87,9 +89,7 @@ vun-lir-passes.workspace = true
 vun-backend.workspace = true
 vun-link.workspace = true
 vun-build.workspace = true
-vun-render-short.workspace = true
-vun-render-annotate.workspace = true
-vun-render-ariadne.workspace = true
+vun-renderer.workspace = true
 vun-component-backend-c = { workspace = true, optional = true }
 vun-component-backend-native = { workspace = true, optional = true }
 vun-component-backend-wasm = { workspace = true, optional = true }
@@ -104,6 +104,8 @@ vun-component-link-lld = { workspace = true, optional = true }
 vun-component-link-wasm = { workspace = true, optional = true }
 vun-component-link-gnu = { workspace = true, optional = true }
 vun-component-scheme-https = { workspace = true, optional = true }
+vun-component-renderer-terminal = { workspace = true, optional = true }
+vun-component-renderer-ariadne = { workspace = true, optional = true }
 vun-link-msvc = { workspace = true, optional = true }
 vun-link-external = { workspace = true, optional = true }
 

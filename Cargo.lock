@@ -1577,7 +1577,7 @@ dependencies = [
  "vun-diag",
  "vun-origin",
  "vun-render-json",
- "vun-render-short",
+ "vun-renderer",
  "vun-span",
  "vun-suggest",
  "vun-term",
@@ -1705,6 +1705,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-component-renderer-ariadne"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-diag",
+ "vun-render-ariadne",
+ "vun-renderer",
+]
+
+[[package]]
+name = "vun-component-renderer-terminal"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-diag",
+ "vun-render-annotate",
+ "vun-renderer",
+]
+
+[[package]]
 name = "vun-component-scheme-https"
 version = "0.1.0"
 dependencies = [
@@ -1818,6 +1838,8 @@ dependencies = [
  "vun-component-link-mold",
  "vun-component-link-wasm",
  "vun-component-link-wild",
+ "vun-component-renderer-ariadne",
+ "vun-component-renderer-terminal",
  "vun-component-scheme-https",
  "vun-data",
  "vun-diag",
@@ -1859,9 +1881,7 @@ dependencies = [
  "vun-pe",
  "vun-query",
  "vun-reduce",
- "vun-render-annotate",
- "vun-render-ariadne",
- "vun-render-short",
+ "vun-renderer",
  "vun-sanitize",
  "vun-scheme-component",
  "vun-sema",
@@ -2639,6 +2659,20 @@ dependencies = [
  "vun-origin",
  "vun-span",
  "vun-term",
+]
+
+[[package]]
+name = "vun-renderer"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-component",
+ "vun-diag",
+ "vun-origin",
+ "vun-render-short",
+ "vun-span",
+ "vun-term",
+ "vun-trace",
 ]
 
 [[package]]

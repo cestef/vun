@@ -1,5 +1,5 @@
 //! `vun toolchain show`: the running toolchain's version, where it and its library are, and the
-//! backends, linkers, URL schemes, servers and binders it has.
+//! backends, linkers, URL schemes, servers, binders and renderers it has.
 
 use std::io;
 
@@ -43,7 +43,16 @@ fn show(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome>
     let schemes = r.schemes.registered().map(|c| Component::of(Kind::Scheme, c.item.name(), &c.from));
     let servers = r.servers.registered().map(|c| Component::of(Kind::Server, c.item.name(), &c.from));
     let binders = r.binders.registered().map(|c| Component::of(Kind::Binder, c.item.name(), &c.from));
-    shell.table(&backends.chain(linkers).chain(schemes).chain(servers).chain(binders).collect::<Vec<_>>())?;
+    let renderers = r.renderers.registered().map(|c| Component::of(Kind::Renderer, c.item.name(), &c.from));
+    shell.table(
+        &backends
+            .chain(linkers)
+            .chain(schemes)
+            .chain(servers)
+            .chain(binders)
+            .chain(renderers)
+            .collect::<Vec<_>>(),
+    )?;
     Ok(Outcome::Success)
 }
 
@@ -116,6 +125,7 @@ enum Kind {
     Scheme,
     Server,
     Binder,
+    Renderer,
 }
 
 impl Kind {
@@ -126,6 +136,7 @@ impl Kind {
             Self::Scheme => "scheme",
             Self::Server => "server",
             Self::Binder => "binder",
+            Self::Renderer => "renderer",
         }
     }
 }

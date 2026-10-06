@@ -13,6 +13,7 @@ use vun_binder::Binder;
 use vun_fetch::{Scheme, Schemes};
 use vun_intern::Symbol;
 use vun_link::Linker;
+use vun_renderer::{Renderer, Short};
 use vun_server::Server;
 
 mod roster;
@@ -27,6 +28,7 @@ pub struct Registry {
     pub schemes: Roster<dyn Scheme>,
     pub servers: Roster<dyn Server>,
     pub binders: Roster<dyn Binder>,
+    pub renderers: Roster<dyn Renderer>,
 }
 
 /// Where a component comes from (decision 498).
@@ -47,6 +49,12 @@ impl Named for dyn Backend {
 impl Named for dyn Linker {
     fn called(&self) -> &str {
         self.info().id.0
+    }
+}
+
+impl Named for dyn Renderer {
+    fn called(&self) -> &str {
+        self.name()
     }
 }
 
@@ -105,6 +113,11 @@ impl Registry {
         register!(r.schemes, link {
             "scheme-https" => vun_component_scheme_https::component(),
         });
+        r.renderers.link(Box::new(Short));
+        register!(r.renderers, link {
+            "renderer-terminal" => vun_component_renderer_terminal::component(),
+            "renderer-ariadne" => vun_component_renderer_ariadne::component(),
+        });
         #[cfg(feature = "components")]
         if let Some(components) = Components::find() {
             r.load(&components);
@@ -131,6 +144,13 @@ impl Registry {
     /// Registers `linker` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
     pub fn add_linker_from(&mut self, linker: Box<dyn Linker>, from: Provider) {
         self.linkers.add(linker.into(), from);
+    }
+
+    /// The renderer called `name`, or the default format's, or the one line that is always there.
+    #[must_use]
+    pub fn renderer(&self, name: Symbol) -> &dyn Renderer {
+        let found = self.renderers.get(name.as_str()).or_else(|| self.renderers.get(crate::formats::DEFAULT));
+        found.map_or(&Short, |r| &*r.item)
     }
 
     pub fn backends(&self) -> impl Iterator<Item = &dyn Backend> {

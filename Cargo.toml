@@ -25,6 +25,8 @@ vun-component-link-wild = { path = "compiler/components/link-wild", default-feat
 vun-component-link-mold = { path = "compiler/components/link-mold", default-features = false }
 vun-component-link-ar = { path = "compiler/components/link-ar", default-features = false }
 vun-component-link-lld = { path = "compiler/components/link-lld", default-features = false }
+vun-component-renderer-terminal = { path = "compiler/components/renderer-terminal", default-features = false }
+vun-component-renderer-ariadne = { path = "compiler/components/renderer-ariadne", default-features = false }
 vun-component-binder-c = { path = "compiler/tools/binder-c", default-features = false }
 vun-component-server-lsp = { path = "compiler/tools/server-lsp", default-features = false }
 vun-component-scheme-https = { path = "compiler/components/scheme-https", default-features = false }
@@ -117,6 +119,7 @@ vun-link-wasm = { path = "compiler/link/wasm" }
 vun-link-gnu = { path = "compiler/link/gnu" }
 vun-link-msvc = { path = "compiler/link/msvc" }
 vun-link-external = { path = "compiler/link/external" }
+vun-renderer = { path = "compiler/render/api" }
 vun-render-short = { path = "compiler/render/short" }
 vun-render-annotate = { path = "compiler/render/annotate" }
 vun-render-ariadne = { path = "compiler/render/ariadne" }

@@ -26,7 +26,7 @@ pub use param::{
     Values,
 };
 pub use parse::{Detail, Request, Selected};
-pub use run::{Context, Diagnostics, HumanSink};
+pub use run::{Context, Diagnostics};
 pub use settings::{Setting, Settings};
 
 pub struct Program<Cx: 'static> {

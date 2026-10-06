@@ -1,5 +1,5 @@
 //! The components of the toolchain's `components` directory (decision 498): libraries each
-//! serving a backend, a linker, a URL scheme, a server or a binder, registered beside those linked in.
+//! serving a backend, a linker, a URL scheme, a server, a binder or a renderer, registered beside those linked in.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -12,6 +12,7 @@ use vun_build::toolchains::{COMPONENTS, Toolchains};
 use vun_component::{Component, Fault, Interface, Kind};
 use vun_data::FromData;
 use vun_link_component::Linkers;
+use vun_renderer::Renderers;
 use vun_scheme_component::Schemes;
 use vun_server::Servers;
 use vun_target::Machine;
@@ -30,6 +31,7 @@ enum Served {
     Scheme(vun_scheme_component::Remote),
     Server(vun_server::Remote),
     Binder(vun_binder::Remote),
+    Renderer(vun_renderer::Remote),
 }
 
 impl Served {
@@ -40,6 +42,7 @@ impl Served {
         (Schemes::KIND, |c| vun_scheme_component::Remote::of(c).map(Self::Scheme)),
         (Servers::KIND, |c| vun_server::Remote::of(c).map(Self::Server)),
         (Binders::KIND, |c| vun_binder::Remote::of(c).map(Self::Binder)),
+        (Renderers::KIND, |c| vun_renderer::Remote::of(c).map(Self::Renderer)),
     ];
 
     /// What the component is called: its kind and its backend's or linker's id
@@ -50,6 +53,9 @@ impl Served {
                 format!("{}-{}", Backends::KIND, vun_backend::Backend::info(backend).id)
             }
             Self::Linker(linker) => format!("{}-{}", Linkers::KIND, vun_link::Linker::info(linker).id),
+            Self::Renderer(renderer) => {
+                format!("{}-{}", Renderers::KIND, vun_renderer::Renderer::name(renderer))
+            }
             Self::Binder(binder) => format!("{}-{}", Binders::KIND, vun_binder::Binder::name(binder)),
             Self::Server(server) => format!("{}-{}", Servers::KIND, vun_server::Server::name(server)),
             Self::Scheme(scheme) => format!("{}-{}", Schemes::KIND, vun_fetch::Scheme::name(scheme)),
@@ -162,6 +168,9 @@ impl Registry {
                 }
                 Ok(Served::Binder(binder)) => {
                     self.binders.load(Box::new(binder), path);
+                }
+                Ok(Served::Renderer(renderer)) => {
+                    self.renderers.load(Box::new(renderer), path);
                 }
                 Err(Fault::Open { source, .. }) => {
                     debug!(library = %path.display(), %source, "not a component");
