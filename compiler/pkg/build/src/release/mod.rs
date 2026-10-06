@@ -4,6 +4,7 @@
 //! its version as it is (`0.4.2`), so that its files are found from the version alone. The manifest
 //! is signed ([`Key`]), so that it and every archive it names are the ones the project released.
 
+mod build;
 mod key;
 
 use std::error::Error;
@@ -89,6 +90,9 @@ pub struct Piece {
     pub hash: Hash,
     /// The smallest profile that holds it.
     pub profile: Profile,
+    /// The components it cannot do its work without, by name: installed with it, and held by
+    /// every profile that holds it.
+    pub needs: Vec<String>,
 }
 
 /// A release's manifest as it was published: read, and its bytes, which the signature signs and
@@ -202,39 +206,6 @@ impl Release {
     #[must_use]
     pub fn build_for(&self, machine: Machine) -> Option<&Build> {
         self.builds.iter().find(|b| b.machine == machine)
-    }
-}
-
-impl Build {
-    /// The suffix of toolchain archives: gzip-compressed tar, which every system unpacks
-    /// without `vun`, as a first installation does.
-    pub const SUFFIX: &str = ".tar.gz";
-
-    /// The components `profile` holds.
-    pub fn in_profile(&self, profile: Profile) -> impl Iterator<Item = &Piece> {
-        self.components.iter().filter(move |piece| piece.profile <= profile)
-    }
-
-    /// The component `name` of this build.
-    #[must_use]
-    pub fn piece(&self, name: &str) -> Option<&Piece> {
-        self.components.iter().find(|p| p.name == name)
-    }
-
-    /// The file name of the archive of `machine`'s toolchain: the same in every release, so that
-    /// the latest one is found without its version (`vun-x86_64-linux.tar.gz`).
-    #[must_use]
-    pub fn archive_name(machine: Machine) -> String {
-        [crate::toolchains::NAME, "-", machine.arch.0, "-", machine.os.0, Self::SUFFIX].concat()
-    }
-}
-
-impl Piece {
-    /// The file name of the archive of the component `name` for `machine`
-    /// (`vun-cranelift-x86_64-linux.tar.gz`).
-    #[must_use]
-    pub fn archive_name(name: &str, machine: Machine) -> String {
-        [crate::toolchains::NAME, "-", name, "-", machine.arch.0, "-", machine.os.0, Build::SUFFIX].concat()
     }
 }
 

@@ -1,44 +1,38 @@
 //! Timing for another process's table: a component's library has its own, which nobody reads, so
-//! the host lends the thread of a call a relay, and what the library times is timed in the host's
-//! table, nested under the call that is running.
+//! the host lends it a relay, and what the library times, on any of its threads, is timed in the
+//! host's table.
 
-use std::cell::RefCell;
+use std::sync::OnceLock;
 
 use super::Activity;
 
-/// Where the activities of this thread are timed instead.
-pub trait Relay {
+/// Where the activities of a process are timed instead.
+pub trait Relay: Send + Sync {
     fn begin(&self, activity: Activity);
+    /// The innermost activity the calling thread began ends.
     fn end(&self);
 }
 
-thread_local! {
-    static RELAY: RefCell<Option<Box<dyn Relay>>> = const { RefCell::new(None) };
-}
+static RELAY: OnceLock<Box<dyn Relay>> = OnceLock::new();
 
-/// A relay installed on this thread, removed when dropped.
-#[must_use = "the relay is installed until it is dropped"]
-pub struct Relaying(());
+/// The relay of the process, if it has one.
+pub struct Relaying;
 
 impl Relaying {
-    /// Times this thread's activities through `relay`, until the guard returned is dropped.
-    pub fn to(relay: Box<dyn Relay>) -> Self {
-        RELAY.with_borrow_mut(|slot| *slot = Some(relay));
-        Self(())
+    /// Times every activity of this process through `relay` from now on: the first relay
+    /// installed is the one.
+    pub fn install(relay: Box<dyn Relay>) {
+        let _ = RELAY.set(relay);
     }
 
     /// Hands `activity` to the relay: whether there is one.
     pub(super) fn begin(activity: Activity) -> bool {
-        RELAY.with_borrow(|slot| slot.as_deref().inspect(|relay| relay.begin(activity)).is_some())
+        RELAY.get().inspect(|relay| relay.begin(activity)).is_some()
     }
 
     pub(super) fn end() {
-        RELAY.with_borrow(|slot| slot.iter().for_each(|relay| relay.end()));
-    }
-}
-
-impl Drop for Relaying {
-    fn drop(&mut self) {
-        RELAY.with_borrow_mut(Option::take);
+        if let Some(relay) = RELAY.get() {
+            relay.end();
+        }
     }
 }

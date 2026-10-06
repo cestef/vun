@@ -8,10 +8,6 @@ use vun_syntax::tokens::TokenId;
 
 use crate::write::{Trace, Written};
 
-/// The most columns a line has unless it cannot be broken, a string, a name or a comment, when no
-/// other is asked for.
-pub const WIDTH: usize = 110;
-
 /// Adds to `forced` the tokens to break before, so that what a pass left past `width` is
 /// broken, a line at a time: the outermost group on it that holds the first token past the
 /// width, or else its last infix operator that starts within it, of the fewest groups. Whether

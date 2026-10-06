@@ -126,6 +126,7 @@ build := (b: &mut std.build.Build) {};
 fn documented(package: &std::path::Path, out: &std::path::Path) -> Outcome {
     let argv = ["doc", package.to_str().unwrap(), "-o", out.to_str().unwrap()].map(str::to_owned);
     let (mut session, mut stdout, mut stderr) = (Session::new(), Vec::new(), Vec::new());
+    session.registry.documenters.link(Box::new(vun_doc::Html));
     PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut stdout, &mut stderr)).unwrap()
 }
 

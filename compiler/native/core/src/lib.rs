@@ -24,10 +24,14 @@ use vun_lir_passes::legalize::Division;
 use vun_object::{Format, Machine};
 use vun_par::Parallel;
 use vun_target::TargetSpec;
+use vun_trace::Activity;
 
 pub use listing::Listing;
 
 /// A function compiled for the architecture `A`.
+const COMPILE: Activity = Activity::stage("native compile functions");
+const WRITE: Activity = Activity::stage("native write object");
+
 pub type Code<A> = Compiled<<<A as vun_codegen::Arch>::Isa as Isa>::Inst<Address>>;
 
 /// An architecture's instruction compilers, with the calling conventions it compiles for.
@@ -82,6 +86,7 @@ pub trait Native: Isel {
         // A function inlined everywhere it was called is left to nothing: it has no code.
         let reached = Reached::of(unit);
         let functions: Vec<(FuncId, &Function)> = unit.functions.iter().collect();
+        let compiling = COMPILE.start();
         let compiled = functions.par_map(|&(id, f)| {
             if !reached.contains(id) || !chosen(id) {
                 return Ok(Compiled::unreached());
@@ -93,6 +98,7 @@ pub trait Native: Isel {
             }
             compiled
         });
+        drop(compiling);
         Ok(compiled.into_iter().collect::<Result<Vec<_>, _>>()?.into())
     }
 
@@ -135,6 +141,7 @@ pub trait Native: Isel {
             request.listing,
             &|_| true,
         )?;
+        let writing = WRITE.start();
         let bytes = Assembly {
             unit: request.unit,
             code: &code,
@@ -144,6 +151,7 @@ pub trait Native: Isel {
         }
         .object((machine, format))
         .write();
+        drop(writing);
         let mut artifacts = vec![Artifact { part: Part::Whole, kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();

@@ -16,12 +16,21 @@ fn release() -> Release {
         file: "libvun_component_cranelift.so".into(),
         hash: Hash::of(b"library"),
         profile: Profile::Default,
+        needs: vec!["native".into()],
+    };
+    let native = Piece {
+        name: "native".into(),
+        archive: Piece::archive_name("native", machine),
+        file: "libvun_component_native.so".into(),
+        hash: Hash::of(b"native"),
+        profile: Profile::Minimal,
+        needs: Vec::new(),
     };
     let build = Build {
         machine,
         archive: Build::archive_name(machine),
         hash: Hash::of(b"tree"),
-        components: vec![piece],
+        components: vec![piece, native],
     };
     Release { version: Version::parse("0.4.2").unwrap(), builds: vec![build] }
 }
@@ -36,9 +45,9 @@ fn a_manifest_reads_back_as_it_was_written() {
     assert!(read.build_for(Machine { arch: Name("arm64"), os: Name("macos") }).is_none());
     let build = &read.builds[0];
     assert_eq!(build.piece("cranelift").map(|p| p.file.as_str()), Some("libvun_component_cranelift.so"));
-    assert_eq!(build.in_profile(Profile::Minimal).count(), 0);
-    assert_eq!(build.in_profile(Profile::Default).count(), 1);
-    assert_eq!(build.in_profile(Profile::Full).count(), 1);
+    assert_eq!(build.in_profile(Profile::Minimal).count(), 1);
+    assert_eq!(build.in_profile(Profile::Default).count(), 2);
+    assert_eq!(build.in_profile(Profile::Full).count(), 2);
     assert!(build.piece("llvm").is_none());
     assert_eq!(Profile::named("full"), Some(Profile::Full));
 }
@@ -102,4 +111,26 @@ fn install_sh_holds_the_releases_key() {
     let (header, key) = der.split_at(SPKI.len());
     assert_eq!(header, SPKI);
     assert_eq!(Key::new(key.try_into().unwrap()), Key::releases());
+}
+
+#[test]
+fn what_a_component_needs_comes_with_it_and_before_it() {
+    let release = release();
+    let build = &release.builds[0];
+    let names = ["cranelift".to_owned(), "native".to_owned()];
+    let order = |names: &[String]| {
+        build.with_needs(names).unwrap().iter().map(|p| p.name.clone()).collect::<Vec<_>>()
+    };
+    assert_eq!(order(&names[..1]), ["native", "cranelift"]);
+    assert_eq!(order(&names), ["native", "cranelift"]);
+    assert_eq!(build.with_needs(&["llvm".to_owned()]).err(), Some("llvm"));
+    assert_eq!(build.unmet().count(), 0);
+}
+
+#[test]
+fn a_need_no_profile_that_holds_the_component_meets_is_unmet() {
+    let mut release = release();
+    release.builds[0].components[1].profile = Profile::Full;
+    let unmet: Vec<_> = release.builds[0].unmet().map(|(piece, need)| (piece.name.as_str(), need)).collect();
+    assert_eq!(unmet, [("cranelift", "native")]);
 }

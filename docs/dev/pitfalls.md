@@ -234,3 +234,10 @@ Traps that cost a session before. Add one when it costs you time.
   have `perf`), then `perf script -F ip,sym` and count the frame above the allocator or
   `clone` to find who copies. A flat profile of `Value::clone` or a hash probe is a copy of
   a whole array per read, or a table scanned per query, not the cost of the work itself.
+- A component crate's `export` feature defines the library's entry symbol `vun_component`, in
+  the rlib too: build a component with `--features <crate>/export` on its own package, never with
+  `--all-features` or on the cli, which would link several of them into one executable (a
+  duplicate symbol at link time).
+- A library times what it does through the host's table (`--timings`, `--timeline`): its stages
+  and queries appear there on every thread, nested under the `component <kind>` call on the
+  thread of the call. A component linked in shares the table and needs no relay.

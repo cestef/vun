@@ -27,4 +27,5 @@ vun-uri.workspace = true
 vun-variants.workspace = true
 
 [dev-dependencies]
+vun-fmt.workspace = true
 vun-build.workspace = true

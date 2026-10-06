@@ -11,6 +11,8 @@ use vun_build::release::{Piece, Release};
 use vun_build::toolchains::{COMPONENTS, Toolchains};
 use vun_component::{Component, Fault, Interface, Kind};
 use vun_data::FromData;
+use vun_documenter::Documenters;
+use vun_formatter::Formatters;
 use vun_link_component::Linkers;
 use vun_renderer::Renderers;
 use vun_scheme_component::Schemes;
@@ -31,6 +33,8 @@ enum Served {
     Scheme(vun_scheme_component::Remote),
     Server(vun_server::Remote),
     Binder(vun_binder::Remote),
+    Formatter(vun_formatter::Remote),
+    Documenter(vun_documenter::Remote),
     Renderer(vun_renderer::Remote),
 }
 
@@ -42,6 +46,8 @@ impl Served {
         (Schemes::KIND, |c| vun_scheme_component::Remote::of(c).map(Self::Scheme)),
         (Servers::KIND, |c| vun_server::Remote::of(c).map(Self::Server)),
         (Binders::KIND, |c| vun_binder::Remote::of(c).map(Self::Binder)),
+        (Formatters::KIND, |c| vun_formatter::Remote::of(c).map(Self::Formatter)),
+        (Documenters::KIND, |c| vun_documenter::Remote::of(c).map(Self::Documenter)),
         (Renderers::KIND, |c| vun_renderer::Remote::of(c).map(Self::Renderer)),
     ];
 
@@ -57,6 +63,12 @@ impl Served {
                 format!("{}-{}", Renderers::KIND, vun_renderer::Renderer::name(renderer))
             }
             Self::Binder(binder) => format!("{}-{}", Binders::KIND, vun_binder::Binder::name(binder)),
+            Self::Formatter(formatter) => {
+                format!("{}-{}", Formatters::KIND, vun_formatter::Formatter::name(formatter))
+            }
+            Self::Documenter(documenter) => {
+                format!("{}-{}", Documenters::KIND, vun_documenter::Documenter::name(documenter))
+            }
             Self::Server(server) => format!("{}-{}", Servers::KIND, vun_server::Server::name(server)),
             Self::Scheme(scheme) => format!("{}-{}", Schemes::KIND, vun_fetch::Scheme::name(scheme)),
         }
@@ -168,6 +180,12 @@ impl Registry {
                 }
                 Ok(Served::Binder(binder)) => {
                     self.binders.load(Box::new(binder), path);
+                }
+                Ok(Served::Formatter(formatter)) => {
+                    self.formatters.load(Box::new(formatter), path);
+                }
+                Ok(Served::Documenter(documenter)) => {
+                    self.documenters.load(Box::new(documenter), path);
                 }
                 Ok(Served::Renderer(renderer)) => {
                     self.renderers.load(Box::new(renderer), path);

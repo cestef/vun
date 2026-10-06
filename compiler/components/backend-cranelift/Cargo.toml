@@ -13,6 +13,9 @@ workspace = true
 [package.metadata.vun-component]
 # The smallest profile of a release that holds it.
 profile = "default"
+# The components it cannot do its work without, by the name they go by: native compiles what
+# Cranelift does not express.
+needs = ["backend-native"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

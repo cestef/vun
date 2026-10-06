@@ -48,6 +48,8 @@ vun-link-component = { workspace = true, optional = true }
 vun-scheme-component = { workspace = true, optional = true }
 vun-server.workspace = true
 vun-binder.workspace = true
+vun-formatter.workspace = true
+vun-documenter.workspace = true
 vun-sema-plan.workspace = true
 vun-sema-ty.workspace = true
 vun-fetch.workspace = true
@@ -65,14 +67,12 @@ vun-trace.workspace = true
 vun-span.workspace = true
 vun-origin.workspace = true
 vun-diag.workspace = true
-vun-doc.workspace = true
 vun-query.workspace = true
 vun-reduce.workspace = true
 vun-target.workspace = true
 vun-sanitize.workspace = true
 vun-tool.workspace = true
 vun-syntax.workspace = true
-vun-fmt.workspace = true
 vun-index.workspace = true
 vun-variants.workspace = true
 vun-grammar.workspace = true
@@ -121,6 +121,11 @@ vun-link-ar.workspace = true
 vun-link-lld.workspace = true
 vun-link-wasm.workspace = true
 vun-link-gnu.workspace = true
+vun-fmt.workspace = true
+vun-doc.workspace = true
+# The components the tests load as libraries.
+vun-component-formatter-vun.workspace = true
+vun-component-documenter-html.workspace = true
 # The generated assemblers, whose numbering sema's tables must follow.
 vun-isa-arm64.workspace = true
 vun-isa-thumb.workspace = true

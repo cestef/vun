@@ -9,7 +9,6 @@ use vun_build::layout::MANIFEST;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
-use vun_doc::Docs;
 use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
@@ -27,6 +26,8 @@ const OUTPUT: Param = Param::option("output")
     .values(Values::Path(PathKind::Dir));
 /// The directory under the work directory the site is written to.
 const DOCS: &str = "doc";
+/// The documenter of Vun packages.
+const DOCUMENTER: &str = "html";
 /// The file that marks a directory as one `vun doc` writes in.
 const STAMP: &str = ".vun-doc";
 
@@ -109,10 +110,20 @@ fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
         packages.extend(session.library_packages());
     }
     packages.dedup();
-    let mut docs = Docs::default();
-    for package in &packages {
-        session.document(&mut docs, package)?;
-    }
+    let Some(documenter) = session.registry.documenters.get(DOCUMENTER) else {
+        let msg = Msg::new().text("this program runs without ").code("doc");
+        session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
+        return Ok(Outcome::Failure);
+    };
+    let documenter = documenter.item.clone();
+    let site = match session.document(&*documenter, &packages) {
+        Ok(site) => site,
+        Err(e) => {
+            let msg = Msg::new().text("the documenter ").code(documenter.name()).text(" failed");
+            session.diag.error(Diagnostic::error(errors::COMPONENT_FAILED, msg).caused_by(&e));
+            return Ok(Outcome::Failure);
+        }
+    };
     let work = session.work(&packages[0].join(MANIFEST));
     let dir = args.value(&OUTPUT).map_or_else(|| work.join(DOCS), PathBuf::from);
     let output = Output(dir);
@@ -122,9 +133,9 @@ fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     }
     let dir = output.0;
     dir.join(STAMP).put("")?;
-    for written in docs.site() {
+    for written in site.files {
         dir.join(&written.path).put(written.contents)?;
     }
-    shell.status(&Documented { namespaces: docs.namespaces.len(), dir });
+    shell.status(&Documented { namespaces: site.namespaces, dir });
     Ok(session.outcome())
 }

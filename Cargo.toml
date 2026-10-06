@@ -37,6 +37,10 @@ vun-derive-core = { path = "compiler/base/derive-core" }
 vun-data-derive = { path = "compiler/base/data-derive" }
 vun-literal-derive = { path = "compiler/front/literal-derive" }
 vun-binder = { path = "compiler/tools/binder" }
+vun-formatter = { path = "compiler/tools/formatter" }
+vun-documenter = { path = "compiler/tools/documenter" }
+vun-component-documenter-html = { path = "compiler/tools/documenter-html", default-features = false }
+vun-component-formatter-vun = { path = "compiler/tools/formatter-vun", default-features = false }
 vun-server = { path = "compiler/tools/server" }
 vun-lsp-protocol = { path = "compiler/tools/lsp-protocol" }
 vun-data = { path = "compiler/base/data" }

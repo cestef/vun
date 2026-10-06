@@ -26,5 +26,6 @@ vun-component.workspace = true
 vun-diag.workspace = true
 vun-command.workspace = true
 vun-driver.workspace = true
+vun-fmt.workspace = true
 vun-lsp.workspace = true
 vun-server.workspace = true

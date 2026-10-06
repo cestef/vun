@@ -11,7 +11,9 @@ use std::path::PathBuf;
 
 use vun_backend::Backend;
 use vun_binder::Binder;
+use vun_documenter::Documenter;
 use vun_fetch::{Scheme, Schemes};
+use vun_formatter::Formatter;
 use vun_intern::Symbol;
 use vun_link::Linker;
 use vun_renderer::{Renderer, Short};
@@ -21,7 +23,7 @@ mod roster;
 
 pub use roster::{Named, Roster};
 
-/// The components available to a session: backends, linkers, URL schemes, servers and binders.
+/// The components available to a session: backends, linkers, URL schemes, servers, binders, formatters, documenters and renderers.
 #[derive(Default)]
 pub struct Registry {
     backends: Roster<dyn Backend>,
@@ -29,6 +31,8 @@ pub struct Registry {
     pub schemes: Roster<dyn Scheme>,
     pub servers: Roster<dyn Server>,
     pub binders: Roster<dyn Binder>,
+    pub formatters: Roster<dyn Formatter>,
+    pub documenters: Roster<dyn Documenter>,
     pub renderers: Roster<dyn Renderer>,
 }
 
@@ -60,6 +64,18 @@ impl Named for dyn Renderer {
 }
 
 impl Named for dyn Binder {
+    fn called(&self) -> &str {
+        self.name()
+    }
+}
+
+impl Named for dyn Documenter {
+    fn called(&self) -> &str {
+        self.name()
+    }
+}
+
+impl Named for dyn Formatter {
     fn called(&self) -> &str {
         self.name()
     }

@@ -9,7 +9,8 @@ use std::path::Path;
 
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
-use vun_fmt::Layout;
+use vun_diag::{Diagnostic, Msg, errors};
+use vun_formatter::{Formatter, Unlaid, WIDTH as DEFAULT_WIDTH};
 use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
@@ -80,7 +81,13 @@ impl Status for Laid {
 
 fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let check = args.flag(&CHECK);
-    let width = args.count(&WIDTH).and_then(|w| usize::try_from(w).ok()).unwrap_or(vun_fmt::WIDTH);
+    let width = args.count(&WIDTH).and_then(|w| usize::try_from(w).ok()).unwrap_or(DEFAULT_WIDTH);
+    let Some(formatter) = session.registry.formatters.get(Session::FORMATTER) else {
+        let msg = Msg::new().text("this program runs without ").code("fmt");
+        session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
+        return Ok(Outcome::Failure);
+    };
+    let formatter = formatter.item.clone();
     let named: Vec<&Path> = args.values(&PATHS).map(Path::new).collect();
     let mut files = Vec::new();
     for path in if named.is_empty() { vec![None] } else { named.into_iter().map(Some).collect() } {
@@ -89,7 +96,7 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     }
     let mut pending = false;
     for path in &files {
-        let Some(laid) = session.laid_out(path, width) else { continue };
+        let Some(laid) = session.laid_out(&*formatter, path, width) else { continue };
         let change = if check { Change::Pending } else { Change::Written };
         if change == Change::Written {
             path.put(laid)?;
@@ -101,23 +108,30 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
 }
 
 trait Formatted {
-    /// The file at `path` laid out, when that changes it; `None` when it is laid out already, or
-    /// does not read or parse, which is reported.
-    fn laid_out(&mut self, path: &Path, width: usize) -> Option<String>;
+    /// The file at `path` laid out by `formatter`, when that changes it; `None` when it is laid
+    /// out already, or does not read or parse, which is reported.
+    fn laid_out(&mut self, formatter: &dyn Formatter, path: &Path, width: usize) -> Option<String>;
 }
 
 impl Formatted for Session {
-    fn laid_out(&mut self, path: &Path, width: usize) -> Option<String> {
+    fn laid_out(&mut self, formatter: &dyn Formatter, path: &Path, width: usize) -> Option<String> {
         let text = self.read(path)?;
         let file = self.sources.add(path.display().to_string(), text);
         let errors = self.diag.error_count();
         let tokens = self.lex(file);
-        let cst = self.parse(&tokens);
+        self.parse(&tokens);
         if self.diag.error_count() > errors {
             return None;
         }
         let text = self.text(file);
-        let laid = Layout::new(&tokens, &cst, text).width(width).to_string();
-        (laid != text).then_some(laid)
+        match formatter.layout(text, width) {
+            Ok(laid) => (laid != text).then_some(laid),
+            Err(Unlaid::Unparsed) => None,
+            Err(failed) => {
+                let msg = Msg::new().text("the formatter ").code(formatter.name()).text(" failed");
+                self.diag.error(Diagnostic::error(errors::COMPONENT_FAILED, msg).caused_by(&failed));
+                None
+            }
+        }
     }
 }

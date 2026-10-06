@@ -12,6 +12,8 @@ workspace = true
 
 [dependencies]
 pulldown-cmark.workspace = true
+vun-component.workspace = true
+vun-documenter.workspace = true
 vun-diag.workspace = true
 vun-grammar.workspace = true
 vun-html.workspace = true

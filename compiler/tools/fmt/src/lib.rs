@@ -7,14 +7,16 @@ mod roles;
 mod spacing;
 #[cfg(test)]
 mod tests;
+mod vun;
 mod wrap;
 mod write;
 
 use std::collections::BTreeSet;
 use std::fmt;
 
-pub use wrap::WIDTH;
+pub use vun::Vun;
 
+use vun_formatter::WIDTH;
 use vun_syntax::cst::Cst;
 use vun_syntax::tokens::Tokens;
 
@@ -36,7 +38,7 @@ impl<'a> Layout<'a> {
     }
 
     /// This layout with lines of at most `width` columns, where they can be broken, in place of
-    /// [`WIDTH`].
+    /// [`vun_formatter::WIDTH`].
     #[must_use]
     pub fn width(mut self, width: usize) -> Self {
         self.width = width;

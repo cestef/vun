@@ -106,7 +106,8 @@ impl Component {
         let started = Instant::now();
         let _timer = Activity::component(I::KIND.0).start();
         let request = Wire::seal(call);
-        let relay = Timings::enabled().then_some(Self::relay as Relay);
+        // A component linked in shares the host's table: nothing to relay.
+        let relay = (Timings::enabled() && self.path.is_some()).then_some(Self::relay as Relay);
         let host =
             Host { context: (&raw const ask).cast(), ask: Self::answer::<I>, free: Owned::release, relay };
         let mut out = Owned::EMPTY;

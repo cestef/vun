@@ -60,10 +60,10 @@ pub unsafe fn answer<I: Interface>(
     TRACE.call_once(|| Config { timings: false, timeline: None, ..Config::from_env() }.install());
     // SAFETY: by the caller.
     let (request, host) = unsafe { (input.bytes(), &*host) };
-    let _relaying = host.relay.map(|relay| {
+    if let Some(relay) = host.relay {
         Timings::enable();
-        Relaying::to(Box::new(Forwarding(relay)))
-    });
+        Relaying::install(Box::new(Forwarding(relay)));
+    }
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
         let call = Wire::open::<I::Call<'static>>(request)?;
         let ask = |ask: I::Ask| host.ask::<I>(&ask);

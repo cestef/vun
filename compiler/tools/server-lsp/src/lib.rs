@@ -24,6 +24,7 @@ impl Server for Lsp {
 
     fn serve(&self, diag: &mut DiagCtxt) -> io::Result<Outcome> {
         let mut session = Session::persistent();
+        session.registry.formatters.link(Box::new(vun_fmt::Vun));
         let outcome = vun_lsp::serve(&mut session);
         diag.absorb(&session.diag);
         outcome

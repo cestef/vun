@@ -18,6 +18,10 @@ fn main() -> ExitCode {
     let mut session = Session::persistent();
     #[cfg(feature = "lsp")]
     session.registry.servers.link(Box::new(vun_component_server_lsp::component()));
+    #[cfg(feature = "fmt")]
+    session.registry.formatters.link(Box::new(vun_component_formatter_vun::component()));
+    #[cfg(feature = "doc")]
+    session.registry.documenters.link(Box::new(vun_component_documenter_html::component()));
     #[cfg(feature = "ffi")]
     session.registry.binders.link(Box::new(vun_component_binder_c::component()));
     session.check = PROGRAM.invocation(&CHECK_PATH);

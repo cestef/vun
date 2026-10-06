@@ -372,15 +372,15 @@ checks the archive against the signed checksums before anything runs; the `vun t
 it runs then checks the manifest's signature and the tree's hash.
 
 **Components.** A part of the toolchain a crate declares an interface for is a component:
-backends, linkers, URL schemes (`https`, with its TLS stack) servers (the language server) and binders (C headers through libclang) and renderers (the formats of `--diagnostics`) today, and any kind a later crate adds
+backends, linkers, URL schemes (`https`, with its TLS stack) servers (the language server), binders (C headers through libclang), formatters (`vun fmt`), documenters (`vun doc`, which asks the host which declarations declare a type) and renderers (the formats of `--diagnostics`) today, and any kind a later crate adds
 (a kind is a name, the set is open).
 The registry lists components, none is special. A component is provided one of two ways, which
 differ only in transport. A *linked* one is compiled into `vun` (a Cargo feature), called
 directly. A *loaded* one is a dynamic library in the toolchain's `components/` directory
 (`<name>.so`, `.dylib` or `.dll`, or the directory `VUN_COMPONENTS` names), opened on first use.
 Both answer the same typed requests (`Backend::info`, `emit`, `division`, `frame_sizes`;
-`Linker::info`, `runs`, `link`; `Scheme::name`, `read`; `Server::name`, `serve`; `Binder::name`, `bind`; `Renderer::name`, `about`, `sink`), so the crate implementing `Backend`,
-`Linker`, `Scheme`, `Server`, `Binder` or `Renderer` is the same either way and a cdylib crate only exports it. A failure of a library
+`Linker::info`, `runs`, `link`; `Scheme::name`, `read`; `Server::name`, `serve`; `Binder::name`, `bind`; `Formatter::name`, `layout`; `Documenter::name`, `document`; `Renderer::name`, `about`, `sink`), so the crate implementing `Backend`,
+`Linker`, `Scheme`, `Server`, `Binder`, `Formatter`, `Documenter` or `Renderer` is the same either way and a cdylib crate only exports it. A failure of a library
 crosses as the messages of its error and of each source (`Cause`). The one-line renderer is always linked, shown when the format asked for is not there. The first registered of a name is the one a build uses,
 so a toolchain linking a component has it before a library of the same name.
 
@@ -389,15 +389,15 @@ bytes in the `vun-codec` encoding both ways (handles written by content, so each
 in its own tables), and the side that allocated a buffer releasing it. No Rust type, allocation,
 static or thread crosses it, so a component has its own interner, pool and allocator. What the
 component asks of `vun` while it runs (the source lines of an origin) it asks through the `host`
-it is given, which is the same call the other way; its diagnostics, artifacts and frame sizes
-come back in the reply. A panic inside is caught at the boundary and reported as
+it is given, which is the same call the other way (a backend that cannot express everything asks the host's assist, the first registered backend that has one, for the functions it hands over); its diagnostics, artifacts and frame sizes
+come back in the reply, and what it times is timed in the host's table, on every thread. A panic inside is caught at the boundary and reported as
 `component.failed`; its logs follow `VUN_LOG` as the host's do. Opening checks the library's
 descriptor (the boundary's layout, then the toolchain's release) against `vun`'s and refuses any
 other (`component.invalid`), and a toolchain installed from a release loads only the libraries its
 kept manifest names, each as hashed. This boundary is the one `unsafe` module of the toolchain
 besides `vun-par`'s pool.
 
-**Releases of components.** A release's manifest lists, for each machine, the toolchain's archive
+**Releases of components.** A component names the components it cannot work without (`needs`), which its manifest entry carries and installing it installs, in the same or a smaller profile. A release's manifest lists, for each machine, the toolchain's archive
 and each component's (`vun-<kind>-<id>-<arch>-<os>.tar.gz`, a tree holding the library in
 `components/`), each with the hash of its tree, in the signed manifest. A component is named by its
 kind and id (`backend-cranelift`, `linker-wasm`) and belongs to the smallest *profile* that holds

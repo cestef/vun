@@ -21,6 +21,7 @@ mod evaluator;
 mod fetch;
 mod fixes;
 mod flash;
+mod formatter;
 mod forms;
 mod fuzz;
 mod generics;

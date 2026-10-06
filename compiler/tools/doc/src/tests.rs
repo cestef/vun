@@ -1,7 +1,9 @@
 //! A namespace documented from its source: what is public, how signatures read, and where doc
 //! comments link.
 
-use crate::{Docs, Item, Kind};
+use vun_documenter::{Documenter, Source, Types};
+
+use crate::{Docs, Html, Item, Kind};
 
 const FILE: &str = "\
 //! Points and colors.
@@ -85,4 +87,23 @@ fn the_site_has_a_page_per_namespace_an_index_a_stylesheet_and_the_json() {
     assert_eq!(paths, ["pkg.html", "std.other.html", "index.html", "style.css", "docs.json"]);
     let json = vun_data::json::parse(&site[4].contents).unwrap();
     assert_eq!(json["namespaces"][0]["items"][0]["members"][1]["name"].as_str(), Some("sum"));
+}
+
+/// Says that `Make` is a type.
+struct Told;
+
+impl Types for Told {
+    fn is_type(&self, _: &[String], name: &str) -> bool {
+        name == "Make"
+    }
+}
+
+#[test]
+fn the_documenter_retypes_what_the_host_says_is_a_type_and_writes_the_site() {
+    let source =
+        Source { path: vec!["points".to_owned()], file: "points.vun".to_owned(), text: FILE.to_owned() };
+    let site = Html.document(&[source], &Told).unwrap();
+    assert_eq!(site.namespaces, 1);
+    let paths: Vec<_> = site.files.iter().map(|w| w.path.as_str()).collect();
+    assert!(paths.contains(&"index.html") && paths.iter().any(|p| p.ends_with("points.html")), "{paths:?}");
 }

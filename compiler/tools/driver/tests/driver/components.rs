@@ -43,6 +43,7 @@ impl Laid {
             file: LIBRARY.into(),
             hash: claimed.unwrap_or_else(|| snapshot.root()),
             profile: Profile::Default,
+            needs: Vec::new(),
         };
         let published = Self::publish(machine, version, piece.clone());
         let base = fixture.root.path().join("forge");

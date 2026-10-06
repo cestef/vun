@@ -15,7 +15,7 @@ path = "src/main.rs"
 workspace = true
 
 [features]
-default = ["backends", "linkers", "schemes", "renderers", "planned", "components", "ffi", "lsp", "mimalloc"]
+default = ["backends", "linkers", "schemes", "renderers", "planned", "components", "ffi", "fmt", "doc", "lsp", "mimalloc"]
 # What a release's `vun` links (`cargo xtask package`): the backends and linkers not built yet, and
 # the loader of every other, which are components beside it.
 dist = ["planned", "components", "mimalloc"]
@@ -70,6 +70,10 @@ link-external = ["vun-driver/link-external"]
 components = ["vun-driver/components"]
 # `vun ffi bind` linked in, which loads libclang.
 ffi = ["dep:vun-component-binder-c"]
+# `vun doc`.
+doc = ["dep:vun-component-documenter-html"]
+# `vun fmt`.
+fmt = ["dep:vun-component-formatter-vun"]
 # `vun util lsp`.
 lsp = ["dep:vun-component-server-lsp"]
 # The allocator for many threads.
@@ -82,10 +86,10 @@ vun-build.workspace = true
 vun-command.workspace = true
 vun-diag.workspace = true
 vun-disasm.workspace = true
-vun-doc.workspace = true
+vun-documenter.workspace = true
 vun-driver = { workspace = true }
 vun-fetch.workspace = true
-vun-fmt.workspace = true
+vun-formatter.workspace = true
 vun-fs.workspace = true
 vun-hash.workspace = true
 vun-hir.workspace = true
@@ -93,6 +97,8 @@ vun-intern.workspace = true
 vun-data.workspace = true
 vun-link.workspace = true
 vun-component-server-lsp = { workspace = true, optional = true }
+vun-component-formatter-vun = { workspace = true, optional = true }
+vun-component-documenter-html = { workspace = true, optional = true }
 vun-mir.workspace = true
 vun-origin.workspace = true
 vun-query.workspace = true
@@ -110,3 +116,6 @@ vun-trace.workspace = true
 vun-component-binder-c = { workspace = true, optional = true }
 vun-binder.workspace = true
 mimalloc = { workspace = true, optional = true }
+
+[dev-dependencies]
+vun-doc.workspace = true

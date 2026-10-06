@@ -99,6 +99,7 @@ fn served(name: &str, test: impl FnOnce(&mut Client<'_, '_>, &Uri)) {
     let dir = Scratch::new(name);
     let uri = document(&dir, "a.vun");
     let mut session = Session::new();
+    session.registry.formatters.link(Box::new(vun_fmt::Vun));
     let mut server = Server::new(&mut session);
     let mut client = Client::new(&mut server);
     client.initialize(&[PositionEncoding::Utf8]);

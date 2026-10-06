@@ -7,6 +7,8 @@ use std::process::Command;
 
 use vun_driver::{Codegen, Components, Registry, Session};
 use vun_harness::{ACCEPT, repo_root};
+use vun_target::Name;
+use vun_trace::{Activity, Timings};
 
 use crate::common::{Fixture, components_of};
 
@@ -15,14 +17,14 @@ const CRANELIFT: &str = "vun-component-backend-cranelift";
 const NATIVE: &str = "vun-component-backend-native";
 
 /// A session whose backends are the libraries of `packages` alone, building `source`.
-fn through(fixture: &Fixture, source: &str, packages: &[&str]) -> (Session, vun_span::FileId) {
+fn through(fixture: &Fixture, source: &str, packages: &[&str], backend: Name) -> (Session, vun_span::FileId) {
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     session.registry = Registry::default();
     session.registry.load(&Components::at(components_of(fixture, packages)));
     session.registry.add_linker(Box::new(vun_link_gnu::GnuLinker));
     let file = session.load(&path).unwrap();
-    session.codegen = Codegen::through(vun_backend_cranelift::INFO.id);
+    session.codegen = Codegen::through(backend);
     (session, file)
 }
 
@@ -30,7 +32,7 @@ fn through(fixture: &Fixture, source: &str, packages: &[&str]) -> (Session, vun_
 fn a_backend_loaded_from_a_library_builds_a_program_that_runs() {
     let fixture = Fixture::new("component-hello");
     let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
-    let (mut session, file) = through(&fixture, &text, &[CRANELIFT, NATIVE]);
+    let (mut session, file) = through(&fixture, &text, &[CRANELIFT, NATIVE], vun_backend_cranelift::INFO.id);
     let loaded = session.registry.backends().map(|b| b.info().id).collect::<Vec<_>>();
     let libraries = [vun_backend_cranelift::INFO.id, vun_backend_native::INFO.id];
     assert_eq!(loaded, libraries, "the libraries are the only backends");
@@ -45,11 +47,27 @@ fn what_a_backend_cannot_express_is_compiled_by_the_assisting_backend_the_host_h
         return;
     }
     let fixture = Fixture::new("component-assist");
-    let (mut session, file) = through(&fixture, crate::asm::NAKED, &[CRANELIFT, NATIVE]);
+    let (mut session, file) =
+        through(&fixture, crate::asm::NAKED, &[CRANELIFT, NATIVE], vun_backend_cranelift::INFO.id);
     let program = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert_eq!(Command::new(program).status().unwrap().code(), Some(7));
 
     let alone = Fixture::new("component-unassisted");
-    let (mut session, file) = through(&alone, crate::asm::NAKED, &[CRANELIFT]);
+    let (mut session, file) =
+        through(&alone, crate::asm::NAKED, &[CRANELIFT], vun_backend_cranelift::INFO.id);
     assert!(session.build(file, None).is_err(), "nothing assists it");
+}
+
+#[test]
+fn what_a_library_times_on_its_own_threads_is_in_the_hosts_report() {
+    Timings::enable();
+    let fixture = Fixture::new("component-timed");
+    let text = std::fs::read_to_string(repo_root().join(ACCEPT).join("programs/hello.vun")).unwrap();
+    let (mut session, file) = through(&fixture, &text, &[NATIVE], vun_backend_native::INFO.id);
+    session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let rows = Timings::report().unwrap().rows;
+    let row = |activity| rows.iter().find(|r| r.activity == activity).expect("timed in the host");
+    let call = row(Activity::component("backend"));
+    let compiled = row(Activity::stage("native compile functions"));
+    assert!(call.total >= compiled.total, "inside the call");
 }

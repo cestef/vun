@@ -19,6 +19,7 @@ pub(crate) struct Crate {
     package: String,
     library: String,
     profile: Profile,
+    needs: Vec<String>,
 }
 
 impl Crate {
@@ -40,7 +41,8 @@ impl Crate {
             let profile = profile.and_then(Profile::named).ok_or_else(|| {
                 io::Error::other(format!("{name} names no profile in its `package.metadata.vun-component`"))
             })?;
-            crates.push(Self { package: name.to_owned(), library: Self::file(name), profile });
+            let needs = declared["needs"].items().filter_map(|n| n.as_str().map(str::to_owned)).collect();
+            crates.push(Self { package: name.to_owned(), library: Self::file(name), profile, needs });
         }
         Ok(crates)
     }
@@ -98,6 +100,7 @@ impl Crate {
             file: self.library.clone(),
             hash: snapshot.root(),
             profile: self.profile,
+            needs: self.needs.clone(),
         })
     }
 }

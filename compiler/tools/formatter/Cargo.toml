@@ -1,0 +1,16 @@
+[package]
+name = "vun-formatter"
+description = "Formatters as components: source text laid out, served from a library."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-component.workspace = true
+vun-trace.workspace = true

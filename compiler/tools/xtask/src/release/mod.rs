@@ -64,6 +64,11 @@ pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io
         hash: snapshot.root(),
         components: pieces,
     };
+    if let Some((piece, need)) = build.unmet().next() {
+        let msg = format!("the component {} needs {need}, which no profile holding it has", piece.name);
+        diag.error(Diagnostic::error(UNPACKED, Msg::new().text(msg)));
+        return Ok(Outcome::Failure);
+    }
     let hashed = staging.hash()?;
     staging.dir().remove()?;
     if hashed != build.hash {

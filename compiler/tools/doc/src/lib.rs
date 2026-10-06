@@ -4,6 +4,7 @@
 //! with `_`; a namespace's summary is the first paragraph of its `//!` comment. A code span in a
 //! doc comment that names a declaration links to it, by its path or relative to the namespace.
 
+mod html;
 mod item;
 mod json;
 mod links;
@@ -20,10 +21,12 @@ use vun_span::SourceFiles;
 use vun_syntax::cst::Cst;
 use vun_syntax::tokens::Tokens;
 
+pub use html::Html;
 pub use item::{Item, Kind};
 use links::Links;
 use page::{Index, Page};
 use read::Reader;
+use vun_documenter::Written;
 
 /// A namespace's documentation: its file's doc comment and public declarations.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -50,12 +53,6 @@ impl Namespace {
 #[derive(Default)]
 pub struct Docs {
     pub namespaces: BTreeMap<Vec<String>, Namespace>,
-}
-
-/// A file of the documentation site: its path relative to the site's root, and its contents.
-pub struct Written {
-    pub path: String,
-    pub contents: String,
 }
 
 /// The stylesheet every page links.

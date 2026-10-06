@@ -25,7 +25,7 @@ impl Session {
         Ok(build.in_profile(profile).map(|piece| piece.name.clone()).collect())
     }
 
-    /// Installs the components `names` of `published` for the running machine into the installed
+    /// Installs the components `names` of `published`, and what they need, for the running machine into the installed
     /// toolchain of its version, each unless it is there whole.
     ///
     /// # Errors
@@ -40,9 +40,9 @@ impl Session {
         let release = &published.release;
         let build = release.build_for(Machine::RUNNING).ok_or(Uninstalled::Unbuilt(Machine::RUNNING))?;
         let mut installed = Vec::new();
-        for name in names {
-            let piece = build.piece(name).ok_or_else(|| Uninstalled::Uncomponented(name.clone()))?;
-            installed.push((name.clone(), self.install_piece(toolchains, releases, release, piece)?));
+        let pieces = build.with_needs(names).map_err(|name| Uninstalled::Uncomponented(name.to_owned()))?;
+        for piece in pieces {
+            installed.push((piece.name.clone(), self.install_piece(toolchains, releases, release, piece)?));
         }
         Ok(installed)
     }

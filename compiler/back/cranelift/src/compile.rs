@@ -10,6 +10,7 @@ use vun_lir::analysis::Reached;
 use vun_lir::{Address, FuncId, ImportId, Unit};
 use vun_origin::OriginId;
 use vun_par::Parallel;
+use vun_trace::Activity;
 
 use crate::failed::Failed;
 use crate::func::{Cx, Lowered};
@@ -40,6 +41,8 @@ impl Support {
         Self::CALLS.iter().find(|(c, _)| *c == call).map(|&(_, support)| support)
     }
 }
+
+const COMPILE: Activity = Activity::stage("cranelift compile functions");
 
 /// What compiles the functions given by their ids, which Cranelift cannot express: another
 /// backend's code for them.
@@ -108,6 +111,7 @@ impl Compilation {
         let reached = Reached::of(unit);
         let cx = Cx::new(unit, isa, &reached);
         let functions: Vec<_> = unit.functions.iter().collect();
+        let compiling = COMPILE.start();
         let outcomes = functions.par_map(|&(id, f)| {
             if !reached.contains(id) {
                 return Ok::<_, Failed>(Outcome::Unreached);
@@ -122,6 +126,7 @@ impl Compilation {
             vun_trace::tracing::debug!(bytes = compiled.code.bytes.len(), "compiled");
             Ok(Outcome::Compiled(compiled))
         });
+        drop(compiling);
         let outcomes = outcomes.into_iter().collect::<Result<Vec<_>, _>>()?;
         let lacking: Vec<(FuncId, Lack)> =
             outcomes.iter().zip(&functions).filter_map(|(o, &(id, _))| o.lack().map(|l| (id, l))).collect();
