@@ -45,6 +45,7 @@ impl Fixture {
             version: Version::parse(version).unwrap(),
             edition: EDITION,
             toolchain: None,
+            components: Vec::new(),
             features: Features::default(),
             requires: None,
             target: None,
@@ -137,4 +138,18 @@ impl Fixture {
 /// The URL of the local file `path`.
 pub(crate) fn file_url(path: &Path) -> vun_uri::Uri {
     vun_uri::Uri::from_file_path(path).expect("an absolute path")
+}
+
+/// The directory holding the library of the component crate `package`, built with its `export`
+/// feature: where cargo puts a library of the profile the tests run in.
+pub(crate) fn built_component(package: &str) -> std::path::PathBuf {
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let status = std::process::Command::new(cargo)
+        .args(["build", "--quiet", "-p", package, "--features", &format!("{package}/export")])
+        .current_dir(vun_harness::repo_root())
+        .status()
+        .unwrap();
+    assert!(status.success(), "the component builds");
+    let exe = std::env::current_exe().unwrap();
+    exe.parent().and_then(std::path::Path::parent).unwrap().to_path_buf()
 }

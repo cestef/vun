@@ -15,6 +15,7 @@ pub use trace::Traced;
 pub use caps::{BackendCaps, HeldFloats, Widest};
 
 use std::path::PathBuf;
+use vun_codec::{Decode, Encode};
 
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
@@ -26,7 +27,7 @@ pub use vun_target::Readiness;
 use vun_target::{Name, Names, Profile, Run, Support, TargetSpec, Unsupported};
 
 /// What a backend produces.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Emits {
     Object,
     /// Assembly text, for an assembler tool.
@@ -71,7 +72,7 @@ impl Emits {
 
 /// Which part of a program an artifact holds: all of it, or, for a program a backend splits, what
 /// the other parts share, its data, or one shard of its functions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encode, Decode)]
 pub enum Part {
     Whole,
     Shared,
@@ -93,7 +94,7 @@ impl Part {
 }
 
 /// What a backend does that a program may require of it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Feature {
     /// Lowers C ABI aggregates itself; otherwise the driver runs ABI lowering first.
     CAbi,
@@ -114,7 +115,7 @@ pub enum Feature {
 }
 
 /// Everything known about a backend without running it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct BackendInfo {
     pub id: Name,
     pub arches: Names,
@@ -145,7 +146,7 @@ impl BackendInfo {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Artifact {
     pub part: Part,
     pub kind: Emits,
@@ -169,7 +170,7 @@ pub trait ArtifactSink {
 }
 
 /// What a backend emitted.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Encode, Decode)]
 pub struct Emitted {
     pub artifacts: Vec<Artifact>,
     /// Each function's frame size in bytes, when the backend reports them itself.
@@ -187,7 +188,7 @@ impl ArtifactSink for Emitted {
 }
 
 /// A line of source, for the line information a backend writes (`#line`, DWARF line tables).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Line {
     pub file: PathBuf,
     /// Counted from 1.

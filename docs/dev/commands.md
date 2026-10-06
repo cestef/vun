@@ -10,7 +10,6 @@ cargo xtask hooks             # once per clone: the jj aliases `jj check` and `j
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask runtimes          # the std tests on every target this machine runs (its tools file: kernel, C library, WASI, wine)
 cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
-cargo xtask size              # the distributed binary against its budget (20 MiB)
 cargo xtask install           # build `vun` (the dist profile) and install it as the default toolchain
 cargo xtask install --profile dev   # the same, built quickly for development
 VUN_QUERY_CHECK=1 cargo nextest run -p vun-driver   # after query, sema or MIR changes
@@ -59,17 +58,20 @@ jj git push --tag 0.1.0
 ```
 
 `.github/workflows/release.yml` runs the checks, builds `vun` in the `dist` profile on each
-machine (Linux with `cargo zigbuild` against glibc 2.28, dynamically linked so that `vun ffi bind`
-can load libclang), packs it with the library (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`
-and the hash of its tree beside it), writes `release.json` (`cargo xtask release <dir> --tag
+machine (`--no-default-features --features dist`: it links only what is not a component; Linux with
+`cargo zigbuild` against glibc 2.28, dynamically linked so that `vun ffi bind` can load libclang),
+builds the component libraries (`cargo xtask components [--tool zigbuild] [--target <t>]`, from
+`compiler/components/*`, each crate's `[package.metadata.vun-component] profile`), packs it with
+the library and each component beside it (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`,
+`vun-<kind>-<id>-<arch>-<os>.tar.gz` for each component, and the build's record beside it), writes `release.json` (`cargo xtask release <dir> --tag
 <tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand.
 The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs
 from a directory laid out as a forge's (`releases/download/<version>/`,
 `releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at
 the root installs the latest release for a first time; it checks the archive against the release's
 signed `SHA256SUMS` first (`VUN_INSTALL_KEY` for a mirror's key). From a checkout instead of a release,
-`cargo xtask install` builds `vun` (the `dist` profile; `--profile release` or `--profile dev`
-for a faster build) and installs it as the toolchain of the workspace's version, replacing that
+`cargo xtask install` builds `vun` and its components (the `dist` profile; `--profile release` or
+`--profile dev` link everything in, for a faster build) and installs it as the toolchain of the workspace's version, replacing that
 version and making it the default `~/.local/bin/vun` links to.
 
 The release job signs `release.json` with the `RELEASE_KEY` secret (an Ed25519 key in PEM), and
@@ -181,6 +183,9 @@ cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold,
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- debug compare --runs 20 <file>   # run time as the median of 20 runs
 cargo run -q -p vun-cli -- toolchain show        # version, library and why there, each component's status
+cargo build -p vun-component-backend-cranelift --features vun-component-backend-cranelift/export   # a component as a library: target/<profile>/libvun_component_backend_cranelift.so
+VUN_COMPONENTS=target/debug vun toolchain show   # components loaded from that directory, beside the linked ones
+vun toolchain component list|add|remove          # what a toolchain's release builds, and which are installed
 cargo run -q -p vun-cli -- target list           # every target: backend, linker, where it runs, what is lacking
 cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
 ```
@@ -219,6 +224,7 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 | `vun_lower::assemble=debug,trace` | each function the program holds (trace) and each callee it lacks (debug), as `file#expr bound [x_]` |
 | `vun_backend_wasm=debug,trace` | each wasm function lowered, each instruction's code |
 | `vun_backend_cranelift=debug,trace` | each Cranelift function compiled or handed to the assisting backend, each instruction lowered (`vun debug dump code --backend cranelift` prints the IR and listing with origins) |
+| `vun_component=debug` | each call into a loaded component (bytes each way, microseconds, the library), each component opened; `warn`: a library refused (other release or layout) |
 | `vun_link_lld=debug` | each `wasm-ld` run |
 | `vun_link_wasm=debug` | each wasm link in process |
 | `vun_lir_passes=debug` | each function's tidy (`trace`: each pass) |

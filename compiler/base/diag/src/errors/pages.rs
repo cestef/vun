@@ -93,6 +93,8 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (BACKEND_LACKS, "lang/lang/errors/backend/lacks.md"),
     (BACKEND_TOOL, "lang/lang/errors/backend/tool.md"),
     (BACKEND_UNLOWERED, "lang/lang/errors/backend/unlowered.md"),
+    (COMPONENT_INVALID, "lang/lang/errors/component/invalid.md"),
+    (COMPONENT_FAILED, "lang/lang/errors/component/failed.md"),
     (STACK_EXCEEDED, "lang/lang/errors/stack/exceeded.md"),
     (STACK_UNBOUNDED, "lang/lang/errors/stack/unbounded.md"),
     (STACK_UNREPORTED, "lang/lang/errors/stack/unreported.md"),

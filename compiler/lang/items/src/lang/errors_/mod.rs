@@ -7,6 +7,7 @@ pub mod errors_binding;
 pub mod errors_borrow;
 pub mod errors_check;
 pub mod errors_cli;
+pub mod errors_component;
 pub mod errors_comptime;
 pub mod errors_coroutine;
 pub mod errors_doc;

@@ -15,6 +15,8 @@ mod floats;
 mod machine;
 mod name;
 mod run;
+#[cfg(feature = "testing")]
+pub mod testing;
 #[cfg(test)]
 mod tests;
 mod threads;
@@ -124,7 +126,7 @@ pub struct TargetSpec {
 }
 
 /// Whether a component does its work yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Readiness {
     /// It generates code, or links.
     Ready,
@@ -133,7 +135,7 @@ pub enum Readiness {
 }
 
 /// The names of an open set a component handles, such as architectures or object formats.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Names {
     Any,
     Only(&'static [Name]),

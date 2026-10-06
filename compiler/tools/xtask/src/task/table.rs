@@ -35,14 +35,18 @@ pub(crate) const RUNTIMES: Task = Task::new(
     "run the standard library's tests on every target this machine can run programs of",
     Work::Run(crate::runtimes::run),
 );
-pub(crate) const SIZE: Task =
-    Task::new("size", "fail when the distributed vun outgrows its budget", Work::Run(crate::check_size));
 pub(crate) const PACKAGE: Task = Task::new(
     "package",
     "pack a built vun and the library as this machine's release archive, its tree's hash beside it",
     Work::Run(crate::release::package),
 )
 .params(&[crate::release::BINARY, crate::release::OUT]);
+pub(crate) const COMPONENTS: Task = Task::new(
+    "components",
+    "build the component libraries a release packs beside the toolchain",
+    Work::Run(crate::release::build_components),
+)
+.params(&[crate::release::TARGET, crate::release::TOOL]);
 pub(crate) const RELEASE: Task = Task::new(
     "release",
     "write the release's manifest from the archives packed on each machine",
@@ -99,12 +103,12 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     INSTALL,
     LAYERS,
     LINES,
+    COMPONENTS,
     PACKAGE,
     PUSH,
     RELEASE,
     REMOTE,
     RUNTIMES,
-    SIZE,
     TREE_SITTER,
     TREE_SITTER_PUBLISH,
     TYPESET

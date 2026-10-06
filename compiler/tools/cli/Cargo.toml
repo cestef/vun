@@ -15,7 +15,10 @@ path = "src/main.rs"
 workspace = true
 
 [features]
-default = ["backends", "linkers", "ffi", "lsp", "mimalloc"]
+default = ["backends", "linkers", "schemes", "planned", "components", "ffi", "lsp", "mimalloc"]
+# What a release's `vun` links (`cargo xtask package`): the backends and linkers not built yet, and
+# the loader of every other, which are components beside it.
+dist = ["planned", "components", "ffi", "lsp", "mimalloc"]
 # Every code generator and every linker the driver can register; each is also a feature of its own.
 backends = [
     "backend-c",
@@ -27,9 +30,6 @@ backends = [
     "backend-cranelift",
     "cranelift-x86_64",
     "cranelift-arm64",
-    "backend-qbe",
-    "backend-llvm",
-    "backend-external",
 ]
 linkers = [
     "link-wild",
@@ -38,9 +38,10 @@ linkers = [
     "link-lld",
     "link-wasm",
     "link-gnu",
-    "link-msvc",
-    "link-external",
 ]
+schemes = ["scheme-https"]
+# The backends and linkers declared for targets to name, not built yet: they register as planned.
+planned = ["backend-qbe", "backend-llvm", "backend-external", "link-msvc", "link-external"]
 backend-c = ["vun-driver/backend-c"]
 backend-native = ["vun-driver/backend-native"]
 native-x86_64 = ["vun-driver/native-x86_64"]
@@ -59,8 +60,11 @@ link-ar = ["vun-driver/link-ar"]
 link-lld = ["vun-driver/link-lld"]
 link-wasm = ["vun-driver/link-wasm"]
 link-gnu = ["vun-driver/link-gnu"]
+scheme-https = ["vun-driver/scheme-https"]
 link-msvc = ["vun-driver/link-msvc"]
 link-external = ["vun-driver/link-external"]
+# Backends and linkers loaded from the toolchain's `components` directory.
+components = ["vun-driver/components"]
 # `vun ffi bind`, which loads libclang.
 ffi = ["dep:vun-bind", "dep:vun-clang"]
 # `vun util lsp`.
@@ -82,7 +86,6 @@ vun-fmt.workspace = true
 vun-fs.workspace = true
 vun-hash.workspace = true
 vun-hir.workspace = true
-vun-http.workspace = true
 vun-intern.workspace = true
 vun-data.workspace = true
 vun-link.workspace = true

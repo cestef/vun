@@ -42,7 +42,9 @@ pub mod view;
 pub use coverage::Coverage;
 pub use pages::Page;
 pub use queries::Persistence;
-pub use registry::{Codegen, Link, Linkage, Pick, Picked, Registry, Unchosen, Unfit};
+#[cfg(feature = "components")]
+pub use registry::Components;
+pub use registry::{Codegen, Link, Linkage, Pick, Picked, Provider, Registry, Unchosen, Unfit};
 pub use session::Session;
 pub use shared::Shared;
 pub use steps::{Built, Flashing};

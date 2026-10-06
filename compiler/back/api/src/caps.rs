@@ -1,12 +1,13 @@
 //! What a backend can do, known without running it.
 
+use vun_codec::{Decode, Encode};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Floats, TargetSpec};
 
 use crate::{Emits, Feature};
 
 /// Capabilities a program may require of its backend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct BackendCaps {
     pub emits: Emits,
     pub features: &'static [Feature],
@@ -21,7 +22,7 @@ pub struct BackendCaps {
 }
 
 /// The floats a backend holds as floats.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum HeldFloats {
     /// Every one: a compiler it hands its code to computes those the processor does not.
     Every,
@@ -41,7 +42,7 @@ impl HeldFloats {
 }
 
 /// The widest integer a backend computes with.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum Widest {
     /// Of this many bits, on every target.
     Bits(u32),

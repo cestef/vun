@@ -15,6 +15,18 @@ vun-index = { path = "compiler/base/index" }
 vun-suggest = { path = "compiler/base/suggest" }
 vun-term = { path = "compiler/base/term" }
 vun-par = { path = "compiler/base/par" }
+vun-component = { path = "compiler/base/component" }
+vun-component-backend-c = { path = "compiler/components/backend-c", default-features = false }
+vun-component-backend-native = { path = "compiler/components/backend-native", default-features = false }
+vun-component-backend-wasm = { path = "compiler/components/backend-wasm", default-features = false }
+vun-component-backend-cranelift = { path = "compiler/components/backend-cranelift", default-features = false }
+vun-component-link-gnu = { path = "compiler/components/link-gnu", default-features = false }
+vun-component-link-wild = { path = "compiler/components/link-wild", default-features = false }
+vun-component-link-mold = { path = "compiler/components/link-mold", default-features = false }
+vun-component-link-ar = { path = "compiler/components/link-ar", default-features = false }
+vun-component-link-lld = { path = "compiler/components/link-lld", default-features = false }
+vun-component-scheme-https = { path = "compiler/components/scheme-https", default-features = false }
+vun-component-link-wasm = { path = "compiler/components/link-wasm", default-features = false }
 vun-codec = { path = "compiler/base/codec" }
 vun-codec-derive = { path = "compiler/base/codec-derive" }
 vun-derive-core = { path = "compiler/base/derive-core" }
@@ -66,6 +78,7 @@ vun-lower = { path = "compiler/low/lower" }
 vun-abi = { path = "compiler/low/abi" }
 vun-lir-passes = { path = "compiler/low/passes" }
 vun-backend = { path = "compiler/back/api" }
+vun-backend-component = { path = "compiler/back/component" }
 vun-asm = { path = "compiler/asm/core" }
 vun-codegen = { path = "compiler/back/codegen" }
 vun-regalloc = { path = "compiler/back/regalloc" }
@@ -89,6 +102,8 @@ vun-backend-cranelift = { path = "compiler/back/cranelift", default-features = f
 vun-backend-qbe = { path = "compiler/back/qbe" }
 vun-backend-llvm = { path = "compiler/back/llvm" }
 vun-backend-external = { path = "compiler/back/external" }
+vun-link-component = { path = "compiler/link/component" }
+vun-scheme-component = { path = "compiler/pkg/component" }
 vun-link = { path = "compiler/link/api" }
 vun-link-wild = { path = "compiler/link/wild" }
 vun-link-mold = { path = "compiler/link/mold" }
@@ -163,6 +178,7 @@ wasmparser = { version = "0.259", default-features = false, features = ["std", "
 # Benchmarks only: statistics over repeated runs, baselines saved and compared (`cargo bench`).
 criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
 # libclang loaded at run time, never linked (decision 131); `clang_9_0` is the oldest accepted.
+libloading = "0.8"
 clang-sys = { version = "1.8", default-features = false, features = ["runtime", "clang_9_0"] }
 
 [workspace.lints.rust]
@@ -183,7 +199,7 @@ opt-level = 1
 [profile.release]
 lto = "thin"
 
-# What is distributed: slower to build, smaller and faster to run; `cargo xtask size` measures it.
+# What is distributed: slower to build, smaller and faster to run.
 [profile.dist]
 inherits = "release"
 lto = "fat"

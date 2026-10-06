@@ -14,7 +14,7 @@ use std::{fmt, io};
 
 pub use contents::{Contents, Packed};
 pub use format::{FORMATS, Format};
-pub use mirror::{Mirror, Scheme, Schemes};
+pub use mirror::{File, Mirror, Scheme, Schemes};
 pub use tar::Tar;
 pub use zip::Zip;
 pub use zstd::Zstd;
@@ -23,7 +23,7 @@ pub use zstd::Zstd;
 #[derive(Debug)]
 pub enum Failure {
     /// No scheme installed reads the URL; these are the ones that are.
-    Scheme(Vec<&'static str>),
+    Scheme(Vec<String>),
     /// No format in [`FORMATS`] matches the end of the URL.
     Format,
     Download(Box<dyn Error + Send + Sync>),

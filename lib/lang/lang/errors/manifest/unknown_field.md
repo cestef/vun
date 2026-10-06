@@ -4,7 +4,7 @@ A manifest record has a field that its reader does not know.
 
 The `package` literal of `build.vun` (spec 12, section 2) and each entry of its `.deps` are read
 field by field, without evaluating anything, so a misspelled field would otherwise be ignored in
-silence. `package` knows `.name`, `.id`, `.version`, `.edition`, `.toolchain`, `.requires`, `.include`,
+silence. `package` knows `.name`, `.id`, `.version`, `.edition`, `.toolchain`, `.components`, `.requires`, `.include`,
 `.deps`, `.members` and `.prelude`; a dependency knows `.version`, `.hash`, `.urls`, `.path` and
 `.kind`. The help names the closest known field.
 

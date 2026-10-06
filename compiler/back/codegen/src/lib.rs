@@ -21,7 +21,7 @@ pub mod snippet;
 mod values;
 
 pub use assembly::Assembly;
-pub use assist::Assist;
+pub use assist::{Assist, Assisted};
 pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;

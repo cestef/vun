@@ -11,7 +11,6 @@ mod release;
 mod remote;
 mod report;
 mod runtimes;
-mod size;
 mod task;
 #[cfg(test)]
 mod tests;
@@ -31,14 +30,11 @@ use corpus::Corpus;
 use layers::{Breach, Ranks, Refreshed};
 use lines::Oversized;
 use report::{Judged, Passed, Tally};
-use size::Measured;
 
 const UPWARD: DiagId = DiagId::new("xtask.layers.upward");
 const UNRANKED: DiagId = DiagId::new("xtask.layers.unranked");
 const NO_METADATA: DiagId = DiagId::new("xtask.layers.no_metadata");
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
-const OVER_BUDGET: DiagId = DiagId::new("xtask.size.over_budget");
-const UNMEASURED: DiagId = DiagId::new("xtask.size.unmeasured");
 
 const PROGRAM: Program<DiagCtxt> = Program {
     defaults: vun_command::undefaulted,
@@ -127,33 +123,6 @@ fn check_layers(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Res
         shell.status(&Passed::Layers { groups: layers::RANKS.iter().map(|r| r.len()).sum() });
     }
     Ok(if breaches.is_empty() { Outcome::Success } else { Outcome::Failure })
-}
-
-#[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
-fn check_size(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
-    let measured = match Measured::build(&repo_root()) {
-        Ok(measured) => measured,
-        Err(why) => {
-            let msg = Msg::new().text("cannot measure the distributed ").code("vun");
-            diag.error(Diagnostic::error(UNMEASURED, msg).caused_by(&why));
-            return Ok(Outcome::Failure);
-        }
-    };
-    let within = measured.bytes <= size::BUDGET;
-    if within {
-        let path = measured.path.display().to_string();
-        shell.status(&Passed::Size { path, bytes: measured.bytes, budget: size::BUDGET });
-    } else {
-        let msg = Msg::new()
-            .code(measured.path.display().to_string())
-            .text(" is ")
-            .num(measured.bytes)
-            .text(" bytes, over the budget of ")
-            .num(size::BUDGET);
-        let help = Msg::new().text("find what grew; raising the budget takes a decision (decision 131)");
-        diag.error(Diagnostic::error(OVER_BUDGET, msg).child(ChildKind::Help, help));
-    }
-    Ok(if within { Outcome::Success } else { Outcome::Failure })
 }
 
 fn main() -> ExitCode {

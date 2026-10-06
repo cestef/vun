@@ -8,6 +8,7 @@ mod bound;
 
 use std::ffi::OsString;
 use std::path::PathBuf;
+use vun_codec::{Decode, Encode};
 
 pub use bound::Bound;
 use vun_diag::{DiagCtxt, Diagnostic, ErrorGuaranteed, Msg, errors};
@@ -17,7 +18,7 @@ pub use vun_target::Output;
 use vun_target::{Name, Readiness, Run, Support, TargetSpec, Unsupported};
 
 /// A region of target memory, such as flash or RAM.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct MemoryRegion {
     pub name: Symbol,
     pub origin: u64,
@@ -26,7 +27,7 @@ pub struct MemoryRegion {
     pub declared: OriginId,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct SectionPlacement {
     pub name: Symbol,
     /// Region holding the contents at run time.
@@ -38,7 +39,7 @@ pub struct SectionPlacement {
 }
 
 /// Everything a linker needs, independent of any linker's syntax.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct LinkPlan {
     /// Objects and archives, in order.
     pub inputs: Vec<PathBuf>,
@@ -71,7 +72,7 @@ impl LinkPlan {
 }
 
 /// Everything known about a linker adapter without running it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct LinkerInfo {
     pub id: Name,
     /// The object formats it links, as targets name them.

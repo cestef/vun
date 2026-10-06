@@ -1,6 +1,6 @@
 # A release of the toolchain (spec 12, section 6), made when a version is tagged (`0.4.2`, the
 # workspace's version as it is): the checks run, each machine's toolchain is built and packed by
-# `cargo xtask package`, `cargo xtask release` writes the manifest `vun toolchain install` reads,
+# `cargo xtask package` (with the libraries of its components, each an archive), `cargo xtask release` writes the manifest `vun toolchain install` reads,
 # and everything goes to a draft release, published by hand.
 name: release
 
@@ -61,7 +61,10 @@ jobs:
         with:
           tool: cargo-zigbuild
       - run: rustup target add ${{ matrix.target }}
-      - run: cargo ${{ matrix.build }} --profile dist --package vun-cli --target ${{ matrix.target }}${{ matrix.glibc }}
+      # `vun` links only what the `dist` feature names; its backends and linkers are components, the
+      # libraries of `cargo xtask components`, which `package` packs beside the toolchain.
+      - run: cargo ${{ matrix.build }} --profile dist --package vun-cli --no-default-features --features dist --target ${{ matrix.target }}${{ matrix.glibc }}
+      - run: cargo xtask components --tool ${{ matrix.build }} --target ${{ matrix.target }}${{ matrix.glibc }}
       - run: cargo xtask package target/${{ matrix.target }}/dist/vun dist
       - uses: actions/upload-artifact@v4
         with:

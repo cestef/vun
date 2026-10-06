@@ -49,6 +49,14 @@ fn values_round_trip() {
 }
 
 #[test]
+fn what_lives_for_the_process_and_paths_are_read_back() {
+    let facts: (&'static str, &'static [u8]) = ("elf", &[1, 2]);
+    assert_eq!(<(&'static str, &'static [u8])>::decoded(&facts.encoded()), Ok(facts));
+    let path = std::path::PathBuf::from("a/b.vun");
+    assert_eq!(std::path::PathBuf::decoded(&path.encoded()), Ok(path));
+}
+
+#[test]
 fn derived_shapes_round_trip() {
     round_trip(&Shape::<u16, 2>::Unit);
     round_trip(&Shape::<u16, 2>::Tuple(9, [1, 2]));

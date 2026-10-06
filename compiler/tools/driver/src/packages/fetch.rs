@@ -170,7 +170,7 @@ impl Session {
         url: &Uri,
         label: Label<'_>,
     ) -> Result<(), Rejected> {
-        let mirror = Mirror::of(url, &self.schemes).map_err(Rejected::Mirror)?;
+        let mirror = Mirror::of(url, &self.registry.schemes()).map_err(Rejected::Mirror)?;
         let unpacked = Self::unpack(staging, &mirror)?;
         let snapshot = Snapshot::of(&unpacked, &self.include(kind, &unpacked)).map_err(Rejected::Unpacked)?;
         if snapshot.root() != hash {

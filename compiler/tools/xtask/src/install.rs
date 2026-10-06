@@ -16,6 +16,7 @@ use vun_term::{Record, Status, Style, Text, Verb};
 use vun_tool::Executable;
 
 use crate::cargo;
+use crate::release::Crate;
 use crate::toolchain::Stage;
 
 /// The cargo profile the `vun` to install is built with.
@@ -53,8 +54,16 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
             return Ok(Outcome::Failure);
         }
     };
+    let libraries = match libraries(&root, profile, &binary) {
+        Ok(libraries) => libraries,
+        Err(why) => {
+            let msg = Msg::new().text("cannot build the components of ").code("vun");
+            diag.error(Diagnostic::error(UNBUILT, msg).caused_by(&why));
+            return Ok(Outcome::Failure);
+        }
+    };
     let staging = Stage::at(&root, toolchains.staging(version));
-    if let Err(why) = staging.lay(&binary) {
+    if let Err(why) = staging.lay(&binary, &libraries) {
         staging.dir().remove()?;
         let msg = Msg::new().text("cannot put the toolchain ").code(version.to_string()).text(" together");
         diag.error(Diagnostic::error(UNSTAGED, msg).caused_by(&why));
@@ -84,6 +93,17 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
         diag.report(Diagnostic::warning(SHADOWED, msg).help(help));
     }
     Ok(Outcome::Success)
+}
+
+/// The libraries of the components `vun` loads, built beside it: of the distributed profile only,
+/// the others link them in.
+fn libraries(root: &Path, profile: &str, binary: &Path) -> io::Result<Vec<PathBuf>> {
+    if profile != cargo::DISTRIBUTED {
+        return Ok(Vec::new());
+    }
+    let crates = Crate::all(root)?;
+    Crate::build(root, &crates, "build", None).map_err(io::Error::other)?;
+    Ok(crates.iter().map(|c| c.beside(binary)).collect())
 }
 
 /// A `vun` on the search path that is not the one installed.

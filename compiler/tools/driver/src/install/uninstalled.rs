@@ -37,6 +37,8 @@ pub enum Uninstalled {
         expected: Hash,
         found: Hash,
     },
+    /// The release builds no component of this name for the running machine.
+    Uncomponented(String),
     Io(io::Error),
 }
 
@@ -62,6 +64,9 @@ impl fmt::Display for Uninstalled {
             Self::Changed { expected, found } => {
                 write!(f, "its archive unpacks to `{found}`, where the release names `{expected}`")
             }
+            Self::Uncomponented(name) => {
+                write!(f, "the release builds no component `{name}` for this machine")
+            }
             Self::Io(_) => f.write_str("the toolchains' directory cannot be written"),
         }
     }
@@ -76,7 +81,11 @@ impl Error for Uninstalled {
             Self::Json(e) => Some(e),
             Self::Shape(e) => Some(e),
             Self::Io(e) => Some(e),
-            Self::Homeless | Self::Unbuilt(_) | Self::Changed { .. } | Self::Unlocked { .. } => None,
+            Self::Homeless
+            | Self::Unbuilt(_)
+            | Self::Changed { .. }
+            | Self::Unlocked { .. }
+            | Self::Uncomponented(_) => None,
         }
     }
 }

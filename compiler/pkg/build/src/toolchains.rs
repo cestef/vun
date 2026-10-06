@@ -10,6 +10,7 @@ use vun_hash::{Hash, Snapshot};
 use vun_span::Version;
 
 use crate::dirs::Dirs;
+use crate::release::Piece;
 
 /// The toolchain's name: its executable's, its directory's in the user's, its archives'.
 pub const NAME: &str = "vun";
@@ -18,6 +19,9 @@ pub const NAME: &str = "vun";
 pub const CONTENTS: [&str; 3] = [BIN, "lib", "LICENSES"];
 /// The directory of a toolchain's executable.
 pub const BIN: &str = "bin";
+/// The directory of a toolchain's components, libraries installed one by one: apart from the
+/// tree the release's hash covers (`CONTENTS`), and each with a hash of its own.
+pub const COMPONENTS: &str = "components";
 
 /// The toolchains of a user.
 pub struct Toolchains {
@@ -58,6 +62,14 @@ impl Toolchains {
     #[must_use]
     pub fn manifest(&self, version: Version) -> Option<Hash> {
         std::fs::read(self.dir(version).join(crate::release::Release::FILE)).ok().map(|m| Hash::of(&m))
+    }
+
+    /// The release the toolchain of `version` was installed from, as its kept manifest says; the
+    /// manifest was checked when it was kept.
+    #[must_use]
+    pub fn release(&self, version: Version) -> Option<crate::release::Release> {
+        let text = std::fs::read_to_string(self.dir(version).join(crate::release::Release::FILE)).ok()?;
+        vun_data::FromData::from_data(&vun_data::json::parse(&text).ok()?).ok()
     }
 
     /// The executable of the toolchain of `version`.
@@ -129,12 +141,52 @@ impl Toolchains {
         self.dir(version).part()
     }
 
+    /// The directory of the components of the toolchain of `version`.
+    #[must_use]
+    pub fn components(&self, version: Version) -> PathBuf {
+        self.dir(version).join(COMPONENTS)
+    }
+
+    /// The hash of the library of `piece` as installed in the toolchain of `version`, as a release
+    /// names it: that of the tree holding the library alone.
+    ///
+    /// # Errors
+    /// As [`Snapshot::of`]; the library not being there is one.
+    pub fn component_hash(&self, version: Version, piece: &Piece) -> io::Result<Hash> {
+        Self::hash_of(&self.dir(version), &[&Self::library(piece)])
+    }
+
+    /// Where the library of `piece` is in a toolchain's tree.
+    #[must_use]
+    pub fn library(piece: &Piece) -> String {
+        [COMPONENTS, "/", &piece.file].concat()
+    }
+
+    /// Removes the library of `piece` from the toolchain of `version`, if it is there.
+    ///
+    /// # Errors
+    /// Returns an error if it exists and cannot be removed.
+    pub fn remove_component(&self, version: Version, piece: &Piece) -> io::Result<()> {
+        match std::fs::remove_file(self.components(version).join(&piece.file)) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => Err(e),
+            _ => Ok(()),
+        }
+    }
+
     /// The hash of the toolchain tree in `dir`, as a release names it.
     ///
     /// # Errors
     /// As [`Snapshot::of`].
     pub fn hash(dir: &Path) -> io::Result<Hash> {
-        let contents: Vec<String> = CONTENTS.iter().map(|&c| c.to_owned()).collect();
+        Self::hash_of(dir, &CONTENTS)
+    }
+
+    /// The hash of what `dir` holds of `contents`.
+    ///
+    /// # Errors
+    /// As [`Snapshot::of`].
+    pub fn hash_of(dir: &Path, contents: &[&str]) -> io::Result<Hash> {
+        let contents: Vec<String> = contents.iter().map(|&c| c.to_owned()).collect();
         Snapshot::of(dir, &contents).map(|s| s.root())
     }
 

@@ -11,6 +11,11 @@ use crate::task::Program;
 /// The package whose `vun` executable a build makes.
 const PACKAGE: &str = "vun-cli";
 
+/// The profile what is distributed is built with (`[profile.dist]`): its `vun` links only what
+/// the feature [`DIST`] of the package names, the rest being components it loads.
+pub(crate) const DISTRIBUTED: &str = "dist";
+const DIST: &str = "dist";
+
 /// The variable the driver reads its build from.
 const BUILD: &str = "VUN_BUILD";
 
@@ -19,7 +24,7 @@ const BUILD: &str = "VUN_BUILD";
 pub(crate) enum CargoFailed {
     Unstarted(io::Error),
     Failed {
-        args: Vec<&'static str>,
+        args: Vec<String>,
         status: ExitStatus,
     },
     /// It built, but named no executable of the package.
@@ -50,10 +55,40 @@ impl std::error::Error for CargoFailed {
 ///
 /// # Errors
 /// Returns why cargo cannot run or fails, or built no executable.
-pub(crate) fn vun(root: &Path, profile: &'static str) -> Result<PathBuf, CargoFailed> {
-    let args = ["build", "--message-format=json", "--profile", profile, "--package", PACKAGE];
+pub(crate) fn vun(root: &Path, profile: &str) -> Result<PathBuf, CargoFailed> {
+    let mut args = ["build", "--message-format=json", "--profile", profile, "--package", PACKAGE]
+        .map(String::from)
+        .to_vec();
+    if profile == DISTRIBUTED {
+        args.extend(["--no-default-features", "--features", DIST].map(String::from));
+    }
     let messages = run(root, &args, Build::of(root).as_deref())?;
     executable(&messages).ok_or(CargoFailed::NoExecutable)
+}
+
+/// Builds the libraries of the component crates `packages` in `profile`, as `tool` does (`build`,
+/// or `zigbuild`) for `target`, beside the `vun` of that profile.
+///
+/// # Errors
+/// Returns why cargo cannot run or fails.
+pub(crate) fn components(
+    root: &Path,
+    profile: &str,
+    tool: &str,
+    target: Option<&str>,
+    packages: &[String],
+) -> Result<(), CargoFailed> {
+    let mut args = vec![tool.to_owned(), "--profile".to_owned(), profile.to_owned()];
+    args.extend(target.iter().flat_map(|t| ["--target".to_owned(), (*t).to_owned()]));
+    for package in packages {
+        args.extend([
+            "--package".to_owned(),
+            package.clone(),
+            "--features".to_owned(),
+            format!("{package}/export"),
+        ]);
+    }
+    run(root, &args, None).map(drop)
 }
 
 /// The executable the last compiler-artifact message names, if any.
@@ -72,8 +107,16 @@ pub(crate) fn executable(messages: &str) -> Option<PathBuf> {
 ///
 /// # Errors
 /// Returns why cargo cannot run or fails.
-pub(crate) fn output(root: &Path, args: &[&'static str]) -> Result<String, CargoFailed> {
-    run(root, args, None)
+pub(crate) fn output(root: &Path, args: &[&str]) -> Result<String, CargoFailed> {
+    run(root, &args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>(), None)
+}
+
+/// What `cargo metadata` says of the workspace at `root`, its crates alone.
+///
+/// # Errors
+/// Returns why cargo cannot run or fails.
+pub(crate) fn metadata(root: &Path) -> Result<String, CargoFailed> {
+    output(root, &["metadata", "--no-deps", "--format-version", "1"])
 }
 
 /// The commit the checkout is at, which `vun --version` reports.
@@ -96,7 +139,7 @@ impl Build {
 }
 
 /// [`output`], with the commit the build is of set for the driver to report.
-fn run(root: &Path, args: &[&'static str], build: Option<&str>) -> Result<String, CargoFailed> {
+fn run(root: &Path, args: &[String], build: Option<&str>) -> Result<String, CargoFailed> {
     let cargo =
         Program::Cargo.path().ok_or_else(|| CargoFailed::Unstarted(io::ErrorKind::NotFound.into()))?;
     let output = Command::new(cargo)

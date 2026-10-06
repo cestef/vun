@@ -56,6 +56,13 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `vun-backend-wasm`; `vun-codegen` (the framework over `Arch` and `Isel`: assignments,
   registers, frames, jumps, fusion, callee-saved registers for loops, snippets and their encoder,
   `pieces`); `vun-regalloc`. `vun-backend-cranelift` (LIR through Cranelift, native assisting through `vun_codegen::Assist`; `Assembly` writes the object). Stubs: qbe, llvm, external.
+- **Components** (decision 498): `vun-component` (`compiler/base/component`: the C-ABI boundary,
+  `Interface`, `Component::{open,within,call}`, `descriptor!` and `export!`; the one `unsafe`
+  module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component` and `vun-scheme-component` (`compiler/pkg/component`; the
+  interface of each kind, `Remote` the host's `Backend`, `Linker` or `Scheme` over a component), and the
+  libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, ...).
+  The driver's `Registry::load` registers what a directory holds, `vun toolchain show` says where
+  each comes from.
 - **Native backend** (`compiler/native`, TPDE's layers): `vun-native` (the `Native` trait, whose
   `compile` and `object` every architecture shares; `select` with `Carries`, `Frames`,
   `Terminates`; the object writer, listing, inline assembly and widths; fixtures behind
@@ -84,7 +91,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   labelled by its symbols, `vun debug disasm`), `vun-lsp` (the server: a table of methods, each a protocol type the server
   `Answers` or `Hears`), `vun-lsp-protocol` (the protocol's values and methods as types),
   `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
-  `corpus`, `lines`, `layers`, `size`, `typeset`).
+  `corpus`, `lines`, `layers`, `typeset`).
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines,
   `lang.mem.soft`) and `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`,
   `fmt`, `diag`, `task`, `time`, `trace`, `build`, `lints`, `panic`, `testing`).

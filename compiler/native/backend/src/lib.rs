@@ -12,7 +12,7 @@ use vun_backend::{
     ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, HeldFloats, Lack, Missing,
     Readiness, Request, Widest,
 };
-use vun_codegen::{Assist, Compiled};
+use vun_codegen::{Assist, Assisted};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir::FuncId;
 use vun_lir_passes::legalize::{Division, Half};
@@ -34,7 +34,7 @@ struct Arch {
     /// Whether it follows a target's calling convention.
     follows: fn(&TargetSpec) -> bool,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
-    assist: fn(&Request<'_>, &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack>,
+    assist: fn(&Request<'_>, &[FuncId]) -> Assisted,
     division: fn(&TargetSpec) -> Division,
 }
 
@@ -146,7 +146,7 @@ impl Assist for NativeBackend {
         Names::Only(NAMES).contains(target.arch) && (Self::arch(target).follows)(target)
     }
 
-    fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack> {
+    fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Assisted {
         (Self::arch(request.target).assist)(request, ids)
     }
 }

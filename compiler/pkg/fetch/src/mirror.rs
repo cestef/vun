@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use vun_fs::{Edit, Tree};
 use vun_uri::{Known, Uri};
@@ -12,22 +13,29 @@ use super::{Failure, Format};
 const UNPACKING: &str = ".unpacking";
 
 /// A way of reading the URLs of a scheme.
-pub struct Scheme {
+pub trait Scheme: Send + Sync {
     /// The scheme's name, compared without case.
-    pub name: &'static str,
+    fn name(&self) -> &str;
+
     /// Reads the resource `uri` names.
-    pub read: fn(&Uri) -> Result<Vec<u8>, Failure>,
+    ///
+    /// # Errors
+    /// Returns why it cannot be read.
+    fn read(&self, uri: &Uri) -> Result<Vec<u8>, Failure>;
 }
 
-impl Scheme {
-    /// Files on this machine, by their file URIs (RFC 8089).
-    pub const FILE: Self = Self {
-        name: Known::FILE.name,
-        read: |uri| {
-            let path = uri.to_file_path().map_err(|e| Failure::Download(Box::new(e)))?;
-            fs::read(path).map_err(|e| Failure::Download(Box::new(e)))
-        },
-    };
+/// Files on this machine, by their file URIs (RFC 8089).
+pub struct File;
+
+impl Scheme for File {
+    fn name(&self) -> &str {
+        Known::FILE.name
+    }
+
+    fn read(&self, uri: &Uri) -> Result<Vec<u8>, Failure> {
+        let path = uri.to_file_path().map_err(|e| Failure::Download(Box::new(e)))?;
+        fs::read(path).map_err(|e| Failure::Download(Box::new(e)))
+    }
 }
 
 /// The schemes URLs are read through: `file` always, and those a program installs, such as
@@ -35,19 +43,21 @@ impl Scheme {
 /// stack off the build path of everything that fetches packages.
 #[derive(Clone)]
 pub struct Schemes {
-    list: Vec<&'static Scheme>,
+    list: Vec<Arc<dyn Scheme>>,
 }
 
 impl Default for Schemes {
     fn default() -> Self {
-        Self { list: vec![&Scheme::FILE] }
+        Self { list: vec![Arc::new(File)] }
     }
 }
 
 impl Schemes {
-    /// Makes `schemes` read the URLs they name.
-    pub fn install(&mut self, schemes: &'static [Scheme]) {
-        self.list.extend(schemes);
+    /// Makes `scheme` read the URLs it names, unless a scheme of its name does.
+    pub fn install(&mut self, scheme: Arc<dyn Scheme>) {
+        if self.list.iter().all(|s| !s.name().eq_ignore_ascii_case(scheme.name())) {
+            self.list.push(scheme);
+        }
     }
 
     /// The bytes at `uri`, through the scheme that reads it.
@@ -55,20 +65,26 @@ impl Schemes {
     /// # Errors
     /// Returns that no scheme reads it, or why reading failed.
     pub fn get(&self, uri: &Uri) -> Result<Vec<u8>, Failure> {
-        (self.of(uri)?.read)(uri)
+        self.of(uri)?.read(uri)
+    }
+
+    /// The names of the schemes, in the order they are tried.
+    #[must_use]
+    pub fn names(&self) -> Vec<String> {
+        self.list.iter().map(|s| s.name().to_owned()).collect()
     }
 
     /// The scheme that reads `uri`.
-    fn of(&self, uri: &Uri) -> Result<&'static Scheme, Failure> {
-        let found = self.list.iter().find(|s| uri.scheme().is(s.name)).copied();
-        found.ok_or_else(|| Failure::Scheme(self.list.iter().map(|s| s.name).collect()))
+    fn of(&self, uri: &Uri) -> Result<Arc<dyn Scheme>, Failure> {
+        let found = self.list.iter().find(|s| uri.scheme().is(s.name())).cloned();
+        found.ok_or_else(|| Failure::Scheme(self.names()))
     }
 }
 
 /// A URL whose scheme and archive format are known.
 pub struct Mirror {
     uri: Uri,
-    scheme: &'static Scheme,
+    scheme: Arc<dyn Scheme>,
     format: &'static Format,
 }
 
@@ -95,7 +111,7 @@ impl Mirror {
     /// # Errors
     /// Returns why reading or unpacking failed.
     pub fn fetch(&self, dir: &Path) -> Result<(), Failure> {
-        let bytes = (self.scheme.read)(&self.uri)?;
+        let bytes = self.scheme.read(&self.uri)?;
         let raw = Self::unpacking(dir);
         let unpack = Failure::Unpack;
         raw.remove().map_err(unpack)?;

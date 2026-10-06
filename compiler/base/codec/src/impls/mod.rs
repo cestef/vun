@@ -2,6 +2,7 @@
 //! first, text and sequences prefixed by their length, options and booleans by a tag byte.
 
 mod containers;
+mod leaked;
 
 use crate::{Decode, Encode, Malformed, Reader, Writer};
 

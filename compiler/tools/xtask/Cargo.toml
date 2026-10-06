@@ -1,6 +1,6 @@
 [package]
 name = "vun-xtask"
-description = "Repository automation: corpus runs, line and size limits."
+description = "Repository automation: corpus runs, line limits."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -29,5 +29,6 @@ vun-intern.workspace = true
 vun-origin.workspace = true
 
 [dev-dependencies]
+vun-target = { workspace = true, features = ["testing"] }
 vun-fs.workspace = true
 vun-span.workspace = true

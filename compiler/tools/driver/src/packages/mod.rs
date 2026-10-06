@@ -19,6 +19,7 @@ mod lockfile;
 mod new;
 mod rewrite;
 mod select;
+mod source;
 mod update;
 mod workspace;
 
@@ -35,13 +36,13 @@ use vun_sema::target::TargetPath;
 use vun_span::{FileId, PackageId, Span};
 use vun_target::Features;
 use vun_trace::tracing;
-use vun_uri::Uri;
 
 pub use add::{Addition, Unstated};
 pub use fetch::Fetched;
 use inputs::Sources;
 pub use library::{Found, Library};
 pub use select::Selection;
+pub use source::{Dep, DepSource, Replace};
 pub use update::Updated;
 
 use crate::Session;
@@ -74,53 +75,12 @@ pub struct Package {
     pub release: Option<(Identity, Version)>,
     /// The toolchain it pins (`.toolchain`), which builds it.
     pub toolchain: Option<Version>,
+    pub components: Vec<String>,
     pub features: Features,
     /// The target it is written for (`.target`), the names inside the package `targets`.
     pub target: Vec<Symbol>,
     /// The identities it replaces; only the project's apply.
     pub replace: Vec<Replace>,
-}
-
-/// An identity replaced everywhere in the graph, the dependency loaded in its place, and how the
-/// lockfile records it.
-#[derive(Clone)]
-pub struct Replace {
-    pub identity: Identity,
-    pub dep: Dep,
-    pub recorded: Replaced,
-}
-
-/// A dependency: the name it is bound to, where it comes from, and where it is declared.
-#[derive(Clone)]
-pub struct Dep {
-    pub name: Symbol,
-    pub source: DepSource,
-    pub kind: DepKind,
-    /// `None` for a default dependency.
-    pub span: Option<Span>,
-}
-
-#[derive(Clone)]
-pub enum DepSource {
-    /// A directory on disk.
-    Dir(PathBuf),
-    /// A package in the store, by its tree hash, with its declared version and the mirrors that
-    /// serve it.
-    Stored { hash: Hash, version: Version, urls: Vec<Uri> },
-}
-
-impl DepSource {
-    /// Where a package declared in the manifest in `dir` comes from, `library` being the
-    /// toolchain's.
-    fn of(library: &Path, dir: &Path, source: &Source) -> Self {
-        match source {
-            Source::Path(path) => Self::Dir(dir.join(path)),
-            Source::Library(path) => Self::Dir(library.join(path)),
-            Source::Archive { hash, version, urls } => {
-                Self::Stored { hash: *hash, version: *version, urls: urls.clone() }
-            }
-        }
-    }
 }
 
 #[derive(Default)]
@@ -235,6 +195,7 @@ impl Session {
                 snapshot: taken.snapshot,
                 release: Some((identity, manifest.version)),
                 toolchain: manifest.toolchain,
+                components: manifest.components.clone(),
                 features: manifest.features,
                 target: manifest.target.iter().flat_map(|t| TargetPath::parse(t).0).collect(),
                 replace,
@@ -288,6 +249,7 @@ impl Session {
                 sources: Sources::default(),
                 release: None,
                 toolchain: None,
+                components: Vec::new(),
                 features: Features::default(),
                 target: Vec::new(),
                 replace: Vec::new(),

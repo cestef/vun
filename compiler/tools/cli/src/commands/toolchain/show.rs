@@ -1,5 +1,5 @@
 //! `vun toolchain show`: the running toolchain's version, where it and its library are, and the
-//! backends and linkers compiled into it.
+//! backends, linkers and URL schemes it has.
 
 use std::io;
 
@@ -8,8 +8,8 @@ use vun_data::Object;
 use vun_term::{Column, Record, Row, Shell, Style, Text};
 
 use vun_driver::packages::{Found, Library};
-use vun_driver::{Registry, Session, VERSION};
-use vun_target::{Name, Names, Readiness};
+use vun_driver::{Provider, Registry, Session, VERSION};
+use vun_target::{Names, Readiness};
 
 pub(super) const SHOW: Command<Session> =
     Command::run("show", "show this toolchain's version, library, backends and linkers", show);
@@ -26,19 +26,29 @@ fn show(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome>
     let r = Registry::with_defaults();
     let backends = r.backends().map(vun_backend::Backend::info).map(|i| Component {
         kind: Kind::Backend,
-        name: i.id,
+        name: i.id.0.to_owned(),
+        from: r.backend_from(i.id.symbol()).cloned().unwrap_or(Provider::Linked),
         readiness: i.readiness,
         handles: i.arches,
         outputs: vec![i.caps.emits.name()],
     });
     let linkers = r.linkers().map(vun_link::Linker::info).map(|i| Component {
         kind: Kind::Linker,
-        name: i.id,
+        name: i.id.0.to_owned(),
+        from: r.linker_from(i.id.symbol()).cloned().unwrap_or(Provider::Linked),
         readiness: i.readiness,
         handles: Names::Only(i.formats),
         outputs: i.outputs.iter().map(|o| o.name()).collect(),
     });
-    shell.table(&backends.chain(linkers).collect::<Vec<_>>())?;
+    let schemes = r.schemes().names().into_iter().map(|name| Component {
+        kind: Kind::Scheme,
+        from: r.scheme_from(&name).cloned().unwrap_or(Provider::Linked),
+        name,
+        readiness: Readiness::Ready,
+        handles: Names::Any,
+        outputs: Vec::new(),
+    });
+    shell.table(&backends.chain(linkers).chain(schemes).collect::<Vec<_>>())?;
     Ok(Outcome::Success)
 }
 
@@ -108,6 +118,7 @@ impl Row for Fact {
 enum Kind {
     Backend,
     Linker,
+    Scheme,
 }
 
 impl Kind {
@@ -115,6 +126,7 @@ impl Kind {
         match self {
             Self::Backend => "backend",
             Self::Linker => "linker",
+            Self::Scheme => "scheme",
         }
     }
 }
@@ -122,7 +134,8 @@ impl Kind {
 /// A component of the toolchain.
 struct Component {
     kind: Kind,
-    name: Name,
+    name: String,
+    from: Provider,
     readiness: Readiness,
     /// The architectures a backend generates code for, or the object formats a linker links.
     handles: Names,
@@ -135,6 +148,14 @@ impl Component {
         match self.readiness {
             Readiness::Ready => "ready",
             Readiness::Planned => "planned",
+        }
+    }
+
+    /// `linked`, or the library it is loaded from.
+    fn from(&self) -> Text {
+        match &self.from {
+            Provider::Linked => Text::of(Style::Dim, "linked"),
+            Provider::Loaded(path) => Text::of(Style::Literal, path.display().to_string()),
         }
     }
 
@@ -158,7 +179,8 @@ impl Record for Component {
     fn fields(&self) -> Object<'static> {
         Object::new()
             .with("kind", self.kind.name())
-            .with("name", self.name.0)
+            .with("name", self.name.clone())
+            .with("from", self.from().to_string())
             .with("status", self.status())
             .with("handles", self.handles())
             .with("outputs", self.outputs.clone())
@@ -169,6 +191,7 @@ impl Row for Component {
     const COLUMNS: &'static [Column] = &[
         Column::left("kind"),
         Column::left("name"),
+        Column::left("from"),
         Column::left("status"),
         Column::left("handles"),
         Column::left("outputs"),
@@ -182,7 +205,8 @@ impl Row for Component {
         let handles = self.handles().map_or_else(|| "any".to_owned(), |names| names.join(", "));
         vec![
             Text::of(Style::Dim, self.kind.name()),
-            Text::of(Style::Literal, self.name.0),
+            Text::of(Style::Literal, self.name.clone()),
+            self.from(),
             Text::of(status, self.status()),
             Text::of(Style::Dim, handles),
             Text::of(Style::Dim, self.outputs.join(", ")),

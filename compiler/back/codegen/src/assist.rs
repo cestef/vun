@@ -9,6 +9,9 @@ use vun_target::TargetSpec;
 
 use crate::Compiled;
 
+/// The code of functions, each by its id.
+pub type Assisted = Result<Vec<(FuncId, Compiled<()>)>, Lack>;
+
 pub trait Assist: Send + Sync {
     /// Whether it compiles for `target`.
     fn assists(&self, target: &TargetSpec) -> bool;
@@ -17,5 +20,5 @@ pub trait Assist: Send + Sync {
     ///
     /// # Errors
     /// Returns what it cannot compile either.
-    fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack>;
+    fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Assisted;
 }

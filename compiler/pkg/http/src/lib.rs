@@ -17,7 +17,17 @@ pub use secure::Secure;
 pub use unfetched::Unfetched;
 
 /// `https://`, read by [`get`].
-pub const SCHEMES: &[Scheme] = &[Scheme { name: Known::HTTPS.name, read: get }];
+pub struct Https;
+
+impl Scheme for Https {
+    fn name(&self) -> &str {
+        Known::HTTPS.name
+    }
+
+    fn read(&self, uri: &Uri) -> Result<Vec<u8>, Failure> {
+        get(uri)
+    }
+}
 
 /// How long a whole download may take, redirects included, against a mirror that stalls.
 const TIMEOUT: Duration = Duration::from_mins(10);

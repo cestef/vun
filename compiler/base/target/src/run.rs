@@ -1,11 +1,12 @@
 //! The programs a component runs, which building for a target needs on the machine.
 
+use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 
 use crate::TargetSpec;
 
 /// A program a backend or a linker runs.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Run {
     /// The target's C compiler (`lang.target.CCompiler.command`).
     Compiler,

@@ -14,6 +14,7 @@ use vun_hash::Hash;
 use vun_span::Version;
 use vun_target::Machine;
 use vun_uri::{Invalid, Uri};
+use vun_variants::Variants;
 
 pub use key::{Forged, Key};
 
@@ -32,6 +33,36 @@ pub struct Release {
     pub builds: Vec<Build>,
 }
 
+/// How much of a release's components `vun toolchain install` installs with a toolchain: each
+/// component is part of the profile it is named for and of every larger one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, ToData, FromData, Variants)]
+pub enum Profile {
+    /// What builds for the machine, and nothing else.
+    Minimal,
+    /// The usual set.
+    Default,
+    /// Every component the release builds.
+    Full,
+}
+
+impl Profile {
+    /// The name `--profile` takes.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Minimal => "minimal",
+            Self::Default => "default",
+            Self::Full => "full",
+        }
+    }
+
+    /// The profile named `name`.
+    #[must_use]
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|p| p.name() == name)
+    }
+}
+
 /// The toolchain a release has for one machine.
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Build {
@@ -40,6 +71,24 @@ pub struct Build {
     pub archive: String,
     /// The hash of the toolchain's tree ([`crate::toolchains::CONTENTS`]).
     pub hash: Hash,
+    /// The components of the release built for this machine, each its own archive.
+    pub components: Vec<Piece>,
+}
+
+/// A component's library for one machine: an archive unpacking to a tree holding the library in
+/// `components/`, which a toolchain installs beside the others there.
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Piece {
+    /// What its interface calls it (a backend's or a linker's id).
+    pub name: String,
+    /// The archive's file name among the release's.
+    pub archive: String,
+    /// The library's file name in `components/`.
+    pub file: String,
+    /// The hash of the tree the archive unpacks to ([`crate::toolchains::COMPONENTS`]).
+    pub hash: Hash,
+    /// The smallest profile that holds it.
+    pub profile: Profile,
 }
 
 /// A release's manifest as it was published: read, and its bytes, which the signature signs and
@@ -131,6 +180,12 @@ impl Releases {
         self.file(release.version, &build.archive)
     }
 
+    /// Where the archive of the component `piece` of `release` is.
+    #[must_use]
+    pub fn component(&self, release: &Release, piece: &Piece) -> Uri {
+        self.file(release.version, &piece.archive)
+    }
+
     fn file(&self, version: Version, name: &str) -> Uri {
         let tag = version.to_string();
         self.base.with_segments(RELEASES.iter().copied().chain([tag.as_str(), name]))
@@ -155,11 +210,31 @@ impl Build {
     /// without `vun`, as a first installation does.
     pub const SUFFIX: &str = ".tar.gz";
 
+    /// The components `profile` holds.
+    pub fn in_profile(&self, profile: Profile) -> impl Iterator<Item = &Piece> {
+        self.components.iter().filter(move |piece| piece.profile <= profile)
+    }
+
+    /// The component `name` of this build.
+    #[must_use]
+    pub fn piece(&self, name: &str) -> Option<&Piece> {
+        self.components.iter().find(|p| p.name == name)
+    }
+
     /// The file name of the archive of `machine`'s toolchain: the same in every release, so that
     /// the latest one is found without its version (`vun-x86_64-linux.tar.gz`).
     #[must_use]
     pub fn archive_name(machine: Machine) -> String {
         [crate::toolchains::NAME, "-", machine.arch.0, "-", machine.os.0, Self::SUFFIX].concat()
+    }
+}
+
+impl Piece {
+    /// The file name of the archive of the component `name` for `machine`
+    /// (`vun-cranelift-x86_64-linux.tar.gz`).
+    #[must_use]
+    pub fn archive_name(name: &str, machine: Machine) -> String {
+        [crate::toolchains::NAME, "-", name, "-", machine.arch.0, "-", machine.os.0, Build::SUFFIX].concat()
     }
 }
 

@@ -36,6 +36,9 @@ pub struct Manifest {
     pub edition: u16,
     /// The exact toolchain the launcher runs, if pinned.
     pub toolchain: Option<Version>,
+    /// The components the pinned toolchain builds the package with, by name (spec 12, section 6):
+    /// installed with it when missing.
+    pub components: Vec<String>,
     /// The oldest toolchain that reads this manifest and builds the package.
     pub requires: Option<Version>,
     /// The language features the package enables (spec 12, section 2).
@@ -113,6 +116,7 @@ mod field {
     pub(super) const VERSION: &str = "version";
     pub(super) const EDITION: &str = "edition";
     pub(super) const TOOLCHAIN: &str = "toolchain";
+    pub(super) const COMPONENTS: &str = "components";
     pub(super) const REQUIRES: &str = "requires";
     pub(super) const TARGET: &str = "target";
     pub(super) const INCLUDE: &str = "include";
@@ -130,8 +134,8 @@ mod field {
     pub(super) const INDEX: &str = "index";
 
     pub(super) const PACKAGE: &[&str] = &[
-        NAME, ID, VERSION, EDITION, TOOLCHAIN, REQUIRES, TARGET, INCLUDE, DEPS, REPLACE, INDEX, MEMBERS,
-        PRELUDE, FEATURES,
+        NAME, ID, VERSION, EDITION, TOOLCHAIN, COMPONENTS, REQUIRES, TARGET, INCLUDE, DEPS, REPLACE, INDEX,
+        MEMBERS, PRELUDE, FEATURES,
     ];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, LIBRARY, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH, LIBRARY];
@@ -204,6 +208,7 @@ impl Manifest {
         let version = fields.require(field::VERSION).and_then(|d| d.version(cx));
         let edition = fields.require(field::EDITION).and_then(|d| d.int(cx));
         let toolchain = fields.get(field::TOOLCHAIN).map_or(Some(None), |d| d.version(cx).map(Some));
+        let components = fields.get(field::COMPONENTS).map_or(Some(Vec::new()), |d| d.strings(cx));
         let requires = fields.get(field::REQUIRES).map_or(Some(None), |d| d.version(cx).map(Some));
         let features = fields.get(field::FEATURES).map_or(Some(Features::default()), |d| {
             let table: Vec<_> = Feature::ALL.iter().map(|&f| (f.name(), f)).collect();
@@ -225,6 +230,7 @@ impl Manifest {
             version: version?,
             edition: edition?,
             toolchain: toolchain?,
+            components: components?,
             features: features?,
             requires: requires?,
             target: target?,

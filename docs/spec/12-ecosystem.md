@@ -64,6 +64,7 @@ package := .{
     .version = "0.3.1",
     .edition = 2026,
     .toolchain = "0.4.2",                 // exact; another `vun` hands off to it (section 6)
+    .components = .{ "backend-cranelift" },       // installed with it when missing (section 6)
     .requires = "0.4.0",                  // the oldest `vun` that reads this manifest; read first
     .target = "bare.thumbv7em.eabihf",    // what the package is written for; the machine's when absent
     .include = .{ "build.vun", "blinky.vun", "blinky", "LICENSE" },   // what the hash covers
@@ -316,10 +317,10 @@ Four things decide how a program is built, each declared in one place:
 |------|----|-------|
 | toolchain | one release of `vun`: the executable and its library | a directory, `~/.local/share/vun/toolchains/<version>/` once installed |
 | target | what a program runs on: a `lang.target.Spec` | the package `targets`, `targets.<os>.<arch>.<abi>` (spec 13, section 7) |
-| component | a backend or a linker, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
+| component | a backend, a linker or a URL scheme, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
 | tools | the programs of this machine building and running for a target | the machine's tools file |
 
-`vun toolchain show` says which toolchain runs and what it holds; `vun target list` lists the
+`vun toolchain show` says which toolchain runs and what it holds, each component with where it comes from (`linked`, or its library); `vun target list` lists the
 targets with what builds for each and what the machine lacks; `vun target show` gives every part
 of a build for the chosen target, where each program is and why each part is the one (the
 target's declaration, an option, a line of the tools file).
@@ -370,35 +371,46 @@ hashing otherwise, and installs again a toolchain installed from another. A firs
 checks the archive against the signed checksums before anything runs; the `vun toolchain update`
 it runs then checks the manifest's signature and the tree's hash.
 
-**Components.** A backend or a linker is a component, and the toolchain holds nothing else of
-that kind: the registry lists components, none is special. A component is provided one of two
-ways, which differ only in transport. A *linked* one is compiled into `vun` (a Cargo feature),
-called directly. A *loaded* one is a dynamic library in the toolchain's `components/` directory
-(`<name>.so`, `.dylib` or `.dll`), opened on first use. Both answer the same typed requests
-(`Backend::info`, `emit`, `division`, `frame_sizes`; `Linker::info`, `runs`, `link`), so the
-crate implementing `Backend` or `Linker` is the same either way and a cdylib crate only exports it.
+**Components.** A part of the toolchain a crate declares an interface for is a component:
+backends, linkers and URL schemes (`https`, with its TLS stack) today, and any kind a later crate adds
+(a kind is a name, the set is open).
+The registry lists components, none is special. A component is provided one of two ways, which
+differ only in transport. A *linked* one is compiled into `vun` (a Cargo feature), called
+directly. A *loaded* one is a dynamic library in the toolchain's `components/` directory
+(`<name>.so`, `.dylib` or `.dll`, or the directory `VUN_COMPONENTS` names), opened on first use.
+Both answer the same typed requests (`Backend::info`, `emit`, `division`, `frame_sizes`;
+`Linker::info`, `runs`, `link`; `Scheme::name`, `read`), so the crate implementing `Backend`, `Linker`
+or `Scheme` is the same either way and a cdylib crate only exports it. A failure of a library
+crosses as the messages of its error and of each source (`Cause`). The first registered of a name is the one a build uses,
+so a toolchain linking a component has it before a library of the same name.
 
-The boundary of a loaded component is one C-ABI entry, `call(service, request) -> response`, with
-bytes in the `vun-codec` encoding both ways, and the owner of every buffer releasing it. No Rust
-type, allocation, static or thread crosses it, so a component has its own interner, pool and
-allocator and needs no compiler or crate version in common with `vun` but its own release. What
-the component asks of `vun` while it runs (the source lines of an origin, another component such
-as an assisting backend) it asks through the table of host calls it is given, which is the same
-`call` the other way; its diagnostics, artifacts and frame sizes come back in the response, and
-its `vun-trace` events are forwarded, so a run logs, times and dumps alike with the component in
-or out of process. A panic inside is caught at the boundary and reported as a diagnostic.
-Loading checks the library's hash against the toolchain's manifest and its descriptor (protocol
-number, release version) against `vun`'s, and refuses any other. This boundary is the one `unsafe`
-module of the toolchain besides `vun-par`'s pool.
+The boundary of a loaded component is one C-ABI entry, `call(host, request) -> reply`, with
+bytes in the `vun-codec` encoding both ways (handles written by content, so each side reads them
+in its own tables), and the side that allocated a buffer releasing it. No Rust type, allocation,
+static or thread crosses it, so a component has its own interner, pool and allocator. What the
+component asks of `vun` while it runs (the source lines of an origin) it asks through the `host`
+it is given, which is the same call the other way; its diagnostics, artifacts and frame sizes
+come back in the reply. A panic inside is caught at the boundary and reported as
+`component.failed`; its logs follow `VUN_LOG` as the host's do. Opening checks the library's
+descriptor (the boundary's layout, then the toolchain's release) against `vun`'s and refuses any
+other (`component.invalid`), and a toolchain installed from a release loads only the libraries its
+kept manifest names, each as hashed. This boundary is the one `unsafe` module of the toolchain
+besides `vun-par`'s pool.
 
-A release names each component's library per machine with its hash, in the signed manifest, and
-groups components in profiles (`minimal`: what builds for the machine; `default`; `full`). `vun
-toolchain install --profile` chooses one, `vun toolchain component list|add|remove` changes the
-set of a toolchain, and `.components` beside `.toolchain` in `build.vun` pins the set a project
-builds with (the lockfile records their hashes). A component naming another it needs (Cranelift
-assisted by native) brings it. A target's backend preferences (section 8 of spec 13) choose among
-the components present; a preferred one that is absent is `backend.unavailable`, naming the
-`component add` that provides it.
+**Releases of components.** A release's manifest lists, for each machine, the toolchain's archive
+and each component's (`vun-<kind>-<id>-<arch>-<os>.tar.gz`, a tree holding the library in
+`components/`), each with the hash of its tree, in the signed manifest. A component is named by its
+kind and id (`backend-cranelift`, `linker-wasm`) and belongs to the smallest *profile* that holds
+it, `minimal` (what builds for the machine), `default` or `full`; a profile holds the components
+of its own and of the smaller ones. The libraries are apart from the toolchain's tree (`bin/`,
+`lib/`, `LICENSES/`), so that adding one changes no hash the release names. `vun toolchain
+install` and `update` take `--profile` (`default` when none), `vun toolchain component list`
+shows what a toolchain's release builds and which are installed, `add` and `remove` change the
+set, and `.components` beside `.toolchain` in `build.vun` names the components a project builds
+with, installed with the pinned toolchain when missing (the lockfile's hash of the release's
+manifest covers their hashes). The `vun` of a release links only the backends and linkers not
+built yet; every other is a component. A target's backend preferences (spec 13, section 8) choose
+among the components present; a preferred one that is absent is `backend.unavailable`.
 
 **The machine's tools file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target: a C compiler building for the target (`builds_for = .target`, a

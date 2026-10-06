@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 498 (components: linked or loaded, one typed boundary), 497 (Cranelift backend and assist, size budget 26 MiB), 496 (language features, `.features`), 495 (`#[comptime.deferred]`), 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 498 (components: linked or loaded, one typed boundary), 497 (Cranelift backend and assist), 496 (language features, `.features`), 495 (`#[comptime.deferred]`), 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316
@@ -269,6 +269,32 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
   corpus and every example live in one. Recommended to keep; the owner may overrule.
 - Where the system runs one thread (WASI), the first trap ends the run.
 - A cold `vun test lib/std` takes about 4.5 s on `am3.wg` (24.8 s before the profiling of 2026-10-06). What is left is spread out: `mir`, `typed`, lint rules run as Vun code (`call{ f="reports" }`, 18 000 compile-time calls), and writing the memos (0.6 s). `VUN_LOG=vun_lir_passes::promote=trace` reports what each slot promotion cost.
+
+## Components (decision 498, proposed)
+
+Built: the boundary (`vun-component`), the backend, linker and scheme interfaces (`vun-backend-component`,
+`vun-link-component`, `vun-scheme-component`), one crate per ready backend, linker and scheme
+(`scheme-https`, the TLS stack) under `compiler/components/`, the
+registry loading `VUN_COMPONENTS` or `components/` beside `bin/` (a toolchain installed from a
+release loads only the libraries its kept manifest names, as hashed), `vun toolchain
+install|update --profile` and `component list|add|remove`, `.components` in `build.vun`,
+`cargo xtask components|package|release|install` building and packing the libraries, and
+`release.yml` building them. Run end to end on am3 (arm64): package, release, sign, install the
+`minimal` profile, add Cranelift, build and compare, tamper with a library. Open:
+
+- Kinds still linked, in the order they are worth moving: the language server (`vun-lsp`, one
+  blocking `serve` call), the C binder (`vun-bind` and `vun-clang`), the diagnostic renderers
+  (a `DiagSink`; the library asks the host to resolve origins and read source). Each is an
+  `Interface` and a crate under `compiler/components/`. The size budget is dropped (decision 499).
+- Cranelift's library links the native backend itself, for the functions Cranelift cannot
+  express (the library is 6.6 MiB, native's another 2); the assist should go through the host,
+  and a component naming another it needs should bring it.
+- A library's timings and timeline do not reach the host's report; its logs follow `VUN_LOG`.
+- Every library is opened when a registry is made (a few hundred microseconds each); the release
+  manifest could carry each one's facts so that choosing opens none.
+- The cost of encoding a unit per call is not measured against a linked backend.
+- `export` defines `vun_component` in each rlib it is set on: a build with every feature of the
+  workspace at once would link several into one executable.
 
 ## Next steps, most useful first
 

@@ -1,0 +1,29 @@
+[package]
+name = "vun-backend-component"
+description = "Backends as components: served from a library, called through the boundary."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-backend.workspace = true
+vun-codec.workspace = true
+vun-component.workspace = true
+vun-diag.workspace = true
+vun-index.workspace = true
+vun-intern.workspace = true
+vun-lir.workspace = true
+vun-lir-passes.workspace = true
+vun-origin.workspace = true
+vun-target.workspace = true
+vun-trace.workspace = true
+
+[dev-dependencies]
+vun-lir = { workspace = true, features = ["testing"] }
+vun-span.workspace = true
+vun-target = { workspace = true, features = ["testing"] }

@@ -46,6 +46,8 @@ pub const panic: Item = Item::new(&["lang", "errors", "panic"]);
 pub const check: Item = Item::new(&["lang", "errors", "check"]);
 /// Code generation backends (spec 13).
 pub const backend: Item = Item::new(&["lang", "errors", "backend"]);
+/// Components, backends and linkers loaded from the toolchain (spec 12, section 6).
+pub const component: Item = Item::new(&["lang", "errors", "component"]);
 /// Stack bounds (spec 07, section 4).
 pub const stack: Item = Item::new(&["lang", "errors", "stack"]);
 /// Targets (spec 13, section 7).

@@ -15,3 +15,7 @@ vun-codec.workspace = true
 vun-data.workspace = true
 vun-intern.workspace = true
 vun-variants.workspace = true
+
+[features]
+# Targets for tests (`testing`).
+testing = []

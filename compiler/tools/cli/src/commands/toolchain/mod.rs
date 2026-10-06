@@ -1,6 +1,7 @@
 //! `vun toolchain`: this toolchain, a release of `vun` and its library, and the others installed
 //! beside it (spec 12, section 6).
 
+mod component;
 mod install;
 mod list;
 mod remove;
@@ -16,7 +17,7 @@ use vun_span::Version;
 pub(super) const GROUP: &str = "toolchain";
 
 pub(super) const COMMANDS: &[Command<Session>] =
-    &[show::SHOW, list::LIST, install::INSTALL, install::UPDATE, remove::REMOVE];
+    &[show::SHOW, list::LIST, install::INSTALL, install::UPDATE, remove::REMOVE, component::GROUP];
 
 /// The user's toolchains; their absence, for a user without a home, is reported.
 fn toolchains(session: &mut Session) -> Option<Toolchains> {

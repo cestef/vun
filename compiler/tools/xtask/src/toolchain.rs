@@ -6,7 +6,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_build::toolchains::{BIN, CONTENTS, Toolchains};
+use vun_build::toolchains::{BIN, COMPONENTS, CONTENTS, Toolchains};
 use vun_fs::{Edit, Tree};
 use vun_hash::Hash;
 
@@ -22,13 +22,14 @@ impl Stage {
         Self { checkout: checkout.into(), dir: dir.into() }
     }
 
-    /// Lays the tree at an empty directory: the built `binary` as `bin/<its name>`, and what the
-    /// checkout ships beside it, `CONTENTS` except the executable.
+    /// Lays the tree at an empty directory: the built `binary` as `bin/<its name>`, what the
+    /// checkout ships beside it, `CONTENTS` except the executable, and the component `libraries`
+    /// in `components/`.
     ///
     /// # Errors
     /// Returns an error if the directory cannot be made fresh, the binary copied, or a shipped
     /// file read or written.
-    pub(crate) fn lay(&self, binary: &Path) -> io::Result<()> {
+    pub(crate) fn lay(&self, binary: &Path, libraries: &[PathBuf]) -> io::Result<()> {
         self.dir.fresh()?;
         let exe = self.dir.join(BIN).join(binary.file_name().unwrap_or_default());
         exe.parent().map(fs::create_dir_all).transpose()?;
@@ -38,6 +39,10 @@ impl Stage {
                 let relative = file.strip_prefix(&self.checkout).unwrap_or(&file);
                 self.dir.join(relative).put(fs::read(&file)?)?;
             }
+        }
+        for library in libraries {
+            let name = library.file_name().unwrap_or_default();
+            self.dir.join(COMPONENTS).join(name).put(fs::read(library)?)?;
         }
         Ok(())
     }

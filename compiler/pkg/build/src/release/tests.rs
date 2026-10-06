@@ -6,11 +6,23 @@ use vun_uri::Uri;
 
 use ring::signature::{Ed25519KeyPair, KeyPair};
 
-use super::{Build, Key, Release, Releases, Wanted};
+use super::{Build, Key, Piece, Profile, Release, Releases, Wanted};
 
 fn release() -> Release {
     let machine = Machine { arch: Name("x86_64"), os: Name("linux") };
-    let build = Build { machine, archive: Build::archive_name(machine), hash: Hash::of(b"tree") };
+    let piece = Piece {
+        name: "cranelift".into(),
+        archive: Piece::archive_name("cranelift", machine),
+        file: "libvun_component_cranelift.so".into(),
+        hash: Hash::of(b"library"),
+        profile: Profile::Default,
+    };
+    let build = Build {
+        machine,
+        archive: Build::archive_name(machine),
+        hash: Hash::of(b"tree"),
+        components: vec![piece],
+    };
     Release { version: Version::parse("0.4.2").unwrap(), builds: vec![build] }
 }
 
@@ -22,6 +34,13 @@ fn a_manifest_reads_back_as_it_was_written() {
     assert_eq!(read, release);
     assert!(read.build_for(Machine { arch: Name("x86_64"), os: Name("linux") }).is_some());
     assert!(read.build_for(Machine { arch: Name("arm64"), os: Name("macos") }).is_none());
+    let build = &read.builds[0];
+    assert_eq!(build.piece("cranelift").map(|p| p.file.as_str()), Some("libvun_component_cranelift.so"));
+    assert_eq!(build.in_profile(Profile::Minimal).count(), 0);
+    assert_eq!(build.in_profile(Profile::Default).count(), 1);
+    assert_eq!(build.in_profile(Profile::Full).count(), 1);
+    assert!(build.piece("llvm").is_none());
+    assert_eq!(Profile::named("full"), Some(Profile::Full));
 }
 
 #[test]
@@ -37,6 +56,10 @@ fn releases_are_found_as_a_forge_lays_them_out() {
     assert_eq!(
         path(releases.archive(&release, &release.builds[0])),
         ["owner", "vun", "releases", "download", "0.4.2", "vun-x86_64-linux.tar.gz"]
+    );
+    assert_eq!(
+        path(releases.component(&release, &release.builds[0].components[0])),
+        ["owner", "vun", "releases", "download", "0.4.2", "vun-cranelift-x86_64-linux.tar.gz"]
     );
 }
 

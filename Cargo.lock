@@ -1285,6 +1285,7 @@ version = "0.1.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
+ "vun-codec",
  "vun-diag",
  "vun-hash",
  "vun-inline",
@@ -1312,6 +1313,24 @@ dependencies = [
  "vun-inline",
  "vun-intern",
  "vun-items",
+ "vun-lir",
+ "vun-lir-passes",
+ "vun-origin",
+ "vun-span",
+ "vun-target",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-backend-component"
+version = "0.1.0"
+dependencies = [
+ "vun-backend",
+ "vun-codec",
+ "vun-component",
+ "vun-diag",
+ "vun-index",
+ "vun-intern",
  "vun-lir",
  "vun-lir-passes",
  "vun-origin",
@@ -1456,6 +1475,7 @@ dependencies = [
  "vun-target",
  "vun-tool",
  "vun-uri",
+ "vun-variants",
 ]
 
 [[package]]
@@ -1489,7 +1509,6 @@ dependencies = [
  "vun-fs",
  "vun-hash",
  "vun-hir",
- "vun-http",
  "vun-intern",
  "vun-link",
  "vun-lsp",
@@ -1551,6 +1570,128 @@ dependencies = [
  "vun-span",
  "vun-suggest",
  "vun-term",
+]
+
+[[package]]
+name = "vun-component"
+version = "0.1.0"
+dependencies = [
+ "libloading",
+ "vun-codec",
+ "vun-diag",
+ "vun-intern",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-component-backend-c"
+version = "0.1.0"
+dependencies = [
+ "vun-backend",
+ "vun-backend-c",
+ "vun-backend-component",
+ "vun-component",
+]
+
+[[package]]
+name = "vun-component-backend-cranelift"
+version = "0.1.0"
+dependencies = [
+ "vun-backend",
+ "vun-backend-component",
+ "vun-backend-cranelift",
+ "vun-backend-native",
+ "vun-component",
+]
+
+[[package]]
+name = "vun-component-backend-native"
+version = "0.1.0"
+dependencies = [
+ "vun-backend",
+ "vun-backend-component",
+ "vun-backend-native",
+ "vun-component",
+]
+
+[[package]]
+name = "vun-component-backend-wasm"
+version = "0.1.0"
+dependencies = [
+ "vun-backend",
+ "vun-backend-component",
+ "vun-backend-wasm",
+ "vun-component",
+]
+
+[[package]]
+name = "vun-component-link-ar"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-ar",
+ "vun-link-component",
+]
+
+[[package]]
+name = "vun-component-link-gnu"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-component",
+ "vun-link-gnu",
+]
+
+[[package]]
+name = "vun-component-link-lld"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-component",
+ "vun-link-lld",
+]
+
+[[package]]
+name = "vun-component-link-mold"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-component",
+ "vun-link-mold",
+]
+
+[[package]]
+name = "vun-component-link-wasm"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-component",
+ "vun-link-wasm",
+]
+
+[[package]]
+name = "vun-component-link-wild"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-link",
+ "vun-link-component",
+ "vun-link-wild",
+]
+
+[[package]]
+name = "vun-component-scheme-https"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-fetch",
+ "vun-http",
+ "vun-scheme-component",
 ]
 
 [[package]]
@@ -1623,6 +1764,7 @@ dependencies = [
  "criterion",
  "vun-backend",
  "vun-backend-c",
+ "vun-backend-component",
  "vun-backend-cranelift",
  "vun-backend-external",
  "vun-backend-llvm",
@@ -1632,6 +1774,18 @@ dependencies = [
  "vun-bind",
  "vun-build",
  "vun-command",
+ "vun-component",
+ "vun-component-backend-c",
+ "vun-component-backend-cranelift",
+ "vun-component-backend-native",
+ "vun-component-backend-wasm",
+ "vun-component-link-ar",
+ "vun-component-link-gnu",
+ "vun-component-link-lld",
+ "vun-component-link-mold",
+ "vun-component-link-wasm",
+ "vun-component-link-wild",
+ "vun-component-scheme-https",
  "vun-data",
  "vun-diag",
  "vun-doc",
@@ -1654,6 +1808,7 @@ dependencies = [
  "vun-items",
  "vun-link",
  "vun-link-ar",
+ "vun-link-component",
  "vun-link-external",
  "vun-link-gnu",
  "vun-link-lld",
@@ -1675,6 +1830,7 @@ dependencies = [
  "vun-render-ariadne",
  "vun-render-short",
  "vun-sanitize",
+ "vun-scheme-component",
  "vun-sema",
  "vun-sema-plan",
  "vun-sema-ty",
@@ -1962,6 +2118,7 @@ dependencies = [
 name = "vun-link"
 version = "0.1.0"
 dependencies = [
+ "vun-codec",
  "vun-diag",
  "vun-intern",
  "vun-origin",
@@ -1976,6 +2133,18 @@ dependencies = [
  "vun-link",
  "vun-target",
  "vun-tool",
+ "vun-trace",
+]
+
+[[package]]
+name = "vun-link-component"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-component",
+ "vun-diag",
+ "vun-link",
+ "vun-target",
  "vun-trace",
 ]
 
@@ -2452,6 +2621,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-scheme-component"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-component",
+ "vun-fetch",
+ "vun-trace",
+ "vun-uri",
+]
+
+[[package]]
 name = "vun-sema"
 version = "0.1.0"
 dependencies = [
@@ -2628,6 +2808,7 @@ dependencies = [
 name = "vun-uri"
 version = "0.1.0"
 dependencies = [
+ "vun-codec",
  "vun-data",
 ]
 

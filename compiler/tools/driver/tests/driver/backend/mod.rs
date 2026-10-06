@@ -8,6 +8,7 @@ use vun_target::Name;
 
 use crate::common::Fixture;
 
+mod component;
 mod run;
 
 pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_on};

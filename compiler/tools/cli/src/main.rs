@@ -18,7 +18,6 @@ fn main() -> ExitCode {
     let mut session = Session::new();
     session.persistence = Persistence::On;
     session.shared = Some(session.store.memos());
-    session.schemes.install(vun_http::SCHEMES);
     #[cfg(feature = "lsp")]
     {
         session.language_server = Some(vun_lsp::serve);

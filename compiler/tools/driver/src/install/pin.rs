@@ -7,13 +7,14 @@
 use std::path::Path;
 use std::process::Command;
 
-use vun_build::release::Wanted;
+use vun_build::release::{Releases, Wanted};
 use vun_build::toolchains::Toolchains;
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_span::Version;
+use vun_target::Machine;
 use vun_trace::tracing;
 
-use super::Uninstalled;
+use super::{Held, Uninstalled};
 use crate::{Session, VERSION};
 
 /// The variable that, set to [`LOCAL`], keeps the running toolchain whatever a project pins.
@@ -43,7 +44,9 @@ impl Session {
         };
         let locked = self.recorded_lock(key).and_then(|l| l.toolchain()).filter(|t| t.version == pinned);
         let installed = toolchains.installed().is_ok_and(|installed| installed.contains(&pinned));
-        if !installed || locked.is_some_and(|t| toolchains.manifest(pinned) != Some(t.hash)) {
+        let components = self.packages.list[&key].components.clone();
+        let stale = locked.is_some_and(|t| toolchains.manifest(pinned) != Some(t.hash));
+        if !installed || stale || !Self::holds(&toolchains, pinned, &components) {
             let published = self
                 .toolchain_release(Wanted::Version(pinned))
                 .map_err(|why| self.uninstalled(Some(pinned), &why))?;
@@ -53,7 +56,13 @@ impl Session {
                 let why = Uninstalled::Unlocked { expected: locked.hash, found: published.hash() };
                 return Err(self.uninstalled(Some(pinned), &why));
             }
-            self.install(&toolchains, &published).map_err(|why| self.uninstalled(Some(pinned), &why))?;
+            if !installed || stale {
+                self.install(&toolchains, &published).map_err(|why| self.uninstalled(Some(pinned), &why))?;
+            }
+            let releases = Releases::user()
+                .map_err(|why| self.uninstalled(Some(pinned), &Uninstalled::Repository(why)))?;
+            self.install_components(&toolchains, &releases, &published, &components)
+                .map_err(|why| self.uninstalled(Some(pinned), &why))?;
         }
         tracing::info!(%pinned, "handing the command to the pinned toolchain");
         let mut command = Command::new(toolchains.exe(pinned));
@@ -62,6 +71,15 @@ impl Session {
         let failed = Self::replace_with(&mut command);
         let msg = Msg::new().text("cannot run the pinned toolchain ").code(pinned.to_string());
         Err(self.diag.error(Diagnostic::error(errors::TOOLCHAIN_INSTALL_FAILED, msg).caused_by(&failed)))
+    }
+
+    /// Whether the installed toolchain of `version` holds the components `names`, whole, as its
+    /// kept manifest names them.
+    fn holds(toolchains: &Toolchains, version: Version, names: &[String]) -> bool {
+        let Some(release) = toolchains.release(version) else { return names.is_empty() };
+        let Some(build) = release.build_for(Machine::RUNNING) else { return names.is_empty() };
+        let held = Held::of(toolchains, version, build);
+        names.iter().all(|name| held.iter().any(|h| h.piece.name == *name && h.installed))
     }
 
     /// Replaces this process with `command`, returning only why it could not.

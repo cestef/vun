@@ -7,7 +7,6 @@ use vun_build::manifest::Manifest;
 use vun_build::store::Store;
 use vun_command::Diagnostics;
 use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed};
-use vun_fetch::Schemes;
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
@@ -51,14 +50,11 @@ pub struct Session {
     pub library: PathBuf,
     /// The store of fetched packages, the user's unless set.
     pub store: Store,
-    /// The URL schemes packages are downloaded through: `file://` unless the program installs
-    /// more, as `vun` does with `vun-http`.
-    pub schemes: Schemes,
     /// How the target is chosen: the running machine's unless `--target` names one.
     pub choice: Choice,
     /// The target, once chosen, or the report that none is.
     pub target: Option<Result<TargetSpec, ErrorGuaranteed>>,
-    /// The backends and linkers compiled into this toolchain.
+    /// The backends, linkers and URL schemes of this toolchain.
     pub registry: Registry,
     /// Which backend builds: the target's preferences for the profile unless one is named.
     pub codegen: Codegen,
@@ -115,7 +111,6 @@ impl Session {
             packages: Packages::default(),
             library: Library::find().dir,
             store: Store::user(),
-            schemes: Schemes::default(),
             choice: Choice::Host,
             target: None,
             registry: Registry::with_defaults(),

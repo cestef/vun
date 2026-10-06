@@ -123,7 +123,7 @@ impl Session {
 
     /// The listing at `url`; one that cannot be read is reported.
     fn listing(&mut self, url: &Uri) -> Option<Listing> {
-        let read = self.schemes.get(url).map_err(Unlisted::Read).and_then(|bytes| {
+        let read = self.registry.schemes().get(url).map_err(Unlisted::Read).and_then(|bytes| {
             String::from_utf8(bytes).ok().and_then(|text| Listing::parse(&text)).ok_or(Unlisted::Malformed)
         });
         match read {

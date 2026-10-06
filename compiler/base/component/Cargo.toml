@@ -1,0 +1,20 @@
+[package]
+name = "vun-component"
+description = "Components of the toolchain, backends and linkers, linked in or loaded from a library."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-diag.workspace = true
+vun-intern.workspace = true
+vun-trace.workspace = true
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+libloading.workspace = true

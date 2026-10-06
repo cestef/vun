@@ -22,7 +22,12 @@ use vun_target::Machine;
 
 use crate::toolchain::Stage;
 
+mod components;
+
+pub(crate) use components::Crate;
+
 const UNPACKED: DiagId = DiagId::new("xtask.release.unpacked");
+const UNBUILT: DiagId = DiagId::new("xtask.release.unbuilt");
 const UNTAGGED: DiagId = DiagId::new("xtask.release.untagged");
 
 pub(crate) const BINARY: Param =
@@ -30,6 +35,10 @@ pub(crate) const BINARY: Param =
 pub(crate) const OUT: Param = Param::positional("out")
     .about("the directory the archives and their builds are written in")
     .values(Values::Path(PathKind::Dir));
+pub(crate) const TARGET: Param = Param::option("target")
+    .about("the target triple to build for, as cargo takes it (with zigbuild's glibc)");
+pub(crate) const TOOL: Param =
+    Param::option("tool").about("the cargo subcommand building them, `build` when none (`zigbuild`)");
 pub(crate) const TAG: Param =
     Param::option("tag").about("the tag of the release, which must be the workspace's version");
 
@@ -42,12 +51,19 @@ pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io
     let binary = Path::new(args.value(&BINARY).expect("positional parameters are present"));
     let out = Path::new(args.value(&OUT).expect("positional parameters are present"));
     let staging = Stage::at(repo_root(), out.join(STAGE));
-    staging.lay(binary)?;
+    staging.lay(binary, &[])?;
     let contents: Vec<String> = CONTENTS.iter().map(|&c| c.to_owned()).collect();
     let format = Format::of(Build::SUFFIX).expect("toolchain archives are of a known format");
     let (bytes, snapshot) = format.pack(staging.dir(), &contents, NAME)?;
     let archive = Build::archive_name(Machine::RUNNING);
-    let build = Build { machine: Machine::RUNNING, archive: archive.clone(), hash: snapshot.root() };
+    let crates = components::Crate::all(&repo_root())?;
+    let pieces = crates.iter().map(|c| c.pack(binary, out, Machine::RUNNING)).collect::<io::Result<_>>()?;
+    let build = Build {
+        machine: Machine::RUNNING,
+        archive: archive.clone(),
+        hash: snapshot.root(),
+        components: pieces,
+    };
     let hashed = staging.hash()?;
     staging.dir().remove()?;
     if hashed != build.hash {
@@ -59,6 +75,19 @@ pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io
     }
     out.join(&archive).put(bytes)?;
     out.join(&archive).with_added_extension(BUILD).put(Json(&build.to_data()).to_string())?;
+    Ok(Outcome::Success)
+}
+
+/// Builds the libraries of the component crates, which `package` packs from beside the `vun`.
+pub(crate) fn build_components(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
+    let crates = components::Crate::all(&repo_root())?;
+    let tool = args.value(&TOOL).unwrap_or("build");
+    if let Err(why) = components::Crate::build(&repo_root(), &crates, tool, args.value(&TARGET)) {
+        diag.error(
+            Diagnostic::error(UNBUILT, Msg::new().text("cannot build the components")).caused_by(&why),
+        );
+        return Ok(Outcome::Failure);
+    }
     Ok(Outcome::Success)
 }
 

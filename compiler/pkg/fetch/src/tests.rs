@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use vun_fs::{Mode, Modes, Scratch};
 use vun_hash::Snapshot;
 
@@ -36,10 +38,20 @@ fn every_format_packs_reproducibly_and_unpacks_to_the_same_tree() {
 #[test]
 fn unknown_schemes_and_formats_are_named() {
     /// A network scheme as a program installs one; never read here.
-    const NETWORK: &[Scheme] = &[Scheme { name: "https", read: |_| Ok(Vec::new()) }];
+    struct Network;
+
+    impl Scheme for Network {
+        fn name(&self) -> &str {
+            "https"
+        }
+
+        fn read(&self, _: &Uri) -> Result<Vec<u8>, Failure> {
+            Ok(Vec::new())
+        }
+    }
     let mut schemes = Schemes::default();
     assert!(matches!(Mirror::of(&"https://x/a.tar.gz".parse().unwrap(), &schemes), Err(Failure::Scheme(_))));
-    schemes.install(NETWORK);
+    schemes.install(Arc::new(Network));
     let Err(unknown) = Mirror::of(&"ftp://x/a.tar.gz".parse().unwrap(), &schemes) else {
         panic!("ftp is no scheme")
     };

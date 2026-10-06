@@ -3,6 +3,7 @@
 //! unpacked beside the installed ones, its tree hashed and checked against the manifest's hash,
 //! then moved in with the manifest, which a lockfile pinning the release records the hash of.
 
+mod components;
 mod pin;
 mod uninstalled;
 
@@ -16,6 +17,7 @@ use vun_span::Version;
 use vun_target::Machine;
 use vun_trace::tracing;
 
+pub use components::Held;
 pub use pin::{ENV, LOCAL};
 pub use uninstalled::Uninstalled;
 
@@ -39,8 +41,9 @@ impl Session {
         let releases = Releases::user().map_err(Uninstalled::Repository)?;
         let url = releases.manifest(wanted);
         tracing::debug!(%url, key = %releases.key, "release manifest");
-        let manifest = self.schemes.get(&url).map_err(Uninstalled::Manifest)?;
-        let signature = self.schemes.get(&releases.signature(wanted)).map_err(Uninstalled::Unsigned)?;
+        let manifest = self.registry.schemes().get(&url).map_err(Uninstalled::Manifest)?;
+        let signature =
+            self.registry.schemes().get(&releases.signature(wanted)).map_err(Uninstalled::Unsigned)?;
         releases.key.verify(&manifest, &signature).map_err(Uninstalled::Forged)?;
         let text = String::from_utf8_lossy(&manifest);
         let value = vun_data::json::parse(&text).map_err(Uninstalled::Json)?;
@@ -68,7 +71,9 @@ impl Session {
         let url = Releases::user().map_err(Uninstalled::Repository)?.archive(release, build);
         tracing::info!(%url, version = %release.version, "fetching a toolchain");
         let staging = toolchains.staging(release.version);
-        Mirror::of(&url, &self.schemes).and_then(|m| m.fetch(&staging)).map_err(Uninstalled::Archive)?;
+        Mirror::of(&url, &self.registry.schemes())
+            .and_then(|m| m.fetch(&staging))
+            .map_err(Uninstalled::Archive)?;
         let found = Toolchains::hash(&staging).map_err(Uninstalled::Io)?;
         if found != build.hash {
             staging.remove().map_err(Uninstalled::Io)?;

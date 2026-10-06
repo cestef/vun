@@ -58,7 +58,7 @@ fn every_manifest_reads() {
 #[test]
 fn reads_every_field() {
     let text = r#"package := .{
-        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2", .requires = "0.1.0",
+        .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2", .components = .{ "backend-cranelift" }, .requires = "0.1.0",
         .features = .{ .deferred },
         .include = .{ "build.vun", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
@@ -73,6 +73,7 @@ fn reads_every_field() {
     assert!(ids.is_empty(), "{ids:?}");
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
+    assert_eq!(m.components, ["backend-cranelift"]);
     assert_eq!(m.requires, Version::parse("0.1.0"));
     assert_eq!(m.features, Features::of([Feature::Deferred]));
     assert_eq!(m.include, ["build.vun", "blinky"]);

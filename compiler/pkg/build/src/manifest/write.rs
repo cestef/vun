@@ -24,6 +24,9 @@ impl Manifest {
             at(field::EDITION, Literal::Int(self.edition.into())),
         ];
         fields.extend(self.toolchain.map(|v| at(field::TOOLCHAIN, text(v.to_string()))));
+        if !self.components.is_empty() {
+            fields.push(at(field::COMPONENTS, Literal::strings(self.components.iter().map(String::as_str))));
+        }
         if !self.features.is_empty() {
             let names = self.features.iter().map(|f| Literal::Name(f.name())).collect();
             fields.push(at(field::FEATURES, Literal::List(names)));

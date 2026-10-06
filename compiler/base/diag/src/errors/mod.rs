@@ -39,6 +39,8 @@ mod check;
 pub use check::*;
 mod backend;
 pub use backend::*;
+mod component;
+pub use component::*;
 mod stack;
 pub use stack::*;
 mod target;

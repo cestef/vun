@@ -26,6 +26,7 @@ pub(crate) const RANKS: &[&[&str]] = &[
     &["asm"],
     &["back", "link", "render"],
     &["native", "pkg"],
+    &["components"],
     &["tools"],
 ];
 
@@ -86,8 +87,6 @@ impl Status for Refreshed {
 /// The directory holding the groups, relative to the repository root.
 const GROUPS: &str = "compiler";
 
-const METADATA: [&str; 4] = ["metadata", "--no-deps", "--format-version", "1"];
-
 /// A crate of the workspace and its group.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Placed {
@@ -116,7 +115,7 @@ impl Breach {
     /// # Errors
     /// Returns why cargo reported no metadata.
     pub(crate) fn all(root: &Path) -> Result<Vec<Self>, CargoFailed> {
-        let metadata = cargo::output(root, &METADATA)?;
+        let metadata = cargo::metadata(root)?;
         Ok(Self::within(&metadata, &root.join(GROUPS)))
     }
 

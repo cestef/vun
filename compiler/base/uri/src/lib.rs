@@ -19,6 +19,7 @@
 mod authority;
 mod builder;
 mod chars;
+mod codec;
 mod compose;
 mod error;
 mod file;

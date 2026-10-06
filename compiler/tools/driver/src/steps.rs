@@ -245,7 +245,6 @@ impl Session {
         session.format = self.format;
         session.library.clone_from(&self.library);
         session.store = self.store.clone();
-        session.schemes = self.schemes.clone();
         session.codegen = self.codegen;
         session.tools.clone_from(&self.tools);
         session.persistence = match self.persistence {

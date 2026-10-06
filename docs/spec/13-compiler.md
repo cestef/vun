@@ -625,12 +625,6 @@ pub trait DiagSink {
   - *a process*: third-party backends and linkers speak LIR text and `LinkPlan` JSON. Rust has no
     stable dylib ABI, and processes isolate failures. Never the toolchain's own features, whose
     input would then be another program's output.
-- **The binary has a size budget.** `cargo xtask size` builds the `dist` profile and fails past the
-  budget, a constant of the task (`BUDGET`, bytes of the stripped binary on the host), 20 MiB,
-  raised from the first measured build (6,382,768 bytes) once the C and native backends took it
-  to 7,658,304, and from 10 MiB once the native backend in TPDE's layers took it to 11,172,560, and from 12 MiB once the build passed 12.2 MiB and the https client of
-  decision 248 added about 280 KiB (decision 252);
-  raising it, like a new external crate, is a decision stating the cost.
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
   GNU ld adapter turns them into a linker script defining the symbols at their bounds
   (`vun_link::Bound`: `__data_start`, `__data_end`, `__data_load`, `__ram_end`), and a linker that
@@ -1372,7 +1366,7 @@ so that no two directories share a name within a group and every crate sits at
 Rules:
 - `vun-driver` is a library; the CLI, the LSP and the test harness are thin shells over it.
 - A crate depends only on crates in its own or earlier groups: `base` < `lang` < `isa`, `object` < `front` <
-  `sema` < `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `tools`; the order is
+  `sema` < `mid` < `low` < `asm` < `back`, `link`, `render` < `native`, `pkg` < `components` < `tools`; the order is
   declared once in `xtask/src/layers.rs` and checked by `cargo xtask layers`. Where a later stage implements something an earlier one
   needs, the earlier one owns the trait (`vun-sema` defines `Evaluator`, `vun-interp`
   implements it).

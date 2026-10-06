@@ -1,0 +1,22 @@
+[package]
+name = "vun-link-component"
+description = "Linkers as components: served from a library, called through the boundary."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-component.workspace = true
+vun-diag.workspace = true
+vun-link.workspace = true
+vun-target.workspace = true
+vun-trace.workspace = true
+
+[dev-dependencies]
+vun-target = { workspace = true, features = ["testing"] }

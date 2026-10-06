@@ -4,7 +4,7 @@
 use vun_data::Object;
 use vun_diag::errors::DECLARED_IN;
 use vun_harness::At;
-use vun_term::{Bytes, Record, Status, Style, Text, Verb};
+use vun_term::{Record, Status, Style, Text, Verb};
 
 use crate::corpus::Verdict;
 
@@ -90,7 +90,6 @@ impl Record for Judged<'_> {
 pub(crate) enum Passed {
     Layers { groups: usize },
     Lines { max: u32 },
-    Size { path: String, bytes: u64, budget: u64 },
 }
 
 impl Record for Passed {
@@ -98,7 +97,6 @@ impl Record for Passed {
         match self {
             Self::Layers { .. } => "layers",
             Self::Lines { .. } => "lines",
-            Self::Size { .. } => "size",
         }
     }
 
@@ -108,15 +106,6 @@ impl Record for Passed {
                 Text::from(format!("every crate depends only on its own group or earlier ones, of {groups}"))
             }
             Self::Lines { max } => Text::from(format!("every source file has at most {max} lines")),
-            Self::Size { path, bytes, budget } => {
-                let under = format!(
-                    " is {}, {} under the budget of {}",
-                    Bytes(*bytes),
-                    Bytes(budget - bytes),
-                    Bytes(*budget)
-                );
-                Text::of(Style::Strong, path.clone()).plain(under)
-            }
         }
     }
 
@@ -124,9 +113,6 @@ impl Record for Passed {
         match self {
             Self::Layers { groups } => Object::new().with("groups", *groups),
             Self::Lines { max } => Object::new().with("max", *max),
-            Self::Size { path, bytes, budget } => {
-                Object::new().with("path", path.clone()).with("bytes", *bytes).with("budget", *budget)
-            }
         }
     }
 }
