@@ -43,10 +43,10 @@ pub(crate) const PACKAGE: Task = Task::new(
 .params(&[crate::release::BINARY, crate::release::OUT]);
 pub(crate) const COMPONENTS: Task = Task::new(
     "components",
-    "build the component libraries a release packs beside the toolchain",
+    "build the component libraries a release packs beside the toolchain, and the tests load",
     Work::Run(crate::release::build_components),
 )
-.params(&[crate::release::TARGET, crate::release::TOOL]);
+.params(&[crate::install::PROFILE, crate::release::TARGET, crate::release::TOOL]);
 pub(crate) const RELEASE: Task = Task::new(
     "release",
     "write the release's manifest from the archives packed on each machine",

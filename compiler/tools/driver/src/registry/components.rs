@@ -105,6 +105,12 @@ impl Components {
     /// The environment variable naming the directory, instead of the toolchain's.
     pub const ENV: &str = "VUN_COMPONENTS";
 
+    /// The file cargo builds the library crate `package` as.
+    #[must_use]
+    pub fn library(package: &str) -> String {
+        [std::env::consts::DLL_PREFIX, &package.replace('-', "_"), std::env::consts::DLL_SUFFIX].concat()
+    }
+
     /// The libraries of `dir`, whatever they are.
     #[must_use]
     pub fn at(dir: impl Into<PathBuf>) -> Self {

@@ -87,7 +87,13 @@ pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io
 pub(crate) fn build_components(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
     let crates = components::Crate::all(&repo_root())?;
     let tool = args.value(&TOOL).unwrap_or("build");
-    if let Err(why) = components::Crate::build(&repo_root(), &crates, tool, args.value(&TARGET)) {
+    if let Err(why) = components::Crate::build(
+        &repo_root(),
+        &crates,
+        crate::install::profile(args),
+        tool,
+        args.value(&TARGET),
+    ) {
         diag.error(
             Diagnostic::error(UNBUILT, Msg::new().text("cannot build the components")).caused_by(&why),
         );

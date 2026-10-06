@@ -60,6 +60,11 @@ Traps that cost a session before. Add one when it costs you time.
 - A program run through a runner is read through files, `vun_fs::Captured`, not `Command::output`:
   `wine64` leaves a `wineserver` that holds the pipes for about 8 seconds, so a run through pipes
   lasts as long as the daemon, in the tests and in the run times `vun debug compare` reports.
+- The component libraries the driver tests load are built once, by the nextest setup script of
+  `.config/nextest.toml` (`cargo xtask components --profile dev`), before the tests run; a test
+  that finds its library missing says so. Run through `cargo test`, they are not built.
+- A `[profile.dev]` in `~/.cargo/config.toml` overrides the workspace's: `opt-level = 0` there
+  makes the driver tests run 3 to 4 times slower than the `opt-level = 1` `Cargo.toml` asks for.
 
 ## Sema
 

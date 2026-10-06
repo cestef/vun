@@ -1,0 +1,10 @@
+experimental = ["setup-scripts"]
+
+# The component libraries the driver tests load are built once, before them, not by each test:
+# cargo's build lock would make every test wait for the others' builds.
+[scripts.setup.components]
+command = ["cargo", "xtask", "components", "--profile", "dev"]
+
+[[profile.default.scripts]]
+filter = "package(vun-driver)"
+setup = "components"

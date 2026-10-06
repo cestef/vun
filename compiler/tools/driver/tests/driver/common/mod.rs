@@ -10,7 +10,7 @@ use vun_build::manifest::{
 };
 use vun_build::store::Store;
 use vun_diag::DiagId;
-use vun_driver::Session;
+use vun_driver::{Components, Session};
 use vun_fetch::Format;
 use vun_fs::Scratch;
 use vun_hash::Hash;
@@ -141,30 +141,28 @@ pub(crate) fn file_url(path: &Path) -> vun_uri::Uri {
 }
 
 /// The directory holding the library of the component crate `package`, built with its `export`
-/// feature: where cargo puts a library of the profile the tests run in.
+/// feature: where cargo puts a library of the profile the tests run in. The libraries are built
+/// once before the tests (`.config/nextest.toml`, `cargo xtask components --profile dev`), not by
+/// each: cargo's build lock makes every build wait for the others.
 pub(crate) fn built_component(package: &str) -> std::path::PathBuf {
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-    let status = std::process::Command::new(cargo)
-        .args(["build", "--quiet", "-p", package, "--features", &format!("{package}/export")])
-        .current_dir(vun_harness::repo_root())
-        .status()
-        .unwrap();
-    assert!(status.success(), "the component builds");
     let exe = std::env::current_exe().unwrap();
-    exe.parent().and_then(std::path::Path::parent).unwrap().to_path_buf()
+    let dir = exe.parent().and_then(std::path::Path::parent).unwrap().to_path_buf();
+    assert!(
+        dir.join(Components::library(package)).exists(),
+        "{package} is built by `cargo xtask components --profile dev`, which nextest runs first"
+    );
+    dir
 }
 
 /// A directory holding the libraries of the component crates `packages`, each built as
 /// [`built_component`] does, and only those: the profile's directory holds every library built
 /// so far.
 pub(crate) fn components_of(fixture: &Fixture, packages: &[&str]) -> std::path::PathBuf {
-    use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-
     use vun_fs::Edit;
 
     let dir = fixture.root.path().join("components");
     for package in packages {
-        let file = format!("{DLL_PREFIX}{}{DLL_SUFFIX}", package.replace('-', "_"));
+        let file = Components::library(package);
         let library = std::fs::read(built_component(package).join(&file)).expect("the library is built");
         dir.join(&file).put(library).unwrap();
     }

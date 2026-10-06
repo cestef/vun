@@ -19,9 +19,9 @@ use crate::cargo;
 use crate::release::Crate;
 use crate::toolchain::Stage;
 
-/// The cargo profile the `vun` to install is built with.
+/// The cargo profile `vun` and its components are built with.
 pub(crate) const PROFILE: Param = Param::option("profile")
-    .about("the cargo profile to build `vun` with")
+    .about("the cargo profile to build with, `dist` when none (`dev` for the tests)")
     .values(Values::Choice(|| PROFILES.to_vec()));
 
 /// The profiles `vun` is built with; `dist` is what a release ships.
@@ -102,7 +102,7 @@ fn libraries(root: &Path, profile: &str, binary: &Path) -> io::Result<Vec<PathBu
         return Ok(Vec::new());
     }
     let crates = Crate::all(root)?;
-    Crate::build(root, &crates, "build", None).map_err(io::Error::other)?;
+    Crate::build(root, &crates, profile, "build", None).map_err(io::Error::other)?;
     Ok(crates.iter().map(|c| c.beside(binary)).collect())
 }
 
@@ -119,7 +119,7 @@ impl Shadow {
 }
 
 /// The profile `args` names, one of [`PROFILES`], `dist` when it names none.
-fn profile(args: &Args) -> &'static str {
+pub(crate) fn profile(args: &Args) -> &'static str {
     let named = args.value(&PROFILE).unwrap_or(DEFAULT);
     PROFILES.iter().copied().find(|p| *p == named).unwrap_or(DEFAULT)
 }

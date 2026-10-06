@@ -42,7 +42,12 @@ impl Crate {
                 io::Error::other(format!("{name} names no profile in its `package.metadata.vun-component`"))
             })?;
             let needs = declared["needs"].items().filter_map(|n| n.as_str().map(str::to_owned)).collect();
-            crates.push(Self { package: name.to_owned(), library: Self::file(name), profile, needs });
+            crates.push(Self {
+                package: name.to_owned(),
+                library: Components::library(name),
+                profile,
+                needs,
+            });
         }
         Ok(crates)
     }
@@ -52,23 +57,19 @@ impl Crate {
         binary.parent().unwrap_or(Path::new("")).join(&self.library)
     }
 
-    /// Builds the libraries of `crates` as the distributed build has them.
+    /// Builds the libraries of `crates` in `profile`.
     ///
     /// # Errors
     /// Returns why cargo cannot run or fails.
     pub(crate) fn build(
         root: &Path,
         crates: &[Self],
+        profile: &str,
         tool: &str,
         target: Option<&str>,
     ) -> Result<(), cargo::CargoFailed> {
         let packages: Vec<String> = crates.iter().map(|c| c.package.clone()).collect();
-        cargo::components(root, cargo::DISTRIBUTED, tool, target, &packages)
-    }
-
-    /// The file cargo builds a library crate of this name as.
-    fn file(name: &str) -> String {
-        [std::env::consts::DLL_PREFIX, &name.replace('-', "_"), std::env::consts::DLL_SUFFIX].concat()
+        cargo::components(root, profile, tool, target, &packages)
     }
 
     /// Packs the library built beside `binary` as the archive of its component for `machine`,
