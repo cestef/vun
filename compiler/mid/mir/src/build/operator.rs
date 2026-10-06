@@ -35,7 +35,7 @@ impl Builder<'_, '_, '_> {
             .cx
             .get::<MemberValue>(&operator.method)
             .ok()
-            .and_then(Callable::of)
+            .and_then(|v| Callable::of(self.env(), v))
             .ok_or_else(unbuilt)?;
         let modes = f.modes(self.env()).unwrap_or_default();
         let mut values: Vec<Operand> = Vec::new();

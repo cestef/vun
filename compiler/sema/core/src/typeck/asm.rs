@@ -42,7 +42,7 @@ impl Typer<'_, '_, '_> {
             .iter()
             .filter_map(|c| match self.called(c.callee)? {
                 Callable::Primitive(Primitive::Arch(form)) => Some((c.callee, form)),
-                Callable::Primitive(_) | Callable::Fn(_) => None,
+                Callable::Primitive(_) | Callable::Linked(_) | Callable::Fn(_) => None,
             })
             .collect();
         // The values bound to registers, each with the form binding it.

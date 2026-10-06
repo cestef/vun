@@ -190,7 +190,12 @@ impl Typer<'_, '_, '_> {
         args: &[Argument],
     ) -> Option<Known> {
         // The witness's function, or a primitive it names: `add := lang.int.add`.
-        let f = self.env().cx.get::<MemberValue>(&(owner, function)).ok().and_then(Callable::of);
+        let f = self
+            .env()
+            .cx
+            .get::<MemberValue>(&(owner, function))
+            .ok()
+            .and_then(|v| Callable::of(self.env(), v));
         let signature =
             self.env().cx.get::<MemberType>(&(owner, function)).ok().and_then(|k| k.ty.callable());
         let callee = Callee { f, signature, receiver: Some(receiver), passing: Passing::Asked };

@@ -28,9 +28,7 @@ impl FnLower<'_, '_, '_> {
     ) -> Result<(), Unlowered> {
         let at = self.at;
         let unsupported = move || Unlowered::unsupported(at, Form::Primitive);
-        let comptime = Callable::of(Constant::Primitive(p))
-            .and_then(|c| c.comptime(&self.l.env))
-            .ok_or_else(unsupported)?;
+        let comptime = Callable::Primitive(p).comptime(&self.l.env).ok_or_else(unsupported)?;
         let runtime: Vec<&Operand> =
             args.iter().zip(&comptime).filter(|&(_, &c)| !c).map(|(a, _)| a).collect();
         let arg = |i: usize| runtime.get(i).copied().ok_or_else(unsupported);

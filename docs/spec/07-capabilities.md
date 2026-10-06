@@ -195,7 +195,9 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   _;`. Under `#[abi.c]` the pack's items are C's variadic arguments, `...`, passed as the target's
   convention passes them (spec 13, section 8.5). Vun reads no variadic arguments, so a C function
   with a pack has no body; and each item is what C's default promotions leave, never an `f32` or
-  an `f16` (`abi.variadic`).
+  an `f16` (`abi.variadic`). The pack may be a `$` parameter, `printf: unsafe ($P: type, format:
+  *u8, ..args: P) -> i32 = _;`, inferred at each call from the types of its arguments and checked
+  there.
 - `vun ffi bind foo.h --cflags "..."` generates Vun declarations from C headers through
   libclang, loaded when the command runs (decision 131), with the build's real compile flags
   (decision 134). Each binding is named in the case of what it binds (spec 10, section 5): C's

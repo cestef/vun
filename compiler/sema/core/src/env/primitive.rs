@@ -1,19 +1,13 @@
-//! The signatures of primitives: each is declared in `lang` with a function type (decision 66),
-//! whose types may name its `$` parameters, so a call is typed with them bound to its arguments.
+//! Primitives: each is declared in `lang` with a function type (decision 66), which gives its
+//! signature (`Env::declared_signature`).
 
-use std::sync::Arc;
-
-use vun_desugar::MARKERS;
-use vun_grammar::TokenKind;
 use vun_hir::db::PackageId;
-use vun_hir::tree::{Entry, ExprId, ExprKind, Hir, List, Param, PatKind};
+use vun_hir::tree::ExprKind;
 use vun_intern::Symbol;
 use vun_primitives::Primitive;
 use vun_query::{Cx, Query};
-use vun_sema_ty::call::Staging;
-use vun_sema_ty::item::{DeclRef, Declared, Node, Site};
-use vun_sema_ty::trap::Reason;
-use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::item::{DeclRef, Declared, Site};
+use vun_sema_ty::trap::{Reason, Unevaluated};
 use vun_sema_ty::{Marker, Signature, Value};
 
 use super::{Env, ItemSite};
@@ -38,9 +32,7 @@ impl Env<'_, '_> {
         primitive: Primitive,
         args: &[Option<Value>],
     ) -> Result<Signature, Unevaluated> {
-        let comptime = self.cx.get::<PrimitiveComptime>(&(self.file.package, primitive))?;
-        let bound = comptime.iter().zip(args).map(|(&c, arg)| arg.clone().filter(|_| c)).collect();
-        self.cx.get::<PrimitiveSignature>(&(self.file.package, primitive, bound))
+        self.declared_signature(&self.primitive_decl(primitive)?, args)
     }
 
     /// Traps when an argument of `args` is known not to be a value of its parameter's type, as
@@ -91,93 +83,5 @@ impl Query for PrimitiveDecl {
             Some(Site::Decl(decl)) => Ok(decl),
             _ => Err(Unevaluated::Absent),
         }
-    }
-}
-
-/// Whether each parameter of a primitive is a `$` one: what its signature depends on.
-pub(crate) struct PrimitiveComptime;
-
-impl Query for PrimitiveComptime {
-    const NAME: &'static str = "primitive_comptime";
-    type Key = (PackageId, Primitive);
-    type Value = Result<Arc<[bool]>, Unevaluated>;
-
-    fn compute(cx: &Cx<'_>, key: &Self::Key) -> Self::Value {
-        let declared = Declaration::of(cx, key)?;
-        let hir = &declared.env.parsed.hir;
-        let comptime = declared.params(hir).iter().map(|param| match param {
-            Entry::One(Param { pat: Some(pat), .. }) => {
-                matches!(hir.pats[*pat].kind, PatKind::Bind(b) if hir.binders[b].comptime)
-            }
-            _ => false,
-        });
-        Ok(comptime.collect())
-    }
-}
-
-/// The signature of a primitive with its `$` parameters bound to the values given, the others
-/// `None`.
-pub(crate) struct PrimitiveSignature;
-
-impl Query for PrimitiveSignature {
-    const NAME: &'static str = "primitive_signature";
-    type Key = (PackageId, Primitive, Vec<Option<Value>>);
-    type Value = Result<Signature, Unevaluated>;
-
-    fn compute(cx: &Cx<'_>, (package, primitive, args): &Self::Key) -> Self::Value {
-        let declared = Declaration::of(cx, &(*package, *primitive))?;
-        let parsed = Arc::clone(&declared.env.parsed);
-        let hir = &parsed.hir;
-        let params = declared.params(hir);
-        let bound: Vec<_> = params
-            .iter()
-            .zip(args)
-            .filter_map(|(param, arg)| {
-                let Entry::One(Param { pat: Some(pat), .. }) = param else { return None };
-                let PatKind::Bind(binder) = hir.pats[*pat].kind else { return None };
-                let node = Node { id: binder, origin: hir.binders[binder].origin };
-                Some(Staging { binder: node, value: arg.clone()? })
-            })
-            .collect();
-        let signature = declared.env.staging(&bound).signature(params, declared.returns)?;
-        Ok(declared.markers.iter().copied().fold(signature, Signature::marked))
-    }
-}
-
-/// A primitive's declaration as its signature is read from: the environment of its file, the
-/// prefixes marking its function type, and that type.
-struct Declaration<'a, 'db> {
-    env: Env<'a, 'db>,
-    markers: Vec<TokenKind>,
-    annotation: ExprId,
-    returns: Option<ExprId>,
-}
-
-impl<'a, 'db> Declaration<'a, 'db> {
-    fn of(cx: &'a Cx<'db>, key: &(PackageId, Primitive)) -> Result<Self, Unevaluated> {
-        let decl = cx.get::<PrimitiveDecl>(key)?;
-        let env = Env::of(cx, &decl.file).ok_or(Unevaluated::Absent)?;
-        let hir = &env.parsed.hir;
-        let mut annotation = hir.decls[decl.decl.id].ty.ok_or(Unevaluated::Unsupported)?;
-        // `unsafe (...) -> T`: the prefixes mark the signature (the table `markers`).
-        let mut markers = Vec::new();
-        while let ExprKind::Prefix { op, operand, .. } = &hir.exprs[annotation].kind
-            && MARKERS.iter().any(|row| row.token == *op)
-        {
-            markers.push(*op);
-            annotation = *operand;
-        }
-        let ExprKind::FnType { returns, .. } = &hir.exprs[annotation].kind else {
-            return Err(Unevaluated::Unsupported);
-        };
-        let returns = *returns;
-        Ok(Self { env, markers, annotation, returns })
-    }
-
-    fn params<'h>(&self, hir: &'h Hir) -> &'h List<Param> {
-        let ExprKind::FnType { params, .. } = &hir.exprs[self.annotation].kind else {
-            unreachable!("`Declaration::of` found a function type")
-        };
-        params
     }
 }

@@ -1,5 +1,6 @@
 //! A C function's pack is its variadic arguments (spec 07, section 5): an import declared with
-//! the pack of the arguments its callers pass, each as C's default promotions leave it.
+//! the pack of the arguments its callers pass, each as C's default promotions leave it, or a `$`
+//! pack inferred from them at each call.
 
 #[link.symbol("snprintf"), abi.c]
 format: unsafe (to: *u8, bytes: usize, format: *u8, ..args: .{ i32, f64 }) -> i32 = _;
@@ -8,3 +9,8 @@ format: unsafe (to: *u8, bytes: usize, format: *u8, ..args: .{ i32, f64 }) -> i3
 open: unsafe (path: *u8, flags: u32, ..permissions: .{ u32 }) -> i32 = _;
 
 created := (path: *u8) -> i32 { unsafe open(path, 0x41, 0o644) };
+
+#[link.symbol("printf"), abi.c]
+print: unsafe ($P: type, format: *u8, ..args: P) -> i32 = _;
+
+printed := (template: *u8, count: i32, ratio: f64) -> i32 { unsafe print(template, count, ratio) };

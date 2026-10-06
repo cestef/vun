@@ -58,6 +58,32 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 };
 ";
 
+/// The same call with the pack inferred per call from the arguments' types.
+const INFERRED: &str = "\
+#[link.symbol(\"snprintf\"), abi.c]
+format: unsafe ($P: type, to: *u8, bytes: usize, format: *u8, ..args: P) -> i32 = _;
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut spec: [13]u8 = ['%', 'd', ' ', '%', '.', '1', 'f', ' ', '%', 'l', 'l', 'd', 0];
+    mut b: [16]u8 = [0; 16];
+    int: i32 = 42;
+    float: f64 = 2.5;
+    long: i64 = -7;
+    n := unsafe format(
+        lang.mem.pointer_to([16]u8, &b).cast(u8),
+        16,
+        lang.mem.pointer_to([13]u8, &spec).cast(u8),
+        int,
+        float,
+        long,
+    );
+    same := b[0] == '4' and b[1] == '2' and b[3] == '2' and b[4] == '.' and b[5] == '5' and b[7] == '-'
+        and b[8] == '7' and b[9] == 0;
+    std.os.Exit.of((n + if same { 100 } else { 0 }).to(Int(0..=125)))
+};
+";
+
 /// Builds and runs `source` for `target` through each backend, where the machine runs its
 /// programs: the exit status, the same through each.
 fn status(name: &str, source: &str, target: Item) -> Option<i32> {
@@ -77,6 +103,14 @@ fn a_variadic_c_call_passes_integers_and_floats_as_c_does() {
         return;
     }
     assert_eq!(status("variadic-format", FORMAT, targets::linux_x86_64::gnu), Some(109));
+}
+
+#[test]
+fn a_variadic_c_call_infers_its_pack_from_the_arguments() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    assert_eq!(status("variadic-inferred", INFERRED, targets::linux_x86_64::gnu), Some(109));
 }
 
 #[test]

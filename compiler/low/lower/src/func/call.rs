@@ -10,12 +10,12 @@ use vun_primitives::Primitive;
 use vun_primitives::abi::Abi;
 use vun_primitives::check::Check;
 use vun_primitives::panic::Panic;
-use vun_sema::callable::Parameters;
-use vun_sema::decl::DeclType;
+use vun_sema::callable::{Callable, Parameters};
 use vun_sema::layout::Parts;
 use vun_sema::link::Exported;
 use vun_sema::link::Linkable;
 use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::Failure;
 use vun_sema_ty::{Marker, Ty, TyKind, Value as Constant};
 
@@ -64,14 +64,7 @@ impl FnLower<'_, '_, '_> {
             {
                 self.call(&Operand::Const(Constant::Linked(decl)), args, dest, ty)
             }
-            Operand::Const(Constant::Linked(decl)) => {
-                let callee = self.l.linked(decl, self.at)?.callee().ok_or_else(unsupported)?;
-                let signature =
-                    cx.get::<DeclType>(decl).ok().and_then(|k| k.ty.signature()).ok_or_else(unsupported)?;
-                let abi = decl.linked(cx).and_then(|l| l.abi);
-                let args: Vec<&Operand> = args.iter().collect();
-                self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
-            }
+            Operand::Const(Constant::Linked(decl)) => self.linked_call(decl, args, dest, ty),
             // `lang.panic.fail(reason)` is a trap site saying its reason, known when compiling,
             // at the place the reason names where it names one.
             Operand::Const(Constant::Primitive(Primitive::Panic(Panic::fail))) => {
@@ -118,6 +111,47 @@ impl FnLower<'_, '_, '_> {
             }
             Operand::Const(_) => Err(unsupported()),
         }
+    }
+
+    /// Calls the link symbol `decl`: through its import, or when its signature depends on the
+    /// call's `$` arguments, through its address with that signature.
+    fn linked_call(
+        &mut self,
+        decl: &DeclRef,
+        args: &[Operand],
+        dest: Option<Value>,
+        ty: Ty,
+    ) -> Result<(), Unlowered> {
+        let cx = self.l.types.cx;
+        let at = self.at;
+        let unsupported = move || Unlowered::unsupported(at, Form::Callee);
+        let linked = Callable::Linked(decl.clone());
+        let comptime = linked.comptime(&self.l.env).unwrap_or_default();
+        let runtime = |i: &usize| comptime.get(*i) != Some(&true);
+        // The `$` arguments of the call bind the parameters its signature names.
+        let known: Vec<Option<Constant>> = args
+            .iter()
+            .zip(&comptime)
+            .map(|(a, &c)| match a {
+                Operand::Const(value) if c => Some(value.clone()),
+                _ => None,
+            })
+            .collect();
+        let signature = linked.declared_signature(&self.l.env, &known).map_err(|_| unsupported())?;
+        let params: Vec<Ty> =
+            signature.params.iter().enumerate().filter(|(i, _)| runtime(i)).map(|(_, &p)| p).collect();
+        let abi = decl.linked(cx).and_then(|l| l.abi);
+        let address = self.l.linked(decl, self.at)?;
+        let callee = if comptime.contains(&true) {
+            // Each call is typed for its own `$` arguments, so it carries its own signature.
+            let lowered = self.l.signature(&params, signature.result, abi, self.at)?;
+            Callee::Indirect(self.b.addr(address, self.at), Box::new(lowered))
+        } else {
+            address.callee().ok_or_else(unsupported)?
+        };
+        let args: Vec<&Operand> =
+            args.iter().enumerate().filter(|(i, _)| runtime(i)).map(|(_, a)| a).collect();
+        self.invoke(callee, &params, signature.result, abi, &args, dest, ty)
     }
 
     /// Calls `callee`, whose parameters and result have the types `params` and `result` under

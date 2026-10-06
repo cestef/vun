@@ -122,7 +122,7 @@ impl Env<'_, '_> {
         };
         // A function with `$` parameters, whose annotation names them, is of its own type.
         let ty = ty.or_else(|why| {
-            let f = self.value_of(site).ok().and_then(Callable::of);
+            let f = self.value_of(site).ok().and_then(|v| Callable::of(self, v));
             f.and_then(|f| f.generic(self)).ok_or(why)
         })?;
         Ok(Known { ty, stage })

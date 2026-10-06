@@ -92,7 +92,9 @@ impl<'a, 'db> Literal<'a, 'db> {
     /// parameter is the struct, by value or through a borrow or a pointer: a function literal, or
     /// a function or primitive it names (`at := lang.arch.at`).
     fn receives(&self, value: Option<ExprId>) -> bool {
-        let Some(callable) = value.and_then(|v| Callable::of(self.env.eval(v).ok()?)) else { return false };
+        let Some(callable) = value.and_then(|v| Callable::of(&self.env, self.env.eval(v).ok()?)) else {
+            return false;
+        };
         let Some(Some(ty)) = callable.types(&self.env).and_then(|types| types.into_iter().next()) else {
             return false;
         };

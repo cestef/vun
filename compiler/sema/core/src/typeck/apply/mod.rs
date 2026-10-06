@@ -17,6 +17,7 @@ use super::omitted::Plan;
 use super::{Known, Reported, Stage, Typer};
 use crate::callable::Callable;
 use crate::callable::Generic;
+use crate::check::{Promoted, Variadic};
 
 /// How a call's arguments are passed.
 #[derive(Clone, Copy, PartialEq, Eq, Encode, Decode)]
@@ -113,9 +114,11 @@ impl Typer<'_, '_, '_> {
             .filter(|_| inferred.is_none() && !binds)
             .or_else(|| self.signature_of(call, instantiation.as_ref()?, absorbed.is_some()))
             .or_else(|| {
-                let Some(Callable::Primitive(p)) = callee.f else { return None };
+                let f @ (Callable::Primitive(_) | Callable::Linked(_)) = callee.f.as_ref()? else {
+                    return None;
+                };
                 let signature =
-                    self.primitive_signature(p, callee.receiver, &slots, args, inferred.as_deref());
+                    self.declared_signature(f, callee.receiver, &slots, args, inferred.as_deref());
                 if matches!(signature, Err(Unevaluated::Unbounded)) {
                     self.unbounded(call, callee.receiver, args);
                 }
@@ -124,6 +127,12 @@ impl Typer<'_, '_, '_> {
         let at = (&slots[receiver..], &items[receiver..]);
         let found = self.arguments(call, callee, signature.as_ref(), at, args, inferred.is_some());
         let signature = signature?;
+        // A link symbol's pack is read per call when its type is, as its declaration cannot say.
+        if let (Some(Callable::Linked(_)), None) = (&callee.f, &callee.signature)
+            && let Some(ty) = signature.promoted()
+        {
+            self.diag.error(Promoted(ty).report(self.hir().exprs[call].origin));
+        }
         if signature.is_unsafe() {
             self.unchecked(call, Msg::new().text("calling a function whose type is ").code("unsafe"));
         }

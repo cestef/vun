@@ -62,7 +62,7 @@ impl Env<'_, '_> {
         }
         let (interface, name) = (function.parent().ok_or(Unevaluated::Absent)?, function.symbol());
         let method = self.implemented_by(ty, interface, name).ok_or(Unevaluated::Unsupported)?;
-        let f = Callable::of(self.cx.get::<MemberValue>(&(method.owner, name))?)
+        let f = Callable::of(self, self.cx.get::<MemberValue>(&(method.owner, name))?)
             .ok_or(Unevaluated::Unsupported)?;
         let plan = Plan::of(self, &f, operands.len()).ok_or(Unevaluated::Unsupported)?;
         let modes = f.modes(self).unwrap_or_default();

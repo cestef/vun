@@ -9,7 +9,7 @@ use crate::check::Checked;
 use crate::checks::ChecksOf;
 use crate::cover::CoverageOf;
 use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
-use crate::env::{ItemSite, PrimitiveComptime, PrimitiveDecl, PrimitiveSignature};
+use crate::env::{DeclComptime, DeclSignature, ItemSite, PrimitiveDecl};
 use crate::eval::{Call, MeteredCall, Signed};
 use crate::fuel::Callee;
 use crate::kinds::Kinds;
@@ -44,9 +44,9 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Typed>,
     Db::persist::<Reported>,
     Db::persist::<ItemSite>,
-    Db::persist::<PrimitiveComptime>,
+    Db::persist::<DeclComptime>,
     Db::persist::<PrimitiveDecl>,
-    Db::persist::<PrimitiveSignature>,
+    Db::persist::<DeclSignature>,
     Db::persist::<Call>,
     Db::persist::<MeteredCall>,
     Db::persist::<Signed>,

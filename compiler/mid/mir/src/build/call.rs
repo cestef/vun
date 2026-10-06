@@ -247,7 +247,7 @@ impl Builder<'_, '_, '_> {
         // A method whose type depends on its `$` parameters has a receiver written all the same.
         let written = || match f {
             Operand::Const(value) => {
-                Callable::of(value.clone())?.modes(self.env())?.get(at).copied().flatten()
+                Callable::of(self.env(), value.clone())?.modes(self.env())?.get(at).copied().flatten()
             }
             Operand::Place(_) => None,
         };

@@ -38,7 +38,7 @@ impl Typer<'_, '_, '_> {
             Err(why) => Err(why),
         };
         let ty = signature.or_else(|why| {
-            let f = self.evaluating().eval(expr).ok().and_then(Callable::of);
+            let f = self.evaluating().eval(expr).ok().and_then(|v| Callable::of(self.env(), v));
             f.and_then(|f| f.generic(self.env())).ok_or(why)
         });
         self.known(expr, ty.map(|ty| Known { ty, stage: Stage::Compile }))

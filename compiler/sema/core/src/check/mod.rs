@@ -14,6 +14,8 @@ mod placed;
 mod rest;
 mod visible;
 
+pub(crate) use pack::{Promoted, Variadic};
+
 use std::sync::Arc;
 
 use vun_diag::DiagCtxt;

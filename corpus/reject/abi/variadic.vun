@@ -1,8 +1,15 @@
 //! A C function's pack is its variadic arguments: of an import, each as C's default promotions
-//! leave it (spec 07, section 5).
+//! leave it (spec 07, section 5); a `$` pack is read at each call.
 
 #[link.symbol("printf"), abi.c]
 single: unsafe (format: *u8, ..args: .{ f32 }) -> i32 = _; //~ abi.variadic
 
 #[link.export("defined"), abi.c]
 defined := (format: *u8, ..args: .{ i32 }) -> i32 { 0 }; //~ abi.variadic
+
+#[link.symbol("printf"), abi.c]
+print: unsafe ($P: type, format: *u8, ..args: P) -> i32 = _;
+
+floating := (template: *u8, ratio: f32) -> i32 {
+    unsafe print(template, ratio) //~ abi.variadic
+};

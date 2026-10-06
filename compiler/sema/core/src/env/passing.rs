@@ -54,7 +54,7 @@ impl Env<'_, '_> {
         inferred: &[(usize, Value)],
         pack: Option<usize>,
     ) -> Result<Vec<Passed>, Unevaluated> {
-        let callable = callee.cloned().and_then(Callable::of);
+        let callable = callee.cloned().and_then(|v| Callable::of(self, v));
         let quotes = callable.as_ref().and_then(|c| c.quotes(self)).unwrap_or_default();
         let comptime = callable.as_ref().and_then(|c| c.comptime(self)).unwrap_or_default();
         let params = callable.as_ref().and_then(|c| c.types(self)).unwrap_or_default();

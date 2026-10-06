@@ -3,7 +3,6 @@
 
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_hir::tree::{ExprId, ExprKind};
-use vun_primitives::Primitive;
 use vun_sema_ty::call::{Func, Instantiation};
 use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Signature, Ty, TyKind, Value};
@@ -183,19 +182,19 @@ impl Typer<'_, '_, '_> {
         self.diag.error(d);
     }
 
-    /// The signature of the primitive `p` for a call passing `receiver` and `args` at `slots`,
-    /// with its `$` parameters bound to their arguments' values known here, or to those
-    /// inferred.
-    pub(super) fn primitive_signature(
+    /// The signature of `f`, a primitive or a link symbol, for a call passing `receiver` and
+    /// `args` at `slots`, with its `$` parameters bound to their arguments' values known here, or
+    /// to those inferred.
+    pub(super) fn declared_signature(
         &mut self,
-        p: Primitive,
+        f: &Callable,
         receiver: Option<ExprId>,
         slots: &[usize],
         args: &[Argument],
         inferred: Option<&[(usize, Value)]>,
     ) -> Result<Signature, Unevaluated> {
         let written = receiver.map(Argument::Expr).into_iter().chain(args.iter().copied());
-        let comptime = Callable::Primitive(p).comptime(self.env()).unwrap_or_default();
+        let comptime = f.comptime(self.env()).unwrap_or_default();
         let mut values: Vec<Option<Value>> = vec![None; slots.len() + inferred.map_or(0, <[_]>::len)];
         for (&slot, arg) in slots.iter().zip(written) {
             let (Some(true), Argument::Expr(e)) = (comptime.get(slot), arg) else { continue };
@@ -209,6 +208,6 @@ impl Typer<'_, '_, '_> {
                 *v = Some(value.clone());
             }
         }
-        self.env().primitive_signature(p, &values)
+        f.declared_signature(self.env(), &values)
     }
 }

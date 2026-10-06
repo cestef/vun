@@ -152,7 +152,7 @@ impl Typer<'_, '_, '_> {
             Some(method) => self.env().cx.get::<MemberValue>(method),
             None => self.evaluating().eval(callee),
         };
-        Callable::of(f.ok()?)
+        Callable::of(self.env(), f.ok()?)
     }
 }
 
