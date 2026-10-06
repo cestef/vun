@@ -4,7 +4,34 @@ use vun_codec::{Decode, Encode};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Floats, TargetSpec};
 
-use crate::{Emits, Feature};
+use crate::Emits;
+
+/// What a backend does that a program may require of it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+pub enum Feature {
+    /// Passes and returns C records by value itself; a backend without it refuses a function that
+    /// does (`Missing::Record`), which an assisting backend compiles instead.
+    CAbi,
+    /// Native vectors; otherwise vectors are lowered to scalars.
+    Vectors,
+    TailCalls,
+    /// Uses the aliasing facts of spec 05, section 8.
+    NoAlias,
+    /// Reports frame sizes, which `stack.max` requires.
+    FrameSizes,
+    DebugInfo,
+    /// Defines and calls functions under the calling conventions they name (`#[abi.stdcall]`),
+    /// not only the target's own.
+    Conventions,
+    /// Checks each function's frame before the stack moves to it (`StackCheck`), which the `stack`
+    /// checks need.
+    StackChecks,
+    /// Compiles the functions another backend cannot express ([`Backend::assist`]).
+    Assist,
+    /// Writes blocks of inline assembly in the function holding them; otherwise the driver moves
+    /// each into a function of its own first (`Outline`).
+    InlineAsm,
+}
 
 /// Capabilities a program may require of its backend.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]

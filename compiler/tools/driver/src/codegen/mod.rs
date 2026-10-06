@@ -11,6 +11,7 @@ use vun_command::{Args, Param, Values};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_intern::Symbol;
 use vun_lir::{FuncId, Scalar, Unit};
+use vun_lir_passes::Outline;
 use vun_lir_passes::legalize::Legalize;
 use vun_lower::Unlowered;
 use vun_origin::{OriginId, OriginTable, Resolve, Via};
@@ -161,6 +162,11 @@ impl Session {
         // Integers wider than the backend's are split into halves first.
         let legalizing = LEGALIZE.start();
         let mut unit = unit.clone();
+        // A backend that writes no block of assembly in the function holding it gets each in one
+        // of its own.
+        if !info.caps.has(Feature::InlineAsm) {
+            unit.outline();
+        }
         unit.trace(&SourceLines, target.endian);
         let widest =
             Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");

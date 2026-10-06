@@ -44,3 +44,14 @@ template and README (decisions 431 to 440).
   pad's input was off until 442, so a receiver on GP1 is unrun.
 - Missing: a CYW43 LED driver, ADC, SPI, I2C, PWM, PIO, a flash driver, the Hazard3 cores, `.dfu`
   and probe flash steps.
+
+## Cranelift
+
+- C records by value are handed to the assist: `swap`, `spin` and `scale` of the backend tests
+  (two-register results, records in memory). A LIR pass cannot lower them (LIR has no multiple
+  results or by-value memory argument), so the backend would do it, from `vun_abi::Passing`
+  (`Loc::Split`, `Ret::Split` as multiple returns, `Loc::Copied` as `StructArgument`), refusing a
+  signature whose scalars Cranelift would place differently.
+- `Outline` keeps a function whose block names a register. The runtime's blocks name scratch
+  registers (`mov(rdi, ...)`); only the stack, frame and link registers are the caller's state, so
+  an architecture's table of those would outline most of them.

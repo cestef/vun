@@ -25,7 +25,7 @@ pub const INFO: BackendInfo = BackendInfo {
     formats: Names::Only(&[Name("wasm")]),
     caps: BackendCaps {
         emits: Emits::Object,
-        features: &[Feature::StackChecks],
+        features: &[Feature::StackChecks, Feature::InlineAsm],
         widest: Widest::Bits(64),
         half: Half::Promoted,
         floats: HeldFloats::Every,

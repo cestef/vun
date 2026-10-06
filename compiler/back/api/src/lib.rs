@@ -16,7 +16,7 @@ mod trace;
 
 pub use trace::Traced;
 
-pub use caps::{BackendCaps, HeldFloats, Widest};
+pub use caps::{BackendCaps, Feature, HeldFloats, Widest};
 
 use std::path::PathBuf;
 use vun_codec::{Decode, Encode};
@@ -95,29 +95,6 @@ impl Part {
         };
         PathBuf::from(stem).with_extension(kind.extension())
     }
-}
-
-/// What a backend does that a program may require of it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
-pub enum Feature {
-    /// Lowers C ABI aggregates itself; otherwise the driver runs ABI lowering first.
-    CAbi,
-    /// Native vectors; otherwise vectors are lowered to scalars.
-    Vectors,
-    TailCalls,
-    /// Uses the aliasing facts of spec 05, section 8.
-    NoAlias,
-    /// Reports frame sizes, which `stack.max` requires.
-    FrameSizes,
-    DebugInfo,
-    /// Defines and calls functions under the calling conventions they name (`#[abi.stdcall]`),
-    /// not only the target's own.
-    Conventions,
-    /// Checks each function's frame before the stack moves to it (`StackCheck`), which the `stack`
-    /// checks need.
-    StackChecks,
-    /// Compiles the functions another backend cannot express ([`Backend::assist`]).
-    Assist,
 }
 
 /// Everything known about a backend without running it.

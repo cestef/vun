@@ -47,3 +47,21 @@ fn a_block_rebinds_its_values_in_order_and_keeps_its_instructions() {
     );
     assert_eq!((rebound.insts[0].op, rebound.insts[0].size), (OpId(7), SizeId(3)));
 }
+
+#[test]
+fn a_block_names_registers_where_an_operand_is_one_and_not_where_values_are_bound() {
+    use crate::RegRef;
+
+    let mut block = lea();
+    assert!(!block.names_registers());
+    let reg = RegRef { class: crate::ClassId(0), number: 4 };
+    block.insts[0].operands.push(Operand::Reg(reg));
+    assert!(block.names_registers());
+    block.insts[0].operands.pop();
+    block.insts[0].operands.push(Operand::Mem(Mem {
+        base: Some(Base::Reg(reg)),
+        index: None,
+        disp: Disp::Bytes(0),
+    }));
+    assert!(block.names_registers());
+}

@@ -32,6 +32,7 @@ pub const INFO: BackendInfo = BackendInfo {
             Feature::FrameSizes,
             Feature::DebugInfo,
             Feature::Conventions,
+            Feature::InlineAsm,
         ],
         widest: Widest::Bits(64),
         half: Half::Promoted,
