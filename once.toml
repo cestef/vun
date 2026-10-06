@@ -1,0 +1,8 @@
+[infrastructure.cache]
+provider = "tuist"
+
+[infrastructures.tuist]
+kind = "tuist"
+url = "https://tuist.dev"
+account = "cestef"
+project = "vun"
