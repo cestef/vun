@@ -1,0 +1,30 @@
+[package]
+name = "vun-sema-asm"
+description = "Blocks of instructions checked against the tables of the architectures in lang.arch."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-codec.workspace = true
+vun-diag.workspace = true
+vun-hir.workspace = true
+vun-inline.workspace = true
+vun-intern.workspace = true
+vun-isa.workspace = true
+vun-isa-arm64.workspace = true
+vun-isa-thumb.workspace = true
+vun-isa-wasm32.workspace = true
+vun-items.workspace = true
+vun-origin.workspace = true
+vun-primitives.workspace = true
+vun-query.workspace = true
+vun-sema.workspace = true
+vun-sema-float.workspace = true
+vun-sema-ty.workspace = true
+vun-trace.workspace = true

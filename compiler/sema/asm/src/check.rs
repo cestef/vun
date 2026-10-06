@@ -16,7 +16,7 @@ use vun_sema_float::Format;
 use vun_sema_ty::Ty;
 use vun_sema_ty::float::FloatType;
 
-use crate::env::Env;
+use vun_sema::env::Env;
 
 /// A part of an address: a register, one times a scale, bytes, or a declaration's address.
 pub(super) enum Term {

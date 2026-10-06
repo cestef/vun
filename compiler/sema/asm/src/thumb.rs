@@ -17,7 +17,7 @@ use vun_sema_ty::Value;
 use super::need::{self, Needs};
 use super::parts::Widths;
 use super::table::{Family, Flow, Shape, Table};
-use crate::target::Members;
+use vun_sema::target::Members;
 
 pub(super) const SHAPE: Shape = Shape {
     instruction: t::Instruction,

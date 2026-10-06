@@ -74,7 +74,7 @@ impl Query for Shapes {
             }
             TyKind::Record(fields) => Shape::sequence(layouts(&mut fields.iter().map(|(_, t)| t))?),
             TyKind::Nominal(nominal) => Self::nominal(cx, *ty, nominal)?,
-            TyKind::Frame(_) => Shape::whole(Framers::layout(cx, *ty)?),
+            TyKind::Frame(_) => Shape::whole(cx.db().resource::<Framers>().get()?.layout(cx, ty)?),
             TyKind::Param(_) | TyKind::Generic(_) => return None,
         };
         Some(Arc::new(shape))

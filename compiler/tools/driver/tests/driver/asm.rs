@@ -9,8 +9,8 @@ use vun_inline::Needed;
 use vun_intern::Symbol;
 use vun_items::{Item, targets};
 use vun_lower::Why;
-use vun_sema::asm::{Arch, ArchTable};
 use vun_sema::target::Choice;
+use vun_sema_asm::{Arch, ArchTable};
 
 #[test]
 fn tables_number_instructions_and_forms_as_the_assemblers_do() {

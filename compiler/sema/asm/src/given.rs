@@ -11,8 +11,8 @@ use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::check::Checker;
 use super::table::{declared, position, variants_of};
-use crate::attributes::Attributed;
-use crate::target::Members;
+use vun_sema::attributes::Attributed;
+use vun_sema::target::Members;
 
 /// An operand as written, as the architectures' assemblers fit it.
 pub(crate) type Given = vun_isa::Given<ExprId, ExprId, ExprId>;

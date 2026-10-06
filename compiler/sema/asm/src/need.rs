@@ -10,7 +10,7 @@ use vun_sema_ty::Value;
 
 use super::Arch;
 use super::table::Table;
-use crate::target::Members;
+use vun_sema::target::Members;
 
 /// How a table's forms say what a processor needs: the field of a form holding a `?Need`, and
 /// the fields of its widths where they say so too.

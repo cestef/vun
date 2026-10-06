@@ -16,10 +16,12 @@ use vun_lower::{Lowered, Unlowered};
 use vun_mir::{Body, Mir, Program, Programs, Roots, Unbuilt};
 use vun_origin::OriginTable;
 use vun_query::Db;
+use vun_sema::asm::Assemblers;
 use vun_sema::decl::DeclValue;
 use vun_sema::eval::Evaluators;
 use vun_sema::layout::Framers;
 use vun_sema::target::Choice;
+use vun_sema_asm::Assembly;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::{Ty, Value};
@@ -98,6 +100,7 @@ impl Session {
     pub fn sharing(db: &Arc<Db>) -> Self {
         let db = Arc::clone(db);
         db.resource::<Evaluators>().install(Arc::new(Interpreter));
+        db.resource::<Assemblers>().install(Arc::new(Assembly));
         db.resource::<Framers>().install(Arc::new(vun_lower::Framing));
         Self::register(&db);
         Self {

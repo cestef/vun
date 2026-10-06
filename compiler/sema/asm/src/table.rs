@@ -20,9 +20,9 @@ use vun_sema_ty::{Ty, Value};
 use super::Arch;
 use super::need::Needs;
 use super::parts::Widths;
-use crate::env::{Env, ItemSite};
-use crate::member::Members as TypeMembers;
-use crate::target::Members;
+use vun_sema::env::{Env, ItemSite};
+use vun_sema::member::Members as TypeMembers;
+use vun_sema::target::Members;
 
 /// Where control goes after a form.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

@@ -5,6 +5,7 @@
 //! value is held in, each architecture tells here.
 
 mod arm64;
+mod assemble;
 mod bracket;
 mod check;
 mod given;
@@ -18,14 +19,12 @@ mod thumb;
 mod wasm32;
 mod x86_64;
 
-pub(crate) use check::{Checker, Held};
+pub use assemble::Assembly;
+use check::{Checker, Held};
 pub use table::{ArchTable, Flow, Op, Table};
 use vun_codec::{Decode, Encode};
-use vun_hir::tree::ExprId;
 use vun_items::{Item, lang};
-
-/// A block as sema checked it: each operand's binding is the expression it binds.
-pub type Block = vun_inline::Block<ExprId, ExprId, ExprId>;
+use vun_sema::asm::Block;
 
 /// The architectures whose instructions a block holds, each with its table in `lang.arch`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -60,3 +59,6 @@ impl Arch {
         }
     }
 }
+
+/// The queries of this crate whose memos persist.
+pub const PERSISTED: &[fn(&vun_query::Db)] = &[vun_query::Db::persist::<ArchTable>];

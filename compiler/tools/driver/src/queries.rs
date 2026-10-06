@@ -36,6 +36,7 @@ const PERSISTED: &[&[fn(&Db)]] = &[
     vun_sema::PERSISTED,
     vun_sema_lint::PERSISTED,
     vun_sema_check::PERSISTED,
+    vun_sema_asm::PERSISTED,
     vun_sema_plan::PERSISTED,
     vun_sanitize::PERSISTED,
     vun_mir::PERSISTED,

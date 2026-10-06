@@ -51,6 +51,7 @@ vun-server.workspace = true
 vun-binder.workspace = true
 vun-formatter.workspace = true
 vun-documenter.workspace = true
+vun-sema-asm.workspace = true
 vun-sema-check.workspace = true
 vun-sema-lint.workspace = true
 vun-sema-plan.workspace = true

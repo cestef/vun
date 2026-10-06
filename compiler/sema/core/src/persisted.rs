@@ -4,7 +4,6 @@
 use vun_query::Db;
 use vun_sema_ty::item::Declared;
 
-use crate::asm::ArchTable;
 use crate::checks::ChecksOf;
 use crate::cover::CoverageOf;
 use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
@@ -56,5 +55,4 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<Requirement>,
     Db::persist::<Witnesses>,
     Db::persist::<Conformance>,
-    Db::persist::<ArchTable>,
 ];

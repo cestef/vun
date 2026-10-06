@@ -5,7 +5,7 @@
 //! memoized on the function and its arguments (spec 03, section 7), which also makes `Pair(u16)`
 //! one type.
 
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
 use vun_origin::OriginTable;
@@ -17,6 +17,7 @@ use vun_sema_ty::{Signature, Value};
 
 use crate::callable::Parameters;
 use crate::env::Env;
+use crate::installed::Installed;
 use crate::layout::Exists;
 
 pub trait Evaluator: Send + Sync {
@@ -46,16 +47,8 @@ impl Metered {
     }
 }
 
-/// The installed evaluator: a resource of the query database, set once by the driver.
-#[derive(Default)]
-pub struct Evaluators(OnceLock<Arc<dyn Evaluator>>);
-
-impl Evaluators {
-    /// Installs `evaluator`, unless one is installed.
-    pub fn install(&self, evaluator: Arc<dyn Evaluator>) {
-        let _ = self.0.set(evaluator);
-    }
-}
+/// The installed evaluator, set once by the driver.
+pub type Evaluators = Installed<dyn Evaluator>;
 
 /// The stack a compile-time call must have left to start on the one it runs on: enough for
 /// what one call computes before it calls another, its body typed and built included.
@@ -102,7 +95,7 @@ impl Query for MeteredCall {
         let _span =
             vun_trace::tracing::debug_span!("call", f = name.as_ref().map_or("", |n| n.as_str())).entered();
         let evaluators = cx.db().resource::<Evaluators>();
-        match evaluators.0.get() {
+        match evaluators.get() {
             Some(evaluator) => stacker::maybe_grow(RED_ZONE, SEGMENT, || evaluator.call(cx, call)),
             None => Metered::unrun(Unevaluated::Interpreter),
         }

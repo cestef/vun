@@ -11,13 +11,10 @@ use vun_hir::visit::{self, Visitor};
 use vun_primitives::Primitive;
 use vun_primitives::arch::Arch as Form;
 use vun_sema_ty::TyKind;
-use vun_sema_ty::item::Site;
 
 use super::{Known, Stage, Typer};
-use crate::asm::{Arch, ArchTable, Checker, Held, Table};
+use crate::asm::{Assembled, Assemblers, Request};
 use crate::callable::Callable;
-use crate::layout::Shapes;
-use crate::target::TargetOf;
 
 impl Typer<'_, '_, '_> {
     /// The call `call` of `lang.arch.asm` with the code `code`, typed as it was.
@@ -65,58 +62,26 @@ impl Typer<'_, '_, '_> {
                 );
             }
         }
-        let instructions = calls.iter().map(|c| c.callee).filter(|c| !forms.contains_key(c));
-        let Some((arch, table)) = self.arch_of(instructions).filter(|_| placed) else { return Some(unit) };
-        // A value's width is known only where the target's code is the block's: elsewhere the
-        // block is checked for its class of register alone.
-        let targeted = self.env().cx.get::<TargetOf>(&()).is_some_and(|t| t.isa == arch.namespace().symbol());
-        let mut bound = BTreeMap::new();
-        for &(_, value) in &bindings {
-            let Some(known) = self.found.types.get(&value).copied() else { continue };
-            let bytes = self.env().cx.get::<Shapes>(&known.ty).map(|s| s.layout.size).filter(|_| targeted);
-            bound.insert(value, arch.register(&table, bytes, Held::of(known.ty)));
-        }
+        let instructions = calls.iter().map(|c| c.callee).filter(|c| !forms.contains_key(c)).collect();
+        let bound = bindings
+            .iter()
+            .filter_map(|&(_, value)| Some((value, self.found.types.get(&value)?.ty)))
+            .collect();
+        let request = Request { block, instructions, forms, bound, placed };
+        let Some(assembler) = self.env().cx.db().resource::<Assemblers>().get().cloned() else {
+            return Some(unit);
+        };
         let mut diag = DiagCtxt::new();
-        let checked = Checker {
-            env: self.env(),
-            arch,
-            table: &table,
-            forms: &forms,
-            bound: &bound,
-            targeted,
-            diag: &mut diag,
-        }
-        .block(block);
+        let assembled = assembler.assemble(self.env(), &request, &mut diag);
         self.diag.absorb(&diag);
-        let block = checked?;
+        let block = match assembled {
+            Assembled::Skipped => return Some(unit),
+            Assembled::Rejected => return None,
+            Assembled::Checked(block) => block,
+        };
         let known = if block.returns { unit } else { self.never()? };
         self.finding().asm.insert(call, block);
         Some(known)
-    }
-
-    /// The architecture whose table holds the instructions `callees` name, and the table; `None`
-    /// when they are of none, or of several, which is reported.
-    fn arch_of(&mut self, callees: impl Iterator<Item = ExprId>) -> Option<(Arch, std::sync::Arc<Table>)> {
-        let env = self.env();
-        let package = env.file.package;
-        let tables: Vec<_> = Arch::ALL
-            .iter()
-            .filter_map(|&arch| Some((arch, env.cx.get::<ArchTable>(&(package, arch)).ok()?)))
-            .collect();
-        let mut found: Option<usize> = None;
-        for callee in callees {
-            let Ok(Site::Decl(decl)) = env.resolve(callee) else { continue };
-            let Some(at) = tables.iter().position(|(_, t)| t.callables.contains_key(&decl)) else { continue };
-            if found.is_some_and(|f| f != at) {
-                let msg =
-                    Msg::new().text("this instruction is of another architecture than the block's first");
-                let origin = self.hir().exprs[callee].origin;
-                self.diag.error(Diagnostic::error(errors::ASM_UNKNOWN_ARCH, msg).at(origin, None));
-                return None;
-            }
-            found = Some(at);
-        }
-        found.map(|at| tables[at].clone())
     }
 }
 

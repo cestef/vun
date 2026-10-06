@@ -11,7 +11,7 @@ use vun_items::Item;
 use vun_sema_ty::{Ty, Value};
 
 use super::table::Table;
-use crate::target::Members;
+use vun_sema::target::Members;
 
 /// How a table's forms list their widths.
 pub(super) struct Widths {

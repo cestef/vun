@@ -17,7 +17,7 @@ use super::check::{Checker, Held};
 use super::parts::Parts;
 use super::read::Labels;
 use super::table::declared;
-use crate::layout::Shapes;
+use vun_sema::layout::Shapes;
 
 impl Checker<'_, '_, '_> {
     /// The instruction the call `call` is, or `None` when it is none, which is reported.
