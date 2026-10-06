@@ -73,7 +73,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             test::BENCH,
             test::FUZZ,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
-            #[cfg(all(feature = "ffi", not(target_os = "wasi")))]
+            #[cfg(not(target_os = "wasi"))]
             Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
             Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),
             Command::group(
@@ -187,7 +187,7 @@ mod cache;
 mod debug;
 mod doc;
 mod explain;
-#[cfg(all(feature = "ffi", not(target_os = "wasi")))]
+#[cfg(not(target_os = "wasi"))]
 mod ffi;
 mod fix;
 mod flash;

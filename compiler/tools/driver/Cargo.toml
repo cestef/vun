@@ -45,6 +45,7 @@ vun-backend-component = { workspace = true, optional = true }
 vun-link-component = { workspace = true, optional = true }
 vun-scheme-component = { workspace = true, optional = true }
 vun-server.workspace = true
+vun-binder.workspace = true
 vun-sema-plan.workspace = true
 vun-sema-ty.workspace = true
 vun-fetch.workspace = true

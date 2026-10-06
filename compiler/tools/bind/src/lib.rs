@@ -14,57 +14,10 @@ mod types;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use vun_clang::{Clang, Cursor, Diagnostic, Missing, Severity};
+use vun_binder::{Bindings, Failure, Missing, Request, Skipped, Unavailable};
+use vun_clang::{Clang, Cursor, Severity};
 
-pub use types::Unsupported;
-
-/// The bindings of a header: the text of a Vun file, and what it leaves out.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Bindings {
-    pub source: String,
-    pub skipped: Vec<Skipped>,
-}
-
-/// A declaration left out, or bound without what it could not say, and why.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Skipped {
-    pub name: String,
-    pub file: PathBuf,
-    pub line: u32,
-    pub reason: Reason,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Reason {
-    /// A type it uses has no Vun spelling.
-    Unsupported(Unsupported),
-    /// A function taking arguments past its parameters, `...`.
-    Variadic,
-    /// A struct bound as its size and alignment only, and why.
-    Bytes(Bytes),
-}
-
-/// Why a struct is bound as its size and alignment only.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Bytes {
-    /// A union: its fields overlap.
-    Union,
-    /// The bit field of this name, whose layout C leaves to the compiler.
-    BitField(String),
-    /// The field of this name, whose type has no Vun spelling.
-    Field(String),
-}
-
-/// Why no bindings were written.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Failure {
-    /// libclang could not be loaded.
-    Missing(Missing),
-    /// clang could not read the header at all.
-    Unreadable,
-    /// clang reported errors, which the bindings would inherit.
-    Errors(Vec<Diagnostic>),
-}
+pub use vun_binder::{Bytes, Reason, Unsupported};
 
 /// How much of a struct is bound when its fields are not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,17 +53,25 @@ pub(crate) struct Binder<'u> {
     skipped: Vec<Skipped>,
 }
 
-impl Bindings {
-    /// The bindings of `header`, parsed with the compile flags `args`, avoiding the names
-    /// `reserved`, those the file the bindings are written to sees already.
-    ///
-    /// # Errors
-    /// Returns why nothing could be bound: libclang is missing, or the header does not parse.
-    pub fn of(header: &Path, args: &[String], reserved: &[String]) -> Result<Self, Failure> {
-        let clang = Clang::load().map_err(Failure::Missing)?;
+/// The C binder, which reads a header through libclang.
+pub struct CBinder;
+
+impl vun_binder::Binder for CBinder {
+    fn name(&self) -> &'static str {
+        "c"
+    }
+
+    /// Fails when libclang is missing, or the header does not parse.
+    fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
+        let Request { header, args, reserved } = request;
+        let clang = Clang::load().map_err(|missing| Failure::Missing(Self::missing(missing)))?;
         let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
-        let errors: Vec<Diagnostic> =
-            unit.diagnostics().into_iter().filter(|d| d.severity == Severity::Error).collect();
+        let errors: Vec<String> = unit
+            .diagnostics()
+            .into_iter()
+            .filter(|d| d.severity == Severity::Error)
+            .map(|d| d.text)
+            .collect();
         if !errors.is_empty() {
             return Err(Failure::Errors(errors));
         }
@@ -136,6 +97,16 @@ impl Bindings {
         let name = header.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
         let source = binder.file(&name).source();
         Ok(Bindings { source, skipped: binder.skipped })
+    }
+}
+
+impl CBinder {
+    fn missing(missing: vun_clang::Missing) -> Missing {
+        let why = match missing {
+            vun_clang::Missing::Unloadable(why) => Unavailable::Unloadable(why),
+            vun_clang::Missing::Old => Unavailable::Old,
+        };
+        Missing { oldest: vun_clang::OLDEST, why }
     }
 }
 

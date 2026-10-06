@@ -17,7 +17,9 @@ fn main() -> ExitCode {
     vun_trace::Config::from_env().install();
     let mut session = Session::persistent();
     #[cfg(feature = "lsp")]
-    session.registry.add_server(Box::new(vun_component_server_lsp::component()));
+    session.registry.servers.link(Box::new(vun_component_server_lsp::component()));
+    #[cfg(feature = "ffi")]
+    session.registry.binders.link(Box::new(vun_component_binder_c::component()));
     session.check = PROGRAM.invocation(&CHECK_PATH);
     PROGRAM.main(&mut session)
 }

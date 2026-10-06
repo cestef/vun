@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-binder.workspace = true
 vun-clang.workspace = true
 vun-grammar.workspace = true
 vun-desugar.workspace = true

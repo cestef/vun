@@ -1,11 +1,12 @@
 //! The components of the toolchain's `components` directory (decision 498): libraries each
-//! serving a backend, a linker, a URL scheme or a server, registered beside those linked in.
+//! serving a backend, a linker, a URL scheme, a server or a binder, registered beside those linked in.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex, PoisonError};
 
 use vun_backend_component::Backends;
+use vun_binder::Binders;
 use vun_build::release::{Piece, Release};
 use vun_build::toolchains::{COMPONENTS, Toolchains};
 use vun_component::{Component, Fault, Interface, Kind};
@@ -28,6 +29,7 @@ enum Served {
     Linker(vun_link_component::Remote),
     Scheme(vun_scheme_component::Remote),
     Server(vun_server::Remote),
+    Binder(vun_binder::Remote),
 }
 
 impl Served {
@@ -37,6 +39,7 @@ impl Served {
         (Linkers::KIND, |c| vun_link_component::Remote::of(c).map(Self::Linker)),
         (Schemes::KIND, |c| vun_scheme_component::Remote::of(c).map(Self::Scheme)),
         (Servers::KIND, |c| vun_server::Remote::of(c).map(Self::Server)),
+        (Binders::KIND, |c| vun_binder::Remote::of(c).map(Self::Binder)),
     ];
 
     /// What the component is called: its kind and its backend's or linker's id
@@ -47,6 +50,7 @@ impl Served {
                 format!("{}-{}", Backends::KIND, vun_backend::Backend::info(backend).id)
             }
             Self::Linker(linker) => format!("{}-{}", Linkers::KIND, vun_link::Linker::info(linker).id),
+            Self::Binder(binder) => format!("{}-{}", Binders::KIND, vun_binder::Binder::name(binder)),
             Self::Server(server) => format!("{}-{}", Servers::KIND, vun_server::Server::name(server)),
             Self::Scheme(scheme) => format!("{}-{}", Schemes::KIND, vun_fetch::Scheme::name(scheme)),
         }
@@ -151,10 +155,13 @@ impl Registry {
                     self.add_linker_from(Box::new(linker), Provider::Loaded(path));
                 }
                 Ok(Served::Scheme(scheme)) => {
-                    self.add_scheme_from(Box::new(scheme), Provider::Loaded(path));
+                    self.schemes.load(Box::new(scheme), path);
                 }
                 Ok(Served::Server(server)) => {
-                    self.add_server_from(Box::new(server), Provider::Loaded(path));
+                    self.servers.load(Box::new(server), path);
+                }
+                Ok(Served::Binder(binder)) => {
+                    self.binders.load(Box::new(binder), path);
                 }
                 Err(Fault::Open { source, .. }) => {
                     debug!(library = %path.display(), %source, "not a component");

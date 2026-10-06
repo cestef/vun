@@ -32,8 +32,8 @@ const LSP_NAME: &str = "lsp";
 
 /// Runs the language server of the toolchain, linked in or loaded (spec 13, section 11).
 fn lsp(session: &mut Session, _: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
-    if let Some(server) = session.registry.server(LSP_NAME) {
-        return server.serve(&mut session.diag);
+    if let Some(server) = session.registry.servers.get(LSP_NAME) {
+        return server.item.serve(&mut session.diag);
     }
     let msg = Msg::new().text("this program runs without ").code("util lsp");
     session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));

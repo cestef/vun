@@ -5,17 +5,7 @@
 use vun_clang::{Cursor, Kind, Type, TypeKind};
 use vun_syntax::make::{Expr, Field};
 
-use crate::{Binder, Opacity, items};
-
-/// Why a type has no Vun spelling here.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Unsupported {
-    /// A C type Vun has no counterpart for, as C spells it: `long double`, a union, `...`.
-    Type(String),
-    /// A struct bound without its fields, used by value where they matter: an incomplete one
-    /// anywhere, one bound as bytes in a call, whose convention classifies the fields.
-    Opaque(String),
-}
+use crate::{Binder, Opacity, Unsupported, items};
 
 /// Where a type is written, which decides what `void`, `T[]` and an opaque struct mean.
 #[derive(Clone, Copy, PartialEq, Eq)]

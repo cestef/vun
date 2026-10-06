@@ -1,5 +1,5 @@
 //! `vun toolchain show`: the running toolchain's version, where it and its library are, and the
-//! backends, linkers, URL schemes and servers it has.
+//! backends, linkers, URL schemes, servers and binders it has.
 
 use std::io;
 
@@ -40,23 +40,10 @@ fn show(_: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome>
         handles: Names::Only(i.formats),
         outputs: i.outputs.iter().map(|o| o.name()).collect(),
     });
-    let schemes = r.schemes().names().into_iter().map(|name| Component {
-        kind: Kind::Scheme,
-        from: r.scheme_from(&name).cloned().unwrap_or(Provider::Linked),
-        name,
-        readiness: Readiness::Ready,
-        handles: Names::Any,
-        outputs: Vec::new(),
-    });
-    let servers = r.servers().map(|name| Component {
-        kind: Kind::Server,
-        from: r.server_from(name).cloned().unwrap_or(Provider::Linked),
-        name: name.to_owned(),
-        readiness: Readiness::Ready,
-        handles: Names::Any,
-        outputs: Vec::new(),
-    });
-    shell.table(&backends.chain(linkers).chain(schemes).chain(servers).collect::<Vec<_>>())?;
+    let schemes = r.schemes.registered().map(|c| Component::of(Kind::Scheme, c.item.name(), &c.from));
+    let servers = r.servers.registered().map(|c| Component::of(Kind::Server, c.item.name(), &c.from));
+    let binders = r.binders.registered().map(|c| Component::of(Kind::Binder, c.item.name(), &c.from));
+    shell.table(&backends.chain(linkers).chain(schemes).chain(servers).chain(binders).collect::<Vec<_>>())?;
     Ok(Outcome::Success)
 }
 
@@ -128,6 +115,7 @@ enum Kind {
     Linker,
     Scheme,
     Server,
+    Binder,
 }
 
 impl Kind {
@@ -137,6 +125,7 @@ impl Kind {
             Self::Linker => "linker",
             Self::Scheme => "scheme",
             Self::Server => "server",
+            Self::Binder => "binder",
         }
     }
 }
@@ -154,6 +143,18 @@ struct Component {
 }
 
 impl Component {
+    /// A component of a kind that has no facts but its name.
+    fn of(kind: Kind, name: &str, from: &Provider) -> Self {
+        Self {
+            kind,
+            name: name.to_owned(),
+            from: from.clone(),
+            readiness: Readiness::Ready,
+            handles: Names::Any,
+            outputs: Vec::new(),
+        }
+    }
+
     fn status(&self) -> &'static str {
         match self.readiness {
             Readiness::Ready => "ready",

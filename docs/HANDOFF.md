@@ -274,7 +274,7 @@ Runs natively (354, 355, 357, 361); spec 11 is the reference. Open:
 
 Built: the boundary (`vun-component`), the backend, linker and scheme interfaces (`vun-backend-component`,
 `vun-link-component`, `vun-scheme-component`), one crate per ready backend, linker and scheme
-(`scheme-https`, the TLS stack; `server-lsp`, the language server, in `compiler/tools/` as it serves a driver session) under `compiler/components/`, the
+(`scheme-https`, the TLS stack; `server-lsp` and `binder-c`, in `compiler/tools/` as they use the driver's and the compiler's crates) under `compiler/components/`, the
 registry loading `VUN_COMPONENTS` or `components/` beside `bin/` (a toolchain installed from a
 release loads only the libraries its kept manifest names, as hashed), `vun toolchain
 install|update --profile` and `component list|add|remove`, `.components` in `build.vun`,
@@ -282,7 +282,7 @@ install|update --profile` and `component list|add|remove`, `.components` in `bui
 `release.yml` building them. Run end to end on am3 (arm64): package, release, sign, install the
 `minimal` profile, add Cranelift, build and compare, tamper with a library. Open:
 
-- Kinds still linked, in the order they are worth moving: the C binder (`vun-bind` and `vun-clang`), the diagnostic renderers
+- Kinds still linked, in the order they are worth moving: the diagnostic renderers
   (a `DiagSink`; the library asks the host to resolve origins and read source). Each is an
   `Interface` and a crate under `compiler/components/`. The size budget is dropped (decision 499).
 - Cranelift's library links the native backend itself, for the functions Cranelift cannot

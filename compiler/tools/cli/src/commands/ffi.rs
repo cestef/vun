@@ -3,8 +3,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_bind::{Bytes, Failure, Reason, Skipped, Unsupported};
-use vun_clang::Missing;
+use vun_binder::{Bytes, Failure, Reason, Request, Skipped, Unavailable, Unsupported};
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
@@ -25,6 +24,9 @@ const CFLAGS: Param = Param::option("cflag")
 
 pub(super) const GROUP: &str = "ffi";
 
+/// The binder of C headers.
+const C: &str = "c";
+
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
     .params(&[HEADER, OUT, CFLAGS])
     .examples(&[Example {
@@ -42,7 +44,13 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let place = target.as_deref().unwrap_or(&header);
     let dir = place.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let reserved = session.names_seen_in(dir);
-    let bindings = match vun_bind::Bindings::of(&header, &flags, &reserved) {
+    let Some(binder) = session.registry.binders.get(C) else {
+        let msg = Msg::new().text("this program runs without ").code("ffi bind");
+        session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
+        return Ok(Outcome::Failure);
+    };
+    let request = Request { header: header.clone(), args: flags, reserved };
+    let bindings = match binder.item.bind(&request) {
         Ok(bindings) => bindings,
         Err(failure) => {
             session.diag.error(failed(&header, failure));
@@ -71,7 +79,7 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
             let msg = Msg::new()
                 .code(PROGRAM.invocation(&[GROUP, BIND.name]).expect("bind is a command"))
                 .text(" needs libclang ")
-                .num(i128::from(vun_clang::OLDEST))
+                .num(i128::from(missing.oldest))
                 .text(" or later, and none was found");
             let help = Msg::new()
                 .text("install libclang, or set ")
@@ -80,9 +88,9 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
             Diagnostic::error(errors::TOOL_MISSING_LIBRARY, msg)
                 .child(
                     ChildKind::Note,
-                    match missing {
-                        Missing::Unloadable(why) => Msg::new().text(why),
-                        Missing::Old => Msg::new().text("the libclang found is older"),
+                    match missing.why {
+                        Unavailable::Unloadable(why) => Msg::new().text(why),
+                        Unavailable::Old => Msg::new().text("the libclang found is older"),
                     },
                 )
                 .child(ChildKind::Help, help)
@@ -98,7 +106,7 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
             let help = Msg::new().text("pass the build's compile flags with ").code(CFLAGS.long());
             reports
                 .into_iter()
-                .fold(d, |d, r| d.child(ChildKind::Note, Msg::new().text(r.text)))
+                .fold(d, |d, r| d.child(ChildKind::Note, Msg::new().text(r)))
                 .child(ChildKind::Help, help)
         }
     }

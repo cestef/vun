@@ -1,8 +1,9 @@
 //! `vun ffi bind` (spec 07, section 5): bindings from a C header check cleanly, and Vun lays
 //! their structs out as the C compiler does.
 
-use crate::common::Fixture;
-use vun_bind::{Bytes, Reason, Unsupported};
+use crate::common::{Fixture, built_component};
+use vun_binder::{Binder, Bytes, Failure, Reason, Request, Unsupported};
+use vun_driver::{Components, Provider, Registry};
 
 const HEADER: &str = "\
 #include <stddef.h>
@@ -29,11 +30,11 @@ fn bindings_check_and_lay_structs_out_as_c_does() {
     let header = fixture.root.write("c/demo.h", HEADER);
     let mut session = fixture.session();
     let reserved = session.names_seen_in(&fixture.root.join("c"));
-    let bindings = match vun_bind::Bindings::of(&header, &["--target=x86_64-linux-gnu".to_owned()], &reserved)
-    {
+    let request = Request { header, args: vec!["--target=x86_64-linux-gnu".to_owned()], reserved };
+    let bindings = match vun_bind::CBinder.bind(&request) {
         Ok(bindings) => bindings,
         // Machines without libclang cannot run this; the command reports the same absence.
-        Err(vun_bind::Failure::Missing(_)) => return,
+        Err(Failure::Missing(_)) => return,
         Err(failure) => panic!("{failure:?}"),
     };
     let reasons: Vec<_> = bindings.skipped.iter().map(|s| (s.name.as_str(), &s.reason)).collect();
@@ -59,4 +60,17 @@ frame_size_is: Int(std.meta.size(Frame)..=std.meta.size(Frame)) = 40;
     // A keyword is escaped, a name every file sees is kept apart.
     assert!(bindings.source.contains("\\match: unsafe (type_: "), "{}", bindings.source);
     assert!(bindings.source.contains("test_: "), "{}", bindings.source);
+}
+
+#[test]
+fn a_binder_loaded_from_a_library_binds_as_the_linked_one_does() {
+    let fixture = Fixture::new("bind-component");
+    let header = fixture.root.write("c/demo.h", HEADER);
+    let request =
+        Request { header, args: vec!["--target=x86_64-linux-gnu".to_owned()], reserved: Vec::new() };
+    let mut registry = Registry::default();
+    registry.load(&Components::at(built_component("vun-component-binder-c")));
+    let loaded = registry.binders.get("c").expect("the library serves a binder");
+    assert!(matches!(loaded.from, Provider::Loaded(_)));
+    assert_eq!(loaded.item.bind(&request), vun_bind::CBinder.bind(&request));
 }

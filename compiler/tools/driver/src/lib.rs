@@ -44,7 +44,9 @@ pub use pages::Page;
 pub use queries::Persistence;
 #[cfg(feature = "components")]
 pub use registry::Components;
-pub use registry::{Codegen, Link, Linkage, Pick, Picked, Provider, Registry, Unchosen, Unfit};
+pub use registry::{
+    Codegen, Link, Linkage, Named, Pick, Picked, Provider, Registry, Roster, Unchosen, Unfit,
+};
 pub use session::Session;
 pub use shared::Shared;
 pub use steps::{Built, Flashing};

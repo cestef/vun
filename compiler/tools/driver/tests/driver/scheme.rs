@@ -13,7 +13,7 @@ const CRATE: &str = "vun-component-scheme-https";
 fn a_scheme_loaded_from_a_library_reads_urls_and_reports_why_it_cannot() {
     let mut registry = Registry::default();
     registry.load(&Components::at(built_component(CRATE)));
-    assert!(matches!(registry.scheme_from("https"), Some(Provider::Loaded(_))));
+    assert!(matches!(registry.schemes.get("https").map(|s| &s.from), Some(Provider::Loaded(_))));
     let refused = "https://127.0.0.1:9/a.tar.gz".parse().unwrap();
     let Err(Failure::Download(error)) = registry.schemes().get(&refused) else {
         panic!("nothing listens there")

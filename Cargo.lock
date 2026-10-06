@@ -1445,11 +1445,21 @@ dependencies = [
 name = "vun-bind"
 version = "0.1.0"
 dependencies = [
+ "vun-binder",
  "vun-clang",
  "vun-desugar",
  "vun-grammar",
  "vun-items",
  "vun-syntax",
+]
+
+[[package]]
+name = "vun-binder"
+version = "0.1.0"
+dependencies = [
+ "vun-codec",
+ "vun-component",
+ "vun-trace",
 ]
 
 [[package]]
@@ -1495,10 +1505,10 @@ version = "0.1.0"
 dependencies = [
  "mimalloc",
  "vun-backend",
- "vun-bind",
+ "vun-binder",
  "vun-build",
- "vun-clang",
  "vun-command",
+ "vun-component-binder-c",
  "vun-component-server-lsp",
  "vun-data",
  "vun-diag",
@@ -1622,6 +1632,15 @@ dependencies = [
  "vun-backend",
  "vun-backend-component",
  "vun-backend-wasm",
+ "vun-component",
+]
+
+[[package]]
+name = "vun-component-binder-c"
+version = "0.1.0"
+dependencies = [
+ "vun-bind",
+ "vun-binder",
  "vun-component",
 ]
 
@@ -1785,6 +1804,7 @@ dependencies = [
  "vun-backend-qbe",
  "vun-backend-wasm",
  "vun-bind",
+ "vun-binder",
  "vun-build",
  "vun-command",
  "vun-component",

@@ -9,6 +9,7 @@ pub use components::Components;
 use std::path::PathBuf;
 
 use vun_backend::Backend;
+use vun_binder::Binder;
 use vun_fetch::{Scheme, Schemes};
 use vun_intern::Symbol;
 use vun_link::Linker;
@@ -16,15 +17,16 @@ use vun_server::Server;
 
 mod roster;
 
-use roster::{Named, Roster};
+pub use roster::{Named, Roster};
 
-/// The backends, linkers and URL schemes available to a session.
+/// The components available to a session: backends, linkers, URL schemes, servers and binders.
 #[derive(Default)]
 pub struct Registry {
     backends: Roster<dyn Backend>,
     linkers: Roster<dyn Linker>,
-    schemes: Roster<dyn Scheme>,
-    servers: Roster<dyn Server>,
+    pub schemes: Roster<dyn Scheme>,
+    pub servers: Roster<dyn Server>,
+    pub binders: Roster<dyn Binder>,
 }
 
 /// Where a component comes from (decision 498).
@@ -48,6 +50,12 @@ impl Named for dyn Linker {
     }
 }
 
+impl Named for dyn Binder {
+    fn called(&self) -> &str {
+        self.name()
+    }
+}
+
 impl Named for dyn Server {
     fn called(&self) -> &str {
         self.name()
@@ -61,10 +69,10 @@ impl Named for dyn Scheme {
 }
 
 macro_rules! register {
-    ($registry:ident.$method:ident { $($feature:literal => $component:expr),* $(,)? }) => {
+    ($recv:expr, $method:ident { $($feature:literal => $component:expr),* $(,)? }) => {
         $(
             #[cfg(feature = $feature)]
-            $registry.$method(Box::new($component));
+            $recv.$method(Box::new($component));
         )*
     };
 }
@@ -75,7 +83,7 @@ impl Registry {
     #[allow(unused_mut, reason = "a toolchain built without features registers nothing")]
     pub fn with_defaults() -> Self {
         let mut r = Self::default();
-        register!(r.add_backend {
+        register!(r, add_backend {
             "backend-c" => vun_component_backend_c::component(),
             "backend-native" => vun_component_backend_native::component(),
             "backend-wasm" => vun_component_backend_wasm::component(),
@@ -84,7 +92,7 @@ impl Registry {
             "backend-llvm" => vun_backend_llvm::BACKEND,
             "backend-external" => vun_backend_external::BACKEND,
         });
-        register!(r.add_linker {
+        register!(r, add_linker {
             "link-wild" => vun_component_link_wild::component(),
             "link-mold" => vun_component_link_mold::component(),
             "link-ar" => vun_component_link_ar::component(),
@@ -94,7 +102,7 @@ impl Registry {
             "link-msvc" => vun_link_msvc::MsvcLinker,
             "link-external" => vun_link_external::ExternalLinker,
         });
-        register!(r.add_scheme {
+        register!(r.schemes, link {
             "scheme-https" => vun_component_scheme_https::component(),
         });
         #[cfg(feature = "components")]
@@ -123,41 +131,6 @@ impl Registry {
     /// Registers `linker` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
     pub fn add_linker_from(&mut self, linker: Box<dyn Linker>, from: Provider) {
         self.linkers.add(linker.into(), from);
-    }
-
-    /// Registers `scheme`, linked in, as [`Registry::add_backend`] does a backend.
-    pub fn add_scheme(&mut self, scheme: Box<dyn Scheme>) {
-        self.add_scheme_from(scheme, Provider::Linked);
-    }
-
-    /// Registers `scheme` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
-    pub fn add_scheme_from(&mut self, scheme: Box<dyn Scheme>, from: Provider) {
-        self.schemes.add(scheme.into(), from);
-    }
-
-    /// Registers `server`, linked in, as [`Registry::add_backend`] does a backend.
-    pub fn add_server(&mut self, server: Box<dyn Server>) {
-        self.add_server_from(server, Provider::Linked);
-    }
-
-    /// Registers `server` as `from` provides it, as [`Registry::add_backend_from`] does a backend.
-    pub fn add_server_from(&mut self, server: Box<dyn Server>, from: Provider) {
-        self.servers.add(server.into(), from);
-    }
-
-    pub fn servers(&self) -> impl Iterator<Item = &'static str> {
-        self.servers.iter().map(Server::name)
-    }
-
-    #[must_use]
-    pub fn server(&self, name: &str) -> Option<&dyn Server> {
-        self.servers.get(name).map(|r| &*r.item as &dyn Server)
-    }
-
-    /// Where the server `name` comes from.
-    #[must_use]
-    pub fn server_from(&self, name: &str) -> Option<&Provider> {
-        self.servers.get(name).map(|r| &r.from)
     }
 
     pub fn backends(&self) -> impl Iterator<Item = &dyn Backend> {
@@ -198,12 +171,6 @@ impl Registry {
     #[must_use]
     pub fn linker_from(&self, name: Symbol) -> Option<&Provider> {
         self.linkers.get(name.as_str()).map(|r| &r.from)
-    }
-
-    /// Where the scheme `name` comes from.
-    #[must_use]
-    pub fn scheme_from(&self, name: &str) -> Option<&Provider> {
-        self.schemes.get(name).map(|r| &r.from)
     }
 }
 
