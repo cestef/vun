@@ -137,6 +137,9 @@ pub enum Op {
     /// Branches to the block `depth` blocks out of the innermost, which is 0.
     Br,
     BrIf,
+    /// Branches to the block the value popped selects among the depths, the last the one for a value
+    /// past them: `br_table(0, 1, 2)`.
+    BrTable,
     I32WrapI64,
     I32TruncF32S,
     I32TruncF32U,

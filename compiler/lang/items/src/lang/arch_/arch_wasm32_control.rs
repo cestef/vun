@@ -20,3 +20,6 @@ pub const end: Item = Item::new(&["lang", "arch", "wasm32", "control", "end"]);
 /// Branches to the block `depth` blocks out of the innermost, which is 0.
 pub const br: Item = Item::new(&["lang", "arch", "wasm32", "control", "br"]);
 pub const br_if: Item = Item::new(&["lang", "arch", "wasm32", "control", "br_if"]);
+/// Branches to the block the value popped selects among the depths, the last the one for a value
+/// past them: `br_table(0, 1, 2)`.
+pub const br_table: Item = Item::new(&["lang", "arch", "wasm32", "control", "br_table"]);

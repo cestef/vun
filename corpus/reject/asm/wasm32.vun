@@ -1,6 +1,6 @@
 //! What a block of WebAssembly instructions reports of its blocks (spec 07, section 6): an `end`
 //! or a branch that leaves the block of assembly, an `else` with no `if`, a block left open, and
-//! values on the stack where a block ends.
+//! values on the stack where a block ends, and a block that does not give the value it is typed with.
 
 lines := () {
     unsafe lang.arch.asm({
@@ -40,5 +40,46 @@ carries := () {
         block();
         i32_const(1);
         end(); //~ asm.stack
+    });
+};
+
+gives := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block(yield_i32);
+        end(); //~ asm.stack
+    });
+};
+
+gives_wrong_type := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block(yield_i32);
+        i64_const(1);
+        end(); //~ asm.stack
+    });
+};
+
+if_without_else := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        i32_const(1);
+        if_(yield_i32);
+        i32_const(1);
+        end(); //~ asm.stack
+    });
+};
+
+table_mixes := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block(yield_i32);
+        block();
+        i32_const(0);
+        br_table(0, 1); //~ asm.stack
+        end();
+        i32_const(1);
+        end();
+        drop();
     });
 };

@@ -32,6 +32,11 @@ pub const Class: Item = Item::new(&["lang", "arch", "wasm32", "Class"]);
 pub const Ty: Item = Item::new(&["lang", "arch", "wasm32", "Ty"]);
 /// What a position of an instruction takes.
 pub const Kind: Item = Item::new(&["lang", "arch", "wasm32", "Kind"]);
+/// The kinds of named choice a position takes, each an enum of its own marked with its kind as an
+/// attribute (`#[Choice.yields]`).
+pub const Choice: Item = Item::new(&["lang", "arch", "wasm32", "Choice"]);
+/// The type a block gives where it gives a value (`block(yield_i32)`).
+pub const Yields: Item = Item::new(&["lang", "arch", "wasm32", "Yields"]);
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
 /// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
 pub const Imm: Item = Item::new(&["lang", "arch", "wasm32", "Imm"]);

@@ -122,3 +122,45 @@ half := (x: f32) -> f32 {
     });
     r
 };
+
+/// A block gives the value its type names, which a branch to it carries.
+sign := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block(yield_i32);
+        i32_const(100);
+        local_get(in(x));
+        i32_const(0);
+        i32_lt_s();
+        br_if(0);
+        drop();
+        i32_const(200);
+        end();
+        local_set(out(r));
+    });
+    r
+};
+
+/// A table branches by the value popped, the last depth being the default.
+dispatch := (n: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        block();
+        block();
+        local_get(in(n));
+        br_table(0, 1, 2);
+        end();
+        i32_const(10);
+        local_set(out(r));
+        br(1);
+        end();
+        i32_const(20);
+        local_set(out(r));
+        br(0);
+        end();
+    });
+    r
+};

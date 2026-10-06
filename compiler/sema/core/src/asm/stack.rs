@@ -1,23 +1,24 @@
 //! The stack of a block of a stack machine's instructions (spec 07, section 6): each instruction
 //! pops the values its form says, of the types it says, and pushes its results; a block starts and
 //! ends with an empty stack, except past an instruction that ends the code or leaves the block it
-//! is in, after which any stack goes until that block ends. Blocks nest, hold no values, and are
-//! branched to from inside only.
+//! is in, after which any stack goes until that block ends. Blocks nest, each giving at most one value
+//! (which a branch to it, but not to a loop, carries), and are branched to from inside only.
 
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_hir::tree::ExprId;
 use vun_inline::Inst;
-use vun_isa::{Scope, Slot, Stack};
+use vun_isa::{Nest, Scope, Slot, Stack};
 use vun_origin::OriginId;
 
 use super::check::Checker;
 use super::table::{Flow, Table};
 
-/// A block of the code: how high the stack was when it opened, whether an `else` may still come,
-/// and whether what follows is not reached, so that any values may be popped.
+/// A block of the code: how high the stack was when it opened, what kind it is, the value it
+/// gives, and whether what follows is not reached, so that any values may be popped.
 struct Frame {
     height: usize,
-    two_armed: bool,
+    nest: Nest,
+    yields: Option<Slot>,
     unreachable: bool,
 }
 
@@ -33,14 +34,18 @@ impl Held {
         self.frames.last_mut().expect("the block of assembly is open")
     }
 
-    /// Pops a value, which an unreachable rest has of any type wherever the stack is empty;
-    /// `None` where there is none to pop.
-    fn pop(&mut self) -> Option<Slot> {
+    /// Pops a value of the type `want`, which an unreachable rest has wherever the stack is empty.
+    fn take(&mut self, want: Slot) -> Result<(), &'static str> {
         let frame = self.frames.last().expect("the block of assembly is open");
         if self.values.len() == frame.height {
-            return frame.unreachable.then_some(Slot::Any);
+            return if frame.unreachable { Ok(()) } else { Err("pops a value off an empty stack") };
         }
-        self.values.pop()
+        match (want, self.values.pop()) {
+            (Slot::Class(a), Some(Slot::Class(b))) if a != b => {
+                Err("pops a value of another type than it takes")
+            }
+            _ => Ok(()),
+        }
     }
 
     /// Ends what follows as reached: only an end of the block starts it again.
@@ -50,43 +55,83 @@ impl Held {
         self.frame().unreachable = true;
     }
 
-    fn open(&mut self, two_armed: bool) {
-        self.frames.push(Frame { height: self.values.len(), two_armed, unreachable: false });
+    /// The value a branch to the block `depth` blocks out carries, which a loop's start takes none
+    /// of; or why there is no such block of this block of assembly.
+    fn carried(&self, depth: u32) -> Result<Option<Slot>, &'static str> {
+        let depth = depth as usize;
+        if depth >= self.frames.len() - 1 {
+            return Err("branches to a block this block of assembly did not open");
+        }
+        let frame = &self.frames[self.frames.len() - 1 - depth];
+        Ok(if frame.nest == Nest::Loop { None } else { frame.yields })
+    }
+
+    /// Ends the arm of the innermost block: its stack holds what the block gives, or is not
+    /// reached.
+    fn arm(&mut self) -> Result<(), &'static str> {
+        let (height, yields, unreachable) = {
+            let frame = self.frame();
+            (frame.height, frame.yields, frame.unreachable)
+        };
+        if let Some(slot) = yields {
+            self.take(slot).map_err(|_| "ends a block without the value it gives")?;
+        }
+        if self.values.len() != height && !unreachable {
+            return Err("ends a block with values on the stack");
+        }
+        self.values.truncate(height);
+        Ok(())
     }
 
     /// What an instruction's `scope` does to the blocks open, or what it does wrong.
-    fn scope(&mut self, scope: Scope) -> Result<(), &'static str> {
+    fn scope(&mut self, scope: &Scope) -> Result<(), &'static str> {
         match scope {
             Scope::None => {}
-            Scope::Open { two_armed } => self.open(two_armed),
+            Scope::Open { nest, yields } => {
+                let frame =
+                    Frame { height: self.values.len(), nest: *nest, yields: *yields, unreachable: false };
+                self.frames.push(frame);
+            }
             Scope::Reopen => {
-                if !self.frame().two_armed || self.frames.len() == 1 {
+                if self.frame().nest != Nest::If || self.frames.len() == 1 {
                     return Err("continues an `if` that is not open");
                 }
-                if self.values.len() != self.frame().height && !self.frame().unreachable {
-                    return Err("ends the first arm of an `if` with values on the stack");
-                }
-                let height = self.frame().height;
-                self.values.truncate(height);
-                *self.frame() = Frame { height, two_armed: false, unreachable: false };
+                self.arm()?;
+                self.frame().nest = Nest::Plain;
+                self.frame().unreachable = false;
             }
             Scope::Close => {
                 if self.frames.len() == 1 {
                     return Err("ends a block this block of assembly did not open");
                 }
-                let frame = self.frames.pop().expect("a block is open");
-                if self.values.len() != frame.height && !frame.unreachable {
-                    return Err("ends a block with values on the stack");
+                if self.frame().nest == Nest::If && self.frame().yields.is_some() {
+                    return Err("ends an `if` giving a value with no `else`");
                 }
-                self.values.truncate(frame.height);
+                self.arm()?;
+                let frame = self.frames.pop().expect("a block is open");
+                self.values.extend(frame.yields);
             }
             Scope::Branch { depth, always } => {
-                if depth as usize >= self.frames.len() - 1 {
-                    return Err("branches to a block this block of assembly did not open");
+                let carried = self.carried(*depth)?;
+                if let Some(slot) = carried {
+                    self.take(slot)?;
                 }
-                if always {
+                if *always {
                     self.diverge();
+                } else {
+                    self.values.extend(carried);
                 }
+            }
+            Scope::Table(depths) => {
+                let carried = depths.iter().map(|&d| self.carried(d)).collect::<Result<Vec<_>, _>>()?;
+                let first = carried.first().copied().flatten();
+                if carried.iter().any(|c| c.is_some() != first.is_some()) {
+                    return Err("branches to blocks that give different values");
+                }
+                if let Some(slot) = first {
+                    self.take(slot)?;
+                }
+                self.diverge();
             }
         }
         Ok(())
@@ -105,20 +150,17 @@ impl Checker<'_, '_, '_> {
     ) -> bool {
         let mut held = Held {
             values: Vec::new(),
-            frames: vec![Frame { height: 0, two_armed: false, unreachable: false }],
+            frames: vec![Frame { height: 0, nest: Nest::Plain, yields: None, unreachable: false }],
         };
         for (inst, stack) in insts.iter().zip(stacks) {
             let Some(stack) = stack else { return true };
             for &want in stack.pops.iter().rev() {
-                let Some(top) = held.pop() else {
-                    return self.mismatch(inst.origin, "pops a value off an empty stack");
-                };
-                if matches!((want, top), (Slot::Class(a), Slot::Class(b)) if a != b) {
-                    return self.mismatch(inst.origin, "pops a value of another type than it takes");
+                if let Err(what) = held.take(want) {
+                    return self.mismatch(inst.origin, what);
                 }
             }
             held.values.extend(&stack.pushes);
-            if let Err(what) = held.scope(stack.scope) {
+            if let Err(what) = held.scope(&stack.scope) {
                 return self.mismatch(inst.origin, what);
             }
             let form = self.table.form(inst.op, inst.form);

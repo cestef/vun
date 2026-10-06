@@ -2,9 +2,12 @@
 //! as its access reads or writes it, an immediate the bits hold; the width is the table's one.
 
 use vun_inline::{Bound, ClassId, FormId, OpId};
-use vun_isa::{Fit, Fixed, Given, Misfit, Scope, Slot, Stack, Why};
+use vun_isa::{Fit, Fixed, Given, Misfit, Nest, Scope, Slot, Stack, Why};
 
-use crate::{Access, Arg, Class, Control, Kind, Op, Size, Ty};
+use crate::{Access, Arg, Choice, Class, Control, Imm, Kind, Op, Size, Ty, Yields};
+
+/// The depth of a block, an unsigned 32-bit immediate.
+const DEPTH: Imm = Imm::Unsigned(32);
 
 impl Arg {
     /// Whether this position takes `given`.
@@ -17,8 +20,23 @@ impl Arg {
                 _ => Err(Why::Kind),
             },
             (Kind::Imm(imm), Given::Imm(Some(value))) if imm.holds(*value) => Ok(()),
-            (Kind::Imm(_), Given::Imm(_)) => Err(Why::Wide),
+            (Kind::Depths, Given::Imm(Some(value))) if DEPTH.holds(*value) => Ok(()),
+            (Kind::Imm(_) | Kind::Depths, Given::Imm(_)) => Err(Why::Wide),
+            (Kind::Choice(choice), Given::Choice { of, index })
+                if of.0 == choice as u8 && usize::from(*index) < choice.count() =>
+            {
+                Ok(())
+            }
             _ => Err(Why::Kind),
+        }
+    }
+}
+
+impl Choice {
+    /// How many choices of this kind there are.
+    const fn count(self) -> usize {
+        match self {
+            Self::Yields => Yields::ALL.len(),
         }
     }
 }
@@ -46,11 +64,13 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
     givens: &[Given<V, P, S>],
 ) -> Result<Fit<V, P, S>, Misfit> {
     let form = Op::entry(op, form).1;
-    if form.args.len() != givens.len() {
+    let variadic = form.args.last().is_some_and(|arg| arg.kind == Kind::Depths);
+    if givens.len() < form.args.len() || (givens.len() > form.args.len() && !variadic) {
         return Err(Misfit::Count);
     }
     let mut local = None;
-    for (at, (arg, given)) in form.args.iter().zip(givens).enumerate() {
+    for (at, given) in givens.iter().enumerate() {
+        let arg = form.args.get(at).or(form.args.last()).expect("a position of each given");
         arg.takes(given).map_err(|why| Misfit::Operand { at, why })?;
         if arg.kind == Kind::Local {
             // A local is held as the type of the value bound to it.
@@ -58,19 +78,29 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
         }
     }
     let slots = |tys: &[Ty]| tys.iter().map(|ty| ty.slot(local)).collect();
-    let depth = givens.iter().find_map(|given| match given {
-        Given::Imm(Some(depth)) => u32::try_from(*depth).ok(),
+    let depths: Vec<u32> = givens
+        .iter()
+        .filter_map(|given| match given {
+            Given::Imm(Some(depth)) => u32::try_from(*depth).ok(),
+            _ => None,
+        })
+        .collect();
+    let yields = givens.iter().find_map(|given| match given {
+        Given::Choice { index, .. } => Some(Slot::Class(Yields::ALL[usize::from(*index)].class().id())),
         _ => None,
     });
-    let branch = |always| depth.map(|depth| Scope::Branch { depth, always });
+    let branch = |always| depths.first().map(|&depth| Scope::Branch { depth, always });
+    let open = |nest| Some(Scope::Open { nest, yields });
     let scope = match form.control {
         Control::None => Some(Scope::None),
-        Control::Open => Some(Scope::Open { two_armed: false }),
-        Control::OpenIf => Some(Scope::Open { two_armed: true }),
+        Control::Open => open(Nest::Plain),
+        Control::OpenLoop => open(Nest::Loop),
+        Control::OpenIf => open(Nest::If),
         Control::Reopen => Some(Scope::Reopen),
         Control::Close => Some(Scope::Close),
         Control::Branch => branch(true),
         Control::BranchIf => branch(false),
+        Control::BranchTable => Some(Scope::Table(depths)),
     };
     let scope = scope.ok_or(Misfit::Operand { at: 0, why: Why::Wide })?;
     let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes), scope };

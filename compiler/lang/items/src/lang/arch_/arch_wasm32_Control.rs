@@ -7,8 +7,12 @@
 )]
 use crate::Item;
 pub const none: Item = Item::new(&["lang", "arch", "wasm32", "Control", "none"]);
-/// Opens a block or a loop.
+/// Opens a block.
 pub const open: Item = Item::new(&["lang", "arch", "wasm32", "Control", "open"]);
+/// Opens a loop, which a branch to restarts.
+pub const open_loop: Item = Item::new(
+    &["lang", "arch", "wasm32", "Control", "open_loop"],
+);
 /// Opens what an `if` runs when its condition holds.
 pub const open_if: Item = Item::new(&["lang", "arch", "wasm32", "Control", "open_if"]);
 /// Ends what an `if` ran and opens what it runs otherwise (`else`).
@@ -20,4 +24,8 @@ pub const branch: Item = Item::new(&["lang", "arch", "wasm32", "Control", "branc
 /// Branches when the value it pops is not zero.
 pub const branch_if: Item = Item::new(
     &["lang", "arch", "wasm32", "Control", "branch_if"],
+);
+/// Branches to the block the value it pops selects among the depths it lists.
+pub const branch_table: Item = Item::new(
+    &["lang", "arch", "wasm32", "Control", "branch_table"],
 );

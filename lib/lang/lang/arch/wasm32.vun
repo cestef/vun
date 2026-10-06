@@ -8,8 +8,10 @@
 //! pops into the place `r`, and an instruction between them takes the stack as it stands. A
 //! register of the table is a local, and its class the value type it holds. A block starts and ends
 //! with an empty stack. Its structured control (`block`, `loop`, `if_`, `else_`, `end`, `br`,
-//! `br_if`) holds no values: blocks give nothing and branches carry nothing, and a branch reaches
-//! only the blocks the same block of assembly opens.
+//! `br_if`, `br_table`) nests blocks that give nothing, or one value named by the type a block is
+//! given (`block(yield_i32)`); a branch to a block carries that value, to a loop nothing, and a
+//! branch reaches only the blocks the same block of assembly opens. There is no `return`: a function
+//! the block is in may be inlined, and what follows the block in it is the backend's.
 //!
 //! A form's base is its opcode: the prefix byte (`0xfc` for the saturating conversions and the bulk
 //! memory instructions) in bits 16 to 23, and the code, a byte or the LEB128 number after the
@@ -39,7 +41,19 @@ Kind := enum {
     local,
     /// An integer immediate.
     imm(Imm),
+    /// One of a kind of named choice (`block(yield_i32)`).
+    choice(Choice),
+    /// Branch depths: this position and every one after it, each an unsigned 32-bit immediate.
+    depths,
 };
+
+/// The kinds of named choice a position takes, each an enum of its own marked with its kind as an
+/// attribute (`#[Choice.yields]`).
+Choice := enum { yields };
+
+/// The type a block gives where it gives a value (`block(yield_i32)`).
+#[Choice.yields]
+Yields := enum { yield_i32, yield_i64, yield_f32, yield_f64 };
 
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
 /// float, written as they are, little endian (`f32_const(0x3f800000)` is 1.0).
@@ -67,8 +81,10 @@ Need: type = lang.arch.Need(Feature, Size);
 /// nested, none giving a value.
 Control := enum {
     none,
-    /// Opens a block or a loop.
+    /// Opens a block.
     open,
+    /// Opens a loop, which a branch to restarts.
+    open_loop,
     /// Opens what an `if` runs when its condition holds.
     open_if,
     /// Ends what an `if` ran and opens what it runs otherwise (`else`).
@@ -79,6 +95,8 @@ Control := enum {
     branch,
     /// Branches when the value it pops is not zero.
     branch_if,
+    /// Branches to the block the value it pops selects among the depths it lists.
+    branch_table,
 };
 
 /// Where control goes after a form.
@@ -123,6 +141,7 @@ impl lang.ops.Call(_, ()) for Instruction = lang.arch.called(Instruction);
 /// (`lang.arch.asm({ ..lang.arch.wasm32.names; ... })`): the operand forms and the instructions.
 names := struct {
     ..lang.arch.{ in, out, inout };
+    ..lang.arch.wasm32.Yields;
     ..lang.arch.wasm32.arithmetic;
     ..lang.arch.wasm32.atomic;
     ..lang.arch.wasm32.compare;

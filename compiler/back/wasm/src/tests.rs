@@ -1,9 +1,11 @@
 //! Tests of the wasm backend: modules the verifier accepts are ones an independent validator
 //! accepts, and the verifier rejects what the specification does.
 
+use vun_inline::{FormId, OpId};
 use vun_intern::Symbol;
+use vun_isa_wasm32::Op as Table;
 
-use crate::module::op::{Num, Op};
+use crate::module::op::{Asm, Num, Op, Operand};
 use crate::module::{Binding, Def, Func, FuncType, Invalid, Kind, Linker, Module, Sym, ValType, Why};
 
 /// A module of one exported function of `ty` with `body`, the stack pointer and table named.
@@ -131,4 +133,40 @@ fn numeric_instructions_are_the_ones_the_table_declares() {
         assert_eq!(form.pops.iter().map(|&t| ty(t)).collect::<Vec<_>>(), n.pops(), "{name}");
         assert_eq!(form.pushes.iter().map(|&t| ty(t)).collect::<Vec<_>>(), [n.pushes()], "{name}");
     }
+}
+
+/// An instruction of a block of assembly: the form `form` of `op`.
+fn asm(op: Table, form: u16, operands: Vec<Operand>) -> Op {
+    let at = Table::ALL.iter().position(|&o| o == op).expect("an instruction of the table");
+    Op::Asm(Asm { op: OpId(u16::try_from(at).unwrap()), form: FormId(form), operands })
+}
+
+#[test]
+fn typed_blocks_and_tables_of_assembly_verify_and_validate() {
+    let typed =
+        vec![asm(Table::Block, 1, vec![Operand::Choice(0)]), Op::I32Const(5), asm(Table::End, 0, vec![])];
+    let m = module(binary(ValType::I32), Vec::new(), typed);
+    assert_eq!(m.verify(), Ok(()));
+    validate(&m.write()).unwrap();
+
+    let table = vec![
+        asm(Table::Block, 0, vec![]),
+        asm(Table::Block, 0, vec![]),
+        Op::LocalGet(0),
+        asm(Table::BrTable, 0, vec![Operand::Imm(0), Operand::Imm(1)]),
+        asm(Table::End, 0, vec![]),
+        asm(Table::End, 0, vec![]),
+        Op::I32Const(1),
+    ];
+    let m = module(binary(ValType::I32), Vec::new(), table);
+    assert_eq!(m.verify(), Ok(()));
+    validate(&m.write()).unwrap();
+}
+
+#[test]
+fn a_typed_block_without_its_value_is_rejected() {
+    let body =
+        vec![asm(Table::Block, 1, vec![Operand::Choice(0)]), asm(Table::End, 0, vec![]), Op::I32Const(1)];
+    let m = module(binary(ValType::I32), Vec::new(), body);
+    assert_eq!(m.verify(), Err(Invalid { func: 0, at: 1, why: Why::Underflow }));
 }

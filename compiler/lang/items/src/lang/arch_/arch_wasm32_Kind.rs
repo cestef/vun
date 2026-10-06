@@ -10,3 +10,7 @@ use crate::Item;
 pub const local: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "local"]);
 /// An integer immediate.
 pub const imm: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "imm"]);
+/// One of a kind of named choice (`block(yield_i32)`).
+pub const choice: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "choice"]);
+/// Branch depths: this position and every one after it, each an unsigned 32-bit immediate.
+pub const depths: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "depths"]);

@@ -8,7 +8,8 @@ use super::{build_source, run};
 /// Each function is a block, and the exit status tells which ones computed what Vun does: 42 from
 /// an addition, 2 from `local_tee` and `drop`, 6 from a 64-bit shift, 1 from the size of memory,
 /// 1 from an atomic addition, 2 from an atomic compare and exchange, 3 from a loop that adds 4, 3,
-/// 2 and 1, 5 and 6 from float constants and 4 from the two arms of an `if`.
+/// 2 and 1, 5 and 6 from float constants, 4 from the two arms of an `if`, 7 from a block giving a
+/// value and 8 from a branch table.
 const PROGRAM: &str = r"
 add := (a: i32, b: i32) -> i32 {
     mut sum: i32 = 0;
@@ -148,6 +149,46 @@ more := (x: f64) -> f64 {
     r
 };
 
+sign := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block(yield_i32);
+        i32_const(100);
+        local_get(in(x));
+        i32_const(0);
+        i32_lt_s();
+        br_if(0);
+        drop();
+        i32_const(200);
+        end();
+        local_set(out(r));
+    });
+    r
+};
+
+dispatch := (n: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        block();
+        block();
+        local_get(in(n));
+        br_table(0, 1, 2);
+        end();
+        i32_const(10);
+        local_set(out(r));
+        br(1);
+        end();
+        i32_const(20);
+        local_set(out(r));
+        br(0);
+        end();
+    });
+    r
+};
+
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut status: u32 = 0;
@@ -161,6 +202,8 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if tri(4) == 10 { status +%= 3; }
     if half(8.0) == 4.0 { status +%= 5; }
     if more(2.0) == 3.5 { status +%= 6; }
+    if sign(-4) == 100 and sign(4) == 200 { status +%= 7; }
+    if dispatch(0) == 10 and dispatch(1) == 20 and dispatch(5) == 0 { status +%= 8; }
     mut then: i32 = 0;
     mut otherwise: i32 = 0;
     pick(1, &mut then);
@@ -174,5 +217,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 fn a_block_of_wasm_instructions_computes_what_the_program_in_vun_does() {
     let Some(wasmtime) = Executable::search("wasmtime") else { return };
     let (_fixture, linked) = build_source("asm", PROGRAM, None);
-    assert_eq!(run(&wasmtime, &linked).0, Some(72));
+    assert_eq!(run(&wasmtime, &linked).0, Some(87));
 }

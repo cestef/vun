@@ -145,7 +145,12 @@ impl Body<'_> {
             }
             None => self.out.u8(u8::try_from(form.code()).expect("unprefixed codes are bytes")),
         }
-        for (arg, operand) in form.args.iter().zip(&asm.operands) {
+        for (at, operand) in asm.operands.iter().enumerate() {
+            let arg = form.args.get(at).or(form.args.last()).expect("a position of each operand");
+            // A table's depths follow their count, the last being the default's.
+            if arg.kind == Position::Depths && at + 1 == form.args.len() {
+                self.out.uleb((asm.operands.len() - at - 1) as u64);
+            }
             match (arg.kind, operand) {
                 (Position::Imm(Imm::Signed(_)), Operand::Imm(v)) => {
                     self.out.sleb(*v);
@@ -154,6 +159,7 @@ impl Body<'_> {
                     self.out.bytes(&v.to_le_bytes()[..usize::from(bits / 8)]);
                 }
                 (_, Operand::Imm(v)) => self.out.uleb(v.cast_unsigned()),
+                (_, Operand::Choice(_)) => self.out.u8(asm.yields().map_or(EMPTY, |ty| ty as u8)),
                 (_, Operand::Local(l)) => self.out.uleb(u64::from(*l)),
             }
         }

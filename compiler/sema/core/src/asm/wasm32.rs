@@ -25,7 +25,7 @@ pub(super) const SHAPE: Shape = Shape {
     cond: None,
     class: wasm::Class,
     registers: wasm::Registers,
-    choice: None,
+    choice: Some(wasm::Choice),
     widths: Widths { of: form::sizes, size: Some(sized::size), types: None, encoding: None },
     bits: &BITS,
 };

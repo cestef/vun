@@ -2,7 +2,8 @@
 //! pushes. The table is generated from `lang.arch.wasm32`; sema's checks and the backend's encoder
 //! read it, so a block that checks is one the backend encodes.
 
-pub use crate::generated::{Feature, Op};
+pub use crate::generated::{Choice, Feature, Op, Yields};
+pub use crate::reg::Class;
 pub(crate) use crate::reg::Size;
 
 /// What an operand position takes.
@@ -12,6 +13,10 @@ pub enum Kind {
     Local,
     /// An integer immediate.
     Imm(Imm),
+    /// One of a kind of named choice.
+    Choice(Choice),
+    /// Branch depths: this position and every one after it, unsigned 32-bit immediates.
+    Depths,
 }
 
 /// An integer immediate: unsigned or signed, of this many bits; or the bits of a float, written
@@ -66,8 +71,10 @@ pub enum Flow {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Control {
     None,
-    /// Opens a block or a loop.
+    /// Opens a block.
     Open,
+    /// Opens a loop, which a branch to restarts.
+    OpenLoop,
     /// Opens what an `if` runs when its condition holds.
     OpenIf,
     /// Ends what an `if` ran and opens what it runs otherwise.
@@ -78,6 +85,8 @@ pub enum Control {
     Branch,
     /// Does so when the value it pops is not zero.
     BranchIf,
+    /// Does so to the block the value it pops selects among the depths listed.
+    BranchTable,
 }
 
 /// An operand position: what it takes and what the form does with it.
@@ -152,6 +161,19 @@ impl Form {
     #[must_use]
     pub const fn code(&self) -> u32 {
         self.base & 0xffff
+    }
+}
+
+impl Yields {
+    /// The class of local holding the value a block of this type gives.
+    #[must_use]
+    pub const fn class(self) -> Class {
+        match self {
+            Self::YieldI32 => Class::I32,
+            Self::YieldI64 => Class::I64,
+            Self::YieldF32 => Class::F32,
+            Self::YieldF64 => Class::F64,
+        }
     }
 }
 

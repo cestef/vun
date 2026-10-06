@@ -13,8 +13,10 @@ mod table;
 #[cfg(test)]
 mod tests;
 
-pub use reg::{Class, Size};
-pub use table::{Access, Arg, Control, Feature, Flow, Form, Imm, Kind, Need, Op, Processor, Ty};
+pub use reg::Size;
+pub use table::{
+    Access, Arg, Choice, Class, Control, Feature, Flow, Form, Imm, Kind, Need, Op, Processor, Ty, Yields,
+};
 
 /// The instruction set.
 #[derive(Clone, Copy, Debug)]

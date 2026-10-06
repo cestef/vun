@@ -30,7 +30,8 @@ impl Lower<'_> {
         for inst in &block.insts {
             let form = Table::entry(inst.op, inst.form).1;
             let mut operands = Vec::new();
-            for (arg, operand) in form.args.iter().zip(&inst.operands) {
+            for (at, operand) in inst.operands.iter().enumerate() {
+                let arg = form.args.get(at).or(form.args.last()).ok_or(Missing::Asm)?;
                 operands.push(match operand {
                     Operand::Bound(Bound::In { value, .. }) => Local::Local(self.of[*value]),
                     Operand::Bound(Bound::Out { place, .. }) => {
@@ -39,7 +40,8 @@ impl Lower<'_> {
                     Operand::Bound(Bound::InOut { place, .. }) => {
                         Local::Local(self.place(*place, true, &mut places)?)
                     }
-                    Operand::Imm(n) if matches!(arg.kind, Kind::Imm(_)) => Local::Imm(*n),
+                    Operand::Imm(n) if matches!(arg.kind, Kind::Imm(_) | Kind::Depths) => Local::Imm(*n),
+                    Operand::Choice(at) if matches!(arg.kind, Kind::Choice(_)) => Local::Choice(*at),
                     _ => return Err(Missing::Asm),
                 });
             }

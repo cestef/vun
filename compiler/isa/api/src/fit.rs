@@ -106,16 +106,28 @@ pub enum Slot {
     Any,
 }
 
-/// What an instruction of a stack machine does to the nesting of its code, which is blocks
-/// whose values stay inside them.
+/// A kind of block of a stack machine's code, by how a branch reaches it and what follows it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nest {
+    /// A branch to it goes to its end.
+    Plain,
+    /// A branch to it goes to its start, so carries nothing.
+    Loop,
+    /// A plain block that an `else` may follow.
+    If,
+}
+
+/// What an instruction of a stack machine does to the nesting of its code, which is blocks, each
+/// giving at most one value.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Scope {
     None,
-    /// Opens a block; `two_armed` where an `else` may follow.
+    /// Opens a block of the kind, giving `yields` where it gives a value.
     Open {
-        two_armed: bool,
+        nest: Nest,
+        yields: Option<Slot>,
     },
-    /// Ends the first arm of a two-armed block and opens the second.
+    /// Ends the first arm of an `if` and opens the second.
     Reopen,
     /// Ends the innermost block.
     Close,
@@ -125,6 +137,8 @@ pub enum Scope {
         depth: u32,
         always: bool,
     },
+    /// Goes to one of the blocks at these depths, the last the default.
+    Table(Vec<u32>),
 }
 
 /// What an instruction of a stack machine does to its stack: the values it pops, the last on

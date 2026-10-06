@@ -324,10 +324,14 @@ countdown := (n: u32) -> u32 {
   reports a pop from an empty stack, a pop of another type and values left at the end
   (`asm.stack`); after an instruction that ends the code (`unreachable`) any stack goes. A block
   starts and ends with an empty stack. Structured control is `block`, `loop`, `if_`, `else_`,
-  `end`, `br` and `br_if` (a name that is a Vun keyword ends in an underscore): the blocks give no
-  value and a branch carries none, a branch counts the blocks it leaves outward from the
-  innermost and reaches only blocks the same asm block opened, and every block it opens it ends;
-  after `br` the rest of its block is unreached, as after `unreachable`. A local read where
+  `end`, `br`, `br_if` and `br_table` (a name that is a Vun keyword ends in an underscore): a
+  block gives nothing, or the one value its type names (`block(yield_i32)`, the choices of
+  `lang.arch.wasm32.Yields`), which `end` leaves on the stack and a branch to it carries (a branch
+  to a loop carries nothing); an `if` giving a value has an `else`. A branch counts the blocks it
+  leaves outward from the innermost and reaches only blocks the same asm block opened, and every
+  block it opens it ends; `br_table(0, 1, 2)` lists its depths, the last the default, and all
+  carry the same. There is no `return`: a block inlined into another function would return from
+  that one. after `br` the rest of its block is unreached, as after `unreachable`. A local read where
   another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
   write one `out` or `inout`, and a place named again is one local. A block checked for another
   target holds its bindings in a class of unknown type, which fits any position.

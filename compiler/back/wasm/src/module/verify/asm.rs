@@ -1,5 +1,6 @@
 //! The instructions of a block of inline assembly, validated by what their forms declare.
 
+use vun_isa::Nest;
 use vun_isa_wasm32::{Control, Flow, Ty};
 
 use super::Check;
@@ -15,7 +16,7 @@ impl Check<'_> {
         let form = vun_isa_wasm32::Op::entry(asm.op, asm.form).1;
         let local = asm.operands.iter().find_map(|o| match o {
             Operand::Local(l) => Some(self.local(*l)),
-            Operand::Imm(_) => None,
+            _ => None,
         });
         let ty = |ty: Ty| match ty {
             Ty::I32 => Ok(Some(ValType::I32)),
@@ -38,21 +39,22 @@ impl Check<'_> {
                 self.push(ty);
             }
         }
-        let depth = asm.operands.iter().find_map(|o| match o {
-            Operand::Imm(depth) => u32::try_from(*depth).ok(),
-            Operand::Local(_) => None,
-        });
-        match (form.control, depth) {
-            (Control::None, _) => {}
-            (Control::Open, _) => self.open(false),
-            (Control::OpenIf, _) => self.open(true),
-            (Control::Reopen, _) => self.else_()?,
-            (Control::Close, _) => self.end_block()?,
-            (Control::Branch, Some(depth)) => self.jump(None, depth)?,
-            (Control::BranchIf, Some(depth)) => {
-                self.label(depth)?;
+        let depths: Vec<u32> = asm.depths().collect();
+        let yields = asm.yields().into_iter().collect::<Vec<_>>();
+        let depth = depths.first().copied().ok_or(Why::Unbalanced);
+        match form.control {
+            Control::None => {}
+            Control::Open => self.open(Nest::Plain, yields),
+            Control::OpenLoop => self.open(Nest::Loop, yields),
+            Control::OpenIf => self.open(Nest::If, yields),
+            Control::Reopen => self.else_()?,
+            Control::Close => self.end_block()?,
+            Control::Branch => self.jump(None, depth?)?,
+            Control::BranchIf => self.through(depth?)?,
+            Control::BranchTable => {
+                let (default, cases) = depths.split_last().ok_or(Why::Unbalanced)?;
+                self.targets(cases, *default)?;
             }
-            (Control::Branch | Control::BranchIf, None) => return Err(Why::Unbalanced),
         }
         if form.flow == Flow::Ends {
             self.unreachable();

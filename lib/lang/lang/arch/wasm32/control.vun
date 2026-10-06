@@ -1,6 +1,7 @@
 //! What stops the code, does nothing, or structures it: blocks, loops and `if`s, and the branches
-//! out of them. A block's type is empty, the byte each form ends with. A name that is a keyword of
-//! Vun ends in an underscore, which the text format leaves out.
+//! out of them. A block's type is empty, the byte each form ends with, or the one value named
+//! (`block(yield_i32)`). A name that is a keyword of Vun ends in an underscore, which the text
+//! format leaves out.
 
 _w := lang.arch.wasm32;
 
@@ -11,14 +12,23 @@ nop := _w.Instruction{ .forms = &[.{ .base = 0x01 }] };
 
 _depth: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
 
-block := _w.Instruction{ .forms = &[.{ .base = 0x02, .tail = &[0x40], .control = .open }] };
+_yield: _w.Arg = .{ .kind = .choice(.yields) };
 
-loop := _w.Instruction{ .forms = &[.{ .base = 0x03, .tail = &[0x40], .control = .open }] };
+block := _w.Instruction{ .forms = &[
+    .{ .base = 0x02, .tail = &[0x40], .control = .open },
+    .{ .base = 0x02, .args = &[_yield], .control = .open },
+] };
+
+loop := _w.Instruction{ .forms = &[
+    .{ .base = 0x03, .tail = &[0x40], .control = .open_loop },
+    .{ .base = 0x03, .args = &[_yield], .control = .open_loop },
+] };
 
 /// Runs what follows up to `else_` or `end` when the value it pops is not zero.
-if_ := _w.Instruction{
-    .forms = &[.{ .base = 0x04, .pops = &[.i32], .tail = &[0x40], .control = .open_if }]
-};
+if_ := _w.Instruction{ .forms = &[
+    .{ .base = 0x04, .pops = &[.i32], .tail = &[0x40], .control = .open_if },
+    .{ .base = 0x04, .args = &[_yield], .pops = &[.i32], .control = .open_if },
+] };
 
 else_ := _w.Instruction{ .forms = &[.{ .base = 0x05, .control = .reopen }] };
 
@@ -29,4 +39,10 @@ br := _w.Instruction{ .forms = &[.{ .base = 0x0c, .args = &[_depth], .control = 
 
 br_if := _w.Instruction{
     .forms = &[.{ .base = 0x0d, .args = &[_depth], .pops = &[.i32], .control = .branch_if }]
+};
+
+/// Branches to the block the value popped selects among the depths, the last the one for a value
+/// past them: `br_table(0, 1, 2)`.
+br_table := _w.Instruction{
+    .forms = &[.{ .base = 0x0e, .args = &[.{ .kind = .depths }], .pops = &[.i32], .control = .branch_table }]
 };
