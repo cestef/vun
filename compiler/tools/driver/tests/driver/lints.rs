@@ -20,13 +20,15 @@ fn linted_at(name: &str, source: &str, levels: &[(&str, Level)]) -> Vec<(DiagId,
     let mut session = fx.session();
     let file = session.load(&Fixture::file(&dir, &app)).unwrap();
     let package = session.file_ref(file).package;
-    let pairs = levels.iter().map(|(id, level)| (DiagId::owned((*id).to_owned()), *level));
+    let pairs = levels.iter().map(|(id, level)| (DiagId::parse(id), *level));
     session.add_lint_levels(LintLevels::of(pairs).scoped_to([package]));
     session.check(file);
-    session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect()
 }
 
-const CASE: DiagId = DiagId::new("std.lints.naming.case");
+fn case() -> DiagId {
+    DiagId::parse("std.lints.naming.case")
+}
 
 #[test]
 fn a_package_lint_checks_each_call_at_its_level() {
@@ -49,8 +51,8 @@ twice := (x: u8) -> u8 { poke(poke(x)) };
 once := (x: u8) -> u8 { x };
 ",
     );
-    let raw = (DiagId::new("app.raw"), Severity::Warning);
-    assert_eq!(reported, [raw.clone(), raw]);
+    let raw = (DiagId::parse("app.raw"), Severity::Warning);
+    assert_eq!(reported, [raw, raw]);
 }
 
 #[test]
@@ -75,7 +77,7 @@ timer := struct { start := (self: &timer) {}; };
     );
     // `ring_buffer` and `Len`, `WriteAll`, `make_pair`, `Red` and `timer`, a type since its
     // method receives it.
-    assert_eq!(reported, vec![(CASE, Severity::Error); 6]);
+    assert_eq!(reported, vec![(case(), Severity::Error); 6]);
 }
 
 #[test]
@@ -92,7 +94,7 @@ Callback := (x: u8) -> u8;
 ",
     );
     // Only `Index`, a name written like a type that nothing says is one.
-    assert_eq!(reported, vec![(CASE, Severity::Error)]);
+    assert_eq!(reported, vec![(case(), Severity::Error)]);
 }
 
 #[test]
@@ -112,12 +114,12 @@ build := (b: &mut std.build.Build) {
     let file = session.load(&path).unwrap();
     session.check(file);
     let reported: Vec<_> =
-        session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect();
+        session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect();
     // The group `naming` lowered to `warn`; `unused` denied, the pair naming it winning over its
     // group's.
     assert_eq!(
         reported,
-        [(CASE, Severity::Warning), (DiagId::new("std.lints.style.unused"), Severity::Error)]
+        [(case(), Severity::Warning), (DiagId::parse("std.lints.style.unused"), Severity::Error)]
     );
 }
 
@@ -133,7 +135,7 @@ fn the_fix_allowing_a_lint_puts_its_attribute_on_the_line_above_at_the_indent() 
     let reported = session.diag.sorted(session.origins);
     let allow = reported
         .iter()
-        .filter(|d| d.id == CASE)
+        .filter(|d| d.id == case())
         .flat_map(|d| d.fixes.iter())
         .find(|f| f.msg.to_string().starts_with("allow it here"))
         .expect("a fix allowing the lint");
@@ -155,7 +157,7 @@ keep := () -> u8 {
 };
 ",
     );
-    let unused = (DiagId::new("std.lints.style.unused"), Severity::Warning);
+    let unused = (DiagId::parse("std.lints.style.unused"), Severity::Warning);
     assert_eq!(reported, [unused]);
 }
 
@@ -166,7 +168,7 @@ fn the_command_line_sets_the_level_of_a_lint() {
         "WriteAll := () -> u8 { 0 };\n",
         &[("std.lints.naming.case", Level::Warn)],
     );
-    assert_eq!(reported, [(CASE, Severity::Warning)]);
+    assert_eq!(reported, [(case(), Severity::Warning)]);
 }
 
 #[test]
@@ -186,7 +188,7 @@ fn an_expected_lint_that_reports_does_not_also_warn() {
         "f := () -> u8 { x := 1; 0 };\n",
         &[("std.lints.style.unused", Level::Expect)],
     );
-    assert_eq!(reported, [(DiagId::new("std.lints.style.unused"), Severity::Warning)]);
+    assert_eq!(reported, [(DiagId::parse("std.lints.style.unused"), Severity::Warning)]);
 }
 
 #[test]
@@ -214,6 +216,6 @@ no_magic := lang.lint.Lint{
     let file = session.load(&Fixture::file(&dir, &app)).unwrap();
     session.check(file);
     let reported: Vec<_> =
-        session.diag.sorted(session.origins).into_iter().map(|d| (d.id.clone(), d.severity)).collect();
-    assert_eq!(reported, [(DiagId::new("lintlib.no_magic"), Severity::Warning)]);
+        session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect();
+    assert_eq!(reported, [(DiagId::parse("lintlib.no_magic"), Severity::Warning)]);
 }

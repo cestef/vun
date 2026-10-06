@@ -72,7 +72,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 ",
     );
     let lines: Vec<_> = fixture.reported(&file);
-    let ids: Vec<_> = lines.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = lines.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [errors::COMPTIME_REPORTED, errors::COMPTIME_REPORTED], "{lines:?}");
 }
 
@@ -101,7 +101,7 @@ seven: Seven = [];
     // Each trap once: `-7` is no length of `lang.mem.Array`, and `seven` reads a declaration
     // whose own check reports it.
     let lines: Vec<_> = fixture.reported(&file);
-    let ids: Vec<_> = lines.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = lines.iter().map(|(id, _)| *id).collect();
     assert_eq!(
         ids,
         [errors::COMPTIME_REPORTED, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP],
@@ -127,7 +127,7 @@ run := () -> u8 {
     );
     // `alloc` is found through the impl of `Allocator` and has its type.
     let found = fixture.reported(&file);
-    assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
+    assert_eq!(found.iter().map(|(id, _)| *id).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
     assert!(found[0].1.contains("found `Result("), "{found:?}");
 }
 
@@ -151,7 +151,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     );
     // Each argument is the bytes the system passed.
     let found = fixture.reported(&file);
-    assert_eq!(found.iter().map(|(id, _)| id.clone()).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
+    assert_eq!(found.iter().map(|(id, _)| *id).collect::<Vec<_>>(), [errors::TYPES_MISMATCH]);
     assert!(found[0].1.ends_with("found `&[u8]`"), "{found:?}");
 }
 

@@ -13,7 +13,7 @@ use vun_driver::{Built, Session};
 use crate::common::Fixture;
 
 fn reported(session: &Session) -> Vec<DiagId> {
-    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
 }
 
 #[test]

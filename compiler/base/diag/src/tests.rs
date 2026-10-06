@@ -4,11 +4,39 @@ use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
 use crate::errors::{self, ALL};
-use crate::{ChildKind, DiagCtxt, Diagnostic, TraceFrame};
+use crate::{ChildKind, DiagCtxt, DiagId, Diagnostic, TraceFrame};
 
 #[test]
 fn ids_are_unique() {
     assert_eq!(ALL.iter().collect::<HashSet<_>>().len(), ALL.len());
+}
+
+#[test]
+fn a_compiler_id_is_one_value_however_it_is_named() {
+    let named = DiagId::compiler("int.does_not_fit");
+    assert_eq!(named, errors::INT_DOES_NOT_FIT);
+    assert_eq!(DiagId::parse("lang.errors.int.does_not_fit"), named);
+    assert_eq!(named.to_string(), "int.does_not_fit");
+    assert_eq!(named.segments(), ["lang", "errors", "int", "does_not_fit"]);
+}
+
+#[test]
+fn a_package_id_is_its_names_and_lies_in_the_namespaces_of_its_path() {
+    let lint = DiagId::parse("std.lints.style.unused");
+    assert!(matches!(lint, DiagId::Package(_)));
+    assert_eq!(lint, DiagId::package(["std", "lints", "style", "unused"].map(vun_intern::Symbol::intern)));
+    assert_eq!(lint.to_string(), "std.lints.style.unused");
+    assert!(lint.within(&DiagId::parse("std.lints.style")));
+    assert!(!lint.within(&DiagId::parse("std.lints.sty")));
+    assert!(errors::INT_DOES_NOT_FIT.within(&errors::INT));
+    assert!(!errors::INT_DOES_NOT_FIT.within(&errors::TYPES));
+}
+
+#[test]
+fn ids_are_ordered_by_binding_path_whatever_declares_them() {
+    let tool = DiagId::new("command.failed");
+    assert!(tool < errors::INT_DOES_NOT_FIT);
+    assert!(errors::INT_DOES_NOT_FIT < DiagId::parse("std.lints.style.unused"));
 }
 
 #[test]

@@ -66,6 +66,6 @@ fn a_release_not_matching_its_listing_is_refused() {
     let project = session.package_at(&dir).unwrap();
     session.fetch(project);
     assert!(session.update(&dir).is_empty());
-    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::PACKAGE_FETCH_FAILED]);
 }

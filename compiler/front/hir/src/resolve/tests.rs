@@ -27,7 +27,7 @@ fn check(text: &str) -> (Vec<DiagId>, usize) {
             matches!(e.kind, ExprKind::Name(_)) && matches!(resolution.names[*id], Some(Res::Binder(_)))
         })
         .count();
-    (diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect(), inside)
+    (diag.sorted(&origins).into_iter().map(|d| d.id).collect(), inside)
 }
 
 #[test]

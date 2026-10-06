@@ -85,7 +85,7 @@ impl Setting {
     fn read(given: &str) -> Result<Self, Invalid> {
         let (name, level) = given.split_once('=').ok_or_else(|| Invalid::NoLevel(given.to_owned()))?;
         let level = Level::of_name(level).ok_or_else(|| Invalid::NoName(level.to_owned()))?;
-        Ok(Self { id: DiagId::owned(name.to_owned()), level })
+        Ok(Self { id: DiagId::parse(name), level })
     }
 }
 
@@ -131,15 +131,14 @@ impl Session {
         let mut known: HashSet<DiagId> = HashSet::new();
         for package in &packages {
             let checked = self.db.get::<CheckedLints>(package);
-            known.extend(checked.lints.iter().map(|(id, _)| id.clone()));
-            known.extend(checked.groups.iter().cloned());
+            known.extend(checked.lints.iter().map(|(id, _)| *id));
+            known.extend(checked.groups.iter().copied());
         }
         let names: Vec<String> = known.iter().map(ToString::to_string).collect();
-        let unknown = levels.iter().filter(|(id, _)| !known.contains(id)).map(|(id, _)| id.clone());
+        let unknown = levels.iter().filter(|(id, _)| !known.contains(id)).map(|(id, _)| *id);
         let unknown: Vec<Invalid> = unknown
             .map(|id| {
-                let near = closest(&id.to_string(), names.iter().map(String::as_str))
-                    .map(|n| DiagId::owned(n.to_owned()));
+                let near = closest(&id.to_string(), names.iter().map(String::as_str)).map(DiagId::parse);
                 Invalid::Unknown { id, near }
             })
             .collect();

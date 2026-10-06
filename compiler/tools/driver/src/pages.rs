@@ -22,9 +22,8 @@ impl Session {
     /// loose file depends on.
     pub fn pages(&mut self) -> Vec<(DiagId, Page)> {
         let lints = self.lints();
-        let errors =
-            errors::EXPLANATIONS.iter().map(|(id, page)| (id.clone(), Page::File(self.library.join(page))));
-        let pages = lints.iter().filter_map(|(id, doc)| Some((id.clone(), Page::Text(doc.clone()?))));
+        let errors = errors::EXPLANATIONS.iter().map(|(id, page)| (*id, Page::File(self.library.join(page))));
+        let pages = lints.iter().filter_map(|(id, doc)| Some((*id, Page::Text(doc.clone()?))));
         errors.chain(pages).collect()
     }
 

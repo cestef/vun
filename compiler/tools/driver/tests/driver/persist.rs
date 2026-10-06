@@ -16,7 +16,7 @@ fn persisted(fixture: &Fixture, file: &Path) -> Vec<DiagId> {
     let file = session.load(file).unwrap();
     session.check(file);
     session.save();
-    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
 }
 
 #[test]
@@ -93,7 +93,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit { app.util.code(sys) };
 /// again (`Reuse::Check`).
 fn built(fixture: &Fixture, util: &str) -> Vec<DiagId> {
     let session = build(fixture, util);
-    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
 }
 
 #[test]

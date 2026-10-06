@@ -4,7 +4,7 @@
 use std::io;
 
 use vun_command::{Args, Command, Example, Outcome, Param};
-use vun_diag::{Diagnostic, Msg, errors};
+use vun_diag::{DiagId, Diagnostic, Msg, errors};
 use vun_suggest::closest;
 use vun_term::{Document, Format, Shell, Text};
 
@@ -20,7 +20,9 @@ pub(super) const EXPLAIN: Command<Session> = Command::run("explain", "explain a 
 fn explain(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let id = args.value(&ID).expect("positional parameters are present when a command runs");
     let pages = session.pages();
-    let Some((_, page)) = pages.iter().find(|(d, _)| d.to_string() == id || d.0 == id) else {
+    // A compiler error by its id as displayed, `int.does_not_fit`, or any by its binding path.
+    let wanted = [DiagId::compiler(id), DiagId::parse(id)];
+    let Some((_, page)) = pages.iter().find(|(d, _)| wanted.contains(d)) else {
         let msg = Msg::new().text("no diagnostic is named ").code(id);
         let names: Vec<String> = pages.iter().map(|(d, _)| d.to_string()).collect();
         let d = Diagnostic::error(errors::CLI_INVALID_VALUE, msg);

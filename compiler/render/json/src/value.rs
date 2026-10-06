@@ -19,7 +19,7 @@ impl Cx<'_> {
             .with("type", "diagnostic")
             .with("schema", SCHEMA)
             .with("id", d.id.to_string())
-            .with("path", d.id.0.to_string())
+            .with("path", d.id.path().to_string())
             .with("severity", d.severity.to_string())
             .with("message", d.message.json())
             .with("primary", d.primary.as_ref().map(|l| self.label(l)))

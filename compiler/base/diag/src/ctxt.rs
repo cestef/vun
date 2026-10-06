@@ -142,7 +142,7 @@ impl DiagCtxt {
                 let span = origins.source_span(l.origin);
                 (span.file.key(), span.range.lo, span.range.hi)
             });
-            (at, d.id.clone())
+            (at, d.id)
         });
         all
     }

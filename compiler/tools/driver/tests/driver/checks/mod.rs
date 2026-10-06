@@ -110,7 +110,7 @@ first := (xs: &[4]u8) -> u8 { unsafe lang.mem.pointer_to([4]u8, xs).cast(u8).rea
     session.add_checks([Check::Pointers]);
     let file = session.load(&path).unwrap();
     let _ = session.compile(file);
-    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::CHECK_UNSUPPORTED]);
 }
 

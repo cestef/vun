@@ -1,10 +1,7 @@
 //! A lint as a file is checked with it (spec 10, section 4): what it is, its level, and its
 //! checks, read from the `lang.lint.Lint` value its declaration holds and run on a file's nodes.
 
-use std::borrow::Cow;
-
 use vun_diag::{DiagCtxt, DiagId, DiagSource, Diagnostic, Fix, Msg, Safety, Severity, errors};
-use vun_grammar::PATH_SEPARATOR;
 use vun_hir::db::{Namespace, Package, PackageId};
 use vun_hir::tree::PatKind;
 use vun_intern::Symbol;
@@ -128,7 +125,7 @@ impl Lint {
 
     /// The id of a binding path of `segments`.
     fn id_of_strs<'a>(segments: impl IntoIterator<Item = &'a str>) -> DiagId {
-        DiagId(Cow::Owned(segments.into_iter().collect::<Vec<_>>().join(PATH_SEPARATOR)))
+        DiagId::package(segments.into_iter().map(Symbol::intern))
     }
 
     /// The path of the lint `decl` declares.
@@ -209,14 +206,14 @@ impl Lint {
         };
         let text = |f: &Value, at: Item| f.field(at).and_then(Value::text);
         let msg = text(report, lang::lint_Report::msg).unwrap_or_default();
-        let mut d = Diagnostic::new(self.id.clone(), severity, Msg::new().text(msg)).at(at, None);
+        let mut d = Diagnostic::new(self.id, severity, Msg::new().text(msg)).at(at, None);
         let span = OriginTable::global().source_span(at);
         if let Some(Value::Array(fixes)) = report.field(lang::lint_Report::fixes) {
             for edit in fixes.iter().filter_map(Edit::of) {
                 d = d.fix(edit.fix(span));
             }
         }
-        d.source = DiagSource::Lint { group: Cow::Owned(self.group.as_str().to_owned()) };
+        d.source = DiagSource::Lint { group: self.group };
         let lint = Msg::new().path(self.path.iter().map(|s| s.as_str()));
         let level = lint.clone().text(" reports at ").code(self.level.item().name());
         d.note(level).fix(self.allowing(node.declared))

@@ -33,5 +33,5 @@ outside: Outside = 0;
     let reported: Vec<_> =
         fixture.reported(&Fixture::file(&dir, &manifest)).into_iter().map(|(id, _)| id).collect();
     let fit = errors::INT_DOES_NOT_FIT;
-    assert_eq!(reported, [fit.clone(), fit, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP]);
+    assert_eq!(reported, [fit, fit, errors::COMPTIME_TRAP, errors::COMPTIME_TRAP]);
 }

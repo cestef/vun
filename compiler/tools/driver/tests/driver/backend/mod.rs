@@ -183,7 +183,7 @@ fn reported(name: &str, source: &str, backend: Name) -> Vec<vun_diag::DiagId> {
     let file = session.load(&path).unwrap();
     session.codegen = Codegen::through(backend);
     let _ = session.compile(file);
-    session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect()
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
 }
 
 #[test]

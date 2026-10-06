@@ -34,6 +34,6 @@ fn a_file_without_the_error_kept_has_nothing_to_reduce() {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     assert!(session.reduce(file, Some(DiagId::compiler("types.mismatch"))).is_err());
-    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::TOOL_NOTHING_TO_REDUCE]);
 }

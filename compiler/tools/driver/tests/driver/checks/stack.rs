@@ -58,7 +58,7 @@ fn a_backend_that_cannot_check_frames_refuses_the_stack_checks() {
     session.add_checks([Check::Stack]);
     let file = session.load(&path).unwrap();
     let _ = session.compile(file);
-    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<DiagId> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::BACKEND_LACKS]);
 }
 

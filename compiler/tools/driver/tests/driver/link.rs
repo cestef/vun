@@ -50,7 +50,7 @@ fn a_linker_is_refused_for_a_format_it_does_not_link() {
         ..Codegen::through(vun_backend_native::INFO.id)
     };
     assert!(session.build(file, None).is_err());
-    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::LINK_UNSUPPORTED]);
 }
 

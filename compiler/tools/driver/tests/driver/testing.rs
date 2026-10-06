@@ -151,7 +151,7 @@ fn a_file_outside_any_package_names_no_tests() {
     let mut session = fixture.session();
     let file = session.load(&path).unwrap();
     assert_eq!(session.tested(file, Some(&path)), None);
-    let reported: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let reported: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(reported, [vun_diag::errors::TEST_NO_NAMESPACE]);
 }
 

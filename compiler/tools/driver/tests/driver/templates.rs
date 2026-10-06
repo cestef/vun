@@ -28,7 +28,7 @@ fn a_project_is_never_written_over() {
     let mut session = fixture.session();
     assert!(session.new_project(&dir, Library::DEFAULT_TEMPLATE).is_ok());
     assert!(session.new_project(&dir, Library::DEFAULT_TEMPLATE).is_err());
-    let ids: Vec<_> = session.diag.sorted(session.origins).iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::NEW_EXISTS]);
 }
 
@@ -37,7 +37,7 @@ fn a_template_the_library_lacks_is_refused() {
     let fixture = Fixture::new("new-missing");
     let mut session = fixture.session();
     assert!(session.new_project(&fixture.root.join("mine"), "no-such-template").is_err());
-    let ids: Vec<_> = session.diag.sorted(session.origins).iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::NEW_NO_TEMPLATE]);
 }
 
@@ -56,12 +56,8 @@ fn every_template_is_a_project_that_checks() {
             let loaded = session.load(&file).unwrap();
             session.check_plan(loaded);
             session.check(loaded);
-            let reported: Vec<_> = session
-                .diag
-                .sorted(session.origins)
-                .iter()
-                .map(|d| (d.id.clone(), d.message.to_string()))
-                .collect();
+            let reported: Vec<_> =
+                session.diag.sorted(session.origins).iter().map(|d| (d.id, d.message.to_string())).collect();
             assert_eq!(reported, [], "{template}: {}", file.display());
         }
     }

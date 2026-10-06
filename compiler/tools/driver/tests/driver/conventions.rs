@@ -75,7 +75,7 @@ fn a_backend_without_conventions_refuses_them() {
     let file = session.load(&path).unwrap();
     session.codegen = Codegen { output: Output::Shared, ..Codegen::through(vun_backend_native::INFO.id) };
     assert!(session.build(file, None).is_err());
-    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::BACKEND_LACKS]);
 }
 

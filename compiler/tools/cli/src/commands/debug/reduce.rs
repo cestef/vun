@@ -1,7 +1,6 @@
 //! `vun debug reduce <file> [--keep <error>]`: the least text that fails as the file does,
 //! crashing the compiler at the same place or reporting the same error.
 
-use std::borrow::Cow;
 use std::io;
 
 use vun_command::{Args, Outcome, Param};
@@ -18,9 +17,9 @@ pub(super) const KEEP: Param = Param::option("keep")
     .about("the error the reduced file must still report; the file's first failure otherwise")
     .values(vun_command::Values::Catalog(vun_command::Catalog {
         names: || {
-            let relative = |id: &DiagId| match id.0 {
-                Cow::Borrowed(path) => path.strip_prefix(DiagId::COMPILER),
-                Cow::Owned(_) => None,
+            let relative = |id: &DiagId| match id {
+                DiagId::Lang(id) => id.path().strip_prefix(DiagId::COMPILER),
+                DiagId::Tool(_) | DiagId::Package(_) => None,
             };
             errors::ALL.iter().filter_map(relative).collect()
         },

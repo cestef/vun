@@ -31,7 +31,7 @@ Short := struct { enable: bool, mode: u3 };
     );
     // Each size is one less than the value it bounds, so each value does not fit.
     let found = fixture.reported(&file);
-    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     let mut expected = vec![errors::INT_DOES_NOT_FIT; 8];
     expected.push(errors::LAYOUT_BITS_WIDTH);
     assert_eq!(ids, expected);
@@ -64,7 +64,7 @@ Empty := struct {};
     // `Good` takes 72 bytes as C lays it out: `a` and `c` padded to 8, `g` 8, `h` 4 padded to 8,
     // then `cb` at 64.
     let found = fixture.reported(&file);
-    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     let mut expected = vec![errors::INT_DOES_NOT_FIT];
     expected.extend([errors::LAYOUT_NOT_C; 8]);
     assert_eq!(ids, expected, "{found:?}");

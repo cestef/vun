@@ -261,7 +261,7 @@ impl<'b> Analysis<'b> {
 
     /// Reports, with `help` on what to do.
     fn advise(&mut self, id: DiagId, origin: OriginId, msg: Msg, help: Msg) {
-        if self.reporting && self.reported.insert((id.clone(), origin)) {
+        if self.reporting && self.reported.insert((id, origin)) {
             self.diag.error(Diagnostic::error(id, msg).at(origin, None).help(help));
         }
     }

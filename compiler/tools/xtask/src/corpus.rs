@@ -152,7 +152,7 @@ impl Verdict {
         };
         let lints = session.lints();
         let declared = |id: &str| {
-            errors::ALL.contains(&DiagId::compiler(id)) || lints.iter().any(|(lint, _)| lint.0 == id)
+            errors::ALL.contains(&DiagId::compiler(id)) || lints.iter().any(|(lint, _)| lint.path() == id)
         };
         let undeclared: BTreeSet<At> =
             expected.iter().map(|e| &e.at).filter(|at| !declared(&at.id)).cloned().collect();

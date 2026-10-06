@@ -51,7 +51,7 @@ twenty: Int(second()..=second()) = 20;
     // Each annotation holds exactly the value the call evaluates to, but `wrong`: methods on
     // `&mut self` and frames lent to a function change what they reach too.
     let found = fixture.reported(&file);
-    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT], "{found:?}");
 }
 

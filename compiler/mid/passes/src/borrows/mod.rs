@@ -184,7 +184,7 @@ impl<'b> Checker<'b> {
         loan: Option<LoanId>,
         help: Option<Msg>,
     ) -> Option<Diagnostic> {
-        self.reported.insert((id.clone(), origin)).then(|| {
+        self.reported.insert((id, origin)).then(|| {
             let mut diagnostic = Diagnostic::error(id, msg).at(origin, None);
             if let Some(help) = help {
                 diagnostic = diagnostic.child(ChildKind::Help, help);

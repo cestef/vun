@@ -26,7 +26,7 @@ impl Log {
     /// Adds the result of `d`, its places resolved now.
     pub fn add(&mut self, d: &Diagnostic, origins: &dyn Resolve, sources: &dyn SourceMap) {
         let result = Places { origins, sources }.result(d);
-        self.results.push((d.id.clone(), result));
+        self.results.push((d.id, result));
     }
 
     /// The log: one run, whose rules are the ids of the results in the order each first
@@ -47,7 +47,7 @@ impl Log {
             .collect();
         let rules: Vec<_> = rules
             .into_iter()
-            .map(|id| Object::new().with("id", id.to_string()).with("name", id.0.to_string()))
+            .map(|id| Object::new().with("id", id.to_string()).with("name", id.path().to_string()))
             .collect();
         let driver =
             Object::new().with("name", TOOL).with("version", env!("CARGO_PKG_VERSION")).with("rules", rules);

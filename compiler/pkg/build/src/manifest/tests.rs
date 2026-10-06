@@ -18,7 +18,7 @@ fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) ->
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
     let result = f(&cst.declarations(&tokens, text), file, &mut cx);
-    (result, diag.sorted(&origins).into_iter().map(|d| d.id.clone()).collect())
+    (result, diag.sorted(&origins).into_iter().map(|d| d.id).collect())
 }
 
 fn declares(text: &str) -> bool {

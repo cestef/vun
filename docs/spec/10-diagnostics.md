@@ -92,7 +92,10 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
 - **Identity.** Every diagnostic id is a binding path to a `lang.diag.Diag` value, so ids nest and
   are namespaced like everything else: `lang.errors.int.does_not_fit`, `std.lints.perf.padding`,
   `mydrivers.lints.raw_mmio`. Compiler errors are shown relative to `lang.errors`
-  (`int.does_not_fit`). A renamed id keeps its old path as an alias.
+  (`int.does_not_fit`). A renamed id keeps its old path as an alias. In the compiler an id is
+  typed: a compiler id is a variant of the enum generated from `lang/errors.vun` (`DiagId::Lang`),
+  and the path of a lint a package defines is its interned names (`DiagId::Package`), so the
+  namespaces of an id are compared by name, never by text.
 - **Explanations.** Every id has a page, the file its binding path names on disk as it names a
   namespace's source (spec 01, section 8), with the extension `md`: `lang.errors.names.duplicate`
   is `lang/errors/names/duplicate.md` in the `lang` package, beside `lang/errors.vun`, and

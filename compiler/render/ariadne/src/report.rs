@@ -59,7 +59,7 @@ impl<W: Write> AriadneRenderer<W> {
             .with_color(color == Color::Always);
         let mut report = Report::build(kind(d.severity), at(primary.origin))
             .with_config(config)
-            .with_code(&d.id)
+            .with_code(d.id)
             .with_message(title);
         let mut files: Vec<Span> = Vec::new();
         let mut label = |origin: OriginId, msg: Option<String>, color: ariadne::Color| {

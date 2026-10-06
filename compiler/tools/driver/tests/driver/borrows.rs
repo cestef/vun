@@ -111,7 +111,7 @@ unused := () { mut r: &u8 = &zero; { x: u8 = 1; r = &x; } };
 ",
     );
     let found = fixture.reported(&file);
-    let ids: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [errors::BORROW_ESCAPE], "{found:?}");
 }
 

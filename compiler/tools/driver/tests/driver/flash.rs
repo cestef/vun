@@ -55,7 +55,7 @@ fn when_no_way_reaches_a_device_each_says_why() {
     let ways = [missing(), Delivery::Drive { mark: Symbol::intern("NO_SUCH_MARK.TXT") }];
     assert!(session.deliver(&file, &ways).is_err());
     let reports = session.diag.sorted(session.origins);
-    let ids: Vec<_> = reports.iter().map(|d| d.id.clone()).collect();
+    let ids: Vec<_> = reports.iter().map(|d| d.id).collect();
     assert_eq!(ids, [errors::PLAN_UNDELIVERED]);
     let notes = reports[0].children.iter().filter(|c| c.kind == ChildKind::Note);
     assert_eq!(notes.count(), ways.len(), "a note for each way");

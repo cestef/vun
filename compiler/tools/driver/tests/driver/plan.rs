@@ -114,7 +114,7 @@ impl Fixture {
         let programs = session.carry_out(file).unwrap_or_default();
         (
             programs.into_iter().map(|built| built.path).collect(),
-            session.diag.sorted(session.origins).into_iter().map(|d| d.id.clone()).collect(),
+            session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect(),
         )
     }
 }

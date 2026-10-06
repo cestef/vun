@@ -81,10 +81,10 @@ closed := () { { f := open(); close(f); } };
 ",
     );
     let found = fixture.reported(&file);
-    let lines: Vec<_> = found.iter().map(|(id, _)| id.clone()).collect();
+    let lines: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     // Each at the end of the block holding `f`: the inner block, the loop body, the `continue`;
     // the first two never name their `f` either.
-    let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::new("std.lints.style.unused"));
-    assert_eq!(lines, [leak.clone(), unused.clone(), leak.clone(), unused, leak], "{found:?}");
+    let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::parse("std.lints.style.unused"));
+    assert_eq!(lines, [leak, unused, leak, unused, leak], "{found:?}");
     assert!(found[0].1.contains("before its scope ends"), "{found:?}");
 }

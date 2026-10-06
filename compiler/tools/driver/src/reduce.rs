@@ -105,7 +105,7 @@ impl Session {
             return site.map(Failure::Crash).into_iter().collect();
         }
         let errors = self.diag.sorted(self.origins).into_iter().filter(|d| d.severity == Severity::Error);
-        errors.map(|d| Failure::Report(d.id.clone())).collect()
+        errors.map(|d| Failure::Report(d.id)).collect()
     }
 }
 
