@@ -1,0 +1,173 @@
+//! Tests of `std.collections.BTreeMap`.
+
+Fixed: type = std.mem.alloc.Fixed;
+Map: type = std.collections.BTreeMap(u32, u16);
+
+#[test]
+a_btree_map_keeps_its_keys_in_order := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    for k in [5, 1, 9, 3, 7] { _ = m.insert(Fixed, &mut a, k, (k * 10).to(u16)).expect("room"); }
+    std.testing.assert(
+        m.len() == 5 and m.get(&3) == Option(&u16).some(&30) and m.get(&4) == Option(&u16).none
+    );
+    std.testing.assert(m.insert(Fixed, &mut a, 3, 33).expect("room") == Option(u16).some(30));
+    std.testing.assert(m.first().expect("some").0.* == 1 and m.last().expect("some").0.* == 9);
+    mut previous: u32 = 0;
+    mut ordered := true;
+    for (k, _) in m.entries() {
+        if k.* < previous { ordered = false; }
+        previous = k.*;
+    }
+    std.testing.assert(ordered and m.entries().count() == 5);
+    std.testing.assert(
+        m.remove(&5) == Option(u16).some(50) and m.remove(&5) == Option(u16).none and m.len() == 4
+    );
+    m.get_mut(&1).expect("some").* = 11;
+    std.testing.assert(m.get(&1) == Option(&u16).some(&11) and m.contains(&9) and !m.contains(&5));
+    std.testing.assert(m.verify());
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+an_empty_btree_map_holds_nothing := () {
+    mut storage: [64]u8 = [0; 64];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    std.testing.assert(
+        m.is_empty() and m.get(&1) == Option(&u16).none and m.first() == Option((&u32, &u16)).none
+    );
+    std.testing.assert(m.remove(&1) == Option(u16).none and m.pop_first() == Option((u32, u16)).none);
+    std.testing.assert(m.entries().count() == 0 and m.verify());
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_btree_map_splits_and_merges_nodes_as_it_grows_and_shrinks := () {
+    mut storage: [65536]u8 = [0; 65536];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    // Ascending, descending and interleaved inserts each split full nodes on other sides.
+    for k in 0..100 { _ = m.insert(Fixed, &mut a, k, k.to(u16)).expect("room"); }
+    std.testing.assert(m.len() == 100 and m.verify());
+    for k in 100..200 { _ = m.insert(Fixed, &mut a, (299 - k).to(u32), k.to(u16)).expect("room"); }
+    std.testing.assert(m.len() == 200 and m.verify());
+    for k in 0..200 { std.testing.assert(m.get(&k.to(u32)) != Option(&u16).none); }
+    mut next: u32 = 0;
+    for (k, _) in m.entries() {
+        std.testing.assert(k.* >= next);
+        next = k.*;
+    }
+    // Removing from the middle takes keys out of inner nodes; the rest come out from the ends.
+    for k in 40..160 {
+        std.testing.assert(m.remove(&k.to(u32)) != Option(u16).none);
+        std.testing.assert(m.verify());
+    }
+    std.testing.assert(m.len() == 80);
+    for _ in 0..40 {
+        std.testing.assert(
+            m.pop_first() != Option((u32, u16)).none and m.pop_last() != Option((u32, u16)).none
+        );
+        std.testing.assert(m.verify());
+    }
+    std.testing.assert(m.is_empty() and m.first() == Option((&u32, &u16)).none);
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_btree_map_that_is_cleared_reuses_its_nodes := () {
+    mut storage: [16384]u8 = [0; 16384];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    for k in 0..60 { _ = m.insert(Fixed, &mut a, k, 1).expect("room"); }
+    m.clear();
+    std.testing.assert(m.is_empty() and m.verify());
+    for k in 0..60 { _ = m.insert(Fixed, &mut a, k, 2).expect("room"); }
+    std.testing.assert(m.len() == 60 and m.get(&59) == Option(&u16).some(&2) and m.verify());
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_btree_map_that_is_out_of_room_reports_it_and_stays_whole := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    mut failed := false;
+    for k in 0..200 {
+        if failed { break; }
+        match m.insert(Fixed, &mut a, k, 1) {
+            .ok(_) => {},
+            .err(_) => { failed = true; },
+        }
+        std.testing.assert(m.verify());
+    }
+    std.testing.assert(failed);
+    m.deinit(Fixed, &mut a);
+};
+
+/// Any run of inserts and removes leaves the map as the sorted one is: the same values, in the
+/// same order.
+#[test]
+a_btree_map_matches_a_sorted_map := (ops: &[u8]) {
+    mut tree_storage: [16384]u8 = [0; 16384];
+    mut model_storage: [16384]u8 = [0; 16384];
+    mut a := Fixed.init(&mut tree_storage);
+    mut b := Fixed.init(&mut model_storage);
+    mut tree := Map.empty();
+    mut model := std.collections.SortedMap(u32, u16).empty();
+    for op in ops {
+        key := (op.* & 0x3F).to(u32);
+        if op.* >= 0x80 {
+            std.testing.assert(tree.remove(&key) == model.remove(&key));
+        } else {
+            std.testing.assert(
+                tree.insert(Fixed, &mut a, key, op.to(u16)).expect("room")
+                    == model.insert(Fixed, &mut b, key, op.to(u16)).expect("room")
+            );
+        }
+        std.testing.assert(tree.verify() and tree.len() == model.len());
+    }
+    tree.deinit(Fixed, &mut a);
+    model.deinit(Fixed, &mut b);
+};
+
+#[test]
+a_btree_map_follows_a_sorted_map_through_thousands_of_random_steps := () {
+    mut tree_storage: [65536]u8 = [0; 65536];
+    mut model_storage: [65536]u8 = [0; 65536];
+    mut a := Fixed.init(&mut tree_storage);
+    mut b := Fixed.init(&mut model_storage);
+    mut tree := Map.empty();
+    mut model := std.collections.SortedMap(u32, u16).empty();
+    mut g := std.rand.Xoshiro256.seeded(2024);
+    for step in 0..4000 {
+        key := g.below(300).to(u32);
+        // Inserts are likelier in the first half of the run and removes in the second, so the tree
+        // grows tall and then shrinks back through every merge.
+        grows := (step < 2000) == (g.below(4) != 0);
+        if grows {
+            value := g.below(65536).to(u16);
+            std.testing.assert(
+                tree.insert(Fixed, &mut a, key, value).expect("room")
+                    == model.insert(Fixed, &mut b, key, value).expect("room")
+            );
+        } else {
+            std.testing.assert(tree.remove(&key) == model.remove(&key));
+        }
+        std.testing.assert(tree.get(&key) == model.get(&key) and tree.len() == model.len());
+        std.testing.assert(tree.first() == model.first() and tree.last() == model.last());
+        if step % 100 == 0 {
+            std.testing.assert(tree.verify());
+            std.testing.assert(tree.entries().count() == model.entries().count());
+        }
+    }
+    std.testing.assert(tree.verify());
+    mut next: u32 = 0;
+    for (k, v) in tree.entries() {
+        std.testing.assert(k.* >= next and model.get(k) == Option(&u16).some(v));
+        next = k.*;
+    }
+    tree.deinit(Fixed, &mut a);
+    model.deinit(Fixed, &mut b);
+};

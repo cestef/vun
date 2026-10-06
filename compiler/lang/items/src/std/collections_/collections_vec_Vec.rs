@@ -31,6 +31,11 @@ pub const get: Item = Item::new(&["std", "collections", "vec", "Vec", "get"]);
 pub const reserve: Item = Item::new(&["std", "collections", "vec", "Vec", "reserve"]);
 /// Adds `item` after the last, growing the buffer when it is full.
 pub const push: Item = Item::new(&["std", "collections", "vec", "Vec", "push"]);
+/// Adds `item` after the last, into the room `reserve` made: it traps when there is none. An
+/// item that must be consumed goes in this way, since a push that could fail holds it.
+pub const push_within_capacity: Item = Item::new(
+    &["std", "collections", "vec", "Vec", "push_within_capacity"],
+);
 /// Takes the last item away, none when it holds none.
 pub const pop: Item = Item::new(&["std", "collections", "vec", "Vec", "pop"]);
 /// Puts `item` at `i`, the items from there on one place later.

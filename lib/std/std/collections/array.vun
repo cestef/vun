@@ -57,6 +57,51 @@ ArrayVec := ($n: Int(0..), $T: type) -> type { #[kind.linear] #[kind.free] struc
         .some(unsafe self.start().offset(self._len.to(isize)).read())
     };
 
+    /// Puts `item` at `i`, the items from there on one place later; the item itself when there is
+    /// no room for it.
+    insert := (self: &mut ArrayVec(n, T), i: usize, item: T) -> Result((), T) {
+        if i > self._len { lang.panic.fail(.message("insert past the end")); }
+        if self._len == n { return .err(item); }
+        at := unsafe self.start().offset(i.to(isize));
+        unsafe {
+            lang.mem.copy(T, at.offset(1), at, (self._len - i).sat(usize));
+            at.write(item);
+        }
+        self._len += 1;
+        .ok(())
+    };
+
+    /// Takes the item at `i` away, the items after it one place earlier.
+    remove := (self: &mut ArrayVec(n, T), i: usize) -> T {
+        if i >= self._len { lang.panic.fail(.message("remove past the end")); }
+        at := unsafe self.start().offset(i.to(isize));
+        taken := unsafe at.read();
+        unsafe { lang.mem.copy(T, at, at.offset(1), (self._len - i - 1).sat(usize)); }
+        self._len -= 1;
+        taken
+    };
+
+    /// Takes the items from `at` on away, in a vector of their own.
+    split_off := (self: &mut ArrayVec(n, T), at: usize) -> ArrayVec(n, T) {
+        mut tail := ArrayVec(n, T).empty();
+        if at < self._len {
+            count := (self._len - at).sat(usize);
+            unsafe { lang.mem.copy(T, tail.start(), self.start().offset(at.to(isize)), count); }
+            tail._len = count;
+            self._len = at;
+        }
+        tail
+    };
+
+    /// Moves the items of `more` after the last, which has room for them.
+    append := (self: &mut ArrayVec(n, T), more: &mut ArrayVec(n, T)) -> Result((), ()) {
+        if (self._len + more._len) > n { return .err(()); }
+        unsafe { lang.mem.copy(T, self.start().offset(self._len.to(isize)), more.start(), more._len); }
+        self._len = (self._len + more._len).sat(usize);
+        more._len = 0;
+        .ok(())
+    };
+
     /// Keeps the first `n` items, dropping the others without a trace.
     truncate := (self: &mut ArrayVec(n, T), keep: usize) { if keep < self._len { self._len = keep; } };
     /// Holds nothing again.

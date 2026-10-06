@@ -1,0 +1,179 @@
+//! The nodes of a `BTreeMap`, in one `Vec` an allocator gave, and the moves that keep them within
+//! their bounds: splitting a full child, merging two thin ones, rotating a key through the
+//! parent. Nodes are named by their position; one nobody uses is kept in a list for the next
+//! that is wanted, so taking a key away needs no allocator.
+
+..std.mem.alloc.{ Allocator };
+..std.collections.btree.node.{ Node, degree, keys_max };
+
+Pool := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
+    _nodes: std.collections.Vec(Node(K, V)),
+    _free: ?usize,
+
+    /// A pool holding no node, which owns no memory yet.
+    empty := () -> Pool(K, V) { .{ ._nodes = std.collections.Vec(Node(K, V)).empty(), ._free = .none } };
+
+    /// The node at `i`.
+    node := (self: &Pool(K, V), i: usize) -> &Node(K, V) { &self._nodes.items()[i] };
+    /// The node at `i`, to change.
+    node_mut := (self: &mut Pool(K, V), i: usize) -> &mut Node(K, V) { &mut self._nodes.items_mut()[i] };
+
+    /// A node holding nothing: one that was given up, or a new one.
+    fresh := (self: &mut Pool(K, V), $A: Allocator, a: &mut A) -> Result(usize, A.Error) {
+        match self._free {
+            .some(at) => {
+                self._free = self.node(at).next_free;
+                self.node_mut(at).next_free = .none;
+                .ok(at)
+            },
+            .none => {
+                at := self._nodes.len();
+                self._nodes.reserve(A, a, 1)?;
+                self._nodes.push_within_capacity(Node(K, V).empty());
+                .ok(at)
+            },
+        }
+    };
+
+    /// Gives up the node at `i`, which nobody uses any more.
+    release := (self: &mut Pool(K, V), i: usize) {
+        next := self._free;
+        gone := self.node_mut(i);
+        gone.clear();
+        gone.next_free = next;
+        self._free = .some(i);
+    };
+
+    /// Splits the full child `at` of `parent` in two around its middle key, which goes up into
+    /// `parent`: a node with room.
+    split_child := (self: &mut Pool(K, V), $A: Allocator, a: &mut A, parent: usize, at: usize) -> Result(
+        (),
+        A.Error
+    ) {
+        full := self.node(parent).child(at);
+        right := self.fresh(A, a)?;
+        mut keys := self.node_mut(full).keys.split_off(degree);
+        mut values := self.node_mut(full).values.split_off(degree);
+        mut children := self.node_mut(full).children.split_off(degree);
+        middle_key := self.node_mut(full).keys.pop().expect("a full node has keys");
+        middle_value := self.node_mut(full).values.pop().expect("a full node has values");
+        born := self.node_mut(right);
+        born.keys.append(&mut keys).expect("room");
+        born.values.append(&mut values).expect("room");
+        born.children.append(&mut children).expect("room");
+        keys.deinit();
+        values.deinit();
+        children.deinit();
+        up := self.node_mut(parent);
+        up.keys.insert(at, middle_key).expect("room");
+        up.values.insert(at, middle_value).expect("room");
+        up.children.insert((at + 1).sat(usize), right).expect("room");
+        .ok(())
+    };
+
+    /// Merges the children `at` and `at + 1` of `parent` and the key between them into the first,
+    /// which is the one it gives.
+    merge := (self: &mut Pool(K, V), parent: usize, at: usize) -> usize {
+        up := self.node_mut(parent);
+        key := up.keys.remove(at);
+        value := up.values.remove(at);
+        right := up.children.remove((at + 1).sat(usize));
+        left := up.child(at);
+        mut keys := self.node_mut(right).keys.split_off(0);
+        mut values := self.node_mut(right).values.split_off(0);
+        mut children := self.node_mut(right).children.split_off(0);
+        merged := self.node_mut(left);
+        merged.keys.push(key).expect("room");
+        merged.values.push(value).expect("room");
+        merged.keys.append(&mut keys).expect("room");
+        merged.values.append(&mut values).expect("room");
+        merged.children.append(&mut children).expect("room");
+        keys.deinit();
+        values.deinit();
+        children.deinit();
+        self.release(right);
+        left
+    };
+
+    /// Moves the last key of the child before `at` through `parent` into the child `at`.
+    rotate_right := (self: &mut Pool(K, V), parent: usize, at: usize) {
+        from := self.node(parent).child((at - 1).sat(usize));
+        to := self.node(parent).child(at);
+        last := (self.node(from).len() - 1).sat(usize);
+        key := self.node_mut(from).keys.remove(last);
+        value := self.node_mut(from).values.remove(last);
+        up := self.node_mut(parent);
+        slot := (at - 1).sat(usize);
+        down_key := up.keys.remove(slot);
+        down_value := up.values.remove(slot);
+        up.keys.insert(slot, key).expect("room");
+        up.values.insert(slot, value).expect("room");
+        into := self.node_mut(to);
+        into.keys.insert(0, down_key).expect("room");
+        into.values.insert(0, down_value).expect("room");
+        if !self.node(from).is_leaf() {
+            moved := self.node_mut(from).children.pop().expect("a node with children has one");
+            self.node_mut(to).children.insert(0, moved).expect("room");
+        }
+    };
+
+    /// Moves the first key of the child after `at` through `parent` into the child `at`.
+    rotate_left := (self: &mut Pool(K, V), parent: usize, at: usize) {
+        from := self.node(parent).child((at + 1).sat(usize));
+        to := self.node(parent).child(at);
+        key := self.node_mut(from).keys.remove(0);
+        value := self.node_mut(from).values.remove(0);
+        up := self.node_mut(parent);
+        down_key := up.keys.remove(at);
+        down_value := up.values.remove(at);
+        up.keys.insert(at, key).expect("room");
+        up.values.insert(at, value).expect("room");
+        into := self.node_mut(to);
+        into.keys.push(down_key).expect("room");
+        into.values.push(down_value).expect("room");
+        if !self.node(from).is_leaf() {
+            moved := self.node_mut(from).children.remove(0);
+            self.node_mut(to).children.push(moved).expect("room");
+        }
+    };
+
+    /// The height of the subtree at `at` and how many keys it holds, when it is a B-tree: its
+    /// keys ascend between `low` and `high`, each node holds as many keys as it may, has a child
+    /// more than keys unless it is a leaf, and every leaf is as deep as the others.
+    verify := (self: &Pool(K, V), at: usize, low: ?&K, high: ?&K, is_root: bool) -> ?(usize, usize) {
+        here := self.node(at);
+        keys := here.len();
+        if keys > keys_max or here.values.len() != keys or keys == 0 { return .none; }
+        if !is_root and keys < (degree - 1).sat(usize) { return .none; }
+        for i in 0..keys {
+            key := &here.keys.items()[i];
+            if i > 0 and !(here.keys.items()[(i - 1).sat(usize)] < key.*) { return .none; }
+            if low != Option(&K).none and !(low.expect("some").* < key.*) { return .none; }
+            if high != Option(&K).none and !(key.* < high.expect("some").*) { return .none; }
+        }
+        if here.is_leaf() { return .some((1, keys)); }
+        if here.children.len() != keys + 1 { return .none; }
+        mut height: usize = 0;
+        mut total: usize = keys;
+        for i in 0..(keys + 1).sat(usize) {
+            below: ?&K = if i == 0 { low } else { .some(&here.keys.items()[(i - 1).sat(usize)]) };
+            above: ?&K = if i == keys { high } else { .some(&here.keys.items()[i]) };
+            part := self.verify(here.child(i), below, above, false)?;
+            if i == 0 { height = part.0; } else if part.0 != height { return .none; }
+            total = (total + part.1).sat(usize);
+        }
+        .some(((height + 1).sat(usize), total))
+    };
+
+    /// Holds no node again, the buffer kept.
+    clear := (self: &mut Pool(K, V)) {
+        self._nodes.clear();
+        self._free = .none;
+    };
+
+    /// Gives the nodes back to `a`, which they came from.
+    deinit := (self: Pool(K, V), $A: Allocator, a: &mut A) {
+        .{ ._nodes = nodes, ._free = _ } := self;
+        nodes.deinit(A, a);
+    };
+} };

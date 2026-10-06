@@ -50,3 +50,6 @@ pub const a_bit_set_holds_small_integers_once: Item = Item::new(
 pub const a_sorted_map_keeps_its_keys_in_order: Item = Item::new(
     &["std", "collections", "tests", "a_sorted_map_keeps_its_keys_in_order"],
 );
+pub const a_vec_pushes_into_the_room_it_reserved: Item = Item::new(
+    &["std", "collections", "tests", "a_vec_pushes_into_the_room_it_reserved"],
+);

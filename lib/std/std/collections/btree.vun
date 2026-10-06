@@ -1,0 +1,282 @@
+//! `BTreeMap(K, V)`: values by key, kept in the order `<` gives the keys, in a B-tree whose nodes
+//! lie in one `Vec` (decision 560). A lookup, an insert and a remove each walk one path from the
+//! root, splitting full nodes and growing thin ones on the way down, so none walks back up; each
+//! is logarithmic. It is linear and holds no allocator, as `Vec` is: the one passed to a call
+//! that grows it is the one `deinit` must be given. Keys and values are not dropped: ones owning
+//! memory are taken out first.
+
+..std.mem.alloc.{ Allocator };
+..std.collections.btree.node.{ Seek };
+..std.collections.btree.pool.{ Pool };
+
+/// The most levels a tree has: `degree` raised to it is past any count of keys.
+height_max: usize = 32;
+
+/// Where a key is: a node and its position there.
+Slot := struct { node: usize, at: usize };
+
+BTreeMap := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
+    _pool: Pool(K, V),
+    _root: ?usize,
+    _len: usize,
+
+    /// A map holding nothing, which owns no memory yet.
+    empty := () -> BTreeMap(K, V) { .{ ._pool = Pool(K, V).empty(), ._root = .none, ._len = 0 } };
+
+    /// How many keys it holds.
+    len := (self: &BTreeMap(K, V)) -> usize { self._len };
+    /// Whether it holds none.
+    is_empty := (self: &BTreeMap(K, V)) -> bool { self._len == 0 };
+
+    /// Where `key` is.
+    find := (self: &BTreeMap(K, V), key: &K) -> ?Slot {
+        mut at := self._root;
+        for {
+            node := at?;
+            here := self._pool.node(node);
+            match here.search(key) {
+                .found(i) => return .some(.{ .node = node, .at = i }),
+                .between(i) => {
+                    if here.is_leaf() { return .none; }
+                    at = .some(here.child(i));
+                },
+            }
+        }
+    };
+
+    /// The value of `key`.
+    get := (self: &BTreeMap(K, V), key: &K) -> ?&V {
+        match self.find(key) {
+            .some(slot) => .some(&self._pool.node(slot.node).values.items()[slot.at]),
+            .none => .none,
+        }
+    };
+
+    /// The value of `key`, to change.
+    get_mut := (self: &mut BTreeMap(K, V), key: &K) -> ?&mut V {
+        match self.find(key) {
+            .some(slot) => .some(&mut self._pool.node_mut(slot.node).values.items_mut()[slot.at]),
+            .none => .none,
+        }
+    };
+
+    /// Whether `key` is in it.
+    contains := (self: &BTreeMap(K, V), key: &K) -> bool { self.find(key) != Option(Slot).none };
+
+    /// The least key and its value.
+    first := (self: &BTreeMap(K, V)) -> ?(&K, &V) { self.end(Seek(K).min) };
+    /// The greatest key and its value.
+    last := (self: &BTreeMap(K, V)) -> ?(&K, &V) { self.end(Seek(K).max) };
+
+    /// The key and the value `seek`, `.min` or `.max`, finds.
+    end := (self: &BTreeMap(K, V), seek: Seek(K)) -> ?(&K, &V) {
+        mut at := self._root;
+        for {
+            node := at?;
+            here := self._pool.node(node);
+            match here.locate(&seek) {
+                .found(i) => return .some((&here.keys.items()[i], &here.values.items()[i])),
+                .between(i) => {
+                    if here.is_leaf() { return .none; }
+                    at = .some(here.child(i));
+                },
+            }
+        }
+    };
+
+    /// Sets the value of `key`, giving the one it had.
+    insert := (self: &mut BTreeMap(K, V), $A: Allocator, a: &mut A, key: K, value: V) -> Result(?V, A.Error) {
+        mut node := match self._root {
+            .some(root) => root,
+            .none => {
+                root := self._pool.fresh(A, a)?;
+                self._root = .some(root);
+                root
+            },
+        };
+        if self._pool.node(node).is_full() {
+            top := self._pool.fresh(A, a)?;
+            self._pool.node_mut(top).children.push(node).expect("room");
+            match self._pool.split_child(A, a, top, 0) {
+                .ok(_) => {},
+                .err(e) => {
+                    self._pool.release(top);
+                    return .err(e);
+                },
+            }
+            self._root = .some(top);
+            node = top;
+        }
+        for {
+            here := self._pool.node(node);
+            match here.search(&key) {
+                .found(i) => {
+                    old := here.values.items()[i];
+                    self._pool.node_mut(node).values.items_mut()[i] = value;
+                    return .ok(.some(old));
+                },
+                .between(i) => {
+                    if here.is_leaf() {
+                        leaf := self._pool.node_mut(node);
+                        leaf.keys.insert(i, key).expect("room");
+                        leaf.values.insert(i, value).expect("room");
+                        self._len += 1;
+                        return .ok(.none);
+                    }
+                    child := here.child(i);
+                    if self._pool.node(child).is_full() {
+                        self._pool.split_child(A, a, node, i)?;
+                    } else {
+                        node = child;
+                    }
+                },
+            }
+        }
+    };
+    /// Takes `key` away, giving its value.
+    remove := (self: &mut BTreeMap(K, V), key: &K) -> ?V {
+        match self.taken(Seek(K).key(key)) {
+            .some(pair) => .some(pair.1),
+            .none => .none,
+        }
+    };
+
+    /// Takes the least key away, giving it and its value.
+    pop_first := (self: &mut BTreeMap(K, V)) -> ?(K, V) { self.taken(Seek(K).min) };
+    /// Takes the greatest key away, giving it and its value.
+    pop_last := (self: &mut BTreeMap(K, V)) -> ?(K, V) { self.taken(Seek(K).max) };
+
+    /// Takes away what `seek` finds, leaving no empty root behind.
+    taken := (self: &mut BTreeMap(K, V), seek: Seek(K)) -> ?(K, V) {
+        root := self._root?;
+        found := self.take(root, seek);
+        if found != Option((K, V)).none {
+            self._len -= 1;
+            // The root may have changed on the way down.
+            top := self._root?;
+            if self._pool.node(top).len() == 0 and self._pool.node(top).is_leaf() {
+                self._pool.release(top);
+                self._root = .none;
+            }
+        }
+        found
+    };
+
+    /// Takes away what `seek` finds below `start`, a node that has a key to spare unless it is
+    /// the root. Each node on the way has one: a thin child is grown before it is entered.
+    take := (self: &mut BTreeMap(K, V), start: usize, seek: Seek(K)) -> ?(K, V) {
+        mut node := start;
+        for {
+            here := self._pool.node(node);
+            leaf := here.is_leaf();
+            match here.locate(&seek) {
+                .found(i) => {
+                    if leaf {
+                        leaf_node := self._pool.node_mut(node);
+                        return .some((leaf_node.keys.remove(i), leaf_node.values.remove(i)));
+                    }
+                    before := here.child(i);
+                    after := here.child((i + 1).sat(usize));
+                    if !self._pool.node(before).is_thin() {
+                        pair := self.take(before, Seek(K).max)?;
+                        return .some(self.replaced(node, i, pair));
+                    }
+                    if !self._pool.node(after).is_thin() {
+                        pair := self.take(after, Seek(K).min)?;
+                        return .some(self.replaced(node, i, pair));
+                    }
+                    node = self.merged(node, i);
+                },
+                .between(i) => {
+                    if leaf { return .none; }
+                    node = self.grown(node, here.child(i), i);
+                },
+            }
+        }
+    };
+
+    /// Puts `pair` where the key `at` of `node` was, giving that one.
+    replaced := (self: &mut BTreeMap(K, V), node: usize, at: usize, pair: (K, V)) -> (K, V) {
+        here := self._pool.node_mut(node);
+        key := here.keys.remove(at);
+        value := here.values.remove(at);
+        here.keys.insert(at, pair.0).expect("room");
+        here.values.insert(at, pair.1).expect("room");
+        (key, value)
+    };
+
+    /// Merges the children `at` and `at + 1` of `node`, which the root loses its last key to.
+    merged := (self: &mut BTreeMap(K, V), node: usize, at: usize) -> usize {
+        both := self._pool.merge(node, at);
+        if self._root == Option(usize).some(node) and self._pool.node(node).len() == 0 {
+            self._pool.release(node);
+            self._root = .some(both);
+        }
+        both
+    };
+
+    /// The child `at` of `node`, which is `child`, with a key to spare: a key comes from a sibling
+    /// that has one, or the child merges with a sibling that has none.
+    grown := (self: &mut BTreeMap(K, V), node: usize, child: usize, at: usize) -> usize {
+        if !self._pool.node(child).is_thin() { return child; }
+        keys := self._pool.node(node).len();
+        if at > 0 and !self._pool.node(self._pool.node(node).child((at - 1).sat(usize))).is_thin() {
+            self._pool.rotate_right(node, at);
+            return child;
+        }
+        if at < keys and !self._pool.node(self._pool.node(node).child((at + 1).sat(usize))).is_thin() {
+            self._pool.rotate_left(node, at);
+            return child;
+        }
+        self.merged(node, if at < keys { at } else { (at - 1).sat(usize) })
+    };
+
+    /// Each key and its value, least key first.
+    entries := (self: &BTreeMap(K, V)) -> std.iter.Iter((&K, &V)) {
+        mut path := std.collections.ArrayVec(height_max, Slot).empty();
+        defer path.deinit();
+        mut next := self._root;
+        for {
+            // Down the first children of `next`, each node with the position of its first key.
+            for next != Option(usize).none {
+                node := next.expect("some");
+                path.push(.{ .node = node, .at = 0 }).expect("room");
+                here := self._pool.node(node);
+                next = if here.is_leaf() { .none } else { .some(here.child(0)) };
+            }
+            top := path.pop();
+            if top == Option(Slot).none { break; }
+            frame := top.expect("some");
+            here := self._pool.node(frame.node);
+            if frame.at < here.len() {
+                yield (&here.keys.items()[frame.at], &here.values.items()[frame.at]);
+                path.push(.{ .node = frame.node, .at = (frame.at + 1).sat(usize) }).expect("room");
+                if !here.is_leaf() { next = .some(here.child((frame.at + 1).sat(usize))); }
+            }
+        }
+    };
+
+    /// Holds nothing again, the buffer kept.
+    clear := (self: &mut BTreeMap(K, V)) {
+        self._pool.clear();
+        self._root = .none;
+        self._len = 0;
+    };
+
+    /// Whether it is a B-tree holding as many keys as it says.
+    verify := (self: &BTreeMap(K, V)) -> bool {
+        match self._root {
+            .some(root) => match self._pool.verify(root, .none, .none, true) {
+                .some(shape) => shape.1 == self._len,
+                .none => false,
+            },
+            .none => self._len == 0,
+        }
+    };
+
+    /// Gives the nodes back to `a`, which they came from.
+    deinit := (self: BTreeMap(K, V), $A: Allocator, a: &mut A) {
+        .{ ._pool = pool, ._root = _, ._len = _ } := self;
+        pool.deinit(A, a);
+    };
+} };

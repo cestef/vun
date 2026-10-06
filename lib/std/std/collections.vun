@@ -25,3 +25,7 @@ BitSet: type = std.collections.bitset.BitSet;
 
 /// Values by key, kept in the order of the keys.
 SortedMap: ($K: type, $V: type) -> type = std.collections.sorted.SortedMap;
+
+/// Values by key, kept in the order of the keys, in a B-tree: each lookup, insert and remove is
+/// logarithmic.
+BTreeMap: ($K: type, $V: type) -> type = std.collections.btree.BTreeMap;

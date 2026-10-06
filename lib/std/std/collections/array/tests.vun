@@ -60,3 +60,25 @@ an_array_vec_of_linear_items_is_linear_and_ends_with_deinit := () {
     .{ .id = id } := taken;
     std.testing.assert(id == 1);
 };
+
+#[test]
+an_array_vec_inserts_removes_splits_and_appends := () {
+    mut v := std.collections.ArrayVec(6, u32).empty();
+    for i in [10, 30, 40] { v.push(i).expect("room"); }
+    v.insert(1, 20).expect("room");
+    std.testing.assert(v.items() == [10, 20, 30, 40]);
+    std.testing.assert(v.remove(0) == 10 and v.items() == [20, 30, 40]);
+    mut tail := v.split_off(1);
+    std.testing.assert(v.items() == [20] and tail.items() == [30, 40]);
+    std.testing.assert(v.append(&mut tail) == Result((), ()).ok(()) and tail.is_empty());
+    std.testing.assert(v.items() == [20, 30, 40]);
+    // Past the room, an insert gives the item back and an append moves nothing.
+    for i in [1, 2, 3] { v.push(i).expect("room"); }
+    std.testing.assert(v.insert(0, 9) == Result((), u32).err(9));
+    mut more := std.collections.ArrayVec(6, u32).empty();
+    more.push(7).expect("room");
+    std.testing.assert(v.append(&mut more) == Result((), ()).err(()) and more.items() == [7]);
+    more.deinit();
+    tail.deinit();
+    v.deinit();
+};

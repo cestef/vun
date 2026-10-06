@@ -67,6 +67,14 @@ Vec := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
         .ok(())
     };
 
+    /// Adds `item` after the last, into the room `reserve` made: it traps when there is none. An
+    /// item that must be consumed goes in this way, since a push that could fail holds it.
+    push_within_capacity := (self: &mut Vec(T), item: T) {
+        if self._len == self._cap { lang.panic.fail(.message("push without room")); }
+        unsafe { self._items.offset(self._len.to(isize)).write(item); }
+        self._len += 1;
+    };
+
     /// Takes the last item away, none when it holds none.
     pop := (self: &mut Vec(T)) -> ?T {
         if self._len == 0 { return .none; }

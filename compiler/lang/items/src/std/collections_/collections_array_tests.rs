@@ -38,3 +38,12 @@ pub const an_array_vec_of_linear_items_is_linear_and_ends_with_deinit: Item = It
         "an_array_vec_of_linear_items_is_linear_and_ends_with_deinit",
     ],
 );
+pub const an_array_vec_inserts_removes_splits_and_appends: Item = Item::new(
+    &[
+        "std",
+        "collections",
+        "array",
+        "tests",
+        "an_array_vec_inserts_removes_splits_and_appends",
+    ],
+);

@@ -222,3 +222,14 @@ a_sorted_map_keeps_its_keys_in_order := () {
     std.testing.assert(m.get(&1) == Option(&u16).some(&11) and m.contains(&9) and !m.contains(&5));
     m.deinit(Fixed, &mut a);
 };
+
+#[test]
+a_vec_pushes_into_the_room_it_reserved := () {
+    mut storage: [256]u8 = [0; 256];
+    mut a := Fixed.init(&mut storage);
+    mut v := std.collections.Vec(u32).empty();
+    v.reserve(Fixed, &mut a, 3).expect("room");
+    for i in 0..3 { v.push_within_capacity(i); }
+    std.testing.assert(v.items() == [0, 1, 2]);
+    v.deinit(Fixed, &mut a);
+};

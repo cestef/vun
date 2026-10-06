@@ -1,0 +1,81 @@
+//! A node of a `BTreeMap`: up to `keys_max` keys, the value of each and, unless the node is a
+//! leaf, one child more than keys, each the position of a node in the map's pool. Only the root
+//! has fewer than `degree - 1` keys.
+
+/// The fewest children a node but the root has.
+degree: usize = 6;
+/// The most keys a node holds: `2 * degree - 1`.
+keys_max: usize = 11;
+/// The most children a node has.
+children_max: usize = 12;
+
+/// Where a key is in a node.
+Search := enum {
+    /// The position of the key.
+    found(usize),
+    /// The position the key would take: the child that may hold it, in a node with children.
+    between(usize),
+};
+
+/// What to look for in a node: a key, or the least or greatest one of its subtree.
+Seek := ($K: type) -> type { enum { key(&K), min, max } };
+
+Node := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
+    keys: std.collections.ArrayVec(keys_max, K),
+    values: std.collections.ArrayVec(keys_max, V),
+    children: std.collections.ArrayVec(children_max, usize),
+    /// The next node nobody uses, while this one is in the pool's list of them.
+    next_free: ?usize,
+
+    /// A node holding nothing.
+    empty := () -> Node(K, V) {
+        .{
+            .keys = std.collections.ArrayVec(keys_max, K).empty(),
+            .values = std.collections.ArrayVec(keys_max, V).empty(),
+            .children = std.collections.ArrayVec(children_max, usize).empty(),
+            .next_free = .none,
+        }
+    };
+
+    /// How many keys it holds.
+    len := (self: &Node(K, V)) -> usize { self.keys.len() };
+    /// Whether it has no children.
+    is_leaf := (self: &Node(K, V)) -> bool { self.children.is_empty() };
+    /// Whether it has no room for another key.
+    is_full := (self: &Node(K, V)) -> bool { self.keys.is_full() };
+    /// Whether it is one key short of what a node but the root holds: no key can leave it.
+    is_thin := (self: &Node(K, V)) -> bool { self.keys.len() < degree };
+
+    /// The child at `i`.
+    child := (self: &Node(K, V), i: usize) -> usize { self.children.items()[i] };
+
+    /// Where `key` is, or would be put.
+    search := (self: &Node(K, V), key: &K) -> Search {
+        at := self.keys.items().partition_point([&key] (k: &K) { k.* < key.* });
+        if at < self.keys.len() and !(key.* < self.keys.items()[at]) { .found(at) } else { .between(at) }
+    };
+
+    /// Where `seek` is in it: found when the node holds what is sought, where to look next when
+    /// it does not.
+    locate := (self: &Node(K, V), seek: &Seek(K)) -> Search {
+        n := self.len();
+        match seek.* {
+            .key(key) => self.search(key),
+            .min => if self.is_leaf() and n > 0 { .found(0) } else { .between(0) },
+            .max => if !self.is_leaf() {
+                .between(n)
+            } else if n > 0 {
+                .found((n - 1).sat(usize))
+            } else {
+                .between(0)
+            },
+        }
+    };
+
+    /// Holds nothing again.
+    clear := (self: &mut Node(K, V)) {
+        self.keys.clear();
+        self.values.clear();
+        self.children.clear();
+    };
+} };

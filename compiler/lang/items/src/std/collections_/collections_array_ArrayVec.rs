@@ -36,6 +36,23 @@ pub const get: Item = Item::new(&["std", "collections", "array", "ArrayVec", "ge
 pub const push: Item = Item::new(&["std", "collections", "array", "ArrayVec", "push"]);
 /// Takes the last item away.
 pub const pop: Item = Item::new(&["std", "collections", "array", "ArrayVec", "pop"]);
+/// Puts `item` at `i`, the items from there on one place later; the item itself when there is
+/// no room for it.
+pub const insert: Item = Item::new(
+    &["std", "collections", "array", "ArrayVec", "insert"],
+);
+/// Takes the item at `i` away, the items after it one place earlier.
+pub const remove: Item = Item::new(
+    &["std", "collections", "array", "ArrayVec", "remove"],
+);
+/// Takes the items from `at` on away, in a vector of their own.
+pub const split_off: Item = Item::new(
+    &["std", "collections", "array", "ArrayVec", "split_off"],
+);
+/// Moves the items of `more` after the last, which has room for them.
+pub const append: Item = Item::new(
+    &["std", "collections", "array", "ArrayVec", "append"],
+);
 /// Keeps the first `n` items, dropping the others without a trace.
 pub const truncate: Item = Item::new(
     &["std", "collections", "array", "ArrayVec", "truncate"],

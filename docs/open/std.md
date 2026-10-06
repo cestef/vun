@@ -13,9 +13,9 @@
 - `task.Pool`, `testing.Sim`, `Str` and collections, generic bodies over `$A: Allocator`.
 - `std.os.entropy` reports `unsupported` on Windows until the runtime links `bcryptprimitives`
   (`ProcessPrng`).
-- A stable sort (needs scratch or an allocator), a pattern-defeating quicksort, `BTreeMap`
-  (`SortedMap` is O(n) insert), `std.os.{env,process,net}` and directories, `std.json` reading
-  beyond the pull reader.
+- A stable sort (needs scratch or an allocator), a pattern-defeating quicksort,
+  `std.os.{env,process,net}` and directories, `std.json` reading beyond the pull reader. `BTreeMap`
+  has no range queries or entries to change yet.
 - `std.math`: correctly rounded `exp`/`ln`/`sin`; `f16` transcendentals round twice.
 - Iterators: `Iter.sum` (a generic `+` of a range type needs a design), `rev`, `peekable`;
   `Vec.drain`, `Vec.split_off`.

@@ -10,6 +10,8 @@ use crate::Item;
 pub const array: Item = Item::new(&["std", "collections", "array"]);
 /// The namespace `std.collections.bitset`.
 pub const bitset: Item = Item::new(&["std", "collections", "bitset"]);
+/// The namespace `std.collections.btree`.
+pub const btree: Item = Item::new(&["std", "collections", "btree"]);
 /// The namespace `std.collections.deque`.
 pub const deque: Item = Item::new(&["std", "collections", "deque"]);
 /// The namespace `std.collections.heap`.
@@ -40,3 +42,6 @@ pub const ArrayVec: Item = Item::new(&["std", "collections", "ArrayVec"]);
 pub const BitSet: Item = Item::new(&["std", "collections", "BitSet"]);
 /// Values by key, kept in the order of the keys.
 pub const SortedMap: Item = Item::new(&["std", "collections", "SortedMap"]);
+/// Values by key, kept in the order of the keys, in a B-tree: each lookup, insert and remove is
+/// logarithmic.
+pub const BTreeMap: Item = Item::new(&["std", "collections", "BTreeMap"]);
