@@ -330,7 +330,10 @@ countdown := (n: u32) -> u32 {
   to a loop carries nothing); an `if` giving a value has an `else`. A branch counts the blocks it
   leaves outward from the innermost and reaches only blocks the same asm block opened, and every
   block it opens it ends; `br_table(0, 1, 2)` lists its depths, the last the default, and all
-  carry the same. There is no `return`: a block inlined into another function would return from
+  carry the same. `call(f)` calls a function by name: it pops the parameters of `f`'s type and
+  pushes its result (each a scalar, of the class a local of that type has; a type of no bytes is
+  passed in nothing). `global_get(stack_pointer)` and `global_set` name a global the linker defines
+  (`lang.arch.wasm32.Global`). There is no `return`: a block inlined into another function would return from
   that one. after `br` the rest of its block is unreached, as after `unreachable`. A local read where
   another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
   write one `out` or `inout`, and a place named again is one local. A block checked for another

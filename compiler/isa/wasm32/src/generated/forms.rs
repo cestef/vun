@@ -2,7 +2,7 @@
 use super::Op;
 use crate::table::Form;
 /// The forms of each instruction, in the order of `Op`.
-const FORMS: [&[Form]; 248usize] = [
+const FORMS: [&[Form]; 251usize] = [
     &super::i32_clz::I32_CLZ,
     &super::i32_ctz::I32_CTZ,
     &super::i32_popcnt::I32_POPCNT,
@@ -251,6 +251,9 @@ const FORMS: [&[Form]; 248usize] = [
     &super::i64_atomic_rmw8_cmpxchg_u::I64_ATOMIC_RMW8_CMPXCHG_U,
     &super::i64_atomic_rmw16_cmpxchg_u::I64_ATOMIC_RMW16_CMPXCHG_U,
     &super::i64_atomic_rmw32_cmpxchg_u::I64_ATOMIC_RMW32_CMPXCHG_U,
+    &super::call::CALL,
+    &super::global_get::GLOBAL_GET,
+    &super::global_set::GLOBAL_SET,
 ];
 impl Op {
     /// Its forms, in the order they are tried.

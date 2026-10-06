@@ -29,3 +29,5 @@ pub const branch_if: Item = Item::new(
 pub const branch_table: Item = Item::new(
     &["lang", "arch", "wasm32", "Control", "branch_table"],
 );
+/// Calls the function its operand names, popping its parameters and pushing its result.
+pub const call: Item = Item::new(&["lang", "arch", "wasm32", "Control", "call"]);

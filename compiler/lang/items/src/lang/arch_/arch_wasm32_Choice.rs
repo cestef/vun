@@ -7,3 +7,4 @@
 )]
 use crate::Item;
 pub const yields: Item = Item::new(&["lang", "arch", "wasm32", "Choice", "yields"]);
+pub const global: Item = Item::new(&["lang", "arch", "wasm32", "Choice", "global"]);

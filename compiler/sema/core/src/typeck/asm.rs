@@ -82,9 +82,16 @@ impl Typer<'_, '_, '_> {
             }
         }
         let mut diag = DiagCtxt::new();
-        let checked =
-            Checker { env: self.env(), arch, table: &table, forms: &forms, bound: &bound, diag: &mut diag }
-                .block(block);
+        let checked = Checker {
+            env: self.env(),
+            arch,
+            table: &table,
+            forms: &forms,
+            bound: &bound,
+            targeted,
+            diag: &mut diag,
+        }
+        .block(block);
         self.diag.absorb(&diag);
         let block = checked?;
         let known = if block.returns { unit } else { self.never()? };

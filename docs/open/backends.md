@@ -3,8 +3,9 @@
 ## wasm
 
 - Inline assembly (`lang.arch.wasm32`, decisions 474, 501, 504) runs under wasmtime, with atomics
-  and structured control (blocks giving a value, `br_table`). Open: calls, globals, SIMD;
-  `Check::Asm` does not apply to wasm blocks.
+  and structured control (blocks giving a value, `br_table`). Calls name functions, and
+  globals are the linker's (`stack_pointer`). Open: `call_indirect`, SIMD; `Check::Asm` does not
+  apply to wasm blocks.
 - The backend refuses naked functions and addresses past a function's start, and reports no frame
   sizes or debug information.
 - A WASI stack overflow is the engine's raw memory fault unless built with `--checks stack` (473),

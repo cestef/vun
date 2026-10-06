@@ -39,6 +39,9 @@ impl Check<'_> {
                 self.push(ty);
             }
         }
+        if let Some(symbol) = asm.symbol().filter(|_| form.control != Control::Call) {
+            self.stack_pointer(symbol)?;
+        }
         let depths: Vec<u32> = asm.depths().collect();
         let yields = asm.yields().into_iter().collect::<Vec<_>>();
         let depth = depths.first().copied().ok_or(Why::Unbalanced);
@@ -51,6 +54,7 @@ impl Check<'_> {
             Control::Close => self.end_block()?,
             Control::Branch => self.jump(None, depth?)?,
             Control::BranchIf => self.through(depth?)?,
+            Control::Call => self.call_symbol(asm.symbol().ok_or(Why::Unbalanced)?)?,
             Control::BranchTable => {
                 let (default, cases) = depths.split_last().ok_or(Why::Unbalanced)?;
                 self.targets(cases, *default)?;

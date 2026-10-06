@@ -2,7 +2,7 @@
 //! pushes. The table is generated from `lang.arch.wasm32`; sema's checks and the backend's encoder
 //! read it, so a block that checks is one the backend encodes.
 
-pub use crate::generated::{Choice, Feature, Op, Yields};
+pub use crate::generated::{Choice, Feature, Global, Op, Yields};
 pub use crate::reg::Class;
 pub(crate) use crate::reg::Size;
 
@@ -17,6 +17,8 @@ pub enum Kind {
     Choice(Choice),
     /// Branch depths: this position and every one after it, unsigned 32-bit immediates.
     Depths,
+    /// A function the linker places.
+    Symbol,
 }
 
 /// An integer immediate: unsigned or signed, of this many bits; or the bits of a float, written
@@ -87,6 +89,8 @@ pub enum Control {
     BranchIf,
     /// Does so to the block the value it pops selects among the depths listed.
     BranchTable,
+    /// Calls the function its operand names.
+    Call,
 }
 
 /// An operand position: what it takes and what the form does with it.

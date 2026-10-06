@@ -22,6 +22,8 @@ pub const local: Item = Item::new(&["lang", "arch", "wasm32", "local"]);
 pub const memory: Item = Item::new(&["lang", "arch", "wasm32", "memory"]);
 /// The namespace `lang.arch.wasm32.rmw`.
 pub const rmw: Item = Item::new(&["lang", "arch", "wasm32", "rmw"]);
+/// The namespace `lang.arch.wasm32.symbol`.
+pub const symbol: Item = Item::new(&["lang", "arch", "wasm32", "symbol"]);
 /// The width of a value a local holds.
 pub const Size: Item = Item::new(&["lang", "arch", "wasm32", "Size"]);
 /// A class of locals, by the value type it holds: the type a bound Vun value of that size, and
@@ -37,6 +39,9 @@ pub const Kind: Item = Item::new(&["lang", "arch", "wasm32", "Kind"]);
 pub const Choice: Item = Item::new(&["lang", "arch", "wasm32", "Choice"]);
 /// The type a block gives where it gives a value (`block(yield_i32)`).
 pub const Yields: Item = Item::new(&["lang", "arch", "wasm32", "Yields"]);
+/// A global the linker defines for every object, of 32 bits: the top of the stack in linear
+/// memory (`global_get(stack_pointer)`).
+pub const Global: Item = Item::new(&["lang", "arch", "wasm32", "Global"]);
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
 /// float, written as they are, little endian: as a float literal (`f32_const(1.0)`, rounded to
 /// 32 bits) or as the bits (`f32_const(0x3f800000)`).

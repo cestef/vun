@@ -86,7 +86,7 @@ impl Held {
     /// What an instruction's `scope` does to the blocks open, or what it does wrong.
     fn scope(&mut self, scope: &Scope) -> Result<(), &'static str> {
         match scope {
-            Scope::None => {}
+            Scope::None | Scope::Call => {}
             Scope::Open { nest, yields } => {
                 let frame =
                     Frame { height: self.values.len(), nest: *nest, yields: *yields, unreachable: false };

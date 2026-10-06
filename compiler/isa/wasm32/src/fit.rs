@@ -4,7 +4,7 @@
 use vun_inline::{Bound, ClassId, FormId, OpId, Operand};
 use vun_isa::{Fit, Fixed, Given, Misfit, Nest, Scope, Slot, Stack, Why};
 
-use crate::{Access, Arg, Choice, Class, Control, Imm, Kind, Op, Size, Ty, Yields};
+use crate::{Access, Arg, Choice, Class, Control, Global, Imm, Kind, Op, Size, Ty, Yields};
 
 /// The depth of a block, an unsigned 32-bit immediate.
 const DEPTH: Imm = Imm::Unsigned(32);
@@ -23,6 +23,7 @@ impl Arg {
             (Kind::Depths, Given::Imm(Some(value))) if DEPTH.holds(*value) => Ok(()),
             (Kind::Imm(Imm::Bits(bits)), Given::Float(float)) if float.at(bits).is_some() => Ok(()),
             (Kind::Imm(_) | Kind::Depths, Given::Imm(_)) => Err(Why::Wide),
+            (Kind::Symbol, Given::Symbol(_)) => Ok(()),
             (Kind::Choice(choice), Given::Choice { of, index })
                 if of.0 == choice as u8 && usize::from(*index) < choice.count() =>
             {
@@ -38,6 +39,7 @@ impl Choice {
     const fn count(self) -> usize {
         match self {
             Self::Yields => Yields::ALL.len(),
+            Self::Global => Global::ALL.len(),
         }
     }
 }
@@ -102,6 +104,7 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
         Control::Branch => branch(true),
         Control::BranchIf => branch(false),
         Control::BranchTable => Some(Scope::Table(depths)),
+        Control::Call => Some(Scope::Call),
     };
     let scope = scope.ok_or(Misfit::Operand { at: 0, why: Why::Wide })?;
     let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes), scope };

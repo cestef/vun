@@ -1,6 +1,7 @@
 //! What a block of WebAssembly instructions reports of its blocks (spec 07, section 6): an `end`
 //! or a branch that leaves the block of assembly, an `else` with no `if`, a block left open, and
-//! values on the stack where a block ends, and a block that does not give the value it is typed with.
+//! values on the stack where a block ends, a block that does not give the value it is typed with, and
+//! a call without the arguments its function takes (their types are checked for the target only).
 
 lines := () {
     unsafe lang.arch.asm({
@@ -81,5 +82,14 @@ table_mixes := () {
         i32_const(1);
         end();
         drop();
+    });
+};
+
+twice := (x: i32) -> i32 { x };
+
+call_without_its_argument := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        call(twice); //~ asm.stack
     });
 };

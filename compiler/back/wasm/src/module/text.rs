@@ -58,6 +58,7 @@ impl fmt::Display for Text<'_> {
                     match operand {
                         Operand::Local(l) => write!(f, " {l}")?,
                         Operand::Imm(v) => write!(f, " {v}")?,
+                        Operand::Symbol(sym) => write!(f, " ${}", name(*sym))?,
                         Operand::Choice(at) => {
                             write!(f, " {}", vun_isa_wasm32::Yields::ALL[usize::from(*at)].name())?;
                         }

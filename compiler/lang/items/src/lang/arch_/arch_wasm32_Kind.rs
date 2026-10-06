@@ -14,3 +14,5 @@ pub const imm: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "imm"]);
 pub const choice: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "choice"]);
 /// Branch depths: this position and every one after it, each an unsigned 32-bit immediate.
 pub const depths: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "depths"]);
+/// A function the linker places (`call(f)`).
+pub const symbol: Item = Item::new(&["lang", "arch", "wasm32", "Kind", "symbol"]);

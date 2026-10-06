@@ -37,6 +37,7 @@ fn a_branch_takes_depths_and_a_block_is_empty_or_of_a_type() {
             match form.control {
                 Control::Branch | Control::BranchIf => assert_eq!(kinds, depth, "{}", op.name()),
                 Control::BranchTable => assert_eq!(kinds, [Kind::Depths], "{}", op.name()),
+                Control::Call => assert_eq!(kinds, [Kind::Symbol], "{}", op.name()),
                 Control::Open | Control::OpenLoop | Control::OpenIf => {
                     // Without a type the block's byte follows its opcode, with one the type does.
                     assert!(

@@ -274,4 +274,11 @@ pub enum Op {
     I64AtomicRmw8CmpxchgU,
     I64AtomicRmw16CmpxchgU,
     I64AtomicRmw32CmpxchgU,
+    /// Calls a function, `call(f)`: the values of its parameters are on the stack, its result is left
+    /// there. Its parameters and result are each of one local's type.
+    Call,
+    /// Pushes the global, `global_get(stack_pointer)`.
+    GlobalGet,
+    /// Pops into the global.
+    GlobalSet,
 }

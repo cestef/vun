@@ -177,3 +177,32 @@ more := (x: f64) -> f64 {
     });
     r
 };
+
+twice := (x: i32) -> i32 {
+    mut y: i32 = x;
+    y +%= x;
+    y
+};
+
+/// A call takes its parameters off the stack and leaves its result, as the function's type says.
+call_twice := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        call(twice);
+        local_set(out(r));
+    });
+    r
+};
+
+/// A global the linker defines is named by the choice of its kind.
+stack_top := () -> u32 {
+    mut sp: u32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        global_get(stack_pointer);
+        local_set(out(sp));
+    });
+    sp
+};

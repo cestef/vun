@@ -1,7 +1,8 @@
 //! WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
 //! instructions of its stack machine with what each pops and pushes, as the toolchain's backend
 //! encodes them. They are declared in `arithmetic`, `atomic`, `compare`, `control`, `convert`,
-//! `local`, `memory` and `rmw`; `vun-isa-wasm32`'s tables are generated from these declarations.
+//! `local`, `memory`, `rmw` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
+//! declarations.
 //!
 //! A block of wasm is the body of a function written as the text format has it, with Vun values
 //! bound to the function's locals: `local_get(in(a))` pushes the value of `a`, `local_set(out(r))`
@@ -45,15 +46,22 @@ Kind := enum {
     choice(Choice),
     /// Branch depths: this position and every one after it, each an unsigned 32-bit immediate.
     depths,
+    /// A function the linker places (`call(f)`).
+    symbol,
 };
 
 /// The kinds of named choice a position takes, each an enum of its own marked with its kind as an
 /// attribute (`#[Choice.yields]`).
-Choice := enum { yields };
+Choice := enum { yields, global };
 
 /// The type a block gives where it gives a value (`block(yield_i32)`).
 #[Choice.yields]
 Yields := enum { yield_i32, yield_i64, yield_f32, yield_f64 };
+
+/// A global the linker defines for every object, of 32 bits: the top of the stack in linear
+/// memory (`global_get(stack_pointer)`).
+#[Choice.global]
+Global := enum { stack_pointer };
 
 /// An integer immediate: unsigned or signed, of this many bits, LEB128 encoded; or the bits of a
 /// float, written as they are, little endian: as a float literal (`f32_const(1.0)`, rounded to
@@ -98,6 +106,8 @@ Control := enum {
     branch_if,
     /// Branches to the block the value it pops selects among the depths it lists.
     branch_table,
+    /// Calls the function its operand names, popping its parameters and pushing its result.
+    call,
 };
 
 /// Where control goes after a form.
@@ -143,6 +153,7 @@ impl lang.ops.Call(_, ()) for Instruction = lang.arch.called(Instruction);
 names := struct {
     ..lang.arch.{ in, out, inout };
     ..lang.arch.wasm32.Yields;
+    ..lang.arch.wasm32.Global;
     ..lang.arch.wasm32.arithmetic;
     ..lang.arch.wasm32.atomic;
     ..lang.arch.wasm32.compare;
@@ -151,4 +162,5 @@ names := struct {
     ..lang.arch.wasm32.local;
     ..lang.arch.wasm32.memory;
     ..lang.arch.wasm32.rmw;
+    ..lang.arch.wasm32.symbol;
 };

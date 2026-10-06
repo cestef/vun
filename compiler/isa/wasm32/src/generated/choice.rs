@@ -3,7 +3,8 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Choice {
     Yields,
+    Global,
 }
 impl Choice {
-    pub const ALL: [Self; 1usize] = [Self::Yields];
+    pub const ALL: [Self; 2usize] = [Self::Yields, Self::Global];
 }

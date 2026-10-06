@@ -74,6 +74,9 @@ pub(crate) struct Checker<'c, 'a, 'db> {
     pub(crate) forms: &'c BTreeMap<ExprId, Form>,
     /// The class and width of register the value of each binding needs.
     pub(crate) bound: &'c BTreeMap<ExprId, (ClassId, Option<SizeId>)>,
+    /// Whether the block is of the target's instruction set, so that the widths of values are
+    /// known.
+    pub(crate) targeted: bool,
     pub(crate) diag: &'c mut DiagCtxt,
 }
 

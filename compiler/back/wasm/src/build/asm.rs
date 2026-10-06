@@ -7,7 +7,7 @@
 use vun_backend::Missing;
 use vun_inline::{Bound, Operand};
 use vun_isa::Blocks;
-use vun_isa_wasm32::{Kind, Op as Table, Wasm32};
+use vun_isa_wasm32::{Choice, Global, Kind, Op as Table, Wasm32};
 use vun_lir::func::Def;
 use vun_lir::{Asm, InstKind, Output, Slot, Value};
 
@@ -41,7 +41,16 @@ impl Lower<'_> {
                         Local::Local(self.place(*place, true, &mut places)?)
                     }
                     Operand::Imm(n) if matches!(arg.kind, Kind::Imm(_) | Kind::Depths) => Local::Imm(*n),
-                    Operand::Choice(at) if matches!(arg.kind, Kind::Choice(_)) => Local::Choice(*at),
+                    Operand::Choice(at) => match arg.kind {
+                        Kind::Choice(Choice::Yields) => Local::Choice(*at),
+                        Kind::Choice(Choice::Global) => match Global::ALL[usize::from(*at)] {
+                            Global::StackPointer => Local::Symbol(self.cx.stack_pointer),
+                        },
+                        _ => return Err(Missing::Asm),
+                    },
+                    Operand::Symbol(address) if arg.kind == Kind::Symbol => {
+                        Local::Symbol(self.cx.symbol(*address))
+                    }
                     _ => return Err(Missing::Asm),
                 });
             }

@@ -197,6 +197,8 @@ pub enum Operand {
     Imm(i64),
     /// One of a kind of named choice, by its index.
     Choice(u8),
+    /// A function called or a global read or written, by its symbol.
+    Symbol(SymbolId),
 }
 
 impl Asm {
@@ -204,6 +206,15 @@ impl Asm {
     pub fn depths(&self) -> impl Iterator<Item = u32> + '_ {
         self.operands.iter().filter_map(|o| match o {
             Operand::Imm(depth) => u32::try_from(*depth).ok(),
+            _ => None,
+        })
+    }
+
+    /// The symbol its operands name, if one.
+    #[must_use]
+    pub fn symbol(&self) -> Option<SymbolId> {
+        self.operands.iter().find_map(|o| match o {
+            Operand::Symbol(symbol) => Some(*symbol),
             _ => None,
         })
     }

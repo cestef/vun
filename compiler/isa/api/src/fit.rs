@@ -162,6 +162,9 @@ pub enum Scope {
     },
     /// Goes to one of the blocks at these depths, the last the default.
     Table(Vec<u32>),
+    /// Calls the function its operand names, which pops and pushes what the function's type says:
+    /// the checker of the instruction set fills them in.
+    Call,
 }
 
 /// What an instruction of a stack machine does to its stack: the values it pops, the last on

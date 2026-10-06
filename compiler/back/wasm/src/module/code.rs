@@ -158,6 +158,11 @@ impl Body<'_> {
                 (Position::Imm(Imm::Bits(bits)), Operand::Imm(v)) => {
                     self.out.bytes(&v.to_le_bytes()[..usize::from(bits / 8)]);
                 }
+                (Position::Symbol, Operand::Symbol(sym)) => {
+                    let index = self.function_index(*sym);
+                    self.relocated(RelocKind::FunctionIndexLeb, sym.number(), 0, index);
+                }
+                (_, Operand::Symbol(sym)) => self.relocated(RelocKind::GlobalIndexLeb, sym.number(), 0, 0),
                 (_, Operand::Imm(v)) => self.out.uleb(v.cast_unsigned()),
                 (_, Operand::Choice(_)) => self.out.u8(asm.yields().map_or(EMPTY, |ty| ty as u8)),
                 (_, Operand::Local(l)) => self.out.uleb(u64::from(*l)),

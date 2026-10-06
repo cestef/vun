@@ -9,7 +9,7 @@ use super::{build_source, run};
 /// an addition, 2 from `local_tee` and `drop`, 6 from a 64-bit shift, 1 from the size of memory,
 /// 1 from an atomic addition, 2 from an atomic compare and exchange, 3 from a loop that adds 4, 3,
 /// 2 and 1, 5 and 6 from float constants, 4 from the two arms of an `if`, 7 from a block giving a
-/// value and 8 from a branch table.
+/// value, 8 from a branch table, 10 from a call and 11 from the stack pointer.
 const PROGRAM: &str = r"
 add := (a: i32, b: i32) -> i32 {
     mut sum: i32 = 0;
@@ -189,6 +189,35 @@ dispatch := (n: i32) -> i32 {
     r
 };
 
+twice := (x: i32) -> i32 {
+    mut y: i32 = x;
+    y +%= x;
+    y
+};
+
+call_twice := (x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        call(twice);
+        local_set(out(r));
+    });
+    r
+};
+
+stack_top := () -> u32 {
+    mut sp: u32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        global_get(stack_pointer);
+        global_get(stack_pointer);
+        global_set(stack_pointer);
+        local_set(out(sp));
+    });
+    sp
+};
+
 start := std.os.start(main);
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut status: u32 = 0;
@@ -204,6 +233,8 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if more(2.0) == 3.5 { status +%= 6; }
     if sign(-4) == 100 and sign(4) == 200 { status +%= 7; }
     if dispatch(0) == 10 and dispatch(1) == 20 and dispatch(5) == 0 { status +%= 8; }
+    if call_twice(21) == 42 { status +%= 10; }
+    if stack_top() > 0 { status +%= 11; }
     mut then: i32 = 0;
     mut otherwise: i32 = 0;
     pick(1, &mut then);
@@ -217,5 +248,5 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 fn a_block_of_wasm_instructions_computes_what_the_program_in_vun_does() {
     let Some(wasmtime) = Executable::search("wasmtime") else { return };
     let (_fixture, linked) = build_source("asm", PROGRAM, None);
-    assert_eq!(run(&wasmtime, &linked).0, Some(87));
+    assert_eq!(run(&wasmtime, &linked).0, Some(108));
 }

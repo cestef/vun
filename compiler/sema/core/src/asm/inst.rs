@@ -6,9 +6,13 @@
 use vun_diag::{DiagId, Diagnostic, Msg, errors};
 use vun_hir::tree::ExprId;
 use vun_inline::Inst;
-use vun_isa::{Misfit, Stack, Why};
+use vun_inline::Operand;
+use vun_isa::{Misfit, Scope, Slot, Stack, Why};
 use vun_origin::OriginId;
+use vun_sema_float::Format;
+use vun_sema_ty::Ty;
 use vun_sema_ty::Value;
+use vun_sema_ty::float::FloatType;
 use vun_sema_ty::item::Site;
 
 use super::check::Checker;
@@ -50,7 +54,11 @@ impl Checker<'_, '_, '_> {
                     Ok(fit) => {
                         let (size, operands) = (fit.size, fit.operands);
                         vun_trace::tracing::trace!(op = op.0, form = form.0, size = size.0, "fitted");
-                        return Some((Inst { op, form, size, operands, origin }, fit.stack));
+                        let stack = match fit.stack {
+                            Some(stack) if stack.scope == Scope::Call => self.called(&operands, stack),
+                            stack => stack,
+                        };
+                        return Some((Inst { op, form, size, operands, origin }, stack));
                     }
                     Err(misfit) => {
                         vun_trace::tracing::trace!(op = op.0, form = form.0, ?fixed, ?misfit, "missed");
@@ -62,6 +70,33 @@ impl Checker<'_, '_, '_> {
         let name = ops.first().and_then(|op| self.table.ops.get(usize::from(op.0))).map(|op| op.name);
         self.misfit(origin, name.map_or("", |n| n.as_str()), &operands, nearest.unwrap_or(Misfit::Count));
         None
+    }
+
+    /// The stack a call of the function `operands` name makes: its parameters popped and its result
+    /// pushed, each of the class a value of its type is held in. `None` where the function's type is
+    /// not known, which leaves the rest of the block unchecked.
+    fn called(&self, operands: &[Operand<ExprId, ExprId, ExprId>], mut stack: Stack) -> Option<Stack> {
+        let symbol = operands.iter().find_map(|o| match o {
+            Operand::Symbol(symbol) => Some(*symbol),
+            _ => None,
+        })?;
+        let value = self.env.eval(symbol).ok()?;
+        let signature = self.env.value_type(&value).ok()?.signature()?;
+        // A type that holds no bytes is passed in no local.
+        let slot = |ty: Ty| {
+            if !self.targeted {
+                return Some(Slot::Any);
+            }
+            let bytes = self.env.cx.get::<Shapes>(&ty).map(|s| s.layout.size)?;
+            if bytes == 0 {
+                return None;
+            }
+            let (class, _) = self.arch.register(self.table, Some(bytes), Format::of(&ty).is_some())?;
+            Some(Slot::Class(class))
+        };
+        stack.pops = signature.params.iter().filter_map(|&ty| slot(ty)).collect();
+        stack.pushes = slot(signature.result).into_iter().collect();
+        Some(stack)
     }
 
     /// The parts `args` write before the operands, and the operands: each leading type, and a

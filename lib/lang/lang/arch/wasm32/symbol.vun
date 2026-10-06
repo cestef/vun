@@ -1,0 +1,21 @@
+//! What names something the linker places: a function called, and a global it defines.
+
+_w := lang.arch.wasm32;
+
+/// Calls a function, `call(f)`: the values of its parameters are on the stack, its result is left
+/// there. Its parameters and result are each of one local's type.
+call := _w.Instruction{ .forms = &[.{ .base = 0x10, .args = &[.{ .kind = .symbol }], .control = .call }] };
+
+/// Pushes the global, `global_get(stack_pointer)`.
+global_get := _w.Instruction{ .forms = &[.{
+    .base = 0x23,
+    .args = &[.{ .kind = .choice(.global) }],
+    .pushes = &[.i32],
+}] };
+
+/// Pops into the global.
+global_set := _w.Instruction{ .forms = &[.{
+    .base = 0x24,
+    .args = &[.{ .kind = .choice(.global) }],
+    .pops = &[.i32],
+}] };
