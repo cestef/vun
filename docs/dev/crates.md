@@ -55,7 +55,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `BackendInfo`, `Lack`, `Traced`); `vun-backend-c` (C99 as data, one printer, shards);
   `vun-backend-wasm`; `vun-codegen` (the framework over `Arch` and `Isel`: assignments,
   registers, frames, jumps, fusion, callee-saved registers for loops, snippets and their encoder,
-  `pieces`); `vun-regalloc`. Stubs: cranelift, qbe, llvm, external.
+  `pieces`); `vun-regalloc`. `vun-backend-cranelift` (LIR through Cranelift, native assisting through `vun_codegen::Assist`; `Assembly` writes the object). Stubs: qbe, llvm, external.
 - **Native backend** (`compiler/native`, TPDE's layers): `vun-native` (the `Native` trait, whose
   `compile` and `object` every architecture shares; `select` with `Carries`, `Frames`,
   `Terminates`; the object writer, listing, inline assembly and widths; fixtures behind

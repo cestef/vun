@@ -1,23 +1,98 @@
-//! In-process Cranelift code generation: the default for debug builds.
+//! The Cranelift backend (spec 13, section 8.5): machine code for debug builds, generated in
+//! process. Each function of a unit becomes a Cranelift function (`func`), compiled on its own
+//! (`compile`); the code and its relocations are placed in an object as the native backend's are
+//! (`vun_codegen::Assembly`).
 
-use vun_backend::{BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Planned, Readiness, Widest};
+mod abi;
+mod compile;
+mod failed;
+mod func;
+mod isa;
+mod listing;
+mod names;
+mod relocs;
+#[cfg(test)]
+mod tests;
+
+use std::sync::Arc;
+
+use vun_backend::{
+    Artifact, ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Feature, HeldFloats, Part, Readiness,
+    Request, Widest,
+};
+use vun_codegen::{Assembly, Assist};
+use vun_diag::{DiagCtxt, ErrorGuaranteed};
 use vun_lir_passes::legalize::Half;
 use vun_target::{Name, Names};
 
+use compile::Compilation;
+use isa::Isa;
+use listing::Listing;
+
 pub const INFO: BackendInfo = BackendInfo {
     id: Name("cranelift"),
-    arches: Names::Only(&[Name("x86_64"), Name("arm64"), Name("riscv64"), Name("s390x")]),
-    formats: Names::Any,
+    arches: Names::Only(isa::NAMES),
+    formats: Names::Only(&isa::FORMAT_NAMES),
     caps: BackendCaps {
         emits: Emits::Object,
-        features: &[Feature::Vectors, Feature::TailCalls, Feature::DebugInfo],
-        widest: Widest::Bits(128),
+        features: &[Feature::DebugInfo, Feature::FrameSizes],
+        widest: Widest::Bits(64),
         half: Half::Promoted,
         floats: HeldFloats::Every,
     },
-    readiness: Readiness::Planned,
+    readiness: Readiness::Ready,
     runs: &[],
 };
 
-/// Declared, generating no code yet.
-pub const BACKEND: Planned = Planned(&INFO);
+/// The backend, and the one that compiles what it cannot express (inline assembly and naked
+/// functions): without it, a program holding them is refused.
+#[derive(Default)]
+pub struct CraneliftBackend {
+    assist: Option<Arc<dyn Assist>>,
+}
+
+impl CraneliftBackend {
+    /// The backend, with `assist` compiling what it cannot express for the targets it assists.
+    #[must_use]
+    pub fn assisted_by(assist: Arc<dyn Assist>) -> Self {
+        Self { assist: Some(assist) }
+    }
+}
+
+impl Backend for CraneliftBackend {
+    fn info(&self) -> &BackendInfo {
+        &INFO
+    }
+
+    fn emit(
+        &self,
+        request: &Request<'_>,
+        out: &mut dyn ArtifactSink,
+        diag: &mut DiagCtxt,
+    ) -> Result<(), ErrorGuaranteed> {
+        let isa = Isa::of(request.target, request.profile)
+            .map_err(|missing| diag.error(missing.diagnostic(INFO.id)))?;
+        let assist = self.assist.as_deref().filter(|by| by.assists(request.target));
+        let handover = |ids: &[_]| assist.map_or(Ok(Vec::new()), |by| by.compile(request, ids));
+        let compiled = Compilation::of(request.unit, &isa, assist.map(|_| &handover as _), request.listing)
+            .map_err(|failed| diag.error(failed.diagnostic(INFO.id)))?;
+        let support: Vec<&str> = compiled.support.iter().map(|s| s.symbol()).collect();
+        let assembly = Assembly {
+            unit: request.unit,
+            code: &compiled.code,
+            lines: request.lines,
+            frames: None,
+            support: &support,
+        };
+        let bytes = assembly.object((isa.machine, isa.format)).write();
+        out.put(Artifact { part: Part::Whole, kind: Emits::Object, bytes });
+        let word = u64::from(request.unit.pointer_bits / u8::BITS);
+        out.frames(compiled.code.iter().map(|(id, c)| (id, c.size(word))).collect());
+        if request.listing {
+            let text = Listing { unit: request.unit, functions: &compiled.listing, lines: request.lines };
+            let text = text.to_string();
+            out.put(Artifact { part: Part::Whole, kind: Emits::Listing, bytes: text.into_bytes() });
+        }
+        Ok(())
+    }
+}

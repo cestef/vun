@@ -7,7 +7,7 @@ use crate::{Binding, Object, SectionId, Symbol, SymbolId, SymbolKind};
 
 impl Object {
     /// Makes every relocation naming a symbol this object defines name its section instead, at
-    /// the address the symbol is reached by: the object's own definitions are reached as they are
+    /// the address the symbol is reached by, but those through the global offset table: the object's own definitions are reached as they are
     /// here, never through another module's, which a shared library needs of every symbol it
     /// exports. Storage per thread is reached by its offset in the thread's block, which linkers
     /// know of symbols of storage per thread alone, not of sections: a relocation naming one names
@@ -35,7 +35,7 @@ impl Object {
         let symbols: Vec<(SectionId, SymbolId)> =
             sections.into_iter().map(|s| (s, self.section_symbol(s))).collect();
         for (_, section) in self.sections.iter_mut() {
-            for r in &mut section.relocs {
+            for r in section.relocs.iter_mut().filter(|r| !r.kind.through_table()) {
                 let Some((at, value)) = targets.get(r.symbol.index()).copied().flatten() else { continue };
                 let (_, symbol) =
                     symbols.iter().find(|(s, _)| *s == at).expect("each defining section has one");

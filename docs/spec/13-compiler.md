@@ -644,7 +644,7 @@ pub trait DiagSink {
 | Backend | Role | Targets | Notes |
 |---------|------|---------|-------|
 | C | reach | anything with a C99 compiler | first; vendor toolchains, Cortex-M, AVR, Xtensa; strict C99, defined C only (section 8.2); `restrict` from aliasing facts; frame sizes via `-fstack-usage` |
-| Cranelift | in-process debug backend (still to come) | x86_64, arm64, riscv64, s390x | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
+| Cranelift | in-process backend (section 8.8) | x86_64, arm64 (ELF) | in process; roughly 20% less codegen time than LLVM for rustc, code about 14% slower |
 | QBE | small and simple | amd64, arm64, rv64 | subprocess on IL text; no vectors (lowered), no tail calls, no 32-bit targets |
 | LLVM | optimized builds, widest native reach | ARM32/Thumb, RV32, AVR, wasm, ... | optional; `noalias`, `musttail`, stack-size sections |
 | native | fastest debug builds | x86_64, arm64 | the toolchain's own: a single-pass LIR backend in the style of TPDE (8x to 24x faster than LLVM -O0), section 8.3 |
@@ -1310,6 +1310,29 @@ in registers a call may overwrite, none saved.
   bounded (`std.check.table.entries`): past it, allocations are not recorded, and giving them back
   reports `foreign_free`. An allocator whose `free` gives memory to another allocator it wraps is
   checked twice, so the second check reports memory given back twice.
+
+### 8.8 The Cranelift backend
+
+`vun-backend-cranelift` lowers each reached LIR function to Cranelift IR (`cranelift-frontend`),
+compiles it with `cranelift-codegen` for the target's architecture and writes the code, with the
+relocations and line marks Cranelift reports, through the same `Assembly` writer as native.
+Settings follow the profile: `opt_level` is `none` for debug and `speed` for release; frame
+pointers are kept (the chain is what stack walks read) and no unwind tables are written.
+Position-independent code is used, so on arm64 every symbol goes through the GOT; thread-local
+data uses the `elf_gd` model and imports `__tls_get_addr`.
+
+What Cranelift does not express is a typed `Lack` per function: inline assembly, naked
+functions, C records passed by value, wide integers under the C convention and floats passed as
+integers in variadic calls. A backend built with an assist (`vun_codegen::Assist`, native in the
+driver's registry) compiles those functions instead, and the two halves are linked as one
+object; without one the build is refused naming what is missing. Formats are ELF, architectures
+x86_64 and arm64 (Cargo features `cranelift-x86_64`, `cranelift-arm64`); vectors are not
+lowered. Frame sizes are reported (`stack.max`).
+
+Debugging: `VUN_LOG=vun_backend_cranelift=debug` names each function compiled and each handed
+over, `trace` each instruction lowered; `vun debug dump code --backend cranelift <file>` prints
+each function's Cranelift IR and machine listing with a legend from source-location numbers to
+origins.
 
 ## 9. Workspace
 

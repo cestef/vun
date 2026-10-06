@@ -1,6 +1,6 @@
 [package]
 name = "vun-backend-cranelift"
-description = "Cranelift backend: fast debug builds."
+description = "Cranelift backend: in-process code generation for fast debug builds."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,31 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["x86_64", "arm64"]
+x86_64 = ["cranelift-codegen/x86"]
+arm64 = ["cranelift-codegen/arm64"]
+
 [dependencies]
+cranelift-codegen.workspace = true
+cranelift-frontend.workspace = true
+target-lexicon.workspace = true
+vun-abi.workspace = true
+vun-asm.workspace = true
 vun-backend.workspace = true
+vun-codegen.workspace = true
+vun-diag.workspace = true
+vun-index.workspace = true
+vun-intern.workspace = true
 vun-lir.workspace = true
 vun-lir-passes.workspace = true
+vun-object.workspace = true
+vun-origin.workspace = true
+vun-par.workspace = true
 vun-target.workspace = true
+vun-trace.workspace = true
+
+[dev-dependencies]
+vun-inline.workspace = true
+vun-items.workspace = true
+vun-lir = { workspace = true, features = ["testing"] }

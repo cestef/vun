@@ -35,6 +35,9 @@ pub enum RelocKind {
     /// The address of the symbol's TLS descriptor in the global offset table, relative to the
     /// field, 32 bits: storage per thread reached through a call.
     TlsDescPc32,
+    /// The symbol's two entries in the global offset table, relative to the field, 32 bits:
+    /// storage per thread reached through a call of the loader's function.
+    TlsGdPc32,
     /// A call through the symbol's TLS descriptor: marks the instruction, writing no field.
     TlsDescCall,
     /// The page of the symbol's TLS descriptor relative to the field's page, 21 bits (`adrp`).
@@ -87,6 +90,15 @@ pub enum RelocKind {
     ThumbLow16,
     /// The high 16 bits of the symbol's address, as a Thumb `movt` reads them.
     ThumbHigh16,
+}
+
+impl RelocKind {
+    /// Whether it reaches the symbol through its entry in the global offset table, which names
+    /// the symbol itself: a section's symbol and an addend make an entry of the section's start.
+    #[must_use]
+    pub const fn through_table(self) -> bool {
+        matches!(self, Self::GotPc32 | Self::GotPage21 | Self::GotPageOffset64)
+    }
 }
 
 /// What a section holds.

@@ -25,6 +25,8 @@ backends = [
     "native-thumb",
     "backend-wasm",
     "backend-cranelift",
+    "cranelift-x86_64",
+    "cranelift-arm64",
     "backend-qbe",
     "backend-llvm",
     "backend-external",
@@ -46,6 +48,8 @@ native-arm64 = ["vun-driver/native-arm64"]
 native-thumb = ["vun-driver/native-thumb"]
 backend-wasm = ["vun-driver/backend-wasm"]
 backend-cranelift = ["vun-driver/backend-cranelift"]
+cranelift-x86_64 = ["vun-driver/cranelift-x86_64"]
+cranelift-arm64 = ["vun-driver/cranelift-arm64"]
 backend-qbe = ["vun-driver/backend-qbe"]
 backend-llvm = ["vun-driver/backend-llvm"]
 backend-external = ["vun-driver/backend-external"]

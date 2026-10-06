@@ -85,7 +85,7 @@ vun-native = { path = "compiler/native/core" }
 vun-native-x86_64 = { path = "compiler/native/x86_64" }
 vun-native-arm64 = { path = "compiler/native/arm64" }
 vun-native-thumb = { path = "compiler/native/thumb" }
-vun-backend-cranelift = { path = "compiler/back/cranelift" }
+vun-backend-cranelift = { path = "compiler/back/cranelift", default-features = false }
 vun-backend-qbe = { path = "compiler/back/qbe" }
 vun-backend-llvm = { path = "compiler/back/llvm" }
 vun-backend-external = { path = "compiler/back/external" }
@@ -151,6 +151,9 @@ libfuzzer-sys = "0.4"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 # An independent decoder: it checks the x86-64 assembler's table, and `vun debug disasm` reads code
 # back with it (decision 408).
+cranelift-codegen = { version = "0.135", default-features = false, features = ["std"] }
+cranelift-frontend = { version = "0.135", default-features = false, features = ["std"] }
+target-lexicon = { version = "0.13", default-features = false }
 yaxpeax-x86 = { version = "2", default-features = false, features = ["std", "fmt"] }
 # An independent AArch64 decoder, as the x86-64 one is, and the traits both have.
 yaxpeax-arm = { version = "0.5", default-features = false, features = ["std", "fmt"] }

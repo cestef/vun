@@ -145,6 +145,6 @@ board; phases 4 to 6 are partly done.
 ) <tab-roadmap>
 
 Backends and linkers are chosen per target and profile from lists the target declares, among
-those the machine's toolchain provides. Cranelift, QBE and LLVM backends and the MSVC linker are
+those the machine's toolchain provides. QBE and LLVM backends and the MSVC linker are
 declared as interfaces without an implementation; a program asking for one is refused with a
 diagnostic naming what is available.

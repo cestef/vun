@@ -70,3 +70,27 @@ fn a_relocation_on_arm_keeps_naming_its_symbol_for_linkers_reading_addends_from_
     let relocs = &object.sections[text].relocs;
     assert_eq!((relocs[0].symbol, relocs[0].addend), (callee, -4));
 }
+
+#[test]
+fn a_relocation_through_the_global_offset_table_keeps_naming_its_symbol() {
+    let mut object = Object::new(Machine::Aarch64, Format::Elf);
+    let data = object.section(b".data", Contents::Writable);
+    let text = object.section(b".text", Contents::Code);
+    object.append(text, &[0; 8], 4);
+    let at = object.append(data, &[0; 8], 8);
+    let held = object.symbols.push(Symbol {
+        name: b"held".to_vec(),
+        section: Some(data),
+        value: at + 8,
+        size: 8,
+        kind: SymbolKind::Object,
+        binding: Binding::Local,
+    });
+    let reloc = |offset, kind| Reloc { offset, symbol: held, kind, addend: 0 };
+    object.sections[text].relocs = vec![reloc(0, RelocKind::GotPage21), reloc(4, RelocKind::Page21)];
+    object.bind_locally();
+    let relocs = &object.sections[text].relocs;
+    // The entry in the table is the symbol's; the page of a direct reference is the section's.
+    assert_eq!((relocs[0].symbol, relocs[0].addend), (held, 0));
+    assert_ne!(relocs[1].symbol, held);
+}

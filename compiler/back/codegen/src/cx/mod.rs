@@ -3,12 +3,14 @@
 //! the walk follows the plan, running its moves before and after each point and on each edge.
 
 mod call;
+mod compiled;
 mod describe;
 mod exit;
 mod moves;
 mod saves;
 mod values;
 
+pub use compiled::Compiled;
 pub use exit::{Fused, Layout};
 
 use vun_asm::{Isa, Label};
@@ -62,27 +64,6 @@ pub struct Cx<'a, A: Arch> {
     unwind: Vec<(u64, Step)>,
     /// Which values the branch ending their block makes (`Cx::is_fused`), found when first asked.
     fusing: std::cell::OnceCell<Vec<bool>>,
-}
-
-/// A function's machine code.
-pub struct Compiled<T> {
-    pub code: vun_asm::Code<T, Address>,
-    /// The bytes its frame takes below the frame pointer.
-    pub frame: u64,
-    /// Where the code of each instruction and terminator starts, with its origin: what line
-    /// tables and listings read.
-    pub marks: Vec<(u64, OriginId)>,
-    /// The steps of its frame, where each takes effect: what unwinders read.
-    pub unwind: Vec<(u64, Step)>,
-}
-
-impl<T> Compiled<T> {
-    /// The code of a function nothing reaches: none.
-    #[must_use]
-    pub fn unreached() -> Self {
-        let code = vun_asm::Code { bytes: Vec::new(), relocs: Vec::new(), listing: Vec::new() };
-        Self { code, frame: 0, marks: Vec::new(), unwind: Vec::new() }
-    }
 }
 
 /// Compiles `f` of `unit`, listing its code when `listed`.

@@ -218,6 +218,7 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 | `vun_codegen=trace` | each instruction selected |
 | `vun_lower::assemble=debug,trace` | each function the program holds (trace) and each callee it lacks (debug), as `file#expr bound [x_]` |
 | `vun_backend_wasm=debug,trace` | each wasm function lowered, each instruction's code |
+| `vun_backend_cranelift=debug,trace` | each Cranelift function compiled or handed to the assisting backend, each instruction lowered (`vun debug dump code --backend cranelift` prints the IR and listing with origins) |
 | `vun_link_lld=debug` | each `wasm-ld` run |
 | `vun_link_wasm=debug` | each wasm link in process |
 | `vun_lir_passes=debug` | each function's tidy (`trace`: each pass) |

@@ -1,12 +1,12 @@
 //! A unit as one relocatable object: functions in `.text`, data by what the program does with
 //! it, a symbol per function, datum and import, the relocations of both, and the line table of
-//! the functions' code.
+//! the functions' code. Every backend that compiles functions into bytes places them here.
 
+use crate::Compiled;
 use vun_index::IndexVec;
 use vun_lir::{Address, DataId, FuncId, ImportId, ImportKind, Linkage, Storage, Unit};
 
 use vun_backend::Lines;
-use vun_codegen::Compiled;
 use vun_dwarf::{CallFrame, Declared, Fde, Function, Row};
 use vun_object::{
     Binding, Contents, Format, Machine, Object, Reloc, SectionId, Symbol, SymbolId, SymbolKind,
@@ -30,17 +30,23 @@ const PRODUCER: &str = "vun";
 
 /// What a unit's object is made of: the unit, its functions compiled as `code`, where their
 /// lines are, and how their frames unwind.
-pub(crate) struct Assembly<'a, T> {
-    pub(crate) unit: &'a Unit,
-    pub(crate) code: &'a IndexVec<FuncId, Compiled<T>>,
-    pub(crate) lines: &'a dyn Lines,
-    pub(crate) frames: &'a CallFrame,
+pub struct Assembly<'a, T> {
+    pub unit: &'a Unit,
+    pub code: &'a IndexVec<FuncId, Compiled<T>>,
+    pub lines: &'a dyn Lines,
+    /// How their frames unwind, for a backend that describes them.
+    pub frames: Option<&'a CallFrame>,
+    /// The functions the code calls that the unit does not name, as imports after its own.
+    pub support: &'a [&'a str],
 }
 
 impl<T> Assembly<'_, T> {
     /// The object for `machine` in `format`.
+    ///
+    /// # Panics
+    /// If data outgrows memory.
     #[must_use]
-    pub(crate) fn object(&self, (machine, format): (Machine, Format)) -> Object {
+    pub fn object(&self, (machine, format): (Machine, Format)) -> Object {
         let mut object = Object::new(machine, format);
         for (contents, name) in SECTIONS {
             object.section_named(name, contents);
@@ -86,12 +92,14 @@ impl<T> Assembly<'_, T> {
         self.debug_info(&funcs, &mut object, text);
         // Mach-O describes frames otherwise (compact unwind information), which is left for later.
         if format == Format::Elf {
-            let fdes = self.code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
-                symbol: funcs[id],
-                size: c.code.bytes.len() as u64,
-                steps: c.unwind.clone(),
-            });
-            self.frames.write(&mut object, &fdes.collect::<Vec<_>>());
+            if let Some(frames) = self.frames {
+                let fdes = self.code.iter().filter(|(_, c)| !c.code.bytes.is_empty()).map(|(id, c)| Fde {
+                    symbol: funcs[id],
+                    size: c.code.bytes.len() as u64,
+                    steps: c.unwind.clone(),
+                });
+                frames.write(&mut object, &fdes.collect::<Vec<_>>());
+            }
             // Mach-O keeps naming symbols: its linker splits sections at them.
             object.bind_locally();
         } else {
@@ -158,20 +166,17 @@ impl<T> Assembly<'_, T> {
 
     /// A symbol for each import, defined elsewhere.
     fn imports(&self, object: &mut Object) -> IndexVec<ImportId, SymbolId> {
-        let imports = self.unit.imports.iter().map(|(_, i)| {
+        let declared = self.unit.imports.iter().map(|(_, i)| {
             let kind = match i.kind {
                 ImportKind::Func(_) => SymbolKind::Func,
                 ImportKind::Data => SymbolKind::Unknown,
             };
-            let name = i.symbol.as_str().as_bytes().to_vec();
-            object.symbols.push(Symbol {
-                name,
-                section: None,
-                value: 0,
-                size: 0,
-                kind,
-                binding: Binding::Global,
-            })
+            (i.symbol.as_str().as_bytes().to_vec(), kind)
+        });
+        let support = self.support.iter().map(|name| (name.as_bytes().to_vec(), SymbolKind::Func));
+        let imports = declared.chain(support).map(|(name, kind)| {
+            let (section, value, size, binding) = (None, 0, 0, Binding::Global);
+            object.symbols.push(Symbol { name, section, value, size, kind, binding })
         });
         imports.collect::<Vec<_>>().into()
     }

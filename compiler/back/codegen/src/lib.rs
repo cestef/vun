@@ -12,12 +12,16 @@
 //! (constants and addresses), the callee-saved registers the plan uses, the frame, compare and
 //! branch fusion, and the snippet encoder with what snippets need.
 
+mod assembly;
+mod assist;
 mod cx;
 mod frame;
 mod pieces;
 pub mod snippet;
 mod values;
 
+pub use assembly::Assembly;
+pub use assist::Assist;
 pub use cx::{Compiled, Cx, Fused, Layout, compile};
 pub use frame::Frame;
 pub use pieces::pieces;

@@ -11,7 +11,8 @@ use vun_target::{Name, Output};
 use crate::common::Fixture;
 
 /// The backends every program here is built through, which must agree.
-pub(crate) const BACKENDS: [Name; 2] = [vun_backend_c::INFO.id, vun_backend_native::INFO.id];
+pub(crate) const BACKENDS: [Name; 3] =
+    [vun_backend_c::INFO.id, vun_backend_native::INFO.id, vun_backend_cranelift::INFO.id];
 
 /// Builds `source` through `backend` for the machine's target: the program's path, in the
 /// fixture holding it.

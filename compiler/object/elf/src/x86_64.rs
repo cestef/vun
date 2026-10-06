@@ -13,6 +13,8 @@ numbered! {
         GotPcRel = 9,
         /// The symbol's address, 32 bits, zero-extended.
         Abs32 = 10,
+        /// The symbol's entries for the general dynamic model, relative to the field.
+        TlsGd = 19,
         /// The symbol's TLS descriptor in the global offset table, relative to the field.
         GotPc32TlsDesc = 34,
         /// A call through the symbol's TLS descriptor: marks the instruction.

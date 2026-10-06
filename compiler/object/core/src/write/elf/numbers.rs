@@ -31,6 +31,7 @@ impl Machine {
             (Self::X86_64, RelocKind::Call32) => x86_64::Reloc::Plt32.number(),
             (Self::X86_64, RelocKind::GotPc32) => x86_64::Reloc::GotPcRel.number(),
             (Self::X86_64, RelocKind::Abs32) => x86_64::Reloc::Abs32.number(),
+            (Self::X86_64, RelocKind::TlsGdPc32) => x86_64::Reloc::TlsGd.number(),
             (Self::X86_64, RelocKind::TlsDescPc32) => x86_64::Reloc::GotPc32TlsDesc.number(),
             (Self::X86_64, RelocKind::TlsDescCall) => x86_64::Reloc::TlsDescCall.number(),
             (Self::Aarch64, RelocKind::Abs64) => aarch64::Reloc::Abs64.number(),

@@ -12,8 +12,8 @@ Everything is committed in the main chain. 813 tests pass; clippy,
 lowers every function the corpus reaches (3412 of 3412).
 
 Built: the front end (a parser reading the productions of `nodes.vun`), packages and the store,
-the persisted parallel query engine, sema, MIR and its checks, LIR with legalization, the C and
-wasm backends, the native backend for x86-64, arm64 and Thumb-2, ELF, PE and Mach-O objects with
+the persisted parallel query engine, sema, MIR and its checks, LIR with legalization, the C,
+wasm and Cranelift backends (Cranelift hands what it cannot express, decision 497 proposed, to native), the native backend for x86-64, arm64 and Thumb-2, ELF, PE and Mach-O objects with
 their readers (`vun-elf`, `vun-pe`) and the disassembler (`vun-disasm`) behind `vun debug disasm`,
 the `gnu`, `mold` and `wild` linkers and lld's COFF flavor (`lld-link`), the toolchain file,
 static Linux runtimes calling the kernel (threads, storage per thread, files, clocks) and the C
@@ -144,7 +144,7 @@ and a pinned release's manifest hash is locked (368). Open there: the first tagg
 
 ## Decisions waiting for the owner
 
-Proposed, not yet accepted: 496 (language features, `.features`), 495 (`#[comptime.deferred]`), 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
+Proposed, not yet accepted: 497 (Cranelift backend and assist, size budget 26 MiB), 496 (language features, `.features`), 495 (`#[comptime.deferred]`), 480 (scalable vectors over the target's width), 441 (verifying ahead keeps cyclic memos), 442 (`.requires`, the oldest toolchain), 249 to 251, 253 to 257, 259, 260, 262, 265, 266, 268, 269, 271, 273
 (integers in patterns), 274 (`$` forms that cannot run where written), 275 (`$if` branch scopes),
 276 (C naked functions), 277 (ELF32), 278 (`layout.offset`), 280 (32-bit AAPCS in `vun-abi`), 281
 (clocks), 283 (query soundness), 284 (files, typed errors, builds checking library bodies), 316

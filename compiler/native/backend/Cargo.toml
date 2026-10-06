@@ -18,6 +18,8 @@ thumb = ["dep:vun-native-thumb"]
 
 [dependencies]
 vun-backend.workspace = true
+vun-codegen.workspace = true
+vun-lir.workspace = true
 vun-diag.workspace = true
 vun-lir-passes.workspace = true
 vun-native.workspace = true

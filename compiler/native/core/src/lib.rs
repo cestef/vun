@@ -5,7 +5,6 @@
 
 pub mod inline;
 mod listing;
-mod object;
 pub mod select;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
@@ -15,8 +14,8 @@ use std::fmt::Display;
 
 use vun_asm::Isa;
 use vun_backend::{Artifact, Emits, Emitted, Lack, Part, Request};
-use vun_codegen::{Compiled, Isel, Processor};
-use vun_index::IndexVec;
+use vun_codegen::{Assembly, Compiled, Isel, Processor};
+use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::Reached;
 use vun_lir::unit::Unit;
 use vun_lir::{Address, FuncId, Function};
@@ -24,8 +23,6 @@ use vun_lir_passes::legalize::Division;
 use vun_object::{Format, Machine};
 use vun_par::Parallel;
 use vun_target::TargetSpec;
-
-use object::Assembly;
 
 pub use listing::Listing;
 
@@ -65,8 +62,8 @@ pub trait Native: Isel {
         Self::CONVENTIONS.iter().find(|(name, _)| *name == target.convention).map(|&(_, c)| c)
     }
 
-    /// The machine code of every function of `unit` for `processor`, compiled in parallel, listed
-    /// when `listed`.
+    /// The machine code of the functions of `unit` that `chosen` says, for `processor`, compiled in
+    /// parallel, listed when `listed`; the others have none.
     ///
     /// # Errors
     /// Returns the first thing a function needs that the backend cannot compile yet, or that the
@@ -76,6 +73,7 @@ pub trait Native: Isel {
         convention: Self::Convention,
         processor: Processor<Self>,
         listed: bool,
+        chosen: &(dyn Fn(FuncId) -> bool + Sync),
     ) -> Result<IndexVec<FuncId, Code<Self>>, Lack>
     where
         Code<Self>: Send,
@@ -84,7 +82,7 @@ pub trait Native: Isel {
         let reached = Reached::of(unit);
         let functions: Vec<(FuncId, &Function)> = unit.functions.iter().collect();
         let compiled = functions.par_map(|&(id, f)| {
-            if !reached.contains(id) {
+            if !reached.contains(id) || !chosen(id) {
                 return Ok(Compiled::unreached());
             }
             let _span = vun_trace::tracing::debug_span!("native", f = %f.linkage).entered();
@@ -95,6 +93,24 @@ pub trait Native: Isel {
             compiled
         });
         Ok(compiled.into_iter().collect::<Result<Vec<_>, _>>()?.into())
+    }
+
+    /// The code of the functions `ids` of `request`'s unit, as another backend's object holds it.
+    ///
+    /// # Errors
+    /// As [`Self::compile`].
+    ///
+    /// # Panics
+    /// For a target whose convention this does not follow, which assisting checks first.
+    fn assist(request: &Request<'_>, ids: &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack>
+    where
+        Code<Self>: Send,
+    {
+        let convention = Self::convention(request.target).expect("checked before assisting");
+        let processor = Self::processor(request.target);
+        let code = Self::compile(request.unit, convention, processor, false, &|id| ids.contains(&id))?;
+        let code = code.into_vec().into_iter().enumerate();
+        Ok(code.map(|(i, c)| (FuncId::new(i), c.unlisted())).filter(|(id, _)| ids.contains(id)).collect())
     }
 
     /// The relocatable object of `request`'s unit, each function's frame size (with the return
@@ -111,19 +127,28 @@ pub trait Native: Isel {
         <Self::Isa as Isa>::Inst<Address>: Display,
     {
         let convention = Self::convention(request.target).expect("checked before emitting");
-        let code = Self::compile(request.unit, convention, Self::processor(request.target), request.listing)?;
-        let bytes =
-            Assembly { unit: request.unit, code: &code, lines: request.lines, frames: &Self::CALL_FRAME }
-                .object((machine, format))
-                .write();
+        let code = Self::compile(
+            request.unit,
+            convention,
+            Self::processor(request.target),
+            request.listing,
+            &|_| true,
+        )?;
+        let bytes = Assembly {
+            unit: request.unit,
+            code: &code,
+            lines: request.lines,
+            frames: Some(&Self::CALL_FRAME),
+            support: &[],
+        }
+        .object((machine, format))
+        .write();
         let mut artifacts = vec![Artifact { part: Part::Whole, kind: Emits::Object, bytes }];
         if request.listing {
             let text = Listing { unit: request.unit, code: &code, lines: request.lines }.to_string();
             artifacts.push(Artifact { part: Part::Whole, kind: Emits::Listing, bytes: text.into_bytes() });
         }
-        // Above the frame, a call leaves the return address and the saved frame pointer.
-        let linkage = 2 * Self::WORD;
-        let frames = code.iter().map(|(id, c)| (id, c.frame + linkage)).collect();
+        let frames = code.iter().map(|(id, c)| (id, c.size(Self::WORD))).collect();
         Ok(Emitted { artifacts, frames })
     }
 }

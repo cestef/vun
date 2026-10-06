@@ -12,7 +12,9 @@ use vun_backend::{
     ArtifactSink, Backend, BackendCaps, BackendInfo, Emits, Emitted, Feature, HeldFloats, Lack, Missing,
     Readiness, Request, Widest,
 };
+use vun_codegen::{Assist, Compiled};
 use vun_diag::{DiagCtxt, ErrorGuaranteed};
+use vun_lir::FuncId;
 use vun_lir_passes::legalize::{Division, Half};
 use vun_native::Native;
 #[cfg(feature = "arm64")]
@@ -32,6 +34,7 @@ struct Arch {
     /// Whether it follows a target's calling convention.
     follows: fn(&TargetSpec) -> bool,
     object: fn(&Request<'_>, Machine, Format) -> Result<Emitted, Lack>,
+    assist: fn(&Request<'_>, &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack>,
     division: fn(&TargetSpec) -> Division,
 }
 
@@ -57,6 +60,7 @@ macro_rules! arches {
                 machine: <$arch>::machine,
                 follows: |t| <$arch>::convention(t).is_some(),
                 object: <$arch>::object,
+                assist: <$arch>::assist,
                 division: <$arch>::division,
             },
         )*];
@@ -134,6 +138,16 @@ impl NativeBackend {
         let machine = (arch.machine)(request.target);
         let format = Self::format(request, machine).expect("checked before emitting");
         (arch.object)(request, machine, format)
+    }
+}
+
+impl Assist for NativeBackend {
+    fn assists(&self, target: &TargetSpec) -> bool {
+        Names::Only(NAMES).contains(target.arch) && (Self::arch(target).follows)(target)
+    }
+
+    fn compile(&self, request: &Request<'_>, ids: &[FuncId]) -> Result<Vec<(FuncId, Compiled<()>)>, Lack> {
+        (Self::arch(request.target).assist)(request, ids)
     }
 }
 

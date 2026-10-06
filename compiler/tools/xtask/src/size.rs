@@ -8,7 +8,7 @@ use std::{fmt, io};
 use crate::cargo::{self, CargoFailed};
 
 /// The most bytes the stripped `dist` build of `vun` may take on the host.
-pub(crate) const BUDGET: u64 = 20 * 1024 * 1024;
+pub(crate) const BUDGET: u64 = 26 * 1024 * 1024;
 
 /// The profile what is distributed is built with (`[profile.dist]`).
 const PROFILE: &str = "dist";

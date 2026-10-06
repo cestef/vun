@@ -32,7 +32,7 @@ impl Registry {
             "backend-c" => vun_backend_c::CBackend::default(),
             "backend-native" => vun_backend_native::NativeBackend,
             "backend-wasm" => vun_backend_wasm::WasmBackend,
-            "backend-cranelift" => vun_backend_cranelift::BACKEND,
+            "backend-cranelift" => Self::cranelift(),
             "backend-qbe" => vun_backend_qbe::BACKEND,
             "backend-llvm" => vun_backend_llvm::BACKEND,
             "backend-external" => vun_backend_external::BACKEND,
@@ -48,6 +48,18 @@ impl Registry {
             "link-external" => vun_link_external::ExternalLinker,
         });
         r
+    }
+
+    /// Cranelift, assisted by the native backend where the toolchain has it: it compiles the
+    /// inline assembly and naked functions Cranelift cannot express.
+    #[cfg(feature = "backend-cranelift")]
+    fn cranelift() -> vun_backend_cranelift::CraneliftBackend {
+        #[cfg(feature = "backend-native")]
+        return vun_backend_cranelift::CraneliftBackend::assisted_by(std::sync::Arc::new(
+            vun_backend_native::NativeBackend,
+        ));
+        #[cfg(not(feature = "backend-native"))]
+        vun_backend_cranelift::CraneliftBackend::default()
     }
 
     pub fn add_backend(&mut self, backend: Box<dyn Backend>) {

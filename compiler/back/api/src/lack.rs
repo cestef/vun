@@ -17,6 +17,8 @@ pub enum Missing {
     /// Floating-point values.
     Float,
     Atomic,
+    /// A C record passed or returned by value.
+    Record,
     Naked,
     /// A call of a C function's variadic arguments.
     Variadic,
@@ -105,6 +107,7 @@ impl Missing {
             Missing::Half => Msg::new().code("f16"),
             Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),
+            Missing::Record => Msg::new().text("C records passed by value"),
             Missing::Naked => Msg::new().text("naked functions"),
             Missing::Variadic => Msg::new().text("variadic arguments of C functions"),
             Missing::Section => Msg::new().text("link sections"),
