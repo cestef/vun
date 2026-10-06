@@ -1,10 +1,11 @@
 //! The program running a namespace's tests: which namespace a path names, and building it.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{Namespace, Package};
-use vun_mir::Roots;
+use vun_mir::{Program, Programs, Roots};
 use vun_sema::testing::Runner;
 use vun_sema_ty::trap::Unevaluated;
 use vun_span::{EXTENSION, FileId};
@@ -68,6 +69,13 @@ impl Session {
         let built = self.build(root, output);
         self.roots = asked;
         built
+    }
+
+    /// The program [`Self::build_tests`] builds for `ns`: the functions its tests reach.
+    pub fn tests_program(&mut self, root: FileId, ns: Namespace) -> Option<Arc<Program>> {
+        let key = self.file_ref(root);
+        let ty = self.db.get::<Runner>(&(key.clone(), ns)).ok()?;
+        Some(self.db.get::<Programs>(&(key, Roots::Members(ty))))
     }
 
     /// Reports why the runner gave no program, at the root namespace of `root`.

@@ -5,3 +5,4 @@ use super::Lang;
 pub const TEST: DiagId = DiagId::Lang(Lang::Test);
 pub const TEST_NO_NAMESPACE: DiagId = DiagId::Lang(Lang::TestNoNamespace);
 pub const TEST_UNRUNNABLE: DiagId = DiagId::Lang(Lang::TestUnrunnable);
+pub const TEST_NO_COVERAGE: DiagId = DiagId::Lang(Lang::TestNoCoverage);

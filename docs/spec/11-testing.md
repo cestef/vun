@@ -205,8 +205,16 @@ themselves.
 - **Coverage**: `--cover` builds a program that marks each block it runs: MIR sets the block's flag
   in `lang.cover.map` (`lang.cover.size` flags, a block's number the hash of its function's
   instantiation and its position) as the block starts, identical on every backend; naked
-  functions hold their assembly alone and are not marked. `vun fuzz` reads the flags. Not yet:
-  `vun cover`, counting per region and writing lcov.
+  functions hold their assembly alone and are not marked. `vun fuzz` reads the flags.
+  `vun cover [path] [names] [--functions] [--lcov file]` runs every test of the namespace in one
+  process of such a program, which writes the flags it set (`--cover`, one `covered` line before
+  the totals), and reports for the code below the path, by file, the lines holding code and the
+  functions the flags reach: a line is reached when a block holding code written on it ran, a
+  function when its first block did. The functions of the package no test reaches count as not
+  reached. A flag says a block ran, not how often, and blocks whose numbers meet modulo
+  `lang.cover.size` share one, so a block that did not run may be counted with one that did.
+  `--lcov` writes the lcov tracefile, a count being 0 or 1 and a function named by where it
+  begins. Not yet: counts, branches, a workspace's packages in one lcov file.
 - **Mutation testing** (later): `vun mutate` mutates MIR and reruns tests in the interpreter,
   without rebuilding.
 - **C dependencies** can be built with sanitizers by the build step that compiles them.

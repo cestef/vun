@@ -11,9 +11,12 @@ pub const seed: Item = Item::new(&["std", "testing", "options", "Options", "seed
 pub const cases: Item = Item::new(&["std", "testing", "options", "Options", "cases"]);
 pub const bench: Item = Item::new(&["std", "testing", "options", "Options", "bench"]);
 pub const fuzz: Item = Item::new(&["std", "testing", "options", "Options", "fuzz"]);
+pub const cover: Item = Item::new(&["std", "testing", "options", "Options", "cover"]);
 pub const list: Item = Item::new(&["std", "testing", "options", "Options", "list"]);
 /// The options `args` ask for; `.none` when an option has no number after it.
 pub const of: Item = Item::new(&["std", "testing", "options", "Options", "of"]);
+/// Whether `arg` is an option that takes no number.
+pub const flag: Item = Item::new(&["std", "testing", "options", "Options", "flag"]);
 /// Whether `arg` is an option, which the number after it goes with.
 pub const option: Item = Item::new(&["std", "testing", "options", "Options", "option"]);
 /// Whether a test of `kind` runs: the benchmarks alone when measured, the properties alone

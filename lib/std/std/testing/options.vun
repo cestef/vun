@@ -9,13 +9,17 @@ cases_option := "--cases";
 bench_option := "--bench";
 /// The option fuzzing the properties alone, over as many cases as `--cases` asks.
 fuzz_option := "--fuzz";
+/// The option writing, after the tests, the flags of `lang.cover.map` they set; the program is
+/// built covered.
+cover_option := "--cover";
 /// The option writing the name and kind of each test chosen, running none.
 list_option := "--list";
 
 /// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
 /// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
-/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, `--list` writes the tests that would run and runs none, and
-/// the other arguments name
+/// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, `--cover` writes the coverage
+/// flags the tests set, `--list` writes the tests that would run and runs none, and the other
+/// arguments name
 /// the tests to run, every one if none does.
 Options := struct {
     args: std.os.Args,
@@ -23,6 +27,7 @@ Options := struct {
     cases: usize,
     bench: bool,
     fuzz: bool,
+    cover: bool,
     list: bool,
 
     /// The options `args` ask for; `.none` when an option has no number after it.
@@ -33,6 +38,7 @@ Options := struct {
             .cases = std.testing.property.cases,
             .bench = false,
             .fuzz = false,
+            .cover = false,
             .list = false,
         };
         // The option the next argument is the number of.
@@ -56,6 +62,8 @@ Options := struct {
                         options.bench = true;
                     } else if arg == fuzz_option {
                         options.fuzz = true;
+                    } else if arg == cover_option {
+                        options.cover = true;
                     } else if arg == list_option {
                         options.list = true;
                     },
@@ -66,6 +74,11 @@ Options := struct {
             .some(_) => .none,
             .none => .some(options),
         }
+    };
+
+    /// Whether `arg` is an option that takes no number.
+    flag := (arg: &[u8]) -> bool {
+        arg == bench_option or arg == fuzz_option or arg == cover_option or arg == list_option
     };
 
     /// Whether `arg` is an option, which the number after it goes with.
@@ -94,7 +107,7 @@ Options := struct {
                     after = false;
                 } else if Options.option(arg) {
                     after = true;
-                } else if arg == bench_option or arg == fuzz_option or arg == list_option {
+                } else if Options.flag(arg) {
                 } else if arg == name {
                     return true;
                 } else {

@@ -22,6 +22,7 @@ mod covered;
 mod fold;
 mod unready;
 
+pub use covered::Region;
 pub use unready::Unready;
 
 use crate::{Body, Local, Mir, Operand, Rvalue, Unbuilt};

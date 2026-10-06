@@ -10,7 +10,7 @@ use vun_data::{Object, ToData};
 use vun_term::{Document, Nanos, Noun, Record, Shell, Status, Style, Text, Verb};
 
 use super::tally::Tally;
-use super::{Argument, Falsified, Fuzzed, Line, Options, Outcome, Ran, Totals};
+use super::{Argument, Covered, Falsified, Fuzzed, Line, Options, Outcome, Ran, Totals};
 use crate::Session;
 
 const ITERATIONS: Noun = Noun { one: "iteration", many: "iterations" };
@@ -89,6 +89,8 @@ impl Run {
 pub struct Reported {
     pub tests: Vec<Tested>,
     pub passed: bool,
+    /// The flags a covered run wrote.
+    pub covered: Option<Covered>,
 }
 
 /// What a run of the tests' program wrote, read: the tests, the totals if it got to them, the lines
@@ -97,6 +99,8 @@ pub struct Collected {
     pub program: PathBuf,
     pub tests: Vec<Tested>,
     pub totals: Option<Totals>,
+    /// The flags a program run covered wrote, if it got to write them.
+    pub covered: Option<Covered>,
     pub output: Vec<String>,
     pub status: ExitStatus,
 }
@@ -123,7 +127,8 @@ impl Run {
     /// # Errors
     /// Fails when the program's output cannot be read.
     pub fn collect(mut self, ended: &mut dyn FnMut(&Tested)) -> io::Result<Collected> {
-        let (mut totals, mut output, mut arguments, mut tests) = (None, Vec::new(), Vec::new(), Vec::new());
+        let (mut totals, mut covered) = (None, None);
+        let (mut output, mut arguments, mut tests) = (Vec::new(), Vec::new(), Vec::new());
         for text in self.lines.lines() {
             let text = text?;
             match Line::of(&text) {
@@ -135,12 +140,13 @@ impl Run {
                 }
                 Some(Line::Argument(argument)) => arguments.push(argument),
                 Some(Line::Totals(done)) => totals = Some(done),
+                Some(Line::Covered(flags)) => covered = Some(flags),
                 Some(Line::Listed(_)) => {}
                 None => output.push(text),
             }
         }
         let status = self.child.wait()?;
-        Ok(Collected { program: self.program, tests, totals, output, status })
+        Ok(Collected { program: self.program, tests, totals, covered, output, status })
     }
 
     /// Reports each test as it ends, with what it wrote, then the totals; what the program wrote
@@ -158,7 +164,7 @@ impl Run {
             shell.status(&Tally(totals));
         }
         let passed = collected.clean();
-        Ok(Reported { tests: collected.tests, passed })
+        Ok(Reported { tests: collected.tests, passed, covered: collected.covered })
     }
 }
 

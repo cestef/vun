@@ -8,3 +8,4 @@
 use crate::Item;
 pub const no_namespace: Item = Item::new(&["lang", "errors", "test", "no_namespace"]);
 pub const unrunnable: Item = Item::new(&["lang", "errors", "test", "unrunnable"]);
+pub const no_coverage: Item = Item::new(&["lang", "errors", "test", "no_coverage"]);

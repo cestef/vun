@@ -34,6 +34,8 @@ pub const FUZZED: Param = Param::option("cases")
 /// fuzzed: what `vun bench` and `vun fuzz` pass.
 const BENCH: Param = Param::flag("bench");
 const FUZZ: Param = Param::flag("fuzz");
+/// The runner's option writing the coverage flags the tests set.
+const COVER: Param = Param::flag("cover");
 /// The runner's option writing the tests it would run, and running none.
 const LIST: Param = Param::flag("list");
 
@@ -50,6 +52,8 @@ pub enum Mode {
     Bench,
     /// Fuzzes the properties alone, in a program built covered.
     Fuzz,
+    /// Runs every test in a program built covered, which writes the flags they set.
+    Cover,
 }
 
 /// How a run of the tests' program is asked for besides the tests it names: the options
@@ -78,6 +82,7 @@ impl Options {
             Mode::Test => None,
             Mode::Bench => Some(BENCH),
             Mode::Fuzz => Some(FUZZ),
+            Mode::Cover => Some(COVER),
         };
         numbers.chain(flag.map(|flag| flag.long_form()))
     }
@@ -92,6 +97,23 @@ pub enum Line {
     Argument(Argument),
     /// A test the runner lists when asked to list (`std.testing.Listed`).
     Listed(Listed),
+    /// The coverage flags the tests set, before the totals when asked to cover.
+    Covered(Covered),
+}
+
+/// The flags of `lang.cover.map` the tests set (`std.testing.Covered`): a byte each, 1 once a
+/// block of that number started, in the string a byte array is written as.
+#[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
+pub struct Covered {
+    pub flags: String,
+}
+
+impl Covered {
+    /// Whether a block of the number `flag` started.
+    #[must_use]
+    pub fn ran(&self, flag: usize) -> bool {
+        self.flags.as_bytes().get(flag).is_some_and(|&byte| byte != 0)
+    }
 }
 
 /// A test the runner lists: its name, as declared, and its kind (`std.testing.Kind`).

@@ -86,7 +86,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
             match line {
                 Line::Test(ran) => assert!(ran.nanos.is_some(), "{backend}: {}", ran.name),
                 Line::Totals(totals) => assert!(totals.nanos.is_some(), "{backend}"),
-                Line::Argument(_) | Line::Listed(_) => {}
+                Line::Argument(_) | Line::Listed(_) | Line::Covered(_) => {}
             }
         }
         // Site ids are the program's own and times vary: compared apart from them.
@@ -101,7 +101,7 @@ fn the_runner_runs_each_test_on_a_thread_and_reports_its_trap() {
                     Line::Test(Ran { name, outcome, nanos: None })
                 }
                 Line::Totals(totals) => Line::Totals(Totals { nanos: None, ..totals }),
-                line @ (Line::Argument(_) | Line::Listed(_)) => line,
+                line @ (Line::Argument(_) | Line::Listed(_) | Line::Covered(_)) => line,
             })
             .collect();
         let expected = [
@@ -218,7 +218,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
                 Line::Test(Ran { name, outcome, .. }) => {
                     Some((name.clone(), outcome.trap().and_then(|t| t.said.clone()?.message)))
                 }
-                Line::Totals(_) | Line::Argument(_) | Line::Listed(_) => None,
+                Line::Totals(_) | Line::Argument(_) | Line::Listed(_) | Line::Covered(_) => None,
             })
             .collect();
         let failed =
@@ -237,7 +237,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         assert_eq!(said, expected, "{backend}");
         let totals = lines.iter().find_map(|l| match l {
             Line::Totals(totals) => Some(Totals { nanos: None, ..*totals }),
-            Line::Test(_) | Line::Argument(_) | Line::Listed(_) => None,
+            Line::Test(_) | Line::Argument(_) | Line::Listed(_) | Line::Covered(_) => None,
         });
         assert_eq!(
             totals,
@@ -257,7 +257,7 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
             .iter()
             .filter_map(|l| match l {
                 Line::Argument(argument) => Some(argument),
-                Line::Test(_) | Line::Totals(_) | Line::Listed(_) => None,
+                Line::Test(_) | Line::Totals(_) | Line::Listed(_) | Line::Covered(_) => None,
             })
             .collect();
         let shrunk = [

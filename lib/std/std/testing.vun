@@ -103,7 +103,10 @@ Line := enum {
     test(Ran),
     totals(Totals),
     listed(Listed),
+    covered(Covered),
 };
+
+Covered: type = std.testing.cover.Covered;
 
 /// A test the runner lists: its name, as declared, and what kind of test it is.
 Listed := struct {
@@ -167,6 +170,7 @@ run := ($ns: lang.meta.Namespace, sys: &mut std.os.System, options: &Options) ->
         step(c.ns.$(c.decl.name), c.decl, sys, options, &mut out, &mut totals)?;
     }
     totals.nanos = run_time.elapsed_nanos();
+    if options.cover { write(&mut out, &Line.covered(Covered.read()))?; }
     write(&mut out, &Line.totals(totals))?;
     .ok(totals)
 };

@@ -137,6 +137,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (NEW_NO_TEMPLATE, "lang/lang/errors/new/no_template.md"),
     (TEST_NO_NAMESPACE, "lang/lang/errors/test/no_namespace.md"),
     (TEST_UNRUNNABLE, "lang/lang/errors/test/unrunnable.md"),
+    (TEST_NO_COVERAGE, "lang/lang/errors/test/no_coverage.md"),
     (TOOL_MISSING_LIBRARY, "lang/lang/errors/tool/missing_library.md"),
     (TOOL_BIND_FAILED, "lang/lang/errors/tool/bind_failed.md"),
     (TOOL_BIND_SKIPPED, "lang/lang/errors/tool/bind_skipped.md"),

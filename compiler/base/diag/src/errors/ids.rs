@@ -199,6 +199,7 @@ pub enum Lang {
     Test,
     TestNoNamespace,
     TestUnrunnable,
+    TestNoCoverage,
     /// The toolchain's tools and the native libraries they load (decision 131).
     Tool,
     ToolMissingLibrary,

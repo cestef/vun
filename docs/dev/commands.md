@@ -179,6 +179,7 @@ cargo run -q -p vun-cli -- test [path] --jobs 4      # each test in a process of
 cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # replay a falsified property's cases
 cargo run -q -p vun-cli -- bench [--release] [path] [names]... [--samples n] [--measure instructions] [--save] [--fail-over 3%]   # the benchmarks alone, measured over samples, against a baseline in .vun/bench/
 cargo run -q -p vun-cli -- fuzz [path] [names]... [--cases n]   # the properties alone, fuzzed, built --cover
+cargo run -q -p vun-cli -- cover [path] [names]... [--functions] [--lcov file]   # lines and functions the tests reach, built --cover
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- debug compare --runs 20 <file>   # run time as the median of 20 runs

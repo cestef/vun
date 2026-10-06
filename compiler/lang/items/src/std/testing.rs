@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.testing.bench`.
 pub const bench: Item = Item::new(&["std", "testing", "bench"]);
+/// The namespace `std.testing.cover`.
+pub const cover: Item = Item::new(&["std", "testing", "cover"]);
 /// The namespace `std.testing.fuzz`.
 pub const fuzz: Item = Item::new(&["std", "testing", "fuzz"]);
 /// The namespace `std.testing.options`.
@@ -48,6 +50,7 @@ pub const Totals: Item = Item::new(&["std", "testing", "Totals"]);
 /// A line the runner writes: a test run and what became of it, then the totals; asked to list,
 /// the tests it would run and nothing of them.
 pub const Line: Item = Item::new(&["std", "testing", "Line"]);
+pub const Covered: Item = Item::new(&["std", "testing", "Covered"]);
 /// A test the runner lists: its name, as declared, and what kind of test it is.
 pub const Listed: Item = Item::new(&["std", "testing", "Listed"]);
 /// A line the runner writes before a falsified property's line, one per parameter: the argument

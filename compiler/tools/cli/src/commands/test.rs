@@ -19,7 +19,7 @@ use vun_term::Shell;
 use super::status::{Conclude, Started, Step};
 use super::{COMPILE, Inputs, PATH};
 
-const NAMES: Param =
+pub(super) const NAMES: Param =
     Param::positional("names").arity(Arity::Many).about("the tests to run, by name; every one if none");
 
 pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of a namespace", test)
@@ -122,7 +122,12 @@ impl<'a> Chosen<'a> {
 
 /// Builds the tests' program of each package the path names and runs it in `mode`: the tests
 /// the arguments name, the benchmarks alone, measured, or the properties alone, fuzzed.
-fn tests(session: &mut Session, args: &Args, shell: &mut Shell<'_>, mode: Mode) -> io::Result<Outcome> {
+pub(super) fn tests(
+    session: &mut Session,
+    args: &Args,
+    shell: &mut Shell<'_>,
+    mode: Mode,
+) -> io::Result<Outcome> {
     let chosen = Chosen::of(args);
     let Some(subject) = session.subject(chosen.path)? else { return Ok(session.outcome()) };
     let mut passed = true;
@@ -158,10 +163,11 @@ fn tested(
         .filter(|_| session.checked(covered))
         .and_then(|file| {
             let ns = session.tested(file, within)?;
-            session.build_tests(file, ns, output).ok()
+            let program = session.build_tests(file, ns.clone(), output).ok()?;
+            Some((program, file, ns))
         });
     session.conclude(shell, shown, started);
-    let Some(program) = program else { return Ok(None) };
+    let Some((program, file, ns)) = program else { return Ok(None) };
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
     if mode == Mode::Bench {
         let plan = vun_driver::testing::Plan::of(args);
@@ -183,5 +189,14 @@ fn tested(
         }
     }
     let reported = session.run_tests(&program, names.iter().copied(), options)?.report(shell)?;
+    if mode == Mode::Cover {
+        super::coverage::report(
+            session,
+            args,
+            shell,
+            (file, &ns),
+            (&reported, covered, Subject::scope(root)),
+        )?;
+    }
     Ok(Some(reported.passed))
 }

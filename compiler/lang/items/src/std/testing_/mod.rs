@@ -13,6 +13,8 @@ pub mod testing_Trapped;
 pub mod testing_bench;
 pub mod testing_bench_Bench;
 pub mod testing_bench_Measured;
+pub mod testing_cover;
+pub mod testing_cover_Covered;
 pub mod testing_fuzz;
 pub mod testing_fuzz_Fuzzed;
 pub mod testing_fuzz_Stream;

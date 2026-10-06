@@ -15,6 +15,7 @@ mod components;
 mod comptime;
 mod conventions;
 mod coroutines;
+mod cover;
 mod dependencies;
 mod doc;
 mod evaluator;

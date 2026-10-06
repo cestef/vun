@@ -59,6 +59,16 @@ impl Subject {
         }
     }
 
+    /// What the code of the program built from `root`, a root file `tested` gives, is below: the
+    /// package's directory, or the loose file itself.
+    #[must_use]
+    pub fn scope(root: &Path) -> &Path {
+        match root.parent() {
+            Some(dir) if root.file_name().is_some_and(|name| name == MANIFEST) => dir,
+            _ => root,
+        }
+    }
+
     /// How it is named to people when no path named it: its root, below the current directory
     /// when it is there.
     #[must_use]

@@ -97,7 +97,7 @@ impl Session {
         }
         totals.nanos = u64::try_from(started.elapsed().as_nanos()).ok();
         shell.status(&Tally(totals));
-        Ok(Reported { tests, passed })
+        Ok(Reported { tests, passed, covered: None })
     }
 }
 

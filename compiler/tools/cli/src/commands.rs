@@ -72,6 +72,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             test::TEST,
             test::BENCH,
             test::FUZZ,
+            coverage::COVER,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             #[cfg(not(target_os = "wasi"))]
             Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
@@ -184,6 +185,7 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
 }
 
 mod cache;
+mod coverage;
 mod debug;
 mod doc;
 mod explain;

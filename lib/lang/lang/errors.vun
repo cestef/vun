@@ -249,6 +249,7 @@ new := struct {
 test := struct {
     no_namespace := diag.Diag{};
     unrunnable := diag.Diag{};
+    no_coverage := diag.Diag{};
 };
 
 /// The toolchain's tools and the native libraries they load (decision 131).
