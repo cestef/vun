@@ -153,11 +153,11 @@ impl<Q: Query> Memo<Q> {
     pub(crate) fn loaded(
         saved: Option<Saved<Q>>,
         fingerprint: Fingerprint,
-        deps: Box<[SavedDep]>,
+        deps: Blob,
         under: Option<(Sharing, Fingerprint)>,
     ) -> Self {
         let verified = Verified::default();
-        let deps = Deps::Saved { saved: deps, read: OnceLock::new() };
+        let deps = Deps::Saved { at: deps, read: OnceLock::new() };
         let durability =
             under.map_or(Durability::OWN, |(level, under)| Durability { level, under: Some(under) });
         Self {
@@ -215,7 +215,7 @@ impl<Q: Query> Memo<Q> {
 /// slots of this process when first needed.
 pub(crate) enum Deps {
     Read(Box<[Dep]>),
-    Saved { saved: Box<[SavedDep]>, read: OnceLock<Option<Box<[Dep]>>> },
+    Saved { at: Blob, read: OnceLock<Option<Box<[Dep]>>> },
 }
 
 impl Deps {
@@ -223,10 +223,11 @@ impl Deps {
     pub(crate) fn get(&self, db: &Db) -> Option<&[Dep]> {
         match self {
             Self::Read(deps) => Some(deps),
-            Self::Saved { saved, read } => read
+            Self::Saved { at, read } => read
                 .get_or_init(|| {
                     let store = db.store.get()?;
-                    saved.iter().map(|&dep| store.dep(db, dep)).collect()
+                    let saved = store.stream.read_blob::<Vec<SavedDep>>(*at).ok()?;
+                    saved.into_iter().map(|dep| store.dep(db, dep)).collect()
                 })
                 .as_deref(),
         }

@@ -1,10 +1,10 @@
 //! What a saved file holds, counted per query and per pool without loading it into a database:
 //! what `vun debug queries` shows.
 
-use vun_codec::Blob;
+use vun_codec::{Blob, Malformed};
 
 use super::Unloaded;
-use super::saved::{Loaded, Saved, SavedMemo, SavedQuery};
+use super::saved::{Loaded, Saved, SavedDep, SavedMemo, SavedQuery};
 
 /// The counts of a saved file.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -40,11 +40,13 @@ impl Census {
             let memos = keys.iter().filter_map(|k| k.memo).chain(replaced.iter().map(|r| r.memo));
             let memos = memos.map(|m| m.read::<SavedMemo<Blob>>(bytes));
             let memos = memos.collect::<Result<Vec<_>, _>>()?;
+            let reads = memos.iter().map(|m| Ok(m.deps.read::<Vec<SavedDep>>(bytes)?.len()));
+            let reads = reads.sum::<Result<usize, Malformed>>()?;
             Ok(Counted {
                 name: q.name.clone(),
                 entries: keys.len(),
                 memos: memos.len(),
-                reads: memos.iter().map(|m| m.deps.len()).sum(),
+                reads,
                 bytes: sum(&mut keys.iter().map(|k| k.key)) + sum(&mut memos.iter().filter_map(|m| m.value)),
             })
         });

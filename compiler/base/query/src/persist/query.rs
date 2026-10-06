@@ -214,8 +214,11 @@ impl<Q: Query<Key: Encode + Decode>> Persisting<Q> {
         let memo = memo.filter(|memo| !memo.is_input())?;
         // Reads as loaded keep their positions in a stream extending the one they were read from.
         let deps = match (&memo.deps, extends) {
-            (Deps::Saved { saved, .. }, Some(_)) => saved.to_vec(),
-            (deps, _) => deps.get(db)?.iter().map(|dep| layout.dep(db, dep)).collect::<Option<_>>()?,
+            (Deps::Saved { at, .. }, Some(store)) => store.stream.bytes(*at).to_vec(),
+            (deps, _) => {
+                let deps = deps.get(db)?.iter().map(|dep| layout.dep(db, dep));
+                deps.collect::<Option<Vec<SavedDep>>>()?.encoded()
+            }
         };
         // A value never read in this process is written as it was read into a stream extending
         // the one loaded, and read to be written anew into a new one.

@@ -195,7 +195,7 @@ impl<Q: Query> Attached<Q> {
             memo.inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved memo not read"));
         let memo = memo.ok()?;
         let saved = self.value.zip(memo.value).map(|(read, at)| Saved { at, read });
-        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint)?, memo.deps.into(), memo.under))
+        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint)?, memo.deps, memo.under))
     }
 
     /// The slot of the key at `at`, set once it is given one.

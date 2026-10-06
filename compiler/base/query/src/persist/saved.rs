@@ -26,7 +26,7 @@ use crate::db::Sharing;
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 11;
+pub(super) const FORMAT: u32 = 12;
 
 /// The compiler running, as saved memos name it.
 pub struct Build;
@@ -158,7 +158,8 @@ pub(crate) struct SavedMemo<B = Vec<u8>> {
     pub(super) fingerprint: Option<Fingerprint>,
     /// `None` for a query persisted without its values.
     pub(super) value: Option<B>,
-    pub(super) deps: Vec<SavedDep>,
+    /// The reads, a list of [`SavedDep`]s, left unread until the memo is verified.
+    pub(super) deps: B,
     /// For a memo whose inputs are shared, how far, and their fingerprint when it last held.
     pub(super) under: Option<(Sharing, Fingerprint)>,
 }
