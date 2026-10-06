@@ -5,7 +5,6 @@ use vun_query::Db;
 use vun_sema_ty::item::Declared;
 
 use crate::asm::ArchTable;
-use crate::check::Checked;
 use crate::checks::ChecksOf;
 use crate::cover::CoverageOf;
 use crate::decl::{DeclType, DeclValue, Declaration, TypedDecl};
@@ -15,9 +14,7 @@ use crate::fuel::Callee;
 use crate::kinds::Kinds;
 use crate::layout::{Exists, Shapes};
 use crate::link::Links;
-use crate::lint::{DefinedLints, LintLevelsOf, Linted};
 use crate::member::{MemberType, MemberValue, Members};
-use crate::plan::Planned;
 use crate::target::{Chosen, TargetOf};
 use crate::testing::{Runner, Tests};
 use crate::trace::TraceOf;
@@ -30,11 +27,6 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<CoverageOf>,
     Db::trace::<TraceOf>,
     Db::persist::<Chosen>,
-    Db::persist::<Checked>,
-    Db::persist::<Linted>,
-    Db::trace::<LintLevelsOf>,
-    Db::persist::<DefinedLints>,
-    Db::persist::<Planned>,
     Db::persist::<Runner>,
     Db::persist::<Tests>,
     Db::persist::<DeclType>,

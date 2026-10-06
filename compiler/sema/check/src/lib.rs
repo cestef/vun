@@ -12,9 +12,9 @@ mod members;
 mod pack;
 mod placed;
 mod rest;
+#[cfg(test)]
+mod tests;
 mod visible;
-
-pub(crate) use pack::{Promoted, Variadic};
 
 use std::sync::Arc;
 
@@ -28,10 +28,10 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::trap::Unevaluated;
 
-use crate::decl::{DeclValue, TypedDecl};
-use crate::env::Env;
-use crate::typeck::Reported;
-use crate::visible::Home;
+use vun_sema::decl::{DeclValue, TypedDecl};
+use vun_sema::env::Env;
+use vun_sema::typeck::Reported;
+use vun_sema::visible::Home;
 
 /// What checking a file reports; `None` for a file the driver did not read.
 pub struct Checked;
@@ -56,7 +56,7 @@ impl Query for Checked {
         checker.placement(&env.parsed.hir);
         checker.impls();
         checker.exports();
-        if let Some(linted) = cx.get::<crate::lint::Linted>(key) {
+        if let Some(linted) = cx.get::<vun_sema_lint::Linted>(key) {
             checker.diag.absorb(&linted);
         }
         checker.diag.reached_once();
@@ -161,3 +161,6 @@ impl Visitor for Checker<'_, '_, '_> {
         visit::walk_expr(self, hir, expr);
     }
 }
+
+/// The queries of this crate whose memos persist.
+pub const PERSISTED: &[fn(&vun_query::Db)] = &[vun_query::Db::persist::<Checked>];

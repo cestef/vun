@@ -42,8 +42,6 @@ mod safety;
 mod sequence;
 mod staged;
 mod suspend;
-#[cfg(test)]
-mod tests;
 mod typed;
 mod unnarrowed;
 

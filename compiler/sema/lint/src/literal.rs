@@ -9,8 +9,8 @@ use vun_query::Cx;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::{TyKind, Value};
 
-use crate::callable::{Callable, Written};
-use crate::env::Env;
+use vun_sema::callable::{Callable, Written};
+use vun_sema::env::Env;
 
 /// A literal, with the file it is written in: a value's, or the annotation of a primitive's
 /// declaration.

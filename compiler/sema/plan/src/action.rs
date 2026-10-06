@@ -1,6 +1,7 @@
 //! The steps of a plan read as what they do: each a `std.build.Action`, read member by member
 //! through the handles of `std.build`'s declarations, so the driver never names a field as text.
 
+use crate::planned::Plan;
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
 use vun_items::std::{
@@ -8,7 +9,6 @@ use vun_items::std::{
     build_Options as options, build_Placement as placement, build_Program as program, build_Region as region,
     build_Step as step, build_Tested as tested, build_Use as used,
 };
-use vun_sema::plan::Plan;
 use vun_sema::target::{Declared, Members, Read, Unread};
 
 use crate::Method;

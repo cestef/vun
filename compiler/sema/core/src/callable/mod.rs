@@ -5,6 +5,7 @@
 //! mode each is borrowed.
 
 mod func;
+mod pack;
 mod written;
 
 use vun_codec::{Decode, Encode};
@@ -17,6 +18,7 @@ use vun_sema_ty::trap::Unevaluated;
 use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
 pub use func::{Generic, Parameters};
+pub use pack::{Promoted, Variadic};
 
 use crate::env::Env;
 use crate::eval::Signed;

@@ -58,7 +58,7 @@ struct Member {
 }
 
 /// How reflection computes one fact of what it describes.
-pub(crate) type Fact<T> = fn(&Env<'_, '_>, &T) -> Result<Value, Unevaluated>;
+pub type Fact<T> = fn(&Env<'_, '_>, &T) -> Result<Value, Unevaluated>;
 
 /// What reflection tells of a part, by the descriptor field holding it.
 const PART: &[(Item, Fact<Part>)] = &[
@@ -147,7 +147,11 @@ impl Env<'_, '_> {
 
     /// A descriptor of each of `items`, of the `lang` struct `descriptor`, each descriptor field
     /// filled by the fact of its handle.
-    pub(crate) fn describe<T>(
+    ///
+    /// # Errors
+    /// Returns why the descriptor is not a struct of `lang`, a field of it has no fact, or a fact
+    /// has no value.
+    pub fn describe<T>(
         &self,
         descriptor: Item,
         items: &[T],

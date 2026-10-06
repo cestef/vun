@@ -10,7 +10,7 @@ use vun_primitives::meta::Meta;
 use vun_sema_ty::{Nominal, TyKind, Value};
 
 use super::Checker;
-use crate::visible::Home;
+use vun_sema::visible::Home;
 
 impl Checker<'_, '_, '_> {
     /// Reports each reflection on the enclosing `struct` literal's type in the value of `decl`.

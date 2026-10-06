@@ -80,6 +80,8 @@ vun-sema-float = { path = "compiler/sema/float" }
 vun-sema-ty = { path = "compiler/sema/ty" }
 vun-sema = { path = "compiler/sema/core" }
 vun-sema-plan = { path = "compiler/sema/plan" }
+vun-sema-lint = { path = "compiler/sema/lint" }
+vun-sema-check = { path = "compiler/sema/check" }
 vun-mir = { path = "compiler/mid/mir" }
 vun-mir-passes = { path = "compiler/mid/passes" }
 vun-sanitize = { path = "compiler/mid/sanitize" }

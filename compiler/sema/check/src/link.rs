@@ -5,8 +5,8 @@ use vun_diag::{Diagnostic, Msg, errors};
 use vun_primitives::link::Link;
 
 use super::Checker;
-use crate::decl::DeclType;
-use crate::link::Links;
+use vun_sema::decl::DeclType;
+use vun_sema::link::Links;
 
 impl Checker<'_, '_, '_> {
     pub(super) fn exports(&mut self) {

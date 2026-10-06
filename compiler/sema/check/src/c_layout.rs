@@ -14,8 +14,8 @@ use vun_sema_ty::float::FloatType;
 use vun_sema_ty::{NominalKind, Ty, TyKind, Value};
 
 use super::Checker;
-use crate::attributes::Attributed;
-use crate::member::Members;
+use vun_sema::attributes::Attributed;
+use vun_sema::member::Members;
 
 /// Integer widths C has fixed-width types for, in bits.
 const C_WIDTHS: [u64; 4] = [8, 16, 32, 64];

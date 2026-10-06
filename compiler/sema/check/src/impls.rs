@@ -6,8 +6,8 @@ use vun_diag::{Diagnostic, Msg, errors};
 use vun_sema_ty::Value;
 
 use super::Checker;
-use crate::decl::DeclValue;
-use crate::witness::{Conformance, ImplDecl, Impls};
+use vun_sema::decl::DeclValue;
+use vun_sema::witness::{Conformance, ImplDecl, Impls};
 
 impl Checker<'_, '_, '_> {
     pub(super) fn impls(&mut self) {

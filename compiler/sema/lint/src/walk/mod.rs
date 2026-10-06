@@ -19,8 +19,8 @@ use vun_sema_ty::Value;
 
 use super::nodes::{Kind, Node};
 use super::tables::Binds;
-use crate::env::Env;
-use crate::visible::Reach;
+use vun_sema::env::Env;
+use vun_sema::visible::Reach;
 
 /// Walking the file `env` reads: its declarations and the locals and calls in their values.
 pub(super) struct Walk<'e, 'a, 'db> {

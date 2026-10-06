@@ -14,8 +14,8 @@ use vun_query::{Cx, Query};
 use vun_sema_ty::Value;
 use vun_sema_ty::item::DeclRef;
 
-use crate::decl::DeclValue;
-use crate::env::Env;
+use vun_sema::decl::DeclValue;
+use vun_sema::env::Env;
 
 /// The declarations marked `#[lint.define]` among the members of the files of a package.
 pub struct DefinedLints;

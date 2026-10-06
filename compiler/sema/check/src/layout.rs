@@ -13,9 +13,9 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, Value};
 
 use super::Checker;
-use crate::decl::DeclValue;
-use crate::layout::Shapes;
-use crate::member::{MemberTable, Members};
+use vun_sema::decl::DeclValue;
+use vun_sema::layout::Shapes;
+use vun_sema::member::{MemberTable, Members};
 
 /// A `struct` or `enum` declaration being checked: its attributes' place, its type and members.
 struct Laid<'a> {

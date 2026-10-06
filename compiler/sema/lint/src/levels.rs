@@ -11,8 +11,8 @@ use vun_query::{Cx, Query};
 use vun_sema_ty::Value;
 
 use super::tables::Level;
-use crate::env::Env;
-use crate::plan::Planned;
+use vun_sema::env::Env;
+use vun_sema_plan::Planned;
 
 /// The lint levels the command line gives, by the binding path of the lint or group they name,
 /// in the order they were written. The driver sets it from `--lint`.

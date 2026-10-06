@@ -19,10 +19,10 @@ use super::DefinedLints;
 use super::levels::Configured;
 use super::nodes::{CALL, DECL, Kind, LOCAL, Node};
 use super::tables::Level;
-use crate::decl::DeclValue;
-use crate::env::Env;
-use crate::eval::Call;
-use crate::visible::Home;
+use vun_sema::decl::DeclValue;
+use vun_sema::env::Env;
+use vun_sema::eval::Call;
+use vun_sema::visible::Home;
 
 /// The reason an attribute allowing a lint is made with, for its author to write.
 const REASON: &str = "why it is allowed";

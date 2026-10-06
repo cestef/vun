@@ -3,7 +3,7 @@
 
 use vun_build::layout::MANIFEST;
 use vun_diag::{DiagId, Severity, errors};
-use vun_sema::lint::{Level, LintLevels};
+use vun_sema_lint::{Level, LintLevels};
 
 use crate::common::Fixture;
 

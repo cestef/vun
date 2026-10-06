@@ -10,8 +10,8 @@ use vun_sema_ty::trap::Unevaluated;
 
 use super::tables::Binds;
 use super::walk::Walk;
-use crate::env::Env;
-use crate::reflect::Fact;
+use vun_sema::env::Env;
+use vun_sema::reflect::Fact;
 
 /// A node of a kind lints look at.
 pub(super) enum Kind {

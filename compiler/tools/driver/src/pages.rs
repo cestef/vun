@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use vun_diag::{DiagId, errors};
-use vun_sema::lint::{Checked, CheckedLints};
+use vun_sema_lint::{Checked, CheckedLints};
 
 use crate::Session;
 

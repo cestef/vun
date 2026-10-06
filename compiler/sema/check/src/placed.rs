@@ -10,7 +10,7 @@ use vun_items::lang::Place;
 use vun_sema_ty::{Marker, Nominal, TyKind, Value};
 
 use super::Checker;
-use crate::typeck::{Stage, Typer};
+use vun_sema::typeck::{Stage, Typer};
 
 impl Checker<'_, '_, '_> {
     /// Reports each attribute of the file written at none of the places its type lists.

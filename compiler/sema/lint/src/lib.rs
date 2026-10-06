@@ -22,9 +22,9 @@ pub use defined::{Checked, CheckedLints, DefinedLints};
 pub use levels::{LintLevels, LintLevelsOf};
 pub use tables::Level;
 
-use crate::env::Env;
 use nodes::Node;
 use rule::Lint;
+use vun_sema::env::Env;
 
 /// What the lints a file is checked with report of it; `None` for a file the driver did not read.
 pub struct Linted;
@@ -49,3 +49,10 @@ impl Query for Linted {
         Some(Arc::new(diag))
     }
 }
+
+/// The queries of this crate whose memos persist.
+pub const PERSISTED: &[fn(&vun_query::Db)] = &[
+    vun_query::Db::persist::<Linted>,
+    vun_query::Db::trace::<LintLevelsOf>,
+    vun_query::Db::persist::<DefinedLints>,
+];

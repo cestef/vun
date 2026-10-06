@@ -4,8 +4,8 @@ use vun_hir::tree::{DeclId, ExprId};
 use vun_sema_ty::item::ExprRef;
 
 use super::Walk;
-use crate::lint::literal::Literal;
-use crate::lint::tables::Binds;
+use crate::literal::Literal;
+use crate::tables::Binds;
 
 impl Walk<'_, '_, '_> {
     /// What the declaration `id` binds (spec 10, section 5), by how it is written: a type when

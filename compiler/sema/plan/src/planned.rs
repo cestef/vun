@@ -14,9 +14,9 @@ use vun_sema_ty::call::Instance;
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::Unevaluated;
 
-use crate::decl::DeclValue;
-use crate::env::Env;
-use crate::eval::MeteredCall;
+use vun_sema::decl::DeclValue;
+use vun_sema::env::Env;
+use vun_sema::eval::MeteredCall;
 
 /// The plan of the `build.vun` a key names, in the order its steps were recorded.
 pub struct Planned;

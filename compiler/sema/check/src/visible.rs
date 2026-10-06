@@ -8,8 +8,8 @@ use vun_intern::Symbol;
 use vun_sema_ty::item::{Declared, Site};
 
 use super::Checker;
-use crate::env::Env;
-use crate::visible::Misplaced;
+use vun_sema::env::Env;
+use vun_sema::visible::Misplaced;
 
 impl Checker<'_, '_, '_> {
     /// Checks the member `m` of the namespace innermost in `self.homes`.

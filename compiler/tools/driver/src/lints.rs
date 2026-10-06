@@ -10,7 +10,7 @@ use std::fmt;
 use vun_command::{Args, Arity, Param, Values};
 use vun_diag::{DiagId, Diagnostic, Msg, errors};
 use vun_hir::db::PackageId;
-use vun_sema::lint::{CheckedLints, Level, LintLevels, LintLevelsOf};
+use vun_sema_lint::{CheckedLints, Level, LintLevels, LintLevelsOf};
 use vun_suggest::closest;
 
 use crate::Session;
