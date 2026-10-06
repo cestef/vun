@@ -8,5 +8,6 @@ pub(super) const F32_DIV: [table::Form; 1usize] = [
             &[table::Ty::F32],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

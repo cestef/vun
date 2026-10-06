@@ -322,8 +322,14 @@ countdown := (n: u32) -> u32 {
   0)`: the alignment as a power of two, the offset). Sema keeps the stack as the forms leave it and
   reports a pop from an empty stack, a pop of another type and values left at the end
   (`asm.stack`); after an instruction that ends the code (`unreachable`) any stack goes. A block
-  starts and ends with an empty stack and has no branches. A block checked for another target
-  holds its bindings in a class of unknown type, which fits any position.
+  starts and ends with an empty stack. Structured control is `block`, `loop`, `if_`, `else_`,
+  `end`, `br` and `br_if` (a name that is a Vun keyword ends in an underscore): the blocks give no
+  value and a branch carries none, a branch counts the blocks it leaves outward from the
+  innermost and reaches only blocks the same asm block opened, and every block it opens it ends;
+  after `br` the rest of its block is unreached, as after `unreachable`. A local read where
+  another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
+  write one `out` or `inout`, and a place named again is one local. A block checked for another
+  target holds its bindings in a class of unknown type, which fits any position.
 
 ## 7. Checked unsafe code
 

@@ -18,5 +18,6 @@ pub(super) const MEMORY_ATOMIC_NOTIFY: [table::Form; 1usize] = [
             &[table::Ty::I32],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

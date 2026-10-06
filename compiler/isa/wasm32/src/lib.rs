@@ -14,7 +14,7 @@ mod table;
 mod tests;
 
 pub use reg::{Class, Size};
-pub use table::{Access, Arg, Feature, Flow, Form, Imm, Kind, Need, Op, Processor, Ty};
+pub use table::{Access, Arg, Control, Feature, Flow, Form, Imm, Kind, Need, Op, Processor, Ty};
 
 /// The instruction set.
 #[derive(Clone, Copy, Debug)]

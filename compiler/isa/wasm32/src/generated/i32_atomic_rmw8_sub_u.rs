@@ -17,5 +17,6 @@ pub(super) const I32_ATOMIC_RMW8_SUB_U: [table::Form; 1usize] = [
             &[table::Ty::I32],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

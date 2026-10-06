@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const F64_CEIL: [table::Form; 1usize] = [
     table::Form::new(0x0000_009b, &[], &[table::Ty::F64], &[table::Ty::F64])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

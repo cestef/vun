@@ -8,5 +8,6 @@ pub(super) const I64_GT_U: [table::Form; 1usize] = [
             &[table::Ty::I32],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

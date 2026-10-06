@@ -53,8 +53,7 @@ impl fmt::Display for Text<'_> {
             Op::Address(sym, addend) => write!(f, "i32.const &${}{addend:+}", name(*sym)),
             Op::Num(n) => f.write_str(n.mnemonic()),
             Op::Asm(asm) => {
-                // The text format spells the first underscore of a table's name as a dot.
-                f.write_str(&vun_isa_wasm32::Op::entry(asm.op, asm.form).0.name().replacen('_', ".", 1))?;
+                f.write_str(&vun_isa_wasm32::Op::entry(asm.op, asm.form).0.text())?;
                 for operand in &asm.operands {
                     match operand {
                         Operand::Local(l) => write!(f, " {l}")?,

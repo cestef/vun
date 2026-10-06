@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const F32_NEAREST: [table::Form; 1usize] = [
     table::Form::new(0x0000_0090, &[], &[table::Ty::F32], &[table::Ty::F32])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

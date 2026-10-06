@@ -9,5 +9,6 @@ pub(super) const LOCAL_SET: [table::Form; 1usize] = [
             &[],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

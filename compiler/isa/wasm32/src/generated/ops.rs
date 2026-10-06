@@ -128,6 +128,15 @@ pub enum Op {
     /// Traps.
     Unreachable,
     Nop,
+    Block,
+    Loop,
+    /// Runs what follows up to `else_` or `end` when the value it pops is not zero.
+    If,
+    Else,
+    End,
+    /// Branches to the block `depth` blocks out of the innermost, which is 0.
+    Br,
+    BrIf,
     I32WrapI64,
     I32TruncF32S,
     I32TruncF32U,

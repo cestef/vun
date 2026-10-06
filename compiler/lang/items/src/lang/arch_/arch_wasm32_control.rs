@@ -11,3 +11,12 @@ pub const unreachable: Item = Item::new(
     &["lang", "arch", "wasm32", "control", "unreachable"],
 );
 pub const nop: Item = Item::new(&["lang", "arch", "wasm32", "control", "nop"]);
+pub const block: Item = Item::new(&["lang", "arch", "wasm32", "control", "block"]);
+pub const r#loop: Item = Item::new(&["lang", "arch", "wasm32", "control", "loop"]);
+/// Runs what follows up to `else_` or `end` when the value it pops is not zero.
+pub const if_: Item = Item::new(&["lang", "arch", "wasm32", "control", "if_"]);
+pub const else_: Item = Item::new(&["lang", "arch", "wasm32", "control", "else_"]);
+pub const end: Item = Item::new(&["lang", "arch", "wasm32", "control", "end"]);
+/// Branches to the block `depth` blocks out of the innermost, which is 0.
+pub const br: Item = Item::new(&["lang", "arch", "wasm32", "control", "br"]);
+pub const br_if: Item = Item::new(&["lang", "arch", "wasm32", "control", "br_if"]);

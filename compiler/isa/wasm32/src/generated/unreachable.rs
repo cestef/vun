@@ -2,5 +2,8 @@
 use crate::table;
 /// Traps.
 pub(super) const UNREACHABLE: [table::Form; 1usize] = [
-    table::Form::new(0x0000_0000, &[], &[], &[]).flow(table::Flow::Ends).requires(None),
+    table::Form::new(0x0000_0000, &[], &[], &[])
+        .flow(table::Flow::Ends)
+        .control(table::Control::None)
+        .requires(None),
 ];

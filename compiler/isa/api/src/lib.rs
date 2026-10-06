@@ -15,7 +15,8 @@ use std::fmt;
 
 pub use blocks::{AsmOperand, Blocks, Place, Registered, Use};
 pub use fit::{
-    ChoiceId, Fit, Fixed, Given, Misfit, Position, Slot, Stack, Takes, Why, Writeback, positions, width,
+    ChoiceId, Fit, Fixed, Given, Misfit, Position, Scope, Slot, Stack, Takes, Why, Writeback, positions,
+    width,
 };
 pub use need::{Enumerated, Need, Processor};
 

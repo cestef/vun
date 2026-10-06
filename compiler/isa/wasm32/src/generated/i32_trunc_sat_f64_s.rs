@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const I32_TRUNC_SAT_F64_S: [table::Form; 1usize] = [
     table::Form::new(0x00fc_0002, &[], &[table::Ty::F64], &[table::Ty::I32])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::SaturatingConversion))),
 ];

@@ -1,4 +1,6 @@
-//! What stops the code, or does nothing.
+//! What stops the code, does nothing, or structures it: blocks, loops and `if`s, and the branches
+//! out of them. A block's type is empty, the byte each form ends with. A name that is a keyword of
+//! Vun ends in an underscore, which the text format leaves out.
 
 _w := lang.arch.wasm32;
 
@@ -6,3 +8,25 @@ _w := lang.arch.wasm32;
 unreachable := _w.Instruction{ .forms = &[.{ .base = 0x00, .flow = .ends }] };
 
 nop := _w.Instruction{ .forms = &[.{ .base = 0x01 }] };
+
+_depth: _w.Arg = .{ .kind = .imm(.unsigned(32)) };
+
+block := _w.Instruction{ .forms = &[.{ .base = 0x02, .tail = &[0x40], .control = .open }] };
+
+loop := _w.Instruction{ .forms = &[.{ .base = 0x03, .tail = &[0x40], .control = .open }] };
+
+/// Runs what follows up to `else_` or `end` when the value it pops is not zero.
+if_ := _w.Instruction{
+    .forms = &[.{ .base = 0x04, .pops = &[.i32], .tail = &[0x40], .control = .open_if }]
+};
+
+else_ := _w.Instruction{ .forms = &[.{ .base = 0x05, .control = .reopen }] };
+
+end := _w.Instruction{ .forms = &[.{ .base = 0x0b, .control = .close }] };
+
+/// Branches to the block `depth` blocks out of the innermost, which is 0.
+br := _w.Instruction{ .forms = &[.{ .base = 0x0c, .args = &[_depth], .control = .branch }] };
+
+br_if := _w.Instruction{
+    .forms = &[.{ .base = 0x0d, .args = &[_depth], .pops = &[.i32], .control = .branch_if }]
+};

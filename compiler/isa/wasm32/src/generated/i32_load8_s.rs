@@ -17,5 +17,6 @@ pub(super) const I32_LOAD8_S: [table::Form; 1usize] = [
             &[table::Ty::I32],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

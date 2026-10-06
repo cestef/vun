@@ -64,3 +64,48 @@ never_returns := () -> never {
         lang.hint.unreachable()
     }
 };
+
+/// Blocks, loops and `if`s hold no values, and a branch counts the blocks it leaves outward from
+/// the innermost; `br_if` branches on the value it pops. A variable bound `inout` in several
+/// instructions is one local, read where a block wrote it.
+tri := (n: i32) -> i32 {
+    mut left: i32 = n;
+    mut total: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        loop();
+        local_get(inout(left));
+        i32_eqz();
+        br_if(1);
+        local_get(inout(total));
+        local_get(inout(left));
+        i32_add();
+        local_set(inout(total));
+        local_get(inout(left));
+        i32_const(1);
+        i32_sub();
+        local_set(inout(left));
+        br(0);
+        end();
+        end();
+    });
+    total
+};
+
+/// `if_` pops the condition and runs up to `else_` or `end` when it is not zero.
+pick := (flag: i32, cell: &mut i32) {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(flag));
+        if_();
+        local_get(in(cell));
+        i32_const(7);
+        i32_store(2, 0);
+        else_();
+        local_get(in(cell));
+        i32_const(9);
+        i32_store(2, 0);
+        end();
+    });
+};

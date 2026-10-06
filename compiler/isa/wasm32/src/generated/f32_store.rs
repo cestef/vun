@@ -17,5 +17,6 @@ pub(super) const F32_STORE: [table::Form; 1usize] = [
             &[],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

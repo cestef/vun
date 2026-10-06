@@ -92,6 +92,7 @@ pub mod arch_wasm32;
 pub mod arch_wasm32_Access;
 pub mod arch_wasm32_Arg;
 pub mod arch_wasm32_Class;
+pub mod arch_wasm32_Control;
 pub mod arch_wasm32_Feature;
 pub mod arch_wasm32_Flow;
 pub mod arch_wasm32_Form;

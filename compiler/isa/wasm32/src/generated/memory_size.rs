@@ -5,5 +5,6 @@ pub(super) const MEMORY_SIZE: [table::Form; 1usize] = [
     table::Form::new(0x0000_003f, &[], &[], &[table::Ty::I32])
         .tail(&[0])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

@@ -5,5 +5,6 @@ pub(super) const ATOMIC_FENCE: [table::Form; 1usize] = [
     table::Form::new(0x00fe_0003, &[], &[], &[])
         .tail(&[0])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

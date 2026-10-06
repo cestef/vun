@@ -17,5 +17,6 @@ pub(super) const I64_ATOMIC_RMW_XCHG: [table::Form; 1usize] = [
             &[table::Ty::I64],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::Atomics))),
 ];

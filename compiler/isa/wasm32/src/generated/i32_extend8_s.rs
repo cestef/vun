@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const I32_EXTEND8_S: [table::Form; 1usize] = [
     table::Form::new(0x0000_00c0, &[], &[table::Ty::I32], &[table::Ty::I32])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(Some(table::Need::Feature(table::Feature::SignExtension))),
 ];

@@ -4,5 +4,6 @@ use crate::table;
 pub(super) const DROP: [table::Form; 1usize] = [
     table::Form::new(0x0000_001a, &[], &[table::Ty::Any], &[])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

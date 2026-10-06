@@ -17,5 +17,6 @@ pub(super) const F64_STORE: [table::Form; 1usize] = [
             &[],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

@@ -27,6 +27,7 @@ const CRATE: Crate = Crate {
         ("Access", "table", "Access"),
         ("Ty", "table", "Ty"),
         ("Flow", "table", "Flow"),
+        ("Control", "table", "Control"),
         ("Feature", "table", "Feature"),
         ("Need", "table", "Need"),
     ],
@@ -61,7 +62,8 @@ fn form(c: &Crate, record: &Literal<'_>) -> Option<TokenStream> {
         form = quote! { #form.tail(&[#(#tail),*]) };
     }
     let flow = c.variant("Flow", field("flow")?)?;
-    form = quote! { #form.flow(#flow) };
+    let control = c.variant("Control", field("control")?)?;
+    form = quote! { #form.flow(#flow).control(#control) };
     let requires = option(field("requires")?, |need| c.value("Need", need))?;
     Some(quote! { #form.requires(#requires) })
 }

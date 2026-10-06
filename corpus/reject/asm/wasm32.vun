@@ -1,0 +1,44 @@
+//! What a block of WebAssembly instructions reports of its blocks (spec 07, section 6): an `end`
+//! or a branch that leaves the block of assembly, an `else` with no `if`, a block left open, and
+//! values on the stack where a block ends.
+
+lines := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        end(); //~ asm.stack
+    });
+};
+
+reaches_out := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        br(1); //~ asm.stack
+        end();
+    });
+};
+
+no_if := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        else_(); //~ asm.stack
+        end();
+    });
+};
+
+stays_open := () {
+    unsafe lang.arch.asm({ //~ asm.stack
+        ..lang.arch.wasm32.names;
+        loop();
+    });
+};
+
+carries := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        block();
+        i32_const(1);
+        end(); //~ asm.stack
+    });
+};

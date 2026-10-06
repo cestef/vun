@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const F64_PROMOTE_F32: [table::Form; 1usize] = [
     table::Form::new(0x0000_00bb, &[], &[table::Ty::F32], &[table::Ty::F64])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

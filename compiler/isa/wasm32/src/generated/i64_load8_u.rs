@@ -17,5 +17,6 @@ pub(super) const I64_LOAD8_U: [table::Form; 1usize] = [
             &[table::Ty::I64],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

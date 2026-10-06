@@ -40,6 +40,9 @@ pub const Access: Item = Item::new(&["lang", "arch", "wasm32", "Access"]);
 pub const Feature: Item = Item::new(&["lang", "arch", "wasm32", "Feature"]);
 /// What a form needs of a processor beyond WebAssembly's first version.
 pub const Need: Item = Item::new(&["lang", "arch", "wasm32", "Need"]);
+/// What a form does to the structure of the code around it, which is blocks, loops and `if`s
+/// nested, none giving a value.
+pub const Control: Item = Item::new(&["lang", "arch", "wasm32", "Control"]);
 /// Where control goes after a form.
 pub const Flow: Item = Item::new(&["lang", "arch", "wasm32", "Flow"]);
 /// An operand position: what it takes and what the form does with it.

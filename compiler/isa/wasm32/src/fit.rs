@@ -2,17 +2,17 @@
 //! as its access reads or writes it, an immediate the bits hold; the width is the table's one.
 
 use vun_inline::{Bound, ClassId, FormId, OpId};
-use vun_isa::{Fit, Fixed, Given, Misfit, Slot, Stack, Why};
+use vun_isa::{Fit, Fixed, Given, Misfit, Scope, Slot, Stack, Why};
 
-use crate::{Access, Arg, Class, Kind, Op, Size, Ty};
+use crate::{Access, Arg, Class, Control, Kind, Op, Size, Ty};
 
 impl Arg {
     /// Whether this position takes `given`.
     fn takes<V, P, S>(self, given: &Given<V, P, S>) -> Result<(), Why> {
         match (self.kind, given) {
             (Kind::Local, Given::Bound { bound, .. }) => match (self.access, bound) {
-                (Access::Read, Bound::In { .. })
-                | (Access::Write, Bound::Out { .. })
+                (Access::Read, Bound::In { .. } | Bound::InOut { .. })
+                | (Access::Write, Bound::Out { .. } | Bound::InOut { .. })
                 | (Access::ReadWrite, Bound::InOut { .. }) => Ok(()),
                 _ => Err(Why::Kind),
             },
@@ -58,7 +58,22 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
         }
     }
     let slots = |tys: &[Ty]| tys.iter().map(|ty| ty.slot(local)).collect();
-    let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes) };
+    let depth = givens.iter().find_map(|given| match given {
+        Given::Imm(Some(depth)) => u32::try_from(*depth).ok(),
+        _ => None,
+    });
+    let branch = |always| depth.map(|depth| Scope::Branch { depth, always });
+    let scope = match form.control {
+        Control::None => Some(Scope::None),
+        Control::Open => Some(Scope::Open { two_armed: false }),
+        Control::OpenIf => Some(Scope::Open { two_armed: true }),
+        Control::Reopen => Some(Scope::Reopen),
+        Control::Close => Some(Scope::Close),
+        Control::Branch => branch(true),
+        Control::BranchIf => branch(false),
+    };
+    let scope = scope.ok_or(Misfit::Operand { at: 0, why: Why::Wide })?;
+    let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes), scope };
     let operands = givens.iter().cloned().map(Given::operand).collect();
     Ok(Fit::new(Size::B32.id(), operands).on(stack))
 }

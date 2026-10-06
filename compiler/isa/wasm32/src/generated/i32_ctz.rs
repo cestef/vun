@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const I32_CTZ: [table::Form; 1usize] = [
     table::Form::new(0x0000_0068, &[], &[table::Ty::I32], &[table::Ty::I32])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

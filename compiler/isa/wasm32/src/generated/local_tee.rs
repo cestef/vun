@@ -9,5 +9,6 @@ pub(super) const LOCAL_TEE: [table::Form; 1usize] = [
             &[table::Ty::Local],
         )
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

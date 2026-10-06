@@ -3,5 +3,6 @@ use crate::table;
 pub(super) const F32_CONVERT_I64_S: [table::Form; 1usize] = [
     table::Form::new(0x0000_00b4, &[], &[table::Ty::I64], &[table::Ty::F32])
         .flow(table::Flow::Next)
+        .control(table::Control::None)
         .requires(None),
 ];

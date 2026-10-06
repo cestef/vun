@@ -58,6 +58,24 @@ pub enum Flow {
     Ends,
 }
 
+/// What a form does to the structure of the code around it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Control {
+    None,
+    /// Opens a block or a loop.
+    Open,
+    /// Opens what an `if` runs when its condition holds.
+    OpenIf,
+    /// Ends what an `if` ran and opens what it runs otherwise.
+    Reopen,
+    /// Ends the innermost block.
+    Close,
+    /// Goes to the block its immediate counts outward.
+    Branch,
+    /// Does so when the value it pops is not zero.
+    BranchIf,
+}
+
 /// An operand position: what it takes and what the form does with it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Arg {
@@ -87,13 +105,14 @@ pub struct Form {
     pub pushes: &'static [Ty],
     pub tail: &'static [u8],
     pub flow: Flow,
+    pub control: Control,
     pub requires: Option<Need>,
 }
 
 impl Form {
     #[must_use]
     pub const fn new(base: u32, args: &'static [Arg], pops: &'static [Ty], pushes: &'static [Ty]) -> Self {
-        Self { base, args, pops, pushes, tail: &[], flow: Flow::Next, requires: None }
+        Self { base, args, pops, pushes, tail: &[], flow: Flow::Next, control: Control::None, requires: None }
     }
 
     #[must_use]
@@ -104,6 +123,11 @@ impl Form {
     #[must_use]
     pub const fn flow(self, flow: Flow) -> Self {
         Self { flow, ..self }
+    }
+
+    #[must_use]
+    pub const fn control(self, control: Control) -> Self {
+        Self { control, ..self }
     }
 
     #[must_use]
@@ -128,6 +152,14 @@ impl Form {
 }
 
 impl Op {
+    /// The name the text format gives the instruction: the first underscore of a table's name is
+    /// a dot, and one ending it escapes a keyword of Vun.
+    #[must_use]
+    pub fn text(self) -> String {
+        let name = self.name();
+        name.strip_suffix('_').map_or_else(|| name.replacen('_', ".", 1), str::to_owned)
+    }
+
     /// The instruction a block names, and the form it was checked against.
     #[must_use]
     pub fn entry(op: vun_inline::OpId, form: vun_inline::FormId) -> (Self, &'static Form) {
