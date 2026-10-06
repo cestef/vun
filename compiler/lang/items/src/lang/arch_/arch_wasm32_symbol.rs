@@ -9,6 +9,12 @@ use crate::Item;
 /// Calls a function, `call(f)`: the values of its parameters are on the stack, its result is left
 /// there. Its parameters and result are each of one local's type.
 pub const call: Item = Item::new(&["lang", "arch", "wasm32", "symbol", "call"]);
+/// Calls the function of the linker's table at the index on top of the stack, `call_indirect(f)`:
+/// the type is the one of the function `f`, which is not called, and the values of its parameters
+/// are on the stack under the index.
+pub const call_indirect: Item = Item::new(
+    &["lang", "arch", "wasm32", "symbol", "call_indirect"],
+);
 /// Pushes the global, `global_get(stack_pointer)`.
 pub const global_get: Item = Item::new(
     &["lang", "arch", "wasm32", "symbol", "global_get"],

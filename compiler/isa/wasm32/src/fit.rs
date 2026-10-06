@@ -105,7 +105,7 @@ pub(crate) fn fit<V: Clone, P: Clone, S: Copy>(
         Control::Branch => branch(true),
         Control::BranchIf => branch(false),
         Control::BranchTable => Some(Scope::Table(depths)),
-        Control::Call => Some(Scope::Call),
+        Control::Call | Control::CallIndirect => Some(Scope::Call),
     };
     let scope = scope.ok_or(Misfit::Operand { at: 0, why: Why::Wide })?;
     let stack = Stack { pops: slots(form.pops), pushes: slots(form.pushes), scope };

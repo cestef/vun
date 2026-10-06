@@ -332,7 +332,9 @@ countdown := (n: u32) -> u32 {
   block it opens it ends; `br_table(0, 1, 2)` lists its depths, the last the default, and all
   carry the same. `call(f)` calls a function by name: it pops the parameters of `f`'s type and
   pushes its result (each a scalar, of the class a local of that type has; a type of no bytes is
-  passed in nothing). `global_get(stack_pointer)` and `global_set` name a global the linker defines
+  passed in nothing). `call_indirect(f)` calls through the linker's table the function at the index
+  on top of the stack, as of the type of `f`, which is not called; the index of a function value is
+  its address. `global_get(stack_pointer)` and `global_set` name a global the linker defines
   (`lang.arch.wasm32.Global`). The vector instructions (`v128_load`, `i32x4_add`, ...) need the feature `simd128`; a vector
   lives on the stack only, as no Vun type is held as one: a block loads or builds it (`v128_const`
   takes the low and then the high 64 bits), computes and stores it or takes a lane. There is no `return`: a block inlined into another function would return from

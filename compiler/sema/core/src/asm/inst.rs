@@ -94,7 +94,9 @@ impl Checker<'_, '_, '_> {
             let (class, _) = self.arch.register(self.table, Some(bytes), Format::of(&ty).is_some())?;
             Some(Slot::Class(class))
         };
-        stack.pops = signature.params.iter().filter_map(|&ty| slot(ty)).collect();
+        // What the form pops itself, a table's index, is above the parameters.
+        let above = std::mem::take(&mut stack.pops);
+        stack.pops = signature.params.iter().filter_map(|&ty| slot(ty)).chain(above).collect();
         stack.pushes = slot(signature.result).into_iter().collect();
         Some(stack)
     }

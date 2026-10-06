@@ -1,7 +1,8 @@
 //! What a block of WebAssembly instructions reports of its blocks (spec 07, section 6): an `end`
 //! or a branch that leaves the block of assembly, an `else` with no `if`, a block left open, and
 //! values on the stack where a block ends, a block that does not give the value it is typed with, and
-//! a call without the arguments its function takes (their types are checked for the target only),
+//! a call without the arguments its function takes (their types are checked for the target only)
+//! or without the index of an indirect one,
 //! a vector taken as a scalar, and a lane past the vector's.
 
 lines := () {
@@ -92,6 +93,13 @@ call_without_its_argument := () {
     unsafe lang.arch.asm({
         ..lang.arch.wasm32.names;
         call(twice); //~ asm.stack
+    });
+};
+
+call_through_without_an_index := () {
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        call_indirect(twice); //~ asm.stack
     });
 };
 

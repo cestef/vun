@@ -92,6 +92,8 @@ pub enum Control {
     BranchTable,
     /// Calls the function its operand names.
     Call,
+    /// Calls the function the table holds at the index it pops.
+    CallIndirect,
 }
 
 /// An operand position: what it takes and what the form does with it.

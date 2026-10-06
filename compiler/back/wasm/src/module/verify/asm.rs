@@ -4,6 +4,7 @@ use vun_isa::Nest;
 use vun_isa_wasm32::{Control, Flow, Ty};
 
 use super::Check;
+use crate::module::Linker;
 use crate::module::asm::{Asm, Operand, Typed};
 use crate::module::invalid::Why;
 
@@ -34,7 +35,8 @@ impl Check<'_> {
                 self.push(ty);
             }
         }
-        if let Some(symbol) = asm.symbol().filter(|_| form.control != Control::Call) {
+        let calls = matches!(form.control, Control::Call | Control::CallIndirect);
+        if let Some(symbol) = asm.symbol().filter(|_| !calls) {
             self.stack_pointer(symbol)?;
         }
         let depths: Vec<u32> = asm.depths().collect();
@@ -50,6 +52,11 @@ impl Check<'_> {
             Control::Branch => self.jump(None, depth?)?,
             Control::BranchIf => self.through(depth?)?,
             Control::Call => self.call_symbol(asm.symbol().ok_or(Why::Unbalanced)?)?,
+            Control::CallIndirect => {
+                let symbol = asm.symbol().ok_or(Why::Unbalanced)?;
+                self.module.linker(Linker::Table).ok_or(Why::Symbol(symbol))?;
+                self.call_symbol(symbol)?;
+            }
             Control::BranchTable => {
                 let (default, cases) = depths.split_last().ok_or(Why::Unbalanced)?;
                 self.targets(cases, *default)?;

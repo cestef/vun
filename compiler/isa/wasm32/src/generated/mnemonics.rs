@@ -6,7 +6,7 @@ macro_rules! list {
     };
 }
 /// The mnemonic of each instruction, in the order of `Op`.
-const MNEMONICS: [&str; 487usize] = list! {
+const MNEMONICS: [&str; 488usize] = list! {
     "i32_clz" "i32_ctz" "i32_popcnt" "i32_add" "i32_sub" "i32_mul" "i32_div_s"
     "i32_div_u" "i32_rem_s" "i32_rem_u" "i32_and" "i32_or" "i32_xor" "i32_shl"
     "i32_shr_s" "i32_shr_u" "i32_rotl" "i32_rotr" "i64_clz" "i64_ctz" "i64_popcnt"
@@ -110,7 +110,7 @@ const MNEMONICS: [&str; 487usize] = list! {
     "v128_load64_splat" "v128_store" "v128_const" "v128_load8_lane" "v128_load16_lane"
     "v128_load32_lane" "v128_load64_lane" "v128_store8_lane" "v128_store16_lane"
     "v128_store32_lane" "v128_store64_lane" "v128_load32_zero" "v128_load64_zero" "call"
-    "global_get" "global_set"
+    "call_indirect" "global_get" "global_set"
 };
 impl Op {
     /// The mnemonic its forms are written with, unless a form names its own.

@@ -2,13 +2,13 @@
 //! linker rewrites, padded to a fixed width.
 
 use vun_bytes::{Out, PADDED};
-use vun_isa_wasm32::{Imm, Kind as Position};
+use vun_isa_wasm32::{Control, Imm, Kind as Position};
 use vun_wasm::format::op::{END, I32_CONST};
 
 use super::asm::{Asm, Operand};
 use super::link::{Reloc, RelocKind};
 use super::op::{Num, Op};
-use super::{Kind, Linker, Module, SymbolId};
+use super::{Kind, Linker, Module, SymbolId, TypeId};
 
 /// The block type of blocks taking and giving nothing.
 const EMPTY: u8 = 0x40;
@@ -69,9 +69,7 @@ impl Body<'_> {
             }
             Op::CallIndirect(ty) => {
                 out.u8(0x11);
-                self.relocated(RelocKind::TypeIndexLeb, ty.number(), 0, ty.number());
-                let table = self.module.linker(Linker::Table).expect("an indirect call names the table");
-                self.relocated(RelocKind::TableNumberLeb, table.number(), 0, 0);
+                self.indirect(*ty);
             }
             Op::Drop => out.u8(0x1a),
             Op::Select => out.u8(0x1b),
@@ -130,6 +128,13 @@ impl Body<'_> {
         }
     }
 
+    /// The type an indirect call has and the table it reads, after its opcode.
+    fn indirect(&mut self, ty: TypeId) {
+        self.relocated(RelocKind::TypeIndexLeb, ty.number(), 0, ty.number());
+        let table = self.module.linker(Linker::Table).expect("an indirect call names the table");
+        self.relocated(RelocKind::TableNumberLeb, table.number(), 0, 0);
+    }
+
     fn address(at: u64, addend: i32) -> u32 {
         let at = i64::try_from(at).expect("memory fits") + i64::from(addend);
         u32::try_from(at).expect("addresses of wasm32 fit u32")
@@ -158,6 +163,12 @@ impl Body<'_> {
                 }
                 (Position::Imm(Imm::Bits(bits)), Operand::Imm(v)) => {
                     self.out.bytes(&v.to_le_bytes()[..usize::from(bits / 8)]);
+                }
+                (Position::Symbol, Operand::Symbol(sym)) if form.control == Control::CallIndirect => {
+                    let Kind::Func { ty, .. } = self.module.symbols[*sym].kind else {
+                        unreachable!("a verified indirect call names a function")
+                    };
+                    self.indirect(ty);
                 }
                 (Position::Symbol, Operand::Symbol(sym)) => {
                     let index = self.function_index(*sym);

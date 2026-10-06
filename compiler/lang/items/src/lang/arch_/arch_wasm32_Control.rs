@@ -31,3 +31,8 @@ pub const branch_table: Item = Item::new(
 );
 /// Calls the function its operand names, popping its parameters and pushing its result.
 pub const call: Item = Item::new(&["lang", "arch", "wasm32", "Control", "call"]);
+/// Calls the function the table holds at the index it pops, of the type its operand's function
+/// has, popping the parameters under the index and pushing the result.
+pub const call_indirect: Item = Item::new(
+    &["lang", "arch", "wasm32", "Control", "call_indirect"],
+);

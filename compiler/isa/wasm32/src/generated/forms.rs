@@ -7,7 +7,7 @@ macro_rules! list {
     };
 }
 /// The forms of each instruction, in the order of `Op`.
-const FORMS: [&[Form]; 487usize] = list! {
+const FORMS: [&[Form]; 488usize] = list! {
     i32_clz I32_CLZ i32_ctz I32_CTZ i32_popcnt I32_POPCNT i32_add I32_ADD i32_sub I32_SUB
     i32_mul I32_MUL i32_div_s I32_DIV_S i32_div_u I32_DIV_U i32_rem_s I32_REM_S i32_rem_u
     I32_REM_U i32_and I32_AND i32_or I32_OR i32_xor I32_XOR i32_shl I32_SHL i32_shr_s
@@ -182,7 +182,7 @@ const FORMS: [&[Form]; 487usize] = list! {
     v128_store8_lane V128_STORE8_LANE v128_store16_lane V128_STORE16_LANE
     v128_store32_lane V128_STORE32_LANE v128_store64_lane V128_STORE64_LANE
     v128_load32_zero V128_LOAD32_ZERO v128_load64_zero V128_LOAD64_ZERO call CALL
-    global_get GLOBAL_GET global_set GLOBAL_SET
+    call_indirect CALL_INDIRECT global_get GLOBAL_GET global_set GLOBAL_SET
 };
 impl Op {
     /// Its forms, in the order they are tried.

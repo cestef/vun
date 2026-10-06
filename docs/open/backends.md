@@ -5,7 +5,7 @@
 - Inline assembly (`lang.arch.wasm32`, decisions 474, 501, 504 to 507) runs under wasmtime, with atomics
   and structured control (blocks giving a value, `br_table`). Calls name functions, and globals are
   the linker's (`stack_pointer`). SIMD is the proposal's vectors on the stack only (decision 507).
-  Open: `call_indirect`, bound vectors (no Vun type is held as `v128`); `Check::Asm` does not apply
+  Open: bound vectors (no Vun type is held as `v128`); `Check::Asm` does not apply
   to wasm blocks.
 - The backend refuses naked functions and addresses past a function's start, and reports no frame
   sizes or debug information.

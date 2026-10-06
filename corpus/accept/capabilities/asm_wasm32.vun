@@ -196,6 +196,20 @@ call_twice := (x: i32) -> i32 {
     r
 };
 
+/// A call through the table takes the index of the function on top of the stack, and the type of
+/// the function it names, which is not called.
+call_through := (f: (x: i32) -> i32, x: i32) -> i32 {
+    mut r: i32 = 0;
+    unsafe lang.arch.asm({
+        ..lang.arch.wasm32.names;
+        local_get(in(x));
+        local_get(in(f));
+        call_indirect(twice);
+        local_set(out(r));
+    });
+    r
+};
+
 /// A global the linker defines is named by the choice of its kind.
 stack_top := () -> u32 {
     mut sp: u32 = 0;

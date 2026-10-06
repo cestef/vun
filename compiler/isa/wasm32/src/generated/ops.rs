@@ -80,6 +80,6 @@ declare! {
     V128Load16x4S V128Load16x4U V128Load32x2S V128Load32x2U V128Load8Splat
     V128Load16Splat V128Load32Splat V128Load64Splat V128Store V128Const V128Load8Lane
     V128Load16Lane V128Load32Lane V128Load64Lane V128Store8Lane V128Store16Lane
-    V128Store32Lane V128Store64Lane V128Load32Zero V128Load64Zero Call GlobalGet
-    GlobalSet
+    V128Store32Lane V128Store64Lane V128Load32Zero V128Load64Zero Call CallIndirect
+    GlobalGet GlobalSet
 }

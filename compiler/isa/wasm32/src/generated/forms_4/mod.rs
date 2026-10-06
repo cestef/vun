@@ -84,5 +84,6 @@ pub(crate) mod v128_store64_lane;
 pub(crate) mod v128_load32_zero;
 pub(crate) mod v128_load64_zero;
 pub(crate) mod call;
+pub(crate) mod call_indirect;
 pub(crate) mod global_get;
 pub(crate) mod global_set;

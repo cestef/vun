@@ -167,3 +167,20 @@ fn a_typed_block_without_its_value_is_rejected() {
     let m = module(binary(ValType::I32), Vec::new(), body);
     assert_eq!(m.verify(), Err(Invalid { func: 0, at: 1, why: Why::Underflow }));
 }
+
+#[test]
+fn an_indirect_call_of_assembly_takes_the_type_of_the_function_it_names() {
+    use vun_index::Idx;
+
+    // The stack pointer and the table come first, then `f`, whose type the call has.
+    let f = crate::module::SymbolId::new(2);
+    let call = |operands| asm(Table::CallIndirect, 0, operands);
+    let body = vec![Op::LocalGet(0), Op::LocalGet(1), Op::I32Const(0), call(vec![Operand::Symbol(f)])];
+    let m = module(binary(ValType::I32), Vec::new(), body);
+    assert_eq!(m.verify(), Ok(()));
+    validate(&m.write()).unwrap();
+
+    let body = vec![Op::LocalGet(0), call(vec![Operand::Symbol(f)])];
+    let m = module(binary(ValType::I32), Vec::new(), body);
+    assert_eq!(m.verify(), Err(Invalid { func: 0, at: 1, why: Why::Underflow }));
+}

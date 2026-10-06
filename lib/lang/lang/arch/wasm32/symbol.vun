@@ -6,6 +6,16 @@ _w := lang.arch.wasm32;
 /// there. Its parameters and result are each of one local's type.
 call := _w.Instruction{ .forms = &[.{ .base = 0x10, .args = &[.{ .kind = .symbol }], .control = .call }] };
 
+/// Calls the function of the linker's table at the index on top of the stack, `call_indirect(f)`:
+/// the type is the one of the function `f`, which is not called, and the values of its parameters
+/// are on the stack under the index.
+call_indirect := _w.Instruction{ .forms = &[.{
+    .base = 0x11,
+    .args = &[.{ .kind = .symbol }],
+    .pops = &[.i32],
+    .control = .call_indirect,
+}] };
+
 /// Pushes the global, `global_get(stack_pointer)`.
 global_get := _w.Instruction{ .forms = &[.{
     .base = 0x23,
