@@ -1486,9 +1486,10 @@ reads each message itself once the last is handled, and checks after each.
 - *Commands.* `workspace/executeCommand` carries out the commands the server announces, one row
   each. `vun.view` writes a view of a document in its project's `.vun/views/<path>.<view>`, at the document's path in the project,, and asks
   the client to show it (`window/showDocument`); what computing it reports is left to the
-  document's diagnostics. `vun.run` builds the program the document exports and runs it, without
-  input, its output written to `.vun/views/<path>.run` as it comes, then how it ended; what stops
-  the build is written there instead. `vun.stop` ends the programs `vun.run` started that are still
+  document's diagnostics. `vun.run` builds the program the document exports and runs it, its
+  standard input the file `.vun/views/<path>.input` when there is one, and none otherwise, its
+  output written to `.vun/views/<path>.run` as it comes, then how it ended; what stops the build
+  is written there instead. `vun.input` shows that file, an empty one where there is none. `vun.stop` ends the programs `vun.run` started that are still
   running (the run's output then says how it ended), and while any runs, a lens beside each run
   lens runs it. `vun.test` builds the tests' program of the document's
   namespace (spec 11) and runs one test by name, what `vun test` reports of it written to
@@ -1498,7 +1499,7 @@ reads each message itself once the last is handled, and checks after each.
   lenses (`workspace/codeLens/refresh`). The server's loop handles events: the messages the
   client sends and what the tasks it started report.
 - *Code lenses.* Over the name of each declaration of a root file exporting its program
-  (`vun_mir::Program::roots`), a lens running `vun.run` (and `vun.stop` while a run lasts); over the name of each test the file
+  (`vun_mir::Program::roots`), a lens running `vun.run`, one showing its input with `vun.input` (and `vun.stop` while a run lasts); over the name of each test the file
   declares, a lens running `vun.test`. The tests are those the runner finds, `std.meta.collect`
   of the file's namespace called through the query engine (`vun_sema::testing::Tests`), never a
   match of `#[test]` in the text.

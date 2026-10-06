@@ -1,6 +1,6 @@
 //! Running the program a root file exports: a lens over each declaration exporting it, and the
 //! command building it and running it, its output written beside the document as it comes, then
-//! how it ended.
+//! how it ended. What it reads is a file beside the document too, which a second lens opens.
 
 use std::fs::{File, OpenOptions};
 use std::io::Write;
@@ -20,6 +20,11 @@ use crate::server::Server;
 /// What the output of a run is named by, beside the document.
 const OUTPUT: &str = "run";
 const TITLE: &str = "Run";
+
+/// What the input of a run is named by, beside the document: the program reads it as its standard
+/// input, and has none when the file does not exist.
+const INPUT: &str = "input";
+const INPUT_TITLE: &str = "Input";
 
 /// The arguments of [`Order::Run`].
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
@@ -43,7 +48,8 @@ impl Server<'_> {
         output.write_all(&out).map_err(Failure::unwritten)
     }
 
-    /// A lens over each declaration of `document` exporting the program it roots.
+    /// A lens over each declaration of `document` exporting the program it roots, one running it
+    /// and one opening its input, and, while any runs, one stopping them.
     pub(super) fn run_lenses(&mut self, document: &TextDocumentIdentifier) -> Result<Vec<CodeLens>, Failure> {
         let file = self.document(document)?.file;
         let ran = Ran { text_document: document.clone() };
@@ -52,8 +58,33 @@ impl Server<'_> {
             Some(CodeLens { range, command: Some(Order::Run.command(TITLE.to_owned(), &ran)) })
         });
         let runs: Vec<_> = runs.collect();
+        let inputs = runs.iter().map(|run| {
+            let command = Order::Input.command(INPUT_TITLE.to_owned(), &ran);
+            CodeLens { range: run.range, command: Some(command) }
+        });
+        let inputs: Vec<_> = inputs.collect();
         let stops: Vec<_> = runs.iter().filter_map(|run| self.stop_lens(run, document)).collect();
-        Ok(runs.into_iter().chain(stops).collect())
+        Ok(runs.into_iter().chain(inputs).chain(stops).collect())
+    }
+
+    /// The input of the run of `document`'s program: its file, or none when there is none.
+    fn input(&mut self, source: &Path) -> Result<Stdio, Failure> {
+        match File::open(self.session.shown_at(source, INPUT)) {
+            Ok(file) => Ok(Stdio::from(file)),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(Stdio::null()),
+            Err(error) => Err(Failure::unwritten(error)),
+        }
+    }
+
+    /// Asks the client to show the input of the run of `ran`'s document, an empty file where it
+    /// has none yet.
+    pub(super) fn show_input(&mut self, ran: &Ran) -> Result<(), Failure> {
+        let source = self.document(&ran.text_document)?.path.clone();
+        let path = self.session.shown_at(&source, INPUT);
+        if !path.exists() {
+            path.put([]).map_err(Failure::unwritten)?;
+        }
+        self.show(&path)
     }
 
     /// Builds the program `ran` names and runs it, its output written beside the document as it
@@ -69,8 +100,9 @@ impl Server<'_> {
         };
         drop(std::mem::take(&mut self.session.diag));
         let errors = output.try_clone().map_err(Failure::unwritten)?;
+        let stdin = self.input(&source)?;
         let mut command = self.session.command(&program);
-        command.stdin(Stdio::null()).stdout(output.try_clone().map_err(Failure::unwritten)?);
+        command.stdin(stdin).stdout(output.try_clone().map_err(Failure::unwritten)?);
         let child = command.stderr(errors).spawn().map_err(Failure::unwritten)?;
         self.follow(child, output);
         self.show(&path)

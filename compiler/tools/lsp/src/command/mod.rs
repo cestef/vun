@@ -31,6 +31,10 @@ pub(crate) enum Order {
     /// Builds and runs the program a document exports: [`run::Ran`].
     #[data(name = "vun.run")]
     Run,
+    /// Shows the file a run reads as its standard input, an empty one where there is none:
+    /// [`run::Ran`].
+    #[data(name = "vun.input")]
+    Input,
     /// Builds the tests' program of a document's namespace and runs one test: [`test::Tested`].
     #[data(name = "vun.test")]
     Test,
@@ -78,6 +82,7 @@ impl Answers<r::ExecuteCommand> for Server<'_> {
         match order {
             Order::View => self.show_view(&argument.read().map_err(Failure::params)?)?,
             Order::Run => self.run_program(&argument.read().map_err(Failure::params)?)?,
+            Order::Input => self.show_input(&argument.read().map_err(Failure::params)?)?,
             Order::Test => self.run_test(&argument.read().map_err(Failure::params)?)?,
             Order::Stop => self.stop_runs(),
         }

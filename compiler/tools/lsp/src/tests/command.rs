@@ -65,14 +65,16 @@ fn a_hover_shows_the_value_compiling_computes_and_the_layout_of_the_type() {
 fn each_declaration_exporting_the_program_has_a_lens_running_it() {
     use vun_lsp_protocol::command::CodeLensParams;
 
+    use crate::command::Order;
+
     served("lsp-run-lens", |client, uri| {
         client.open(uri, "main := () -> () {};\nstart := std.os.start(main);\n");
         let params = CodeLensParams { text_document: TextDocumentIdentifier { uri: uri.clone() } };
         let lenses = client.request::<r::CodeLens>(&params).unwrap();
         let at: Vec<_> = lenses.iter().map(|l| (l.range.start.line, l.range.start.character)).collect();
-        assert_eq!(at, [(1, 0)], "{lenses:?}");
-        let command = lenses[0].command.as_ref().unwrap();
-        assert_eq!(command.command, crate::command::Order::Run.name());
+        assert_eq!(at, [(1, 0), (1, 0)], "{lenses:?}");
+        let commands: Vec<_> = lenses.iter().filter_map(|l| l.command.as_ref()).map(|c| &c.command).collect();
+        assert_eq!(commands, [&Order::Run.name(), &Order::Input.name()]);
     });
 }
 
@@ -155,12 +157,12 @@ fn a_run_that_has_not_ended_has_a_lens_stopping_it() {
             let lenses = client.request::<r::CodeLens>(&params).unwrap();
             lenses.into_iter().filter_map(|l| l.command).map(|c| c.command).collect()
         };
-        assert_eq!(commands(client), [Order::Run.name()]);
+        assert_eq!(commands(client), [Order::Run.name(), Order::Input.name()]);
 
         let output = uri.to_file_path().unwrap().with_extension("out");
         let child = Command::new("sleep").arg("60").stdin(Stdio::null()).spawn().unwrap();
         client.server.follow(child, std::fs::File::create(&output).unwrap());
-        assert_eq!(commands(client), [Order::Run.name(), Order::Stop.name()]);
+        assert_eq!(commands(client), [Order::Run.name(), Order::Input.name(), Order::Stop.name()]);
 
         let stop = ExecuteCommandParams { command: Order::Stop.name(), arguments: None };
         assert_eq!(client.request::<r::ExecuteCommand>(&stop).unwrap(), None);
@@ -168,7 +170,7 @@ fn a_run_that_has_not_ended_has_a_lens_stopping_it() {
             panic!("the run ends");
         };
         client.server.ended(run);
-        assert_eq!(commands(client), [Order::Run.name()]);
+        assert_eq!(commands(client), [Order::Run.name(), Order::Input.name()]);
         assert!(!std::fs::read(&output).unwrap().is_empty(), "how it ended is written");
     });
 }
@@ -214,5 +216,29 @@ fn the_views_that_narrow_are_offered_again_for_the_function_at_the_cursor() {
         let text = std::fs::read_to_string(&path).unwrap();
         assert_eq!(text.lines().count(), 1, "{text}");
         assert!(text.contains(" f"), "{text}");
+    });
+}
+
+#[test]
+fn the_input_lens_shows_the_file_a_run_reads_and_keeps_what_it_holds() {
+    use crate::command::Order;
+    use crate::command::run::Ran;
+    use vun_data::ToData;
+
+    served("lsp-input", |client, uri| {
+        client.open(uri, "main := () -> () {};\nstart := std.os.start(main);\n");
+        let source = uri.to_file_path().unwrap();
+        let path = client.server.session.shown_at(&source, "input");
+        let ran = Ran { text_document: TextDocumentIdentifier { uri: uri.clone() } };
+        let input =
+            ExecuteCommandParams { command: Order::Input.name(), arguments: Some(vec![ran.to_data()]) };
+        client.request::<r::ExecuteCommand>(&input).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"");
+        let asked = std::mem::take(&mut client.server.outbox);
+        assert!(asked.iter().any(|m| m.method.as_deref() == Some(r::ShowDocument::METHOD)));
+
+        std::fs::write(&path, "3\n").unwrap();
+        client.request::<r::ExecuteCommand>(&input).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"3\n");
     });
 }
