@@ -105,3 +105,9 @@ results_combine := () {
     std.testing.assert(ok.is_ok_and([] (x: &u8) { x.* == 4 }) and !bad.is_ok_and([] (x: &u8) { x.* == 4 }));
     std.testing.assert(bad.expect_err("err") == 1);
 };
+
+#[test]
+floats_are_added_up_in_the_order_given := () {
+    xs: [4]f64 = [0.5, 0.25, 2.0, 1.25];
+    std.testing.assert(xs.iter().sum_floats(f64) == 4.0);
+};

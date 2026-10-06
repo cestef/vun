@@ -32,3 +32,6 @@ pub const options_combine: Item = Item::new(
 pub const results_combine: Item = Item::new(
     &["std", "iter", "tests", "results_combine"],
 );
+pub const floats_are_added_up_in_the_order_given: Item = Item::new(
+    &["std", "iter", "tests", "floats_are_added_up_in_the_order_given"],
+);

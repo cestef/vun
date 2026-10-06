@@ -68,6 +68,18 @@ pub const grown: Item = Item::new(&["std", "collections", "btree", "BTreeMap", "
 pub const entries: Item = Item::new(
     &["std", "collections", "btree", "BTreeMap", "entries"],
 );
+/// Each key and its value, greatest key first.
+pub const entries_rev: Item = Item::new(
+    &["std", "collections", "btree", "BTreeMap", "entries_rev"],
+);
+/// The keys from `lower` up to, not including, `upper`, least first, each with its value.
+pub const range: Item = Item::new(&["std", "collections", "btree", "BTreeMap", "range"]);
+/// The keys, least first, each with its value, taken away as they are given.
+pub const drain: Item = Item::new(&["std", "collections", "btree", "BTreeMap", "drain"]);
+/// The value of `key`, which is `value` put there when it had none.
+pub const get_or_insert: Item = Item::new(
+    &["std", "collections", "btree", "BTreeMap", "get_or_insert"],
+);
 /// Holds nothing again, the buffer kept.
 pub const clear: Item = Item::new(&["std", "collections", "btree", "BTreeMap", "clear"]);
 /// Whether it is a B-tree holding as many keys as it says.

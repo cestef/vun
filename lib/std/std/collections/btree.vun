@@ -7,13 +7,7 @@
 
 ..std.mem.alloc.{ Allocator };
 ..std.collections.btree.node.{ Seek };
-..std.collections.btree.pool.{ Pool };
-
-/// The most levels a tree has: `degree` raised to it is past any count of keys.
-height_max: usize = 32;
-
-/// Where a key is: a node and its position there.
-Slot := struct { node: usize, at: usize };
+..std.collections.btree.pool.{ Pool, Slot };
 
 BTreeMap := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
     _pool: Pool(K, V),
@@ -233,27 +227,38 @@ BTreeMap := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
 
     /// Each key and its value, least key first.
     entries := (self: &BTreeMap(K, V)) -> std.iter.Iter((&K, &V)) {
-        mut path := std.collections.ArrayVec(height_max, Slot).empty();
-        defer path.deinit();
-        mut next := self._root;
+        for pair in self._pool.entries(self._root, .none, .none) { yield pair; }
+    };
+
+    /// Each key and its value, greatest key first.
+    entries_rev := (self: &BTreeMap(K, V)) -> std.iter.Iter((&K, &V)) {
+        for pair in self._pool.entries_rev(self._root) { yield pair; }
+    };
+
+    /// The keys from `lower` up to, not including, `upper`, least first, each with its value.
+    range := (self: &BTreeMap(K, V), lower: &K, upper: &K) -> std.iter.Iter((&K, &V)) {
+        for pair in self._pool.entries(self._root, .some(lower), .some(upper)) { yield pair; }
+    };
+
+    /// The keys, least first, each with its value, taken away as they are given.
+    drain := (self: &mut BTreeMap(K, V)) -> std.iter.Iter((K, V)) {
         for {
-            // Down the first children of `next`, each node with the position of its first key.
-            for next != Option(usize).none {
-                node := next.expect("some");
-                path.push(.{ .node = node, .at = 0 }).expect("room");
-                here := self._pool.node(node);
-                next = if here.is_leaf() { .none } else { .some(here.child(0)) };
-            }
-            top := path.pop();
-            if top == Option(Slot).none { break; }
-            frame := top.expect("some");
-            here := self._pool.node(frame.node);
-            if frame.at < here.len() {
-                yield (&here.keys.items()[frame.at], &here.values.items()[frame.at]);
-                path.push(.{ .node = frame.node, .at = (frame.at + 1).sat(usize) }).expect("room");
-                if !here.is_leaf() { next = .some(here.child((frame.at + 1).sat(usize))); }
+            match self.pop_first() {
+                .some(pair) => yield pair,
+                .none => break,
             }
         }
+    };
+
+    /// The value of `key`, which is `value` put there when it had none.
+    get_or_insert := (self: &mut BTreeMap(K, V), $A: Allocator, a: &mut A, key: K, value: V) -> Result(
+        &mut V,
+        A.Error
+    ) {
+        copy := key;
+        if !self.contains(&copy) { _ = self.insert(A, a, key, value)?; }
+        slot := self.find(&copy).expect("some");
+        .ok(&mut self._pool.node_mut(slot.node).values.items_mut()[slot.at])
     };
 
     /// Holds nothing again, the buffer kept.

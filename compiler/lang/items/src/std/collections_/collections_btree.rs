@@ -12,8 +12,4 @@ pub const node: Item = Item::new(&["std", "collections", "btree", "node"]);
 pub const pool: Item = Item::new(&["std", "collections", "btree", "pool"]);
 /// The namespace `std.collections.btree.tests`.
 pub const tests: Item = Item::new(&["std", "collections", "btree", "tests"]);
-/// The most levels a tree has: `degree` raised to it is past any count of keys.
-pub const height_max: Item = Item::new(&["std", "collections", "btree", "height_max"]);
-/// Where a key is: a node and its position there.
-pub const Slot: Item = Item::new(&["std", "collections", "btree", "Slot"]);
 pub const BTreeMap: Item = Item::new(&["std", "collections", "btree", "BTreeMap"]);

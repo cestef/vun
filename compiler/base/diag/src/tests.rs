@@ -33,6 +33,14 @@ fn a_package_id_is_its_names_and_lies_in_the_namespaces_of_its_path() {
 }
 
 #[test]
+fn an_id_is_its_path_whatever_variant_holds_it() {
+    let tool = DiagId::new("std.lints.style.unused");
+    let package = DiagId::parse("std.lints.style.unused");
+    assert_eq!(tool, package);
+    assert_eq!(HashSet::from([tool, package]).len(), 1);
+}
+
+#[test]
 fn ids_are_ordered_by_binding_path_whatever_declares_them() {
     let tool = DiagId::new("command.failed");
     assert!(tool < errors::INT_DOES_NOT_FIT);

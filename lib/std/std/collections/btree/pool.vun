@@ -6,6 +6,12 @@
 ..std.mem.alloc.{ Allocator };
 ..std.collections.btree.node.{ Node, degree, keys_max };
 
+/// The most levels a tree has: `degree` raised to it is past any count of keys.
+height_max: usize = 32;
+
+/// Where a key is: a node and its position there.
+Slot := struct { node: usize, at: usize };
+
 Pool := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
     _nodes: std.collections.Vec(Node(K, V)),
     _free: ?usize,
@@ -169,6 +175,78 @@ Pool := ($K: type, $V: type) -> type { #[kind.linear] #[kind.free] struct {
     clear := (self: &mut Pool(K, V)) {
         self._nodes.clear();
         self._free = .none;
+    };
+
+    /// The keys of the tree rooted at `root` from `lower` up to, not including, `upper` (each
+    /// open end `.none`), least first, each with its value. The path holds each node above the
+    /// one visited with the position of the next key of it.
+    entries := (
+        self: &Pool(K, V),
+        root: ?usize,
+        lower: ?&K,
+        upper: ?&K,
+    ) -> std.iter.Iter((&K, &V)) {
+        mut path := std.collections.ArrayVec(height_max, Slot).empty();
+        defer path.deinit();
+        mut next := root;
+        mut bound := lower;
+        for {
+            // Down to the first key not below `bound`, one node at a time: a node holding it
+            // is left there, as the keys of its child are below it.
+            for next != Option(usize).none {
+                visited := next.expect("some");
+                here := self.node(visited);
+                mut at: usize = 0;
+                mut inside := true;
+                if bound != Option(&K).none {
+                    match here.search(bound.expect("some")) {
+                        .found(i) => { at = i; inside = false; },
+                        .between(i) => { at = i; },
+                    }
+                }
+                path.push(.{ .node = visited, .at = at }).expect("room");
+                next = if here.is_leaf() or !inside { .none } else { .some(here.child(at)) };
+            }
+            // Every node entered from now on is walked from its first key.
+            bound = .none;
+            top := path.pop();
+            if top == Option(Slot).none { break; }
+            frame := top.expect("some");
+            here := self.node(frame.node);
+            if frame.at < here.len() {
+                key := &here.keys.items()[frame.at];
+                if upper != Option(&K).none and !(key.* < upper.expect("some").*) { break; }
+                yield (key, &here.values.items()[frame.at]);
+                path.push(.{ .node = frame.node, .at = (frame.at + 1).sat(usize) }).expect("room");
+                if !here.is_leaf() { next = .some(here.child((frame.at + 1).sat(usize))); }
+            }
+        }
+    };
+
+    /// The keys of the tree rooted at `root`, greatest first, each with its value. The path holds
+    /// each node above the one visited with how many of its keys are left.
+    entries_rev := (self: &Pool(K, V), root: ?usize) -> std.iter.Iter((&K, &V)) {
+        mut path := std.collections.ArrayVec(height_max, Slot).empty();
+        defer path.deinit();
+        mut next := root;
+        for {
+            for next != Option(usize).none {
+                visited := next.expect("some");
+                here := self.node(visited);
+                path.push(.{ .node = visited, .at = here.len() }).expect("room");
+                next = if here.is_leaf() { .none } else { .some(here.child(here.len())) };
+            }
+            top := path.pop();
+            if top == Option(Slot).none { break; }
+            frame := top.expect("some");
+            if frame.at > 0 {
+                here := self.node(frame.node);
+                left: usize = (frame.at - 1).sat(usize);
+                yield (&here.keys.items()[left], &here.values.items()[left]);
+                path.push(.{ .node = frame.node, .at = left }).expect("room");
+                if !here.is_leaf() { next = .some(here.child(left)); }
+            }
+        }
     };
 
     /// Gives the nodes back to `a`, which they came from.

@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
 use vun_codec::{Decode, Encode};
 use vun_intern::{Internable, Interned, Pool, Symbol};
@@ -11,7 +12,7 @@ use crate::errors::Lang;
 
 /// A binding path to a `lang.diag.Diag` value, such as `lang.errors.int.does_not_fit`: a
 /// compiler id, an id of a tool of the repository, or the path of a lint a package defines.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Copy, Debug, Encode, Decode)]
 pub enum DiagId {
     /// Declared in `lang.errors`, which the compiler reports.
     Lang(Lang),
@@ -102,6 +103,25 @@ impl DiagId {
     pub fn within(&self, group: &Self) -> bool {
         let mut names = self.segments().into_iter();
         group.segments().into_iter().all(|name| names.next() == Some(name))
+    }
+}
+
+/// By binding path, whatever declares the id: a tool constant and a package id naming the same
+/// path are one id.
+impl PartialEq for DiagId {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Lang(a), Self::Lang(b)) => a == b,
+            _ => self.path() == other.path(),
+        }
+    }
+}
+
+impl Eq for DiagId {}
+
+impl Hash for DiagId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path().hash(state);
     }
 }
 

@@ -55,3 +55,15 @@ pub const a_btree_map_follows_a_sorted_map_through_thousands_of_random_steps: It
         "a_btree_map_follows_a_sorted_map_through_thousands_of_random_steps",
     ],
 );
+pub const a_btree_map_walks_a_range_and_backwards: Item = Item::new(
+    &["std", "collections", "btree", "tests", "a_btree_map_walks_a_range_and_backwards"],
+);
+pub const a_btree_map_drains_in_order_and_inserts_what_is_missing: Item = Item::new(
+    &[
+        "std",
+        "collections",
+        "btree",
+        "tests",
+        "a_btree_map_drains_in_order_and_inserts_what_is_missing",
+    ],
+);

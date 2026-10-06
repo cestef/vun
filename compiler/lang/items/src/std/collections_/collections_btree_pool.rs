@@ -6,4 +6,10 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The most levels a tree has: `degree` raised to it is past any count of keys.
+pub const height_max: Item = Item::new(
+    &["std", "collections", "btree", "pool", "height_max"],
+);
+/// Where a key is: a node and its position there.
+pub const Slot: Item = Item::new(&["std", "collections", "btree", "pool", "Slot"]);
 pub const Pool: Item = Item::new(&["std", "collections", "btree", "pool", "Pool"]);

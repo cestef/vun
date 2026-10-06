@@ -171,3 +171,45 @@ a_btree_map_follows_a_sorted_map_through_thousands_of_random_steps := () {
     tree.deinit(Fixed, &mut a);
     model.deinit(Fixed, &mut b);
 };
+
+#[test]
+a_btree_map_walks_a_range_and_backwards := () {
+    mut storage: [65536]u8 = [0; 65536];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    for k in 0..200 { _ = m.insert(Fixed, &mut a, k.to(u32), k.to(u16)).expect("room"); }
+    mut sum: u32 = 0;
+    mut count: u32 = 0;
+    for (k, _) in m.range(&37, &150) { sum += k.*; count += 1; }
+    std.testing.assert(count == 113 and sum == 10509);
+    std.testing.assert(m.range(&10, &10).count() == 0 and m.range(&500, &600).count() == 0);
+    mut previous: u32 = 200;
+    mut descending := true;
+    for (k, _) in m.entries_rev() {
+        if k.* >= previous { descending = false; }
+        previous = k.*;
+    }
+    std.testing.assert(descending and m.entries_rev().count() == 200 and previous == 0);
+    m.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_btree_map_drains_in_order_and_inserts_what_is_missing := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut m := Map.empty();
+    for k in [4, 2, 6] { _ = m.insert(Fixed, &mut a, k, 1).expect("room"); }
+    m.get_or_insert(Fixed, &mut a, 2, 9).expect("room").* += 1;
+    m.get_or_insert(Fixed, &mut a, 3, 9).expect("room").* += 1;
+    std.testing.assert(m.get(&2) == Option(&u16).some(&2) and m.get(&3) == Option(&u16).some(&10));
+    mut keys: u32 = 0;
+    mut last: u32 = 0;
+    mut in_order := true;
+    for (k, _) in m.drain() {
+        if k < last { in_order = false; }
+        last = k;
+        keys += 1;
+    }
+    std.testing.assert(in_order and keys == 4 and m.is_empty() and m.verify());
+    m.deinit(Fixed, &mut a);
+};

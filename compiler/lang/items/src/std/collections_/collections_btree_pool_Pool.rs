@@ -54,6 +54,17 @@ pub const verify: Item = Item::new(
 pub const clear: Item = Item::new(
     &["std", "collections", "btree", "pool", "Pool", "clear"],
 );
+/// The keys of the tree rooted at `root` from `lower` up to, not including, `upper` (each
+/// open end `.none`), least first, each with its value. The path holds each node above the
+/// one visited with the position of the next key of it.
+pub const entries: Item = Item::new(
+    &["std", "collections", "btree", "pool", "Pool", "entries"],
+);
+/// The keys of the tree rooted at `root`, greatest first, each with its value. The path holds
+/// each node above the one visited with how many of its keys are left.
+pub const entries_rev: Item = Item::new(
+    &["std", "collections", "btree", "pool", "Pool", "entries_rev"],
+);
 /// Gives the nodes back to `a`, which they came from.
 pub const deinit: Item = Item::new(
     &["std", "collections", "btree", "pool", "Pool", "deinit"],

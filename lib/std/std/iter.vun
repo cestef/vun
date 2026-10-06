@@ -171,6 +171,12 @@ impl lang.Coroutine($Self, $T, $R) {
         for item in self { total += item; }
         total
     };
+    /// The floats added up into a total of type `A`, from the first to the last.
+    sum_floats := (self: Self, $A: type) -> A {
+        mut total: A = 0.0;
+        for item in self { total += item; }
+        total
+    };
     /// The items, with the next one to look at before it is taken: the frame is given back by
     /// `end` once it is done with.
     peekable := (self: Self) -> Peekable(T, Self) { Peekable(T, Self).of(self) };

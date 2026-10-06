@@ -14,7 +14,7 @@
   (`ProcessPrng`).
 - A stable sort (needs scratch or an allocator), a pattern-defeating quicksort,
   `std.os.{env,process,net}` and directories, `std.json` reading beyond the pull reader. `BTreeMap`
-  has no range queries or entries to change yet.
+  has no entry value to change in place beyond `get_or_insert`.
 - `std.math`: correctly rounded `exp`/`ln`/`sin`; `f16` transcendentals round twice.
 - A helper in `std.int` for an arithmetic shift or sign mask (signed bit tricks need `.wrap` round
   trips).
