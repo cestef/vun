@@ -247,7 +247,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
     pub(crate) fn operand_ty(&self, operand: &Operand) -> Option<Ty> {
         match operand {
             Operand::Place(place) => place.ty(self.l.types.cx, &self.body.locals),
-            Operand::Const(value) => value.ty(),
+            Operand::Const(value) => value.ty().or_else(|| self.l.env.value_type(value).ok()),
         }
     }
 }

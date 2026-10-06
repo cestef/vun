@@ -1,0 +1,110 @@
+//! Dynamic dispatch is a library (spec 02, section 3). `Dyn(I)` refers to a value of any type
+//! implementing the interface `I`, which it calls through a table of the functions its witness
+//! gives, one per requirement.
+
+/// What a `Dyn` erases its target to: it is only ever pointed to.
+Erased := struct {};
+
+/// The functions of `I` a `Dyn` calls: the requirements that are functions, each as `Dyn(I)`
+/// takes it as its own, with the borrow of the `Dyn` for the receiver.
+Table := ($I: lang.Interface) -> type { struct {
+    $for m in std.meta.members(I(Dyn(I))) {
+        $if m.required {
+            $if .some(f) = m.type {
+                $if .some(_) = std.meta.signature(f) { $(m.name): f, }
+            }
+        }
+    }
+} };
+
+/// Calls the function `name` of `table` with the target `data` as its receiver, a borrow of
+/// type `Receiver`, and the arguments `rest` after it.
+invoke := (
+    $I: lang.Interface,
+    $name: &[u8],
+    $Receiver: type,
+    $Result: type,
+    $Rest: type,
+    table: &Table(I),
+    data: *Erased,
+    rest: Rest
+) -> Result {
+    receiver := unsafe lang.mem.read(
+        Receiver,
+        lang.mem.cast(*Erased, Receiver, lang.mem.pointer_to(*Erased, &data)),
+    );
+    passed := (receiver, $for part in lang.meta.variants(Rest)[0].parts { rest.$(part.index) },);
+    table.$(name).call(passed)
+};
+
+#[lang.lint.allow(std.lints.naming.case, "a type constructor, whose methods receive its instances")]
+Dyn := ($I: lang.Interface) -> type { struct {
+    data: *Erased,
+    table: Table(I),
+
+    $for m in std.meta.members(I(Dyn(I))) {
+        $if m.required {
+            $if .some(f) = m.type {
+                $if .some(sig) = std.meta.signature(f) {
+                    $if std.meta.same(type, lang.meta.items(sig.Params)[0], &mut Dyn(I)) {
+                        $(m.name) := (
+                            self: &mut Dyn(I),
+                            ..rest: std.meta.Tuple(lang.meta.items(sig.Params)[1..]),
+                        ) -> sig.Returns {
+                            invoke(
+                                I,
+                                m.name,
+                                &mut Dyn(I),
+                                sig.Returns,
+                                std.meta.Tuple(lang.meta.items(sig.Params)[1..]),
+                                &self.table,
+                                self.data,
+                                rest
+                            )
+                        };
+                    } else {
+                        $(m.name) := (
+                            self: &Dyn(I),
+                            ..rest: std.meta.Tuple(lang.meta.items(sig.Params)[1..]),
+                        ) -> sig.Returns {
+                            invoke(
+                                I,
+                                m.name,
+                                &Dyn(I),
+                                sig.Returns,
+                                std.meta.Tuple(lang.meta.items(sig.Params)[1..]),
+                                &self.table,
+                                self.data,
+                                rest
+                            )
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    $for m in std.meta.members(I(Dyn(I))) {
+        $if !m.required { $(m.name) := I(Dyn(I)).$(m.name); }
+    }
+
+    of := unsafe ($T: type, target: *T) -> Dyn(I) {
+        witness := std.meta.witness(I, T);
+        entries := (
+            $for m in std.meta.members(I(Dyn(I))) {
+                $if m.required {
+                    $if .some(f) = m.type {
+                        $if .some(_) = std.meta.signature(f) {
+                            unsafe lang.mem.function_cast(
+                                std.meta.TypeOf(witness.$(m.name)),
+                                f,
+                                witness.$(m.name)
+                            )
+                        }
+                    }
+                }
+            },
+        );
+        .{ .data = unsafe target.cast(Erased), .table = lang.meta.make(Table(I), 0, entries) }
+    };
+} };

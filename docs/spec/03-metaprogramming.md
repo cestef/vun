@@ -82,7 +82,7 @@ function returning one; it may itself contain templates, which is the "inception
 ```vun
 // serde/derive.vun
 derive := ($T: type) -> type { struct {
-    serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Encoder.Error) {
+    serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Dyn(Encoder).Error) {
         w.begin_struct(std.meta.name_of(T))?;
         $for f in std.meta.fields(T) {
             key := $if .some(r) = std.meta.attr(f, rename) { r.to } else { f.name };
@@ -238,6 +238,12 @@ variant, parts)` is the value of `T` that is its variant `variant` holding the t
 type `lang.meta.Parts(T, variant)`: the inverse of `part`, at compile time and at run time.
 `lang.meta.implements(I, T)` tells whether `witness(I, T)` gives an impl, so a `$if` chooses
 between a type's own impl and a derived one (decision 361).
+
+`lang.meta.members(T)` describes each declaration of the struct type `T` (`lang.meta.Member`: its
+name, its type where known, and whether its value is `_`), so the requirements of `I(Self)` are
+data; `lang.meta.signature(F)` gives the tuple of parameter types and the result of a function
+type `F`, none for another type, and `lang.meta.Tuple(items)` makes a tuple type of types:
+what `std.Dyn` reflects with (spec 02, section 3, decision 519).
 
 Reflection is read-only for types. Types are created by writing type literals (with L0 and L1),
 never by assembling descriptor structs; values are made from parts by `make`.

@@ -55,6 +55,10 @@ pub const pointer_at: Item = Item::new(&["lang", "mem", "pointer_at"]);
 /// a loaded library exports): the code there must be written to `F`'s signature and calling
 /// convention wherever the function is called.
 pub const function_at: Item = Item::new(&["lang", "mem", "function_at"]);
+/// The function `f` as a function of type `G`, which must take and give what `f` does as bits: a
+/// borrow where `f` takes another borrow, a pointer where it takes a pointer. Calling the result
+/// is as sound as the types say.
+pub const function_cast: Item = Item::new(&["lang", "mem", "function_cast"]);
 /// The pointer `n` items of `T` past `p`.
 pub const offset: Item = Item::new(&["lang", "mem", "offset"]);
 /// `p` as a pointer to a `U`.

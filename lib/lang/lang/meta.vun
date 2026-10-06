@@ -98,6 +98,20 @@ Decl := struct {
     nested: ?Namespace,
 };
 
+/// A declaration of a struct type, as reflection gives it: a requirement of an interface, whose
+/// value is `_`, or a member with a value.
+Member := struct {
+    name: &[u8],
+    /// Its type, where it has one that is known: the annotation of a requirement.
+    type: ?type,
+    /// Whether its value is `_`, left to what implements the struct.
+    required: bool,
+};
+
+/// The declarations of the struct type `T` in declaration order, generated ones included; the
+/// fields are `fields`.
+members: ($T: type) -> &[Member] = _;
+
 /// The members of `ns` the namespace calling sees, in the order they are declared: every one
 /// within its package, the public ones from another.
 decls: ($ns: Namespace) -> &[Decl] = _;
@@ -119,6 +133,13 @@ Parts: ($T: type, $variant: usize) -> type = _;
 make: ($T: type, $variant: usize, parts: Parts(T, variant)) -> T = _;
 /// The item types of the tuple type `T`, in order; none for another type.
 items: ($T: type) -> &[type] = _;
+/// The tuple type of the types `items`, in order: what `items` takes apart.
+Tuple: ($items: &[type]) -> type = _;
+/// The parts of a function type: the tuple of the types of its parameters, the one a call
+/// passes, and its result.
+Signature := struct { Params: type, Returns: type };
+/// The parts of the function type `F`; none for another type.
+signature: ($F: type) -> ?Signature = _;
 /// `T` without the borrows around it, `U` for `&&U`: the type a method called on a value of `T` is
 /// looked up in.
 Unborrowed: ($T: type) -> type = _;

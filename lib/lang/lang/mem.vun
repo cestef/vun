@@ -62,6 +62,11 @@ pointer_at: unsafe ($T: type, address: usize) -> *T = _;
 /// convention wherever the function is called.
 #[panic.never]
 function_at: unsafe ($F: type, address: usize) -> F = _;
+/// The function `f` as a function of type `G`, which must take and give what `f` does as bits: a
+/// borrow where `f` takes another borrow, a pointer where it takes a pointer. Calling the result
+/// is as sound as the types say.
+#[panic.never]
+function_cast: unsafe ($F: type, $G: type, f: F) -> G = _;
 /// The pointer `n` items of `T` past `p`.
 #[panic.never]
 offset: unsafe ($T: type, p: *T, n: isize) -> *T = _;

@@ -16,9 +16,11 @@ use vun_sema_ty::{Ty, Value};
 use crate::env::Env;
 use crate::member::Members;
 
+mod declared;
 mod make;
 mod params;
 mod shape;
+mod signature;
 
 /// A part of a variant: a field of a struct, or an item of a payload, named by its position.
 struct Part {
@@ -55,6 +57,13 @@ struct Member {
     name: Symbol,
     attrs: Vec<Value>,
     nested: Option<Namespace>,
+}
+
+/// A declaration of a struct: its name, its type where known, and whether its value is `_`.
+struct Declaration {
+    name: Symbol,
+    ty: Option<Ty>,
+    required: bool,
 }
 
 /// How reflection computes one fact of what it describes.
@@ -110,7 +119,7 @@ impl Env<'_, '_> {
     }
 
     /// The declared type of the field `field` of the `lang` struct `descriptor`.
-    fn field_type(&self, descriptor: Item, field: Item) -> Result<Ty, Unevaluated> {
+    pub(super) fn field_type(&self, descriptor: Item, field: Item) -> Result<Ty, Unevaluated> {
         let ty = self.item(descriptor)?.as_type().ok_or(Unevaluated::Unsupported)?;
         let members = self.cx.get::<Members>(&ty).ok_or(Unevaluated::Unsupported)?;
         let slot =
@@ -119,7 +128,7 @@ impl Env<'_, '_> {
     }
 
     /// `value` as a value of the option type `option`.
-    fn optional(option: Ty, value: Option<Value>) -> Value {
+    pub(super) fn optional(option: Ty, value: Option<Value>) -> Value {
         let (name, payload) = match value {
             Some(value) => (lang::Option::some.symbol(), vec![value]),
             None => (lang::Option::none.symbol(), Vec::new()),

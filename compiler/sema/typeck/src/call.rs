@@ -7,8 +7,8 @@ use vun_diag::{ChildKind, DiagCtxt, Diagnostic, Msg, TraceFrame, errors};
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind};
 use vun_hir::visit::Visitor;
 use vun_origin::OriginTable;
-use vun_sema_ty::Ty;
 use vun_sema_ty::call::Instantiation;
+use vun_sema_ty::{Ty, Value};
 
 use super::apply::{Argument, Callee, Passing};
 use super::{Known, Typer};
@@ -152,7 +152,11 @@ impl Typer<'_, '_, '_> {
             Some(method) => self.env().cx.get::<MemberValue>(method),
             None => self.evaluating().eval(callee),
         };
-        Callable::of(self.env(), f.ok()?)
+        // An interface is called as the function from a type to its requirements that it wraps.
+        match f.ok()? {
+            Value::Interface(f) => Some(Callable::Fn(f)),
+            f => Callable::of(self.env(), f),
+        }
     }
 }
 

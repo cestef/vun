@@ -249,8 +249,30 @@ point_serialize := serde.derive(Point);
 
 ### Dynamic dispatch
 
-`std.Dyn(Writer)` reflects over the requirement struct and builds a vtable struct and a fat
-pointer. Dynamic dispatch is library code.
+`std.Dyn(I)` (`std.dyn`) refers to a value of any type with an impl of the interface `I`. It
+reflects over the requirement struct of `I` for `Dyn(I)` itself (`I(Dyn(I))`, with `lang.meta.members`)
+and builds from it a table struct, one field per requirement that is a function, typed as the
+requirement is for `Dyn(I)`, and a pointer to the target. A requirement is a method of `Dyn(I)`
+with the signature it has for it, calling the table's function with the target as its receiver;
+a member of `I` that has a value (a default method, a type such as `Error`) is a member of `Dyn(I)`
+too, so a default method calls the others through the table.
+
+```vun
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+} });
+
+total := (shapes: &[std.Dyn(Shape)]) -> u64 { ... shapes[i].area() ... };
+d := unsafe std.Dyn(Shape).of(Square, lang.mem.pointer_to(Square, &square));
+```
+
+`Dyn(I).of(T, p)` is `unsafe`: the table holds the functions of `witness(I, T)` cast to the
+receiver `Dyn(I)` takes (`lang.mem.function_cast`), and the methods read the pointer back as the
+receiver, so `p` must point to a `T` for as long as the `Dyn` is used. A `Dyn` does not own its
+target. The receiver of a requirement is a borrow, shared or `&mut`, of `Self`; a requirement
+taking `Self` by value, or a `$` parameter, has no table entry and so no method, and a requirement
+that is a type (`Error: type = _`) names no type for every target: an interface used with `Dyn`
+declares such types with a value (`Error := ...`), which `Dyn(I)` has as `Dyn(I).Error`.
 
 ## 4. Operators are interfaces
 

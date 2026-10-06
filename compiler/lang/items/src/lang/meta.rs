@@ -54,6 +54,12 @@ pub const Variant: Item = Item::new(&["lang", "meta", "Variant"]);
 /// written on it, and, for a file or directory below, that namespace. Its value, `ns.$(name)`, is
 /// computed only where it is read.
 pub const Decl: Item = Item::new(&["lang", "meta", "Decl"]);
+/// A declaration of a struct type, as reflection gives it: a requirement of an interface, whose
+/// value is `_`, or a member with a value.
+pub const Member: Item = Item::new(&["lang", "meta", "Member"]);
+/// The declarations of the struct type `T` in declaration order, generated ones included; the
+/// fields are `fields`.
+pub const members: Item = Item::new(&["lang", "meta", "members"]);
 /// The members of `ns` the namespace calling sees, in the order they are declared: every one
 /// within its package, the public ones from another.
 pub const decls: Item = Item::new(&["lang", "meta", "decls"]);
@@ -72,6 +78,13 @@ pub const Parts: Item = Item::new(&["lang", "meta", "Parts"]);
 pub const make: Item = Item::new(&["lang", "meta", "make"]);
 /// The item types of the tuple type `T`, in order; none for another type.
 pub const items: Item = Item::new(&["lang", "meta", "items"]);
+/// The tuple type of the types `items`, in order: what `items` takes apart.
+pub const Tuple: Item = Item::new(&["lang", "meta", "Tuple"]);
+/// The parts of a function type: the tuple of the types of its parameters, the one a call
+/// passes, and its result.
+pub const Signature: Item = Item::new(&["lang", "meta", "Signature"]);
+/// The parts of the function type `F`; none for another type.
+pub const signature: Item = Item::new(&["lang", "meta", "signature"]);
 /// `T` without the borrows around it, `U` for `&&U`: the type a method called on a value of `T` is
 /// looked up in.
 pub const Unborrowed: Item = Item::new(&["lang", "meta", "Unborrowed"]);

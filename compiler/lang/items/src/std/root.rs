@@ -20,6 +20,8 @@ pub const collections: Item = Item::new(&["std", "collections"]);
 pub const crypto: Item = Item::new(&["std", "crypto"]);
 /// The namespace `std.diag`.
 pub const diag: Item = Item::new(&["std", "diag"]);
+/// The namespace `std.dyn`.
+pub const r#dyn: Item = Item::new(&["std", "dyn"]);
 /// The namespace `std.float`.
 pub const float: Item = Item::new(&["std", "float"]);
 /// The namespace `std.fmt`.

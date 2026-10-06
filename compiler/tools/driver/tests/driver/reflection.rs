@@ -62,3 +62,42 @@ read := () { $assert(std.meta.collect(app, Mark)[1].ns.$(std.meta.collect(app, M
     );
     assert_eq!(fixture.reported(&file), []);
 }
+
+#[test]
+fn the_declarations_of_a_struct_and_the_parts_of_a_function_type_are_data() {
+    let fixture = Fixture::new("reflection-declarations");
+    let file = fixture.root.write(
+        "interface.vun",
+        "\
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self, scale: u8) -> u64 = _;
+    name := (self: &Self) -> bool { true };
+} });
+Table: type = Shape(u8);
+/// Declarations in order, a requirement apart from what has a value.
+declared := () {
+    $assert(std.meta.members(Table).len() == 2);
+    $assert(std.meta.members(Table)[0].required);
+    $assert(!std.meta.members(Table)[1].required);
+};
+/// A requirement's type is the function type with `Self` bound.
+typed := () {
+    $if .some(f) = std.meta.members(Table)[0].type {
+        $if .some(s) = std.meta.signature(f) {
+            $assert(lang.meta.items(s.Params).len() == 2);
+            $assert(std.meta.same(type, lang.meta.items(s.Params)[0], &u8));
+            $assert(std.meta.same(type, lang.meta.items(s.Params)[1], u8));
+            $assert(std.meta.same(type, s.Returns, u64));
+        } else { $assert(false); }
+    } else { $assert(false); }
+};
+/// A type that is no function has no signature, and tuples are made of their items.
+parts := () {
+    $assert(std.meta.signature(u8) == .none);
+    $assert(lang.meta.items(std.meta.Tuple(lang.meta.items((u8, bool)))).len() == 2);
+    $assert(std.meta.same(type, lang.meta.items(std.meta.Tuple(&[u8, bool]))[1], bool));
+};
+",
+    );
+    assert_eq!(fixture.reported(&file), []);
+}

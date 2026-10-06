@@ -1,7 +1,7 @@
 //! A derive is a function returning a witness struct (spec 03, section 3).
 
 derive := ($T: type) -> type { struct {
-    serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Encoder.Error) {
+    serialize := (v: &T, w: &mut Dyn(Encoder)) -> Result((), Dyn(Encoder).Error) {
         w.begin_struct(std.meta.name_of(T))?;
         $for f in std.meta.fields(T) {
             key := $if .some(r) = std.meta.attr(f, serde.rename) { r.to } else { f.name };

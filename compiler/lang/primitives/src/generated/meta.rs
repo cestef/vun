@@ -36,6 +36,9 @@ pub enum Meta {
     concat,
     /// The fields of the struct type `T` in declaration order, generated ones included.
     fields,
+    /// The declarations of the struct type `T` in declaration order, generated ones included; the
+    /// fields are `fields`.
+    members,
     /// The members of `ns` the namespace calling sees, in the order they are declared: every one
     /// within its package, the public ones from another.
     decls,
@@ -54,6 +57,10 @@ pub enum Meta {
     make,
     /// The item types of the tuple type `T`, in order; none for another type.
     items,
+    /// The tuple type of the types `items`, in order: what `items` takes apart.
+    Tuple,
+    /// The parts of the function type `F`; none for another type.
+    signature,
     /// `T` without the borrows around it, `U` for `&&U`: the type a method called on a value of `T` is
     /// looked up in.
     Unborrowed,
@@ -98,6 +105,7 @@ impl Meta {
         Self::append,
         Self::concat,
         Self::fields,
+        Self::members,
         Self::decls,
         Self::variants,
         Self::variant,
@@ -106,6 +114,8 @@ impl Meta {
         Self::Parts,
         Self::make,
         Self::items,
+        Self::Tuple,
+        Self::signature,
         Self::Unborrowed,
         Self::name_of,
         Self::params,
@@ -136,6 +146,7 @@ impl Meta {
             Self::append => "append",
             Self::concat => "concat",
             Self::fields => "fields",
+            Self::members => "members",
             Self::decls => "decls",
             Self::variants => "variants",
             Self::variant => "variant",
@@ -144,6 +155,8 @@ impl Meta {
             Self::Parts => "Parts",
             Self::make => "make",
             Self::items => "items",
+            Self::Tuple => "Tuple",
+            Self::signature => "signature",
             Self::Unborrowed => "Unborrowed",
             Self::name_of => "name_of",
             Self::params => "params",
@@ -175,6 +188,7 @@ impl Meta {
             Self::append => vun_items::lang::meta::append,
             Self::concat => vun_items::lang::meta::concat,
             Self::fields => vun_items::lang::meta::fields,
+            Self::members => vun_items::lang::meta::members,
             Self::decls => vun_items::lang::meta::decls,
             Self::variants => vun_items::lang::meta::variants,
             Self::variant => vun_items::lang::meta::variant,
@@ -183,6 +197,8 @@ impl Meta {
             Self::Parts => vun_items::lang::meta::Parts,
             Self::make => vun_items::lang::meta::make,
             Self::items => vun_items::lang::meta::items,
+            Self::Tuple => vun_items::lang::meta::Tuple,
+            Self::signature => vun_items::lang::meta::signature,
             Self::Unborrowed => vun_items::lang::meta::Unborrowed,
             Self::name_of => vun_items::lang::meta::name_of,
             Self::params => vun_items::lang::meta::params,

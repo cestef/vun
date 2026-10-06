@@ -124,9 +124,10 @@ log := ($W: Writer, w: &mut W, msg: &[u8]) -> Result((), W.Error) {
 
 Function types denote plain function values, which are static and capture nothing. Code that
 takes a callback is generic over the interface `lang.ops.Call`, which both function values and
-closures implement, so either can be passed with static dispatch. Dynamic dispatch is planned as a library
-type, `std.Dyn(I)`, which would reflect over the requirement structure of `I` to build a table of
-function pointers and a fat pointer; it is not implemented yet.
+closures implement, so either can be passed with static dispatch. Dynamic dispatch is a library
+type, `std.Dyn(I)`, which reflects over the requirement structure of `I` to build a table of
+function pointers and a pointer to the target, and gives each requirement as a method that calls
+through the table.
 
 == Operators and attributes
 

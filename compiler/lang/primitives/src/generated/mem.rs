@@ -50,6 +50,10 @@ pub enum Mem {
     /// a loaded library exports): the code there must be written to `F`'s signature and calling
     /// convention wherever the function is called.
     function_at,
+    /// The function `f` as a function of type `G`, which must take and give what `f` does as bits: a
+    /// borrow where `f` takes another borrow, a pointer where it takes a pointer. Calling the result
+    /// is as sound as the types say.
+    function_cast,
     /// The pointer `n` items of `T` past `p`.
     offset,
     /// `p` as a pointer to a `U`.
@@ -102,6 +106,7 @@ impl Mem {
         Self::address,
         Self::pointer_at,
         Self::function_at,
+        Self::function_cast,
         Self::offset,
         Self::cast,
         Self::read,
@@ -144,6 +149,7 @@ impl Mem {
             Self::address => "address",
             Self::pointer_at => "pointer_at",
             Self::function_at => "function_at",
+            Self::function_cast => "function_cast",
             Self::offset => "offset",
             Self::cast => "cast",
             Self::read => "read",
@@ -187,6 +193,7 @@ impl Mem {
             Self::address => vun_items::lang::mem::address,
             Self::pointer_at => vun_items::lang::mem::pointer_at,
             Self::function_at => vun_items::lang::mem::function_at,
+            Self::function_cast => vun_items::lang::mem::function_cast,
             Self::offset => vun_items::lang::mem::offset,
             Self::cast => vun_items::lang::mem::cast,
             Self::read => vun_items::lang::mem::read,

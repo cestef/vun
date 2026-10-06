@@ -18,6 +18,7 @@ mod coroutines;
 mod cover;
 mod dependencies;
 mod doc;
+mod dynamic;
 mod evaluator;
 mod fetch;
 mod fixes;

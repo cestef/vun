@@ -154,6 +154,8 @@ tied to arguments, so no interprocedural analysis is needed.
   device's registers) is `unsafe` too, as is making a function of the address of code that
   outside hands over (`lang.mem.function_at(F, address)`: a symbol a loaded library exports),
   which must be written to the signature and calling convention of the function type `F`.
+  `lang.mem.function_cast(F, G, f)` is `unsafe` too: the function `f` as one of type `G`, which must
+  take and give what `f` does as bits, as `cast` is for pointers (decision 520).
 - `lang.mem.Uninit(T)`: storage for a `T` that may hold none yet, with the size, alignment and
   layout of a `T`. It is copy and free whatever `T` is, because it owns nothing: a `T` in it is
   neither dropped nor counted, so the linear value written into it is the writer's to account for.

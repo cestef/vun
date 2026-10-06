@@ -20,13 +20,23 @@ pub(crate) trait ApplyMeta {
 }
 
 impl ApplyMeta for Meta {
+    #[allow(clippy::too_many_lines, reason = "one arm per primitive")]
     fn apply(self, env: &Env<'_, '_>, args: &[Value]) -> Result<Value, Unevaluated> {
         match (self, args) {
+            // Reflection (spec 03, section 6).
             (Self::items, [ty]) => match &*ty.as_type().ok_or(Unevaluated::Unsupported)? {
                 TyKind::Tuple(items) => Ok(Value::Array(items.iter().map(|&t| Value::Type(t)).collect())),
                 _ => Ok(Value::Array(Vec::new())),
             },
-            // Reflection (spec 03, section 6).
+            (Self::Tuple, [Value::Array(items)]) => {
+                let items = items.iter().map(|item| item.as_type().ok_or(Unevaluated::Unsupported));
+                Ok(Value::Type(TyKind::Tuple(items.collect::<Result<_, _>>()?).intern()))
+            }
+            (Self::signature, [ty]) => {
+                let option = env.primitive_signature(Primitive::Meta(self), &[Some(ty.clone())])?.result;
+                env.signature_of(option, ty.as_type().ok_or(Unevaluated::Unsupported)?)
+            }
+            (Self::members, [ty]) => env.members(ty.as_type().ok_or(Unevaluated::Unsupported)?),
             (Self::variants, [ty]) => env.variants(ty.as_type().ok_or(Unevaluated::Unsupported)?),
             (Self::variant, [_, value]) => env.variant_index(value),
             (Self::fields, [ty]) => env.fields(ty.as_type().ok_or(Unevaluated::Unsupported)?),

@@ -55,14 +55,12 @@ Point := struct { x: i32, y: i32 };
 Reg := ($T: type) -> type { struct { raw: T } };
 
 /// Interfaces.
-#[lang.lint.allow(std.lints.naming.case, "a type constructor, whose methods receive its instances")]
-Dyn := ($I: lang.Interface) -> type { struct {
-    begin_struct := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
-    field := (self: &mut Dyn(I), name: &[u8]) -> Result((), Encoder.Error) { .ok(()) };
-    end_struct := (self: &mut Dyn(I)) -> Result((), Encoder.Error) { .ok(()) };
-} };
+..std.dyn.{ Dyn };
 Encoder := interface(($Self: type) -> type { struct {
-    Error: type = _;
+    Error := enum { full };
+    begin_struct: (self: &mut Self, name: &[u8]) -> Result((), Error) = _;
+    field: (self: &mut Self, name: &[u8]) -> Result((), Error) = _;
+    end_struct: (self: &mut Self) -> Result((), Error) = _;
 } });
 Serialize := ($T: type) -> lang.Interface {
     interface(($Self: type) -> type { struct {

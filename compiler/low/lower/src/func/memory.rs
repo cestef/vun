@@ -70,6 +70,8 @@ impl FnLower<'_, '_, '_> {
                 let address = self.int_operand(arg(0)?, word)?;
                 self.b.cast(CastOp::IntToPtr, address, Scalar::Ptr, self.at)
             }
+            // A function as another type of function is the address of its code, unchanged.
+            Mem::function_cast => self.scalar_operand(arg(0)?)?,
             // A function is the address of its code, as a pointer is of what it points to.
             Mem::function_at => {
                 ty.signature().ok_or(Unlowered::new(self.at, Why::NotAFunction(ty)))?;

@@ -2,7 +2,6 @@
 
 ## Corpus (`cargo xtask corpus`)
 
-- `std.Dyn` (`corpus/planned/types/dynamic.vun`, plus the `Encoder` `meta/derive.vun` waits for).
 - `std.mem.copy` takes `&mut` slices: an `&out` destination needs the callee's initialization
   tracked through the unsafe copy.
 - The grammar generator reads a PascalCase table name as "an enum" (`TokenKind` holds
