@@ -31,6 +31,7 @@ vun-regalloc = { workspace = true, features = ["sample"] }
 vun-render-annotate.workspace = true
 vun-render-ariadne.workspace = true
 vun-render-json.workspace = true
+vun-render-sarif.workspace = true
 vun-render-short.workspace = true
 vun-span.workspace = true
 vun-syntax.workspace = true

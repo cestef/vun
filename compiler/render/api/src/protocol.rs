@@ -12,6 +12,8 @@ use vun_span::FileId;
 pub enum Call<'a> {
     Info,
     Render(Box<Show<'a>>),
+    /// The run is over: what the renderer kept is asked for.
+    Finish,
 }
 
 /// A diagnostic to show, with colors or without.

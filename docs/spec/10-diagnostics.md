@@ -142,7 +142,9 @@ pub enum Safety  { Safe, Unsafe, Placeholder, DisplayOnly }
   messages as text and as typed parts (`text`, `code`, `type`, `number`), every label, child, fix
   (edits with their holes) and trace frame with its location resolved to file, start and end
   line and column, and bytes;
-- `--diagnostics=sarif` (still to come): for CI and code-scanning services;
+- `--diagnostics=sarif`: one SARIF 2.1.0 log of the run on standard output, for CI and code-scanning
+  services. A renderer component may keep what it is shown and write it when the run is over
+  (`Renderer::finish`), which one document needs (decision 513);
 - the LSP, section 6.
 
 Terminal renderers style what each part is, never how it looks: a severity and a child kind name

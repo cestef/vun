@@ -30,6 +30,11 @@ impl Interface for Renderers {
                 renderer.sink(&mut out, color).emit(&diagnostic, &Asking(ask), SourceFiles::global());
                 Reply::Rendered(out)
             }
+            Call::Finish => {
+                let mut out = Vec::new();
+                renderer.finish(&mut out);
+                Reply::Rendered(out)
+            }
         }
     }
 }

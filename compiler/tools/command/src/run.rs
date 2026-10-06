@@ -48,6 +48,10 @@ pub trait Diagnostics {
     /// The sink for diagnostics: `human` on standard error, as text or as lines of pieces, or
     /// JSON lines on standard output.
     fn diagnostics(&mut self, human: &dyn Renderer) -> Box<dyn DiagSink + '_>;
+
+    /// Writes what `human` kept of the run, once it is over, on standard output, where the
+    /// document of a format that is one for all diagnostics belongs.
+    fn finish_diagnostics(&mut self, human: &dyn Renderer);
 }
 
 impl Diagnostics for Shell<'_> {
@@ -60,6 +64,14 @@ impl Diagnostics for Shell<'_> {
             Format::Json => Box::new(JsonRenderer::new(self.out.writer())),
             // Plain, for the stream to cut into lines of pieces.
             Format::Styled => human.sink(self.err.writer(), Color::Never),
+        }
+    }
+
+    fn finish_diagnostics(&mut self, human: &dyn Renderer) {
+        match self.format() {
+            Format::Human | Format::Styled => human.finish(self.out.writer()),
+            // Each diagnostic is a line of its own already.
+            Format::Json => {}
         }
     }
 }

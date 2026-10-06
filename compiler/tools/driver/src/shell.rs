@@ -1,6 +1,6 @@
 //! The session as a command line runs it.
 
-use vun_command::Outcome;
+use vun_command::{Diagnostics, Outcome};
 use vun_term::Shell;
 
 use crate::Session;
@@ -33,6 +33,7 @@ impl vun_command::Context for Session {
         if self.tally {
             shell.status(&self.db.tally());
         }
+        shell.finish_diagnostics(self.registry.renderer(self.format));
     }
 }
 

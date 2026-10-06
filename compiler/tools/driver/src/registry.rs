@@ -134,6 +134,7 @@ impl Registry {
         register!(r.renderers, link {
             "renderer-terminal" => vun_component_renderer_terminal::component(),
             "renderer-ariadne" => vun_component_renderer_ariadne::component(),
+            "renderer-sarif" => vun_component_renderer_sarif::component(),
         });
         #[cfg(feature = "components")]
         if let Some(components) = Components::find() {

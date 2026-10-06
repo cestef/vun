@@ -1,0 +1,28 @@
+[package]
+name = "vun-component-renderer-sarif"
+description = "The SARIF diagnostics renderer as a component of the toolchain."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.vun-component]
+# The smallest profile of a release that holds it.
+profile = "default"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Defines the library's entry symbol: set to build the library, never to link the crate in.
+export = []
+
+[dependencies]
+vun-component.workspace = true
+vun-diag.workspace = true
+vun-render-sarif.workspace = true
+vun-renderer.workspace = true

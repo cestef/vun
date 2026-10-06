@@ -60,7 +60,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `Interface`, `Component::{open,within,call}`, `descriptor!` and `export!`; the one `unsafe`
   module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component`, `vun-scheme-component` (`compiler/pkg/component`) `vun-server` (`compiler/tools/server`, with the `Server` trait) and `vun-renderer` (`compiler/render/api`, with the `Renderer` trait, `Short` and `Remote`), `vun-binder` (`compiler/tools/binder`, with the `Binder` trait and what binding gives), `vun-formatter` (`compiler/tools/formatter`, the `Formatter` trait and `WIDTH`; `vun_fmt::Vun` serves it) and `vun-documenter` (`compiler/tools/documenter`, the `Documenter` trait, `Source`, `Site` and `Types`, which the host answers; `vun_doc::Html` serves it; the
   interface of each kind, `Remote` the host's `Backend`, `Linker` or `Scheme` over a component), and the
-  libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, `renderer-terminal`, `renderer-ariadne`, `server-lsp`, `binder-c`, `formatter-vun` and `documenter-html`, the last four in `compiler/tools/` since it serves a driver session).
+  libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, `renderer-terminal`, `renderer-ariadne`, `renderer-sarif`, `server-lsp`, `binder-c`, `formatter-vun` and `documenter-html`, the last four in `compiler/tools/` since it serves a driver session).
   The driver's `Registry::load` registers what a directory holds, `vun toolchain show` says where
   each comes from.
 - **Native backend** (`compiler/native`, TPDE's layers): `vun-native` (the `Native` trait, whose
@@ -79,8 +79,8 @@ Where the code for each part lives. The workspace layout and its layering rules 
   `wild` link (through the target's C compiler); `lld` runs `wasm-ld` and `ld64.lld`; `wasm` links
   WebAssembly objects in process (read with `vun-wasm`, `compiler/object/wasm`), WASI's linker;
   `msvc` and `external` are stubs.
-- **Renderers** (`compiler/render`): diagnostics as short lines, annotated snippets, JSON; SARIF
-  is a stub.
+- **Renderers** (`compiler/render`): diagnostics as short lines, annotated snippets, JSON, SARIF (one
+  log of the run, written when it ends, decision 513).
 - **Packages** (`compiler/pkg`): `vun-build` (manifests, locks, the store, `toolchain`: the
   machine's file), `vun-fetch` (archives, mirrors), `vun-http` (the `https` scheme).
 - **Tools** (`compiler/tools`): `vun-driver` (a library: `Session`, stages, packages loaded into

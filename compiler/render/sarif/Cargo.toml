@@ -11,6 +11,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-data.workspace = true
 vun-diag.workspace = true
 vun-origin.workspace = true
 vun-span.workspace = true
+vun-uri.workspace = true

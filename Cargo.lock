@@ -1740,6 +1740,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "vun-component-renderer-sarif"
+version = "0.1.0"
+dependencies = [
+ "vun-component",
+ "vun-diag",
+ "vun-render-sarif",
+ "vun-renderer",
+]
+
+[[package]]
 name = "vun-component-renderer-terminal"
 version = "0.1.0"
 dependencies = [
@@ -1878,6 +1888,7 @@ dependencies = [
  "vun-component-link-wasm",
  "vun-component-link-wild",
  "vun-component-renderer-ariadne",
+ "vun-component-renderer-sarif",
  "vun-component-renderer-terminal",
  "vun-component-scheme-https",
  "vun-data",
@@ -2021,6 +2032,7 @@ dependencies = [
  "vun-render-annotate",
  "vun-render-ariadne",
  "vun-render-json",
+ "vun-render-sarif",
  "vun-render-short",
  "vun-span",
  "vun-syntax",
@@ -2704,9 +2716,11 @@ dependencies = [
 name = "vun-render-sarif"
 version = "0.1.0"
 dependencies = [
+ "vun-data",
  "vun-diag",
  "vun-origin",
  "vun-span",
+ "vun-uri",
 ]
 
 [[package]]

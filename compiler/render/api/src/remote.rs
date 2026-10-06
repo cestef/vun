@@ -51,6 +51,17 @@ impl Renderer for Remote {
     fn sink<'w>(&self, out: &'w mut dyn Write, color: Color) -> Box<dyn DiagSink + 'w> {
         Box::new(Sink { remote: self.clone(), out, color })
     }
+
+    fn finish(&self, out: &mut dyn Write) {
+        let reply = self.component.call::<Renderers>(&Call::Finish, &|ask| Self::unasked(&ask));
+        match reply.and_then(|reply| reply.rendered().map_err(Fault::Malformed)) {
+            // Best-effort output: a closed stream must not abort compilation.
+            Ok(bytes) => drop(out.write_all(&bytes)),
+            Err(fault) => {
+                warn!(renderer = self.info.name, %fault, "a renderer component failed to finish the run");
+            }
+        }
+    }
 }
 
 struct Sink<'w> {

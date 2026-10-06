@@ -27,6 +27,10 @@ pub trait Renderer: Send + Sync {
 
     /// A sink writing to `out`, in `color`.
     fn sink<'w>(&self, out: &'w mut dyn Write, color: Color) -> Box<dyn DiagSink + 'w>;
+
+    /// Writes what it kept of the run to `out`, once the run is over: a format that is one
+    /// document for all of its diagnostics, such as SARIF, writes it here, not in a sink.
+    fn finish(&self, _out: &mut dyn Write) {}
 }
 
 /// One line per diagnostic, always linked: what shows diagnostics when the one asked for is not
