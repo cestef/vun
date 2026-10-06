@@ -316,7 +316,7 @@ Four things decide how a program is built, each declared in one place:
 |------|----|-------|
 | toolchain | one release of `vun`: the executable and its library | a directory, `~/.local/share/vun/toolchains/<version>/` once installed |
 | target | what a program runs on: a `lang.target.Spec` | the package `targets`, `targets.<os>.<arch>.<abi>` (spec 13, section 7) |
-| component | a backend or a linker compiled into the toolchain | the toolchain's executable |
+| component | a backend or a linker, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
 | tools | the programs of this machine building and running for a target | the machine's tools file |
 
 `vun toolchain show` says which toolchain runs and what it holds; `vun target list` lists the
@@ -349,7 +349,7 @@ hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSES/
 checked before anything is kept. The manifest is signed: `release.json.sig` is the Ed25519
 signature of its bytes, checked against the key `vun` is built with, or the one
 `VUN_RELEASES_KEY` names (`ed25519:<base32>`, for a mirror signing its own), so the manifest and,
-through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|remove|update` manages them;
+through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|remove|update|component` manages them;
 `update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
 to; the default and the running toolchain are not removed. A first installation runs the
 repository's `install.sh`, which downloads this machine's archive of the latest release somewhere
@@ -369,6 +369,36 @@ names every machine's toolchain at once; a `vun` handing off refuses a manifest 
 hashing otherwise, and installs again a toolchain installed from another. A first installation
 checks the archive against the signed checksums before anything runs; the `vun toolchain update`
 it runs then checks the manifest's signature and the tree's hash.
+
+**Components.** A backend or a linker is a component, and the toolchain holds nothing else of
+that kind: the registry lists components, none is special. A component is provided one of two
+ways, which differ only in transport. A *linked* one is compiled into `vun` (a Cargo feature),
+called directly. A *loaded* one is a dynamic library in the toolchain's `components/` directory
+(`<name>.so`, `.dylib` or `.dll`), opened on first use. Both answer the same typed requests
+(`Backend::info`, `emit`, `division`, `frame_sizes`; `Linker::info`, `runs`, `link`), so the
+crate implementing `Backend` or `Linker` is the same either way and a cdylib crate only exports it.
+
+The boundary of a loaded component is one C-ABI entry, `call(service, request) -> response`, with
+bytes in the `vun-codec` encoding both ways, and the owner of every buffer releasing it. No Rust
+type, allocation, static or thread crosses it, so a component has its own interner, pool and
+allocator and needs no compiler or crate version in common with `vun` but its own release. What
+the component asks of `vun` while it runs (the source lines of an origin, another component such
+as an assisting backend) it asks through the table of host calls it is given, which is the same
+`call` the other way; its diagnostics, artifacts and frame sizes come back in the response, and
+its `vun-trace` events are forwarded, so a run logs, times and dumps alike with the component in
+or out of process. A panic inside is caught at the boundary and reported as a diagnostic.
+Loading checks the library's hash against the toolchain's manifest and its descriptor (protocol
+number, release version) against `vun`'s, and refuses any other. This boundary is the one `unsafe`
+module of the toolchain besides `vun-par`'s pool.
+
+A release names each component's library per machine with its hash, in the signed manifest, and
+groups components in profiles (`minimal`: what builds for the machine; `default`; `full`). `vun
+toolchain install --profile` chooses one, `vun toolchain component list|add|remove` changes the
+set of a toolchain, and `.components` beside `.toolchain` in `build.vun` pins the set a project
+builds with (the lockfile records their hashes). A component naming another it needs (Cranelift
+assisted by native) brings it. A target's backend preferences (section 8 of spec 13) choose among
+the components present; a preferred one that is absent is `backend.unavailable`, naming the
+`component add` that provides it.
 
 **The machine's tools file.** A target names its own tools (`lang.target.CCompiler`), which
 fit a machine of that target: a C compiler building for the target (`builds_for = .target`, a
