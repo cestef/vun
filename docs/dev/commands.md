@@ -120,7 +120,7 @@ in pages as `data-icon`) and keys are one table (`src/keys.ts`, `data-action` on
 lists them). Build the compiler first, on a remote, and copy it back:
 
 ```sh
-cargo xtask remote --host am3.wg -- cargo build -p vun-cli --target wasm32-wasip1 --profile dist
+scripts/remote --host am3.wg cargo build -p vun-cli --target wasm32-wasip1 --profile dist
 rsync am3.wg:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
 cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
 vun doc --library -o site/public/api   # the API pages, served at /api/ (git-ignored; never `-o site`, which overwrites the landing page)
@@ -140,10 +140,10 @@ letter in `share.ts`.
 ## Remote machines
 
 ```sh
-cargo xtask remote --host am3.wg -- cargo nextest run   # or VUN_REMOTE=am3.wg
+scripts/remote --host am3.wg cargo nextest run   # or VUN_REMOTE=am3.wg
 ```
 
-`remote` mirrors the working copy (rsync, without `/target` and `/.jj`) to
+`scripts/remote` (a bash script, quoting each word as given) mirrors the working copy (rsync, without `/target` and `/.jj`) to
 `vun-build/<workspace directory>` in the host's home and runs the words there over ssh, output
 shown as it comes; each `jj` workspace has its own mirror and `target/`. A host needs rustup (the
 toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and,
@@ -154,11 +154,8 @@ has rows for `linux.arm64.kernel`, `linux.arm.kernel`, `bare.thumbv7em.eabihf` a
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
 on the aarch64 host six driver tests of the native backend and the checks fail, since the machine's
 own target there is `linux.arm64.kernel`.
-`remote` is an xtask, built and run on this machine first, and xtask depends on the compiler:
-while the tree does not build here (a `lang` declaration added and used before `cargo gen` wrote
-its handle), mirror by hand (`rsync -a --delete --exclude /target --exclude /.jj ./
-<host>:vun-build/<workspace directory>/`), run `cargo gen` there on a copy without the new uses,
-and bring the generated directories back.
+The script builds nothing from the repository, so it works while the tree does not build; after a
+`cargo gen` on a host, copy the generated directories back.
 `--reserve` runs the words on the host's fastest cores, those of the highest `cpu_capacity`
 (`am3.wg`'s 0 and 7 to 10), with the host's services (`system.slice`) confined to the others and
 given them back after, by `systemctl set-property --runtime` (a reboot undoes it too); it needs
@@ -201,7 +198,7 @@ on this machine, one line each. The runtimes are code of their own (`std.os.linu
 own kernel and C library targets, and, through `vun/tools.vun` (`.runner`), WASI under `wasmtime`
 (`.runner = .{ "wasmtime", "run" }`), Windows under `wine64` with a `.sysroot` holding `kernel32.lib`
 (zig's cache has one), Arm under `qemu-aarch64`. Run it on each host with
-`cargo xtask remote --host am3.wg -- cargo xtask runtimes`; am3 (arm64) covers `linux.arm64.kernel`,
+`scripts/remote --host am3.wg cargo xtask runtimes`; am3 (arm64) covers `linux.arm64.kernel`,
 `linux.arm64.gnu` and WASI, petal (x86-64) `linux.x86_64.kernel`, `linux.x86_64.gnu` and WASI, the
 laptop adds Windows under wine. macOS has no machine here.
 
@@ -284,7 +281,7 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
 - Benchmarks (criterion, `benches/` of `vun-syntax` and `vun-driver`): `syntax/{lex,parse}` over
   every source; `cold/{check,code}/<program>` from nothing, `saved/check/<program>` from the memos
   an earlier run saved, `edit/check/<program>` after appending a declaration in one process, for
-  `hello`, `tour` and `threads`. Run them on a remote (`cargo xtask remote --host am3.wg -- cargo
+  `hello`, `tour` and `threads`. Run them on a remote (`scripts/remote --host am3.wg cargo
   bench ...`); `--save-baseline <name>` before a change, `--baseline <name>` after. A filter
   after `--` runs some (`-- cold/check`). `cargo bench` builds with the release profile.
 - `--timings` (or `VUN_TIMINGS=1`) reports each stage and query's own and total time and its
@@ -324,5 +321,5 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   Sessions of another toolchain remove this one's shared files.
 - The CPU clock varies (a laptop on battery): compare A/B runs made together, never across time.
   `am3.wg` runs other services on mixed cores: runs spread over threads show outliers of tens of
-  milliseconds there when a worker is preempted; measure with `cargo xtask remote --reserve`,
+  milliseconds there when a worker is preempted; measure with `scripts/remote --reserve`,
   compare medians, or `VUN_THREADS=1`.

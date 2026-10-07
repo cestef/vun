@@ -11,8 +11,6 @@ pub(crate) enum Program {
     Jj,
     Typst,
     TreeSitter,
-    Rsync,
-    Ssh,
 }
 
 /// Where cargo says it is when it runs us.
@@ -27,8 +25,6 @@ impl Program {
             Self::Jj => "jj",
             Self::Typst => "typst",
             Self::TreeSitter => "tree-sitter",
-            Self::Rsync => "rsync",
-            Self::Ssh => "ssh",
         }
     }
 
@@ -36,7 +32,7 @@ impl Program {
     pub(crate) fn path(self) -> Option<PathBuf> {
         match self {
             Self::Cargo => std::env::var_os(CARGO).map(PathBuf::from),
-            Self::Jj | Self::Typst | Self::TreeSitter | Self::Rsync | Self::Ssh => None,
+            Self::Jj | Self::Typst | Self::TreeSitter => None,
         }
         .or_else(|| Executable::search(self.name()))
     }

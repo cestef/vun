@@ -220,13 +220,13 @@ Traps that cost a session before. Add one when it costs you time.
 - Motion Canvas `Txt` in a layout collapses spaces, and `textWrap="pre"` breaks nested `Txt`
   pieces onto lines of their own: terminal text keeps its spaces as no-break spaces.
 - An `Img`'s natural size is known only once loaded: `yield img.toPromise()` before reading it.
-- `cargo xtask remote` passes its words through ssh unquoted: `sh -c "..."` and nextest filter
-  expressions with parentheses lose their quoting. Filter by name (`cargo nextest run -p crate
-  name`). A snapshot blessed on a host is overwritten by the next sync: bless from a command
+- A snapshot blessed on a host is overwritten by the next sync: bless from a command
   that writes locally, or print the result and copy it back.
 - The same holds for `cargo gen` on a host: the next `rsync --delete` of the working copy puts
   back the old generated files, and a build there fails on what they lack. Copy every generated
-  directory back (`rsync host:<dir>/ <dir>/`) right after each `cargo gen`.
+  directory back (`rsync host:<dir>/ <dir>/`) right after each `cargo gen`; that copy never deletes,
+  so a file no longer generated stays here and makes the next sync fail `cargo gen --check`:
+  remove it by hand.
 - A `vun` older than the library it runs against reads a package of the library that uses newer
   manifest fields and reports each as `manifest.unknown_field`. A toolchain with `.requires`
   (442) says it is too old instead; one without cannot, so update the toolchain first when a

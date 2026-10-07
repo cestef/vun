@@ -82,12 +82,6 @@ pub(crate) const TREE_SITTER_PUBLISH: Task = Task::new(
 )
 .needs(&[&GENERATED, &TREE_SITTER])
 .params(&[crate::tree_sitter::publish::MESSAGE, crate::tree_sitter::publish::REPO]);
-pub(crate) const REMOTE: Task = Task::new(
-    "remote",
-    "mirror the working copy to a host and run the words given there",
-    Work::Run(crate::remote::run),
-)
-.params(&[crate::remote::HOST, crate::remote::RESERVE, WORDS]);
 
 /// The tasks `cargo xtask` offers as commands; the others are reached through them.
 macro_rules! commands {
@@ -107,7 +101,6 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     PACKAGE,
     PUSH,
     RELEASE,
-    REMOTE,
     RUNTIMES,
     TREE_SITTER,
     TREE_SITTER_PUBLISH,

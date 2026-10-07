@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs a command on another machine, over the working copy as it is here.
+#
+#   scripts/remote [--host HOST] [--reserve] [--] COMMAND [ARG...]
+#
+# The repository is mirrored (rsync, without /target and /.jj) to vun-build/<directory name> in
+# the host's home, one mirror per jj workspace; the command then runs there over ssh, its words
+# quoted as given, its output shown as it is written. HOST is also read from VUN_REMOTE.
+#
+# --reserve runs the command on the host's fastest cores (the highest cpu_capacity), the host's
+# services (system.slice) confined to the others meanwhile by `systemctl set-property --runtime`
+# and given back after. It needs passwordless sudo on the host and refuses a host whose cores
+# are all alike.
+#
+# This depends on nothing built from the repository, so it works while the tree does not build.
+set -euo pipefail
+
+mirrors=vun-build
+services=system.slice
+host=${VUN_REMOTE:-}
+reserve=false
+
+while (($#)); do
+    case $1 in
+        --host) host=${2:?--host needs a machine}; shift 2 ;;
+        --host=*) host=${1#--host=}; shift ;;
+        --reserve) reserve=true; shift ;;
+        --) shift; break ;;
+        -*) echo "remote: unknown option $1" >&2; exit 2 ;;
+        *) break ;;
+    esac
+done
+[[ -n $host ]] || { echo "remote: no host to run on: pass --host or set VUN_REMOTE" >&2; exit 2; }
+(($#)) || { echo "remote: no command given" >&2; exit 2; }
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+dir=$mirrors/$(basename "$root")
+
+rsync --archive --delete --mkpath --exclude /target --exclude /.jj "$root/" "$host:$dir/"
+echo "Synced $host"
+
+before=
+if $reserve; then
+    # One "<core>:<capacity>" per core.
+    capacities=$(ssh "$host" 'grep --with-filename . /sys/devices/system/cpu/cpu[0-9]*/cpu_capacity' |
+        sed -E 's|.*/cpu([0-9]+)/cpu_capacity:|\1:|')
+    top=$(cut -d: -f2 <<<"$capacities" | sort -n | tail -1)
+    fastest=$(awk -F: -v top="$top" '$2 == top { print $1 }' <<<"$capacities" | sort -n | paste -sd,)
+    others=$(awk -F: -v top="$top" '$2 != top { print $1 }' <<<"$capacities" | sort -n | paste -sd,)
+    [[ -n $others ]] || { echo "remote: every core of $host is alike: none is fastest" >&2; exit 1; }
+    before=$(ssh "$host" systemctl show --value --property AllowedCPUs "$services")
+    confine() {
+        ssh "$host" sudo --non-interactive systemctl set-property --runtime "$services" "AllowedCPUs=$1"
+    }
+    confine "$others"
+    trap 'confine "$before"' EXIT
+    echo "Reserved cores $fastest of $host"
+fi
+
+# The remote shell reads one string: quote each word so it arrives as it was given.
+printf -v words ' %q' "$@"
+pin=
+$reserve && pin="taskset --cpu-list --pid $fastest \$\$ >/dev/null &&"
+status=0
+ssh "$host" "$pin . ~/.cargo/env && cd $(printf %q "$dir") &&$words" || status=$?
+exit "$status"
