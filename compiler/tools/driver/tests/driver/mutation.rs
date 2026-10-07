@@ -134,13 +134,16 @@ levels := () -> u32 { mut n: u32 = 0; deep(Outer{ .c = Counter{ .n = &mut n }, .
 payload := () -> u32 { mut n: u32 = 4; fill(Slot.full(&mut n)); n };
 returned := () -> u32 { mut n: u32 = 0; first(Counter{ .n = &mut n }).* = 7; n };
 escaped := () -> u32 { mut n: u32 = 0; wrap(&mut n).n.* = 9; n };
+some := (n: &mut u32) -> ?&mut u32 { .some(n) };
+via := () -> u32 { mut n: u32 = 0; match some(&mut n) { .some(r) => { r.* = 5; }, .none => {} } n };
 two: Int(one()..=one()) = 2;
 six: Int(tuple()..=tuple()) = 6;
 eleven: Int(fields()..=fields()) = 11;
 twice: Int(levels()..=levels()) = 2;
 seven: Int(payload()..=payload()) = 7;
 set: Int(returned()..=returned()) = 7;
-unknown: Int(escaped()..=escaped()) = 0;
+nine: Int(escaped()..=escaped()) = 9;
+maybe: Int(via()..=via()) = 5;
 wrong_one: Int(one()..=one()) = 1;
 wrong_tuple: Int(tuple()..=tuple()) = 5;
 wrong_levels: Int(levels()..=levels()) = 1;
@@ -149,8 +152,7 @@ wrong_returned: Int(returned()..=returned()) = 8;
     );
     // Each annotation holds exactly the value its call evaluates to, but the `wrong` ones: a loan
     // nested in an aggregate argument is lent as storage past the arguments, followed, passed on
-    // and returned as any other. A loan in a result is not supported, so `escaped` has no value
-    // and its annotation is not checked.
+    // and returned as any other, and a loan nested in a result is rebased on the caller's.
     let found = fixture.reported(&file);
     let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT; 4], "{found:?}");

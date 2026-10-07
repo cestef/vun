@@ -10,6 +10,7 @@ use vun_origin::{OriginId, OriginTable};
 use crate::Value;
 
 pub use failure::Failure;
+pub use nested::Nested;
 pub use report::{Edit, Report};
 
 /// Why an expression has no value at compile time here.
@@ -34,6 +35,8 @@ pub enum Unevaluated {
     Failed,
     /// A form not evaluated yet.
     Unsupported,
+    /// An exclusive borrow reaches a place the call cannot give back (spec 03, section 7).
+    NestedLoan(Nested),
     /// It calls a function whose body does not build, stopping where the builder stopped: a
     /// name that leads nowhere in it, or a form not built yet.
     Unbuilt(OriginId),
@@ -154,6 +157,7 @@ impl Unevaluated {
             Self::Provided => "it reads a declaration provided from outside",
             Self::Trapped(_) | Self::Failed => "a declaration it reads failed to evaluate",
             Self::Unsupported => "it uses a form compile-time evaluation does not run yet",
+            Self::NestedLoan(nested) => nested.why(),
             Self::Unbuilt(_) => "it calls a function whose body does not build",
             Self::Untargeted => "it depends on the target, which is not chosen",
             Self::Unbounded => "its range depends on a value known only at run time",
@@ -168,6 +172,11 @@ impl Unevaluated {
     pub fn report(&self, origin: OriginId, surely: bool) -> Option<Diagnostic> {
         match self {
             Self::Trapped(trap) => Some(trap.report(origin)),
+            Self::NestedLoan(nested) if surely => {
+                let msg = Msg::new().text("this cannot be computed at compile time yet: ").text(nested.why());
+                let help = Msg::new().text("compute it when the program runs, without ").code("$");
+                Some(Diagnostic::error(errors::COMPTIME_UNSUPPORTED, msg).at(origin, None).help(help))
+            }
             Self::Unsupported | Self::Unbuilt(_) if surely => {
                 let msg = Msg::new().text("this cannot be computed at compile time yet");
                 let help = Msg::new().text("compute it when the program runs, without ").code("$");
@@ -255,4 +264,5 @@ impl Trap {
 }
 
 mod failure;
+mod nested;
 mod report;

@@ -140,3 +140,12 @@ a_sum_past_its_type_traps := () {
 a_test_that_traps_passes_when_it_is_expected_to := () {
     std.testing.assert(false);
 };
+
+#[test]
+a_slice_borrow_is_iterated_by_for := () {
+    xs := [3, 4, 5];
+    view: &[u8] = &xs;
+    mut sum: u32 = 0;
+    for x in view { sum += x.*.to(u32); }
+    std.testing.assert(sum == 12);
+};

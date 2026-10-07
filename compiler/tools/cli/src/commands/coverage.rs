@@ -30,6 +30,7 @@ pub(super) const COVER: Command<Session> =
         .params(&[
             PATH,
             NAMES,
+            vun_driver::testing::FILTER,
             vun_driver::testing::SEED,
             vun_driver::testing::CASES,
             LCOV,

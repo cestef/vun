@@ -32,7 +32,7 @@ mod sublime;
 mod tables;
 mod tree_sitter;
 
-use crate::names::{Name, docs};
+use crate::names::docs;
 use model::{Entry, Model};
 
 pub(crate) use editors::{HELIX, NVIM, VSCODE, ZED};
@@ -41,6 +41,8 @@ pub(crate) use tree_sitter::TREE_SITTER;
 
 /// The directory both files are in.
 const SYNTAX: &str = "lib/lang/lang/syntax";
+/// The attribute marking a record of lists as a kind.
+pub(crate) const KIND: &[&str] = &["syntax", "kind"];
 
 pub(crate) const GENERATOR: Generator = Generator {
     source: SYNTAX,
@@ -140,7 +142,7 @@ impl<'s> Grammar<'s> {
         let mut enums = Vec::new();
         for d in &source.decls {
             match &d.value {
-                Literal::Record(_) if d.name.is_type_name() => {
+                Literal::Record(_) if d.marked(KIND) => {
                     let lists = Fields::<Vec<Entry>>::from_literal(&d.value).map_err(|m| {
                         let msg = Msg::new()
                             .text("a kind is a record of lists of entries, which are ")

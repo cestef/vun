@@ -98,7 +98,8 @@ and recorded), so:
 - a test's cases are drawn from a seed, the FNV-1a hash of its name, so every run draws the same
   cases; the line reports the seed and the case. `vun test --seed n` draws every property's
   cases from `n` instead, replaying a reported failure, and `--cases n` runs `n` cases of each
-  (`std.testing.Options`, read from the runner's arguments; decision 363).
+  (`std.testing.Options`, read from the runner's arguments; decision 363). `--filter text`
+  runs the tests whose name contains `text` (decision 648).
 
 A fuzz target (`&[u8]`) runs under `vun test` as the property it is. `vun fuzz [path] [names]`
 fuzzes the properties alone, fuzz targets and simulations included, guided by coverage: it builds

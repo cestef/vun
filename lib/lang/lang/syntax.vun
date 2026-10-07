@@ -1,2 +1,6 @@
 //! The syntax of Vun as types, for compile-time code reading code values (spec 03, section 4).
 //! Token and node types are generated from `syntax/grammar.vun`.
+
+/// `#[syntax.kind]`: in the grammar's sources, the record of lists is a kind, of which the grammar
+/// generator makes an enum, its lists tables of their own.
+kind: Attribute(&[Place.decls]) = _;

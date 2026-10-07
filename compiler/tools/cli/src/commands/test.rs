@@ -1,4 +1,4 @@
-//! `vun test [path] [names]... [--seed n] [--cases n]`: builds the program running the tests of a
+//! `vun test [path] [names]... [--filter text] [--seed n] [--cases n]`: builds the program running the tests of a
 //! namespace, runs it and reports each test as it ends (spec 11). The path is a file, a directory
 //! or a package's directory; with none, the package around the current directory, which a first
 //! word naming nothing on disk is the first test's name for. `vun bench`
@@ -27,6 +27,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
     .params(&[
         PATH,
         NAMES,
+        vun_driver::testing::FILTER,
         vun_driver::testing::SEED,
         vun_driver::testing::CASES,
         vun_driver::testing::JOBS,
@@ -40,6 +41,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
         Example { line: "--jobs 1", about: "run them in one process, in the order they are declared" },
         Example { line: "net/", about: "run the tests of a directory and the namespaces in it" },
         Example { line: "main.vun crc_vector", about: "run one test of a file" },
+        Example { line: "--filter crc", about: "run the tests whose name contains `crc`" },
         Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
     ]);
 
@@ -48,6 +50,7 @@ pub(super) const BENCH: Command<Session> =
         .params(&[
             PATH,
             NAMES,
+            vun_driver::testing::FILTER,
             vun_driver::testing::MEASURE,
             vun_driver::testing::SAMPLES,
             vun_driver::testing::BASELINE,
@@ -77,6 +80,7 @@ pub(super) const FUZZ: Command<Session> =
         .params(&[
             PATH,
             NAMES,
+            vun_driver::testing::FILTER,
             vun_driver::testing::SEED,
             vun_driver::testing::FUZZED,
             vun_driver::codegen::BACKEND,
@@ -107,6 +111,7 @@ fn fuzz(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
 pub(super) struct Chosen<'a> {
     pub(super) path: Option<&'a Path>,
     pub(super) names: Vec<&'a str>,
+    pub(super) filter: Option<&'a str>,
 }
 
 impl<'a> Chosen<'a> {
@@ -116,7 +121,20 @@ impl<'a> Chosen<'a> {
             Some(word) if !Path::new(word).exists() => (None, Some(word)),
             _ => (path.map(Path::new), None),
         };
-        Self { path, names: first.into_iter().chain(args.values(&NAMES)).collect() }
+        Self {
+            path,
+            names: first.into_iter().chain(args.values(&NAMES)).collect(),
+            filter: args.value(&vun_driver::testing::FILTER),
+        }
+    }
+
+    /// What the tests' program is given to choose the tests: the names, then the filter.
+    pub(super) fn arguments(&self) -> Vec<String> {
+        let filter = self
+            .filter
+            .into_iter()
+            .flat_map(|text| [vun_driver::testing::FILTER.long_form(), text.to_owned()]);
+        self.names.iter().map(|&name| name.to_owned()).chain(filter).collect()
     }
 }
 
@@ -131,9 +149,11 @@ pub(super) fn tests(
     let chosen = Chosen::of(args);
     let Some(subject) = session.subject(chosen.path)? else { return Ok(session.outcome()) };
     let mut passed = true;
+    let given = chosen.arguments();
+    let given: Vec<&str> = given.iter().map(String::as_str).collect();
     for (root, within) in subject.tested() {
         let place = (root.as_path(), within.as_deref());
-        let Some(reported) = tested(session, args, &chosen.names, shell, mode, (&subject, place))? else {
+        let Some(reported) = tested(session, args, &given, shell, mode, (&subject, place))? else {
             return Ok(session.outcome());
         };
         passed &= reported;

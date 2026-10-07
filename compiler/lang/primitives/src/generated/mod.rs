@@ -23,6 +23,7 @@ pub mod safety;
 pub mod scope;
 pub mod simd;
 pub mod stack;
+pub mod syntax;
 pub mod target;
 pub mod thread;
 pub mod trace;

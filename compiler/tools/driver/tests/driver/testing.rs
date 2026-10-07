@@ -192,6 +192,7 @@ fuzzed := (input: &[u8]) { assert(input.len() < 3); };
 ";
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
     if !cfg!(target_os = "linux") {
         return;
@@ -289,5 +290,8 @@ fn a_property_runs_over_generated_arguments_and_shrinks_the_case_that_fails() {
         );
         let none = outcomes(&[], Options { cases: Some(0), ..Options::default() });
         assert!(none.len() == 9 && none.iter().all(|o| *o == Outcome::Passed), "{backend}: {none:#?}");
+        // A filter keeps the tests whose name holds its text.
+        let kept = outcomes(&["--filter", "bound"], Options::default());
+        assert!(!kept.is_empty() && kept.len() < 9, "{backend}: {kept:#?}");
     }
 }

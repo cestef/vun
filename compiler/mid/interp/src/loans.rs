@@ -13,9 +13,12 @@ use vun_sema::eval::{Metered, MeteredCall};
 use vun_sema_ty::Value;
 use vun_sema_ty::call::Instance;
 use vun_sema_ty::ops::Part;
-use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::trap::{Nested, Unevaluated};
 
 use crate::machine::Frame;
+
+/// Gives the loan a loan is rebased on, from its local and the parts below it.
+type Rebase<'f> = dyn FnMut(usize, Vec<Part>) -> Result<(usize, Vec<Part>), Unevaluated> + 'f;
 
 /// A loan passed to a call: the argument's position, and the place it reaches here.
 struct Lent {
@@ -33,6 +36,11 @@ pub(crate) trait Loans: Sized {
     /// storage lent to a call follows its arguments, and its body's locals precede it.
     #[must_use]
     fn relocate(self, from: usize, to: usize) -> Self;
+
+    /// This value with each loan in it, at any depth, replaced by the loan `rebase` gives for its
+    /// local and the parts below it. A loan captured by a closure stays unsupported: the closure
+    /// would leave the frame that made it.
+    fn rebase(self, rebase: &mut Rebase<'_>) -> Result<Self, Unevaluated>;
 }
 
 impl Loans for Value {
@@ -61,6 +69,29 @@ impl Loans for Value {
             Self::Closure { f, captures } => Self::Closure { f, captures: each(captures) },
             value => value,
         }
+    }
+
+    fn rebase(self, rebase: &mut Rebase<'_>) -> Result<Self, Unevaluated> {
+        let each = |items: Vec<Self>, rebase: &mut Rebase<'_>| {
+            items.into_iter().map(|v| v.rebase(&mut *rebase)).collect::<Result<Vec<_>, _>>()
+        };
+        Ok(match self {
+            Self::Loan { local, parts } => {
+                let (local, parts) = rebase(local, parts)?;
+                Self::Loan { local, parts }
+            }
+            Self::Tuple(items) => Self::Tuple(each(items, &mut *rebase)?),
+            Self::Array(items) => Self::Array(each(items, &mut *rebase)?),
+            Self::Variant { ty, name, payload } => {
+                Self::Variant { ty, name, payload: each(payload, &mut *rebase)? }
+            }
+            Self::Struct { ty, fields } => {
+                let (names, values): (Vec<_>, Vec<_>) = fields.into_iter().unzip();
+                Self::Struct { ty, fields: names.into_iter().zip(each(values, &mut *rebase)?).collect() }
+            }
+            value if value.holds_loan() => return Err(Unevaluated::NestedLoan(Nested::InClosure)),
+            value => value,
+        })
     }
 }
 
@@ -94,7 +125,7 @@ impl Frame<'_, '_, '_> {
                 let local = self.lent(local)?;
                 let reached = self.at(local, &parts)?;
                 if reached.holds_loan() {
-                    return Err(Unevaluated::Unsupported);
+                    return Err(Unevaluated::NestedLoan(Nested::OfLoan));
                 }
                 let position = lending.arguments + lending.storage.len();
                 lending.storage.push(reached);
@@ -114,7 +145,7 @@ impl Frame<'_, '_, '_> {
                 }
             }
             // A closure holding a loan never leaves the frame that made it.
-            value if value.holds_loan() => return Err(Unevaluated::Unsupported),
+            value if value.holds_loan() => return Err(Unevaluated::NestedLoan(Nested::InClosure)),
             value => value,
         })
     }
@@ -168,7 +199,7 @@ impl Frame<'_, '_, '_> {
             return if lent.is_empty() {
                 self.env.apply(callee, values)
             } else {
-                Err(Unevaluated::Unsupported)
+                Err(Unevaluated::NestedLoan(Nested::ToPrimitive))
             };
         };
         let outcome = self.env.cx.get::<MeteredCall>(&Instance { f, args: values });
@@ -176,21 +207,18 @@ impl Frame<'_, '_, '_> {
         let result = outcome.value?;
         // A frame holding what it was lent would change it after this call returns.
         if !lent.is_empty() && matches!(result, Value::Frame(_)) {
-            return Err(Unevaluated::Unsupported);
+            return Err(Unevaluated::NestedLoan(Nested::InFrame));
         }
         for loan in &lent {
             if let Some(Some(value)) = outcome.written.get(loan.position) {
                 self.store(loan.local, &loan.parts, value.clone())?;
             }
         }
-        match result {
-            Value::Loan { local: position, parts } => {
-                let loan = lent.iter().find(|l| l.position == position).ok_or(Unevaluated::Unsupported)?;
-                let parts = loan.parts.iter().cloned().chain(parts).collect();
-                Ok(Value::Loan { local: loan.local.index(), parts })
-            }
-            result => Ok(result),
-        }
+        result.rebase(&mut |position, parts| {
+            let loan =
+                lent.iter().find(|l| l.position == position).ok_or(Unevaluated::NestedLoan(Nested::Own))?;
+            Ok((loan.local.index(), loan.parts.iter().cloned().chain(parts).collect()))
+        })
     }
 
     /// The outcome of a run returning `value`: what each exclusive parameter holds, and a loan
@@ -210,16 +238,16 @@ impl Frame<'_, '_, '_> {
         // What a parameter is left holding goes back to the caller, where a loan of this call's
         // storage would name another frame's.
         let escapes = written.iter().flatten().any(Value::holds_loan);
-        let value = value.and_then(|value| match value {
-            _ if escapes => Err(Unevaluated::Unsupported),
+        let value = value.and_then(|value| {
+            if escapes {
+                return Err(Unevaluated::NestedLoan(Nested::InParameter));
+            }
             // The position of the argument or the storage lent after the arguments it reaches.
-            Value::Loan { local, parts } => {
+            value.rebase(&mut |local, parts| {
                 let position = self.body.params.iter().position(|p| p.index() == local);
                 let lent = local.checked_sub(own).map(|at| params + at).filter(|&at| at < written.len());
-                position.or(lent).map(|local| Value::Loan { local, parts }).ok_or(Unevaluated::Unsupported)
-            }
-            value if value.holds_loan() => Err(Unevaluated::Unsupported),
-            value => Ok(value),
+                position.or(lent).map(|local| (local, parts)).ok_or(Unevaluated::NestedLoan(Nested::Own))
+            })
         });
         Metered { value, steps: self.steps, written }
     }

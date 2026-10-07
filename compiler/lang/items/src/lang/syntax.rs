@@ -16,3 +16,6 @@ pub const grammar: Item = Item::new(&["lang", "syntax", "grammar"]);
 pub const nodes: Item = Item::new(&["lang", "syntax", "nodes"]);
 /// The namespace `lang.syntax.tables`.
 pub const tables: Item = Item::new(&["lang", "syntax", "tables"]);
+/// `#[syntax.kind]`: in the grammar's sources, the record of lists is a kind, of which the grammar
+/// generator makes an enum, its lists tables of their own.
+pub const kind: Item = Item::new(&["lang", "syntax", "kind"]);

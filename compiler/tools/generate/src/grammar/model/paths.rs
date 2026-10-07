@@ -8,8 +8,7 @@ use vun_syntax::literal::{Decl, FromLiteral, Literal, Path};
 use super::resolve::{mismatch, unresolved};
 use super::written::Entry;
 use crate::generate::{Read, Source};
-use crate::grammar::{GENERATOR, SHAPE};
-use crate::names::Name as _;
+use crate::grammar::{GENERATOR, KIND, SHAPE};
 
 /// The grammar's files, by their namespaces, which paths name declarations through.
 pub(super) struct Files<'d, 's> {
@@ -63,7 +62,7 @@ impl<'d, 's> Files<'d, 's> {
             [name] => {
                 let decl = find(name).ok_or_else(missing)?;
                 match &decl.value {
-                    Literal::Record(lists) if decl.name.is_type_name() => {
+                    Literal::Record(lists) if decl.marked(KIND) => {
                         let mut all = Vec::new();
                         for list in lists {
                             all.extend(entries(&list.value)?);

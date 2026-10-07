@@ -13,15 +13,16 @@ pub const bench: Item = Item::new(&["std", "testing", "options", "Options", "ben
 pub const fuzz: Item = Item::new(&["std", "testing", "options", "Options", "fuzz"]);
 pub const cover: Item = Item::new(&["std", "testing", "options", "Options", "cover"]);
 pub const list: Item = Item::new(&["std", "testing", "options", "Options", "list"]);
+pub const filter: Item = Item::new(&["std", "testing", "options", "Options", "filter"]);
 /// The options `args` ask for; `.none` when an option has no number after it.
 pub const of: Item = Item::new(&["std", "testing", "options", "Options", "of"]);
 /// Whether `arg` is an option that takes no number.
 pub const flag: Item = Item::new(&["std", "testing", "options", "Options", "flag"]);
-/// Whether `arg` is an option, which the number after it goes with.
+/// Whether `arg` is an option, which the value after it goes with.
 pub const option: Item = Item::new(&["std", "testing", "options", "Options", "option"]);
 /// Whether a test of `kind` runs: the benchmarks alone when measured, the properties alone
 /// when fuzzed, else every test.
 pub const runs: Item = Item::new(&["std", "testing", "options", "Options", "runs"]);
 /// Whether the test `name` is run: every test when the arguments name none, else those they
-/// name.
+/// name, and of those only the ones whose name contains the filter.
 pub const chosen: Item = Item::new(&["std", "testing", "options", "Options", "chosen"]);

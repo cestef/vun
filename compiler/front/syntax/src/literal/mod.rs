@@ -77,6 +77,12 @@ pub struct Decl<'s> {
 }
 
 impl<'s> Decl<'s> {
+    /// Whether it carries the attribute written as the path `attribute`.
+    #[must_use]
+    pub fn marked(&self, attribute: &[&str]) -> bool {
+        self.attrs.iter().any(|a| matches!(a, Literal::Path(path) if path == attribute))
+    }
+
     /// `name` declared as `value`, without doc comment or attributes.
     #[must_use]
     pub const fn new(name: &'s str, value: Literal<'s>, span: Span) -> Self {

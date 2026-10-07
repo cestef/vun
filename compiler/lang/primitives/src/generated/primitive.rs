@@ -56,6 +56,8 @@ pub enum Primitive {
     Simd(simd::Simd),
     /// `lang.stack`
     Stack(stack::Stack),
+    /// `lang.syntax`
+    Syntax(syntax::Syntax),
     /// `lang.target`
     Target(target::Target),
     /// `lang.thread`
@@ -93,6 +95,7 @@ impl Primitive {
             .chain(scope::Scope::ALL.iter().map(|&p| Self::Scope(p)))
             .chain(simd::Simd::ALL.iter().map(|&p| Self::Simd(p)))
             .chain(stack::Stack::ALL.iter().map(|&p| Self::Stack(p)))
+            .chain(syntax::Syntax::ALL.iter().map(|&p| Self::Syntax(p)))
             .chain(target::Target::ALL.iter().map(|&p| Self::Target(p)))
             .chain(thread::Thread::ALL.iter().map(|&p| Self::Thread(p)))
             .chain(trace::Trace::ALL.iter().map(|&p| Self::Trace(p)))
@@ -126,6 +129,7 @@ impl Primitive {
             Self::Scope(_) => scope::Scope::NAMESPACE,
             Self::Simd(_) => simd::Simd::NAMESPACE,
             Self::Stack(_) => stack::Stack::NAMESPACE,
+            Self::Syntax(_) => syntax::Syntax::NAMESPACE,
             Self::Target(_) => target::Target::NAMESPACE,
             Self::Thread(_) => thread::Thread::NAMESPACE,
             Self::Trace(_) => trace::Trace::NAMESPACE,
@@ -160,6 +164,7 @@ impl Primitive {
             Self::Scope(p) => p.item(),
             Self::Simd(p) => p.item(),
             Self::Stack(p) => p.item(),
+            Self::Syntax(p) => p.item(),
             Self::Target(p) => p.item(),
             Self::Thread(p) => p.item(),
             Self::Trace(p) => p.item(),
@@ -194,6 +199,7 @@ impl Primitive {
             Self::Scope(p) => p.name(),
             Self::Simd(p) => p.name(),
             Self::Stack(p) => p.name(),
+            Self::Syntax(p) => p.name(),
             Self::Target(p) => p.name(),
             Self::Thread(p) => p.name(),
             Self::Trace(p) => p.name(),

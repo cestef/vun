@@ -293,8 +293,12 @@ generators that observe their own output, which is what makes impls and memoizat
   the only way to its place while it lives, this is the same as sharing the place, and the call
   stays a pure function of its arguments. A loan nested in an aggregate argument, as in a field
   `n: &mut u32` of a struct, is lent the same way, its target traveling after the arguments. A
-  borrow a call returns into a parameter is a loan of what the caller lent; a loan inside a
-  result is not supported. A shared borrow reads as the value, which cannot change while it lives.
+  borrow a call returns into a parameter is a loan of what the caller lent, and so is each loan
+  nested in a result (`?&mut T`, a struct holding one). Not supported, and reported as what they
+  are (`Unevaluated::NestedLoan`): a loan whose target holds a loan, a loan in a closure, in a value
+  an exclusive parameter is left holding, or of the storage of the call returning it, a frame
+  holding what it was lent, and a loan lent to a primitive. An array argument is a value, keyed by
+  its content as any other. A shared borrow reads as the value, which cannot change while it lives.
 - **Function values.** A function literal evaluated inside a compile-time call sees that call's
   parameters, as the types it builds do: a method of `Pair(u8)` sees `T` bound to `u8`. A
   signature whose types name `$` parameters is typed per call, with those bound to the call's

@@ -2,13 +2,14 @@
 //! lookup and the insertion both, and keys whose hashes differ are never compared.
 
 use std::hash::{BuildHasher, Hash, Hasher};
+use std::sync::Arc;
 
 use papaya::Equivalent;
 
 /// A key of a table, with its hash.
 pub(crate) struct Hashed<K> {
     hash: u64,
-    key: K,
+    key: Arc<K>,
 }
 
 /// A key looked for, with its hash.
@@ -26,7 +27,21 @@ impl<'k, K: Hash> Probe<'k, K> {
 impl<K: Clone> Probe<'_, K> {
     /// The key to store, with the hash already known.
     pub(crate) fn stored(&self) -> Hashed<K> {
-        Hashed { hash: self.hash, key: self.key.clone() }
+        self.shared(Arc::new(self.key.clone()))
+    }
+}
+
+impl<K> Probe<'_, K> {
+    /// `key`, equal to the one looked for, stored with its hash: the table holds one copy.
+    pub(crate) fn shared(&self, key: Arc<K>) -> Hashed<K> {
+        Hashed { hash: self.hash, key }
+    }
+}
+
+impl<K> Hashed<K> {
+    /// The key stored.
+    pub(crate) fn key(&self) -> &Arc<K> {
+        &self.key
     }
 }
 
@@ -44,7 +59,7 @@ impl<K> Hash for Probe<'_, K> {
 
 impl<K: Eq> PartialEq for Hashed<K> {
     fn eq(&self, other: &Self) -> bool {
-        self.hash == other.hash && self.key == other.key
+        self.hash == other.hash && *self.key == *other.key
     }
 }
 
@@ -52,6 +67,6 @@ impl<K: Eq> Eq for Hashed<K> {}
 
 impl<K: Eq> Equivalent<Hashed<K>> for Probe<'_, K> {
     fn equivalent(&self, stored: &Hashed<K>) -> bool {
-        self.hash == stored.hash && *self.key == stored.key
+        self.hash == stored.hash && *self.key == *stored.key
     }
 }

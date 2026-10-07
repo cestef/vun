@@ -1,0 +1,7 @@
+//! `std.mem.copy` writes through `&mut [T]`, a destination that is initialized: an `&out`
+//! borrow of a place that is not does not serve there (spec 05, section 2).
+
+fill := (from: &[4]u8) {
+    mut to: [4]u8;
+    std.mem.copy(u8, &out to, from); //~ types.mismatch
+};

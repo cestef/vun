@@ -7,6 +7,7 @@ mod frame;
 mod guard;
 mod reuse;
 mod settle;
+mod stored;
 mod verify;
 mod why;
 
@@ -26,7 +27,7 @@ use self::why::Why;
 use super::claim::Claim;
 use super::db::Db;
 use super::fingerprint::Fingerprint;
-use super::memo::{Dep, Memo, Novelty, Source};
+use super::memo::{Dep, Memo, Novelty};
 use super::table::{Slot, Table, TableId};
 use super::tally::Event;
 use super::{Query, Revision};
@@ -140,13 +141,10 @@ impl<'db> Cx<'db> {
         revision: Revision,
         why: Why,
     ) -> Option<(Q::Value, Fingerprint)> {
-        let entry = table.entry(slot);
         if let Some(cycle) = self.cycle(table.id, slot) {
-            let value = Q::cycle(self, table.key(slot), &cycle);
-            let fingerprint = Q::interface(&value);
-            return Some((value, fingerprint));
+            return Some(self.closed(table, slot, &cycle));
         }
-        let owned = match entry.claims.claim(&self.db.waits) {
+        let owned = match table.entry(slot).claims.claim(&self.db.waits) {
             Claim::Waited => {
                 table.counts.add(Event::Waited);
                 return None;
@@ -158,23 +156,7 @@ impl<'db> Cx<'db> {
         let entered = self.enter(table.id, slot, why);
         let value = Q::compute(self, table.key(slot));
         let (reads, standing) = entered.leave();
-        let fingerprint = Q::interface(&value);
-        if standing == Standing::Provisional {
-            table.counts.add(Event::Provisional);
-            tracing::debug!(query = Q::NAME, "not kept: computed from a cycle value");
-            return Some((value, fingerprint));
-        }
-        let memo = if Q::INPUT {
-            // An input not set holds what it computes until it is, alike in every database.
-            Memo::input(value.clone(), fingerprint, revision, Source::Unset)
-        } else {
-            let novelty = self.computing(table, slot, why, entry.memo.load().as_deref(), fingerprint, &reads);
-            let durability = self.durability(&reads);
-            Memo::computed(value.clone(), fingerprint, reads, revision, durability, novelty)
-        };
-        entry.memo.store(Some(Arc::new(memo)));
-        drop(owned);
-        Some((value, fingerprint))
+        Some(self.stored(table, slot, revision, why, (value, reads, standing), owned))
     }
 
     /// Starts computing `slot` of `table`, timed until it is left.

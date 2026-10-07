@@ -4,7 +4,7 @@
 //!
 //! `cargo gen` reads both files as literal data. Into Rust it translates each declaration by shape,
 //! never by name:
-//! - a `PascalCase` record of lists defines a kind: its entries are the kind's variants, and each
+//! - a record of lists marked `#[syntax.kind]` defines a kind: its entries are the kind's variants, and each
 //!   list is also a table of its own. An entry is `.name`, a spelling `"text"` (named after
 //!   itself), `.{ .name = .x, .text = "..." }`, or `.name(terms...)` for a kind with a production
 //!   (see `NodeKind`), whose fields and their counts, variants of `Count`, it derives;
@@ -16,6 +16,7 @@
 //! editors make of the grammar is in `editors.vun`.
 
 /// Kinds of tokens.
+#[syntax.kind]
 #[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 TokenKind := .{
     .trivia = [.whitespace, .comment],
@@ -124,6 +125,7 @@ Context := enum {
 /// The words after `&` naming a borrow mode (appendix B, the table `borrows`): first a qualifier
 /// of how long a call holds the borrow, then a word of what it does to the place. `mut` is a
 /// keyword; the others are words only there.
+#[syntax.kind]
 #[lint.allow(std.lints.naming.case, "the grammar generator makes a Rust enum of it")]
 BorrowWord := .{
     .qualifiers = ["temp"],

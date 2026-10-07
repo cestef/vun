@@ -13,4 +13,6 @@
   files of `tour`): parse trees are traced, not saved.
 - `vun-par` callers wait on uneven items (2 to 25 ms). Parse is ~11 MiB/s, the lexer ~145; the
   profile is flat (per-token decision over frames and specs positions, rebuilt at each check).
-- A comptime-heavy benchmark is wanted before perf audits.
+- A comptime-heavy benchmark is wanted before perf audits. The stack a nested compile-time call
+  holds is still ~1.7 KB in `fetch`, `get` and `compute` of `MeteredCall` (`--emit asm`, `sub sp`;
+  `Cx::computed` went from 960 to 496 bytes).

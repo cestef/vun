@@ -4,21 +4,16 @@
 //! its slot by its position there, once, and is read from them the first time it is needed:
 //! verifying a memo reaches the memos it read without reading their keys.
 
-use std::any::Any;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, OnceLock};
 
 use arc_swap::ArcSwapOption;
-use vun_hash::Stable;
 use vun_par::Map;
 
 use super::Query;
 use super::claim::Claims;
-use super::cx::{Cx, Found, Settle};
-use super::db::{Db, Sharing};
-use super::fingerprint::Fingerprint;
 use super::hashed::{Hashed, Probe};
-use super::memo::{Dep, Memo, Source};
+use super::memo::Memo;
 use super::persist::{Attached, Taking};
 use super::tally::{Counts, Event};
 
@@ -57,7 +52,7 @@ pub(crate) struct Table<Q: Query> {
 /// A key, its memo once there is one, and the claim of whoever computes it.
 pub(crate) struct Entry<Q: Query> {
     /// Unset for a key given its slot by its position in the saved memos, until it is read.
-    key: OnceLock<Q::Key>,
+    key: OnceLock<Arc<Q::Key>>,
     pub(crate) memo: ArcSwapOption<Memo<Q>>,
     pub(crate) claims: Claims,
     /// Its key's position among the query's keys in the saved memos loaded.
@@ -89,12 +84,14 @@ impl<Q: Query> Table<Q> {
             self.counts.add(Event::KeyRead);
         }
         if let Some(slot) = at.and_then(|at| self.saved_slot(at)) {
-            self.entry(slot).key.get_or_init(|| key.clone());
-            self.slots.pin().insert(probe.stored(), slot);
+            let held = self.entry(slot).key.get_or_init(|| Arc::new(key.clone()));
+            self.slots.pin().insert(probe.shared(held.clone()), slot);
             return slot;
         }
         // Another thread may add the same key meanwhile: the first slot stored stands for both.
-        *self.slots.pin().get_or_insert_with(probe.stored(), || self.push(OnceLock::from(key.clone()), None))
+        let stored = probe.stored();
+        let held = stored.key().clone();
+        *self.slots.pin().get_or_insert_with(stored, || self.push(OnceLock::from(held), None))
     }
 
     /// The slot of the key saved at `at`, made the first time it is asked for, its key unread.
@@ -104,7 +101,7 @@ impl<Q: Query> Table<Q> {
     }
 
     /// A new slot for `key`, saved at `at` if anywhere, holding the memo saved there.
-    fn push(&self, key: OnceLock<Q::Key>, at: Option<u32>) -> Slot {
+    fn push(&self, key: OnceLock<Arc<Q::Key>>, at: Option<u32>) -> Slot {
         let memo = at.and_then(|at| self.attached.get()?.memo(at)).map(Arc::new);
         if memo.is_some() {
             self.counts.add(Event::Restored);
@@ -129,7 +126,7 @@ impl<Q: Query> Table<Q> {
             self.counts.add(Event::KeyRead);
             let at = entry.at.get().copied();
             let key = at.and_then(|at| self.attached.get()?.key(at));
-            key.unwrap_or_else(|| panic!("the key {} saved at {at:?} does not read", Q::NAME))
+            Arc::new(key.unwrap_or_else(|| panic!("the key {} saved at {at:?} does not read", Q::NAME)))
         })
     }
 
@@ -172,7 +169,7 @@ impl<Q: Query> Table<Q> {
         let entries = self.entries.iter().map(|(index, entry)| (Slot::at(index), entry));
         let own = move |(slot, entry): &(Slot, &Entry<Q>)| {
             entry.at.get().is_some()
-                || entry.key.get().is_none_or(|key| slots.get(&Probe::of(key)) == Some(slot))
+                || entry.key.get().is_none_or(|key| slots.get(&Probe::of(&**key)) == Some(slot))
         };
         entries.filter(own)
     }
@@ -183,118 +180,6 @@ impl<Q: Query> Table<Q> {
     }
 }
 
-/// A table whatever its query: what reads recorded by table and slot are verified and shown
-/// through.
-pub(crate) trait AnyTable: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn as_any(&self) -> &dyn Any;
-    /// Whether the memo at `slot`, brought up to date, still has `fingerprint`.
-    fn unchanged(&self, cx: &Cx<'_>, slot: Slot, fingerprint: Fingerprint) -> bool;
-    /// The key at `slot`, as a cycle names it.
-    fn show(&self, slot: Slot) -> String;
-    /// The slot of the key saved at `at` among the query's keys in the memos loaded.
-    fn saved_slot(&self, at: u32) -> Option<Slot>;
-    /// How many slots were made, with those of threads that lost the race to add their key.
-    fn len(&self) -> usize;
-    /// What the memo at `slot` holds and read, if it has one whose reads are held.
-    fn facts(&self, db: &Db, slot: Slot) -> Option<Facts>;
-    /// Marks its memos as saved.
-    fn persist(&self);
-    /// What was done with its memos.
-    fn counts(&self) -> &Counts;
-    /// How far the inputs the memo at `slot` reads are shared; [`Sharing::Own`] without one.
-    fn level(&self, slot: Slot) -> Sharing;
-    /// The fingerprint of its inputs set as shared as far as `level` or further, by query, key
-    /// and value.
-    fn shared_inputs(&self, level: Sharing) -> Fingerprint;
-    /// What verifying ahead finds of the memo at `slot`, with its fingerprint ([`Settle::holds`]).
-    fn settled(
-        &self,
-        settle: &Settle<'_>,
-        slot: Slot,
-        path: &mut Vec<(TableId, Slot)>,
-    ) -> (Found, Option<Fingerprint>);
-}
+mod any;
 
-/// What a memo is, as sharing it with other databases asks.
-pub(crate) struct Facts {
-    /// An input, set or holding what it computes while unset.
-    pub(crate) input: bool,
-    /// An input set with [`Db::share`].
-    pub(crate) shared: bool,
-    /// Computed in this process rather than loaded.
-    pub(crate) computed: bool,
-    pub(crate) deps: Box<[Dep]>,
-}
-
-impl<Q: Query> AnyTable for Table<Q> {
-    fn name(&self) -> &'static str {
-        Q::NAME
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn unchanged(&self, cx: &Cx<'_>, slot: Slot, fingerprint: Fingerprint) -> bool {
-        cx.fingerprint(self, slot) == fingerprint
-    }
-
-    fn show(&self, slot: Slot) -> String {
-        format!("{:?}", self.key(slot))
-    }
-
-    fn saved_slot(&self, at: u32) -> Option<Slot> {
-        Table::saved_slot(self, at)
-    }
-
-    fn len(&self) -> usize {
-        self.entries.count()
-    }
-
-    fn facts(&self, db: &Db, slot: Slot) -> Option<Facts> {
-        let memo = self.entry(slot).memo.load_full()?;
-        let computed = memo.fresh();
-        let deps = memo.deps.get(db)?.into();
-        let shared = match memo.source {
-            Source::Set(sharing) => sharing != Sharing::Own,
-            Source::Unset => true,
-            Source::Computed => false,
-        };
-        Some(Facts { input: memo.is_input(), shared, computed, deps })
-    }
-
-    fn persist(&self) {
-        self.persisted.store(true, Ordering::Relaxed);
-    }
-
-    fn counts(&self) -> &Counts {
-        &self.counts
-    }
-
-    fn level(&self, slot: Slot) -> Sharing {
-        self.entry(slot).memo.load().as_ref().map_or(Sharing::Own, |memo| memo.durability.level)
-    }
-
-    fn shared_inputs(&self, level: Sharing) -> Fingerprint {
-        if !Q::INPUT {
-            return Fingerprint::default();
-        }
-        let shared = self.entries().filter_map(|(slot, entry)| {
-            let memo = entry.memo.load_full()?;
-            let Source::Set(sharing) = memo.source else { return None };
-            (sharing >= level)
-                .then(|| Fingerprint::of(&(Q::NAME, Stable::of(self.key(slot)), memo.fingerprint)))
-        });
-        shared.fold(Fingerprint::default(), Fingerprint::with)
-    }
-
-    fn settled(
-        &self,
-        settle: &Settle<'_>,
-        slot: Slot,
-        path: &mut Vec<(TableId, Slot)>,
-    ) -> (Found, Option<Fingerprint>) {
-        settle.holds(self, slot, path)
-    }
-}
+pub(crate) use any::AnyTable;

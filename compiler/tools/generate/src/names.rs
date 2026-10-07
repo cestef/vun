@@ -5,17 +5,11 @@ use vun_syntax::case::Case;
 
 /// What a Vun name says of itself as Rust generates it.
 pub(crate) trait Name {
-    /// Whether it names a type: `TokenKind`, not `tokens`.
-    fn is_type_name(&self) -> bool;
     /// The module for a type name: `TokenKind` is `token_kind`.
     fn snake(&self) -> String;
 }
 
 impl Name for str {
-    fn is_type_name(&self) -> bool {
-        self.starts_with(|c: char| c.is_ascii_uppercase())
-    }
-
     fn snake(&self) -> String {
         Case::Snake.write(self)
     }

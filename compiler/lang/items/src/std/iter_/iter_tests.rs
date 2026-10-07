@@ -44,3 +44,6 @@ pub const a_sum_past_its_type_traps: Item = Item::new(
 pub const a_test_that_traps_passes_when_it_is_expected_to: Item = Item::new(
     &["std", "iter", "tests", "a_test_that_traps_passes_when_it_is_expected_to"],
 );
+pub const a_slice_borrow_is_iterated_by_for: Item = Item::new(
+    &["std", "iter", "tests", "a_slice_borrow_is_iterated_by_for"],
+);

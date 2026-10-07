@@ -12,15 +12,17 @@ fuzz_option := "--fuzz";
 /// The option writing, after the tests, the flags of `lang.cover.map` they set; the program is
 /// built covered.
 cover_option := "--cover";
+/// The option running the tests whose name contains the text that follows it.
+filter_option := "--filter";
 /// The option writing the name and kind of each test chosen, running none.
 list_option := "--list";
 
 /// How a run is asked for, by the program's arguments: `--seed n` draws every property's cases
 /// from `n` rather than from its name, `--cases n` runs `n` cases of each, `--bench` runs the
 /// benchmarks alone, measured, `--fuzz` fuzzes the properties alone, `--cover` writes the coverage
-/// flags the tests set, `--list` writes the tests that would run and runs none, and the other
-/// arguments name
-/// the tests to run, every one if none does.
+/// flags the tests set, `--list` writes the tests that would run and runs none, `--filter text`
+/// runs the tests whose name contains `text`, and the other arguments name the tests to run, every
+/// one if none does.
 Options := struct {
     args: std.os.Args,
     seed: ?u64,
@@ -29,6 +31,7 @@ Options := struct {
     fuzz: bool,
     cover: bool,
     list: bool,
+    filter: ?&[u8],
 
     /// The options `args` ask for; `.none` when an option has no number after it.
     of := (args: std.os.Args) -> ?Options {
@@ -40,6 +43,7 @@ Options := struct {
             .fuzz = false,
             .cover = false,
             .list = false,
+            .filter = .none,
         };
         // The option the next argument is the number of.
         mut after: ?&[u8] = .none;
@@ -47,12 +51,14 @@ Options := struct {
             if .some(arg) = args.get(i) {
                 match after {
                     .some(given) => {
-                        n := match u64.parse(arg) {
-                            .some(number) => number,
-                            .none => return .none,
-                        };
-                        if given == seed_option { options.seed = .some(n); } else {
-                            options.cases = n.sat(usize);
+                        if given == filter_option { options.filter = .some(arg); } else {
+                            n := match u64.parse(arg) {
+                                .some(number) => number,
+                                .none => return .none,
+                            };
+                            if given == seed_option { options.seed = .some(n); } else {
+                                options.cases = n.sat(usize);
+                            }
                         }
                         after = .none;
                     },
@@ -81,8 +87,8 @@ Options := struct {
         arg == bench_option or arg == fuzz_option or arg == cover_option or arg == list_option
     };
 
-    /// Whether `arg` is an option, which the number after it goes with.
-    option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option };
+    /// Whether `arg` is an option, which the value after it goes with.
+    option := (arg: &[u8]) -> bool { arg == seed_option or arg == cases_option or arg == filter_option };
 
     /// Whether a test of `kind` runs: the benchmarks alone when measured, the properties alone
     /// when fuzzed, else every test.
@@ -97,8 +103,11 @@ Options := struct {
     };
 
     /// Whether the test `name` is run: every test when the arguments name none, else those they
-    /// name.
+    /// name, and of those only the ones whose name contains the filter.
     chosen := (self: &Options, name: &[u8]) -> bool {
+        if .some(text) = self.filter {
+            if name.find(text) == Option(usize).none { return false; }
+        }
         mut after := false;
         mut named := false;
         for i in 1..self.args.len() {

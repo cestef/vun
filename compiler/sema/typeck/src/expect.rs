@@ -207,7 +207,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     /// `TypeOf(x)`.
     pub(super) fn known_value(&mut self, expr: ExprId, ty: Option<Ty>) -> Result<Value, Unevaluated> {
         let evaluated = match self.evaluating().eval_as(expr, ty) {
-            Err(Unevaluated::Unsupported | Unevaluated::Unbuilt(_))
+            Err(Unevaluated::Unsupported | Unevaluated::NestedLoan(_) | Unevaluated::Unbuilt(_))
                 if !self.found.types.contains_key(&expr) =>
             {
                 let outer = std::mem::replace(&mut self.stage, Stage::Compile);

@@ -1,8 +1,8 @@
 //! A memoized result: the value, its fingerprint, what computing it read, and the revision it was
 //! last known current in, which any thread verifying it records.
 
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Blob, Context, Malformed};
 use vun_trace::{Activity, tracing};
@@ -94,7 +94,7 @@ pub(crate) struct Saved<Q: Query> {
 pub(crate) type ReadValue<V> = fn(&Context, Blob) -> Result<V, Malformed>;
 
 /// A memo read while another was computed, with the fingerprint it had then.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct Dep {
     pub(crate) table: TableId,
     pub(crate) slot: Slot,
@@ -118,7 +118,7 @@ impl<Q: Query> Memo<Q> {
             value: OnceLock::from(value),
             saved: None,
             fingerprint,
-            deps: Deps::Read(Box::new([])),
+            deps: Deps::Read(Arc::from([])),
             verified,
             source,
             durability: Durability::at(level),
@@ -129,7 +129,7 @@ impl<Q: Query> Memo<Q> {
     pub(crate) fn computed(
         value: Q::Value,
         fingerprint: Fingerprint,
-        deps: Box<[Dep]>,
+        deps: Arc<[Dep]>,
         revision: Revision,
         durability: Durability,
         novelty: Novelty,
@@ -214,7 +214,7 @@ impl<Q: Query> Memo<Q> {
 /// What a memo read: as recorded, or as saved, positions in the file loaded that are brought to
 /// slots of this process when first needed.
 pub(crate) enum Deps {
-    Read(Box<[Dep]>),
+    Read(Arc<[Dep]>),
     Saved { at: Blob, read: OnceLock<Option<Box<[Dep]>>> },
 }
 
@@ -222,7 +222,7 @@ impl Deps {
     /// The memos read, by slot; `None` when one of them is not held by this process's queries.
     pub(crate) fn get(&self, db: &Db) -> Option<&[Dep]> {
         match self {
-            Self::Read(deps) => Some(deps),
+            Self::Read(deps) => Some(&**deps),
             Self::Saved { at, read } => read
                 .get_or_init(|| {
                     let store = db.store.get()?;

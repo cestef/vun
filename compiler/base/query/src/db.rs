@@ -12,7 +12,7 @@ use vun_par::Map;
 use super::claim::Waits;
 use super::cx::{Cx, Found, Reuse};
 use super::fingerprint::Fingerprint;
-use super::memo::{Memo, Source};
+use super::memo::{Dep, Memo, Source};
 use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Slot, Table, TableId};
 use super::{Query, Revision};
@@ -83,6 +83,8 @@ pub struct Db {
     /// The fingerprint of the shared inputs, with the revision it was found in; unset when an
     /// input is set.
     pub(crate) shared_inputs: ArcSwapOption<(Revision, [Fingerprint; Sharing::LEVELS.len()])>,
+    /// The lists of memos read that memos hold, each once: queries computed alike read alike.
+    lists: Map<Arc<[Dep]>, ()>,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
 }
 
@@ -96,6 +98,17 @@ impl Db {
     #[must_use]
     pub fn reusing(reuse: Reuse) -> Self {
         Self { reuse, ..Self::default() }
+    }
+
+    /// `reads` held once however many memos read them.
+    pub(crate) fn list(&self, reads: &[Dep]) -> Arc<[Dep]> {
+        let lists = self.lists.pin();
+        if let Some((held, ())) = lists.get_key_value(reads) {
+            return held.clone();
+        }
+        let list: Arc<[Dep]> = Arc::from(reads);
+        lists.insert(list.clone(), ());
+        list
     }
 
     #[must_use]

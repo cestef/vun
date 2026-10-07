@@ -15,6 +15,10 @@ pub use report::{Collected, Reported, Run, Tested};
 use vun_command::{Args, Param, Values};
 use vun_data::{FromData, ToData};
 
+/// The runner's option choosing the tests whose name holds the text that follows it.
+pub const FILTER: Param = Param::option("filter")
+    .about("run the tests whose name contains this text, among those named if any")
+    .values(Values::Text);
 pub const JOBS: Param = Param::option("jobs")
     .short('j')
     .about("how many tests run at once, each in a process of its own; the machine's cores if not given, 1 runs them in one process, in order")
