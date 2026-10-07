@@ -127,16 +127,23 @@ fn swapped_parameters_move_through_a_temporary() {
 
 /// A unit of functions that each call those `calls` lists for it, by index.
 fn calling(origin: OriginId, calls: &[&[usize]]) -> crate::Unit {
+    let calls: Vec<Vec<_>> =
+        calls.iter().map(|callees| callees.iter().map(|&c| (c, crate::CallKind::Plain)).collect()).collect();
+    calling_as(origin, &calls)
+}
+
+/// [`calling`], each call plain or a tail call.
+fn calling_as(origin: OriginId, calls: &[Vec<(usize, crate::CallKind)>]) -> crate::Unit {
     let mut unit = crate::Unit { pointer_bits: 64, ..crate::Unit::default() };
     for callees in calls {
         let signature =
             Signature { conv: Conv::Vun, params: Vec::new(), result: None, variadic: None, convention: None };
         let mut builder = Builder::new(Linkage::Internal, signature, origin);
-        for &callee in *callees {
+        for &(callee, kind) in callees {
             let call = crate::InstKind::Call {
                 callee: crate::Callee::Func(crate::FuncId::new(callee)),
                 args: Vec::new(),
-                kind: crate::CallKind::Plain,
+                kind,
             };
             builder.push(call, None, origin);
         }
@@ -165,4 +172,19 @@ fn recursion_leaves_stack_use_unbounded() {
     let uses = StackUse::of(&unit, &[(f(0), 16), (f(1), 16), (f(2), 16)]);
     assert_eq!(uses.of_function(f(0)), Err(Unbounded::Recursive(f(0))));
     assert_eq!(uses.of_function(f(2)), Ok(16));
+}
+
+#[test]
+fn a_cycle_of_tail_calls_takes_the_stack_of_its_largest_frame() {
+    use crate::CallKind::{Plain, Tail};
+    let origin = origin(&OriginTable::new());
+    let f = crate::FuncId::new;
+    let frames = [(f(0), 16), (f(1), 64), (f(2), 8)];
+    // f0 and f1 tail call each other, and f1 calls f2 plainly.
+    let unit = calling_as(origin, &[vec![(1, Tail)], vec![(0, Tail), (2, Plain)], vec![]]);
+    let uses = StackUse::of(&unit, &frames);
+    assert_eq!([0, 1, 2].map(|i| uses.of_function(f(i))), [Ok(72), Ok(72), Ok(8)]);
+    // The same cycle through a plain call grows with each turn.
+    let unit = calling_as(origin, &[vec![(1, Tail)], vec![(0, Plain)], vec![]]);
+    assert_eq!(StackUse::of(&unit, &frames).of_function(f(0)), Err(Unbounded::Recursive(f(0))));
 }

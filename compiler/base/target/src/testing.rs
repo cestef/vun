@@ -4,7 +4,7 @@ use vun_intern::Symbol;
 
 use crate::{
     Atomics, Attributes, Backends, BuildsFor, CCompiler, CInt, CTypes, Convention, Endian, Floats,
-    FrameSizes, TargetSpec, Threads,
+    FrameSizes, TailCalls, TargetSpec, Threads,
 };
 
 /// A 64-bit target whose C compiler has no atomics.
@@ -48,6 +48,7 @@ pub fn target() -> TargetSpec {
                 libraries: Vec::new(),
                 atomics: Atomics::None,
                 attributes: Attributes::None,
+                tail_calls: TailCalls::None,
                 frame_sizes: FrameSizes::StackUsage,
                 version_flag: None,
                 sysroot: None,

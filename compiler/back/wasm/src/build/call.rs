@@ -4,7 +4,7 @@
 use std::borrow::Cow;
 
 use vun_backend::{Lack, Missing};
-use vun_lir::{Callee, Ext, Value};
+use vun_lir::{CallKind, Callee, Ext, Value};
 use vun_origin::OriginId;
 
 use super::abi::{Given, Part, Passing};
@@ -16,6 +16,7 @@ impl Lower<'_> {
         &mut self,
         callee: &Callee,
         args: &[Value],
+        kind: CallKind,
         result: Option<Value>,
         at: OriginId,
     ) -> Result<(), Lack> {
@@ -26,6 +27,9 @@ impl Lower<'_> {
             }
             Callee::Indirect(_, signature) => Cow::Owned(Passing::of(signature).map_err(|m| m.at(at))?),
         };
+        if kind == CallKind::Tail && !passing.replaces() {
+            return Err(Missing::TailCall.at(at));
+        }
         let variadic = passing.varargs.as_ref().map_or(0, |v| v.spills.len());
         let (params, out) = args.split_at(passing.parts.len() + variadic);
         let (params, rest) = params.split_at(passing.parts.len());
@@ -37,6 +41,10 @@ impl Lower<'_> {
         }
         if let Some(varargs) = &passing.varargs {
             self.spill(rest, varargs).map_err(|m| m.at(at))?;
+        }
+        if kind == CallKind::Tail {
+            self.tail(callee, &passing);
+            return Ok(());
         }
         match callee {
             Callee::Func(f) => self.op(Op::Call(self.cx.funcs[*f].expect("a called function is reached"))),
@@ -66,6 +74,24 @@ impl Lower<'_> {
             Given::None | Given::Through => {}
         }
         Ok(())
+    }
+
+    /// The call after its arguments are passed: the frame given back first, then a jump.
+    fn tail(&mut self, callee: &Callee, passing: &Passing) {
+        if let Callee::Indirect(v, _) = callee {
+            self.get(*v);
+        }
+        self.release_frame();
+        match callee {
+            Callee::Func(f) => {
+                self.op(Op::ReturnCall(self.cx.funcs[*f].expect("a called function is reached")));
+            }
+            Callee::Import(i) => self.op(Op::ReturnCall(self.cx.imports[*i])),
+            Callee::Indirect(..) => {
+                let ty = self.cx.module.type_of(&passing.ty).expect("indirect signatures are listed first");
+                self.op(Op::ReturnCallIndirect(ty));
+            }
+        }
     }
 
     fn pass(&mut self, arg: Value, part: Part) -> Result<(), Missing> {

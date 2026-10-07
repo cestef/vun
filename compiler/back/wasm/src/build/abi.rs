@@ -71,6 +71,15 @@ pub(super) fn narrow(ty: Scalar) -> Option<u32> {
 }
 
 impl Passing {
+    /// Whether a call passing this can replace its caller's frame: its arguments and result are
+    /// values, not copies in the frame, spills or memory.
+    pub(super) fn replaces(&self) -> bool {
+        self.varargs.is_none()
+            && !self.through()
+            && matches!(self.given, Given::Value(..) | Given::None)
+            && self.parts.iter().all(|part| !matches!(part, Part::Copy { .. }))
+    }
+
     pub(super) fn of(signature: &Signature) -> Result<Self, Missing> {
         if signature.conv == Conv::Naked {
             return Err(Missing::Naked);

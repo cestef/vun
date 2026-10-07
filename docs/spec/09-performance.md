@@ -55,15 +55,20 @@ both Zig and Rust converged on.
 
 - It must be in return position (`flow.tail_position`); the callee's ABI and result type must
   match; no argument may be a borrow of the caller's locals (`borrow.escape`).
+- It is not written in a function that suspends (`flow.tail_position`): a coroutine function
+  returns through its frame.
 - Every argument and the result travel in registers: a callee taking arguments on the stack,
-  records by address or a result in memory is refused by a backend that cannot reuse the frame
-  (`backend.lacks`). The native backends (x86-64, arm64) restore the saved registers, leave the
-  frame and jump; the C backend writes `musttail`; Cranelift, wasm, QBE and Thumb refuse, and a
-  program using one is compiled by an assisting backend where there is one.
+  records by address or a result in memory is refused by a native backend or wasm
+  (`backend.lacks`). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave
+  the frame and jump; wasm gives the frame back and `return_call`s; the C backend writes
+  `musttail` where the target's compiler declares `lang.target.TailCalls.musttail`; Cranelift and
+  QBE refuse. A function a backend refuses is compiled by an assisting backend where there is one.
 - Pending `defer`s of the caller run before the jump.
 - A backend without tail-call support rejects the program; there is never a silent fallback to a
   normal call.
-- A cycle of guaranteed tail calls satisfies `stack.max` without `stack.depth`.
+- A cycle of guaranteed tail calls satisfies `stack.max` without `stack.depth`: a function's stack
+  use is the largest frame among the functions it reaches by tail calls alone, with the deepest
+  plain call each makes.
 
 This is what threaded interpreters, state machines and parsers need, and it keeps their stack
 bounded by construction.

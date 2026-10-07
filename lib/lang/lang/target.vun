@@ -33,6 +33,15 @@ Attributes := enum {
     gnu,
 };
 
+/// What a C compiler offers for guaranteed tail calls (spec 09, section 3).
+TailCalls := enum {
+    /// Nothing: a function using one is refused.
+    none,
+    /// `__attribute__((musttail))` on a `return` of a call (GCC 15, Clang 13): the compiler fails
+    /// where it cannot jump.
+    musttail,
+};
+
 /// How a C compiler reports the size of each function's frame.
 FrameSizes := enum {
     /// It does not.
@@ -62,6 +71,7 @@ CCompiler := struct {
     libraries: &[&[u8]],
     atomics: Atomics,
     attributes: Attributes,
+    tail_calls: TailCalls = .none,
     frame_sizes: FrameSizes,
     /// The option telling it the oldest release of the target's system, the release following
     /// it (clang's `-mmacos-version-min=`); none where the target records no release.

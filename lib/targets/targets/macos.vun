@@ -20,6 +20,7 @@ _clang := ($machine: &[&[u8]]) -> lang.target.CCompiler {
         .libraries = &["System"],
         .atomics = .gnu,
         .attributes = .gnu,
+        .tail_calls = .musttail,
         .frame_sizes = .stack_usage,
         .version_flag = .some("-mmacos-version-min="),
     }

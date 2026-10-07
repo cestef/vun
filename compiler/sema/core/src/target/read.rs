@@ -12,7 +12,7 @@ use vun_items::lang::target_Threads as threads;
 use vun_items::lang::target_Version as version;
 use vun_items::lang::{
     target_Atomics as atomics, target_Attributes as attributes, target_BuildsFor as builds_for,
-    target_CCompiler as compiler, target_FrameSizes as frames,
+    target_CCompiler as compiler, target_FrameSizes as frames, target_TailCalls as tail_calls,
 };
 use vun_items::lang::{target_Backends as backends, target_Spec as spec};
 use vun_items::lang::{target_C as c, target_CInt as cint, target_Endian as endian};
@@ -20,7 +20,7 @@ use vun_items::std::build_Output as output;
 use vun_sema_ty::Value;
 use vun_target::{
     Atomics, Attributes, Backends, BuildsFor, CCompiler, CInt, CTypes, Convention, Endian, FrameSizes,
-    Output, TargetSpec, Threads, Version,
+    Output, TailCalls, TargetSpec, Threads, Version,
 };
 
 use super::members::Members;
@@ -140,6 +140,11 @@ impl Variants for Attributes {
     const VARIANTS: &'static [(Item, Self)] = &[(attributes::none, Self::None), (attributes::gnu, Self::Gnu)];
 }
 
+impl Variants for TailCalls {
+    const VARIANTS: &'static [(Item, Self)] =
+        &[(tail_calls::none, Self::None), (tail_calls::musttail, Self::Musttail)];
+}
+
 impl Variants for FrameSizes {
     const VARIANTS: &'static [(Item, Self)] =
         &[(frames::none, Self::None), (frames::stack_usage, Self::StackUsage)];
@@ -181,6 +186,7 @@ impl Read for CCompiler {
             libraries: m.strings(compiler::libraries)?,
             atomics: m.read(compiler::atomics)?,
             attributes: m.read(compiler::attributes)?,
+            tail_calls: m.read(compiler::tail_calls)?,
             frame_sizes: m.read(compiler::frame_sizes)?,
             version_flag: m.symbol(compiler::version_flag)?,
             sysroot: m.symbol(compiler::sysroot)?,

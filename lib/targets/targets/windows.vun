@@ -18,6 +18,7 @@ _clang := ($machine: &[&[u8]], $libraries: &[&[u8]]) -> lang.target.CCompiler {
         .libraries = libraries,
         .atomics = .gnu,
         .attributes = .gnu,
+        .tail_calls = .musttail,
         .frame_sizes = .none,
     }
 };

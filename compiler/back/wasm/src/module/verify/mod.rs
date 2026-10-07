@@ -109,6 +109,18 @@ impl Check<'_> {
         Ok(())
     }
 
+    /// A call of a function of type `ty` that returns the caller's results: its own must be them.
+    fn returning(&mut self, ty: TypeId) -> Result<(), Why> {
+        let found = self.module.types.get(ty).ok_or(Why::Type(ty))?;
+        if found.results != self.results {
+            return Err(Why::Type(ty));
+        }
+        self.call(ty)?;
+        self.pop_all(self.results)?;
+        self.unreachable();
+        Ok(())
+    }
+
     fn symbol(&self, sym: SymbolId) -> Result<&Kind, Why> {
         self.module.symbols.get(sym).map(|s| &s.kind).ok_or(Why::Symbol(sym))
     }
@@ -136,6 +148,15 @@ impl Check<'_> {
                 self.module.linker(Linker::Table).ok_or(Why::Type(*ty))?;
                 self.pop(ValType::I32)?;
                 self.call(*ty)?;
+            }
+            Op::ReturnCall(sym) => match self.symbol(*sym)? {
+                Kind::Func { ty, .. } => self.returning(*ty)?,
+                _ => return Err(Why::Symbol(*sym)),
+            },
+            Op::ReturnCallIndirect(ty) => {
+                self.module.linker(Linker::Table).ok_or(Why::Type(*ty))?;
+                self.pop(ValType::I32)?;
+                self.returning(*ty)?;
             }
             Op::Drop => {
                 self.pop_any()?;

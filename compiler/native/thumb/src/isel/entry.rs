@@ -19,7 +19,7 @@ const SIZE: Reg = Thumb2::CARRIER;
 
 /// The frame pointer and the link register, as the prologue pushes them; the epilogue pops the
 /// return address into the program counter.
-const LINKAGE: List = List::Regs(1 << FP.number() | 1 << LR.number());
+pub(super) const LINKAGE: List = List::Regs(1 << FP.number() | 1 << LR.number());
 pub(super) const RETURN: List = List::Regs(1 << FP.number() | 1 << Reg::Pc.number());
 
 impl Sel<'_, '_> {

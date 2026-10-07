@@ -62,7 +62,9 @@ impl Typer<'_, '_, '_> {
             _ => None,
         };
         let target = Callee { f: self.called(callee), signature, receiver, passing: Passing::Written };
-        if matches!(target.f, Some(Callable::Primitive(Primitive::Flow(Flow::tail)))) && !returned {
+        if matches!(target.f, Some(Callable::Primitive(Primitive::Flow(Flow::tail))))
+            && (!returned || self.yields.is_some())
+        {
             self.tail_position(call);
         }
         let code = written.first().copied();
@@ -84,7 +86,10 @@ impl Typer<'_, '_, '_> {
     /// Reports the guaranteed tail call `call` that is not the value of a `return` (spec 09,
     /// section 3).
     fn tail_position(&mut self, call: ExprId) {
-        let msg = Msg::new().text("a guaranteed tail call must be the value of a ").code("return");
+        let msg = Msg::new()
+            .text("a guaranteed tail call must be the value of a ")
+            .code("return")
+            .text(" in a function that does not suspend");
         let help = Msg::new().text("write ").code("return lang.flow.tail(f, args);");
         let d = Diagnostic::error(errors::FLOW_TAIL_POSITION, msg)
             .at(self.hir().exprs[call].origin, None)

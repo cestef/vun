@@ -34,6 +34,14 @@ pub enum Attributes {
     Gnu,
 }
 
+/// `lang.target.TailCalls`: what a C compiler offers for guaranteed tail calls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum TailCalls {
+    None,
+    /// `__attribute__((musttail))`.
+    Musttail,
+}
+
 /// `lang.target.FrameSizes`: how a C compiler reports frame sizes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum FrameSizes {
@@ -59,6 +67,7 @@ pub struct CCompiler {
     pub shared: Vec<Symbol>,
     pub atomics: Atomics,
     pub attributes: Attributes,
+    pub tail_calls: TailCalls,
     pub frame_sizes: FrameSizes,
     /// The option telling it the oldest release of the target's system.
     pub version_flag: Option<Symbol>,

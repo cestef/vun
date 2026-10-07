@@ -10,5 +10,6 @@ pub mod target_Convention;
 pub mod target_Endian;
 pub mod target_FrameSizes;
 pub mod target_Spec;
+pub mod target_TailCalls;
 pub mod target_Threads;
 pub mod target_Version;

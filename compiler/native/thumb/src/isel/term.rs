@@ -3,7 +3,7 @@
 //! and an epilogue popping the return address into the program counter.
 
 use vun_asm::imm::sign_extend;
-use vun_asm_thumb::{Cc, Emit, Op, Operand, Reg, Size};
+use vun_asm_thumb::{Cc, Emit, List, Op, Operand, Reg, Size};
 use vun_backend::Lack;
 use vun_codegen::{Arch, Cx};
 use vun_dwarf::Step;
@@ -17,6 +17,19 @@ use crate::{FAR, FP, Flags, Instr, Opnd, Thumb2};
 
 /// The byte a boolean is.
 const BYTE: i64 = 0xff;
+
+impl Thumb2 {
+    /// `FAR` restored with the registers the function saved, then `mov sp, r7; pop` of `popped`.
+    pub(super) fn leave(cx: &mut Cx<'_, Self>, popped: List) {
+        let far = cx.state.far_at;
+        Self::load(&mut cx.asm, FAR, far);
+        cx.restore();
+        cx.unwound(Step::Leaving);
+        cx.asm.emit(Op::Mov, Size::B32, &[Reg::Sp.into(), FP.into()]);
+        cx.asm.emit(Op::Pop, Size::B32, &[Operand::List(popped)]);
+        cx.unwound(Step::Popped);
+    }
+}
 
 impl Terminates for Thumb2 {
     const EQUAL: Cc = Cc::Eq;
@@ -65,15 +78,9 @@ impl Terminates for Thumb2 {
         cx.asm.emit(Op::Udf, Size::B32, &[Operand::Imm(0)]);
     }
 
-    /// `FAR` restored with the registers the function saved, then `mov sp, r7; pop {r7, pc}`.
+    /// Leaves the frame, returning through `pc`.
     fn epilogue(cx: &mut Cx<'_, Self>) {
-        let far = cx.state.far_at;
-        Self::load(&mut cx.asm, FAR, far);
-        cx.restore();
-        cx.unwound(Step::Leaving);
-        cx.asm.emit(Op::Mov, Size::B32, &[Reg::Sp.into(), FP.into()]);
-        cx.asm.emit(Op::Pop, Size::B32, &[Operand::List(RETURN)]);
-        cx.unwound(Step::Popped);
+        Self::leave(cx, RETURN);
         cx.unwound(Step::Returned);
     }
 }

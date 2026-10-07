@@ -1,0 +1,8 @@
+//! A coroutine function returns through its frame, which a tail call would skip.
+
+other := () -> () {};
+
+count := (limit: u32) -> Iter(u32) {
+    for i in 0..limit { yield i; }
+    return lang.flow.tail(other, ()); //~ flow.tail_position
+};

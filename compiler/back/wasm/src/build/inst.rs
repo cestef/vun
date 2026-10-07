@@ -3,7 +3,7 @@
 //! (`Reads::Signed`) extends it first, and every result of one is masked.
 
 use vun_backend::{Lack, Missing};
-use vun_lir::{Address, BinOp, CallKind, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
+use vun_lir::{Address, BinOp, CastOp, Cond, Inst, InstKind, Reads, RmwOp, Scalar, Value};
 use vun_target::Threads;
 
 use super::abi::{narrow, val};
@@ -75,8 +75,7 @@ impl Lower<'_> {
                 self.op(Op::I32Const(Self::i32(bytes)));
                 self.op(Op::MemoryCopy);
             }
-            InstKind::Call { kind: CallKind::Tail, .. } => return Err(Missing::TailCall.at(at)),
-            InstKind::Call { callee, args, .. } => return self.call(&callee, &args, result, at),
+            InstKind::Call { callee, args, kind } => return self.call(&callee, &args, kind, result, at),
             InstKind::Asm(block, check) => return self.asm(&block, check.as_ref()).map_err(|m| m.at(at)),
         }
         if let Some(r) = result {

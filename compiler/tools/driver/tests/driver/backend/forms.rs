@@ -1,13 +1,9 @@
 //! The primitives of `lang` a program calls at run time (`programs/forms.vun`) lower and run alike
 //! through every backend; `primitives` checks that programs call all of them.
 
-use vun_diag::errors;
-use vun_driver::Codegen;
 use vun_items::targets;
-use vun_sema::target::Choice;
 
-use super::{program, status_across, status_on};
-use crate::common::Fixture;
+use super::{program, status, status_across, status_on};
 
 #[test]
 fn primitives_the_tables_declare_lower_and_run() {
@@ -18,19 +14,31 @@ fn primitives_the_tables_declare_lower_and_run() {
 /// frame (spec 09, section 3).
 #[test]
 fn guaranteed_tail_calls_run_in_constant_stack() {
-    assert_eq!(status_on("backend-tail", &program("tail.vun"), &[targets::linux_arm64::kernel]), Some(0));
+    assert_eq!(
+        status_on(
+            "backend-tail",
+            &program("tail.vun"),
+            &[targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1]
+        ),
+        Some(0)
+    );
 }
 
-/// A backend that cannot jump to a callee in place refuses the program, never calls instead.
+/// A callee taking arguments on the stack: the native backends refuse the tail call, which C makes.
+const STACK_ARGUMENTS: &str = "\
+start := std.os.start(main);
+
+wide := (a: u32, b: u32, c: u32, d: u32, e: u32, f: u32, g: u32, h: u32, i: u32) -> u32 {
+    (a + b + c + d + e + f + g + h + i).wrap(u32)
+};
+
+go := (n: u32) -> u32 { return lang.flow.tail(wide, (n, n, n, n, n, n, n, n, n)); };
+
+main := (sys: &mut std.os.System) -> std.os.Exit { std.os.Exit.of(if go(1) == 9 { 0 } else { 1 }) };
+";
+
+/// A backend that cannot jump to a callee in place leaves the function to one that can.
 #[test]
-fn a_backend_without_tail_calls_refuses_them() {
-    let fixture = Fixture::new("backend-tail-refused");
-    let path = fixture.root.write("main.vun", program("tail.vun"));
-    let mut session = fixture.session();
-    session.choice = Choice::of(targets::wasi_wasm32::p1);
-    let file = session.load(&path).unwrap();
-    session.codegen = Codegen::through(vun_backend_wasm::INFO.id);
-    assert!(session.build(file, None).is_err());
-    let ids: Vec<_> = session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect();
-    assert_eq!(ids, [errors::BACKEND_LACKS]);
+fn a_tail_call_that_needs_the_stack_runs_through_the_backend_that_can() {
+    assert_eq!(status("backend-tail-stack", STACK_ARGUMENTS), Some(0));
 }

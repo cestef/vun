@@ -186,10 +186,15 @@ impl<'a> Lower<'a> {
         Ok(())
     }
 
-    /// Restores the stack pointer and returns `result`, as the signature gives it.
-    pub(super) fn ret(&mut self, result: Option<Value>) -> Result<(), Missing> {
+    /// Gives the frame back: the stack pointer as the function found it.
+    pub(super) fn release_frame(&mut self) {
         self.op(Op::LocalGet(self.frame.saved));
         self.op(Op::GlobalSet(self.cx.stack_pointer));
+    }
+
+    /// Restores the stack pointer and returns `result`, as the signature gives it.
+    pub(super) fn ret(&mut self, result: Option<Value>) -> Result<(), Missing> {
+        self.release_frame();
         match (self.passing.given, result) {
             (Given::Value(_, narrowed), Some(v)) => {
                 self.get(v);

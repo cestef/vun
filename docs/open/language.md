@@ -9,7 +9,6 @@
   `eval`, `decl`, `layout`, `target`, `witness` and `apply` call each other through `Env`, whose
   methods are spread over them. Splitting it further means moving an owned interface under `Env`
   for each part that leaves, as `Typist` did for typing.
-- Guaranteed tail calls (spec 09, section 3) lack: a callee with stack arguments or a result in
-  memory (every backend refuses it), Thumb and Cranelift (refused; Cranelift's `return_call`
-  needs its `tail` convention), wasm (`return_call` of the tail-call proposal), a cycle of them
-  satisfying `stack.max`, and coroutine functions (untested).
+- Guaranteed tail calls (spec 09, section 3) lack: a callee with stack arguments, records by
+  address or a result in memory (native and wasm refuse it; C does it), and Cranelift (its
+  `return_call` needs its `tail` convention, so native or C compile the function).

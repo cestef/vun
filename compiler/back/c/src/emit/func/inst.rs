@@ -5,7 +5,7 @@ use vun_lir::func::Def;
 use vun_lir::{
     AbiType, Access, CallKind, Callee, Conv, ImportKind, Inst, InstKind, Order, RmwOp, Signature, Value,
 };
-use vun_target::{Atomics, Attributes};
+use vun_target::{Atomics, TailCalls};
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
@@ -242,7 +242,7 @@ impl FnEmit<'_, '_> {
         call: impl FnOnce(Vec<Expr>) -> Expr,
     ) -> Result<(), Lack> {
         let at = self.func.origin;
-        if self.e.target.c.compiler.attributes != Attributes::Gnu {
+        if self.e.target.c.compiler.tail_calls != TailCalls::Musttail {
             return Err(Missing::TailCall.at(at));
         }
         let call = match &signature.result {

@@ -71,6 +71,15 @@ impl Body<'_> {
                 out.u8(0x11);
                 self.indirect(*ty);
             }
+            Op::ReturnCall(sym) => {
+                out.u8(0x12);
+                let index = self.function_index(*sym);
+                self.relocated(RelocKind::FunctionIndexLeb, sym.number(), 0, index);
+            }
+            Op::ReturnCallIndirect(ty) => {
+                out.u8(0x13);
+                self.indirect(*ty);
+            }
             Op::Drop => out.u8(0x1a),
             Op::Select => out.u8(0x1b),
             Op::LocalGet(l) | Op::LocalSet(l) | Op::LocalTee(l) => {

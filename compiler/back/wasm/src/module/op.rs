@@ -214,6 +214,11 @@ pub enum Op {
     Call(SymbolId),
     /// A call through the indirect function table of a function of the type.
     CallIndirect(TypeId),
+    /// A call of the function a symbol names that returns to the caller's caller (the tail-call
+    /// proposal): the results are the caller's.
+    ReturnCall(SymbolId),
+    /// `ReturnCall` through the indirect function table.
+    ReturnCallIndirect(TypeId),
     Drop,
     Select,
     LocalGet(u32),

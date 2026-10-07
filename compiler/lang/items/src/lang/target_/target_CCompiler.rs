@@ -22,6 +22,7 @@ pub const link_flags: Item = Item::new(&["lang", "target", "CCompiler", "link_fl
 pub const libraries: Item = Item::new(&["lang", "target", "CCompiler", "libraries"]);
 pub const atomics: Item = Item::new(&["lang", "target", "CCompiler", "atomics"]);
 pub const attributes: Item = Item::new(&["lang", "target", "CCompiler", "attributes"]);
+pub const tail_calls: Item = Item::new(&["lang", "target", "CCompiler", "tail_calls"]);
 pub const frame_sizes: Item = Item::new(&["lang", "target", "CCompiler", "frame_sizes"]);
 /// The option telling it the oldest release of the target's system, the release following
 /// it (clang's `-mmacos-version-min=`); none where the target records no release.

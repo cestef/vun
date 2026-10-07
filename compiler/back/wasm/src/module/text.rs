@@ -53,6 +53,8 @@ impl fmt::Display for Text<'_> {
             Op::Return => f.write_str("return"),
             Op::Call(sym) => write!(f, "call ${}", name(*sym)),
             Op::CallIndirect(ty) => write!(f, "call_indirect (type {ty:?})"),
+            Op::ReturnCall(sym) => write!(f, "return_call ${}", name(*sym)),
+            Op::ReturnCallIndirect(ty) => write!(f, "return_call_indirect (type {ty:?})"),
             Op::Drop => f.write_str("drop"),
             Op::Select => f.write_str("select"),
             Op::LocalGet(l) => write!(f, "local.get {l}"),

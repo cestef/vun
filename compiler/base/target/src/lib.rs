@@ -22,7 +22,7 @@ mod tests;
 mod threads;
 mod trace;
 
-pub use c::{Atomics, Attributes, BuildsFor, CCompiler, CInt, CTypes, FrameSizes};
+pub use c::{Atomics, Attributes, BuildsFor, CCompiler, CInt, CTypes, FrameSizes, TailCalls};
 pub use check::{Check, Checks};
 pub use chosen::Chosen;
 pub use convention::Convention;

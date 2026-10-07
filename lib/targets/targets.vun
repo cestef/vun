@@ -48,6 +48,7 @@ gnu := (
         .libraries = libraries,
         .atomics = .gnu,
         .attributes = .gnu,
+        .tail_calls = .musttail,
         .frame_sizes = .stack_usage,
     }
 };

@@ -9,7 +9,7 @@ use vun_diag::Msg;
 use vun_index::IndexVec;
 use vun_origin::OriginId;
 
-use crate::{Callee, FuncId, ImportId, InstKind, Unit};
+use crate::{CallKind, Callee, FuncId, ImportId, InstKind, Unit};
 
 /// Why a function's stack use has no bound.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -96,27 +96,43 @@ impl Walker<'_> {
             Walk::Unseen => {}
         }
         self.state[f] = Walk::Open;
-        let result = self.deepest(f).and_then(|deepest| {
-            let frame = self.frames.get(&f).copied().ok_or(Unbounded::Unreported(f))?;
-            Ok(frame + deepest)
-        });
+        let result = self.deepest(f);
         self.state[f] = Walk::Done(result);
         result
     }
 
-    /// The most bytes a call `f` makes takes.
+    /// The most bytes of stack a call of `f` takes: the frame of each function it reaches by tail
+    /// calls alone, which replace one another, and the deepest plain call each makes.
     fn deepest(&mut self, f: FuncId) -> Result<u64, Unbounded> {
         let unit = self.unit;
-        let mut deepest = 0;
-        for (_, inst) in unit.functions[f].insts.iter() {
-            let InstKind::Call { callee, .. } = &inst.kind else { continue };
-            let used = match callee {
-                Callee::Func(g) => self.visit(*g)?,
-                Callee::Import(i) => unit.imports[*i].stack_max.ok_or(Unbounded::Import(*i))?,
-                Callee::Indirect(..) => return Err(Unbounded::Indirect(f)),
-            };
-            deepest = deepest.max(used);
+        let mut reached = vec![f];
+        let mut worst = 0;
+        let mut next = 0;
+        while let Some(&h) = reached.get(next) {
+            next += 1;
+            let frame = self.frames.get(&h).copied().ok_or(Unbounded::Unreported(h))?;
+            let mut deepest = 0;
+            for (_, inst) in unit.functions[h].insts.iter() {
+                let InstKind::Call { callee, kind, .. } = &inst.kind else { continue };
+                let used = match callee {
+                    Callee::Func(g) if *kind == CallKind::Tail => {
+                        if !reached.contains(g) {
+                            reached.push(*g);
+                        }
+                        continue;
+                    }
+                    Callee::Func(g) => self.visit(*g)?,
+                    Callee::Import(i) => unit.imports[*i].stack_max.ok_or(Unbounded::Import(*i))?,
+                    Callee::Indirect(..) => return Err(Unbounded::Indirect(h)),
+                };
+                if *kind == CallKind::Tail {
+                    worst = worst.max(used);
+                } else {
+                    deepest = deepest.max(used);
+                }
+            }
+            worst = worst.max(frame + deepest);
         }
-        Ok(deepest)
+        Ok(worst)
     }
 }
