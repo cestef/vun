@@ -78,6 +78,17 @@ pub fn compile_tail<A: Native>(
     callee: &[AbiType],
     result: &AbiType,
 ) -> Result<Code<A>, vun_backend::Lack> {
+    compile_tail_under::<A>(A::CONVENTIONS[0].0, conv, own, callee, result)
+}
+
+/// [`compile_tail`] under the convention `named`, one the architecture follows.
+pub fn compile_tail_under<A: Native>(
+    named: vun_target::Convention,
+    conv: Conv,
+    own: &[AbiType],
+    callee: &[AbiType],
+    result: &AbiType,
+) -> Result<Code<A>, vun_backend::Lack> {
     let origins = OriginTable::new();
     let origin = origins.source(Span::new(SourceFiles::new().add("a.vun", "n"), 0, 1));
     let signature = |params: &[AbiType]| Signature {
@@ -105,7 +116,9 @@ pub fn compile_tail<A: Native>(
     let value = b.push(call, (!in_memory).then_some(word::<A>()), origin);
     b.terminate(Terminator::Return(value));
     let f = unit.functions.push(b.finish());
-    vun_codegen::compile::<A>(&unit, &unit.functions[f], A::CONVENTIONS[0].1, Processor::<A>::every(), true)
+    let &(_, followed) =
+        A::CONVENTIONS.iter().find(|(n, _)| *n == named).expect("the architecture follows the convention");
+    vun_codegen::compile::<A>(&unit, &unit.functions[f], followed, Processor::<A>::every(), true)
 }
 
 /// A record of 32 bytes passed by value under the C convention, which no architecture passes in

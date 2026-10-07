@@ -14,7 +14,6 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::{
     self, FuncRef, GlobalValue, MemFlagsData, SourceLoc, StackSlotData, StackSlotKind, Type,
 };
-use cranelift_codegen::isa::CallConv;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use vun_backend::{Lack, Missing};
 use vun_index::IndexVec;
@@ -53,13 +52,8 @@ impl<'a> Cx<'a> {
         tails: &Tails,
     ) -> Self {
         let funcs = unit.functions.iter().map(|(id, f)| reached.contains(id).then(|| isa.plan(&f.signature)));
-        let bodies = unit.functions.iter().map(|(id, f)| {
-            tails.contains(id).then(|| -> Passed {
-                let mut plan = isa.plan(&f.signature)?;
-                plan.signature.call_conv = CallConv::Tail;
-                Ok(plan)
-            })
-        });
+        let bodies =
+            unit.functions.iter().map(|(id, f)| tails.contains(id).then(|| isa.body_plan(&f.signature)));
         let imports = unit.imports.iter().map(|(_, import)| match &import.kind {
             ImportKind::Func(signature) => Some(isa.plan(signature)),
             ImportKind::Data => None,
@@ -114,6 +108,8 @@ struct Lower<'a, 'b> {
     slots: IndexVec<Slot, Option<ir::StackSlot>>,
     /// Whether the last instruction was a tail call, which ends its block.
     tailed: bool,
+    /// The function whose calls go to its body, in the tail convention: of the entry made for it.
+    calls_body: Option<FuncId>,
     refs: HashMap<Address, FuncRef>,
     bodies: HashMap<FuncId, FuncRef>,
     globals: HashMap<(Address, bool), GlobalValue>,
@@ -129,12 +125,27 @@ impl Cx<'_> {
     /// # Panics
     /// If `id` is not reached.
     pub(crate) fn lower(&self, id: FuncId, f: &Function) -> Result<Lowered, Lack> {
-        let body = self.body(id, f.origin)?;
-        let plan = match body {
-            Some(plan) => plan,
-            None => self.plan(Address::Func(id), f.origin)?.expect("a function has a signature"),
+        let Some(body) = self.body(id, f.origin)? else {
+            let plan = self.plan(Address::Func(id), f.origin)?.expect("a function has a signature");
+            let (func, origins) = self.lowered(Address::Func(id).name(), f, plan, None, Vec::new())?;
+            return Ok(Lowered { func, entry: None, origins });
         };
-        let name = if body.is_some() { Body(id).name() } else { Address::Func(id).name() };
+        let (func, origins) = self.lowered(Body(id).name(), f, body, None, Vec::new())?;
+        let (entry, origins) = self.entry(id, f, origins)?;
+        Ok(Lowered { func, entry: Some(entry), origins })
+    }
+
+    /// `f` lowered as `plan` passes to it under `name`, its calls of the function `calls_body`
+    /// going to the body of that function. The origins its source locations number continue
+    /// `origins`.
+    fn lowered(
+        &self,
+        name: ir::UserExternalName,
+        f: &Function,
+        plan: &Plan,
+        calls_body: Option<FuncId>,
+        origins: Vec<OriginId>,
+    ) -> Result<(ir::Function, Vec<OriginId>), Lack> {
         let mut func =
             ir::Function::with_name_signature(ir::UserFuncName::User(name), plan.signature.clone());
         let mut context = FunctionBuilderContext::new();
@@ -149,17 +160,17 @@ impl Cx<'_> {
             blocks: IndexVec::filled(None, f.blocks.len()),
             slots: IndexVec::filled(None, f.slots.len()),
             tailed: false,
+            calls_body,
             refs: HashMap::new(),
             bodies: HashMap::new(),
             globals: HashMap::new(),
-            origins: Vec::new(),
+            origins,
         };
         lower.body()?;
-        let mut origins = lower.origins;
+        let origins = lower.origins;
         lower.b.seal_all_blocks();
         lower.b.finalize(self.isa.target.frontend_config());
-        let entry = body.is_some().then(|| self.entry(id, f, &mut origins)).transpose()?;
-        Ok(Lowered { func, entry, origins })
+        Ok((func, origins))
     }
 }
 

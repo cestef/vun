@@ -3,8 +3,10 @@
 use vun_lir::func::Conv;
 use vun_lir::{AbiType, BinOp, Cond, Ext, Scalar, Terminator};
 
+use vun_target::Convention;
+
 use crate::X86;
-use vun_native::testing::{compile_tail, compiled, sum, text, to};
+use vun_native::testing::{compile_tail, compile_tail_under, compiled, sum, text, to};
 
 #[test]
 fn a_branch_on_a_comparison_jumps_on_its_flags() {
@@ -77,4 +79,18 @@ fn a_tail_call_passes_a_large_record_only_where_the_convention_copies_it_to_the_
     )
     .expect("a record on the stack goes over the one received");
     assert!(!text(&code).iter().any(|i| i.starts_with("call")));
+}
+
+#[test]
+fn a_tail_call_passes_a_large_record_by_address_under_win64_only_as_one_received() {
+    let record = vun_native::testing::large_record::<crate::X86>();
+    let int = AbiType::Int(Scalar::I64, Ext::Sign);
+    let own = std::slice::from_ref(&record);
+    let code = compile_tail_under::<crate::X86>(Convention::Win64, Conv::C, own, own, &int)
+        .expect("the copy the caller made is passed on");
+    assert!(!text(&code).iter().any(|i| i.starts_with("call")));
+    let lacks =
+        compile_tail_under::<crate::X86>(Convention::Win64, Conv::C, std::slice::from_ref(&int), own, &int)
+            .err();
+    assert_eq!(lacks.map(|lack| lack.missing), Some(vun_backend::Missing::TailCall));
 }

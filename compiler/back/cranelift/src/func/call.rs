@@ -26,6 +26,7 @@ impl Lower<'_, '_> {
         let cx = self.cx;
         let owned;
         let plan = match callee {
+            Callee::Func(f) if self.calls_body == Some(*f) => cx.body(*f, at)?,
             Callee::Func(f) => cx.plan(Address::Func(*f), at)?,
             Callee::Import(i) => cx.plan(Address::Import(*i), at)?,
             Callee::Indirect(_, signature) => {
@@ -36,6 +37,10 @@ impl Lower<'_, '_> {
         let plan = plan.expect("what is called is a function");
         let (args, result) = self.arguments(plan, args);
         let call = match callee {
+            Callee::Func(f) if self.calls_body == Some(*f) => {
+                let target = self.body_ref(*f, plan);
+                self.b.ins().call(target, &args)
+            }
             Callee::Func(f) => {
                 let target = self.func_ref(Address::Func(*f), at)?;
                 self.b.ins().call(target, &args)
@@ -61,6 +66,12 @@ impl Lower<'_, '_> {
     /// body too, and so has the tail convention (`Tails`), or the call is refused.
     pub(super) fn tail_call(&mut self, callee: &Callee, args: &[Value], at: OriginId) -> Result<(), Lack> {
         let Callee::Func(f) = callee else { return Err(Missing::TailCall.at(at)) };
+        // What is passed by address must be where this function's caller left it, not in this frame.
+        let received = self.f.entry().map(|entry| self.f.blocks[entry].params.as_slice()).unwrap_or_default();
+        let signature = &self.cx.unit.functions[*f].signature;
+        if signature.held().any(|held| !received.contains(&args[held.at])) {
+            return Err(Missing::TailCall.at(at));
+        }
         let body = self.cx.body(*f, at)?;
         let (Some(plan), CallConv::Tail) = (body, self.plan.signature.call_conv) else {
             return Err(Missing::TailCall.at(at));

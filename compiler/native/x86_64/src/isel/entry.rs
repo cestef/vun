@@ -63,6 +63,10 @@ impl Sel<'_, '_> {
         let Some(entry) = f.entry() else { return };
         let locs = self.state.passing.params.clone();
         for (&v, loc) in f.blocks[entry].params.iter().zip(&locs) {
+            let loc = match loc {
+                Loc::Indirect { at, .. } => at.as_ref(),
+                loc => loc,
+            };
             match loc {
                 Loc::Reg(Carrier::Float(x)) => self.receive_float(v, *x),
                 Loc::Stack { offset, .. } => self.home_at(v, CALLER_ARGS + offset_of(*offset)),

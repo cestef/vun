@@ -65,13 +65,15 @@ both Zig and Rust converged on.
   reports `lowering does not handle` a tail call, a backend `backend.lacks`), as is a record the
   convention passes by address of a copy (arm64 and Windows for a C record over 16 bytes) where
   the function received no record that holds it (the lowering passes on the copy its caller made,
-  as for Vun's records in memory; Windows on x86-64 does not pass such records yet), and, by the
+  as for Vun's records in memory), and, by the
   C backend, a record over the registers' size as an argument, a struct or a wide integer as a
   result (GCC refuses `musttail` there). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave the frame
   and jump; wasm gives the frame back and `return_call`s; the C backend writes `musttail` where
   the target's compiler declares `lang.target.TailCalls.musttail`; Cranelift compiles the
   functions that tail call each other as bodies in its `tail` convention, each behind an entry of
-  the target's convention that every other caller and every address reaches (a group where another
+  the target's convention that every other caller and every address reaches, which for a C function
+  decodes records and results as that convention places them and calls the body with their
+  addresses, so a record passed on must be one the function received (a group where another
   backend compiles one function is refused whole); QBE refuses. A function a backend refuses is
   compiled by an assisting backend where there is one.
 - Pending `defer`s of the caller run before the jump.

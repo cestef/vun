@@ -9,7 +9,7 @@
   `eval`, `decl`, `layout`, `target`, `witness` and `apply` call each other through `Env`, whose
   methods are spread over them. Splitting it further means moving an owned interface under `Env`
   for each part that leaves, as `Typist` did for typing.
-- Guaranteed tail calls (spec 09, section 3) lack: a record passed by address of a copy where
-  the function received none that holds it (arm64; Windows on x86-64 passes none yet), a C function's tail call under Cranelift (its values
-  are the convention's, not the `tail` one's), and a large record argument or a struct or wide result
-  under the C backend with GCC (`TailCalls` could say which compilers jump with one).
+- Guaranteed tail calls (spec 09, section 3) lack: a large record argument or a struct or wide
+  result under the C backend with GCC, which refuses `musttail` there (`TailCalls` could say which
+  compilers jump with one); the assisting backend compiles such a function. The x86-64 passing of
+  records by address (Windows) is covered by unit tests only, no Windows target runs here.

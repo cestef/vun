@@ -95,3 +95,38 @@ fn a_group_of_functions_one_of_which_another_backend_compiles_is_compiled_by_non
     let tails = Tails::of(&unit, &reached, &[f]);
     assert!(!tails.contains(f) && !tails.contains(g));
 }
+
+#[test]
+fn a_c_function_tail_calling_itself_with_the_record_it_received_is_a_body_behind_a_c_entry() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let int = AbiType::Int(Scalar::I64, vun_lir::Ext::Sign);
+    let record = AbiType::Record(vun_lir::Record {
+        size: 32,
+        align: 8,
+        fields: (0..4).map(|k| (k * 8, Scalar::I64)).collect(),
+    });
+    let signature = Signature {
+        conv: Conv::C,
+        params: vec![record],
+        result: Some(int),
+        variadic: None,
+        convention: None,
+    };
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    let own = FuncId::new(0);
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let received = b.params(b.current())[0];
+    let call = InstKind::Call { callee: Callee::Func(own), args: vec![received], kind: CallKind::Tail };
+    let result = b.push(call, Some(Scalar::I64), at);
+    b.terminate(Terminator::Return(result));
+    unit.functions.push(b.finish());
+    let tails = Tails::of(&unit, &Reached::of(&unit), &[]);
+    assert!(tails.contains(own));
+    for name in NAMES {
+        let compiled =
+            Compilation::of(&unit, &isa(name.0), None, false).unwrap_or_else(|_| panic!("{name:?}"));
+        let (_, code) = compiled.code.iter().next().expect("f");
+        assert!(code.code.relocs.iter().any(|r| r.addend > 0), "{name:?}");
+    }
+}

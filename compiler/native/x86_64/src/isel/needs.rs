@@ -120,6 +120,11 @@ impl Look<'_, '_> {
         let cx = self.0;
         let Some(entry) = cx.f.entry() else { return };
         for (&v, loc) in cx.f.blocks[entry].params.iter().zip(&cx.state.passing.params) {
+            // A record copied by the caller is received as its address.
+            let loc = match loc {
+                Loc::Indirect { at, .. } => at.as_ref(),
+                loc => loc,
+            };
             let out = match loc {
                 Loc::Reg(Carrier::Int(r)) => Out::Fixed(X86::preg(*r)),
                 Loc::Reg(Carrier::Float(_)) => Out::Reg,

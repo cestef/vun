@@ -4,6 +4,7 @@
 //! `vun-abi` (`plan`).
 
 use cranelift_codegen::ir::{self, AbiParam, ArgumentPurpose, Type, types};
+use cranelift_codegen::isa::CallConv;
 use vun_abi::Variadic;
 use vun_backend::Missing;
 use vun_lir::{AbiType, Conv, Ext, Scalar, Signature};
@@ -143,6 +144,21 @@ impl Isa {
             Returned::Sret => Returned::Sret,
         };
         Ok(Plan { signature: out, params: placed.params, returned })
+    }
+}
+
+impl Isa {
+    /// How the body of a function with an entry is passed to: every value as Cranelift's tail
+    /// convention places it, a C record by the address of its memory and a result in memory by an
+    /// address, which the entry (`Cx::entry`) decodes the target's convention to and from.
+    ///
+    /// # Errors
+    /// Returns what Cranelift does not express of the signature.
+    pub(crate) fn body_plan(&self, signature: &Signature) -> Result<Plan, Missing> {
+        let vun = Signature { conv: Conv::Vun, convention: None, ..signature.clone() };
+        let mut plan = self.plan(&vun)?;
+        plan.signature.call_conv = CallConv::Tail;
+        Ok(plan)
     }
 }
 

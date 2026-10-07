@@ -92,9 +92,9 @@ impl Tails {
         Self(unit.functions.iter().map(|(id, _)| joined[id.index()] && !groups.refused(id)).collect())
     }
 
-    /// Whether the body of `f` can be passed as the tail convention does: its values are placed
-    /// as Cranelift places them.
+    /// Whether `f` can be compiled as a body: its entry decodes the target's convention, which
+    /// names no other and has no variadic arguments, and a naked function has no entry.
     fn fits(f: &Function) -> bool {
-        f.signature.conv == Conv::Vun && f.signature.convention.is_none() && f.signature.variadic.is_none()
+        f.signature.conv != Conv::Naked && f.signature.convention.is_none() && f.signature.variadic.is_none()
     }
 }
