@@ -95,6 +95,24 @@ impl AbiType {
     }
 }
 
+/// A parameter held in memory, whose address is the LIR value at position `at`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Held {
+    pub at: usize,
+    pub size: u64,
+    pub align: u64,
+    pub reuse: Reuse,
+}
+
+/// Whether a tail call must pass a parameter held in memory in the memory its caller received.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reuse {
+    /// Where a slot of the frame being left is no place for it: Vun's convention passes its address.
+    Must,
+    /// Where the target's convention may copy it into the callee's arguments instead.
+    May,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Signature {
     pub conv: Conv,
@@ -124,13 +142,15 @@ impl Signature {
         self.params.iter().flat_map(|p| iter::repeat_n(p, p.values().count()))
     }
 
-    /// The parameters passed in memory under Vun's convention, by the position of their address
-    /// among [`Signature::values`], with their size and alignment.
-    pub fn memory(&self) -> impl Iterator<Item = (usize, u64, u64)> {
+    /// The parameters held in memory whose address is passed: those in memory under Vun's
+    /// convention, and the records of C's, by the position of their address among
+    /// [`Signature::values`].
+    pub fn held(&self) -> impl Iterator<Item = Held> {
         let mut at = 0;
         self.params.iter().filter_map(move |param| {
             let found = match *param {
-                AbiType::Memory { size, align } => Some((at, size, align)),
+                AbiType::Memory { size, align } => Some(Held { at, size, align, reuse: Reuse::Must }),
+                AbiType::Record(ref r) => Some(Held { at, size: r.size, align: r.align, reuse: Reuse::May }),
                 _ => None,
             };
             at += param.values().count();

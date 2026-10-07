@@ -10,7 +10,7 @@ use crate::entity::{Block, Inst, Slot, Value};
 use crate::inst::{Address, InstKind, Terminator};
 use crate::ty::Scalar;
 
-pub use crate::abi::{AbiType, Alias, Conv, Ext, Record, Signature};
+pub use crate::abi::{AbiType, Alias, Conv, Ext, Held, Record, Reuse, Signature};
 
 /// Who sees a definition.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]

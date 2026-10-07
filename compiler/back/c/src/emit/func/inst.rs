@@ -1,6 +1,7 @@
 //! Instructions: a value's expression is kept for its one use or assigned to its local; memory is
 //! reached by typed access through `u8 *` addresses, which `-fno-strict-aliasing` defines.
 
+use vun_abi::Rules;
 use vun_lir::func::Def;
 use vun_lir::{
     AbiType, Access, CallKind, Callee, Conv, ImportKind, Inst, InstKind, Order, RmwOp, Signature, Value,
@@ -246,6 +247,15 @@ impl FnEmit<'_, '_> {
     ) -> Result<(), Lack> {
         let at = self.func.origin;
         if self.e.target.c.compiler.tail_calls != TailCalls::Musttail {
+            return Err(Missing::TailCall.at(at));
+        }
+        // A record the convention copies or passes by address is a copy left in the frame the
+        // call leaves, which the C compilers refuse to jump from.
+        let named = signature.convention.unwrap_or(self.e.target.convention);
+        let copied = Rules::of(named).is_some_and(|rules| {
+            signature.params.iter().any(|p| matches!(p, AbiType::Record(r) if r.size > rules.in_registers))
+        });
+        if copied {
             return Err(Missing::TailCall.at(at));
         }
         let call = match &signature.result {

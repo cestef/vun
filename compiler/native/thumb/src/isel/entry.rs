@@ -6,7 +6,7 @@
 use vun_asm_thumb::{Emit, List, Op, Operand, Reg, Size};
 use vun_codegen::Arch;
 use vun_dwarf::Step;
-use vun_native::select::Frames;
+use vun_native::select::Params;
 
 use super::Sel;
 use crate::asm::AsmExt;

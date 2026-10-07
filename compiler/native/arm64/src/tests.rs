@@ -97,16 +97,14 @@ fn tail_calls_pass_values_in_memory_where_the_function_received_its_own() {
 }
 
 #[test]
-fn a_tail_call_passes_a_large_record_only_where_the_convention_copies_it_to_the_stack() {
+fn a_tail_call_passes_a_large_record_by_address_only_as_one_received() {
     let record = vun_native::testing::large_record::<crate::Arm>();
     let int = AbiType::Int(Scalar::I64, Ext::Sign);
-    let lacks = compile_tail::<crate::Arm>(
-        Conv::C,
-        std::slice::from_ref(&record),
-        std::slice::from_ref(&record),
-        &int,
-    )
-    .err();
-    // The callee owns a copy the caller makes, which this frame would take with it.
+    let own = std::slice::from_ref(&record);
+    let code =
+        compile_tail::<crate::Arm>(Conv::C, own, own, &int).expect("the copy the caller made is passed on");
+    assert!(!vun_native::testing::text(&code).iter().any(|i| i.starts_with("bl")));
+    // A record of its own would be copied into the frame the call leaves.
+    let lacks = compile_tail::<crate::Arm>(Conv::C, std::slice::from_ref(&int), own, &int).err();
     assert_eq!(lacks.map(|lack| lack.missing), Some(Missing::TailCall));
 }

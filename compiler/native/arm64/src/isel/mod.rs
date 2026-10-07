@@ -22,7 +22,7 @@ use super::{Arm, condition};
 use select::{Look, Selection};
 use vun_codegen::snippet::Snippet;
 use vun_native::inline::Inlined;
-use vun_native::select::{Frames, Selects, Terminates};
+use vun_native::select::{Frames, Params, Selects, Terminates};
 
 /// What the instruction compilers keep for one function.
 pub struct State {

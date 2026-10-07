@@ -9,7 +9,7 @@ use vun_codegen::snippet::{Args, Emits};
 use vun_codegen::{Cx, Layout};
 use vun_lir::{Block, Cond, Target, Terminator};
 
-use super::Frames;
+use super::{Frames, Params};
 
 /// What a load and store architecture's terminators are written with.
 pub trait Terminates: Frames {

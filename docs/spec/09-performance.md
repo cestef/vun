@@ -63,9 +63,11 @@ both Zig and Rust converged on.
   holds its size and alignment; a result in memory is written through the address the caller
   received, which `lang.flow.tail` passes on. A callee that does not fit is refused (the lowering
   reports `lowering does not handle` a tail call, a backend `backend.lacks`), as is a record the
-  convention copies into the caller's frame and passes by address (arm64 and Windows for a C
-  record over 16 bytes, wasm for one that fits no record received), and, by the C backend, a
-  result that is a struct or an integer wider than a register (GCC refuses `musttail` there). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave the frame
+  convention passes by address of a copy (arm64 and Windows for a C record over 16 bytes) where
+  the function received no record that holds it (the lowering passes on the copy its caller made,
+  as for Vun's records in memory; Windows on x86-64 does not pass such records yet), and, by the
+  C backend, a record over the registers' size as an argument, a struct or a wide integer as a
+  result (GCC refuses `musttail` there). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave the frame
   and jump; wasm gives the frame back and `return_call`s; the C backend writes `musttail` where
   the target's compiler declares `lang.target.TailCalls.musttail`; Cranelift compiles the
   functions that tail call each other as bodies in its `tail` convention, each behind an entry of

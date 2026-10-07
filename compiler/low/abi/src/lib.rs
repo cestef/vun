@@ -120,6 +120,27 @@ impl<R> Passing<R> {
     }
 }
 
+impl<R> Passing<R> {
+    /// Whether a call placing things this way can replace the frame of a function whose own
+    /// parameters are placed as `caller` places them, `args` being what it passes and `received`
+    /// the values its entry holds: as [`Passing::replaces`], but a record copied by the caller may
+    /// be passed on as the copy of one the function received, which its caller made and reads no
+    /// more.
+    #[must_use]
+    pub fn reuses<V: PartialEq>(&self, caller: &Self, args: &[V], received: &[V]) -> bool {
+        let held = |arg: &V, size: u64| {
+            let own = received.iter().zip(&caller.params);
+            own.into_iter()
+                .any(|(r, loc)| r == arg && matches!(loc, Loc::Indirect { size: kept, .. } if *kept >= size))
+        };
+        self.stack <= caller.stack
+            && self.params.iter().zip(args).all(|(loc, arg)| match loc {
+                Loc::Indirect { size, .. } => held(arg, *size),
+                _ => true,
+            })
+    }
+}
+
 impl<I: Copy, F> Passing<Carrier<I, F>> {
     /// The arguments of `args`, a value per LIR value of the signature, passed in general
     /// registers, with their registers.

@@ -1,7 +1,7 @@
 //! Guaranteed tail calls (spec 09, section 3): a call that is the function's last instruction,
 //! returning what it gives. The frame is the callee's, so what it passes may not be in it.
 
-use vun_lir::{CallKind, Callee, InstKind, Signature, Value};
+use vun_lir::{CallKind, Callee, Held, InstKind, Reuse, Signature, Value};
 
 use super::{FnLower, Tailed};
 use crate::unlowered::{Form, Unlowered};
@@ -29,17 +29,22 @@ impl FnLower<'_, '_, '_> {
         Ok(())
     }
 
-    /// Passes each value in memory of Vun's convention in the memory the function received for
-    /// one of its own, the first not taken that holds it: that memory is its caller's and read no
-    /// more, where a slot of this frame is gone once the callee runs. The values are copied there
-    /// once all are written, as one may be read from another.
+    /// Passes each value held in memory in the memory the function received for one of its own,
+    /// the first not taken that holds it: that memory is its caller's and read no more, where a
+    /// slot of this frame is gone once the callee runs. Vun's convention needs it; a record of
+    /// the C convention is passed on so where the target's convention would have the callee
+    /// read a copy in the frame being left, and stays where none is received that fits. The
+    /// values are copied there once all are written, as one may be read from another.
     fn reuse_received(&mut self, callee: &Signature, args: &mut [Value]) -> Result<(), Unlowered> {
-        let mut received = self.b.signature().memory().collect::<Vec<_>>().into_iter();
+        let mut received = self.b.signature().held().collect::<Vec<_>>().into_iter();
         let mut moves = Vec::new();
-        for (at, size, align) in callee.memory() {
-            let fits = |&(_, held, aligned): &(usize, u64, u64)| held >= size && aligned >= align;
-            let (own, ..) = received.find(fits).ok_or(Unlowered::unsupported(self.at, Form::Tail))?;
-            moves.push((at, self.received[own], size));
+        for held in callee.held() {
+            let fits = |own: &Held| own.size >= held.size && own.align >= held.align;
+            match (received.find(fits), held.reuse) {
+                (Some(own), _) => moves.push((held.at, self.received[own.at], held.size)),
+                (None, Reuse::Must) => return Err(Unlowered::unsupported(self.at, Form::Tail)),
+                (None, Reuse::May) => {}
+            }
         }
         for (at, to, size) in moves {
             self.b.copy(to, args[at], size, self.at);

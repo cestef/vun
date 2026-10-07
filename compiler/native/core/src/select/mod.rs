@@ -7,10 +7,12 @@
 mod carry;
 mod frames;
 mod needs;
+mod params;
 mod term;
 
 pub use carry::{Carries, Way};
 pub use frames::Frames;
+pub use params::Params;
 pub use term::Terminates;
 
 use vun_abi::{Carrier, Convention, Passing};

@@ -52,3 +52,19 @@ fn guaranteed_tail_calls_write_aggregate_results_through_the_callers_address() {
         Some(0)
     );
 }
+
+/// C records too large for registers, which arm64 passes by the address of a copy: the call passes
+/// on the copy it received. The C compilers cannot jump with such an argument, so the C backend
+/// refuses it.
+#[test]
+fn guaranteed_tail_calls_pass_large_c_records_in_constant_stack() {
+    assert_eq!(
+        status_where(
+            "backend-tail-record",
+            &program("tail_record.vun"),
+            &[targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1],
+            |backend| backend.info().id != vun_backend_c::INFO.id
+        ),
+        Some(0)
+    );
+}

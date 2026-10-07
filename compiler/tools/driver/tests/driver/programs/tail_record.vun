@@ -1,0 +1,33 @@
+//! Guaranteed tail calls, a million deep, passing C records too large for registers: the target's
+//! convention copies them onto the stack or passes the address of a copy, which the call passes on
+//! from the one it received. Exits with the number of checks that fail: 0 when all hold.
+
+start := std.os.start(main);
+
+#[layout.c]
+Big := struct { a: u64, b: u64, c: u64, d: u64 };
+
+#[abi.c]
+rotate := (n: u32, big: Big) -> u64 {
+    if n == 0 { return big.a; }
+    return lang.flow.tail(rotate, (n - 1, Big{ .a = big.b, .b = big.c, .c = big.d, .d = big.a }));
+};
+
+#[abi.c]
+swap := (n: u32, x: Big, y: Big) -> u64 {
+    if n == 0 { return x.a; }
+    return lang.flow.tail(swap, (n - 1, y, x));
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u32 = sys.args().len().sat(u32);
+    steps: u32 = (1000000 * n).wrap(u32);
+    one := Big{ .a = 1, .b = 2, .c = 3, .d = 4 };
+    two := Big{ .a = 5, .b = 6, .c = 7, .d = 8 };
+    mut failed: Int(0..=4) = 0;
+    if rotate(steps, one) != 1 { failed +|= 1; }
+    if rotate((steps + 1).wrap(u32), one) != 2 { failed +|= 1; }
+    if swap(steps, one, two) != 1 { failed +|= 1; }
+    if swap((steps + 1).wrap(u32), one, two) != 5 { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

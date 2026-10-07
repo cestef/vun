@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 vun-trace.workspace = true
+vun-abi.workspace = true
 vun-asm.workspace = true
 vun-asm-arm64.workspace = true
 vun-asm-x86_64.workspace = true
