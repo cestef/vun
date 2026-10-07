@@ -23,7 +23,9 @@ pub const Decl: Item = Item::new(&["lang", "lint", "Decl"]);
 /// the code names it anywhere after, whether it is a parameter, whether a pattern testing the
 /// value it matches binds it (a `match` arm's, or an `if` or `for` test's), and whether it hides a
 /// constant: its name names, outside the file where it is bound, data a pattern compares with, not
-/// a function, a type or a namespace (a name of the prelude, the package or a dependency).
+/// a function, a type or a namespace (a name of the prelude, the package or a dependency), whether
+/// it is mutable, and whether its type holds one integer, as typing gives a local initialised by
+/// a literal (`mut n := 0` has the range `0..=0`): any other value written to it traps.
 pub const Local: Item = Item::new(&["lang", "lint", "Local"]);
 /// The function a checked call calls.
 pub const Callee: Item = Item::new(&["lang", "lint", "Callee"]);

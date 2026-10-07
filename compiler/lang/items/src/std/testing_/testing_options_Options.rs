@@ -13,6 +13,7 @@ pub const bench: Item = Item::new(&["std", "testing", "options", "Options", "ben
 pub const fuzz: Item = Item::new(&["std", "testing", "options", "Options", "fuzz"]);
 pub const cover: Item = Item::new(&["std", "testing", "options", "Options", "cover"]);
 pub const list: Item = Item::new(&["std", "testing", "options", "Options", "list"]);
+/// The index among the arguments of the text `--filter` gives.
 pub const filter: Item = Item::new(&["std", "testing", "options", "Options", "filter"]);
 /// The options `args` ask for; `.none` when an option has no number after it.
 pub const of: Item = Item::new(&["std", "testing", "options", "Options", "of"]);

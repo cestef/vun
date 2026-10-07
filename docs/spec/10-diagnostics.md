@@ -259,7 +259,8 @@ raw_mmio := lang.lint.Lint{
   `.local` (`lang.lint.Local`: a local binding or parameter of a function literal, whether it is
   a parameter, whether any name reads it, whether a pattern testing a value binds it, and whether
   it hides a constant from outside the file: a name of the prelude, the package or a dependency
-  whose value is data, not a function, a type or a namespace) and `.call` (`lang.lint.Call`: the value of what it
+  whose value is data, not a function, a type or a namespace, whether it is mutable, and whether
+  typing gives it a type holding one integer, as `mut n := 0` has `0..=0`) and `.call` (`lang.lint.Call`: the value of what it
   calls, where it is written); a check left at its default (`lang.lint.unchecked`) is not run. The
   compiler walks each file once and runs every check on every node of its kind. A function type's
   parameters are no locals, and the binders of an or-pattern's alternatives after the first are

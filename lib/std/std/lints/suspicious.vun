@@ -18,3 +18,17 @@ shadowing := lang.lint.Lint{
         }
     },
 };
+
+/// A `mut` local whose type holds one integer: typing gives `mut n := 0` the range `0..=0`, so
+/// the first other value written to `n` traps.
+#[lint.define]
+pinned := lang.lint.Lint{
+    .group = .suspicious,
+    .doc = std.meta.embed("suspicious/pinned.md"),
+    .local = (cx: &mut lang.lint.Cx, l: lang.lint.Local) {
+        if l.mutable and l.pinned {
+            msg := "the mutable local `" ++ l.name ++ "` holds one value, so any other written to it traps";
+            cx.report(l.origin, msg, &[]);
+        }
+    },
+};

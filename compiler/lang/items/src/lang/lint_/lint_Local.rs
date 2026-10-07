@@ -12,3 +12,5 @@ pub const used: Item = Item::new(&["lang", "lint", "Local", "used"]);
 pub const param: Item = Item::new(&["lang", "lint", "Local", "param"]);
 pub const tests: Item = Item::new(&["lang", "lint", "Local", "tests"]);
 pub const hides: Item = Item::new(&["lang", "lint", "Local", "hides"]);
+pub const mutable: Item = Item::new(&["lang", "lint", "Local", "mutable"]);
+pub const pinned: Item = Item::new(&["lang", "lint", "Local", "pinned"]);

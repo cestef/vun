@@ -2,8 +2,10 @@
 //! `#[lint.allow]` silences: on a declaration, a field, a local binding, or an expression.
 
 mod binds;
+mod typed;
 
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use vun_hir::resolve::Res;
 use vun_hir::tree::{
@@ -20,6 +22,7 @@ use vun_sema_ty::Value;
 use super::nodes::{Kind, Node};
 use super::tables::Binds;
 use vun_sema::env::Env;
+use vun_sema::typed::TypedBody;
 use vun_sema::visible::Reach;
 
 /// Walking the file `env` reads: its declarations and the locals and calls in their values.
@@ -42,6 +45,8 @@ pub(super) struct Walk<'e, 'a, 'db> {
     tested: HashSet<BinderId>,
     /// Binders that are no local of their own.
     skipped: HashSet<BinderId>,
+    /// What typing finds in the function written around, whose locals have the types it gives.
+    typed: Option<Arc<TypedBody>>,
 }
 
 impl<'e, 'a, 'db> Walk<'e, 'a, 'db> {
@@ -62,6 +67,7 @@ impl<'e, 'a, 'db> Walk<'e, 'a, 'db> {
             params: HashSet::new(),
             tested: HashSet::new(),
             skipped: HashSet::new(),
+            typed: None,
         };
         if let Some(root) = env.parsed.hir.root {
             walk.members(&env.parsed.hir, root);
@@ -108,7 +114,9 @@ impl<'e, 'a, 'db> Walk<'e, 'a, 'db> {
         let (name, origin) = (hir.binders[binder].name, hir.binders[binder].origin);
         let (used, hides) = (self.used.contains(&binder), self.hides(name));
         let param = self.params.contains(&binder);
-        self.push(Kind::Local { name, used, param, tests, hides }, origin);
+        let mutable = hir.binders[binder].mutable;
+        let pinned = self.pinned(binder);
+        self.push(Kind::Local { name, used, param, tests, hides, mutable, pinned }, origin);
     }
 
     /// A field: one holding a type binds a type.
@@ -248,7 +256,13 @@ impl Visitor for Walk<'_, '_, '_> {
                 self.scope(attrs, |walk| walk.expr(hir, *inner));
                 return;
             }
-            ExprKind::Fn { params, .. } => self.params.extend(Self::param_binders(hir, params)),
+            ExprKind::Fn { params, .. } => {
+                self.params.extend(Self::param_binders(hir, params));
+                // A closure's locals are typed with the function around it.
+                if self.typed.is_none() {
+                    return self.function(hir, expr);
+                }
+            }
             ExprKind::FnType { params, .. } => self.skipped.extend(Self::param_binders(hir, params)),
             ExprKind::If { cond: Cond::Test { pat, .. }, .. }
             | ExprKind::For { head: ForHead::While(Cond::Test { pat, .. }), .. } => {

@@ -219,3 +219,14 @@ no_magic := lang.lint.Lint{
         session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect();
     assert_eq!(reported, [(DiagId::parse("lintlib.no_magic"), Severity::Warning)]);
 }
+
+#[test]
+fn a_mutable_local_typed_as_one_integer_is_reported() {
+    let pinned = DiagId::parse("std.lints.suspicious.pinned");
+    let reported = linted("lints-pinned", "f := () -> u32 { mut n := 0; n };\n");
+    assert_eq!(reported, [(pinned, Severity::Warning)]);
+    let held = linted("lints-pinned-held", "f := () -> u32 { mut n: u32 = 0; n += 1; n };\n");
+    assert_eq!(held, []);
+    let fixed = linted("lints-pinned-immutable", "f := () -> u32 { n := 0; n };\n");
+    assert_eq!(fixed, []);
+}

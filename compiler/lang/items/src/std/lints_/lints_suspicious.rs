@@ -13,3 +13,6 @@ pub const level: Item = Item::new(&["std", "lints", "suspicious", "level"]);
 /// binds a new local, matching any value, where comparing with the constant was likely meant
 /// (`.ok(true)` matches every `.ok`).
 pub const shadowing: Item = Item::new(&["std", "lints", "suspicious", "shadowing"]);
+/// A `mut` local whose type holds one integer: typing gives `mut n := 0` the range `0..=0`, so
+/// the first other value written to `n` traps.
+pub const pinned: Item = Item::new(&["std", "lints", "suspicious", "pinned"]);

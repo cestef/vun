@@ -241,6 +241,12 @@ impl Interval {
         })
     }
 
+    /// Whether the range holds one integer.
+    #[must_use]
+    pub fn is_singleton(&self) -> bool {
+        matches!((self.lo.finite(), self.hi.finite()), (Some(lo), Some(hi)) if lo == hi)
+    }
+
     /// How many integers the range holds, when it is bounded.
     #[must_use]
     pub fn count(&self) -> Option<Integer> {

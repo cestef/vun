@@ -20,8 +20,9 @@ pub(super) enum Kind {
     Decl { name: Symbol, binds: Binds, public: bool, documented: bool },
     /// A local binding or a parameter: its name, whether the code names it, whether it is a
     /// parameter, whether a pattern testing the value it matches binds it, and whether it hides
-    /// a constant from outside the file.
-    Local { name: Symbol, used: bool, param: bool, tests: bool, hides: bool },
+    /// a constant from outside the file, whether it is mutable, and whether its type holds one
+    /// integer.
+    Local { name: Symbol, used: bool, param: bool, tests: bool, hides: bool, mutable: bool, pinned: bool },
     /// A call, by the value of what it calls.
     Call { callee: Value },
 }
@@ -83,6 +84,14 @@ pub(super) const LOCAL: &[(Item, Fact<Node>)] = &[
     }),
     (lang::lint_Local::hides, |env, n| match &n.kind {
         Kind::Local { hides, .. } => env.decide(*hides),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Local::mutable, |env, n| match &n.kind {
+        Kind::Local { mutable, .. } => env.decide(*mutable),
+        _ => Err(Unevaluated::Unsupported),
+    }),
+    (lang::lint_Local::pinned, |env, n| match &n.kind {
+        Kind::Local { pinned, .. } => env.decide(*pinned),
         _ => Err(Unevaluated::Unsupported),
     }),
 ];

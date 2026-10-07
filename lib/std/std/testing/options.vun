@@ -31,7 +31,8 @@ Options := struct {
     fuzz: bool,
     cover: bool,
     list: bool,
-    filter: ?&[u8],
+    /// The index among the arguments of the text `--filter` gives.
+    filter: ?usize,
 
     /// The options `args` ask for; `.none` when an option has no number after it.
     of := (args: std.os.Args) -> ?Options {
@@ -51,7 +52,7 @@ Options := struct {
             if .some(arg) = args.get(i) {
                 match after {
                     .some(given) => {
-                        if given == filter_option { options.filter = .some(arg); } else {
+                        if given == filter_option { options.filter = .some(i); } else {
                             n := match u64.parse(arg) {
                                 .some(number) => number,
                                 .none => return .none,
@@ -105,8 +106,10 @@ Options := struct {
     /// Whether the test `name` is run: every test when the arguments name none, else those they
     /// name, and of those only the ones whose name contains the filter.
     chosen := (self: &Options, name: &[u8]) -> bool {
-        if .some(text) = self.filter {
-            if name.find(text) == Option(usize).none { return false; }
+        if .some(at) = self.filter {
+            if .some(text) = self.args.get(at) {
+                if name.find(text) == Option(usize).none { return false; }
+            }
         }
         mut after := false;
         mut named := false;
