@@ -1,7 +1,7 @@
 //! What a statement computes into its place: a copy or conversion, a condition, a borrow, an
 //! aggregate built part by part, a call, or an integer brought into the place's type.
 
-use vun_lir::{Access, Cond, Scalar, Value};
+use vun_lir::{Access, CallKind, Cond, Scalar, Value};
 use vun_mir::{Aggregate, Operand, Place, Rvalue};
 use vun_sema::layout::Parts;
 use vun_sema::member::Members;
@@ -32,7 +32,7 @@ impl FnLower<'_, '_, '_> {
             }
             Rvalue::Ref { place, .. } => self.borrow(place, dest, ty),
             Rvalue::Aggregate { kind, parts } => self.aggregate(kind, parts, dest, ty),
-            Rvalue::Call { callee, args } => self.call(callee, args, dest, ty),
+            Rvalue::Call { callee, args } => self.call(CallKind::Plain, callee, args, dest, ty),
             Rvalue::Narrow { operand, narrowing, .. } => self.narrow(operand, *narrowing, dest, ty),
             Rvalue::Repeat { operand, count } => {
                 let (Some(dest), Some((_, item))) = (dest, ty.as_array()) else { return Ok(()) };

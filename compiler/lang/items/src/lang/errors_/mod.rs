@@ -11,6 +11,7 @@ pub mod errors_component;
 pub mod errors_comptime;
 pub mod errors_coroutine;
 pub mod errors_doc;
+pub mod errors_flow;
 pub mod errors_gate;
 pub mod errors_impl;
 pub mod errors_int;

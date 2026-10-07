@@ -51,6 +51,8 @@ pub enum Missing {
     FloatPart(u64),
     /// A check of each function's frame against the stack (`stack` checks).
     StackCheck,
+    /// A call that replaces its caller's frame, which the backend cannot guarantee.
+    TailCall,
     /// A block of inline assembly.
     Asm,
     /// An operand of inline assembly the backend cannot place.
@@ -130,6 +132,7 @@ impl Missing {
             Missing::Convention => Msg::new().text("the calling convention of this target"),
             Missing::NamedConvention => Msg::new().text("calling conventions other than the target's own"),
             Missing::StackCheck => Msg::new().text("checks of the stack's frames"),
+            Missing::TailCall => Msg::new().text("guaranteed tail calls here"),
             Missing::Asm => Msg::new().text("inline assembly"),
             Missing::AsmOperand(operand) => {
                 let what = match operand {

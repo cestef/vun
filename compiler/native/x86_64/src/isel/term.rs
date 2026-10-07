@@ -85,6 +85,14 @@ impl Sel<'_, '_> {
         }
     }
 
+    /// The registers the function saved restored, then `leave`.
+    pub(super) fn leave(&mut self) {
+        self.restore();
+        self.unwound(Step::Leaving);
+        self.asm.emit(Op::Leave, Size::B64, &[]);
+        self.unwound(Step::Popped);
+    }
+
     fn ret(&mut self, value: Option<Value>) -> Result<(), Lack> {
         let f = self.f;
         match (value, self.state.passing.ret.clone()) {
@@ -111,10 +119,7 @@ impl Sel<'_, '_> {
             }
             _ => {}
         }
-        self.restore();
-        self.unwound(Step::Leaving);
-        self.asm.emit(Op::Leave, Size::B64, &[]);
-        self.unwound(Step::Popped);
+        self.leave();
         self.asm.emit(Op::Ret, Size::B64, &[]);
         self.unwound(Step::Returned);
         Ok(())

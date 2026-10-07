@@ -6,10 +6,10 @@
 //! between architectures, the instructions, are the hooks of [`Frames`].
 
 use vun_abi::{Carrier, Loc, Part, Passing, Ret};
-use vun_backend::Lack;
+use vun_backend::{Lack, Missing};
 use vun_codegen::snippet::Emits;
 use vun_codegen::{Cx, Place};
-use vun_lir::{AbiType, Callee, Ext, Scalar, Signature, Value};
+use vun_lir::{AbiType, CallKind, Callee, Ext, Scalar, Signature, Value};
 
 use super::{Carried, Carries};
 use crate::width::offset_of;
@@ -43,6 +43,12 @@ pub trait Frames: Carries {
     /// Calls `callee`, through the carrier for one called through an address.
     fn branch_link(cx: &mut Cx<'_, Self>, callee: &Callee);
 
+    /// Leaves the frame and jumps to `callee`, which returns to this function's caller.
+    ///
+    /// # Errors
+    /// What the backend lacks for it.
+    fn branch_tail(cx: &mut Cx<'_, Self>, callee: &Callee) -> Result<(), Lack>;
+
     /// Where the entry gathers a result returned in registers, once the prologue reserves it.
     fn gathered(cx: &Cx<'_, Self>) -> Option<i32>;
     fn gather(cx: &mut Cx<'_, Self>, at: i32);
@@ -55,11 +61,15 @@ pub trait Frames: Carries {
         cx: &mut Cx<'_, Self>,
         callee: &Callee,
         args: &[Value],
+        kind: CallKind,
         result: Option<Value>,
     ) -> Result<(), Lack> {
         let f = cx.f;
         let signature: &Signature = cx.signature(callee);
         let passing = Passing::of(signature, Self::convention(cx)).map_err(|u| cx.lack(u.into()))?;
+        if kind == CallKind::Tail && !passing.in_registers() {
+            return Err(cx.lack(Missing::TailCall));
+        }
         cx.frame.outgoing(passing.stack);
         // What goes through memory first, through the framework's registers: arguments on the
         // stack, records copied there, and the copies of records passed by address.
@@ -127,6 +137,10 @@ pub trait Frames: Carries {
                 }
                 Loc::Stack { .. } | Loc::Copied { .. } | Loc::Returned => {}
             }
+        }
+        if kind == CallKind::Tail {
+            // The result is the callee's, which the `return` after it passes on from where it is.
+            return Self::branch_tail(cx, callee);
         }
         Self::branch_link(cx, callee);
         match &passing.ret {

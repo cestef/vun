@@ -1,0 +1,11 @@
+start := std.os.start(main);
+
+count := (n: u32, acc: u32) -> u32 {
+    if n == 0 { return acc; }
+    return lang.flow.tail(count, (n - 1, (acc + 1).wrap(u32)));
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u32 = sys.args().len().sat(u32);
+    std.os.Exit.of(if count((1000000 * n).wrap(u32), 0) == 1000000 { 0 } else { 1 })
+};

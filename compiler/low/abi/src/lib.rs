@@ -110,6 +110,17 @@ pub struct Passing<R> {
     pub floats: u8,
 }
 
+impl<R> Passing<R> {
+    /// Whether everything travels in registers: no stack arguments, no records copied, no result
+    /// written to a place of the caller's, so a call can reuse the caller's frame.
+    #[must_use]
+    pub fn in_registers(&self) -> bool {
+        self.stack == 0
+            && matches!(self.ret, Ret::None | Ret::Reg(_))
+            && self.params.iter().all(|loc| matches!(loc, Loc::Reg(_) | Loc::Split { rest: None, .. }))
+    }
+}
+
 impl<I: Copy, F> Passing<Carrier<I, F>> {
     /// The arguments of `args`, a value per LIR value of the signature, passed in general
     /// registers, with their registers.

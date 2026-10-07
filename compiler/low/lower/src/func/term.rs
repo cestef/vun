@@ -4,7 +4,7 @@
 use vun_lir::{Target, Terminator};
 use vun_mir::{BlockId, TerminatorKind};
 
-use super::FnLower;
+use super::{FnLower, Tailed};
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered};
 
@@ -49,6 +49,10 @@ impl FnLower<'_, '_, '_> {
     /// Returns the result local: a scalar as the value, one in memory through the address the
     /// caller passed.
     pub(super) fn ret(&mut self) -> Result<Terminator, Unlowered> {
+        // A tail call is the function's last instruction, returning its own value.
+        if let Some(Tailed(value)) = self.tail.take() {
+            return Ok(Terminator::Return(value));
+        }
         self.unguard()?;
         let ty = self.ty(self.body.ret)?;
         let Some(addr) = self.local(self.body.ret) else { return Ok(Terminator::Return(None)) };

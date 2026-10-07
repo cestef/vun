@@ -79,7 +79,11 @@ pub fn sum(b: &mut Builder, n: Value, origin: OriginId, calls: bool) {
     let next = b.binary(BinOp::Add, i, one, origin);
     let mut added = b.binary(BinOp::Add, total, i, origin);
     if calls {
-        let call = InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![added] };
+        let call = InstKind::Call {
+            callee: Callee::Func(FuncId::new(0)),
+            args: vec![added],
+            kind: vun_lir::CallKind::Plain,
+        };
         added = b.push(call, Some(Scalar::I64), origin).expect("a call with a result");
     }
     b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));

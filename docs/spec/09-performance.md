@@ -53,8 +53,13 @@ both Zig and Rust converged on.
 
 `return lang.flow.tail(f, args)` jumps to `f` without growing the stack.
 
-- It must be in return position; the callee's ABI and result type must match; no argument may be a
-  borrow of the caller's locals.
+- It must be in return position (`flow.tail_position`); the callee's ABI and result type must
+  match; no argument may be a borrow of the caller's locals (`borrow.escape`).
+- Every argument and the result travel in registers: a callee taking arguments on the stack,
+  records by address or a result in memory is refused by a backend that cannot reuse the frame
+  (`backend.lacks`). The native backends (x86-64, arm64) restore the saved registers, leave the
+  frame and jump; the C backend writes `musttail`; Cranelift, wasm, QBE and Thumb refuse, and a
+  program using one is compiled by an assisting backend where there is one.
 - Pending `defer`s of the caller run before the jump.
 - A backend without tail-call support rejects the program; there is never a silent fallback to a
   normal call.

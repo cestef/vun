@@ -55,6 +55,9 @@ pub enum Reason {
     Constant,
     /// A call whose arguments are not the callee's values in number.
     Arity,
+    /// A tail call that does not end its block returning its value, or whose callee does not
+    /// share the function's convention and register result.
+    Tail,
     /// A return whose value does not match the signature's result.
     Return,
     /// A signature passing an integer without how it extends, or anything else with it.

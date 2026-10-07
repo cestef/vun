@@ -5,6 +5,7 @@ use std::sync::Arc;
 use vun_desugar::{Access, Borrow, Form, MARKERS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{BlockId, Cond, Entry, ExprId, ExprKind, List, Lit};
+use vun_intern::Symbol;
 use vun_origin::OriginTable;
 use vun_sema_float::{Binary, Format};
 use vun_sema_int::Integer;
@@ -12,12 +13,27 @@ use vun_sema_ty::call::Func;
 use vun_sema_ty::float::FloatType;
 use vun_sema_ty::item::ExprRef;
 use vun_sema_ty::ops::Part;
-use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::trap::{Reason, Unevaluated};
 use vun_sema_ty::{Nominal, NominalKind, TyKind, Value};
 
 use super::Env;
 
 impl Env<'_, '_> {
+    /// The member `name` of `value` as `value.name` is written. A type with no declarations of its
+    /// own, a function or a tuple, that no impl gives the member either lacks it for certain,
+    /// which a `$` argument bringing the type may be the first to say.
+    fn written_member(&self, value: Value, name: Symbol) -> Result<Value, Unevaluated> {
+        let found = self.member(value.clone(), name);
+        match (&found, value) {
+            (Err(Unevaluated::Unsupported | Unevaluated::Absent), Value::Type(ty))
+                if !matches!(&*ty, TyKind::Nominal(_)) && !ty.is_required() =>
+            {
+                Err(Unevaluated::trap(Reason::NoMember(ty, name)))
+            }
+            _ => found,
+        }
+    }
+
     /// The value of `expr` at compile time.
     ///
     /// # Errors
@@ -32,7 +48,7 @@ impl Env<'_, '_> {
             ExprKind::Index { object, index } => self.index(*object, *index),
             ExprKind::Name(_) => self.named(expr),
             ExprKind::Member { object, name } => match (self.name(name), self.position(name)) {
-                (Some(name), _) => self.member(self.eval(*object)?, name),
+                (Some(name), _) => self.written_member(self.eval(*object)?, name),
                 (None, Some(at)) => self.eval(*object)?.part(&Part::Position(at)),
                 (None, None) => Err(Unevaluated::Unsupported),
             },

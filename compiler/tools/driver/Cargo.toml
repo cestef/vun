@@ -140,6 +140,7 @@ vun-isa-x86_64.workspace = true
 # What a block's instructions need of a processor.
 vun-inline.workspace = true
 vun-harness.workspace = true
+vun-primitives.workspace = true
 vun-bind.workspace = true
 vun-hash.workspace = true
 criterion.workspace = true

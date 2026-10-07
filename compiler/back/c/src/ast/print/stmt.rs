@@ -132,6 +132,11 @@ impl Printer<'_, '_, '_> {
                 }
                 self.f.write_char(';')?;
             }
+            Stmt::Tail(call) => {
+                self.f.write_str("__attribute__((musttail)) return ")?;
+                self.expr(call)?;
+                self.f.write_char(';')?;
+            }
             Stmt::Halt => self.f.write_str("for (;;) {}")?,
             Stmt::Asm(asm) => self.asm(asm)?,
             Stmt::Line(_) | Stmt::Label(_) => unreachable!("printed above"),

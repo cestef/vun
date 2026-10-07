@@ -19,6 +19,18 @@ const PAIR: i64 = 16;
 /// The byte a boolean is.
 const BYTE: i64 = 0xff;
 
+impl Arm {
+    /// The registers the function saved restored, then `mov sp, x29; ldp x29, x30, [sp], 16`.
+    pub(super) fn leave(cx: &mut Cx<'_, Self>) {
+        cx.restore();
+        cx.unwound(Step::Leaving);
+        cx.asm.emit(Op::Mov, Size::B64, &[Reg::Sp.into(), FP.into()]);
+        let popped = vun_asm_arm64::Mem::Post { base: Reg::Sp, offset: PAIR };
+        cx.asm.emit(Op::Ldp, Size::B64, &[FP.into(), LR.into(), popped.into()]);
+        cx.unwound(Step::Popped);
+    }
+}
+
 impl Terminates for Arm {
     const EQUAL: Cc = Cc::Eq;
 
@@ -65,14 +77,9 @@ impl Terminates for Arm {
         cx.asm.emit(Op::Udf, Size::B64, &[Operand::Imm(0)]);
     }
 
-    /// The registers the function saved restored, then `mov sp, x29; ldp x29, x30, [sp], 16; ret`.
+    /// Leaves the frame, then `ret`.
     fn epilogue(cx: &mut Cx<'_, Self>) {
-        cx.restore();
-        cx.unwound(Step::Leaving);
-        cx.asm.emit(Op::Mov, Size::B64, &[Reg::Sp.into(), FP.into()]);
-        let popped = vun_asm_arm64::Mem::Post { base: Reg::Sp, offset: PAIR };
-        cx.asm.emit(Op::Ldp, Size::B64, &[FP.into(), LR.into(), popped.into()]);
-        cx.unwound(Step::Popped);
+        Self::leave(cx);
         cx.asm.emit(Op::Ret, Size::B64, &[]);
         cx.unwound(Step::Returned);
     }

@@ -4,11 +4,12 @@
 //! address; a result in memory is written through an address, converted into the place if its
 //! type differs.
 
-use vun_lir::{Address, Callee, Conv, InstKind, Signature, Value};
+use vun_lir::{Address, CallKind, Callee, Conv, InstKind, Signature, Value};
 use vun_mir::{Concrete, Lowered as _, Operand, Projection};
 use vun_primitives::Primitive;
 use vun_primitives::abi::Abi;
 use vun_primitives::check::Check;
+use vun_primitives::flow::Flow;
 use vun_primitives::panic::Panic;
 use vun_sema::callable::{Callable, Parameters};
 use vun_sema::layout::Parts;
@@ -19,13 +20,14 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::Failure;
 use vun_sema_ty::{Marker, Ty, TyKind, Value as Constant};
 
-use super::FnLower;
+use super::{FnLower, Tailed};
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
 impl FnLower<'_, '_, '_> {
     pub(crate) fn call(
         &mut self,
+        kind: CallKind,
         callee: &Operand,
         args: &[Operand],
         dest: Option<Value>,
@@ -55,16 +57,16 @@ impl FnLower<'_, '_, '_> {
                 let args: Vec<&Operand> =
                     args.iter().enumerate().filter(|(i, _)| runtime(i)).map(|(_, a)| a).collect();
                 let result = body.locals[body.ret].ty.ok_or_else(unsupported)?;
-                self.invoke(Callee::Func(id), &params, result, f.abi(cx), &args, dest, ty)
+                self.invoke(kind, Callee::Func(id), &params, result, f.abi(cx), &args, dest, ty)
             }
             // A `lang` primitive the linker provides, such as `lang.panic.trap`, is its symbol.
             Operand::Const(Constant::Primitive(p))
                 if let Ok(decl) = self.l.env.primitive_decl(*p)
                     && decl.linked(cx).is_some() =>
             {
-                self.call(&Operand::Const(Constant::Linked(decl)), args, dest, ty)
+                self.call(kind, &Operand::Const(Constant::Linked(decl)), args, dest, ty)
             }
-            Operand::Const(Constant::Linked(decl)) => self.linked_call(decl, args, dest, ty),
+            Operand::Const(Constant::Linked(decl)) => self.linked_call(kind, decl, args, dest, ty),
             // `lang.panic.fail(reason)` is a trap site saying its reason, known when compiling,
             // at the place the reason names where it names one.
             Operand::Const(Constant::Primitive(Primitive::Panic(Panic::fail))) => {
@@ -83,6 +85,13 @@ impl FnLower<'_, '_, '_> {
                 let from = self.b.addr(Address::Data(data), self.at);
                 self.copy_value(from, dest, ty)
             }
+            // `lang.flow.tail(f, args)` is a call of `f` with the items of `args`, which replaces
+            // the frame.
+            Operand::Const(Constant::Primitive(Primitive::Flow(Flow::tail))) => {
+                let [_, callee, packed] = args else { return Err(Unlowered::unsupported(at, Form::Tail)) };
+                let items = self.unpacked(packed)?;
+                self.call(CallKind::Tail, callee, &items, dest, ty)
+            }
             Operand::Const(Constant::Primitive(p)) => {
                 self.primitive(*p, args, dest, ty).map_err(|u| u.naming(*p))
             }
@@ -90,7 +99,7 @@ impl FnLower<'_, '_, '_> {
             Operand::Const(Constant::Closure { f, captures }) => {
                 let captured = captures.iter().cloned().map(Operand::Const);
                 let args: Vec<Operand> = captured.chain(args.iter().cloned()).collect();
-                self.call(&Operand::Const(Constant::Fn(f.clone())), &args, dest, ty)
+                self.call(kind, &Operand::Const(Constant::Fn(f.clone())), &args, dest, ty)
             }
             Operand::Place(place) => {
                 let callee_ty = self.operand_ty(callee).ok_or_else(unsupported)?;
@@ -98,7 +107,13 @@ impl FnLower<'_, '_, '_> {
                     let captured = (0..closure.captures.len())
                         .map(|i| Operand::Place(place.clone().project(Projection::Position(i))));
                     let args: Vec<Operand> = captured.chain(args.iter().cloned()).collect();
-                    return self.call(&Operand::Const(Constant::Fn(closure.f.clone())), &args, dest, ty);
+                    return self.call(
+                        kind,
+                        &Operand::Const(Constant::Fn(closure.f.clone())),
+                        &args,
+                        dest,
+                        ty,
+                    );
                 }
                 // A function value is its address, called with its type's signature.
                 let signature = callee_ty.signature().ok_or_else(unsupported)?;
@@ -107,7 +122,7 @@ impl FnLower<'_, '_, '_> {
                 let lowered = self.l.signature(&signature.params, signature.result, abi, self.at)?;
                 let callee = Callee::Indirect(pointer, Box::new(lowered));
                 let args: Vec<&Operand> = args.iter().collect();
-                self.invoke(callee, &signature.params, signature.result, abi, &args, dest, ty)
+                self.invoke(kind, callee, &signature.params, signature.result, abi, &args, dest, ty)
             }
             Operand::Const(_) => Err(unsupported()),
         }
@@ -117,6 +132,7 @@ impl FnLower<'_, '_, '_> {
     /// call's `$` arguments, through its address with that signature.
     fn linked_call(
         &mut self,
+        kind: CallKind,
         decl: &DeclRef,
         args: &[Operand],
         dest: Option<Value>,
@@ -151,7 +167,7 @@ impl FnLower<'_, '_, '_> {
         };
         let args: Vec<&Operand> =
             args.iter().enumerate().filter(|(i, _)| runtime(i)).map(|(_, a)| a).collect();
-        self.invoke(callee, &params, signature.result, abi, &args, dest, ty)
+        self.invoke(kind, callee, &params, signature.result, abi, &args, dest, ty)
     }
 
     /// Calls `callee`, whose parameters and result have the types `params` and `result` under
@@ -159,6 +175,7 @@ impl FnLower<'_, '_, '_> {
     #[expect(clippy::too_many_arguments, reason = "a call is its callee, its signature and its operands")]
     fn invoke(
         &mut self,
+        kind: CallKind,
         callee: Callee,
         params: &[Ty],
         result: Ty,
@@ -168,6 +185,14 @@ impl FnLower<'_, '_, '_> {
         ty: Ty,
     ) -> Result<(), Unlowered> {
         let signature: Signature = self.l.signature(params, result, abi, self.at)?;
+        if kind == CallKind::Tail {
+            // A value in memory is passed by the address of a slot of this frame.
+            for &param in params {
+                if matches!(self.l.types.repr(param.packed().unwrap_or(param), self.at)?, Repr::Memory(_)) {
+                    return Err(Unlowered::unsupported(self.at, Form::Tail));
+                }
+            }
+        }
         let mut values = Vec::new();
         for (&param, &arg) in params.iter().zip(args) {
             // A pack passes the tuple of its arguments; under the C convention, each of its items
@@ -198,7 +223,10 @@ impl FnLower<'_, '_, '_> {
         if signature.through() {
             values.extend(landing);
         }
-        let value = self.b.push(InstKind::Call { callee, args: values }, signature.returns(), self.at);
+        if kind == CallKind::Tail {
+            return self.tail(callee, values, &signature);
+        }
+        let value = self.b.push(InstKind::Call { callee, args: values, kind }, signature.returns(), self.at);
         if let (Some(value), Some(landing)) = (value, landing) {
             self.b.store(value, landing, vun_lir::Access::Plain, self.at);
         }
@@ -211,6 +239,40 @@ impl FnLower<'_, '_, '_> {
                 self.convert(landing, result, dest, ty)?;
             }
         }
+        Ok(())
+    }
+
+    /// The operands holding the items of the tuple `packed`, which `lang.flow.tail` passes as the
+    /// arguments of its callee.
+    fn unpacked(&self, packed: &Operand) -> Result<Vec<Operand>, Unlowered> {
+        let unsupported = || Unlowered::unsupported(self.at, Form::Tail);
+        match packed {
+            Operand::Const(Constant::Tuple(items)) => Ok(items.iter().cloned().map(Operand::Const).collect()),
+            Operand::Place(place) => {
+                let ty = self.operand_ty(packed).ok_or_else(unsupported)?;
+                let TyKind::Tuple(items) = &*ty else { return Err(unsupported()) };
+                Ok((0..items.len())
+                    .map(|i| Operand::Place(place.clone().project(Projection::Position(i))))
+                    .collect())
+            }
+            Operand::Const(_) => Err(unsupported()),
+        }
+    }
+
+    /// Calls `callee` as the last instruction of the function, which returns what it gives: the
+    /// frame is the callee's, so nothing in it may be passed by its address.
+    fn tail(&mut self, callee: Callee, args: Vec<Value>, signature: &Signature) -> Result<(), Unlowered> {
+        let own = self.b.signature();
+        let shared = own.conv == signature.conv
+            && own.convention == signature.convention
+            && own.returns() == signature.returns();
+        if !shared || own.through() || signature.through() {
+            return Err(Unlowered::unsupported(self.at, Form::Tail));
+        }
+        self.unguard()?;
+        let value =
+            self.b.push(InstKind::Call { callee, args, kind: CallKind::Tail }, signature.returns(), self.at);
+        self.tail = Some(Tailed(value));
         Ok(())
     }
 

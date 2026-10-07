@@ -26,7 +26,7 @@ impl Look<'_, '_> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 cx.snippet_needs(snippet, &Args { ins: &ins, out, size, cond }, needs);
             }
-            Selection::Call { callee, args } => {
+            Selection::Call { callee, args, .. } => {
                 let signature = cx.signature(callee);
                 let Ok(passing) = Passing::of(signature, cx.state.convention) else { return };
                 let target = match callee {

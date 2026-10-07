@@ -76,10 +76,12 @@ impl Rewrite<'_> {
             {
                 return Err(unlegal(Unlegalized::Atomic));
             }
-            InstKind::Call { callee, args } => match self.call(callee, args, result, at).map_err(unlegal)? {
-                Some(parts) => parts,
-                None => return Ok(()),
-            },
+            InstKind::Call { callee, args, kind } => {
+                match self.call(callee, args, *kind, result, at).map_err(unlegal)? {
+                    Some(parts) => parts,
+                    None => return Ok(()),
+                }
+            }
             kind => {
                 let kind = self.remapped(kind);
                 let ty = result.map(|v| self.legalize.scalar(self.old.ty(v)));

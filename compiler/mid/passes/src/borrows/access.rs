@@ -32,6 +32,15 @@ impl Checker<'_> {
                 continue;
             }
             let here = Here { block, index, holds: &holds, live: &live[block][index] };
+            // A tail call replaces the frame: what its arguments borrow of it would not outlive it.
+            if stmt.value.is_tail_call() {
+                let passed = stmt.value.operands().into_iter().filter_map(|o| match o {
+                    Operand::Place(p) => Some(p.local),
+                    Operand::Const(_) => None,
+                });
+                let loans: BitSet<LoanId> = passed.flat_map(|l| holds.iter_row(l)).collect();
+                self.escapes(&loans, stmt.origin, Exit::Tail);
+            }
             for (place, access) in self.accesses(stmt) {
                 self.conflicts(&loans, place, access, stmt.origin, &here);
             }
@@ -203,6 +212,8 @@ enum Exit {
     Result,
     /// Written through an exclusive borrow parameter, into its caller's place.
     Param,
+    /// Passed to a tail call, which replaces the function's frame.
+    Tail,
 }
 
 impl Exit {
@@ -210,6 +221,7 @@ impl Exit {
         match self {
             Self::Result => "is returned",
             Self::Param => "is stored through a parameter, outliving the call",
+            Self::Tail => "is passed to a tail call, which replaces this function's frame",
         }
     }
 }

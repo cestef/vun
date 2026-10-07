@@ -151,6 +151,9 @@ struct Builder<'e, 'a, 'db> {
     loops: Vec<loops::Loop>,
     /// What runs at the exits of the blocks around the code lowered, latest last.
     pending: Vec<defer::Pending>,
+    /// The operand of the `return` being built: a tail call written there ends the function
+    /// itself, and takes this away.
+    returning: Option<ExprId>,
     /// The instantiation lowered, whose typed body gives the types of places.
     f: Instantiation,
     /// The environment of the `$for` step lowered, if any: `env` under its bindings.
@@ -180,6 +183,7 @@ impl<'a, 'db> Builder<'_, 'a, 'db> {
             globals: Map::default(),
             ret,
             loops: Vec::new(),
+            returning: None,
             pending: Vec::new(),
             f: f.clone(),
             step: None,

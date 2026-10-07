@@ -3,6 +3,7 @@
 use vun_asm_arm64::{Emit, Op, Operand, Reg, Size, V};
 use vun_backend::Lack;
 use vun_codegen::{Arch, Cx};
+use vun_dwarf::Step;
 use vun_lir::{Address, Callee, Ext, Scalar, Value};
 use vun_native::select::Frames;
 
@@ -46,6 +47,21 @@ impl Frames for Arm {
                 cx.asm.emit(Op::Blr, Size::B64, &[Self::CARRIER.into()]);
             }
         }
+    }
+
+    fn branch_tail(cx: &mut Cx<'_, Self>, callee: &Callee) -> Result<(), Lack> {
+        // The target waits in the carrier, which leaving the frame leaves alone.
+        if let Callee::Indirect(target, _) = callee {
+            cx.reg_to(*target, Self::CARRIER);
+        }
+        Self::leave(cx);
+        match callee {
+            Callee::Func(f) => cx.asm.emit(Op::BAlways, Size::B64, &[Operand::Sym(Address::Func(*f))]),
+            Callee::Import(i) => cx.asm.emit(Op::BAlways, Size::B64, &[Operand::Sym(Address::Import(*i))]),
+            Callee::Indirect(..) => cx.asm.emit(Op::Br, Size::B64, &[Self::CARRIER.into()]),
+        }
+        cx.unwound(Step::Returned);
+        Ok(())
     }
 
     fn gathered(cx: &Cx<'_, Self>) -> Option<i32> {

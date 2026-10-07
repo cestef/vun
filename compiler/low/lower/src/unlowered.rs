@@ -69,6 +69,9 @@ pub enum Form {
     /// A binding of an assembly block to a place without storage, or to a symbol naming no
     /// function, link symbol or static.
     Asm,
+    /// A tail call whose callee does not share the caller's convention and register result, or
+    /// that passes a value in memory, which the caller's frame holds.
+    Tail,
 }
 
 impl fmt::Display for Unlowered {
@@ -189,6 +192,7 @@ impl Form {
             Self::Frame => "frame",
             Self::Quote => "quote",
             Self::Asm => "asm",
+            Self::Tail => "tail",
         }
     }
 
@@ -204,6 +208,9 @@ impl Form {
             Self::Frame => "a coroutine frame",
             Self::Quote => "a code value at run time",
             Self::Asm => "this binding of an assembly block",
+            Self::Tail => {
+                "a tail call of a function with another convention or result, or passing values in memory"
+            }
         }
     }
 }

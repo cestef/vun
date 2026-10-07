@@ -43,7 +43,7 @@ pub enum InstKind {
     /// Copies `bytes` bytes from `from` to `to`, which do not overlap.
     Copy { to: Value, from: Value, bytes: u64 },
     /// A call; its result, if the signature has one, is the instruction's value.
-    Call { callee: Callee, args: Vec<Value> },
+    Call { callee: Callee, args: Vec<Value>, kind: CallKind },
     /// A block of inline assembly, reading its inputs and writing its outputs at the addresses
     /// bound. It may touch any memory and register besides. Under the `asm` checks, how it is
     /// checked.
@@ -169,6 +169,17 @@ pub enum Address {
     Func(FuncId),
     Data(DataId),
     Import(ImportId),
+}
+
+/// Whether the caller's frame outlives a call.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum CallKind {
+    /// The caller goes on after it.
+    Plain,
+    /// The callee replaces the caller's frame and returns to the caller's caller (spec 09,
+    /// section 3): the last instruction of its block, which returns its value, in a function of
+    /// the callee's signature.
+    Tail,
 }
 
 /// What a call calls.

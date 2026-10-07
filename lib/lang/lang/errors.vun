@@ -131,6 +131,11 @@ comptime := struct {
     export := diag.Diag{};
 };
 
+/// Control flow primitives (spec 09, section 3).
+flow := struct {
+    tail_position := diag.Diag{};
+};
+
 /// Place states (spec 05, section 2).
 place := struct {
     read_uninit := diag.Diag{};

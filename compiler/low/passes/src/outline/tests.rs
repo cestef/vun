@@ -64,7 +64,7 @@ fn a_block_moves_into_a_function_taking_what_it_reads_and_the_address_of_what_it
         .insts
         .iter()
         .filter_map(|(_, i)| match &i.kind {
-            InstKind::Call { callee: Callee::Func(f), args } => Some((f.index(), args.len())),
+            InstKind::Call { callee: Callee::Func(f), args, .. } => Some((f.index(), args.len())),
             _ => None,
         })
         .collect();

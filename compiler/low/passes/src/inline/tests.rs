@@ -6,7 +6,9 @@ use vun_origin::OriginTable;
 use vun_lir::analysis::Reached;
 use vun_lir::func::{Conv, Linkage, Signature};
 use vun_lir::testing::origin;
-use vun_lir::{AbiType, BinOp, Builder, Callee, Ext, FuncId, InstKind, Scalar, Target, Terminator, Unit};
+use vun_lir::{
+    AbiType, BinOp, Builder, CallKind, Callee, Ext, FuncId, InstKind, Scalar, Target, Terminator, Unit,
+};
 
 /// `inc(x) = x + 1`, internal and lowered as an entry jumping to its body, and an exported
 /// `twice(x) = inc(inc(x))`.
@@ -33,7 +35,7 @@ fn unit() -> (Unit, OriginTable) {
     let x = twice.params(twice.current())[0];
     let call = |b: &mut Builder, arg| {
         b.push(
-            InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![arg] },
+            InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![arg], kind: CallKind::Plain },
             Some(Scalar::I32),
             at,
         )

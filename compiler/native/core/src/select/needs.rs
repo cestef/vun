@@ -25,7 +25,7 @@ impl<A: Selects> Looked<'_, '_, A> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 cx.snippet_needs(snippet, &Args { ins: &ins, out, size, cond }, needs);
             }
-            Selection::Call { callee, args } => {
+            Selection::Call { callee, args, .. } => {
                 let Ok(passing) = Passing::of(cx.signature(callee), A::convention(cx)) else { return };
                 let target = match callee {
                     Callee::Indirect(target, _) => Some(*target),

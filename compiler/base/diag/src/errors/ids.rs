@@ -109,6 +109,9 @@ pub enum Lang {
     ComptimeUnsupported,
     ComptimeRuntime,
     ComptimeExport,
+    /// Control flow primitives (spec 09, section 3).
+    Flow,
+    FlowTailPosition,
     /// Place states (spec 05, section 2).
     Place,
     PlaceReadUninit,

@@ -17,7 +17,7 @@ use vun_abi::{Carrier, Convention, Passing};
 use vun_backend::Lack;
 use vun_codegen::snippet::{Emits, Snippet};
 use vun_codegen::{Cx, Needs};
-use vun_lir::{Callee, Cond, DataId, Inst, RmwOp, Value};
+use vun_lir::{CallKind, Callee, Cond, DataId, Inst, RmwOp, Value};
 
 use crate::inline::Inline;
 use needs::Looked;
@@ -34,6 +34,7 @@ pub enum Selection<'f, A: Emits> {
     Call {
         callee: &'f Callee,
         args: &'f [Value],
+        kind: CallKind,
     },
     /// An atomic read-modify-write or compare-exchange, as a loop of exclusive accesses.
     Rmw {

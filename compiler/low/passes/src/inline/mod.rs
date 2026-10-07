@@ -15,7 +15,7 @@ use vun_index::Idx;
 
 use vun_lir::entity::{Block, FuncId, Slot, Value};
 use vun_lir::func::{BlockData, Conv, Def, Function, Linkage, ValueData};
-use vun_lir::inst::{Callee, InstKind, Target, Terminator};
+use vun_lir::inst::{CallKind, Callee, InstKind, Target, Terminator};
 use vun_lir::unit::Unit;
 
 /// The most instructions a function inlined may have, constants aside.
@@ -39,6 +39,10 @@ pub trait InlineCalls {
     /// Whether calls of this function are replaced by its body.
     fn small(&self) -> bool;
 
+    /// Whether it replaces its frame by a call: its body then returns from a function of its own
+    /// frame only, so no other function holds a copy of it.
+    fn tail_calls(&self) -> bool;
+
     /// Whether a call this function makes returns into it: one in a block going on after it,
     /// not a call that never returns, as a trap's, before `unreachable`.
     fn returning_calls(&self) -> bool;
@@ -50,7 +54,14 @@ pub trait InlineCalls {
 
 impl InlineCalls for Function {
     fn small(&self) -> bool {
-        self.linkage == Linkage::Internal && self.signature.conv == Conv::Vun && self.cost() <= SMALL
+        self.linkage == Linkage::Internal
+            && self.signature.conv == Conv::Vun
+            && self.cost() <= SMALL
+            && !self.tail_calls()
+    }
+
+    fn tail_calls(&self) -> bool {
+        self.insts.iter().any(|(_, inst)| matches!(inst.kind, InstKind::Call { kind: CallKind::Tail, .. }))
     }
 
     fn returning_calls(&self) -> bool {
@@ -117,7 +128,7 @@ impl InlinableSteps for Function {
             let mut kept = Vec::with_capacity(insts.len());
             while let Some(inst) = insts.next() {
                 let callee = match &self.insts[inst].kind {
-                    InstKind::Call { callee: Callee::Func(f), args } => {
+                    InstKind::Call { callee: Callee::Func(f), args, .. } => {
                         small.get(f).map(|s| (s, args.clone()))
                     }
                     _ => None,

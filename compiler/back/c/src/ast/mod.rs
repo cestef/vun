@@ -155,6 +155,8 @@ pub enum Stmt {
     If(Expr, Vec<Stmt>, Vec<Stmt>),
     Switch(Expr, Vec<(Expr, Vec<Stmt>)>, Vec<Stmt>),
     Return(Option<Expr>),
+    /// `return call;` the C compiler must make a jump (`musttail`).
+    Tail(Expr),
     /// `for (;;) {}`: control never gets here.
     Halt,
     Asm(Box<Asm>),

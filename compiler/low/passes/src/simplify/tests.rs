@@ -15,7 +15,11 @@ fn signature(conv: Conv, param: Scalar, result: Scalar) -> Signature {
 }
 
 fn call(b: &mut Builder, f: usize, arg: vun_lir::Value, ty: Scalar, at: OriginId) -> vun_lir::Value {
-    let kind = InstKind::Call { callee: Callee::Func(FuncId::new(f)), args: vec![arg] };
+    let kind = InstKind::Call {
+        callee: Callee::Func(FuncId::new(f)),
+        args: vec![arg],
+        kind: vun_lir::CallKind::Plain,
+    };
     b.push(kind, Some(ty), at).unwrap()
 }
 

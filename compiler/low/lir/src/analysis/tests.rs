@@ -136,6 +136,7 @@ fn calling(origin: OriginId, calls: &[&[usize]]) -> crate::Unit {
             let call = crate::InstKind::Call {
                 callee: crate::Callee::Func(crate::FuncId::new(callee)),
                 args: Vec::new(),
+                kind: crate::CallKind::Plain,
             };
             builder.push(call, None, origin);
         }

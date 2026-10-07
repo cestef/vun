@@ -5,9 +5,10 @@
 
 use vun_codec::{Decode, Encode};
 use vun_diag::{Diagnostic, Msg, TraceFrame, errors};
+use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable};
 
-use crate::Value;
+use crate::{Ty, Value};
 
 pub use failure::Failure;
 pub use nested::Nested;
@@ -70,6 +71,9 @@ pub enum Reason {
     /// A file `lang.meta.embed` names that the package of the file naming it does not hold, or
     /// a path leading out of it.
     Unembedded(String),
+    /// A member asked of a type that has none of that name, though it could not be known before
+    /// a `$` argument gave the type.
+    NoMember(Ty, Symbol),
     /// A trap site of the program was reached: `lang.panic.trap`.
     Trap,
     /// `lang.panic.fail` was reached, for its `lang.panic.Reason`.
@@ -111,6 +115,13 @@ impl Reason {
             Self::Unembedded(path) => {
                 return Msg::new().text("the package holds no file ").code(path).text(" beside this one");
             }
+            Self::NoMember(ty, name) => {
+                return Msg::new()
+                    .text("the type ")
+                    .ty(ty.to_string())
+                    .text(" has no member ")
+                    .code(name.as_str());
+            }
             Self::Reported(report) => return Msg::new().text(report.message.clone()),
             Self::Failed(failure) => return failure.msg(),
         })
@@ -128,6 +139,7 @@ impl Reason {
             Self::Argument => "pass a value the parameter's type holds",
             Self::Trap => "follow the calls below to what reached it",
             Self::NoFrame => "ask for the frame of a function that suspends",
+            Self::NoMember(..) => "name a member its declarations or impls give",
             Self::Unembedded(_) => "add the file to the package beside this one, or correct the path",
             Self::Reported(_) | Self::Failed(_) => return None,
         })

@@ -3,7 +3,7 @@
 //! call of `lang.panic.fail` is one, saying its reason.
 
 use vun_diag::Msg;
-use vun_lir::{Address, DataId, InstKind, Target, Terminator, Value};
+use vun_lir::{Address, CallKind, DataId, InstKind, Target, Terminator, Value};
 use vun_origin::OriginId;
 use vun_sema_ty::item::Site;
 use vun_sema_ty::trap::Reason;
@@ -69,7 +69,7 @@ impl FnLower<'_, '_, '_> {
         };
         let callee = self.l.linked(&handler, self.at)?.callee().ok_or_else(unsupported)?;
         let addr = self.b.addr(Address::Data(data), self.at);
-        self.b.push(InstKind::Call { callee, args: vec![addr] }, None, self.at);
+        self.b.push(InstKind::Call { callee, args: vec![addr], kind: CallKind::Plain }, None, self.at);
         Ok(())
     }
 }

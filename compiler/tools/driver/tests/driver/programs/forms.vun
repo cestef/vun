@@ -1,0 +1,40 @@
+start := std.os.start(main);
+
+twice := (x: u8) -> u8 { (x * 2).wrap(u8) };
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u8 = sys.args().len().sat(u8);
+    mut failed: Int(0..=16) = 0;
+    // Floats: remainder, less-or-equal, fused multiply-add, truncation.
+    f: f64 = if n == 1 { 7.0 } else { 0.0 };
+    if f % 4.0 != 3.0 { failed +|= 1; }
+    if !(f <= 7.0 and !(f <= 6.5)) { failed +|= 1; }
+    if lang.float.mul_add(f64, f, 2.0, 1.0) != 15.0 { failed +|= 1; }
+    if f.truncate(i8) != 7 { failed +|= 1; }
+    // Integers compared as a total order.
+    two: u8 = 2;
+    match lang.int.compare(0..256, 0..256, &n, &two) { .less => {}, _ => { failed +|= 1; } }
+    // An atomic subtraction returns the value held before.
+    word: std.sync.Atomic(u32) = .init(10 + n);
+    if !(word.sub(4, .relaxed) == 11 and word.load(.relaxed) == 7) { failed +|= 1; }
+    // Items reached through an exclusive borrow of a pointer's memory.
+    mut items: [3]u8 = [1, 2, 3];
+    first := unsafe lang.mem.cast([3]u8, u8, lang.mem.pointer_to([3]u8, &items));
+    view := unsafe lang.mem.items_at_mut(u8, first, 3);
+    view[1] = 9;
+    if items != [1, 9, 3] { failed +|= 1; }
+    // A range read from its end.
+    mut sum: u8 = 0;
+    for i in (1..4).rev() { sum = (sum * 10 + i).wrap(u8); }
+    if sum != 321 % 256 { failed +|= 1; }
+    // A function as another function type of the same shape.
+    g := unsafe lang.mem.function_cast((u8) -> u8, (u8) -> u8, twice);
+    if g((n + 1).wrap(u8)) != 4 { failed +|= 1; }
+    // A function reached by the bits of its value, as code outside the language hands it over.
+    value: (u8) -> u8 = twice;
+    bits := unsafe lang.mem.read(usize, lang.mem.cast((u8) -> u8, usize, lang.mem.pointer_to((u8) -> u8, &value)));
+    h := unsafe lang.mem.function_at((u8) -> u8, bits);
+    if h(n) != 2 { failed +|= 1; }
+    // How many checks failed: 0 when all hold.
+    std.os.Exit.of(failed)
+};

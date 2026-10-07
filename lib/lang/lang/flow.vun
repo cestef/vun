@@ -1,3 +1,13 @@
 //! Guaranteed tail calls (spec 09, section 3).
 
-tail: ($F: type, f: F, args: F.Params) -> F.Result = _;
+/// The tuple of the parameter types of the function type `F`: what a call of it passes.
+Params := ($F: type) -> type {
+    if .some(signature) = lang.meta.signature(F) { signature.Params } else { () }
+};
+
+/// The result type of the function type `F`.
+Result := ($F: type) -> type {
+    if .some(signature) = lang.meta.signature(F) { signature.Returns } else { () }
+};
+
+tail: ($F: type, f: F, args: Params(F)) -> Result(F) = _;

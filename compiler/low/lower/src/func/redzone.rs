@@ -7,7 +7,7 @@
 use vun_hash::Set;
 use vun_items::Item;
 use vun_items::lang::{check, check_Violation as violation};
-use vun_lir::{Address, BinOp, CastOp, InstKind, Slot, Value};
+use vun_lir::{Address, BinOp, CallKind, CastOp, InstKind, Slot, Value};
 use vun_mir::{Local, Operand, Projection, Rvalue};
 use vun_sema::checks::ChecksOf;
 use vun_sema_ty::Value as Constant;
@@ -106,7 +106,7 @@ impl FnLower<'_, '_, '_> {
     /// Calls the operation `item` of `lang.check`, which the runtime provides, with `args`.
     fn runtime(&mut self, item: Item, args: Vec<Value>) -> Result<(), Unlowered> {
         let callee = self.provided(item)?.callee().ok_or(Unlowered::unsupported(self.at, Form::Callee))?;
-        self.b.push(InstKind::Call { callee, args }, None, self.at);
+        self.b.push(InstKind::Call { callee, args, kind: CallKind::Plain }, None, self.at);
         Ok(())
     }
 

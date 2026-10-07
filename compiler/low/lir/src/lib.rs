@@ -22,8 +22,8 @@ pub use entity::{Block, DataId, FuncId, ImportId, Inst, Slot, Value};
 pub use facts::{Domain, Reads};
 pub use func::{AbiType, Alias, Conv, Ext, Function, Linkage, Record, Signature, StackCheck};
 pub use inst::{
-    Access, Address, Asm, AsmCheck, BinOp, Callee, CastOp, Cond, InstKind, Order, Output, Right, RmwOp,
-    Target, Terminator,
+    Access, Address, Asm, AsmCheck, BinOp, CallKind, Callee, CastOp, Cond, InstKind, Order, Output, Right,
+    RmwOp, Target, Terminator,
 };
 pub use trace::{Field, Fields, Trace, TraceLayout};
 pub use ty::Scalar;

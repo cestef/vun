@@ -35,6 +35,12 @@ impl Builder {
         b
     }
 
+    /// The signature of the function built.
+    #[must_use]
+    pub fn signature(&self) -> &Signature {
+        &self.func.signature
+    }
+
     /// A new block with parameters of the types `params`, ending unreachably until terminated.
     pub fn block(&mut self, params: &[Scalar], origin: OriginId) -> Block {
         let block = self.func.blocks.push(BlockData {

@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 use vun_index::Idx;
 use vun_lir::{
-    AbiType, BinOp, Block, Builder, Callee, CastOp, Cond, Conv, Ext, FuncId, Function, Inst, InstKind,
-    Linkage, Scalar, Signature, Target, Terminator, Value,
+    AbiType, BinOp, Block, Builder, CallKind, Callee, CastOp, Cond, Conv, Ext, FuncId, Function, Inst,
+    InstKind, Linkage, Scalar, Signature, Target, Terminator, Value,
 };
 use vun_origin::OriginId;
 
@@ -153,7 +153,8 @@ impl Random {
                 // A call of the function itself, of three parameters.
                 0 if calls => {
                     let args = (0..3).map(|_| self.pick(pool)).collect();
-                    let call = InstKind::Call { callee: Callee::Func(FuncId::new(0)), args };
+                    let call =
+                        InstKind::Call { callee: Callee::Func(FuncId::new(0)), args, kind: CallKind::Plain };
                     b.push(call, Some(Scalar::I64), at).unwrap()
                 }
                 1 => b.compare(Cond::ULt, x, y, at),

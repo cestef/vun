@@ -7,7 +7,7 @@ use vun_backend::{Lack, Missing};
 use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
 use vun_lir::{
-    Access, BinOp, Callee, CastOp, Cond, DataId, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value,
+    Access, BinOp, CallKind, Callee, CastOp, Cond, DataId, Inst, InstKind, Order, Reads, RmwOp, Scalar, Value,
 };
 
 use crate::snippets::{
@@ -31,6 +31,7 @@ pub(super) enum Selection<'f> {
     Call {
         callee: &'f Callee,
         args: &'f [Value],
+        kind: CallKind,
     },
     /// The address of the calling thread's storage of `data`, in `rax`.
     ThreadAddr {
@@ -135,11 +136,11 @@ impl<'a> Look<'_, 'a> {
             &InstKind::Select { cond, then, otherwise } => {
                 snippet(SELECT, &[cond, then, otherwise], self.size(then)?, None)
             }
-            InstKind::Call { callee, args } => {
+            InstKind::Call { callee, args, kind } => {
                 for &a in args {
                     self.size(a)?;
                 }
-                Selection::Call { callee, args }
+                Selection::Call { callee, args, kind: *kind }
             }
             &InstKind::Load { ty, addr, .. } => snippet(LOAD, &[addr], self.size_of(ty)?, None),
             &InstKind::Store { value, addr, access } => {

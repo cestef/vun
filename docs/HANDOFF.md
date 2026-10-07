@@ -20,9 +20,6 @@ The owner's queue, in order:
 1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).
 2. Backends: the rp2350 on hardware
    ([`open/backends.md`](open/backends.md)).
-3. A test lowering every form the `lang` tables declare (types, operations, borrow modes): the
-   corpus reaches 4832 of 4833 functions but not every form, so lowering gaps are found by
-   writing programs ([`open/backends.md`](open/backends.md)).
 
 ## For the owner
 

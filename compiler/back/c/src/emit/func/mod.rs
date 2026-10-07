@@ -38,6 +38,8 @@ pub(super) struct FnEmit<'e, 'u> {
     line: Option<Line>,
     /// The `struct` a record result is built in, under the C convention.
     result: Option<Ty>,
+    /// The call a `return` makes, once the call in the block before it was a tail call.
+    tail: Option<Expr>,
 }
 
 impl Emitter<'_> {
@@ -64,6 +66,7 @@ impl Emitter<'_> {
             body: Vec::new(),
             line: None,
             result: None,
+            tail: None,
         };
         let params = f.entry(&c)?;
         for block in f.order.blocks().to_vec() {

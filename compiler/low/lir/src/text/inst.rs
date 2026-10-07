@@ -5,7 +5,9 @@ use std::fmt;
 use vun_index::Idx;
 
 use crate::entity::{Block, DataId, FuncId, ImportId, Slot, Value};
-use crate::inst::{Access, Address, BinOp, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator};
+use crate::inst::{
+    Access, Address, BinOp, CallKind, Callee, CastOp, Cond, InstKind, Order, RmwOp, Target, Terminator,
+};
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -142,11 +144,15 @@ impl fmt::Display for InstKind {
             Self::Addr(address) => write!(f, "addr {address}"),
             Self::ThreadAddr(data) => write!(f, "thread_addr {data}"),
             Self::Copy { to, from, bytes } => write!(f, "copy {to}, {from}, {bytes}"),
-            Self::Call { callee, args } => {
+            Self::Call { callee, args, kind } => {
+                let call = match kind {
+                    CallKind::Plain => "call",
+                    CallKind::Tail => "tail_call",
+                };
                 match callee {
-                    Callee::Func(id) => write!(f, "call {id}")?,
-                    Callee::Import(id) => write!(f, "call {id}")?,
-                    Callee::Indirect(value, _) => write!(f, "call_indirect {value}")?,
+                    Callee::Func(id) => write!(f, "{call} {id}")?,
+                    Callee::Import(id) => write!(f, "{call} {id}")?,
+                    Callee::Indirect(value, _) => write!(f, "{call}_indirect {value}")?,
                 }
                 write!(f, "({})", List(args))
             }

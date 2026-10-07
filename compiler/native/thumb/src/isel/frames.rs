@@ -1,7 +1,7 @@
 //! The instructions Thumb's calls, parameters and returns are written with (`Frames`).
 
 use vun_asm_thumb::{Emit, Op, Operand, Reg, Size, V};
-use vun_backend::Lack;
+use vun_backend::{Lack, Missing};
 use vun_codegen::{Arch, Cx};
 use vun_lir::{Address, Callee, Ext, Scalar, Value};
 use vun_native::select::{Carries, Frames};
@@ -47,6 +47,10 @@ impl Frames for Thumb2 {
         }
         cx.reg_to(a, Self::CARRIER);
         Self::store_outgoing(cx, Self::CARRIER, offset, bytes);
+    }
+
+    fn branch_tail(cx: &mut Cx<'_, Self>, _: &Callee) -> Result<(), Lack> {
+        Err(cx.lack(Missing::TailCall))
     }
 
     fn branch_link(cx: &mut Cx<'_, Self>, callee: &Callee) {

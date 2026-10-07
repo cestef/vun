@@ -77,6 +77,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (COMPTIME_UNSUPPORTED, "lang/lang/errors/comptime/unsupported.md"),
     (COMPTIME_RUNTIME, "lang/lang/errors/comptime/runtime.md"),
     (COMPTIME_EXPORT, "lang/lang/errors/comptime/export.md"),
+    (FLOW_TAIL_POSITION, "lang/lang/errors/flow/tail_position.md"),
     (PLACE_READ_UNINIT, "lang/lang/errors/place/read_uninit.md"),
     (PLACE_LINEAR_LEAK, "lang/lang/errors/place/linear_leak.md"),
     (PLACE_AMBIGUOUS_JOIN, "lang/lang/errors/place/ambiguous_join.md"),

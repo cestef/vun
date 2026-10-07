@@ -135,9 +135,34 @@ impl Builder<'_, '_, '_> {
 
     /// `return value`.
     pub(super) fn exit(&mut self, value: Option<ExprId>, origin: OriginId) -> Result<Operand, Unbuilt> {
-        let value = value.map(|v| self.operand(v)).transpose()?.unwrap_or_else(Self::unit);
+        self.returning = value;
+        let operand = value.map(|v| self.operand(v)).transpose()?;
+        // A tail call written as the value returned has returned already.
+        if value.is_some() && self.returning.take().is_none() {
+            return Ok(Self::unit());
+        }
+        self.returning = None;
+        let value = operand.unwrap_or_else(Self::unit);
         self.assign(Place::of(self.ret), Rvalue::Use(value), origin);
         self.unwind(0, origin, Exit::Function)?;
+        Ok(self.jump(TerminatorKind::Return, origin))
+    }
+
+    /// `return lang.flow.tail(f, args)` (spec 09, section 3): the pending defers run once the
+    /// arguments are computed, then `call` is the last statement of the function, which returns
+    /// what it gives.
+    pub(super) fn tail_call(
+        &mut self,
+        call: ExprId,
+        rvalue: Rvalue,
+        origin: OriginId,
+    ) -> Result<Operand, Unbuilt> {
+        if self.returning != Some(call) {
+            return Err(Unbuilt::at(origin));
+        }
+        self.returning = None;
+        self.unwind(0, origin, Exit::Function)?;
+        self.assign(Place::of(self.ret), rvalue, origin);
         Ok(self.jump(TerminatorKind::Return, origin))
     }
 

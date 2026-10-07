@@ -30,7 +30,7 @@ macro_rules! inst_operands {
             }
             InstKind::Offset { base, offset } => ([Some(base), Some(offset), None], None, None),
             InstKind::Copy { to, from, .. } => ([Some(to), Some(from), None], None, None),
-            InstKind::Call { callee: Callee::Indirect(f, _), args } => {
+            InstKind::Call { callee: Callee::Indirect(f, _), args, .. } => {
                 ([Some(f), None, None], Some(args), None)
             }
             InstKind::Call { args, .. } => ([None, None, None], Some(args), None),

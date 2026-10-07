@@ -46,7 +46,11 @@ fn sum(o: OriginId, calls: bool) -> Function {
     let next = b.binary(BinOp::Add, i, one, o);
     let mut added = b.binary(BinOp::Add, total, i, o);
     if calls {
-        let call = InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![added] };
+        let call = InstKind::Call {
+            callee: Callee::Func(FuncId::new(0)),
+            args: vec![added],
+            kind: vun_lir::CallKind::Plain,
+        };
         added = b.push(call, Some(Scalar::I64), o).unwrap();
     }
     b.terminate(Terminator::Jump(Target { block: head, args: vec![next, added] }));

@@ -230,3 +230,31 @@ fn a_naked_function_holds_nothing_but_blocks_without_bindings() {
     assert_eq!(verify(true, false, Terminator::Unreachable), Err(Reason::Naked));
     assert_eq!(verify(false, true, Terminator::Unreachable), Err(Reason::Naked));
 }
+
+#[test]
+fn the_verifier_accepts_a_tail_call_only_as_the_last_instruction_returning_its_value() {
+    use crate::{CallKind, Callee};
+    let origins = OriginTable::new();
+    let o = origin(&origins);
+    let verify = |kind: CallKind, term: fn(Option<crate::Value>) -> Terminator| {
+        let int = crate::AbiType::Int(Scalar::I64, crate::Ext::Zero);
+        let signature = Signature {
+            conv: Conv::Vun,
+            params: vec![int.clone()],
+            result: Some(int),
+            variadic: None,
+            convention: None,
+        };
+        let mut b = Builder::new(Linkage::Internal, signature, o);
+        let n = b.params(b.current())[0];
+        let call = InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![n], kind };
+        let result = b.push(call, Some(Scalar::I64), o);
+        b.terminate(term(result));
+        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+        unit.functions.push(b.finish());
+        unit.verify(&origins).map_err(|m| m.reason)
+    };
+    assert_eq!(verify(CallKind::Plain, Terminator::Return), Ok(()));
+    assert_eq!(verify(CallKind::Tail, Terminator::Return), Ok(()));
+    assert_eq!(verify(CallKind::Tail, |_| Terminator::Unreachable), Err(Reason::Tail));
+}

@@ -46,6 +46,9 @@ use crate::lowering::Lowering;
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
+/// The value of a tail call, which the `return` after it passes on.
+pub(super) struct Tailed(pub Option<Value>);
+
 pub(crate) struct FnLower<'l, 'a, 'db> {
     pub(crate) l: &'l mut Lowering<'a, 'db>,
     body: &'l Body,
@@ -64,6 +67,8 @@ pub(crate) struct FnLower<'l, 'a, 'db> {
     coroutine: Option<coroutine::Coroutine>,
     /// Where each deferred statement at an exit goes, as the place states decide.
     defers: Arc<Found>,
+    /// The value of the tail call just lowered, which the function returns next.
+    tail: Option<Tailed>,
     /// The origin of what is being lowered.
     pub(crate) at: OriginId,
 }
@@ -141,6 +146,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
             out: None,
             frame: None,
             coroutine: None,
+            tail: None,
             at,
         }
     }

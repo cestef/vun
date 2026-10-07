@@ -14,6 +14,7 @@ use super::apply::{Argument, Callee, Passing};
 use super::{Known, Typer};
 use vun_primitives::Primitive;
 use vun_primitives::arch::Arch as Form;
+use vun_primitives::flow::Flow;
 use vun_sema::callable::Callable;
 use vun_sema::member::MemberValue;
 use vun_sema::omitted::{Plan, Unifier};
@@ -22,6 +23,7 @@ impl Typer<'_, '_, '_> {
     /// A call of a value of function type: its arguments are checked against the parameters, and
     /// it has the result type. `$` arguments left out are inferred from the others' types.
     pub(super) fn call(&mut self, call: ExprId, callee: ExprId, args: &[Entry<Arg>]) -> Option<Known> {
+        let returned = self.returning == Some(call);
         // A borrow of a function calls the function.
         let signature = self.typed(callee).and_then(|k| k.ty.through_borrows().callable());
         let written: Option<Vec<ExprId>> = args
@@ -60,6 +62,9 @@ impl Typer<'_, '_, '_> {
             _ => None,
         };
         let target = Callee { f: self.called(callee), signature, receiver, passing: Passing::Written };
+        if matches!(target.f, Some(Callable::Primitive(Primitive::Flow(Flow::tail)))) && !returned {
+            self.tail_position(call);
+        }
         let code = written.first().copied();
         let written: Vec<Argument> = written.into_iter().map(Argument::Expr).collect();
         let applied = self.apply(call, &target, &written)?;
@@ -74,6 +79,17 @@ impl Typer<'_, '_, '_> {
             return self.asm(call, code);
         }
         Some(applied.known)
+    }
+
+    /// Reports the guaranteed tail call `call` that is not the value of a `return` (spec 09,
+    /// section 3).
+    fn tail_position(&mut self, call: ExprId) {
+        let msg = Msg::new().text("a guaranteed tail call must be the value of a ").code("return");
+        let help = Msg::new().text("write ").code("return lang.flow.tail(f, args);");
+        let d = Diagnostic::error(errors::FLOW_TAIL_POSITION, msg)
+            .at(self.hir().exprs[call].origin, None)
+            .child(ChildKind::Help, help);
+        self.diag.error(d);
     }
 
     /// Reports the `$` arguments `plan` leaves out of a call of `f` as not inferred from the

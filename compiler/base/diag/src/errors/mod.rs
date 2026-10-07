@@ -29,6 +29,8 @@ mod meta;
 pub use meta::*;
 mod comptime;
 pub use comptime::*;
+mod flow;
+pub use flow::*;
 mod place;
 pub use place::*;
 mod borrow;

@@ -128,7 +128,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            Selection::Call { callee, args } => self.call(callee, args, out)?,
+            Selection::Call { callee, args, kind } => self.call(callee, args, kind, out)?,
             Selection::ThreadAddr { data } => self.thread_addr(data)?,
             Selection::Fetch { op, addr, value, size } => self.fetch(op, addr, value, size),
             Selection::Copy { to, from, bytes } => self.copy(to, from, bytes),

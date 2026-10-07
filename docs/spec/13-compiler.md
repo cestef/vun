@@ -731,13 +731,14 @@ c` shows it, and `vun build` and `vun run` compile and link it.
   place (`v3`), and one a link symbol already spells gets underscores appended until it is free.
 - **Origins** become `#line` directives, so the C compiler's diagnostics and debug information
   point at Vun source.
-- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, guaranteed tail
-  calls, and, where the compiler offers nothing for them, atomics (without its builtins,
+- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, and, where the compiler offers nothing for them, atomics (without its builtins,
   `lang.target.Atomics`), data aligned past every C type or placed in a link section, naked
   functions, and symbols named in inline assembly (without GNU attributes,
   `lang.target.Attributes`: `__attribute__((aligned(n), section("name")))` on the object,
   `naked` on a function taking and giving nothing whose body is plain `__asm__` alone, `used` on
   what a block names, which it writes by its ELF name) (`backend.lacks`).
+- **Guaranteed tail calls** are `__attribute__((musttail)) return f(args);` where the compiler
+  has GNU attributes (GCC 15, Clang 13), refused without them and for a result in memory.
 
 - **Aliasing.** An address a signature passes says what else reaches what it reaches
   (`AbiType::Address(Alias)`): an exclusive borrow is `Alias::Exclusive` (spec 05, section 8), and

@@ -15,7 +15,9 @@ impl Typer<'_, '_, '_> {
     pub(super) fn returned(&mut self, value: Option<ExprId>) -> Option<Known> {
         if let Some(value) = value {
             let result = self.result.clone().and_then(|result| self.expecting(value, result));
+            self.returning = Some(value);
             let found = self.typed_as(value, result);
+            self.returning = None;
             if let (Some(found), Some(result)) = (found, result) {
                 self.expect(self.hir().exprs[value].origin, found, result, self.written);
             }

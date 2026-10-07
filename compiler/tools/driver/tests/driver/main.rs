@@ -46,6 +46,7 @@ mod patterns;
 mod persist;
 mod places;
 mod plan;
+mod primitives;
 mod quotes;
 mod reduce;
 mod reflection;

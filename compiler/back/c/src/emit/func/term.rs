@@ -38,6 +38,7 @@ impl FnEmit<'_, '_> {
                 let default = self.edge(default, None);
                 self.body.push(Stmt::Switch(value, arms, default));
             }
+            Terminator::Return(_) if let Some(call) = self.tail.take() => self.body.push(Stmt::Tail(call)),
             Terminator::Return(value) => {
                 let signature = &func.signature;
                 let value = match (value, &signature.result) {

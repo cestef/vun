@@ -5,6 +5,8 @@ use vun_desugar::{Borrow, Narrowing};
 use vun_grammar::TokenKind;
 use vun_hir::tree::ExprId;
 use vun_intern::Symbol;
+use vun_primitives::Primitive;
+use vun_primitives::flow::Flow;
 use vun_sema::env::Env;
 use vun_sema::typed::Step;
 use vun_sema_ty::call::{Code, Staging};
@@ -106,6 +108,16 @@ pub enum Rvalue {
 pub type Asm = vun_inline::Block<Operand, Place, Operand>;
 
 impl Rvalue {
+    /// Whether this is `lang.flow.tail(f, args)`, which replaces the frame of the function running
+    /// it by a call (spec 09, section 3).
+    #[must_use]
+    pub fn is_tail_call(&self) -> bool {
+        matches!(
+            self,
+            Self::Call { callee: Operand::Const(Value::Primitive(Primitive::Flow(Flow::tail))), .. }
+        )
+    }
+
     /// The operands this reads, in order, to rewrite.
     pub fn operands_mut(&mut self) -> Vec<&mut Operand> {
         match self {

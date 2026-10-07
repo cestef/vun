@@ -1,0 +1,6 @@
+//! A guaranteed tail call is the value of a `return` (spec 09, section 3).
+
+count := (n: u32) -> u32 {
+    if n == 0 { return 0; }
+    lang.flow.tail(count, (n - 1,)) //~ flow.tail_position
+};

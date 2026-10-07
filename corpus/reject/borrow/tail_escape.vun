@@ -1,0 +1,8 @@
+//! A tail call replaces the caller's frame, so it may not pass a borrow of the caller's locals
+//! (spec 09, section 3).
+
+read := (p: &u32) -> u32 { p.* };
+
+go := (n: u32) -> u32 {
+    return lang.flow.tail(read, (&n,)); //~ borrow.escape
+};

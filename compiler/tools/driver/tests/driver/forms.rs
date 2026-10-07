@@ -52,3 +52,20 @@ empty := () { e := .{}; _: () = e; _: u8 = e; };
     assert!(found[0].1.contains("&static Int(7..=7)"), "{found:?}");
     assert!(found[1].1.ends_with("found `()`"), "{found:?}");
 }
+
+#[test]
+fn a_member_a_dollar_argument_gave_a_type_without_is_reported_at_the_call() {
+    let fixture = Fixture::new("forms-no-member");
+    let file = fixture.root.write(
+        "member.vun",
+        "\
+first := ($F: type, f: F) -> F.Params { f };
+bad := () { first((u8) -> u8, add_one); };
+add_one := (x: u8) -> u8 { x };
+",
+    );
+    let found = fixture.reported(&file);
+    let ids: Vec<_> = found.iter().map(|(id, _)| *id).collect();
+    assert_eq!(ids, [errors::COMPTIME_TRAP], "{found:?}");
+    assert!(found[0].1.contains("has no member `Params`"), "{found:?}");
+}

@@ -3,6 +3,7 @@
 //! have the types their instructions need.
 
 mod bounds;
+mod calls;
 mod reason;
 mod structure;
 mod types;
@@ -17,7 +18,7 @@ use vun_origin::{OriginId, OriginTable};
 use crate::analysis::{Cfg, Dominators};
 use crate::entity::{Block, FuncId, Inst, Value};
 use crate::func::{Def, Function};
-use crate::inst::{Address, Asm, AsmCheck, Callee, InstKind, Target, Terminator};
+use crate::inst::{Address, Asm, AsmCheck, Target, Terminator};
 use crate::ty::Scalar;
 use crate::unit::{ImportKind, Storage, Unit};
 
@@ -229,41 +230,6 @@ impl Checker<'_> {
         let expected = data.params.iter().map(|&p| self.func.ty(p));
         let found = target.args.iter().map(|&a| self.func.ty(a));
         if expected.eq(found) { Ok(()) } else { Self::fail(at, Reason::Arguments(target.block)) }
-    }
-
-    /// The values a call passes, by its callee.
-    fn callee_values(&self, at: Entity, callee: &Callee) -> Result<(Vec<Scalar>, Option<Scalar>), Malformed> {
-        let signature = match callee {
-            Callee::Func(f) => {
-                self.unit.address(at, Address::Func(*f))?;
-                &self.unit.functions[*f].signature
-            }
-            Callee::Import(i) => {
-                self.unit.address(at, Address::Import(*i))?;
-                match &self.unit.imports[*i].kind {
-                    crate::unit::ImportKind::Func(signature) => signature,
-                    crate::unit::ImportKind::Data => {
-                        return Self::fail(at, Reason::UnknownAddress(Address::Import(*i)));
-                    }
-                }
-            }
-            Callee::Indirect(_, signature) => signature,
-        };
-        Ok((signature.values(), signature.returns()))
-    }
-
-    fn call(&self, inst: Inst) -> Result<(), Malformed> {
-        let at = Entity::Inst(self.id, inst);
-        let InstKind::Call { callee, args } = &self.func.insts[inst].kind else { return Ok(()) };
-        let (params, returns) = self.callee_values(at, callee)?;
-        if params.len() != args.len() {
-            return Self::fail(at, Reason::Arity);
-        }
-        for (&expected, &arg) in params.iter().zip(args) {
-            self.expect(at, arg, expected)?;
-        }
-        let result = self.func.insts[inst].result.map(|v| self.func.ty(v));
-        if result == returns { Ok(()) } else { Self::fail(at, Reason::Return) }
     }
 
     /// What an assembly block writes is at addresses, the symbols it names exist, and one that

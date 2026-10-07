@@ -6,7 +6,7 @@ use vun_origin::OriginId;
 use super::super::Unlegalized;
 use super::super::limbs::Limbs;
 use super::{Parts, Rewrite};
-use vun_lir::{Access, BinOp, Callee, InstKind, Value};
+use vun_lir::{Access, BinOp, CallKind, Callee, InstKind, Value};
 
 impl Rewrite<'_> {
     /// A call, its wide arguments passed as limbs and a wide result through a slot: what the
@@ -15,6 +15,7 @@ impl Rewrite<'_> {
         &mut self,
         callee: &Callee,
         args: &[Value],
+        kind: CallKind,
         result: Option<Value>,
         at: OriginId,
     ) -> Result<Option<Parts>, Unlegalized> {
@@ -33,15 +34,18 @@ impl Rewrite<'_> {
         };
         let mut args: Vec<Value> = args.iter().flat_map(|&a| self.flat(a)).collect();
         if let Some(count) = wide_result {
+            if kind == CallKind::Tail {
+                return Err(Unlegalized::TailResult);
+            }
             let limb = self.legalize.limb_bytes();
             let slot = self.b.slot(limb * u64::try_from(count).expect("a few limbs"), limb, at);
             let addr = self.b.slot_addr(slot, at);
             args.push(addr);
-            self.b.push(InstKind::Call { callee, args }, None, at);
+            self.b.push(InstKind::Call { callee, args, kind }, None, at);
             return Ok(Some(Parts::Limbs(self.load_limbs(addr, Access::Plain, count, at))));
         }
         let ty = result.map(|v| self.legalize.scalar(self.old.ty(v)));
-        Ok(self.b.push(InstKind::Call { callee, args }, ty, at).map(Parts::One))
+        Ok(self.b.push(InstKind::Call { callee, args, kind }, ty, at).map(Parts::One))
     }
 
     /// `a op b` for a division or remainder, through the helper on magnitudes, the signs put
@@ -64,7 +68,7 @@ impl Rewrite<'_> {
         let addr = self.b.slot_addr(slot, at);
         let mut args: Vec<Value> = magnitude.0.iter().chain(&divided_by.0).copied().collect();
         args.push(addr);
-        self.b.push(InstKind::Call { callee: Callee::Func(helper), args }, None, at);
+        self.b.push(InstKind::Call { callee: Callee::Func(helper), args, kind: CallKind::Plain }, None, at);
         let mut results = Vec::with_capacity(words);
         for k in 0..words {
             let place = self.past(addr, limb * u64::try_from(k).expect("a few limbs"), at);

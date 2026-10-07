@@ -4,7 +4,7 @@ use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
 use cranelift_codegen::ir::immediates::{Ieee32, Ieee64};
 use cranelift_codegen::ir::{AtomicRmwOp, InstBuilder, Value as Val};
 use vun_backend::{Lack, Missing};
-use vun_lir::{Access, BinOp, Cond, Inst, InstKind, RmwOp, Scalar};
+use vun_lir::{Access, BinOp, CallKind, Cond, Inst, InstKind, RmwOp, Scalar};
 use vun_origin::OriginId;
 
 use super::Lower;
@@ -53,7 +53,10 @@ impl Lower<'_, '_> {
                 self.copy(self.get(*to), self.get(*from), *bytes);
                 None
             }
-            InstKind::Call { callee, args } => self.call(callee, args, f.insts[id].result.is_some(), at)?,
+            InstKind::Call { kind: CallKind::Tail, .. } => return Err(Missing::TailCall.at(at)),
+            InstKind::Call { callee, args, .. } => {
+                self.call(callee, args, f.insts[id].result.is_some(), at)?
+            }
             InstKind::Asm(..) => return Err(Missing::Asm.at(at)),
         };
         if let (Some(value), Some(defined)) = (data.result, result) {

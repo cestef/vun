@@ -6,4 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The tuple of the parameter types of the function type `F`: what a call of it passes.
+pub const Params: Item = Item::new(&["lang", "flow", "Params"]);
+/// The result type of the function type `F`.
+pub const Result: Item = Item::new(&["lang", "flow", "Result"]);
 pub const tail: Item = Item::new(&["lang", "flow", "tail"]);

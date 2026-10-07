@@ -43,7 +43,7 @@ fn pair(at: OriginId, escapes: bool) -> Unit {
     let sum = b.binary(BinOp::Add, first, flag, at);
     if escapes {
         let callee = vun_lir::Callee::Import(ImportId::new(0));
-        b.push(InstKind::Call { callee, args: vec![to] }, None, at);
+        b.push(InstKind::Call { callee, args: vec![to], kind: vun_lir::CallKind::Plain }, None, at);
     }
     b.terminate(Terminator::Return(Some(sum)));
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };

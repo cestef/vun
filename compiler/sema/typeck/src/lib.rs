@@ -78,6 +78,8 @@ pub struct Typer<'e, 'a, 'db> {
     /// The result type of the function typed, which `return` values are checked against, or why
     /// it is not known here.
     result: Option<Result<Ty, GaveUp>>,
+    /// The operand of the `return` being typed, where a guaranteed tail call may stand.
+    returning: Option<ExprId>,
     /// The annotation the result type is written as, which reports name it by.
     written: Option<ExprId>,
     /// The loops around the expression typed, innermost last, which `break` values join.
@@ -115,6 +117,7 @@ impl<'e, 'a, 'db> Typer<'e, 'a, 'db> {
             expected: Map::default(),
             hints: Map::default(),
             result: None,
+            returning: None,
             written: None,
             loops: Vec::new(),
             yields: None,

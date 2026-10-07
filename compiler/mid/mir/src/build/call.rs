@@ -113,9 +113,14 @@ impl Builder<'_, '_, '_> {
             Some((at, Receiver::Value(operand))) => values[at] = operand,
             None => {}
         }
-        let result = match expansion {
-            Some(body) => self.expand(body, values, origin)?,
-            None => self.temp(Rvalue::Call { callee, args: values }, origin),
+        let result = if let Some(body) = expansion {
+            self.expand(body, values, origin)?
+        } else {
+            let rvalue = Rvalue::Call { callee, args: values };
+            if rvalue.is_tail_call() {
+                return self.tail_call(call, rvalue, origin);
+            }
+            self.temp(rvalue, origin)
         };
         // A call of an empty type, such as `never`, does not come back.
         if self.type_of(call).is_some_and(|t| t.is_empty()) {

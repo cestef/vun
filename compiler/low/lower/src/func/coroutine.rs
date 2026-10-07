@@ -10,7 +10,7 @@ use std::sync::Arc;
 use vun_codec::{Decode, Encode};
 use vun_index::Idx;
 use vun_items::Item;
-use vun_lir::{Access, Builder, Callee, Function, InstKind, Linkage, Target, Terminator, Value};
+use vun_lir::{Access, Builder, CallKind, Callee, Function, InstKind, Linkage, Target, Terminator, Value};
 use vun_mir::{Aggregate, BlockId, Body, Operand, Place, TerminatorKind};
 use vun_sema::callable::Parameters;
 use vun_sema::eval::Instantiate;
@@ -219,8 +219,11 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         if signature.through() {
             args.extend(dest);
         }
-        let value =
-            self.b.push(InstKind::Call { callee: Callee::Func(callee), args }, signature.returns(), self.at);
+        let value = self.b.push(
+            InstKind::Call { callee: Callee::Func(callee), args, kind: CallKind::Plain },
+            signature.returns(),
+            self.at,
+        );
         if let (Some(value), Some(dest)) = (value, dest) {
             self.b.store(value, dest, Access::Plain, self.at);
         }

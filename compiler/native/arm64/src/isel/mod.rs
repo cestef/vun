@@ -163,7 +163,7 @@ impl<'a> Sel<'_, 'a> {
             Selection::Snippet { snippet, ins, size, cond } => {
                 self.snippet(snippet, &Args { ins: &ins, out, size, cond });
             }
-            Selection::Call { callee, args } => Arm::call(self.0, callee, args, out)?,
+            Selection::Call { callee, args, kind } => Arm::call(self.0, callee, args, kind, out)?,
             Selection::Rmw { op, addr, value, size } => self.rmw(op, addr, value, out, size),
             Selection::CompareExchange { addr, expected, new, size } => {
                 self.compare_exchange(addr, expected, new, out, size);

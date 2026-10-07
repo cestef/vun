@@ -120,11 +120,11 @@ impl<'a> Look<'_, 'a> {
                 self.size(then)?;
                 snippet(SELECT, &[cond, then, otherwise], Size::B64, None)
             }
-            InstKind::Call { callee, args } => {
+            InstKind::Call { callee, args, kind } => {
                 for &a in args {
                     self.size(a)?;
                 }
-                Selection::Call { callee, args }
+                Selection::Call { callee, args, kind: *kind }
             }
             &InstKind::Load { ty, addr, access } => {
                 snippet(if access.ordered() { LOAD_ACQUIRE } else { LOAD }, &[addr], self.size_of(ty)?, None)

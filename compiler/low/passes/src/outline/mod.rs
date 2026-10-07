@@ -23,8 +23,8 @@ use vun_isa_thumb::Thumb;
 use vun_isa_x86_64::X86_64;
 use vun_lir::func::Function;
 use vun_lir::{
-    AbiType, Alias, Asm, AsmCheck, Builder, Callee, Conv, Ext, FuncId, Inst, InstKind, Linkage, Scalar,
-    Signature, Terminator, Unit,
+    AbiType, Alias, Asm, AsmCheck, Builder, CallKind, Callee, Conv, Ext, FuncId, Inst, InstKind, Linkage,
+    Scalar, Signature, Terminator, Unit,
 };
 use vun_origin::OriginId;
 
@@ -116,7 +116,7 @@ impl Moves for Function {
             let (thunk, args) = self.thunk(asm, *check, self.insts[inst].origin);
             let callee = Callee::Func(FuncId::new(first + thunks.len()));
             thunks.push(thunk);
-            self.insts[inst].kind = InstKind::Call { callee, args };
+            self.insts[inst].kind = InstKind::Call { callee, args, kind: CallKind::Plain };
         }
     }
 

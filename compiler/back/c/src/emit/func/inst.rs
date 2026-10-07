@@ -2,8 +2,10 @@
 //! reached by typed access through `u8 *` addresses, which `-fno-strict-aliasing` defines.
 
 use vun_lir::func::Def;
-use vun_lir::{AbiType, Access, Callee, Conv, ImportKind, Inst, InstKind, Order, RmwOp, Value};
-use vun_target::Atomics;
+use vun_lir::{
+    AbiType, Access, CallKind, Callee, Conv, ImportKind, Inst, InstKind, Order, RmwOp, Signature, Value,
+};
+use vun_target::{Atomics, Attributes};
 
 use super::FnEmit;
 use crate::ast::{Binary, Builtin, Expr, Ident, Own, Stmt, Ty, Unary};
@@ -104,7 +106,7 @@ impl FnEmit<'_, '_> {
                 self.body.push(Stmt::Assign(to, from));
                 return Ok(());
             }
-            InstKind::Call { callee, args } => return self.call(callee, args, data.result),
+            InstKind::Call { callee, args, kind } => return self.call(callee, args, *kind, data.result),
             InstKind::Asm(asm, check) => return self.asm(inst, asm, check.as_ref(), at),
         };
         if let Some(result) = data.result {
@@ -152,7 +154,13 @@ impl FnEmit<'_, '_> {
     }
 
     /// A call, its arguments and result converted as the callee's convention passes them.
-    fn call(&mut self, callee: &Callee, args: &[Value], result: Option<Value>) -> Result<(), Lack> {
+    fn call(
+        &mut self,
+        callee: &Callee,
+        args: &[Value],
+        kind: CallKind,
+        result: Option<Value>,
+    ) -> Result<(), Lack> {
         let unit = self.e.unit;
         let at = self.func.origin;
         let (name, signature) = match callee {
@@ -198,6 +206,9 @@ impl FnEmit<'_, '_> {
         }
         let out = args.next();
         let call = |passed| Expr::Call(Box::new(name), passed);
+        if kind == CallKind::Tail {
+            return self.tail_call(&signature, passed, call);
+        }
         match &signature.result {
             Some(AbiType::Memory { .. }) => {
                 passed.push(self.operand(out.expect("a result in memory has an address")));
@@ -220,6 +231,30 @@ impl FnEmit<'_, '_> {
             }
             None => self.body.push(Stmt::Expr(call(passed))),
         }
+        Ok(())
+    }
+
+    /// A call the C compiler must turn into a jump: the `return` after it makes it.
+    fn tail_call(
+        &mut self,
+        signature: &Signature,
+        passed: Vec<Expr>,
+        call: impl FnOnce(Vec<Expr>) -> Expr,
+    ) -> Result<(), Lack> {
+        let at = self.func.origin;
+        if self.e.target.c.compiler.attributes != Attributes::Gnu {
+            return Err(Missing::TailCall.at(at));
+        }
+        let call = match &signature.result {
+            Some(AbiType::Memory { .. } | AbiType::Record(_) | AbiType::Wide { .. }) => {
+                return Err(Missing::TailCall.at(at));
+            }
+            Some(given) if let Some(s) = given.signed_c(signature.conv) => {
+                call(passed).cast(self.e.scalar(s, at)?)
+            }
+            _ => call(passed),
+        };
+        self.tail = Some(call);
         Ok(())
     }
 }

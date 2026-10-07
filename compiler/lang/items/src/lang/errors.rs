@@ -36,6 +36,8 @@ pub const layout: Item = Item::new(&["lang", "errors", "layout"]);
 pub const meta: Item = Item::new(&["lang", "errors", "meta"]);
 /// Compile-time evaluation (spec 03, section 7).
 pub const comptime: Item = Item::new(&["lang", "errors", "comptime"]);
+/// Control flow primitives (spec 09, section 3).
+pub const flow: Item = Item::new(&["lang", "errors", "flow"]);
 /// Place states (spec 05, section 2).
 pub const place: Item = Item::new(&["lang", "errors", "place"]);
 /// Scoped borrows and exclusivity (spec 05, sections 4 and 8).

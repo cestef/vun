@@ -4,9 +4,10 @@
 //! result comes back in registers or through memory.
 
 use vun_asm_x86_64::{Emit, Mem, Op, Reg, Size};
-use vun_backend::Lack;
+use vun_backend::{Lack, Missing};
 use vun_codegen::Arch;
-use vun_lir::{AbiType, Address, Callee, Conv, Ext, Signature, Value};
+use vun_dwarf::Step;
+use vun_lir::{AbiType, Address, CallKind, Callee, Conv, Ext, Signature, Value};
 
 use super::Sel;
 use crate::X86;
@@ -18,11 +19,15 @@ impl Sel<'_, '_> {
         &mut self,
         callee: &Callee,
         args: &[Value],
+        kind: CallKind,
         result: Option<Value>,
     ) -> Result<(), Lack> {
         let f = self.f;
         let signature: &Signature = self.signature(callee);
         let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
+        if kind == CallKind::Tail && !passing.in_registers() {
+            return Err(self.lack(Missing::TailCall));
+        }
         self.frame.outgoing(passing.stack);
         // Arguments on the stack and records copied there go through the carrier.
         for (&a, loc) in args.iter().zip(&passing.params) {
@@ -71,6 +76,11 @@ impl Sel<'_, '_> {
         if signature.conv == Conv::C {
             self.asm.emit(Op::Mov, Size::B32, &[Reg::Rax.into(), i64::from(passing.floats).into()]);
         }
+        if kind == CallKind::Tail {
+            // The result is the callee's, which the `return` after it passes on from where it is.
+            self.tail_jump(callee);
+            return Ok(());
+        }
         match callee {
             Callee::Func(f) => {
                 self.asm.emit(Op::Call, Size::B64, &[vun_asm_x86_64::Operand::Sym(Address::Func(*f))]);
@@ -100,6 +110,25 @@ impl Sel<'_, '_> {
             Ret::Reg(Carrier::Int(_)) | Ret::None | Ret::Memory => {}
         }
         Ok(())
+    }
+
+    /// Leaves the frame and jumps to `callee`, which returns to this function's caller.
+    fn tail_jump(&mut self, callee: &Callee) {
+        // The target waits in the carrier, which leaving the frame leaves alone.
+        if let Callee::Indirect(target, _) = callee {
+            self.reg_to(*target, X86::CARRIER);
+        }
+        self.leave();
+        match callee {
+            Callee::Func(f) => {
+                self.asm.emit(Op::Jmp, Size::B64, &[vun_asm_x86_64::Operand::Sym(Address::Func(*f))]);
+            }
+            Callee::Import(i) => {
+                self.asm.emit(Op::Jmp, Size::B64, &[vun_asm_x86_64::Operand::Sym(Address::Import(*i))]);
+            }
+            Callee::Indirect(..) => self.asm.emit(Op::Jmp, Size::B64, &[X86::CARRIER.into()]),
+        }
+        self.unwound(Step::Returned);
     }
 
     /// Extends an integer of `size` in `r` to 32 bits, as the C convention expects of callers
