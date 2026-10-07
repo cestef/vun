@@ -7,6 +7,10 @@ pub enum Bounds {
     empty,
     /// The least item of `b`, which is not empty.
     first,
+    /// The greatest item of `b`, which has an end and is not empty; traps for `a..`.
+    last,
+    /// The item before `x` in `b`, or `x` itself when it is the least: counting down never leaves `T`.
+    before,
     /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
     ends,
     /// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.
@@ -14,13 +18,22 @@ pub enum Bounds {
 }
 impl Bounds {
     pub const NAMESPACE: vun_items::Item = vun_items::lang::bounds;
-    pub const ALL: &[Self] = &[Self::empty, Self::first, Self::ends, Self::after];
+    pub const ALL: &[Self] = &[
+        Self::empty,
+        Self::first,
+        Self::last,
+        Self::before,
+        Self::ends,
+        Self::after,
+    ];
     /// The declaration's name.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
             Self::empty => "empty",
             Self::first => "first",
+            Self::last => "last",
+            Self::before => "before",
             Self::ends => "ends",
             Self::after => "after",
         }
@@ -31,6 +44,8 @@ impl Bounds {
         match self {
             Self::empty => vun_items::lang::bounds::empty,
             Self::first => vun_items::lang::bounds::first,
+            Self::last => vun_items::lang::bounds::last,
+            Self::before => vun_items::lang::bounds::before,
             Self::ends => vun_items::lang::bounds::ends,
             Self::after => vun_items::lang::bounds::after,
         }

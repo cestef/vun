@@ -1,10 +1,9 @@
 //! The coverage a run of the tests writes (spec 11, section 6).
 
-/// The flags of `lang.cover.map` the tests set: a byte each, 1 once a block of that number
-/// started.
+/// The counts of `lang.cover.map` the tests make: how many times a block of that number started.
 Covered := struct {
-    flags: [lang.cover.size]u8,
+    counts: [lang.cover.size]u32,
 
-    /// The flags as they are now.
-    read := () -> Covered { .{ .flags = unsafe lang.cover.map } };
+    /// The counts as they are now.
+    read := () -> Covered { .{ .counts = unsafe lang.cover.map } };
 };

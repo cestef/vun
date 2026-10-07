@@ -6,8 +6,14 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
+/// The namespace `std.dyn.tests`.
+pub const tests: Item = Item::new(&["std", "dyn", "tests"]);
 /// What a `Dyn` erases its target to: it is only ever pointed to.
 pub const Erased: Item = Item::new(&["std", "dyn", "Erased"]);
+/// Reports each requirement of `I` that a table cannot hold: one that is no function, such as a
+/// type (`Error: type = _`), which names no type for every target, and one whose first parameter
+/// is no borrow of `Self`, which cannot be called without knowing the target's size.
+pub const verify: Item = Item::new(&["std", "dyn", "verify"]);
 /// The functions of `I` a `Dyn` calls: the requirements that are functions, each as `Dyn(I)`
 /// takes it as its own, with the borrow of the `Dyn` for the receiver.
 pub const Table: Item = Item::new(&["std", "dyn", "Table"]);
@@ -15,3 +21,6 @@ pub const Table: Item = Item::new(&["std", "dyn", "Table"]);
 /// type `Receiver`, and the arguments `rest` after it.
 pub const invoke: Item = Item::new(&["std", "dyn", "invoke"]);
 pub const Dyn: Item = Item::new(&["std", "dyn", "Dyn"]);
+/// A `Dyn(I)` that owns its target, kept in the memory an allocator gave: linear, so it ends
+/// with `deinit`, which gives that memory back. The target is not dropped, so it must own nothing.
+pub const OwnedDyn: Item = Item::new(&["std", "dyn", "OwnedDyn"]);

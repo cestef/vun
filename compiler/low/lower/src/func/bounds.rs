@@ -73,6 +73,32 @@ impl FnLower<'_, '_, '_> {
         Ok(())
     }
 
+    /// Copies the bounds of type `from` at `src` to `dest` as bounds of type `to`: both ends in
+    /// the storage of the other's items, and how they end as it is.
+    pub(crate) fn convert_bounds(
+        &mut self,
+        src: Value,
+        from: Ty,
+        dest: Value,
+        to: Ty,
+    ) -> Result<(), Unlowered> {
+        let unsupported = || Unlowered::unsupported(self.at, Form::Conversion);
+        let (items_from, items_to) =
+            (from.bounds().ok_or_else(unsupported)?, to.bounds().ok_or_else(unsupported)?);
+        let ((scalar_from, signed), (scalar_to, _)) = (self.bound(items_from), self.bound(items_to));
+        let (offsets_from, offsets_to) = (self.fields(from)?, self.fields(to)?);
+        for (i, (&at_from, &at_to)) in offsets_from.iter().zip(&offsets_to).enumerate() {
+            let ends = i < 2;
+            let read = if ends { scalar_from } else { Scalar::I8 };
+            let at = self.at_offset(src, at_from);
+            let value = self.b.load(read, at, Access::Plain, self.at);
+            let value = if ends { self.resize(value, scalar_from, signed, scalar_to) } else { value };
+            let at = self.at_offset(dest, at_to);
+            self.b.store(value, at, Access::Plain, self.at);
+        }
+        Ok(())
+    }
+
     /// The bounds of type `ty` at `addr`.
     fn load_bounds(&mut self, addr: Value, ty: Ty) -> Result<Loaded, Unlowered> {
         let (scalar, signed) =
@@ -128,6 +154,27 @@ impl FnLower<'_, '_, '_> {
             );
             let holds = self.by_end(&bounds, at_or_below, below);
             return self.condition(holds, dest, ty);
+        }
+        if p == Bounds::last {
+            let Some(dest) = dest else { return Ok(()) };
+            let zero = self.b.constant(Scalar::I8, 0, self.at);
+            let closed = self.b.compare(Cond::Eq, bounds.open, zero, self.at);
+            self.check(closed, &Reason::Bounds)?;
+            let one = self.b.constant(bounds.scalar, 1, self.at);
+            let below = self.b.binary(BinOp::Sub, bounds.end, one, self.at);
+            let last = self.b.select(bounds.through, bounds.end, below, self.at);
+            self.b.store(last, dest, Access::Plain, self.at);
+            return Ok(());
+        }
+        if p == Bounds::before {
+            let Some(dest) = dest else { return Ok(()) };
+            let item = self.int_operand(arg(1)?, bounds.scalar)?;
+            let one = self.b.constant(bounds.scalar, 1, self.at);
+            let below = self.b.binary(BinOp::Sub, item, one, self.at);
+            let first = self.b.compare(Cond::Eq, item, bounds.lo, self.at);
+            let before = self.b.select(first, item, below, self.at);
+            self.b.store(before, dest, Access::Plain, self.at);
+            return Ok(());
         }
         // An item of bounds ending before their second bound is below it, so the next one
         // stays within the items' storage.

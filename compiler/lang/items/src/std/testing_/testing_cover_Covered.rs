@@ -6,6 +6,6 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-pub const flags: Item = Item::new(&["std", "testing", "cover", "Covered", "flags"]);
-/// The flags as they are now.
+pub const counts: Item = Item::new(&["std", "testing", "cover", "Covered", "counts"]);
+/// The counts as they are now.
 pub const read: Item = Item::new(&["std", "testing", "cover", "Covered", "read"]);

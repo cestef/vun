@@ -60,6 +60,10 @@ impl FnLower<'_, '_, '_> {
             self.b.store(value, dest, Access::Plain, self.at);
             return Ok(());
         }
+        // Bounds of one integer type as bounds of another.
+        if from.bounds().is_some() && to.bounds().is_some() {
+            return self.convert_bounds(src, from, dest, to);
+        }
         // A borrow of `[N]T` as a borrow of `[T]`: its address and `N`.
         if let (Some(array), Some(slice)) = (from.borrowed(), to.borrowed())
             && let (Some((len, _)), Some(_)) = (array.as_array(), slice.slice_items())

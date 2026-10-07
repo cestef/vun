@@ -1,13 +1,15 @@
 //! Coverage (spec 11, section 6): the programs `vun fuzz` builds, and those `--cover` asks for,
 //! mark each block they run in `lang.cover.map`. The query input `CoverageOf`, which what it
 //! changes depends on, as the checks are. `vun cover` runs the tests of a namespace in such a program
-//! and reports which lines and functions the flags it wrote reach (`Reach`).
+//! and reports how often the lines and functions the counts it wrote reach ran (`Reach`).
 
 mod lcov;
 mod reach;
+mod rows;
 
 pub use lcov::Lcov;
-pub use reach::{FileRow, FunctionRow, Reach, Source};
+pub use reach::{Function, Reach, Source};
+pub use rows::{FileRow, FunctionRow, Shared};
 
 use vun_command::{Args, Param};
 use vun_query::Sharing;

@@ -8,6 +8,8 @@
 use crate::Item;
 /// Skips the test, saying why: `#[test.ignore("needs a network")]`.
 pub const ignore: Item = Item::new(&["std", "testing", "test", "ignore"]);
+/// Expects the test to trap: it passes when it does, and fails when it ends without one.
+pub const traps: Item = Item::new(&["std", "testing", "test", "traps"]);
 /// Generates a property's parameter with `with` rather than from its type, making what a
 /// case holds for it: `(#[test.gen(small)] n: u8)`.
 pub const r#gen: Item = Item::new(&["std", "testing", "test", "gen"]);

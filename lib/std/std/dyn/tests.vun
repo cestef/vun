@@ -1,0 +1,46 @@
+//! Tests of `std.Dyn`.
+
+Fixed: type = std.mem.alloc.Fixed;
+
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+    grow: (self: &mut Self, by: u64) = _;
+} });
+
+Square := struct { side: u64 };
+
+impl Shape for Square {
+    area := (self) -> u64 { (self.side * self.side).wrap(u64) };
+    grow := (self, by) { self.side = (self.side + by).wrap(u64); };
+}
+
+Rect := struct { w: u64, h: u64 };
+
+impl Shape for Rect {
+    area := (self) -> u64 { (self.w * self.h).wrap(u64) };
+    grow := (self, by) { self.w = (self.w + by).wrap(u64); };
+}
+
+#[test]
+a_dyn_calls_the_function_of_its_target := () {
+    mut square := Square{ .side = 3 };
+    mut rect := Rect{ .w = 4, .h = 5 };
+    mut a := unsafe std.Dyn(Shape).of(Square, lang.mem.pointer_to(Square, &square));
+    b := unsafe std.Dyn(Shape).of(Rect, lang.mem.pointer_to(Rect, &rect));
+    std.testing.assert(a.area() == 9 and b.area() == 20);
+    a.grow(1);
+    std.testing.assert(a.area() == 16 and square.side == 4);
+};
+
+#[test]
+an_owned_dyn_keeps_its_target_and_gives_the_memory_back := () {
+    mut storage: [256]u8 = [0; 256];
+    mut a := std.testing.Counting(Fixed).over(Fixed.init(&mut storage));
+    mut owned := std.dyn.OwnedDyn(Shape).new(Square, std.testing.Counting(Fixed), &mut a, Square{ .side = 5 })
+        .expect("room");
+    std.testing.assert(owned.get().area() == 25);
+    owned.get_mut().grow(1);
+    std.testing.assert(owned.get().area() == 36 and a.allocs == 1 and a.frees == 0);
+    owned.deinit(std.testing.Counting(Fixed), &mut a);
+    std.testing.assert(a.frees == 1);
+};

@@ -8,12 +8,16 @@
 use crate::Item;
 /// The namespace `std.testing.bench`.
 pub const bench: Item = Item::new(&["std", "testing", "bench"]);
+/// The namespace `std.testing.counting`.
+pub const counting: Item = Item::new(&["std", "testing", "counting"]);
 /// The namespace `std.testing.cover`.
 pub const cover: Item = Item::new(&["std", "testing", "cover"]);
 /// The namespace `std.testing.fuzz`.
 pub const fuzz: Item = Item::new(&["std", "testing", "fuzz"]);
 /// The namespace `std.testing.options`.
 pub const options: Item = Item::new(&["std", "testing", "options"]);
+/// The namespace `std.testing.outcome`.
+pub const outcome: Item = Item::new(&["std", "testing", "outcome"]);
 /// The namespace `std.testing.property`.
 pub const property: Item = Item::new(&["std", "testing", "property"]);
 /// The namespace `std.testing.sim`.
@@ -33,20 +37,17 @@ pub const Sim: Item = Item::new(&["std", "testing", "Sim"]);
 pub const Clock: Item = Item::new(&["std", "testing", "Clock"]);
 /// How a run is asked for.
 pub const Options: Item = Item::new(&["std", "testing", "Options"]);
-/// A test that is not run, and why.
+/// What became of a test, and the totals of a run (`std.testing.outcome`).
+pub const Traps: Item = Item::new(&["std", "testing", "Traps"]);
 pub const Ignored: Item = Item::new(&["std", "testing", "Ignored"]);
+pub const Outcome: Item = Item::new(&["std", "testing", "Outcome"]);
+pub const Falsified: Item = Item::new(&["std", "testing", "Falsified"]);
+pub const Trapped: Item = Item::new(&["std", "testing", "Trapped"]);
+pub const Totals: Item = Item::new(&["std", "testing", "Totals"]);
+/// An allocator counting what it is asked, over another.
+pub const Counting: Item = Item::new(&["std", "testing", "Counting"]);
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 pub const assert: Item = Item::new(&["std", "testing", "assert"]);
-/// What became of a test.
-pub const Outcome: Item = Item::new(&["std", "testing", "Outcome"]);
-/// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
-/// its cases were drawn from, the case that trapped first and how many smaller cases shrinking
-/// found. Its arguments are written before its line, as what the test wrote.
-pub const Falsified: Item = Item::new(&["std", "testing", "Falsified"]);
-/// A trap ending a test.
-pub const Trapped: Item = Item::new(&["std", "testing", "Trapped"]);
-/// Totals of a run.
-pub const Totals: Item = Item::new(&["std", "testing", "Totals"]);
 /// A line the runner writes: a test run and what became of it, then the totals; asked to list,
 /// the tests it would run and nothing of them.
 pub const Line: Item = Item::new(&["std", "testing", "Line"]);

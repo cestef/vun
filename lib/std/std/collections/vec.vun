@@ -148,10 +148,12 @@ Vec := ($T: type) -> type { #[kind.linear] #[kind.free] struct {
         .ok(tail)
     };
 
-    /// The items from `from` up to `to`, taken away as they are given; the items after them close
-    /// the gap when the iterator is ended, or done.
-    drain := (self: &mut Vec(T), from: usize, to: usize) -> std.iter.Iter(T) {
-        if from > to or to > self._len { lang.panic.fail(.message("drain past the end")); }
+    /// The items `range` holds (`xs.drain(1..3)`, `xs.drain(2..)`), taken away as they are given;
+    /// the items after them close the gap when the iterator is ended, or done. Traps for a range
+    /// reaching past the last item.
+    drain := (self: &mut Vec(T), range: lang.Bounds(usize)) -> std.iter.Iter(T) {
+        from := lang.bounds.first(usize, range);
+        to := (from + self.items()[range].len()).sat(usize);
         held := self._len;
         self._len = from;
         defer {

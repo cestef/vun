@@ -202,19 +202,24 @@ themselves.
 - **Doctests**: code blocks in doc comments compile and run in the interpreter.
 - **Rejection tests**: files in `tests/reject/` annotated with expected diagnostics (spec 10,
   section 7).
-- **Coverage**: `--cover` builds a program that marks each block it runs: MIR sets the block's flag
-  in `lang.cover.map` (`lang.cover.size` flags, a block's number the hash of its function's
-  instantiation and its position) as the block starts, identical on every backend; naked
-  functions hold their assembly alone and are not marked. `vun fuzz` reads the flags.
-  `vun cover [path] [names] [--functions] [--lcov file]` runs every test of the namespace in one
-  process of such a program, which writes the flags it set (`--cover`, one `covered` line before
-  the totals), and reports for the code below the path, by file, the lines holding code and the
-  functions the flags reach: a line is reached when a block holding code written on it ran, a
-  function when its first block did. The functions of the package no test reaches count as not
-  reached. A flag says a block ran, not how often, and blocks whose numbers meet modulo
-  `lang.cover.size` share one, so a block that did not run may be counted with one that did.
-  `--lcov` writes the lcov tracefile, a count being 0 or 1 and a function named by where it
-  begins. Not yet: counts, branches, a workspace's packages in one lcov file.
+- **Coverage**: `--cover` builds a program that counts each block it runs: lowering adds 1 to the
+  block's count in `lang.cover.map` (`lang.cover.size` `u32` counts, holding at the greatest; a
+  block's number the hash of its function's instantiation and its position) as the block starts,
+  identical on every backend; naked functions hold their assembly alone and are not counted.
+  `vun fuzz` reads the counts. `vun cover [path] [names] [--functions] [--lcov file]` runs every
+  test of the namespace in one process of such a program, which writes the counts it made
+  (`--cover`, one `covered` line before the totals), and reports for the code below the path, by
+  file, the lines holding code and the functions the counts reach: a line is hit as often as the
+  most-run block holding code written on it, a function as often as its first block ran, which
+  is how often it was called. The functions of the package no test reaches count 0. Blocks whose
+  numbers meet modulo `lang.cover.size` share a count, so a block that did not run may be
+  counted with one that did; the report says how many blocks share. `--lcov` writes the lcov
+  tracefile, a function named by the path of its declaration, else by where it begins. Not yet:
+  branches, a workspace's packages in one lcov file.
+- **Expected traps**: a test marked `#[test.traps()]` passes when it traps and fails when it ends
+  without one (`std.testing.Outcome.expecting_trap`); which trap ended it is not checked.
+- **Counting allocator**: `std.testing.Counting(A)` is an `Allocator` over `A` counting the
+  allocations and the frees it is asked, to test what code gives back.
 - **Mutation testing** (later): `vun mutate` mutates MIR and reruns tests in the interpreter,
   without rebuilding.
 - **C dependencies** can be built with sanitizers by the build step that compiles them.

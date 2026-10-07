@@ -17,7 +17,7 @@ pub const Stream: Item = Item::new(&["std", "testing", "fuzz", "Stream"]);
 /// what it did, or the first case that trapped, shrunk, with the case it was. Only the smallest
 /// case reports its trap, run once more.
 pub const fuzz: Item = Item::new(&["std", "testing", "fuzz", "fuzz"]);
-/// Clears the flags of `lang.cover.map`.
+/// Clears the counts of `lang.cover.map`.
 pub const clear: Item = Item::new(&["std", "testing", "fuzz", "clear"]);
-/// How many flags of `lang.cover.map` are set that `seen` does not hold, which it then holds.
+/// How many counts of `lang.cover.map` are not 0 that `seen` does not hold, which it then holds.
 pub const unseen: Item = Item::new(&["std", "testing", "fuzz", "unseen"]);

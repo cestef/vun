@@ -213,3 +213,17 @@ a_btree_map_drains_in_order_and_inserts_what_is_missing := () {
     std.testing.assert(in_order and keys == 4 and m.is_empty() and m.verify());
     m.deinit(Fixed, &mut a);
 };
+
+#[test]
+a_btree_map_reuses_the_nodes_it_gave_up := () {
+    mut storage: [65536]u8 = [0; 65536];
+    mut a := std.testing.Counting(Fixed).over(Fixed.init(&mut storage));
+    mut m := Map.empty();
+    for k in 0..100 { _ = m.insert(std.testing.Counting(Fixed), &mut a, k.to(u32), 1).expect("room"); }
+    asked := a.allocs;
+    for k in 0..100 { _ = m.remove(&k.to(u32)); }
+    std.testing.assert(m.is_empty());
+    for k in 0..100 { _ = m.insert(std.testing.Counting(Fixed), &mut a, k.to(u32), 2).expect("room"); }
+    std.testing.assert(a.allocs == asked and m.len() == 100 and m.verify());
+    m.deinit(std.testing.Counting(Fixed), &mut a);
+};

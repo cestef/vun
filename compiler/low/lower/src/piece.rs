@@ -140,6 +140,7 @@ impl Piece {
         let (mut function, l) = match self {
             Piece::Function { f, end, checked } => {
                 let mut l = Lowering::new(cx, &f.f.literal.file, *checked)?;
+                l.cover(f);
                 let body = cx.get::<Concrete>(f).map_err(|u| Unlowered::new(u.at(), Why::Unready(u)))?;
                 let function = match (body.suspends(), end) {
                     (true, false) => FnLower::coroutine(&mut l, f, &body, Mode::Resume)?,

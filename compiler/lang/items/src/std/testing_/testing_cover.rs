@@ -6,6 +6,5 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// The flags of `lang.cover.map` the tests set: a byte each, 1 once a block of that number
-/// started.
+/// The counts of `lang.cover.map` the tests make: how many times a block of that number started.
 pub const Covered: Item = Item::new(&["std", "testing", "cover", "Covered"]);

@@ -13,7 +13,7 @@ use crate::testing::BUILD;
 /// The id of this test's package, which no other test's package has.
 const PACKAGE: u64 = 1150;
 
-/// A function whose test takes one branch, and a function no test calls.
+/// A function whose test takes one branch twice, and a function no test calls.
 const SOURCE: &str = "\
 pick := (n: u32) -> u32 {
     if n > 10 {
@@ -28,7 +28,7 @@ unused := (n: u32) -> u32 {
 };
 
 #[test]
-low := () { assert(pick(3) == 4); };
+low := () { assert(pick(3) == 4); assert(pick(4) == 5); };
 ";
 
 /// The lines of `SOURCE` holding the branch the test takes, and the ones it does not.
@@ -57,18 +57,21 @@ fn a_covered_run_reaches_the_lines_and_functions_its_tests_run() {
     let run = session.run_tests(&program, [""; 0], options).unwrap();
     let reported = run.report(&mut Shell::plain(&mut out, &mut err)).unwrap();
     assert!(reported.passed);
-    let covered = reported.covered.expect("the program wrote its flags");
+    let covered = reported.covered.expect("the program wrote its counts");
     let tested = session.tests_program(file, ns).unwrap();
     let reach = session.reached(&tested, &covered, fixture.root.path(), std::slice::from_ref(&root));
     let source = reach.files.iter().find(|(path, _)| path.ends_with(root.file_name().unwrap())).unwrap().1;
-    assert_eq!(source.lines.get(&TAKEN), Some(&true), "{source:#?}");
+    assert_eq!(source.lines.get(&TAKEN), Some(&2), "{source:#?}");
     for line in MISSED {
-        assert_eq!(source.lines.get(&line), Some(&false), "line {line}: {source:#?}");
+        assert_eq!(source.lines.get(&line), Some(&0), "line {line}: {source:#?}");
     }
-    // `pick` is called, `unused` is not, and the test is a function the program runs.
-    let called: Vec<(u32, bool)> = source.functions.iter().map(|(&(line, _), &hit)| (line, hit)).collect();
-    assert_eq!(called, [(1, true), (9, false), (14, true)]);
+    // `pick` is called twice, `unused` not, and the test once, as a function the program runs.
+    let called: Vec<(u32, u64)> = source.functions.iter().map(|(&(line, _), f)| (line, f.calls)).collect();
+    assert_eq!(called, [(1, 2), (9, 0), (14, 1)]);
+    let names: Vec<_> = source.functions.values().map(|f| f.name.as_deref().unwrap_or_default()).collect();
+    assert!(names[0].ends_with("pick") && names[1].ends_with("unused"), "{names:?}");
     let lcov = Lcov(&reach).to_string();
-    assert!(lcov.contains(&format!("DA:{TAKEN},1\n")), "{lcov}");
+    assert!(lcov.contains(&format!("DA:{TAKEN},2\n")), "{lcov}");
     assert!(lcov.contains("DA:10,0\n") && lcov.contains("FNF:3\nFNH:2\n"), "{lcov}");
+    assert!(lcov.contains("FNDA:2,") && lcov.contains("pick\n"), "{lcov}");
 }

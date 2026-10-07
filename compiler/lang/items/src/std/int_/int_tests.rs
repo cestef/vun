@@ -39,3 +39,6 @@ pub const bits_are_counted: Item = Item::new(
 pub const a_rotation_is_undone_by_the_other: Item = Item::new(
     &["std", "int", "tests", "a_rotation_is_undone_by_the_other"],
 );
+pub const a_sign_mask_and_an_arithmetic_shift_follow_the_sign: Item = Item::new(
+    &["std", "int", "tests", "a_sign_mask_and_an_arithmetic_shift_follow_the_sign"],
+);

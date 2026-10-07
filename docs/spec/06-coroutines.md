@@ -41,7 +41,9 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 `for p in e { body }` drives any coroutine (appendix B), through `lang.ops.Iterate`: a frame is
 its own iterator (`coroutine_iterate`, an impl over the interface constructor `Coroutine`), and
 bounds, slices and arrays have iterators written in `lang.ops` as coroutine functions, over the
-primitives `lang.bounds.{empty, first, ends}` and `lang.mem.len`:
+primitives `lang.bounds.{empty, first, ends}` and `lang.mem.len`; `lang.bounds.{last, before}` give
+the same bounds read from their end, which `rev` of `std.iter` is written over (`(3..8).rev()`;
+bounds without an end cannot be reversed, and their item type has no size when running):
 
 - each `.yielded(v)` is matched against `p` and runs `body`;
 - the `for` expression's value is the coroutine's `.done` value, unless `break v` supplies another;

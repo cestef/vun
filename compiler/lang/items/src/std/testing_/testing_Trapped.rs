@@ -8,3 +8,5 @@
 use crate::Item;
 pub const site: Item = Item::new(&["std", "testing", "Trapped", "site"]);
 pub const said: Item = Item::new(&["std", "testing", "Trapped", "said"]);
+/// What a test expecting a trap reports when it ended without one.
+pub const untrapped: Item = Item::new(&["std", "testing", "Trapped", "untrapped"]);

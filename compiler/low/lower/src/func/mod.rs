@@ -9,6 +9,7 @@ mod call;
 mod constant;
 mod convert;
 mod coroutine;
+mod cover;
 mod float;
 mod int;
 mod memory;
@@ -174,6 +175,8 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
         let body = self.body;
         for (id, block) in body.blocks.iter() {
             self.b.switch_to(self.blocks[id]);
+            self.at = block.term.origin;
+            self.count(id)?;
             for stmt in &block.stmts {
                 self.at = stmt.origin;
                 if stmt.value == Rvalue::Dead {

@@ -57,8 +57,9 @@ pub const extend: Item = Item::new(&["std", "collections", "vec", "Vec", "extend
 pub const split_off: Item = Item::new(
     &["std", "collections", "vec", "Vec", "split_off"],
 );
-/// The items from `from` up to `to`, taken away as they are given; the items after them close
-/// the gap when the iterator is ended, or done.
+/// The items `range` holds (`xs.drain(1..3)`, `xs.drain(2..)`), taken away as they are given;
+/// the items after them close the gap when the iterator is ended, or done. Traps for a range
+/// reaching past the last item.
 pub const drain: Item = Item::new(&["std", "collections", "vec", "Vec", "drain"]);
 /// Keeps the items `keep` holds for, in their order. The others are not dropped: ones
 /// owning memory are taken away first.

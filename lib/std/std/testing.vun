@@ -12,6 +12,8 @@
 test := struct {
     /// Skips the test, saying why: `#[test.ignore("needs a network")]`.
     ignore := (reason: &[u8]) -> Ignored { .{ .reason = reason } };
+    /// Expects the test to trap: it passes when it does, and fails when it ends without one.
+    traps := () -> Traps { .{} };
     /// Generates a property's parameter with `with` rather than from its type, making what a
     /// case holds for it: `(#[test.gen(small)] n: u8)`.
     gen := ($T: type, with: (c: &mut Choices) -> T) -> std.testing.property.Generated(T) { .{ .with = with } };
@@ -31,70 +33,22 @@ Clock: type = std.testing.sim.Clock;
 /// How a run is asked for.
 Options: type = std.testing.options.Options;
 
-/// A test that is not run, and why.
-Ignored := struct {
-    reason: &[u8],
-};
+/// What became of a test, and the totals of a run (`std.testing.outcome`).
+Traps: type = std.testing.outcome.Traps;
+Ignored: type = std.testing.outcome.Ignored;
+Outcome: type = std.testing.outcome.Outcome;
+Falsified: type = std.testing.outcome.Falsified;
+Trapped: type = std.testing.outcome.Trapped;
+Totals: type = std.testing.outcome.Totals;
+
+/// An allocator counting what it is asked, over another.
+#[lint.allow(std.lints.naming.case, "a type constructor, written as a type is")]
+Counting := std.testing.counting.Counting;
 
 /// Traps unless `cond` holds, the failure quoting it with where it is written.
 #[comptime.deferred]
 assert := ($cond: lang.meta.Code(bool)) {
     if !$cond { lang.panic.fail(.assertion(cond.source(), cond.span())); }
-};
-
-/// What became of a test.
-Outcome := enum {
-    passed,
-    /// It is not run (`test.ignore`).
-    ignored(Ignored),
-    /// A trap ended it: its site, and what the program's table says of it.
-    trapped(Trapped),
-    /// A case of a property test trapped: the smallest case found.
-    falsified(Falsified),
-    /// A benchmark ran measured: how many times its body ran, and how long that took.
-    measured(std.testing.bench.Measured),
-    /// A property was fuzzed and no case trapped: how many ran, and what they covered.
-    fuzzed(std.testing.fuzz.Fuzzed),
-};
-
-/// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
-/// its cases were drawn from, the case that trapped first and how many smaller cases shrinking
-/// found. Its arguments are written before its line, as what the test wrote.
-Falsified := struct {
-    trapped: Trapped,
-    seed: u64,
-    case: usize,
-    shrinks: usize,
-};
-
-/// A trap ending a test.
-Trapped := struct {
-    site: u32,
-    said: ?std.trace.Site,
-};
-
-/// Totals of a run.
-Totals := struct {
-    passed: usize,
-    trapped: usize,
-    falsified: usize,
-    ignored: usize,
-    measured: usize,
-    fuzzed: usize,
-    /// How long the run took in nanoseconds, none where the system gave no clock.
-    nanos: ?u64,
-
-    /// Counts `outcome`.
-    count := (self: &mut Totals, outcome: &Outcome) {
-        match outcome {
-            .passed => { self.passed += 1; },
-            .trapped(_) => { self.trapped += 1; },
-            .falsified(_) => { self.falsified += 1; },
-            .ignored(_) => { self.ignored += 1; },
-            .measured(_) => { self.measured += 1; },
-            .fuzzed(_) => { self.fuzzed += 1; },
-        }
-    };
 };
 
 /// A line the runner writes: a test run and what became of it, then the totals; asked to list,
@@ -193,7 +147,13 @@ step := (
         lap := std.time.Stopwatch.start();
         outcome := match std.meta.attr(lang.meta.Decl, decl, Ignored) {
             .some(ignored) => Outcome.ignored(ignored),
-            .none => tested(F, f, decl.name, sys, options, out)?,
+            .none => {
+                found := tested(F, f, decl.name, sys, options, out)?;
+                match std.meta.attr(lang.meta.Decl, decl, Traps) {
+                    .some(_) => found.expecting_trap(),
+                    .none => found,
+                }
+            },
         };
         totals.count(&outcome);
         write(out, &Line.test(.{ .name = decl.name, .outcome = outcome, .nanos = lap.elapsed_nanos() }))?;

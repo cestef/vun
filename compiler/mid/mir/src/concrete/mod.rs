@@ -1,8 +1,7 @@
 //! Instantiations ready for code generation (spec 13, section 3): the MIR of a function with its
 //! `$` parameters bound, each compile-time value it reads evaluated into a constant that flows
 //! into the operands reading it, each operation the program's checks check running as its
-//! checked version (section 8.7), each block marking its coverage when the program is covered
-//! (spec 11, section 6), and every local typed.
+//! checked version (section 8.7), and every local typed.
 
 use std::sync::Arc;
 
@@ -11,7 +10,6 @@ use vun_query::{Cx, Cycle, Query};
 use vun_sema::callable::Callable;
 use vun_sema::callable::Parameters;
 use vun_sema::checks::ChecksOf;
-use vun_sema::cover::CoverageOf;
 use vun_sema::env::Env;
 use vun_sema::typed::Typed;
 use vun_sema_ty::Value;
@@ -22,7 +20,7 @@ mod covered;
 mod fold;
 mod unready;
 
-pub use covered::Region;
+pub use covered::{Map, Region};
 pub use unready::Unready;
 
 use crate::{Body, Local, Mir, Operand, Rvalue, Unbuilt};
@@ -60,7 +58,6 @@ impl Concrete {
         body.compile_time_arguments(&env)?;
         body.propagate(&env, &i.args);
         body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
-        body.covered(&env, cx.get::<CoverageOf>(&()), i);
         body.typed()?;
         body.verified();
         Ok(Arc::new(body))

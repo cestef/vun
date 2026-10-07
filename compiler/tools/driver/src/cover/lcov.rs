@@ -1,9 +1,10 @@
 //! `vun cover --lcov`: what a run reached, in the line-oriented tracefile format of lcov (`SF`,
-//! `FN`, `FNDA`, `DA`, `end_of_record`). A flag says a block ran, not how many times, so a count is
-//! 0 or 1, and a function is named by where it begins, as `line:column`.
+//! `FN`, `FNDA`, `DA`, `end_of_record`): a function is named by the path of its declaration, else
+//! by where it begins, as `line:column`.
 
 use std::fmt;
 
+use super::reach::{Function, Start};
 use super::{Reach, Source};
 
 /// A [`Reach`] written as an lcov tracefile.
@@ -22,16 +23,19 @@ impl fmt::Display for Lcov<'_> {
 
 impl Source {
     fn write(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for &(line, column) in self.functions.keys() {
-            writeln!(f, "FN:{line},{line}:{column}")?;
+        let named = |(line, column): Start, function: &Function| {
+            function.name.clone().unwrap_or_else(|| format!("{line}:{column}"))
+        };
+        for (&start @ (line, _), function) in &self.functions {
+            writeln!(f, "FN:{line},{}", named(start, function))?;
         }
-        for (&(line, column), &hit) in &self.functions {
-            writeln!(f, "FNDA:{},{line}:{column}", u8::from(hit))?;
+        for (&start, function) in &self.functions {
+            writeln!(f, "FNDA:{},{}", function.calls, named(start, function))?;
         }
-        writeln!(f, "FNF:{}\nFNH:{}", self.functions.len(), Self::reached(&self.functions))?;
-        for (line, &hit) in &self.lines {
-            writeln!(f, "DA:{line},{}", u8::from(hit))?;
+        writeln!(f, "FNF:{}\nFNH:{}", self.functions.len(), self.functions_called())?;
+        for (line, count) in &self.lines {
+            writeln!(f, "DA:{line},{count}")?;
         }
-        writeln!(f, "LF:{}\nLH:{}", self.lines.len(), Self::reached(&self.lines))
+        writeln!(f, "LF:{}\nLH:{}", self.lines.len(), self.lines_hit())
     }
 }

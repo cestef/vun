@@ -6,7 +6,8 @@
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
 use crate::Item;
-/// How many flags the map holds: blocks whose numbers meet modulo it share one.
+/// How many counts the map holds: blocks whose numbers meet modulo it share one.
 pub const size: Item = Item::new(&["lang", "cover", "size"]);
-/// The flags: 1 once a block of that number started, since the map was last cleared.
+/// The counts: how many times a block of that number started since the map was last cleared,
+/// holding at the greatest `u32`.
 pub const map: Item = Item::new(&["lang", "cover", "map"]);

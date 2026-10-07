@@ -5,17 +5,55 @@
 /// What a `Dyn` erases its target to: it is only ever pointed to.
 Erased := struct {};
 
-/// The functions of `I` a `Dyn` calls: the requirements that are functions, each as `Dyn(I)`
-/// takes it as its own, with the borrow of the `Dyn` for the receiver.
-Table := ($I: lang.Interface) -> type { struct {
+/// Reports each requirement of `I` that a table cannot hold: one that is no function, such as a
+/// type (`Error: type = _`), which names no type for every target, and one whose first parameter
+/// is no borrow of `Self`, which cannot be called without knowing the target's size.
+verify := ($I: lang.Interface) {
     $for m in std.meta.members(I(Dyn(I))) {
         $if m.required {
             $if .some(f) = m.type {
-                $if .some(_) = std.meta.signature(f) { $(m.name): f, }
+                $if .some(sig) = std.meta.signature(f) {
+                    $if lang.meta.items(sig.Params).len() == 0
+                        or !(std.meta.same(type, lang.meta.items(sig.Params)[0], &mut Dyn(I))
+                                or std.meta.same(type, lang.meta.items(sig.Params)[0], &Dyn(I))) {
+                                    $std.diag.error(.{
+                                        .msg = "the requirement `" ++ m.name
+                                            ++ "` does not take a borrow of `Self` first",
+                                        .help = .some(
+                                            "a `Dyn` calls through a table, so a requirement takes `&Self` or `&mut Self`"
+                                        ),
+                                    });
+                                }
+                } else {
+                    $std.diag.error(.{
+                        .msg = "the requirement `" ++ m.name ++ "` is not a function",
+                        .help = .some("a `Dyn` holds the functions of its target, so give the member a value"),
+                    });
+                }
+            } else {
+                $std.diag.error(.{
+                    .msg = "the requirement `" ++ m.name ++ "` has no type",
+                    .help = .some("a `Dyn` holds the functions of its target, so give the member a value"),
+                });
             }
         }
     }
-} };
+};
+
+/// The functions of `I` a `Dyn` calls: the requirements that are functions, each as `Dyn(I)`
+/// takes it as its own, with the borrow of the `Dyn` for the receiver.
+Table := ($I: lang.Interface) -> type {
+    $verify(I);
+    struct {
+        $for m in std.meta.members(I(Dyn(I))) {
+            $if m.required {
+                $if .some(f) = m.type {
+                    $if .some(_) = std.meta.signature(f) { $(m.name): f, }
+                }
+            }
+        }
+    }
+};
 
 /// Calls the function `name` of `table` with the target `data` as its receiver, a borrow of
 /// type `Receiver`, and the arguments `rest` after it.
@@ -106,5 +144,34 @@ Dyn := ($I: lang.Interface) -> type { struct {
             },
         );
         .{ .data = unsafe target.cast(Erased), .table = lang.meta.make(Table(I), 0, entries) }
+    };
+} };
+
+/// A `Dyn(I)` that owns its target, kept in the memory an allocator gave: linear, so it ends
+/// with `deinit`, which gives that memory back. The target is not dropped, so it must own nothing.
+#[lang.lint.allow(std.lints.naming.case, "a type constructor, whose methods receive its instances")]
+OwnedDyn := ($I: lang.Interface) -> type { #[kind.linear] struct {
+    _dyn: Dyn(I),
+    _size: usize,
+    _align: usize,
+
+    /// A `T` holding `value`, in memory from `a`, as `I` sees it.
+    new := ($T: type, $A: std.mem.alloc.Allocator, a: &mut A, value: T) -> Result(OwnedDyn(I), A.Error) {
+        size := lang.meta.size(T);
+        align := lang.meta.align(T);
+        target := unsafe a.alloc(size, align)?.cast(T);
+        unsafe target.write(value);
+        .ok(.{ ._dyn = unsafe Dyn(I).of(T, target), ._size = size, ._align = align })
+    };
+
+    /// The target, as a `Dyn`.
+    get := (self: &OwnedDyn(I)) -> &Dyn(I) { &self._dyn };
+    /// The target, as a `Dyn` that may change it.
+    get_mut := (self: &mut OwnedDyn(I)) -> &mut Dyn(I) { &mut self._dyn };
+
+    /// Gives the target's memory back to `a`, which it came from.
+    deinit := (self: OwnedDyn(I), $A: std.mem.alloc.Allocator, a: &mut A) {
+        .{ ._dyn = held, ._size = size, ._align = align } := self;
+        a.free(unsafe held.data.cast(u8), size, align);
     };
 } };

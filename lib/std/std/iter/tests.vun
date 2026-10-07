@@ -111,3 +111,32 @@ floats_are_added_up_in_the_order_given := () {
     xs: [4]f64 = [0.5, 0.25, 2.0, 1.25];
     std.testing.assert(xs.iter().sum_floats(f64) == 4.0);
 };
+
+#[test]
+a_range_is_read_from_its_end := () {
+    mut sum: u64 = 0;
+    mut first: u64 = 0;
+    mut count: u64 = 0;
+    for i in (3..8).rev() {
+        if count == 0 { first = i.to(u64); }
+        count += 1;
+        sum = (sum * 10 + i.to(u64)).to(u64);
+    }
+    std.testing.assert(first == 7 and count == 5 and sum == 76543);
+    lo: u8 = 5;
+    std.testing.assert((5..=5).rev().count() == 1 and (lo..lo).rev().count() == 0);
+    std.testing.assert((0..=255).rev().count() == 256);
+};
+
+#[test]
+#[test.traps()]
+a_sum_past_its_type_traps := () {
+    xs := [200, 100];
+    _ = nums(&xs).sum(u8);
+};
+
+#[test]
+#[test.traps()]
+a_test_that_traps_passes_when_it_is_expected_to := () {
+    std.testing.assert(false);
+};

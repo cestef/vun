@@ -35,3 +35,12 @@ pub const results_combine: Item = Item::new(
 pub const floats_are_added_up_in_the_order_given: Item = Item::new(
     &["std", "iter", "tests", "floats_are_added_up_in_the_order_given"],
 );
+pub const a_range_is_read_from_its_end: Item = Item::new(
+    &["std", "iter", "tests", "a_range_is_read_from_its_end"],
+);
+pub const a_sum_past_its_type_traps: Item = Item::new(
+    &["std", "iter", "tests", "a_sum_past_its_type_traps"],
+);
+pub const a_test_that_traps_passes_when_it_is_expected_to: Item = Item::new(
+    &["std", "iter", "tests", "a_test_that_traps_passes_when_it_is_expected_to"],
+);

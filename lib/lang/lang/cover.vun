@@ -1,9 +1,10 @@
-//! Coverage (spec 11, section 6): a program built covered, as `vun fuzz` builds one, sets the flag
-//! of each block of its code in `map` as the block starts, the flag of the block's number modulo
-//! `size`. `std.testing.fuzz` reads the flags to tell inputs apart by what they ran.
+//! Coverage (spec 11, section 6): a program built covered, as `vun fuzz` and `vun cover` build
+//! one, counts how often each block of its code started in `map`, the count of the block's number
+//! modulo `size`. `std.testing.fuzz` reads the counts to tell inputs apart by what they ran.
 
-/// How many flags the map holds: blocks whose numbers meet modulo it share one.
-size: usize = 8192;
+/// How many counts the map holds: blocks whose numbers meet modulo it share one.
+size: usize = 65536;
 
-/// The flags: 1 once a block of that number started, since the map was last cleared.
-mut map: [size]u8 = [0; size];
+/// The counts: how many times a block of that number started since the map was last cleared,
+/// holding at the greatest `u32`.
+mut map: [size]u32 = [0; size];

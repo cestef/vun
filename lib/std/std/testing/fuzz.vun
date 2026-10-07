@@ -92,15 +92,15 @@ fuzz := ($F: type, $f: F, sys: &mut std.os.System, seed: u64, runs: u64) -> Resu
     .ok(.{ .runs = runs, .kept = count, .flags = flags })
 };
 
-/// Clears the flags of `lang.cover.map`.
+/// Clears the counts of `lang.cover.map`.
 clear := () {
     unsafe {
-        lang.mem.fill(u8, lang.mem.items_pointer(u8, &lang.cover.map[0
+        lang.mem.fill(u32, lang.mem.items_pointer(u32, &lang.cover.map[0
                 ..lang.cover.size]), 0, lang.cover.size);
     }
 };
 
-/// How many flags of `lang.cover.map` are set that `seen` does not hold, which it then holds.
+/// How many counts of `lang.cover.map` are not 0 that `seen` does not hold, which it then holds.
 unseen := (seen: &mut [lang.cover.size]u8) -> usize {
     mut found: usize = 0;
     for i in 0..lang.cover.size {

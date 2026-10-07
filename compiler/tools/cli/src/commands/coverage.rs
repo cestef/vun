@@ -8,7 +8,7 @@ use std::path::Path;
 use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
-use vun_driver::cover::Lcov;
+use vun_driver::cover::{Lcov, Shared};
 use vun_driver::subject::Subject;
 use vun_driver::testing::{Mode, Reported};
 use vun_fs::Edit;
@@ -68,6 +68,9 @@ pub(super) fn report(
     let files = session.files(subject);
     let reach = session.reached(&program, covered, scope, &files);
     shell.table(&reach.file_rows())?;
+    if reach.shared > 0 {
+        shell.status(&Shared { blocks: reach.shared });
+    }
     if args.flag(&FUNCTIONS) {
         shell.table(&reach.function_rows())?;
     }

@@ -8,6 +8,8 @@
 use crate::Item;
 /// The namespace `std.iter.peek`.
 pub const peek: Item = Item::new(&["std", "iter", "peek"]);
+/// The namespace `std.iter.range`.
+pub const range: Item = Item::new(&["std", "iter", "range"]);
 /// The namespace `std.iter.tests`.
 pub const tests: Item = Item::new(&["std", "iter", "tests"]);
 /// An iterator whose next item can be looked at, over a frame.

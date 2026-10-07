@@ -1,0 +1,87 @@
+//! What became of a test, and the totals of a run (spec 11, section 3).
+
+/// A test that is expected to trap (`#[test.traps()]`).
+Traps := struct {};
+
+/// A test that is not run, and why.
+Ignored := struct {
+    reason: &[u8],
+};
+
+/// What became of a test.
+Outcome := enum {
+    passed,
+    /// It is not run (`test.ignore`).
+    ignored(Ignored),
+    /// A trap ended it: its site, and what the program's table says of it.
+    trapped(Trapped),
+    /// A case of a property test trapped: the smallest case found.
+    falsified(Falsified),
+    /// A benchmark ran measured: how many times its body ran, and how long that took.
+    measured(std.testing.bench.Measured),
+    /// A property was fuzzed and no case trapped: how many ran, and what they covered.
+    fuzzed(std.testing.fuzz.Fuzzed),
+};
+
+impl Outcome {
+    /// What the outcome is of a test expected to trap: a trap passes it, and ending without one
+    /// fails it; any other outcome is kept.
+    expecting_trap := (self: Outcome) -> Outcome {
+        match self {
+            .trapped(_) => .passed,
+            .passed => .trapped(Trapped.untrapped()),
+            kept => kept,
+        }
+    };
+}
+
+/// A property test's failing case, shrunk: the trap that ended the smallest case found, the seed
+/// its cases were drawn from, the case that trapped first and how many smaller cases shrinking
+/// found. Its arguments are written before its line, as what the test wrote.
+Falsified := struct {
+    trapped: Trapped,
+    seed: u64,
+    case: usize,
+    shrinks: usize,
+};
+
+/// The site of a test that was to trap and did not: no site of the program.
+no_site: u32 = 0xFFFF_FFFF;
+
+/// A trap ending a test.
+Trapped := struct {
+    site: u32,
+    said: ?std.trace.Site,
+
+    /// What a test expecting a trap reports when it ended without one.
+    untrapped := () -> Trapped {
+        .{
+            .site = no_site,
+            .said = .some(.{ .message = .some("the test did not trap"), .at = .none })
+        }
+    };
+};
+
+/// Totals of a run.
+Totals := struct {
+    passed: usize,
+    trapped: usize,
+    falsified: usize,
+    ignored: usize,
+    measured: usize,
+    fuzzed: usize,
+    /// How long the run took in nanoseconds, none where the system gave no clock.
+    nanos: ?u64,
+
+    /// Counts `outcome`.
+    count := (self: &mut Totals, outcome: &Outcome) {
+        match outcome {
+            .passed => { self.passed += 1; },
+            .trapped(_) => { self.trapped += 1; },
+            .falsified(_) => { self.falsified += 1; },
+            .ignored(_) => { self.ignored += 1; },
+            .measured(_) => { self.measured += 1; },
+            .fuzzed(_) => { self.fuzzed += 1; },
+        }
+    };
+};

@@ -68,3 +68,36 @@ calls := () { format(\"a {y} b\"); };
         (session.origins.source_span(d.primary.as_ref().unwrap().origin), "{}")
     );
 }
+
+#[test]
+fn a_dyn_of_an_interface_with_requirements_it_cannot_call_is_reported() {
+    let fixture = Fixture::new("comptime-reports-dyn");
+    let text = "\
+ByValue := interface(($Self: type) -> type { struct {
+    consume: (self: Self) -> u64 = _;
+} });
+Named := interface(($Self: type) -> type { struct {
+    Name: type = _;
+    size: (self: &Self) -> u64 = _;
+} });
+Thing := struct { n: u64 };
+impl ByValue for Thing { consume := (self) -> u64 { self.n }; }
+impl Named for Thing {
+    Name: type = u8;
+    size := (self) -> u64 { self.n };
+}
+by_value := (t: &Thing) {
+    _ = unsafe std.Dyn(ByValue).of(Thing, lang.mem.pointer_to(Thing, t));
+};
+named := (t: &Thing) {
+    _ = unsafe std.Dyn(Named).of(Thing, lang.mem.pointer_to(Thing, t));
+};
+";
+    let file = fixture.root.write("dyn.vun", text);
+    let mut session = fixture.session();
+    let file = session.load(&file).unwrap();
+    session.check(file);
+    let reported = session.diag.sorted(session.origins);
+    assert!(!reported.is_empty(), "a requirement a table cannot hold is reported");
+    assert!(reported.iter().all(|d| d.id == errors::COMPTIME_REPORTED), "{reported:#?}");
+}

@@ -96,3 +96,12 @@ a_rotation_is_undone_by_the_other := (x: u32, n: Int(0..32)) {
     std.testing.assert(x.rotate_left(n).rotate_right(n) == x);
     std.testing.assert(x.rotate_left(n).count_ones() == x.count_ones());
 };
+
+#[test]
+a_sign_mask_and_an_arithmetic_shift_follow_the_sign := () {
+    std.testing.assert((-5).to(i32).sign_mask() == -1 and (5).to(i32).sign_mask() == 0);
+    std.testing.assert((0).to(i32).sign_mask() == 0);
+    std.testing.assert((-8).to(i32).asr(1) == -4 and (-1).to(i32).asr(31) == -1);
+    std.testing.assert((-9).to(i8).asr(1) == -5 and (9).to(i8).asr(1) == 4 and (-128).to(i8).asr(7) == -1);
+    std.testing.assert((-8).to(i32).asr(0) == -8 and (100).to(u8).asr(2) == 25);
+};

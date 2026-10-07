@@ -97,22 +97,22 @@ pub enum Line {
     Argument(Argument),
     /// A test the runner lists when asked to list (`std.testing.Listed`).
     Listed(Listed),
-    /// The coverage flags the tests set, before the totals when asked to cover.
+    /// The coverage counts the tests make, before the totals when asked to cover.
     Covered(Covered),
 }
 
-/// The flags of `lang.cover.map` the tests set (`std.testing.Covered`): a byte each, 1 once a
-/// block of that number started, in the string a byte array is written as.
+/// The counts of `lang.cover.map` the tests make (`std.testing.Covered`): how many times a block
+/// of that number started.
 #[derive(Clone, Debug, PartialEq, Eq, ToData, FromData)]
 pub struct Covered {
-    pub flags: String,
+    pub counts: Vec<u32>,
 }
 
 impl Covered {
-    /// Whether a block of the number `flag` started.
+    /// How many times a block of the number `flag` started.
     #[must_use]
-    pub fn ran(&self, flag: usize) -> bool {
-        self.flags.as_bytes().get(flag).is_some_and(|&byte| byte != 0)
+    pub fn count(&self, flag: usize) -> u32 {
+        self.counts.get(flag).copied().unwrap_or_default()
     }
 }
 

@@ -4,6 +4,10 @@
 empty: ($T: type, b: Bounds(T)) -> bool = _;
 /// The least item of `b`, which is not empty.
 first: ($T: type, b: Bounds(T)) -> T = _;
+/// The greatest item of `b`, which has an end and is not empty; traps for `a..`.
+last: ($T: type, b: Bounds(T)) -> T = _;
+/// The item before `x` in `b`, or `x` itself when it is the least: counting down never leaves `T`.
+before: ($T: type, b: Bounds(T), x: T) -> T = _;
 /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
 ends: ($T: type, b: Bounds(T), x: T) -> bool = _;
 /// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.

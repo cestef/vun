@@ -67,3 +67,6 @@ pub const a_btree_map_drains_in_order_and_inserts_what_is_missing: Item = Item::
         "a_btree_map_drains_in_order_and_inserts_what_is_missing",
     ],
 );
+pub const a_btree_map_reuses_the_nodes_it_gave_up: Item = Item::new(
+    &["std", "collections", "btree", "tests", "a_btree_map_reuses_the_nodes_it_gave_up"],
+);

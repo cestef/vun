@@ -10,6 +10,10 @@ use crate::Item;
 pub const empty: Item = Item::new(&["lang", "bounds", "empty"]);
 /// The least item of `b`, which is not empty.
 pub const first: Item = Item::new(&["lang", "bounds", "first"]);
+/// The greatest item of `b`, which has an end and is not empty; traps for `a..`.
+pub const last: Item = Item::new(&["lang", "bounds", "last"]);
+/// The item before `x` in `b`, or `x` itself when it is the least: counting down never leaves `T`.
+pub const before: Item = Item::new(&["lang", "bounds", "before"]);
 /// Whether `x` is the greatest item of `b`; never for bounds without an end, such as `a..`.
 pub const ends: Item = Item::new(&["lang", "bounds", "ends"]);
 /// The item after `x` in `b`, or `x` itself when it is the greatest: counting up never leaves `T`.

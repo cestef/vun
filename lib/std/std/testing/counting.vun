@@ -1,0 +1,24 @@
+//! An allocator that counts what it is asked, over another one, to test what code gives back.
+
+Counting := ($A: std.mem.alloc.Allocator) -> type { struct {
+    inner: A,
+    /// How many allocations were asked.
+    allocs: usize,
+    /// How many were given back.
+    frees: usize,
+
+    /// Counts what `inner` is asked.
+    over := (inner: A) -> Counting(A) { .{ .inner = inner, .allocs = 0, .frees = 0 } };
+} };
+
+impl std.mem.alloc.Allocator for Counting($A) {
+    Error: type = A.Error;
+    alloc := (self, size, align) {
+        self.allocs += 1;
+        self.inner.alloc(size, align)
+    };
+    free := (self, p, size, align) {
+        self.frees += 1;
+        self.inner.free(p, size, align);
+    };
+}

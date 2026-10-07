@@ -1,0 +1,15 @@
+//! Ranges read from their end (spec 06): bounds with an end give their items last first.
+
+impl lang.Bounds($T) {
+    /// The items from the greatest to the least.
+    rev := (self: lang.Bounds(T)) -> std.iter.Iter(T) {
+        if lang.bounds.empty(T, self) { return; }
+        first := lang.bounds.first(T, self);
+        mut item := lang.bounds.last(T, self);
+        for {
+            yield item;
+            if item == first { break; }
+            item = lang.bounds.before(T, self, item);
+        }
+    };
+}

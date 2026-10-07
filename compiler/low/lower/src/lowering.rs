@@ -9,9 +9,11 @@ use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_lir::{Address, DataId, FuncId, ImportId, Site};
 use vun_origin::OriginId;
+use vun_primitives::abi::Abi;
 use vun_query::Cx;
+use vun_sema::cover::{Coverage, CoverageOf};
 use vun_sema::env::Env;
-use vun_sema::link::Linkable;
+use vun_sema::link::{Exported, Linkable};
 use vun_sema::target::TargetOf;
 use vun_sema::thread::PerThread;
 use vun_sema_ty::call::Instantiation;
@@ -33,6 +35,8 @@ pub(crate) struct Lowering<'a, 'db> {
     pub(crate) threads: Threads,
     /// Whether the checks apply in the function lowered, which is not one they run in.
     pub(crate) checked: bool,
+    /// The function lowered when the program counts its blocks (`lang.cover`), else `None`.
+    pub(crate) covering: Option<Instantiation>,
     /// What the function names, by the positions its ids are.
     pub(crate) refs: Refs,
     functions: Map<FuncRef, FuncId>,
@@ -55,12 +59,21 @@ impl<'a, 'db> Lowering<'a, 'db> {
             checks,
             threads: target.threads,
             checked,
+            covering: None,
             refs: Refs::default(),
             functions: Map::default(),
             imports: Map::default(),
             constants: Map::default(),
             globals: Map::default(),
         })
+    }
+
+    /// Counts the blocks of `f` as they start when the program is built covered, unless it is a
+    /// naked function, which holds its assembly alone.
+    pub(crate) fn cover(&mut self, f: &Instantiation) {
+        let covered = self.types.cx.get::<CoverageOf>(&()) == Coverage::Blocks;
+        let naked = f.f.abi(self.types.cx) == Some(Abi::naked);
+        self.covering = (covered && !naked).then(|| f.clone());
     }
 
     /// Where a file as a whole is reported: its namespace.

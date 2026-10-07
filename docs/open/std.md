@@ -16,7 +16,5 @@
   `std.os.{env,process,net}` and directories, `std.json` reading beyond the pull reader. `BTreeMap`
   has no entry value to change in place beyond `get_or_insert`.
 - `std.math`: correctly rounded `exp`/`ln`/`sin`; `f16` transcendentals round twice.
-- A helper in `std.int` for an arithmetic shift or sign mask (signed bit tricks need `.wrap` round
-  trips).
 - A `mut x := e` takes the range of `e`, so `x -= 1` traps at its low end: annotate it.
 - Plans (`vun build` on a package): `flash`, `test_on`, dependency parameters.

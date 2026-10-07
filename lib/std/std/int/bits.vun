@@ -17,6 +17,20 @@ impl Int($r) {
         x.rotate_left((bits - n) % bits)
     };
 
+    /// 0 where the value is not below zero, else the value whose bits are all set (-1 for a signed
+    /// type), as `x >> (width - 1)` is for a signed value.
+    sign_mask := (x: Int(r)) -> Int(r) {
+        if x < 0 { (0 - 1).wrap(Int(r)) } else { 0 }
+    };
+
+    /// The value with its bits moved `n` places toward the least significant end, the places
+    /// opened at the other end taking the sign: a division by 2 raised to `n`, rounded down.
+    asr := (x: Int(r), n: Int(0..std.int.width(r))) -> Int(r) {
+        word := x.wrap(std.int.Word(r));
+        sign := x.sign_mask().wrap(std.int.Word(r));
+        ((word >> n) | (sign ^ (sign >> n))).wrap(Int(r))
+    };
+
     /// How many of the bits of the value's storage are set.
     count_ones := (x: Int(r)) -> Int(0..=std.int.width(r)) {
         $bits := std.int.width(r);

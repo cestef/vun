@@ -132,6 +132,14 @@ impl Apply for Primitive {
             (Self::Bounds(Bounds::first), [_, Value::Range(Some(items))]) => {
                 Ok(Value::Int(items.lo().finite().ok_or(Unevaluated::Unsupported)?.clone()))
             }
+            (Self::Bounds(Bounds::last), [_, Value::Range(Some(items))]) => {
+                let last = items.hi().finite().ok_or_else(|| Unevaluated::trap(Reason::Bounds))?;
+                Ok(Value::Int(last.clone()))
+            }
+            (Self::Bounds(Bounds::before), [_, Value::Range(Some(items)), Value::Int(x)]) => {
+                let first = items.lo().finite() == Some(x);
+                Ok(Value::Int(if first { x.clone() } else { x - &Integer::from(1) }))
+            }
             (Self::Bounds(Bounds::ends), [_, Value::Range(Some(items)), Value::Int(x)]) => {
                 env.decide(items.hi().finite() == Some(x))
             }
