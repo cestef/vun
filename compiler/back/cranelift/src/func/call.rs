@@ -4,12 +4,14 @@ use cranelift_codegen::ir::immediates::Imm64;
 use cranelift_codegen::ir::{
     ExtFuncData, ExternalName, FuncRef, GlobalValue, GlobalValueData, InstBuilder, Value as Val,
 };
-use vun_backend::Lack;
-use vun_lir::{Address, Callee, DataId, ImportKind, Value};
+use cranelift_codegen::isa::CallConv;
+use vun_backend::{Lack, Missing};
+use vun_lir::{Address, Callee, DataId, FuncId, ImportKind, Value};
 use vun_origin::OriginId;
 
 use super::Lower;
-use crate::names::Named;
+use crate::abi::Plan;
+use crate::names::{Body, Named};
 use crate::plan::Returned;
 
 impl Lower<'_, '_> {
@@ -53,6 +55,35 @@ impl Lower<'_, '_> {
             self.store_parts(parts, to, &returned);
         }
         Ok(defines.then(|| self.b.inst_results(call)[0]))
+    }
+
+    /// Jumps to the body of `callee`, which returns to this function's caller: this function is a
+    /// body too, and so has the tail convention (`Tails`), or the call is refused.
+    pub(super) fn tail_call(&mut self, callee: &Callee, args: &[Value], at: OriginId) -> Result<(), Lack> {
+        let Callee::Func(f) = callee else { return Err(Missing::TailCall.at(at)) };
+        let body = self.cx.body(*f, at)?;
+        let (Some(plan), CallConv::Tail) = (body, self.plan.signature.call_conv) else {
+            return Err(Missing::TailCall.at(at));
+        };
+        let (args, _) = self.arguments(plan, args);
+        let target = self.body_ref(*f, plan);
+        self.b.ins().return_call(target, &args);
+        self.tailed = true;
+        Ok(())
+    }
+
+    /// The body of `f`, declared the first time it is named.
+    fn body_ref(&mut self, f: FuncId, plan: &Plan) -> FuncRef {
+        if let Some(&declared) = self.bodies.get(&f) {
+            return declared;
+        }
+        let signature = self.b.import_signature(plan.signature.clone());
+        let name = self.b.func.declare_imported_user_function(Body(f).name());
+        let data =
+            ExtFuncData { name: ExternalName::user(name), signature, colocated: true, patchable: false };
+        let declared = self.b.import_function(data);
+        self.bodies.insert(f, declared);
+        declared
     }
 
     /// The function or import at `target`, declared the first time it is named.

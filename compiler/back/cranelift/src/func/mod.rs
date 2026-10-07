@@ -6,6 +6,7 @@ mod cast;
 mod copy;
 mod inst;
 mod record;
+mod stub;
 mod term;
 
 use std::collections::HashMap;
@@ -13,16 +14,19 @@ use std::collections::HashMap;
 use cranelift_codegen::ir::{
     self, FuncRef, GlobalValue, MemFlagsData, SourceLoc, StackSlotData, StackSlotKind, Type,
 };
+use cranelift_codegen::isa::CallConv;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use vun_backend::{Lack, Missing};
-use vun_index::{Idx, IndexVec};
+use vun_index::IndexVec;
 use vun_lir::analysis::{Cfg, Loops, Order};
 use vun_lir::{Address, Block, FuncId, Function, ImportId, ImportKind, Slot, Unit, Value};
 use vun_origin::OriginId;
 
 use crate::abi::Plan;
 use crate::isa::Isa;
+use crate::names::{Body, Named};
 use crate::plan::Parts;
+use crate::tail::Tails;
 
 /// How a signature is passed, or what Cranelift lacks of it: a call of a function it cannot
 /// pass to is refused where it is, and the function holding the call is left to the assisting
@@ -35,18 +39,32 @@ pub(crate) struct Cx<'a> {
     pub(crate) unit: &'a Unit,
     pub(crate) isa: &'a Isa,
     funcs: IndexVec<FuncId, Option<Passed>>,
+    /// How the body of each function with an entry is passed to: in the tail convention.
+    bodies: IndexVec<FuncId, Option<Passed>>,
     imports: IndexVec<ImportId, Option<Passed>>,
 }
 
 impl<'a> Cx<'a> {
     /// The context of `unit`, whose functions `reached` holds.
-    pub(crate) fn new(unit: &'a Unit, isa: &'a Isa, reached: &vun_lir::analysis::Reached) -> Self {
+    pub(crate) fn new(
+        unit: &'a Unit,
+        isa: &'a Isa,
+        reached: &vun_lir::analysis::Reached,
+        tails: &Tails,
+    ) -> Self {
         let funcs = unit.functions.iter().map(|(id, f)| reached.contains(id).then(|| isa.plan(&f.signature)));
+        let bodies = unit.functions.iter().map(|(id, f)| {
+            tails.contains(id).then(|| -> Passed {
+                let mut plan = isa.plan(&f.signature)?;
+                plan.signature.call_conv = CallConv::Tail;
+                Ok(plan)
+            })
+        });
         let imports = unit.imports.iter().map(|(_, import)| match &import.kind {
             ImportKind::Func(signature) => Some(isa.plan(signature)),
             ImportKind::Data => None,
         });
-        Self { unit, isa, funcs: funcs.collect(), imports: imports.collect() }
+        Self { unit, isa, funcs: funcs.collect(), bodies: bodies.collect(), imports: imports.collect() }
     }
 
     /// How the function or import at `address` is passed to, if it is one.
@@ -63,9 +81,22 @@ impl<'a> Cx<'a> {
     }
 }
 
-/// A function lowered, with the origins its source locations number.
+impl Cx<'_> {
+    /// How the body of `f` is passed to, if it has an entry.
+    ///
+    /// # Errors
+    /// Returns what Cranelift lacks of it, at `at`.
+    pub(crate) fn body(&self, f: FuncId, at: OriginId) -> Result<Option<&Plan>, Lack> {
+        self.bodies[f].as_ref().map(|passed| passed.as_ref().map_err(|&m| m.at(at))).transpose()
+    }
+}
+
+/// A function lowered, with the origins its source locations number: its body in the tail
+/// convention and the entry that calls it, if it has one (`Tails`), else the function itself.
+#[derive(Clone)]
 pub(crate) struct Lowered {
     pub(crate) func: ir::Function,
+    pub(crate) entry: Option<ir::Function>,
     pub(crate) origins: Vec<OriginId>,
 }
 
@@ -81,7 +112,10 @@ struct Lower<'a, 'b> {
     values: IndexVec<Value, Option<ir::Value>>,
     blocks: IndexVec<Block, Option<ir::Block>>,
     slots: IndexVec<Slot, Option<ir::StackSlot>>,
+    /// Whether the last instruction was a tail call, which ends its block.
+    tailed: bool,
     refs: HashMap<Address, FuncRef>,
+    bodies: HashMap<FuncId, FuncRef>,
     globals: HashMap<(Address, bool), GlobalValue>,
     origins: Vec<OriginId>,
 }
@@ -95,11 +129,14 @@ impl Cx<'_> {
     /// # Panics
     /// If `id` is not reached.
     pub(crate) fn lower(&self, id: FuncId, f: &Function) -> Result<Lowered, Lack> {
-        let plan = self.plan(Address::Func(id), f.origin)?.expect("a function has a signature");
-        let mut func = ir::Function::with_name_signature(
-            ir::UserFuncName::user(0, id.index().try_into().expect("ids fit u32")),
-            plan.signature.clone(),
-        );
+        let body = self.body(id, f.origin)?;
+        let plan = match body {
+            Some(plan) => plan,
+            None => self.plan(Address::Func(id), f.origin)?.expect("a function has a signature"),
+        };
+        let name = if body.is_some() { Body(id).name() } else { Address::Func(id).name() };
+        let mut func =
+            ir::Function::with_name_signature(ir::UserFuncName::User(name), plan.signature.clone());
         let mut context = FunctionBuilderContext::new();
         let mut lower = Lower {
             cx: self,
@@ -111,15 +148,18 @@ impl Cx<'_> {
             values: IndexVec::filled(None, f.values.len()),
             blocks: IndexVec::filled(None, f.blocks.len()),
             slots: IndexVec::filled(None, f.slots.len()),
+            tailed: false,
             refs: HashMap::new(),
+            bodies: HashMap::new(),
             globals: HashMap::new(),
             origins: Vec::new(),
         };
         lower.body()?;
-        let origins = lower.origins;
+        let mut origins = lower.origins;
         lower.b.seal_all_blocks();
         lower.b.finalize(self.isa.target.frontend_config());
-        Ok(Lowered { func, origins })
+        let entry = body.is_some().then(|| self.entry(id, f, &mut origins)).transpose()?;
+        Ok(Lowered { func, entry, origins })
     }
 }
 

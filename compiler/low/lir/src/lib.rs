@@ -2,6 +2,7 @@
 //! scalars; aggregates live in memory, reached by address. Functions, data and imports are
 //! addressed by their ids, and only exports and imports carry link symbols.
 
+mod abi;
 pub mod analysis;
 pub mod build;
 mod compact;

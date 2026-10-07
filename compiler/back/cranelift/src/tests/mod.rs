@@ -11,6 +11,8 @@ use vun_lir::{AbiType, Builder, Conv, FuncId, InstKind, Linkage, Scalar, Signatu
 use vun_origin::OriginTable;
 use vun_target::{Convention, Profile};
 
+mod tail;
+
 use crate::compile::Compilation;
 use crate::failed::Failed;
 use crate::isa::{Isa, NAMES};

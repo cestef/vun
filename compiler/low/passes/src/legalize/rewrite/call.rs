@@ -35,7 +35,10 @@ impl Rewrite<'_> {
         let mut args: Vec<Value> = args.iter().flat_map(|&a| self.flat(a)).collect();
         if let Some(count) = wide_result {
             if kind == CallKind::Tail {
-                return Err(Unlegalized::TailResult);
+                // The callee writes where the function's caller expects the result.
+                args.push(self.result.expect("a function returning a wide integer receives its address"));
+                self.b.push(InstKind::Call { callee, args, kind }, None, at);
+                return Ok(Some(Parts::Written));
             }
             let limb = self.legalize.limb_bytes();
             let slot = self.b.slot(limb * u64::try_from(count).expect("a few limbs"), limb, at);

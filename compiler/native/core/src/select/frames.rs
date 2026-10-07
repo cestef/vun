@@ -67,7 +67,7 @@ pub trait Frames: Carries {
         let f = cx.f;
         let signature: &Signature = cx.signature(callee);
         let passing = Passing::of(signature, Self::convention(cx)).map_err(|u| cx.lack(u.into()))?;
-        if kind == CallKind::Tail && !passing.in_registers() {
+        if kind == CallKind::Tail && !passing.replaces(Self::passing(cx)) {
             return Err(cx.lack(Missing::TailCall));
         }
         cx.frame.outgoing(passing.stack);
@@ -139,7 +139,14 @@ pub trait Frames: Carries {
             }
         }
         if kind == CallKind::Tail {
-            // The result is the callee's, which the `return` after it passes on from where it is.
+            // The arguments on the stack go over the ones this function received, after every
+            // value is read, since one may come from there. The result is the callee's, which
+            // the `return` after it passes on from where it is.
+            if passing.stack > 0 {
+                Self::offset(cx, Self::TEMP, Self::FRAME, i64::from(Self::CALLER_ARGS));
+                Self::offset(cx, Self::CARRIER, Self::STACK, 0);
+                Self::copy_bytes(cx, Self::TEMP, Self::CARRIER, passing.stack, Self::FAR);
+            }
             return Self::branch_tail(cx, callee);
         }
         Self::branch_link(cx, callee);

@@ -1,8 +1,9 @@
 //! Compiling every function of a unit, in parallel, into code with its relocations.
 
-use cranelift_codegen::control::ControlPlane;
-use cranelift_codegen::ir::{ExternalName, LibCall};
-use cranelift_codegen::{CodegenError, Context, FinalizedRelocTarget};
+mod function;
+mod lowering;
+
+use cranelift_codegen::ir::LibCall;
 use vun_asm::{Code, Reloc};
 use vun_backend::{Assisted, Compiled, Lack};
 use vun_index::{Idx, IndexVec};
@@ -13,10 +14,7 @@ use vun_par::Parallel;
 use vun_trace::Activity;
 
 use crate::failed::Failed;
-use crate::func::{Cx, Lowered};
 use crate::isa::Isa;
-use crate::names::Addressed;
-use crate::relocs::Placed;
 
 /// What compiled code calls that the unit does not name: what Cranelift itself needs of the
 /// runtime.
@@ -54,18 +52,22 @@ pub(crate) type Assist<'a> = &'a dyn Fn(&[FuncId]) -> Assisted;
 
 /// What a relocation of compiled code names.
 #[derive(Clone, Copy)]
-enum Named {
+pub(crate) enum Named {
     Address(Address),
+    /// The body of a function with an entry, which follows the entry in its code.
+    Body(FuncId),
     Support(Support),
 }
 
 /// A function compiled: its code, and its text if it was asked for.
-struct Function {
-    code: Code<(), Named>,
+pub(crate) struct Function {
+    pub(crate) code: Code<(), Named>,
+    /// Where its body starts, if the code is an entry followed by it.
+    pub(crate) body_at: Option<u64>,
     /// The bytes of its frame below the frame pointer.
-    frame: u64,
-    marks: Vec<(u64, OriginId)>,
-    text: Option<Listed>,
+    pub(crate) frame: u64,
+    pub(crate) marks: Vec<(u64, OriginId)>,
+    pub(crate) text: Option<Listed>,
 }
 
 /// A function's text for people: its Cranelift IR and machine code, and the origins the IR's
@@ -113,20 +115,20 @@ impl Compilation {
         listed: bool,
     ) -> Result<Self, Failed> {
         let reached = Reached::of(unit);
-        let cx = Cx::new(unit, isa, &reached);
         let functions: Vec<_> = unit.functions.iter().collect();
+        let lowered = Self::lowered(unit, isa, &reached, &functions);
+        let word = u64::from(unit.pointer_bits / u8::BITS);
         let compiling = COMPILE.start();
-        let outcomes = functions.par_map(|&(id, f)| {
-            if !reached.contains(id) {
-                return Ok::<_, Failed>(Outcome::Unreached);
-            }
+        let lowered: Vec<_> = lowered.iter().zip(&functions).collect();
+        let outcomes = lowered.par_map(|&(lowered, &(id, f))| {
             let _span =
                 vun_trace::tracing::debug_span!("cranelift", id = id.index(), f = %f.linkage).entered();
-            let lowered = match cx.lower(id, f) {
-                Ok(lowered) => lowered,
-                Err(lack) => return Ok(Outcome::Lacking(lack)),
+            let lowered = match lowered {
+                None => return Ok::<_, Failed>(Outcome::Unreached),
+                Some(Ok(lowered)) => lowered,
+                Some(Err(lack)) => return Ok(Outcome::Lacking(*lack)),
             };
-            let compiled = Self::function(isa, lowered, f.origin, listed)?;
+            let compiled = Self::compiled(isa, lowered, f.origin, listed, word)?;
             vun_trace::tracing::debug!(bytes = compiled.code.bytes.len(), "compiled");
             Ok(Outcome::Compiled(compiled))
         });
@@ -144,6 +146,13 @@ impl Compilation {
             others = assist(&ids)?;
         }
         let mut others = others.into_iter().peekable();
+        let body_at: IndexVec<FuncId, Option<u64>> = outcomes
+            .iter()
+            .map(|o| match o {
+                Outcome::Compiled(compiled) => compiled.body_at,
+                Outcome::Unreached | Outcome::Lacking(_) => None,
+            })
+            .collect();
         let mut done = Self { code: IndexVec::new(), support: Vec::new(), listing: Vec::new() };
         for ((id, _), outcome) in functions.iter().zip(outcomes) {
             let compiled = match outcome {
@@ -162,10 +171,17 @@ impl Compilation {
                 offset: r.offset,
                 target: match r.target {
                     Named::Address(address) => address,
+                    Named::Body(f) => Address::Func(f),
                     Named::Support(support) => done.import(unit, support),
                 },
                 kind: r.kind,
-                addend: r.addend,
+                addend: r.addend
+                    + match r.target {
+                        Named::Body(f) => {
+                            i64::try_from(body_at[f].expect("a body has an entry")).expect("code fits")
+                        }
+                        Named::Address(_) | Named::Support(_) => 0,
+                    },
             });
             let relocs = relocs.collect();
             let code = Code { bytes: compiled.code.bytes, relocs, listing: Vec::new() };
@@ -187,61 +203,5 @@ impl Compilation {
             self.support.len() - 1
         });
         Address::Import(ImportId::new(unit.imports.len() + at))
-    }
-
-    /// One function's code.
-    ///
-    /// # Panics
-    /// If Cranelift finds the function invalid, which it is only if lowering made it so.
-    fn function(isa: &Isa, lowered: Lowered, at: OriginId, listed: bool) -> Result<Function, Failed> {
-        let Lowered { func, origins } = lowered;
-        let mut context = Context::for_function(func);
-        context.set_disasm(listed);
-        let clif = listed.then(|| context.func.display().to_string());
-        if let Err(failure) = context.compile(&*isa.target, &mut ControlPlane::default()) {
-            return match failure.inner {
-                CodegenError::Verifier(errors) => {
-                    panic!(
-                        "the cranelift backend made an invalid function: {errors}\n{}",
-                        failure.func.display()
-                    )
-                }
-                error => Err(Failed::Refused { at, error }),
-            };
-        }
-        let compiled = context.compiled_code().expect("a function compiled has code");
-        let names = context.func.params.user_named_funcs();
-        let relocs = compiled.buffer.relocs().iter().map(|r| {
-            let target = match &r.target {
-                FinalizedRelocTarget::ExternalName(ExternalName::User(name)) => {
-                    Named::Address(names[*name].address())
-                }
-                FinalizedRelocTarget::ExternalName(ExternalName::LibCall(call)) => {
-                    Named::Support(Support::of(*call).expect("the support Cranelift calls is listed"))
-                }
-                _ => panic!("the backend lowers only calls and addresses of the unit's, and thread storage"),
-            };
-            let kind = r.kind.kind().expect("the relocations Cranelift writes for these machines are listed");
-            Reloc { offset: u64::from(r.offset), target, kind, addend: r.addend }
-        });
-        let relocs = relocs.collect();
-        let marks = compiled
-            .buffer
-            .get_srclocs_sorted()
-            .iter()
-            .filter(|s| !s.loc.is_default())
-            .map(|s| (u64::from(s.start), origins[s.loc.bits() as usize]))
-            .collect();
-        let text = clif.map(|clif| Listed {
-            text: format!("{clif}\n{}", compiled.vcode.as_deref().unwrap_or_default()),
-            origins: origins.clone(),
-        });
-        let frame = compiled.buffer.frame_layout().map_or(0, |layout| u64::from(layout.frame_to_fp_offset));
-        Ok(Function {
-            code: Code { bytes: compiled.code_buffer().to_vec(), relocs, listing: Vec::new() },
-            frame,
-            marks,
-            text,
-        })
     }
 }

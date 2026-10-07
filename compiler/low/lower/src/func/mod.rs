@@ -21,6 +21,7 @@ mod rounded;
 mod rvalue;
 mod stack;
 mod storage;
+mod tail;
 mod term;
 mod trap;
 mod variant;
@@ -59,6 +60,8 @@ pub(crate) struct FnLower<'l, 'a, 'db> {
     checked: bool,
     guards: Vec<(Slot, u64)>,
     blocks: IndexVec<BlockId, vun_lir::Block>,
+    /// What the caller passed, a value for each of the signature's.
+    received: Vec<Value>,
     /// Where a result held in memory is written: the address the caller passed.
     out: Option<Value>,
     /// The address of the frame, in a coroutine's `resume` or `end`.
@@ -143,6 +146,7 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
             checked: false,
             guards: Vec::new(),
             blocks: IndexVec::new(),
+            received: Vec::new(),
             out: None,
             frame: None,
             coroutine: None,
@@ -206,7 +210,8 @@ impl<'l, 'a, 'db> FnLower<'l, 'a, 'db> {
     /// the address passed, and the address a result in memory is written through.
     fn entry(&mut self, params: &[Local], through: bool) -> Result<(), Unlowered> {
         let entry = self.b.current();
-        let mut values = self.b.params(entry).to_vec().into_iter();
+        self.received = self.b.params(entry).to_vec();
+        let mut values = self.received.clone().into_iter();
         for &param in params {
             let ty = self.ty(param)?;
             let Some(addr) = self.local(param) else { continue };

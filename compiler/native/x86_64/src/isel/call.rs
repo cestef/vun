@@ -10,6 +10,7 @@ use vun_dwarf::Step;
 use vun_lir::{AbiType, Address, CallKind, Callee, Conv, Ext, Signature, Value};
 
 use super::Sel;
+use super::entry::CALLER_ARGS;
 use crate::X86;
 use crate::abi::{Carrier, Loc, Passing, Ret};
 use vun_native::width::offset_of;
@@ -25,7 +26,7 @@ impl Sel<'_, '_> {
         let f = self.f;
         let signature: &Signature = self.signature(callee);
         let passing = Passing::of(signature, self.state.convention).map_err(|u| self.lack(u.into()))?;
-        if kind == CallKind::Tail && !passing.in_registers() {
+        if kind == CallKind::Tail && !passing.replaces(&self.state.passing) {
             return Err(self.lack(Missing::TailCall));
         }
         self.frame.outgoing(passing.stack);
@@ -78,7 +79,7 @@ impl Sel<'_, '_> {
         }
         if kind == CallKind::Tail {
             // The result is the callee's, which the `return` after it passes on from where it is.
-            self.tail_jump(callee);
+            self.tail_jump(callee, passing.stack);
             return Ok(());
         }
         match callee {
@@ -112,8 +113,11 @@ impl Sel<'_, '_> {
         Ok(())
     }
 
-    /// Leaves the frame and jumps to `callee`, which returns to this function's caller.
-    fn tail_jump(&mut self, callee: &Callee) {
+    /// Writes the `stack` bytes of outgoing arguments over the ones this function received,
+    /// leaves the frame and jumps to `callee`, which returns to this function's caller. They are
+    /// staged first, since a value passed may be read from the area they go to.
+    fn tail_jump(&mut self, callee: &Callee, stack: u64) {
+        self.copy_bytes(Mem::at(Reg::Rbp, CALLER_ARGS), outgoing(0), stack, X86::TEMP);
         // The target waits in the carrier, which leaving the frame leaves alone.
         if let Callee::Indirect(target, _) = callee {
             self.reg_to(*target, X86::CARRIER);

@@ -1,0 +1,29 @@
+//! Guaranteed tail calls, a million deep, whose result is held in memory by the callee: a C
+//! function's record, and an integer wider than a register. The callee writes it through the
+//! address the first call received. Exits with the number of checks that fail: 0 when all hold.
+
+start := std.os.start(main);
+
+#[layout.c]
+Triple := struct { a: u64, b: u64, c: u64 };
+
+#[abi.c]
+chain := (n: u32) -> Triple {
+    if n == 0 { return Triple{ .a = 1, .b = 2, .c = 3 }; }
+    return lang.flow.tail(chain, (n - 1,));
+};
+
+widen := (n: u32, acc: u128) -> u128 {
+    if n == 0 { return acc; }
+    return lang.flow.tail(widen, (n - 1, acc ^ 0x1_0000_0000_0000_0003));
+};
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n: u32 = sys.args().len().sat(u32);
+    steps: u32 = (1000000 * n).wrap(u32);
+    mut failed: Int(0..=2) = 0;
+    triple := chain(steps);
+    if !(triple.a == 1 and triple.b == 2 and triple.c == 3) { failed +|= 1; }
+    if widen(steps, 0x4000_0000_0000_0000_0000_0005) != 0x4000_0000_0000_0000_0000_0005 { failed +|= 1; }
+    std.os.Exit.of(failed)
+};

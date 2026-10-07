@@ -12,7 +12,7 @@ mod component;
 mod forms;
 mod run;
 
-pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_across, status_on};
+pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_across, status_on, status_where};
 
 /// The test program `name`, a file of `programs/` beside these tests, which
 /// `vun debug compare` runs as the tests do.

@@ -4,9 +4,10 @@
 use vun_asm_thumb::{Feature, Need, Size};
 use vun_backend::{Lack, Missing};
 use vun_codegen::Processor;
-use vun_lir::{BinOp, CastOp, InstKind, Scalar, Terminator};
+use vun_lir::func::Conv;
+use vun_lir::{AbiType, BinOp, CastOp, Ext, InstKind, Scalar, Terminator};
 use vun_native::Native;
-use vun_native::testing::{compile_for, text};
+use vun_native::testing::{compile_for, compile_tail, text};
 use vun_target::Floats;
 
 use crate::Thumb2;
@@ -64,4 +65,23 @@ fn integers_are_divided_through_legalization_s_helper_where_the_processor_has_no
     let divides = Processor::<Thumb2>::new([Feature::Divide], Floats::default());
     assert!(Thumb2::divides(divides));
     assert!(!Thumb2::divides(Processor::<Thumb2>::new([Feature::Application], Floats::default())));
+}
+
+#[test]
+fn tail_calls_pass_values_in_memory_where_the_function_received_its_own() {
+    vun_native::testing::tails_pass_values_in_memory::<crate::Thumb2>("bl");
+}
+
+#[test]
+fn a_tail_call_passes_a_large_record_only_where_the_convention_copies_it_to_the_stack() {
+    let record = vun_native::testing::large_record::<crate::Thumb2>();
+    let int = AbiType::Int(Scalar::I32, Ext::Sign);
+    let code = compile_tail::<crate::Thumb2>(
+        Conv::C,
+        std::slice::from_ref(&record),
+        std::slice::from_ref(&record),
+        &int,
+    )
+    .expect("a record on the stack goes over the one received");
+    assert!(!text(&code).iter().any(|i| i.starts_with("bl")));
 }

@@ -71,13 +71,27 @@ pub(super) fn narrow(ty: Scalar) -> Option<u32> {
 }
 
 impl Passing {
-    /// Whether a call passing this can replace its caller's frame: its arguments and result are
-    /// values, not copies in the frame, spills or memory.
-    pub(super) fn replaces(&self) -> bool {
-        self.varargs.is_none()
-            && !self.through()
-            && matches!(self.given, Given::Value(..) | Given::None)
-            && self.parts.iter().all(|part| !matches!(part, Part::Copy { .. }))
+    /// Whether a call passing this can replace its caller's frame, and the parameters of the
+    /// caller that its copies of records go over, in order. The caller's own caller made those for
+    /// the call and reads them no more; one a copy does not fit is not reused. A call with
+    /// variadic arguments has their buffer in the frame.
+    pub(super) fn reuse(&self, caller: &Self) -> Option<Vec<u32>> {
+        if self.varargs.is_some() {
+            return None;
+        }
+        let first = u32::from(caller.through());
+        let mut held = (first..).zip(&caller.parts).filter_map(|(param, part)| match *part {
+            Part::Copy { size, align } => Some((param, size, align)),
+            _ => None,
+        });
+        self.parts
+            .iter()
+            .filter_map(|part| match *part {
+                Part::Copy { size, align } => Some((size, align)),
+                _ => None,
+            })
+            .map(|(size, align)| held.find(|&(_, s, a)| s >= size && a >= align).map(|(param, ..)| param))
+            .collect()
     }
 
     pub(super) fn of(signature: &Signature) -> Result<Self, Missing> {
@@ -153,3 +167,6 @@ impl Part {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

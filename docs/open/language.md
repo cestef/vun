@@ -9,6 +9,7 @@
   `eval`, `decl`, `layout`, `target`, `witness` and `apply` call each other through `Env`, whose
   methods are spread over them. Splitting it further means moving an owned interface under `Env`
   for each part that leaves, as `Typist` did for typing.
-- Guaranteed tail calls (spec 09, section 3) lack: a callee with stack arguments, records by
-  address or a result in memory (native and wasm refuse it; C does it), and Cranelift (its
-  `return_call` needs its `tail` convention, so native or C compile the function).
+- Guaranteed tail calls (spec 09, section 3) lack: a record the convention copies into the frame
+  and passes by address (arm64, Windows), a C function's tail call under Cranelift (its values
+  are the convention's, not the `tail` one's), and a struct or wide result under the C backend
+  with GCC (`TailCalls` could say which compilers jump with one).

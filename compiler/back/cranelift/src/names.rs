@@ -11,14 +11,28 @@ enum Space {
     Func,
     Data,
     Import,
+    /// The tail-convention body of a function that has an entry (`Tails`).
+    Body,
 }
 
 impl Space {
-    const ALL: [Self; 3] = [Self::Func, Self::Data, Self::Import];
+    const ALL: [Self; 4] = [Self::Func, Self::Data, Self::Import, Self::Body];
 
     const fn number(self) -> u32 {
         self as u32
     }
+}
+
+/// The body of a function whose entry is an address: its code in the tail convention, where the
+/// entry's code ends.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Body(pub(crate) FuncId);
+
+/// What a name stands for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Target {
+    Address(Address),
+    Body(FuncId),
 }
 
 /// The name of an address in Cranelift's functions.
@@ -37,18 +51,25 @@ impl Named for Address {
     }
 }
 
-/// The address a name stands for.
-pub(crate) trait Addressed {
-    fn address(&self) -> Address;
+impl Named for Body {
+    fn name(self) -> UserExternalName {
+        UserExternalName::new(Space::Body.number(), u32::try_from(self.0.index()).expect("ids fit u32"))
+    }
 }
 
-impl Addressed for UserExternalName {
-    fn address(&self) -> Address {
+/// What a name stands for.
+pub(crate) trait Targeted {
+    fn target(&self) -> Target;
+}
+
+impl Targeted for UserExternalName {
+    fn target(&self) -> Target {
         let index = self.index as usize;
         match Space::ALL.into_iter().find(|s| s.number() == self.namespace) {
-            Some(Space::Func) => Address::Func(FuncId::new(index)),
-            Some(Space::Data) => Address::Data(DataId::new(index)),
-            Some(Space::Import) => Address::Import(ImportId::new(index)),
+            Some(Space::Func) => Target::Address(Address::Func(FuncId::new(index))),
+            Some(Space::Data) => Target::Address(Address::Data(DataId::new(index))),
+            Some(Space::Import) => Target::Address(Address::Import(ImportId::new(index))),
+            Some(Space::Body) => Target::Body(FuncId::new(index)),
             None => panic!("the backend names only the addresses of a unit"),
         }
     }

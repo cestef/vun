@@ -5,6 +5,7 @@
 
 mod abi;
 mod compile;
+mod entered;
 mod failed;
 mod func;
 mod isa;
@@ -12,6 +13,7 @@ mod listing;
 mod names;
 mod plan;
 mod relocs;
+mod tail;
 #[cfg(test)]
 mod tests;
 

@@ -25,6 +25,9 @@ use vun_lir::{Access, Block, Builder, Function, Scalar, Unit, Value};
 pub(super) enum Parts {
     One(Value),
     Limbs(Limbs),
+    /// The wide result of a tail call, which the callee writes through the address the function
+    /// received: nothing is held.
+    Written,
 }
 
 pub(super) struct Rewrite<'u> {
@@ -114,14 +117,14 @@ impl<'u> Rewrite<'u> {
     fn one(&self, v: Value) -> Value {
         match self.parts[&v] {
             Parts::One(v) => v,
-            Parts::Limbs(_) => unreachable!("only a wide value is limbs"),
+            Parts::Limbs(_) | Parts::Written => unreachable!("only a wide value is limbs"),
         }
     }
 
     fn limbs(&self, v: Value) -> Limbs {
         match &self.parts[&v] {
             Parts::Limbs(l) => l.clone(),
-            Parts::One(_) => unreachable!("a wide value is limbs"),
+            Parts::One(_) | Parts::Written => unreachable!("a wide value is limbs"),
         }
     }
 
@@ -130,6 +133,7 @@ impl<'u> Rewrite<'u> {
         match &self.parts[&v] {
             Parts::One(v) => vec![*v],
             Parts::Limbs(l) => l.0.clone(),
+            Parts::Written => unreachable!("a tail call's result is returned, not passed"),
         }
     }
 

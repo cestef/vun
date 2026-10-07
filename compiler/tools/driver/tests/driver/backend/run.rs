@@ -1,6 +1,7 @@
 //! Building and running programs through each backend and target, as the tests of code
 //! generation and of the runtimes do (what `vun debug compare` shows).
 
+use vun_backend::Backend;
 use vun_driver::compare::Ran;
 use vun_driver::{Codegen, Session};
 use vun_items::{Item, targets};
@@ -75,6 +76,17 @@ pub(crate) fn status_across(name: &str, source: &str) -> Option<i32> {
 
 /// [`status`] for the machine's target and each of `cross` the machine runs programs of.
 pub(crate) fn status_on(name: &str, source: &str, cross: &[Item]) -> Option<i32> {
+    status_where(name, source, cross, |_| true)
+}
+
+/// [`status_on`] through the backends `keep` holds.
+pub(crate) fn status_where(
+    name: &str,
+    source: &str,
+    cross: &[Item],
+    keep: impl Fn(&dyn Backend) -> bool + Sync,
+) -> Option<i32> {
+    let keep = &keep;
     let cross = cross.iter().map(|&target| Choice::of(target));
     let choices: Vec<Choice> = std::iter::once(Choice::Host).chain(cross).collect();
     // Each target in a session of its own, all at once.
@@ -82,7 +94,7 @@ pub(crate) fn status_on(name: &str, source: &str, cross: &[Item]) -> Option<i32>
         let runs: Vec<_> = choices
             .iter()
             .enumerate()
-            .map(|(i, choice)| scope.spawn(move || statuses_on(&format!("{name}-{i}"), source, choice)))
+            .map(|(i, choice)| scope.spawn(move || statuses_on(&format!("{name}-{i}"), source, choice, keep)))
             .collect();
         runs.into_iter()
             .flat_map(|t| t.join().unwrap_or_else(|panic| std::panic::resume_unwind(panic)))
@@ -94,7 +106,12 @@ pub(crate) fn status_on(name: &str, source: &str, cross: &[Item]) -> Option<i32>
 
 /// The exit status of `source` built for `choice` through each backend, by target and backend;
 /// none for a target the machine does not run programs of.
-fn statuses_on(name: &str, source: &str, choice: &Choice) -> Vec<(String, Option<i32>)> {
+fn statuses_on(
+    name: &str,
+    source: &str,
+    choice: &Choice,
+    keep: &impl Fn(&dyn Backend) -> bool,
+) -> Vec<(String, Option<i32>)> {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
@@ -105,7 +122,7 @@ fn statuses_on(name: &str, source: &str, choice: &Choice) -> Vec<(String, Option
     if *choice != Choice::Host && session.runner().is_empty() {
         return Vec::new();
     }
-    let runs = session.run_each(file, 1).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let runs = session.run_where(file, 1, keep).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     let target = session.target.clone().and_then(Result::ok).map(|t| t.arch.to_string()).unwrap_or_default();
     let statuses: Vec<_> =
         runs.iter().map(|r| (format!("{target} {}", r.backend), r.output.status.code())).collect();

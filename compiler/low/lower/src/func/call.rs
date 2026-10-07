@@ -20,7 +20,7 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::trap::Failure;
 use vun_sema_ty::{Marker, Ty, TyKind, Value as Constant};
 
-use super::{FnLower, Tailed};
+use super::FnLower;
 use crate::repr::Repr;
 use crate::unlowered::{Form, Unlowered, Why};
 
@@ -185,14 +185,6 @@ impl FnLower<'_, '_, '_> {
         ty: Ty,
     ) -> Result<(), Unlowered> {
         let signature: Signature = self.l.signature(params, result, abi, self.at)?;
-        if kind == CallKind::Tail {
-            // A value in memory is passed by the address of a slot of this frame.
-            for &param in params {
-                if matches!(self.l.types.repr(param.packed().unwrap_or(param), self.at)?, Repr::Memory(_)) {
-                    return Err(Unlowered::unsupported(self.at, Form::Tail));
-                }
-            }
-        }
         let mut values = Vec::new();
         for (&param, &arg) in params.iter().zip(args) {
             // A pack passes the tuple of its arguments; under the C convention, each of its items
@@ -219,7 +211,14 @@ impl FnLower<'_, '_, '_> {
         // callee may write the result it returns through memory before reading what it is passed,
         // which may reach `dest`, so its result lands in a temporary too.
         let aliased = signature.through() && signature.conv == Conv::C;
-        let landing = if result == ty && dest.is_some() && !aliased { dest } else { self.temp(result)? };
+        // A tail call writes it where this function's caller expects it.
+        let landing = if kind == CallKind::Tail {
+            self.out
+        } else if result == ty && dest.is_some() && !aliased {
+            dest
+        } else {
+            self.temp(result)?
+        };
         if signature.through() {
             values.extend(landing);
         }
@@ -257,23 +256,6 @@ impl FnLower<'_, '_, '_> {
             }
             Operand::Const(_) => Err(unsupported()),
         }
-    }
-
-    /// Calls `callee` as the last instruction of the function, which returns what it gives: the
-    /// frame is the callee's, so nothing in it may be passed by its address.
-    fn tail(&mut self, callee: Callee, args: Vec<Value>, signature: &Signature) -> Result<(), Unlowered> {
-        let own = self.b.signature();
-        let shared = own.conv == signature.conv
-            && own.convention == signature.convention
-            && own.returns() == signature.returns();
-        if !shared || own.through() || signature.through() {
-            return Err(Unlowered::unsupported(self.at, Form::Tail));
-        }
-        self.unguard()?;
-        let value =
-            self.b.push(InstKind::Call { callee, args, kind: CallKind::Tail }, signature.returns(), self.at);
-        self.tail = Some(Tailed(value));
-        Ok(())
     }
 
     /// Passes the value of type `ty` at `at`: its scalar, or its address.

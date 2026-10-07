@@ -11,6 +11,14 @@ use super::abi::{Given, Part, Passing};
 use super::func::Lower;
 use crate::module::op::{Num, Op};
 
+/// The copies of records a tail call passes, which go over the caller's own.
+struct Reused {
+    /// The parameters of the caller still to take one.
+    onto: std::vec::IntoIter<u32>,
+    /// Each parameter, the staged copy in the frame and its size.
+    moves: Vec<(u32, u64, u64)>,
+}
+
 impl Lower<'_> {
     pub(super) fn call(
         &mut self,
@@ -27,9 +35,13 @@ impl Lower<'_> {
             }
             Callee::Indirect(_, signature) => Cow::Owned(Passing::of(signature).map_err(|m| m.at(at))?),
         };
-        if kind == CallKind::Tail && !passing.replaces() {
-            return Err(Missing::TailCall.at(at));
-        }
+        let mut reused = match kind {
+            CallKind::Tail => {
+                let onto = passing.reuse(self.passing).ok_or_else(|| Missing::TailCall.at(at))?;
+                Some(Reused { onto: onto.into_iter(), moves: Vec::new() })
+            }
+            CallKind::Plain => None,
+        };
         let variadic = passing.varargs.as_ref().map_or(0, |v| v.spills.len());
         let (params, out) = args.split_at(passing.parts.len() + variadic);
         let (params, rest) = params.split_at(passing.parts.len());
@@ -37,12 +49,18 @@ impl Lower<'_> {
             self.get(out[0]);
         }
         for (&arg, part) in params.iter().zip(&passing.parts) {
-            self.pass(arg, *part).map_err(|m| m.at(at))?;
+            self.pass(arg, *part, &mut reused).map_err(|m| m.at(at))?;
         }
         if let Some(varargs) = &passing.varargs {
             self.spill(rest, varargs).map_err(|m| m.at(at))?;
         }
-        if kind == CallKind::Tail {
+        if let Some(reused) = reused {
+            for (onto, area, size) in reused.moves {
+                self.op(Op::LocalGet(onto));
+                self.frame_addr(area);
+                self.op(Op::I32Const(Self::i32(size)));
+                self.op(Op::MemoryCopy);
+            }
             self.tail(callee, &passing);
             return Ok(());
         }
@@ -94,7 +112,7 @@ impl Lower<'_> {
         }
     }
 
-    fn pass(&mut self, arg: Value, part: Part) -> Result<(), Missing> {
+    fn pass(&mut self, arg: Value, part: Part, reused: &mut Option<Reused>) -> Result<(), Missing> {
         match part {
             Part::Value(_, narrowed) => {
                 self.get(arg);
@@ -112,7 +130,15 @@ impl Lower<'_> {
                 self.get(arg);
                 self.op(Op::I32Const(Self::i32(size)));
                 self.op(Op::MemoryCopy);
-                self.frame_addr(area);
+                // A tail call passes the caller's own copy, which the staged one goes over once
+                // every argument is read.
+                match reused.as_mut().and_then(|r| r.onto.next().map(|onto| (onto, &mut r.moves))) {
+                    Some((onto, moves)) => {
+                        self.op(Op::LocalGet(onto));
+                        moves.push((onto, area, size));
+                    }
+                    None => self.frame_addr(area),
+                }
             }
         }
         Ok(())

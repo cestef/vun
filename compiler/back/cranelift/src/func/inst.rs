@@ -53,7 +53,10 @@ impl Lower<'_, '_> {
                 self.copy(self.get(*to), self.get(*from), *bytes);
                 None
             }
-            InstKind::Call { kind: CallKind::Tail, .. } => return Err(Missing::TailCall.at(at)),
+            InstKind::Call { callee, args, kind: CallKind::Tail } => {
+                self.tail_call(callee, args, at)?;
+                None
+            }
             InstKind::Call { callee, args, .. } => {
                 self.call(callee, args, f.insts[id].result.is_some(), at)?
             }

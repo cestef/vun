@@ -3,7 +3,7 @@
 
 use vun_items::targets;
 
-use super::{program, status, status_across, status_on};
+use super::{program, status_across, status_on, status_where};
 
 #[test]
 fn primitives_the_tables_declare_lower_and_run() {
@@ -24,21 +24,31 @@ fn guaranteed_tail_calls_run_in_constant_stack() {
     );
 }
 
-/// A callee taking arguments on the stack: the native backends refuse the tail call, which C makes.
-const STACK_ARGUMENTS: &str = "\
-start := std.os.start(main);
-
-wide := (a: u32, b: u32, c: u32, d: u32, e: u32, f: u32, g: u32, h: u32, i: u32) -> u32 {
-    (a + b + c + d + e + f + g + h + i).wrap(u32)
-};
-
-go := (n: u32) -> u32 { return lang.flow.tail(wide, (n, n, n, n, n, n, n, n, n)); };
-
-main := (sys: &mut std.os.System) -> std.os.Exit { std.os.Exit.of(if go(1) == 9 { 0 } else { 1 }) };
-";
-
-/// A backend that cannot jump to a callee in place leaves the function to one that can.
+/// Arguments on the stack, records and results in memory: a tail call writes them where its
+/// caller received its own.
 #[test]
-fn a_tail_call_that_needs_the_stack_runs_through_the_backend_that_can() {
-    assert_eq!(status("backend-tail-stack", STACK_ARGUMENTS), Some(0));
+fn guaranteed_tail_calls_pass_values_in_memory_in_constant_stack() {
+    assert_eq!(
+        status_on(
+            "backend-tail-memory",
+            &program("tail_memory.vun"),
+            &[targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1]
+        ),
+        Some(0)
+    );
+}
+
+/// A result the callee writes through the caller's address, which the C compilers cannot jump
+/// with: GCC refuses a `musttail` call returning a struct, so the C backend refuses it too.
+#[test]
+fn guaranteed_tail_calls_write_aggregate_results_through_the_callers_address() {
+    assert_eq!(
+        status_where(
+            "backend-tail-aggregate",
+            &program("tail_aggregate.vun"),
+            &[targets::linux_arm64::kernel, targets::linux_arm::kernel, targets::wasi_wasm32::p1],
+            |backend| backend.info().id != vun_backend_c::INFO.id
+        ),
+        Some(0)
+    );
 }

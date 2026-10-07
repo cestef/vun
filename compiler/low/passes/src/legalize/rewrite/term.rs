@@ -5,7 +5,7 @@ use vun_origin::OriginId;
 
 use vun_index::Idx;
 
-use super::Rewrite;
+use super::{Parts, Rewrite};
 use vun_lir::{Access, Target, Terminator};
 
 impl Rewrite<'_> {
@@ -47,6 +47,9 @@ impl Rewrite<'_> {
                 cases: cases.iter().map(|(bits, t)| (*bits, self.target(t))).collect(),
                 default: self.target(default),
             },
+            Terminator::Return(Some(v)) if matches!(self.parts[v], Parts::Written) => {
+                Terminator::Return(None)
+            }
             Terminator::Return(Some(v)) if self.is_wide(*v) => {
                 let (value, addr) =
                     (self.limbs(*v), self.result.expect("a wide result's address is received"));

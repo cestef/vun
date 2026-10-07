@@ -87,9 +87,6 @@ pub enum Unlegalized {
     FloatAbi,
     /// An operation, other than a move of its bits, on a float held as its bits.
     HeldFloat,
-    /// A tail call of a function returning an integer wider than the backend's, which comes back
-    /// through memory the caller's frame holds.
-    TailResult,
 }
 
 /// An operation the pass cannot legalize, where it is.
@@ -110,9 +107,6 @@ impl fmt::Display for Unlegal {
                 "a float its processor does not compute passed to or from C in a float register"
             }
             Unlegalized::HeldFloat => "an operation on a float its processor does not compute",
-            Unlegalized::TailResult => {
-                "a tail call of a function returning an integer wider than the backend's"
-            }
         })
     }
 }

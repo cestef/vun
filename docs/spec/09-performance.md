@@ -57,12 +57,21 @@ both Zig and Rust converged on.
   match; no argument may be a borrow of the caller's locals (`borrow.escape`).
 - It is not written in a function that suspends (`flow.tail_position`): a coroutine function
   returns through its frame.
-- Every argument and the result travel in registers: a callee taking arguments on the stack,
-  records by address or a result in memory is refused by a native backend or wasm
-  (`backend.lacks`). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave
-  the frame and jump; wasm gives the frame back and `return_call`s; the C backend writes
-  `musttail` where the target's compiler declares `lang.target.TailCalls.musttail`; Cranelift and
-  QBE refuse. A function a backend refuses is compiled by an assisting backend where there is one.
+- A call reuses what the caller received. Its arguments on the stack are written over the
+  caller's own, so they must take no more bytes; a record in memory (Vun's convention passes its
+  address) goes in the memory the caller received for one of its own, the first not taken that
+  holds its size and alignment; a result in memory is written through the address the caller
+  received, which `lang.flow.tail` passes on. A callee that does not fit is refused (the lowering
+  reports `lowering does not handle` a tail call, a backend `backend.lacks`), as is a record the
+  convention copies into the caller's frame and passes by address (arm64 and Windows for a C
+  record over 16 bytes, wasm for one that fits no record received), and, by the C backend, a
+  result that is a struct or an integer wider than a register (GCC refuses `musttail` there). The native backends (x86-64, arm64, Thumb) restore the saved registers, leave the frame
+  and jump; wasm gives the frame back and `return_call`s; the C backend writes `musttail` where
+  the target's compiler declares `lang.target.TailCalls.musttail`; Cranelift compiles the
+  functions that tail call each other as bodies in its `tail` convention, each behind an entry of
+  the target's convention that every other caller and every address reaches (a group where another
+  backend compiles one function is refused whole); QBE refuses. A function a backend refuses is
+  compiled by an assisting backend where there is one.
 - Pending `defer`s of the caller run before the jump.
 - A backend without tail-call support rejects the program; there is never a silent fallback to a
   normal call.

@@ -739,7 +739,7 @@ c` shows it, and `vun build` and `vun run` compile and link it.
   what a block names, which it writes by its ELF name) (`backend.lacks`).
 - **Guaranteed tail calls** are `__attribute__((musttail)) return f(args);` where the target's
   compiler declares `lang.target.TailCalls.musttail` (GCC 15, Clang 13; the wasi target adds
-  `-mtail-call`), refused otherwise and for a result in memory.
+  `-mtail-call`), refused otherwise.
 
 - **Aliasing.** An address a signature passes says what else reaches what it reaches
   (`AbiType::Address(Alias)`): an exclusive borrow is `Alias::Exclusive` (spec 05, section 8), and

@@ -111,13 +111,12 @@ pub struct Passing<R> {
 }
 
 impl<R> Passing<R> {
-    /// Whether everything travels in registers: no stack arguments, no records copied, no result
-    /// written to a place of the caller's, so a call can reuse the caller's frame.
+    /// Whether a call placing things this way can replace the frame of a function whose own
+    /// parameters are placed as `caller` places them: its arguments on the stack are written over
+    /// the ones the caller received, and no record is copied into the frame being left.
     #[must_use]
-    pub fn in_registers(&self) -> bool {
-        self.stack == 0
-            && matches!(self.ret, Ret::None | Ret::Reg(_))
-            && self.params.iter().all(|loc| matches!(loc, Loc::Reg(_) | Loc::Split { rest: None, .. }))
+    pub fn replaces(&self, caller: &Self) -> bool {
+        self.stack <= caller.stack && self.params.iter().all(|loc| !matches!(loc, Loc::Indirect { .. }))
     }
 }
 

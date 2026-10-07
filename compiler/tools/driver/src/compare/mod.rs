@@ -10,6 +10,7 @@ use std::process::Output;
 use std::time::{Duration, Instant};
 
 pub use diff::{Difference, Stream};
+use vun_backend::Backend;
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Captured;
 use vun_intern::Symbol;
@@ -55,9 +56,27 @@ impl Session {
     /// # Panics
     /// Never: naming a file chooses the target.
     pub fn run_each(&mut self, file: FileId, times: usize) -> Result<Vec<Ran>, ErrorGuaranteed> {
+        self.run_where(file, times, |_| true)
+    }
+
+    /// [`Session::run_each`] through the backends `keep` holds, for a program some backend
+    /// cannot express and no other assists.
+    ///
+    /// # Errors
+    /// Returns the first backend that fails to build it, or a program that cannot run.
+    ///
+    /// # Panics
+    /// Never: naming a file chooses the target.
+    pub fn run_where(
+        &mut self,
+        file: FileId,
+        times: usize,
+        keep: impl Fn(&dyn Backend) -> bool,
+    ) -> Result<Vec<Ran>, ErrorGuaranteed> {
         let _ = self.lir(file);
         let target = self.target.clone().expect("naming a file chooses the target")?;
-        let backends: Vec<&'static str> = self.registry.fitting(&target).map(|b| b.info().id.0).collect();
+        let backends: Vec<&'static str> =
+            self.registry.fitting(&target).filter(|&b| keep(b)).map(|b| b.info().id.0).collect();
         let asked = self.codegen;
         let mut ran = Vec::new();
         for backend in backends {

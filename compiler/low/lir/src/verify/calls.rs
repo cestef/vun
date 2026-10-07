@@ -48,19 +48,20 @@ impl Checker<'_> {
     }
 
     /// Whether the call `inst`, of a callee with `signature`, can replace the frame: it ends its
-    /// block by returning its value, as a function of the callee's convention and result, which
-    /// takes the result in registers.
+    /// block by returning its value, as a function of the callee's convention and result, and a
+    /// result in memory is written through the address this function received.
     fn replaces(&self, inst: Inst, signature: &Signature) -> bool {
         let Some(block) = self.homes[inst] else { return false };
         let data = &self.func.blocks[block];
         let own = &self.func.signature;
+        let InstKind::Call { args, .. } = &self.func.insts[inst].kind else { return false };
+        let out = self.func.entry().and_then(|entry| self.func.blocks[entry].params.last());
         data.insts.last() == Some(&inst)
             && data.term == Terminator::Return(self.func.insts[inst].result)
             && own.conv == signature.conv
             && own.convention == signature.convention
-            && own.returns() == signature.returns()
-            && !own.through()
-            && !signature.through()
+            && own.result == signature.result
             && signature.variadic.is_none()
+            && (!signature.through() || args.last() == out)
     }
 }

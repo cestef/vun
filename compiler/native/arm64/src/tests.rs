@@ -1,13 +1,15 @@
 //! arm64: fusion, callee-saved registers for loops, results in dying operands' registers, each
 //! instruction decoded by an independent decoder to the text the listing shows.
 
-use vun_lir::{BinOp, Cond, Scalar, Terminator};
+use vun_backend::Missing;
+use vun_lir::func::Conv;
+use vun_lir::{AbiType, BinOp, Cond, Ext, Scalar, Terminator};
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
 use crate::Arm;
 use vun_native::Code;
-use vun_native::testing::{compiled, sum, text, to};
+use vun_native::testing::{compile_tail, compiled, sum, text, to};
 
 /// The listing of `code`, each instruction checked against the decoder's reading of its word.
 fn checked(code: &Code<Arm>) -> Vec<String> {
@@ -87,4 +89,24 @@ fn a_dying_operand_s_register_holds_the_result() {
             "ret"
         ]
     );
+}
+
+#[test]
+fn tail_calls_pass_values_in_memory_where_the_function_received_its_own() {
+    vun_native::testing::tails_pass_values_in_memory::<crate::Arm>("bl");
+}
+
+#[test]
+fn a_tail_call_passes_a_large_record_only_where_the_convention_copies_it_to_the_stack() {
+    let record = vun_native::testing::large_record::<crate::Arm>();
+    let int = AbiType::Int(Scalar::I64, Ext::Sign);
+    let lacks = compile_tail::<crate::Arm>(
+        Conv::C,
+        std::slice::from_ref(&record),
+        std::slice::from_ref(&record),
+        &int,
+    )
+    .err();
+    // The callee owns a copy the caller makes, which this frame would take with it.
+    assert_eq!(lacks.map(|lack| lack.missing), Some(Missing::TailCall));
 }

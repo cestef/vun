@@ -133,9 +133,10 @@ impl Printer<'_, '_, '_> {
                 self.f.write_char(';')?;
             }
             Stmt::Tail(call) => {
-                self.f.write_str("__attribute__((musttail)) return ")?;
+                // In a block, so that after a label the attribute is the statement's, not the label's.
+                self.f.write_str("{ __attribute__((musttail)) return ")?;
                 self.expr(call)?;
-                self.f.write_char(';')?;
+                self.f.write_str("; }")?;
             }
             Stmt::Halt => self.f.write_str("for (;;) {}")?,
             Stmt::Asm(asm) => self.asm(asm)?,

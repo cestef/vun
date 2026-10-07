@@ -207,6 +207,9 @@ impl FnEmit<'_, '_> {
         let out = args.next();
         let call = |passed| Expr::Call(Box::new(name), passed);
         if kind == CallKind::Tail {
+            if let Some(AbiType::Memory { .. }) = signature.result {
+                passed.push(self.operand(out.expect("a result in memory has an address")));
+            }
             return self.tail_call(&signature, passed, call);
         }
         match &signature.result {
@@ -246,9 +249,9 @@ impl FnEmit<'_, '_> {
             return Err(Missing::TailCall.at(at));
         }
         let call = match &signature.result {
-            Some(AbiType::Memory { .. } | AbiType::Record(_) | AbiType::Wide { .. }) => {
-                return Err(Missing::TailCall.at(at));
-            }
+            // The compilers do not all pass the caller's own address on for a struct returned by
+            // value, which leaves a copy after the call.
+            Some(AbiType::Record(_) | AbiType::Wide { .. }) => return Err(Missing::TailCall.at(at)),
             Some(given) if let Some(s) = given.signed_c(signature.conv) => {
                 call(passed).cast(self.e.scalar(s, at)?)
             }

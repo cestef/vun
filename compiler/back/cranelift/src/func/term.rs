@@ -40,6 +40,8 @@ impl Lower<'_, '_> {
                     self.b.ins().jump(to, &args);
                 }
             }
+            // The jump before it has left.
+            Terminator::Return(_) if std::mem::take(&mut self.tailed) => {}
             Terminator::Return(value) => {
                 let values = match self.returning {
                     Some((at, parts)) => self.load_parts(parts, at),

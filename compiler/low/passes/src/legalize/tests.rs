@@ -219,3 +219,30 @@ fn without_a_division_instruction_every_division_calls_the_helper_of_one_limb() 
         assert_eq!(f.signature.params[0], AbiType::Int(ty, Ext::Sign));
     }
 }
+
+#[test]
+fn a_tail_call_of_a_wide_result_writes_through_the_address_received() {
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let wide = AbiType::Int(Scalar::I128, Ext::Sign);
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: vec![wide.clone()],
+        result: Some(wide),
+        variadic: None,
+        convention: None,
+    };
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let x = b.params(b.current())[0];
+    let call = InstKind::Call {
+        callee: vun_lir::Callee::Func(<vun_lir::FuncId as vun_index::Idx>::new(0)),
+        args: vec![x],
+        kind: vun_lir::CallKind::Tail,
+    };
+    let result = b.push(call, Some(Scalar::I128), at);
+    b.terminate(Terminator::Return(result));
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    unit.functions.push(b.finish());
+    HOST.apply(&mut unit).unwrap();
+    assert_eq!(unit.verify(&origins), Ok(()));
+}

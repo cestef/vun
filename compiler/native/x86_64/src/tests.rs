@@ -1,9 +1,10 @@
 //! x86-64: fusion, callee-saved registers for loops, results in dying operands' registers.
 
-use vun_lir::{BinOp, Cond, Scalar, Terminator};
+use vun_lir::func::Conv;
+use vun_lir::{AbiType, BinOp, Cond, Ext, Scalar, Terminator};
 
 use crate::X86;
-use vun_native::testing::{compiled, sum, text, to};
+use vun_native::testing::{compile_tail, compiled, sum, text, to};
 
 #[test]
 fn a_branch_on_a_comparison_jumps_on_its_flags() {
@@ -57,4 +58,23 @@ fn a_dying_operand_s_register_holds_the_result() {
     let text = text(&code);
     let body: Vec<&str> = text.iter().skip(3).map(String::as_str).collect();
     assert_eq!(body, ["add rdi, 0x1", "mov eax, 0x3", "imul rdi, rax", "mov rax, rdi", "leave", "ret"]);
+}
+
+#[test]
+fn tail_calls_pass_values_in_memory_where_the_function_received_its_own() {
+    vun_native::testing::tails_pass_values_in_memory::<crate::X86>("call");
+}
+
+#[test]
+fn a_tail_call_passes_a_large_record_only_where_the_convention_copies_it_to_the_stack() {
+    let record = vun_native::testing::large_record::<crate::X86>();
+    let int = AbiType::Int(Scalar::I64, Ext::Sign);
+    let code = compile_tail::<crate::X86>(
+        Conv::C,
+        std::slice::from_ref(&record),
+        std::slice::from_ref(&record),
+        &int,
+    )
+    .expect("a record on the stack goes over the one received");
+    assert!(!text(&code).iter().any(|i| i.starts_with("call")));
 }
