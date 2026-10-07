@@ -1,0 +1,62 @@
+## Working-copy review: guaranteed tail calls (LIR ABI, lowering, legalize, native, wasm, Cranelift, C)
+
+Caveat: the working copy changed under me during the review (commit id moved from `1f67eefaccfe` to `fa7690f4`, Cranelift `compile.rs` split into `compile/{mod,function,lowering}.rs`, `entered.rs`/`func/stub.rs` added, and the ad-hoc `eprintln!("DBG…")` in `tail.rs` was replaced by `vun_trace` mid-review). Findings are against the state read at the end; I could not run any checks (read-only + budget).
+
+- [P1] The "first not taken that holds it" reuse search consumes the slots it skips, so a valid tail call with out-of-order memory params is refused - `compiler/low/lower/src/func/tail.rs:37-42` and `compiler/back/wasm/src/build/abi/mod.rs:82-94`
+  Evidence: `tail.rs`: `received.find(fits)` on an `into_iter()`; wasm: `held.find(...)` on a consuming `filter_map` iterator. `Iterator::find` drops every element it passes. The docs claim the opposite: `docs/spec/09-performance.md:61-63` "the first not taken that holds its size and alignment" and the `tail.rs` doc "the first not taken that holds it".
+  Why: `f(a: small-mem, b: big-mem)` whose callee's memory params are ordered `[big, small]` makes `find` skip `a`'s free slot looking for the big one, exhaust the iterator, and refuse the second param with `Unlowered::unsupported(Form::Tail)` (or `Missing::TailCall` in wasm) even though `a`'s slot fits. Since lowering refusal is not a backend assist, a program that is valid under the spec fails to build. Same shape in wasm `Passing::reuse` (`Passing` copies mapped onto the caller's received `Part::Copy` slots).
+  Fix: keep a `Vec` of free candidates and remove only the chosen one (`position` + `remove`), or restart the scan each time and track taken indices; add the missing wasm unit test `caller=[record(8,8),record(16,8)]`, `callee=[record(16,8),record(8,8)] -> Some([1,0])`.
+
+- [P1] `docs/open/language.md:13` names an enum variant the same change deletes and claims a limitation the same change implements - `docs/open/language.md:12-15`, `compiler/low/passes/src/legalize/rewrite/call.rs:37-42`, `compiler/low/passes/src/legalize/rewrite/mod.rs:25-30`
+  Evidence: the doc says tail calls "lack … a wide integer result (`Unlegalized::TailResult`)". `rg TailResult` matches only that doc line; the variant is gone from `legalize/mod.rs` (diff removes it), and the working copy now handles it: `rewrite/call.rs` `if kind == CallKind::Tail { args.push(self.result…); … Parts::Written }`, capped by the new test `legalize/tests.rs:223 a_tail_call_of_a_wide_result_writes_through_the_address_received`.
+  Why: the open-issues file is the project's handoff of what is not done; it now both references a deleted symbol and reports a working feature as missing, so the next reader/agent either reimplements it or trusts a dead name.
+  Fix: drop `Unlegalized::TailResult` and the "wide integer result" item, or if some width still fails, name the actual remaining case.
+
+- [P2] Decision 652 claims the C backend returns records, but the C backend refuses `AbiType::Record` - `docs/spec/decisions.md:583` vs `compiler/back/c/src/emit/func/inst.rs:252-254` and `compiler/tools/driver/tests/driver/backend/forms.rs:44-53`
+  Evidence: decision 652: "the C backend returns records and results in memory." `tail_call`: `Some(AbiType::Record(_) | AbiType::Wide { .. }) => return Err(Missing::TailCall.at(at))` ("The compilers do not all pass the caller's own address on for a struct returned by value"). The test that covers exactly this (`tail_aggregate.vun`, `#[abi.c] chain -> Triple`) filters the C backend out: `|backend| backend.info().id != vun_backend_c::INFO.id`. `docs/open/language.md:14` agrees with the code ("a C function's result in memory" is lacking).
+  Why: the decision table is the design record; a reader implementing against 652 would assume C handles a `#[abi.c]` aggregate result, which the code and the test deliberately do not.
+  Fix: say "the C backend returns Vun results in memory; a C record returned by value is refused" (matching `AbiType::Memory` allowed, `AbiType::Record` refused).
+
+- [P2] `vun_lir::analysis::Taken` is dead code added by this change - `compiler/low/lir/src/analysis/taken.rs:1-35`, `compiler/low/lir/src/analysis/mod.rs:15,25`
+  Evidence: `rg "\bTaken\b"` under `compiler/` finds the definition, the `pub use taken::Taken`, and no consumer. The only consumer (the earlier Cranelift `Tails`, which used it to hold out address-taken functions) was replaced by the entry+body stub scheme (`back/cranelift/src/tail.rs`, `func/stub.rs`, `entered.rs`), which no longer needs it.
+  Why: `analysis/mod.rs`'s module doc and the `Taken` docs describe an analysis that nothing computes or reads, so a reader believes the "address taken" rule is enforced somewhere it is not.
+  Fix: delete `taken.rs`, its `pub use`, and the doc phrase, or move it to the consumer that now owns the decision.
+
+- [P2] Native and wasm emit `returned` + `epilogue` (and a second `release_frame`) after the tail jump; Cranelift and C skip it - `compiler/native/core/src/select/term.rs:87-90`, `compiler/back/wasm/src/build/control.rs:175`, `compiler/back/wasm/src/build/func.rs:196`
+  Evidence: `close` always runs `Terminator::Return(value) => { Self::returned(…); Self::epilogue(…); }`, but `frames.rs:141-150` already emitted an unconditional `branch_tail` for the block's last instruction; wasm's `return_call` (`call.rs:98-111`) is followed by `ret()`. The sibling backends suppress it: `back/cranelift/src/func/term.rs:43-44` (`Terminator::Return(_) if std::mem::take(&mut self.tailed) => {}`) and `back/c/src/emit/func/term.rs:41` (`Return(_) if let Some(call) = self.tail.take()`). The LIR verifier guarantees the tail call *is* the block's last instruction returning its value, so the trailing terminator is unreachable.
+  Why: dead code after an unconditional jump; for a `Ret::Split` result the dead `returned` reads the prologue's gathered buffer, and both `tail_jump` and the dead epilogue call `unwound(Step::Returned)`, giving duplicate CFI entries. Not a wrong result (unreachable), but the "tail call ends the block" rule is implemented in half the backends.
+  Fix: add the same take-and-skip guard, or make `Selection::Call { kind: Tail }` mark the block done in the framework so every backend skips the terminator.
+
+- [P2] Leftover scratch programs `tmp_chain.vun`, `tmp_plain.vun`, `tmp_tail.vun`, `tmp_widen.vun` are committed into the test fixture directory and referenced by nothing - `compiler/tools/driver/tests/driver/programs/tmp_{chain,plain,tail,widen}.vun`
+  Evidence: `jj st` lists them as added; `program(name)` reads fixtures by explicit name and no test names a `tmp_*` file; `tmp_chain.vun`/`tmp_widen.vun` duplicate `tail_aggregate.vun`, `tmp_tail.vun` duplicates the `widen` half, `tmp_plain.vun` is a debug variant.
+  Why: dead fixtures in the test tree that `vun debug compare`/future tooling will glob over, and a per-file review burden; `tmp_` names signal they were not meant to land.
+  Fix: delete them.
+
+- [P2] The refusal diagnostic still says "another convention or result" for the "no received memory fits" case - `compiler/low/lower/src/unlowered.rs:211-213` vs `compiler/low/lower/src/func/tail.rs:41`
+  Evidence: `Form::Tail` now displays "a tail call of a function with another convention or result" (the working copy shortened it), but `reuse_received` also reports `Form::Tail` when `received.find(fits)` finds nothing, where the convention and result do match and only the frame has no slot.
+  Why: a user writing a valid-but-unfittable tail call gets a reason naming the wrong cause, which is the "errors are structured and contextful" rule.
+  Fix: a distinct `Why` (e.g. `TailMemory`) for "no memory the caller received fits", or restore the "or passing values in memory" wording.
+
+- [P2] The new tests do not exercise what they claim - `compiler/native/core/src/testing.rs:127-144`, `compiler/back/wasm/src/build/abi/tests.rs:15-33`, `compiler/low/passes/src/legalize/tests.rs:223-248`
+  Evidence: `tails_pass_values_in_memory` asserts only `!text.iter().any(starts_with(call))`; a backend that jumped without copying the stack arguments would pass. The wasm test only checks the `reuse` index mapping, never the `MemoryCopy` order (`call.rs:57-63`) that makes the mapping correct. The legalize test asserts only `unit.verify == Ok(())`, never that the `I128` is gone or that `self.result` is the address passed. (`compile_tail` also builds an unverified unit: `g` returns a record address while declaring `result: int`.)
+  Why: the static tests can pass while the staging/copy is wrong; only the runtime `tail_memory.vun` covers the actual behavior, and it does not run on Cranelift/QBE.
+  Fix: assert the emitted copy/`memory.copy` and the passed address, or add a "no copy" negative case.
+
+## Checked, clean
+
+- `compiler/low/lir/src/abi.rs` extracted from `func.rs`: `values`/`passed`/`memory`/`through`/`returns` indexing agree (`memory()`'s `at` counts `values()`); the `func.rs` re-export keeps the old paths. No drift found.
+- `verify/calls.rs` `replaces`: requires last instruction, `Return(inst.result)`, equal conv/convention and *exact* `own.result == signature.result`, no variadic, and `(!signature.through() || args.last() == out)`. The rule is stricter than before, so front-end programs built by `tail.rs` (`landing = self.out`, `values.extend(landing)`) satisfy it; both new verifier tests match the rule, including the `Err(Reason::Tail)` negative for a local result address.
+- `legalize/rewrite/call.rs` + `term.rs`: the wide tail result path adds `self.result` (the entry's received address, set in `rewrite/mod.rs:74-79`) exactly once, since `returns()` is `None` for `AbiType::Wide` and `Parts::Written` short-circuits before the generic wide `Return`; the `parts()` `unreachable!` for `Written` is guarded by the verifier's return-only rule.
+- C `Stmt::Tail` printing (`ast/print/stmt.rs:135-139`): the `{ … }` wrapper is the documented fix for a label eating the attribute; `tail_call`'s `signed_c`/`Record`/`Wide` arms and the `Memory` result address push are consistent with `13-compiler.md:740-742`.
+- `low/abi/src/lib.rs` `replaces`: `self.stack <= caller.stack` plus no callee `Loc::Indirect`; with same signature result/conv the `Ret` placements match, so no extra check is needed. The native `frames.rs` copy of `passing.stack` bytes from the outgoing area to `FRAME+CALLER_ARGS` is the matching write.
+- wasm staging (`build/call.rs`): args read first, staged copies moved onto the caller's received slots after, then `release_frame` + `return_call`; `LocalGet(onto)` uses the caller's param-local numbering (`first = through as u32`), correct for the value order.
+- Cranelift rewrite to entry+body: `Tails::fits` no longer needs `Internal`/`!Taken` because the body is reached through a normal-convention stub, and `entered` shifts relocs/marks and accounts `+ 2*word` frame bytes; the `compile/mod.rs` fixpoint breaks only when the tails used to lower equal the tails recomputed from the resulting `lacking`, so the outcomes match the conventions emitted.
+- Docs and generated-dir rules: no generated directory was touched by this change; `docs/spec/decisions.md` 652 is marked `proposed` (new decision, not user-approved), as required.
+
+## Open questions
+
+1. Is the greedy first-fit in `reuse_received`/wasm `reuse` deliberate (documented as "one a copy does not fit is not reused") or an implementation slip against the spec's "first not taken"? This decides whether the P1 is a bug fix or a spec edit.
+2. Should native/wasm suppress the post-tail-call terminator centrally (framework-level) rather than per backend, given two siblings already do it by hand?
+3. Does the C backend intend to support a `#[abi.c]` record result at all (decision 652 says yes, code and test say no)? If no, decision 652 and `13-compiler.md` need the "result in memory" wording narrowed to `AbiType::Memory`.
+4. Is `Taken` intended to return for the stub scheme (e.g. to decide the entry when the address is taken), or should it be removed with the old `Tails` rule?
+5. Are the `tmp_*.vun` fixtures intentional kept probes for `vun debug compare`, or leftovers to delete before merge?

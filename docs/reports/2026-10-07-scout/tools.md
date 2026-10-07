@@ -1,0 +1,35 @@
+## Command line, driver, generators and developer tooling
+
+- [P2] `vun pkg` panics instead of reporting on a file of 4 GiB or more - compiler/tools/driver/src/packages/lockfile.rs:108
+  Evidence: `let end = u32::try_from(text.len()).expect("source files are smaller than 4 GiB");`
+  Why: a vendored lock/manifest larger than `u32::MAX` aborts the process with a panic message on stderr, bypassing the crate's diagnostic path (`DiagCtxt`/`Diagnostic`), so the user gets an abort with no id, origin or help rather than a reported failure. Everywhere else in the driver this size conversion is `.unwrap_or(u32::MAX)` (e.g. `lsp/src/position.rs:32`, `43`; `xtask/src/tree_sitter/mod.rs` byte counts).
+  Fix: return a diagnostic (`Diagnostic::error(..., Msg::new().code(...).text(" is larger than 4 GiB"))`) or saturate the way the sibling conversions do.
+
+- [P2] the generator's own error channel is bypassed by identifier panics - compiler/tools/generate/src/names.rs:24, :35 and compiler/tools/generate/src/generate/module.rs:72
+  Evidence: `pub(crate) fn raw(name: &str) -> Ident { match syn::parse_str::<Ident>(name) { Ok(ident) if !RESERVED.contains(&name) => ident, _ => Ident::new_raw(name, Span::call_site()) } }` and `pub(crate) fn ident(name: &str) -> Ident { Ident::new(name, Span::call_site()) }`; `module.rs:72` `let file = syn::parse2(...).expect("generators emit Rust items");`
+  Why: `Ident::new`/`Ident::new_raw` panic on a name that is neither a valid identifier nor a valid raw identifier. A `.vun` declaration, a struct/enum member, a `Mnemonic`, or a grammar name outside Rust's identifier alphabet therefore panics `cargo gen` rather than producing the structured `generate.*` diagnostic the rest of this crate uses (`Generator::error`, `UNREAD`, `SHAPE`, `COLLISION`, `EMPTY`). The same holds for emitted Rust that fails `syn` parsing. The panic is the only failure mode in an otherwise fully diagnostic-driven tool.
+  Fix: have `raw`/`ident` return `Result<Ident, ...>` (or a `Read<Ident>` helper) so the generator reports `generate.generate.shape`-style diagnostics with the source path and the offending name; replace the `expect` with the same diagnostic channel.
+  Note: reachability depends on whether Vun admits a name outside Rust's identifier set; I could not confirm a Vun-legal counterexample from the sources I read, so this is reported as a robustness gap, not a demonstrated crash.
+
+- [P2] an LSP range landing mid-codepoint is silently reported at the line start - compiler/tools/lsp/src/position.rs:51
+  Evidence: `let before = text.get(start as usize..offset as usize).unwrap_or_default();` then `let character = before.chars().map(|c| encoding.width(c)).sum();`
+  Why: `str::get` returns `None` for a non-char-boundary index, and `unwrap_or_default()` turns that into the empty string, so `character` becomes `0`: a span whose byte offset is inside a multi-byte scalar is published as column 0 of its line instead of the nearest valid position, and clients may reject or mis-render the range. `Lines::offset` (the inverse) is careful to stay on boundaries, but `position` is not.
+  Fix: walk back to the nearest boundary before measuring (`let offset = ...; let lo = (0..=offset).rev().find(|i| text.is_char_boundary(i))`), or have `position` return the boundary-adjusted offset explicitly instead of `unwrap_or_default()`.
+
+## Checked, clean
+
+- Command framework (`command/src/{parse.rs, parse/given.rs, param.rs, run.rs, lib.rs}`): unknown commands/options produce `CLI_*` diagnostics with did-you-mean suggestions; `--`, `--name=value`, `-x`, multi-letter `-help` all handled; the two `unreachable!`s (`parse.rs:143`, `run.rs:134`) are guarded by construction (`Selected::option` only finds options/flags; a bare group is turned into a help request before `Request::Run`). Flags and values live in separate vectors, so the documented same-name option/flag case (`Param::is`) does not read across.
+- Direct printing: no `println!`/`eprintln!`/`dbg!` outside `#[cfg(test)]` in `tools/` or `components/`; all records go through `vun_term` (`Record`/`Status`/`Text`/`Object`) and commands through `vun-command`.
+- `tools/clang` `unsafe`: allowed. `clang/src/lib.rs:6-7` (`#![allow(unsafe_code)]`) is the libclang adapter of decision 131 ("heavy native libraries ... loaded on first use through one adapter crate each, the only crates allowed `unsafe`"), not an unlisted exception; each call is wrapped with a `// SAFETY:` note.
+- `xtask` generators/checks: `lines::CHECKED` and `Oversized::all`; `layers::{RANKS, Breach::{all,within}}` (rank order, unranked groups, peer breach all covered by `tests.rs`); the task table (`task/{mod,table}.rs`) with `passes_words`; `generate::Generator::{generate,changes}` staleness/hand-off and `.vun`-only abort, `changes` removing files no longer generated; the collision check in `generate/module.rs`; the `errors`/`primitives`/`items`/`asm` generators (data-driven, one module per declaration/namespace, `Read` diagnostics); `report.rs`/`explanations.rs`; `tree_sitter/{compare,conflicts}` and the per-batch count check; `cargo.rs`, `install.rs`, `hooks.rs`, `release/mod.rs`.
+- LSP: `methods.rs` derives capabilities from the method rows (single source of truth); `documents.rs` incremental edits (`Lines::offset`) always land on char boundaries, so `replace_range` cannot panic on `start > end`; `position.rs::offset`/`line` are boundary-safe; `roster.rs`/`registry.rs` name lookups return `Option`.
+
+Coverage limits: read-only, no commands run; I did not exhaustively read the grammar/editor/tree-sitter emitter submodules, `release/components.rs`, `runtimes.rs`, `toolchain.rs`, `typeset/`, `lsp/src/command/*`, `lsp-protocol`, or `driver/src/{setup,install,cover,testing}/`.
+
+## Open questions
+
+1. Are Vun identifiers guaranteed to be valid Rust identifiers (so `Ident::new`/`Ident::new_raw` can never panic), or should the generator report a diagnostic instead of panicking (finding 2)?
+2. `cargo xtask check` runs the `layers` task, which writes `assets/diagrams/layers.toml` via `Ranks::refresh` (`layers.rs:58`, `main.rs:83`). Is a "check" that mutates the working tree intended, or should the refresh be a separate write command so `check` stays read-only?
+3. Crates whose manifest is outside `compiler/` (e.g. `fuzz/fuzz_targets`) are silently skipped by `Breach::within` (`layers.rs:105-107`). Is that deliberate scope, or should every workspace member be ranked?
+4. A ≥4 GiB vendored file aborts the driver (`lockfile.rs:108`). Acceptable invariant, or worth a diagnostic?
+5. The corpus harness compares diagnostics as flattened text (`corpus.rs::reported` builds `text` from `d.message.to_string()` plus `write!` of children/fixes). Is exact text the intended comparison key at this edge, or should the structured parts be compared?
