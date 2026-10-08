@@ -22,10 +22,7 @@ impl Part {
     /// Where it ends past the end of the address space, so that no address in it overflows.
     pub fn loaded(name: &[u8], address: u64, bytes: Vec<u8>) -> Result<Self, Error> {
         if address.checked_add(bytes.len() as u64).is_none() {
-            let name = String::from_utf8_lossy(name);
-            return Err(Error::Malformed(format!(
-                "the section {name} reaches past the end of the address space"
-            )));
+            return Err(Error::Reach(name.to_vec()));
         }
         Ok(Self { name: name.to_vec(), address, bytes })
     }
@@ -60,8 +57,12 @@ pub enum Error {
     Format,
     /// The file is for a machine whose instructions are not read here.
     Machine(String),
-    /// The file is malformed.
-    Malformed(String),
+    /// The ELF file is malformed.
+    Elf(vun_elf::Malformed),
+    /// The PE file is malformed.
+    Pe(vun_pe::Malformed),
+    /// The section of this name reaches past the end of the address space.
+    Reach(Vec<u8>),
     /// The file has no code labelled by a symbol of this name.
     Missing(Vec<u8>),
 }
@@ -71,13 +72,29 @@ impl fmt::Display for Error {
         match self {
             Self::Format => f.write_str("the file is neither an ELF nor a PE file"),
             Self::Machine(machine) => write!(f, "no instruction set is read for the machine {machine}"),
-            Self::Malformed(why) => write!(f, "the file is malformed: {why}"),
+            Self::Elf(_) => f.write_str("the file is a malformed ELF file"),
+            Self::Pe(_) => f.write_str("the file is a malformed PE file"),
+            Self::Reach(name) => {
+                write!(
+                    f,
+                    "the section {} reaches past the end of the address space",
+                    String::from_utf8_lossy(name)
+                )
+            }
             Self::Missing(name) => write!(f, "no code is labelled `{}`", String::from_utf8_lossy(name)),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Elf(why) => Some(why),
+            Self::Pe(why) => Some(why),
+            Self::Format | Self::Machine(_) | Self::Reach(_) | Self::Missing(_) => None,
+        }
+    }
+}
 
 /// The first bytes of an ELF file, and of a DOS program, which a PE file starts as.
 const ELF: &[u8] = b"\x7fELF";
@@ -91,10 +108,10 @@ impl Code {
     /// read.
     pub fn read(bytes: &[u8]) -> Result<Self, Error> {
         if bytes.starts_with(ELF) {
-            let file = vun_elf::File::read(bytes).map_err(|e| Error::Malformed(e.to_string()))?;
+            let file = vun_elf::File::read(bytes).map_err(Error::Elf)?;
             Self::of_elf(&file)
         } else if bytes.starts_with(DOS) {
-            let image = vun_pe::Image::read(bytes).map_err(|e| Error::Malformed(e.to_string()))?;
+            let image = vun_pe::Image::read(bytes).map_err(Error::Pe)?;
             Self::of_pe(&image)
         } else {
             Err(Error::Format)

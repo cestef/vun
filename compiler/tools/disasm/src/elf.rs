@@ -25,7 +25,7 @@ impl Code {
                 parts.push(Part::loaded(&section.name, section.address, section.bytes().to_vec())?);
             }
         }
-        let symbols = file.symbols().map_err(|e| Error::Malformed(e.to_string()))?;
+        let symbols = file.symbols().map_err(Error::Elf)?;
         let symbols = symbols
             .into_iter()
             .filter(|s| !s.name.is_empty() && !matches!(s.kind, SymbolKind::Section | SymbolKind::File))

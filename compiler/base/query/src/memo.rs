@@ -226,7 +226,11 @@ impl Deps {
             Self::Saved { at, read } => read
                 .get_or_init(|| {
                     let store = db.store.get()?;
-                    let saved = store.stream.read_blob::<Vec<SavedDep>>(*at).ok()?;
+                    let saved = store
+                        .stream
+                        .read_blob::<Vec<SavedDep>>(*at)
+                        .inspect_err(|malformed| tracing::debug!(%malformed, "saved dependencies not read"))
+                        .ok()?;
                     saved.into_iter().map(|dep| store.dep(db, dep)).collect()
                 })
                 .as_deref(),

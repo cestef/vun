@@ -226,15 +226,24 @@ fn a_32_bit_program_is_read_in_protected_mode() {
 #[test]
 fn code_is_read_from_the_format_its_first_bytes_name() {
     assert_eq!(Code::read(b"#!/bin/sh"), Err(Error::Format));
-    assert!(matches!(Code::read(b"\x7fELF"), Err(Error::Malformed(_))));
-    assert!(matches!(Code::read(b"MZ"), Err(Error::Malformed(_))));
+    assert!(matches!(Code::read(b"\x7fELF"), Err(Error::Elf(_))));
+    assert!(matches!(Code::read(b"MZ"), Err(Error::Pe(_))));
+}
+
+#[test]
+fn a_malformed_file_names_why_as_its_source() {
+    use std::error::Error as _;
+    let elf = Code::read(b"\x7fELF").unwrap_err();
+    assert!(elf.source().is_some_and(<dyn std::error::Error>::is::<vun_elf::Malformed>));
+    let pe = Code::read(b"MZ").unwrap_err();
+    assert!(pe.source().is_some_and(<dyn std::error::Error>::is::<vun_pe::Malformed>));
 }
 
 #[test]
 fn code_loaded_past_the_end_of_the_address_space_is_refused() {
     let mut file = program();
     file.sections[0].address = u64::MAX - 2;
-    assert!(matches!(Code::of_elf(&file), Err(Error::Malformed(_))));
+    assert!(matches!(Code::of_elf(&file), Err(Error::Reach(_))));
 }
 
 #[test]

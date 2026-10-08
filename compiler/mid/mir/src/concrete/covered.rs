@@ -33,7 +33,7 @@ impl Map {
         let Ok(Site::Decl(decl)) = env.site(cover::map) else { return None };
         let ty = env.site_type(Site::Decl(decl.clone())).ok()?.ty;
         let Ok(Value::Int(size)) = env.item(cover::size) else { return None };
-        Some(Self { decl, ty, size: u64::try_from(size.to_u128()?).ok()? })
+        Some(Self { decl, ty, size: u64::try_from(size.to_u128()?).ok().filter(|&size| size != 0)? })
     }
 }
 

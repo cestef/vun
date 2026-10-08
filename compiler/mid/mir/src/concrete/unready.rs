@@ -50,6 +50,8 @@ impl std::fmt::Display for Unready {
     }
 }
 
+impl std::error::Error for Unready {}
+
 impl Unready {
     /// This, or what typing says of the body where it stopped: the form typing gave up on under
     /// that place, which a form MIR does not build or a value it has no type for follows from,

@@ -48,7 +48,7 @@ impl Lines {
     pub(crate) fn position(&self, text: &str, offset: u32, encoding: PositionEncoding) -> Position {
         let line = self.starts.partition_point(|&s| s <= offset).saturating_sub(1);
         let start = self.starts[line];
-        let before = text.get(start as usize..offset as usize).unwrap_or_default();
+        let before = text.get(start as usize..text.floor_char_boundary(offset as usize)).unwrap_or_default();
         let character = before.chars().map(|c| encoding.width(c)).sum();
         Position { line: u32::try_from(line).unwrap_or(u32::MAX), character }
     }
