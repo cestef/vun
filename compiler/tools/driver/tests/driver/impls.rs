@@ -2,6 +2,9 @@
 
 use crate::common::Fixture;
 use vun_diag::errors;
+use vun_sema::typed::Typed;
+use vun_sema::witness::{Resolved, Source};
+use vun_sema_ty::call::Instantiation;
 
 #[test]
 fn methods_come_from_witnesses_then_interface_defaults() {
@@ -136,4 +139,38 @@ wrong := () -> bool {
             (errors::TYPES_MISMATCH, "expected `bool`, found `u64`".to_owned()),
         ]
     );
+}
+
+#[test]
+fn a_method_lookup_makes_no_witness_of_an_impl_that_cannot_have_it() {
+    let fixture = Fixture::new("impls-pruned");
+    let file = fixture.root.write(
+        "marks.vun",
+        "\
+Shape := interface(($Self: type) -> type { struct {
+    area: (self: &Self) -> u64 = _;
+}});
+Mark := interface(($Self: type) -> type { struct {
+    tag: (self: &Self) -> u8 = _;
+}});
+Square := struct { side: u16 };
+#[impl(Shape(Square))]
+square_shape := struct { area := (self: &Square) -> u64 { self.side }; };
+#[impl(Mark(Square))]
+square_mark := struct { tag := (self: &Square) -> u8 { 1 }; };
+measure := (s: Square) -> u64 { s.area() };
+",
+    );
+    let mut session = fixture.session();
+    let loaded = session.load(&file).unwrap();
+    let measure = session.functions(loaded).pop().expect("the last function is measure");
+    assert!(session.db.get::<Typed>(&Instantiation::plain(measure)).is_some());
+    let here = session.file_ref(loaded);
+    let made = session
+        .db
+        .computed::<Resolved>()
+        .into_iter()
+        .filter(|(candidate, _)| matches!(&candidate.source, Source::Impl(decl) if decl.decl.file == here))
+        .count();
+    assert_eq!(made, 1, "only the impl declaring `area` is made");
 }

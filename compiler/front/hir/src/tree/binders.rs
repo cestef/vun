@@ -153,6 +153,36 @@ impl Hir {
         });
         found
     }
+
+    /// Whether no member of `ns` can be named `name`: each is written under a plain name of its
+    /// own, staged ones included. A spread or a computed name could bring any.
+    #[must_use]
+    pub fn lacks(&self, ns: NsId, name: Symbol) -> bool {
+        let mut lacks = true;
+        each_entry(&self.namespaces[ns].members, &mut |member| match member {
+            Member::Decl(decl) => {
+                let mut binders = Vec::new();
+                self.binders(self.decls[*decl].pat, &mut binders);
+                let computed = matches!(self.pats[self.decls[*decl].pat].kind, PatKind::Computed(_));
+                lacks &=
+                    !computed && !binders.is_empty() && binders.iter().all(|&b| self.binders[b].name != name);
+            }
+            Member::Field(field) => lacks &= matches!(field.name, Name::Plain(written) if written != name),
+            Member::Spread(_) => lacks = false,
+        });
+        lacks
+    }
+
+    /// The body of the `struct` that `value` makes: the literal itself, or the end of a function
+    /// literal's body.
+    #[must_use]
+    pub fn made_struct(&self, value: ExprId) -> Option<NsId> {
+        match self.exprs[value].kind {
+            ExprKind::Struct(ns) => Some(ns),
+            ExprKind::Fn { body, .. } => self.made_struct(self.blocks[body].tail?),
+            _ => None,
+        }
+    }
 }
 
 /// Calls `f` on every entry of `list`, entering both branches of `$if` and the body of `$for`.

@@ -49,10 +49,14 @@ impl Candidate {
     }
 
     /// Whether its witness may have the member `name`. A derived witness has the members of its
-    /// interface, so one whose interface lacks `name` is not made to find out.
+    /// interface, so one whose interface lacks `name` is not made to find out; an impl's has its
+    /// body's and its interface's defaults (`ImplDecl::may_have`).
     #[must_use]
     pub fn may_have(&self, cx: &Cx<'_>, name: Symbol) -> bool {
-        let Source::Derive(derive) = &self.source else { return true };
+        let derive = match &self.source {
+            Source::Impl(decl) => return decl.may_have(cx, name),
+            Source::Derive(derive) => derive,
+        };
         let call = Instance { f: derive.interface.clone(), args: vec![Value::Type(self.ty)] };
         let Some(requirements) = cx.get::<Call>(&call).ok().and_then(|value| value.as_type()) else {
             return true;

@@ -22,7 +22,10 @@ Spec 11 is the reference.
   overrule.
 - `vun debug smith` (see spec 11): not generated yet are generic iterators, coroutines that
   return or are cancelled, tasks, `unsafe`, and layout attributes. Untriaged: a text-fuzz crash
-  at `compiler/low/lower/src/func/constant.rs:38` (`f16` constants).
+  at `compiler/low/lower/src/func/constant.rs:38` (`f16` constants; `int` slices past the type's
+  size, so a `Constant::Float` met a smaller type). The `program` fuzz target found no input in
+  7 minutes; run it with `ASAN_OPTIONS=detect_leaks=0` and `-rss_limit_mb` raised, one session
+  grows past the default limit.
 - `vun test main.vun` is `test.no_namespace` for a program's root file: a package's namespaces are the
   files its root namespace names, which the `hello` template's `main.vun` is not, so the template
   has nowhere to put a test.

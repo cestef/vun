@@ -27,6 +27,7 @@ use vun_codec::{Decode, Encode};
 use vun_desugar::CALLS;
 use vun_hir::db::FileRef;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
+use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
@@ -36,6 +37,7 @@ use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Nominal, Ty, TyKind, Value};
 
 use crate::env::Env;
+use crate::member::{Found, Members};
 
 /// A declaration marked `#[impl(I(T))]`, or `#[impl(T)]` for methods without an interface.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -100,6 +102,29 @@ impl ImplDecl {
             _ => false,
         };
         same && (self.target == other.target || covers(self, other) || covers(other, self))
+    }
+}
+
+impl ImplDecl {
+    /// Whether the witness this impl gives may have the member `name`, read from the impl as
+    /// written, so that a witness is not made to find out it has none: the declarations of its
+    /// body, then the defaults of its interface. Whatever the text cannot say, such as a spread, a
+    /// computed name or a value that is no literal, may have it.
+    #[must_use]
+    pub fn may_have(&self, cx: &Cx<'_>, name: Symbol) -> bool {
+        let Some(env) = Env::of(cx, &self.decl.file) else { return true };
+        let hir = &env.parsed.hir;
+        let declared = hir.decls[self.decl.decl.id]
+            .value
+            .and_then(|value| hir.made_struct(value))
+            .is_none_or(|body| !hir.lacks(body, name));
+        let defaulted = || match &self.contract {
+            Some(contract) => cx
+                .get::<Members>(&contract.requirements)
+                .is_none_or(|members| !matches!(members.find(name), Found::Absent)),
+            None => false,
+        };
+        self.holed.is_some() || declared || defaulted()
     }
 }
 
