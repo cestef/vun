@@ -3,5 +3,6 @@ fn fib(n: u32) -> u64 {
 }
 
 fn main() {
-    println!("{}", fib(34));
+    let n = std::env::args().nth(1).and_then(|a| a.parse().ok()).unwrap_or(34);
+    println!("{}", fib(n));
 }

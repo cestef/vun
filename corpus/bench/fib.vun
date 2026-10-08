@@ -1,11 +1,18 @@
 //! Calls: the recursive Fibonacci number, whose calls and additions are all the program does.
+//! The index is the first argument, 34 without one, so that no compiler computes it ahead of time.
 
 start := std.os.start(main);
+
+fallback: u32 = 34;
 
 fib := (n: u32) -> u64 { if n < 2 { n.to(u64) } else { (fib(n - 1) + fib(n - 2)).wrap(u64) } };
 
 main := (sys: &mut std.os.System) -> std.os.Exit {
     mut out := sys.stdout();
-    std.fmt.println(&mut out, "{}", fib(34));
+    n := match sys.args().get(1) {
+        .some(text) => u32.parse(text).unwrap_or(fallback),
+        .none => fallback,
+    };
+    std.fmt.println(&mut out, "{}", fib(n));
     .ok
 };

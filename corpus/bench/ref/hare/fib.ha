@@ -1,4 +1,6 @@
 use fmt;
+use os;
+use strconv;
 
 fn fib(n: u32) u64 = {
 	if (n < 2) {
@@ -8,5 +10,9 @@ fn fib(n: u32) u64 = {
 };
 
 export fn main() void = {
-	fmt::println(fib(34))!;
+	let n: u32 = 34;
+	if (len(os::args) > 1) {
+		n = strconv::stou32(os::args[1]) as u32;
+	};
+	fmt::println(fib(n))!;
 };

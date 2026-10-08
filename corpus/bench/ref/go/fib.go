@@ -13,5 +13,11 @@ func fib(n uint32) uint64 {
 }
 
 func main() {
-	os.Stdout.WriteString(strconv.FormatUint(fib(34), 10) + "\n")
+	n := uint64(34)
+	if len(os.Args) > 1 {
+		if v, err := strconv.ParseUint(os.Args[1], 10, 32); err == nil {
+			n = v
+		}
+	}
+	os.Stdout.WriteString(strconv.FormatUint(fib(uint32(n)), 10) + "\n")
 }

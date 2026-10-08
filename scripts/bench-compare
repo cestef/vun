@@ -39,6 +39,8 @@ BENCH = ROOT / "corpus" / "bench"
 RESULTS = ROOT / "assets" / "bench" / "results.json"
 PROGRAMS = ("fib", "sieve", "mix")
 WARMUP = 3
+# What a program is started with: the index of the Fibonacci number, which no compiler may know.
+ARGUMENTS = {"fib": ["34"]}
 FLOOR = "floor"
 
 
@@ -178,7 +180,7 @@ class Bench:
         return {"cold": quartiles(cold), "warm": quartiles(warm)}
 
     def run_times(self, exe: Path, program: str) -> dict[str, float]:
-        command = pinned(self.args.core, [str(exe)])
+        command = pinned(self.args.core, [str(exe), *ARGUMENTS.get(program, [])])
         for _ in range(WARMUP):
             timed(command)
         samples = []
@@ -194,7 +196,7 @@ class Bench:
         src.write_text("int main(void) { return 0; }\n")
         exe = self.scratch / "floor"
         subprocess.run(["gcc", "-O2", "-o", str(exe), str(src)], check=True)
-        command = pinned(self.args.core, [str(exe)])
+        command = pinned(self.args.core, [str(exe), *ARGUMENTS.get(program, [])])
         for _ in range(WARMUP):
             timed(command)
         return quartiles([timed(command)[0] for _ in range(self.args.samples)])
@@ -204,7 +206,7 @@ class Bench:
         for program in PROGRAMS:
             dest = self.scratch / f"ref-{program}"
             self.build(gcc0, program, dest)
-            self.reference[program] = timed([str(dest / "exe")])[1]
+            self.reference[program] = timed([str(dest / "exe"), *ARGUMENTS.get(program, [])])[1]
         results = []
         for variant in self.variants:
             for program in PROGRAMS:
