@@ -40,8 +40,13 @@ above already include it.
 3. Query-table overhead, engine-wide so it helps warm and edit too: `Db::table_of` goes through a
    thread-local `RefCell<HashMap>` on every lookup (877k calls) and papaya slots are 9% of cold
    instructions (`Table<Parsed>::slot` 2.9%). `Value::clone` is only 1.1%: dropped.
-4. BOLT of `vun`. PGO is in (decision 670, `cargo xtask pgo`; a `dist` built with it is not yet
-   timed); mimalloc v3 measured the same as v2.
+4. BOLT of `vun`: measured, no gain, not built into the release. On am3 (arm64, llvm-bolt 22.1.8, the
+   Fedora package unpacked beside the checkout), the PGO `dist` `vun` linked with `--emit-relocs` and
+   unstripped, instrumented, run over the PGO workloads, then rewritten with `-reorder-blocks=ext-tsp
+   -reorder-functions=cdsort -split-functions -icf=1`: taken branches fell 25% in BOLT's own
+   statistics, but cold `build-hello`, `build-tour` and `check-std` and warm builds stayed within the
+   noise (3 to 5%, interleaved runs). PGO and fat LTO already lay the hot code out. mimalloc v3
+   measured the same as v2.
 5. Queries that wait run other ready work, designed before built. Helping nests tasks on the
    waiter's stack: the helper can take work needing a claim held lower on its own stack or by the
    thread it waits on (false deadlock), and the depth is unbounded. `base/query/src/claim.rs` cycle
