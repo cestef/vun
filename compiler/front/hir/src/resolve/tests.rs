@@ -17,7 +17,7 @@ fn check(text: &str) -> (Vec<DiagId>, usize) {
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
     assert_eq!(cx.diag.error_count(), 0, "{text:?} does not parse");
-    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
+    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &mut cx);
     assert_eq!(hir.verify(cx.origins), Ok(()));
     let resolution = hir.resolve(&mut cx);
     let inside = hir

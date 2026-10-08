@@ -62,7 +62,7 @@ pub enum Anchor {
     File,
     /// A declaration, by its name inside the declaration around it, if any, and how many declared
     /// before it there share that name: two locals of one name in sibling blocks are two.
-    Declaration { within: Option<OriginId>, name: Symbol, nth: u16 },
+    Declaration { within: Option<OriginId>, name: Symbol, nth: u32 },
     /// Inside this declaration, by the span relative to the declaration's start.
     Within(OriginId),
 }
@@ -114,7 +114,7 @@ impl OriginTable {
     ///
     /// # Panics
     /// When another declaration in the same text has its identity, which reading back would merge.
-    pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol, nth: u16) -> OriginId {
+    pub fn declaration(&self, span: Span, within: Option<OriginId>, name: Symbol, nth: u32) -> OriginId {
         let id = self.push(Origin {
             span,
             via: Via::Source,

@@ -89,7 +89,7 @@ impl Query for Parsed {
         let mut dcx = DiagCx { diag: &mut diag, origins };
         let tokens = Tokens::lex(file, &text, &mut dcx);
         let cst = Cst::parse(&tokens, &text, &mut dcx);
-        let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, origins);
+        let hir = Hir::lower(lower::Source { cst: &cst, tokens: &tokens, text: &text }, &mut dcx);
         let resolution = hir.resolve(&mut dcx);
         tracing::debug!(path = %key.path, decls = hir.decls.len(), exprs = hir.exprs.len(), "lowered to HIR");
         let text = Hash::of(text.as_bytes());

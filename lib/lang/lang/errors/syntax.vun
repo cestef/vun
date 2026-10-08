@@ -14,3 +14,4 @@ unclosed_delimiter := diag.Diag{};
 chained_operator := diag.Diag{};
 nesting_too_deep := diag.Diag{};
 unknown_borrow := diag.Diag{};
+tuple_index_too_large := diag.Diag{};

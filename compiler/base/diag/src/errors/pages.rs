@@ -135,6 +135,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (SYNTAX_CHAINED_OPERATOR, "lang/lang/errors/syntax/chained_operator.md"),
     (SYNTAX_NESTING_TOO_DEEP, "lang/lang/errors/syntax/nesting_too_deep.md"),
     (SYNTAX_UNKNOWN_BORROW, "lang/lang/errors/syntax/unknown_borrow.md"),
+    (SYNTAX_TUPLE_INDEX_TOO_LARGE, "lang/lang/errors/syntax/tuple_index_too_large.md"),
     (TARGET_UNCHOSEN, "lang/lang/errors/target/unchosen.md"),
     (TEST_NO_NAMESPACE, "lang/lang/errors/test/no_namespace.md"),
     (TEST_UNRUNNABLE, "lang/lang/errors/test/unrunnable.md"),

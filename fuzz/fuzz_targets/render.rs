@@ -26,7 +26,7 @@ fuzz_target!(|text: &str| {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &origins).resolve(&mut cx);
+    Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &mut cx).resolve(&mut cx);
     let sarif = Sarif::default();
     let mut sinks: [Box<dyn DiagSink>; 5] = [
         Box::new(AnnotateRenderer::new(io::sink(), Color::Always)),

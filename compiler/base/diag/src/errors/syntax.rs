@@ -25,3 +25,6 @@ pub const SYNTAX_UNCLOSED_DELIMITER: DiagId = DiagId::Lang(
 pub const SYNTAX_CHAINED_OPERATOR: DiagId = DiagId::Lang(Lang::SyntaxChainedOperator);
 pub const SYNTAX_NESTING_TOO_DEEP: DiagId = DiagId::Lang(Lang::SyntaxNestingTooDeep);
 pub const SYNTAX_UNKNOWN_BORROW: DiagId = DiagId::Lang(Lang::SyntaxUnknownBorrow);
+pub const SYNTAX_TUPLE_INDEX_TOO_LARGE: DiagId = DiagId::Lang(
+    Lang::SyntaxTupleIndexTooLarge,
+);

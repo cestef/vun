@@ -187,7 +187,10 @@ impl Session {
 
     pub fn lower(&mut self, tokens: &Tokens, cst: &Cst) -> Hir {
         let text = &self.sources.file(tokens.file()).text;
-        Hir::lower(lower::Source { cst, tokens, text }, self.origins)
+        Hir::lower(
+            lower::Source { cst, tokens, text },
+            &mut DiagCx { diag: &mut self.diag, origins: self.origins },
+        )
     }
 
     /// The file lexed, parsed, lowered and resolved within itself, from the queries, with the

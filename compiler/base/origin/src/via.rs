@@ -33,7 +33,7 @@ pub enum Via {
     Part,
     /// A further entity made from the same source as its parent, the `n`-th: the origin of each
     /// entity is its own, however many come from one piece of syntax.
-    Again(u16),
+    Again(u32),
 }
 
 impl Via {

@@ -22,7 +22,7 @@ fn repository_sources_lower_and_verify() {
             let mut cx = DiagCx { diag: &mut diag, origins: &origins };
             let tokens = Tokens::lex(file, &text, &mut cx);
             let cst = Cst::parse(&tokens, &text, &mut cx);
-            let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text: &text }, cx.origins);
+            let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text: &text }, &mut cx);
             if let Err(malformed) = hir.verify(cx.origins) {
                 failures.push(format!("{}: {malformed:?}", path.display()));
             }
@@ -46,7 +46,7 @@ fn origins(text: &str) -> vun_hash::Hash {
     let mut cx = DiagCx { diag: &mut diag, origins: &origins };
     let tokens = Tokens::lex(file, text, &mut cx);
     let cst = Cst::parse(&tokens, text, &mut cx);
-    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, cx.origins);
+    let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &mut cx);
     let decls: Vec<_> = hir.decls.iter().map(|(_, d)| d.origin).collect();
     let exprs: Vec<_> = hir.exprs.iter().map(|(_, e)| e.origin).collect();
     vun_hash::Hash::of_value(&(decls, exprs))
@@ -57,4 +57,19 @@ fn origins_survive_edits_before_their_declaration() {
     let decl = "limit := (a: u32) -> u32 { a + 1 };\n";
     assert_eq!(origins(decl), origins(&format!("// a comment added above\n\n{decl}")));
     assert_ne!(origins(decl), origins("limit := (a: u32) -> u32 { a  + 1 };\n"), "an edit inside is seen");
+}
+
+#[test]
+fn a_tuple_position_past_u32_is_reported() {
+    let ids = |text: &str| {
+        let file = SourceFiles::new().add("pkg.vun", text);
+        let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+        let mut cx = DiagCx { diag: &mut diag, origins: &origins };
+        let tokens = Tokens::lex(file, text, &mut cx);
+        let cst = Cst::parse(&tokens, text, &mut cx);
+        let _ = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &mut cx);
+        diag.sorted(&origins).iter().map(|d| d.id).collect::<Vec<_>>()
+    };
+    assert_eq!(ids("x := t.4294967295;\n"), []);
+    assert_eq!(ids("x := t.4294967296;\n"), [vun_diag::errors::SYNTAX_TUPLE_INDEX_TOO_LARGE]);
 }

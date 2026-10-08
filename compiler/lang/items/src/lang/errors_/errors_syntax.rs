@@ -47,3 +47,6 @@ pub const nesting_too_deep: Item = Item::new(
 pub const unknown_borrow: Item = Item::new(
     &["lang", "errors", "syntax", "unknown_borrow"],
 );
+pub const tuple_index_too_large: Item = Item::new(
+    &["lang", "errors", "syntax", "tuple_index_too_large"],
+);

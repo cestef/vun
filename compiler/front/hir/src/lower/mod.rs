@@ -1,15 +1,17 @@
 //! Lowering a file's CST into HIR, through the named children of each node (`Cst::fields`).
 //!
 //! Lowering decides roles (pattern or expression, member or statement) from positions and reports
-//! nothing: the parser reported malformed source, which lowers to `Error` nodes, and the checks
-//! that need the HIR run after it.
+//! only a number it cannot hold: the parser reported malformed source, which lowers to `Error`
+//! nodes, and the checks that need the HIR run after it.
 
 mod control;
 mod exprs;
 mod implementation;
 mod members;
+mod names;
 mod pats;
 
+use vun_diag::{DiagCtxt, DiagCx};
 use vun_grammar::{NodeField, NodeKind, TokenKind};
 use vun_intern::Symbol;
 use vun_origin::{OriginId, OriginTable, Via};
@@ -17,7 +19,7 @@ use vun_span::Span;
 use vun_syntax::cst::{Anchor, Cst, Fields, NodeId};
 use vun_syntax::tokens::Tokens;
 
-use crate::tree::{Cond, Entry, Hir, List, Name, Staged};
+use crate::tree::{Cond, Entry, Hir, List, Staged};
 use pats::Mode;
 
 /// A parsed file, as lowering reads it.
@@ -29,12 +31,13 @@ pub struct Source<'a> {
 }
 
 impl Hir {
-    /// Lowers the file `source` into HIR.
+    /// Lowers the file `source` into HIR, reporting to `dcx`.
     #[must_use]
-    pub fn lower(source: Source<'_>, origins: &OriginTable) -> Self {
+    pub fn lower(source: Source<'_>, dcx: &mut DiagCx<'_>) -> Self {
         let mut lower = Lower {
             source,
-            origins,
+            origins: dcx.origins,
+            diag: dcx.diag,
             hir: Self::default(),
             declaration: None,
             made: foldhash::HashMap::default(),
@@ -51,13 +54,14 @@ impl Hir {
 struct Lower<'a, 'i> {
     source: Source<'a>,
     origins: &'i OriginTable,
+    diag: &'i mut DiagCtxt,
     hir: Hir,
     /// The origin of the declaration being lowered, which the origins inside it are anchored to.
     declaration: Option<OriginId>,
     /// How many entities have each origin so far: a further one gets its own.
-    made: foldhash::HashMap<OriginId, u16>,
+    made: foldhash::HashMap<OriginId, u32>,
     /// How many declarations of each name each declaration holds so far, the file's under `None`.
-    named: foldhash::HashMap<(Option<OriginId>, Symbol), u16>,
+    named: foldhash::HashMap<(Option<OriginId>, Symbol), u32>,
 }
 
 /// Escape that makes a keyword a name: `\unsafe`.
@@ -164,33 +168,6 @@ impl<'a> Lower<'a, '_> {
     /// The named children of `n`, matched once; lowering fetches them once per node.
     fn fields(&self, n: NodeId) -> Fields {
         self.source.cst.fields(n).unwrap_or_default()
-    }
-
-    /// The symbol of a name leaf, without the escape of `\name`.
-    fn symbol(&mut self, n: NodeId) -> Symbol {
-        let text = self.text(n);
-        Symbol::intern(text.strip_prefix(ESCAPE).unwrap_or(text))
-    }
-
-    fn label(&mut self, n: NodeId) -> Symbol {
-        let text = self.text(n);
-        Symbol::intern(text.strip_prefix(LABEL).unwrap_or(text))
-    }
-
-    /// A name in a name position: plain, `$(e)`, a tuple index, or `_`.
-    fn name(&mut self, n: NodeId) -> Name {
-        match self.kind(n) {
-            NodeKind::Name => Name::Plain(self.symbol(n)),
-            NodeKind::Int => vun_syntax::literal::integer(self.text(n))
-                .and_then(|i| u32::try_from(&i).ok())
-                .map_or(Name::Hole, Name::Index),
-            NodeKind::Prefix if self.token(n) == Some(TokenKind::Dollar) => {
-                // Parentheses lower to their inner expression.
-                let f = self.fields(n);
-                Name::Computed(self.operand(&f, n, NodeField::Operand))
-            }
-            _ => Name::Hole,
-        }
     }
 
     /// Doc lines and attribute values wrapping `n`, and the node they wrap.

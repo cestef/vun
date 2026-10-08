@@ -199,6 +199,7 @@ pub enum Lang {
     SyntaxChainedOperator,
     SyntaxNestingTooDeep,
     SyntaxUnknownBorrow,
+    SyntaxTupleIndexTooLarge,
     /// Targets (spec 13, section 7).
     Target,
     TargetUnchosen,
