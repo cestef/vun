@@ -155,8 +155,9 @@ impl Session {
             self.diag.absorb(&reports);
         }
         // The bodies of other files the program built compiles, a library's included: what is
-        // built is checked, each file parsed, resolved and linted and each body typed where the
-        // program reaches it.
+        // built is checked, each file parsed, resolved and each body typed where the program
+        // reaches it; only the files of the package being checked are linted, a dependency's
+        // lints being its owner's to see.
         let program = {
             let _timer = REACH.start();
             self.db.get::<Programs>(&(key.clone(), self.roots.checked()))
@@ -174,7 +175,9 @@ impl Session {
             if let Some(named) = self.db.get::<FileNames>(file).filter(|_| parsed_clean) {
                 self.diag.absorb(&named.diag);
             }
-            if let Some(linted) = self.db.get::<Linted>(file) {
+            if file.package == key.package
+                && let Some(linted) = self.db.get::<Linted>(file)
+            {
                 self.diag.absorb(&linted);
             }
         }

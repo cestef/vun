@@ -12,7 +12,7 @@ pub struct Writer<'r> {
     bytes: Vec<u8>,
     /// The pool of each handle type, in the order first written.
     pools: Vec<Box<dyn AnyPool>>,
-    by_type: HashMap<TypeId, usize>,
+    by_type: HashMap<TypeId, usize, foldhash::fast::RandomState>,
     /// The stream whose handles keep their numbers: the one extended or layered over.
     known: Option<&'r Context>,
     /// The stream this one is layered over, whose entries its pools number theirs after.

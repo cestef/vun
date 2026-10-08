@@ -60,3 +60,10 @@
   carry no function names (`f129`), so `profile` cannot name a hot function there: emit symbols
   for local functions. Nothing yet compares the backends instruction for instruction in one
   report; run the same `run-*` with `--backend`.
+- Cold `hello` (am3): linting the library files the program reaches was 41% of the instructions
+  (7.90 G to 4.65 G, wall 614 to 358 ms); only the checked package is linted now (decision 666).
+  What a cold check still computes: 316 files parsed (134 ms), 2900 bodies typed and MIR built for
+  the lint rules and the comptime they run, 5.6k `signed`. Ideas, by size: ship the shared library
+  memos with the toolchain (a first run becomes a warm one); make `Table::slot` cheaper (papaya
+  is 15% of cold: 2.7M lookups of `Parsed` alone, each hashing a `FileRef`); parse the library
+  lazily (only the declarations a program reaches).
