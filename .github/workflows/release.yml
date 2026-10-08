@@ -68,7 +68,7 @@ jobs:
       # libraries of `cargo xtask components`, which `package` packs beside the toolchain.
       - run: cargo ${{ matrix.build }} --profile dist --package vun-cli --no-default-features --features dist --target ${{ matrix.target }}${{ matrix.glibc }}
         env:
-          RUSTFLAGS: -D warnings -Cprofile-use=${{ github.workspace }}/target/pgo/vun.profdata -Cllvm-args=-pgo-warn-mismatch=false
+          RUSTFLAGS: -D warnings -Cprofile-use=${{ github.workspace }}/target/pgo/vun.profdata -Cllvm-args=-no-pgo-warn-mismatch
       - run: cargo xtask components --tool ${{ matrix.build }} --target ${{ matrix.target }}${{ matrix.glibc }}
       - run: cargo xtask package target/${{ matrix.target }}/dist/vun dist
       - uses: actions/upload-artifact@v4

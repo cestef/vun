@@ -137,7 +137,7 @@ impl Pgo {
     /// The flags rustc lays out a `vun` by `profile` with; a function the profile does not know,
     /// as one of a component or a feature the recording `vun` lacked, is laid out as without.
     pub(crate) fn flags(profile: &Path) -> Vec<OsString> {
-        vec![flag("-Cprofile-use=", profile), OsString::from("-Cllvm-args=-pgo-warn-mismatch=false")]
+        vec![flag("-Cprofile-use=", profile), OsString::from("-Cllvm-args=-no-pgo-warn-mismatch")]
     }
 }
 

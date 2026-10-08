@@ -333,7 +333,7 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
 - Profile-guided optimization (decision 670): `cargo xtask pgo` writes `target/pgo/vun.profdata`
   from a recording `vun` run over the profile workloads (needs `rustup component add llvm-tools`);
-  build with `RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/vun.profdata -Cllvm-args=-pgo-warn-mismatch=false"`
+  build with `RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/vun.profdata -Cllvm-args=-no-pgo-warn-mismatch"`
   to use it. `cargo xtask install` does both for `dist`. Compare a build with and without by
   `vun debug profile <workloads> --measure time --exe <vun>` for each (11 to 15% on am3).
 - Kept machine code (decision 669): `.vun/code/<hash>` beside the root file, one per toolchain,
