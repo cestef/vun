@@ -7,7 +7,7 @@
 //! but by the types it is for.
 
 use vun_grammar::{NodeField, NodeKind, TokenKind};
-use vun_intern::Symbol;
+use vun_items::Item;
 use vun_origin::OriginId;
 use vun_span::Span;
 use vun_syntax::cst::{Fields, NodeId};
@@ -17,12 +17,6 @@ use super::pats::Mode;
 use crate::tree::{
     Arg, Block, Decl, DeclId, Entry, Expr, ExprId, ExprKind, Name, Namespace, Param, Pat, PatKind,
 };
-
-/// The namespace of the primitives the declaration is made of.
-const LANG: &str = "lang";
-/// The attribute that registers a witness, and the type a function making one returns.
-const IMPL: &str = "impl";
-const TYPE: &str = "type";
 
 impl Lower<'_, '_> {
     /// The declaration the `impl` node `n`, of any of its kinds, stands for.
@@ -87,7 +81,7 @@ impl Lower<'_, '_> {
             }
             None => implemented,
         };
-        let callee = self.lang(IMPL, head);
+        let callee = self.item(vun_items::lang::r#impl, head);
         let args = vec![Entry::One(Arg { name: None, value: implemented })];
         self.synthesized_at(ExprKind::Call { callee, args }, head)
     }
@@ -105,15 +99,20 @@ impl Lower<'_, '_> {
             .collect();
         let origin = self.origin(n);
         let body = self.hir.blocks.push(Block { stmts: Vec::new(), tail: Some(body), origin });
-        let returns = Some(self.lang(TYPE, head));
+        let returns = Some(self.item(vun_items::lang::r#type, head));
         self.synthesized(ExprKind::Fn { params, returns, body }, n)
     }
 
-    /// `lang.name`.
-    fn lang(&mut self, name: &str, head: OriginId) -> ExprId {
-        let object = self.synthesized_at(ExprKind::Name(Symbol::intern(LANG)), head);
-        let member = ExprKind::Member { object, name: Name::Plain(Symbol::intern(name)) };
-        self.synthesized_at(member, head)
+    /// The path of the `lang` item `item`, written out.
+    fn item(&mut self, item: Item, head: OriginId) -> ExprId {
+        let kind = match item.parent() {
+            Some(parent) => {
+                let object = self.item(parent, head);
+                ExprKind::Member { object, name: Name::Plain(item.symbol()) }
+            }
+            None => ExprKind::Name(item.symbol()),
+        };
+        self.synthesized_at(kind, head)
     }
 
     fn synthesized(&mut self, kind: ExprKind, n: NodeId) -> ExprId {

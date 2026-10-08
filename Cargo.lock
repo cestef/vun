@@ -2126,6 +2126,7 @@ dependencies = [
  "vun-hash",
  "vun-index",
  "vun-intern",
+ "vun-items",
  "vun-origin",
  "vun-outline",
  "vun-query",
@@ -2146,6 +2147,7 @@ version = "0.1.0"
 dependencies = [
  "ureq",
  "vun-fetch",
+ "vun-term",
  "vun-uri",
 ]
 

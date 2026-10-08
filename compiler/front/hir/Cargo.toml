@@ -21,6 +21,7 @@ vun-span.workspace = true
 vun-origin.workspace = true
 vun-diag.workspace = true
 vun-intern.workspace = true
+vun-items.workspace = true
 vun-syntax.workspace = true
 vun-index.workspace = true
 vun-grammar.workspace = true

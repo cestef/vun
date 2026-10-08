@@ -96,6 +96,12 @@ impl Size {
         self.bytes() * 8
     }
 
+    /// Whether an operation of this size reads narrow operands, which it extends first.
+    #[must_use]
+    pub const fn narrow(self) -> bool {
+        matches!(self, Self::B8 | Self::B16)
+    }
+
     /// The size of `bytes`, a power of two up to 8.
     #[must_use]
     pub const fn of_bytes(bytes: u64) -> Option<Self> {

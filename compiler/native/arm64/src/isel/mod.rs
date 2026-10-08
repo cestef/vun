@@ -78,7 +78,7 @@ impl Selects for Arm {
     }
 
     fn narrow(size: Size) -> bool {
-        narrow(size)
+        size.narrow()
     }
 
     fn convention(cx: &Cx<'_, Self>) -> &'static Convention<Reg, vun_asm_arm64::V> {
@@ -144,11 +144,6 @@ impl Isel for Arm {
     fn finish(cx: &mut Cx<'_, Self>, frame: u64) {
         Sel(cx).finish(frame);
     }
-}
-
-/// Whether an operation of `size` reads narrow operands, which it extends first.
-fn narrow(size: Size) -> bool {
-    size < Size::B32
 }
 
 impl<'a> Sel<'_, 'a> {

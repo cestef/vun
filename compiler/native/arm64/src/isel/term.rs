@@ -9,7 +9,6 @@ use vun_dwarf::Step;
 use vun_lir::{Cond, Value};
 use vun_native::select::Terminates;
 
-use super::narrow;
 use super::select::Look;
 use crate::asm::AsmExt;
 use crate::{Arm, FP, LR, Opnd, condition};
@@ -49,7 +48,7 @@ impl Terminates for Arm {
 
     fn switched(cx: &mut Cx<'_, Self>, v: Value) -> Result<(Reg, Size), Lack> {
         let (r, size) = (cx.reg(v), Look(cx).size(v)?);
-        if !narrow(size) {
+        if !size.narrow() {
             return Ok((r, size));
         }
         let extended = cx.scratch();

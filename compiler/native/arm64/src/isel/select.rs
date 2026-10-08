@@ -8,7 +8,6 @@ use vun_codegen::Cx;
 use vun_codegen::snippet::Snippet;
 use vun_lir::{BinOp, CastOp, Cond, Inst, InstKind, Reads, Scalar, Value};
 
-use super::narrow;
 use crate::snippets::{
     ADD, AND, CMP, CMP_SIGNED, CMP_UNSIGNED, DOUBLE_TO_SIGNED, DOUBLE_TO_UNSIGNED, FADD, FCMP, FDIV, FMUL,
     FNE, FSET, FSUB, KEEP, LOAD, LOAD_ACQUIRE, MUL, NARROW, NARROW_SIGNED_TO_DOUBLE, NARROW_SIGNED_TO_SINGLE,
@@ -72,7 +71,7 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Binary { op, a, b } => {
                 let size = self.size(a)?;
-                let chosen = match (op, narrow(size)) {
+                let chosen = match (op, size.narrow()) {
                     (BinOp::Add, _) => ADD,
                     (BinOp::Sub, _) => SUB,
                     (BinOp::And, _) => AND,
@@ -108,7 +107,7 @@ impl<'a> Look<'_, 'a> {
             }
             &InstKind::Compare { cond, a, b } => {
                 let size = self.size(a)?;
-                let chosen = match (narrow(size), cond.reads()) {
+                let chosen = match (size.narrow(), cond.reads()) {
                     (false, _) => SET,
                     (true, Reads::Signed) => SET_SIGNED,
                     (true, _) => SET_UNSIGNED,
@@ -157,7 +156,7 @@ impl<'a> Look<'_, 'a> {
     /// The flags a branch fusing the comparison `cond` of `a` and `b` reads, as a snippet.
     pub(super) fn flags(&self, cond: Cond, a: Value) -> Result<(Snippet<Arm>, Size), Lack> {
         let size = self.size(a)?;
-        let snippet = match (cond.reads(), narrow(size)) {
+        let snippet = match (cond.reads(), size.narrow()) {
             (Reads::Float, _) => FCMP,
             (_, false) => CMP,
             (Reads::Signed, true) => CMP_SIGNED,
@@ -192,7 +191,7 @@ impl<'a> Look<'_, 'a> {
             }
             CastOp::SToF | CastOp::UToF => {
                 let (single, size) = (self.precision(to)? == Size::B32, self.size(value)?);
-                let chosen = match (op == CastOp::SToF, narrow(size), single) {
+                let chosen = match (op == CastOp::SToF, size.narrow(), single) {
                     (true, false, true) => SIGNED_TO_SINGLE,
                     (true, false, false) => SIGNED_TO_DOUBLE,
                     (false, false, true) => UNSIGNED_TO_SINGLE,
