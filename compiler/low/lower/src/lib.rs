@@ -7,6 +7,7 @@ mod frame;
 mod func;
 mod inlined;
 mod lowering;
+mod order;
 mod piece;
 mod placing;
 mod program;

@@ -58,6 +58,9 @@ impl Lowered {
         drop(numbering);
         let keys: Vec<Inlining> =
             pieces.into_iter().map(|piece| Inlining { piece, unchecked: unchecked.clone() }).collect();
+        for layer in Inlining::layers(cx, &keys) {
+            cx.get_all::<InlinedLir>(&layer);
+        }
         let lirs = cx.get_all::<InlinedLir>(&keys);
         let _placing = PLACE.start();
         if let Some(failure) = Self::failure(cx, &program, &keys, &lirs) {

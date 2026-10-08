@@ -52,7 +52,7 @@ impl Query for InlinedLir {
 
 impl Inlining {
     /// The function `named`, which this one calls.
-    fn callee(&self, named: &FuncRef) -> Option<Self> {
+    pub(crate) fn callee(&self, named: &FuncRef) -> Option<Self> {
         let piece = match named {
             FuncRef::Function(f) => Piece::of(f, false, &self.unchecked),
             FuncRef::End(f) => Piece::of(f, true, &self.unchecked),
