@@ -11,6 +11,9 @@ pub(crate) enum Program {
     Jj,
     Typst,
     TreeSitter,
+    Rustc,
+    /// LLVM's tool merging what instrumented programs record, from rustup's `llvm-tools`.
+    LlvmProfdata,
 }
 
 /// Where cargo says it is when it runs us.
@@ -25,6 +28,8 @@ impl Program {
             Self::Jj => "jj",
             Self::Typst => "typst",
             Self::TreeSitter => "tree-sitter",
+            Self::Rustc => "rustc",
+            Self::LlvmProfdata => "llvm-profdata",
         }
     }
 
@@ -32,9 +37,23 @@ impl Program {
     pub(crate) fn path(self) -> Option<PathBuf> {
         match self {
             Self::Cargo => std::env::var_os(CARGO).map(PathBuf::from),
-            Self::Jj | Self::Typst | Self::TreeSitter => None,
+            Self::LlvmProfdata => Self::rustlib(self.name()),
+            Self::Jj | Self::Typst | Self::TreeSitter | Self::Rustc => None,
         }
         .or_else(|| Executable::search(self.name()))
+    }
+
+    /// The tool `name` of the running Rust toolchain's own LLVM, where rustup's `llvm-tools` puts
+    /// it: `lib/rustlib/<host>/bin` of the sysroot.
+    fn rustlib(name: &str) -> Option<PathBuf> {
+        let print = |what: &str| {
+            let out =
+                std::process::Command::new(Self::Rustc.path()?).args(["--print", what]).output().ok()?;
+            out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_owned())
+        };
+        let path =
+            PathBuf::from(print("sysroot")?).join("lib/rustlib").join(print("host-tuple")?).join("bin");
+        Some(path.join(name).with_extension(std::env::consts::EXE_EXTENSION)).filter(|p| p.exists())
     }
 
     /// It, ready to run.

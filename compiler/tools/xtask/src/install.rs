@@ -15,7 +15,8 @@ use vun_span::Version;
 use vun_term::{Record, Status, Style, Text, Verb};
 use vun_tool::Executable;
 
-use crate::cargo;
+use crate::cargo::{self, Flavor};
+use crate::pgo::{Pgo, PgoFailed};
 use crate::release::Crate;
 use crate::toolchain::Stage;
 
@@ -46,7 +47,14 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
     let version = Version::parse(env!("CARGO_PKG_VERSION")).expect("the workspace's version is one");
     let profile = profile(args);
     let root = repo_root();
-    let binary = match cargo::vun(&root, profile) {
+    let flavor = match Optimized::for_profile(&root, profile, shell) {
+        Ok(flavor) => flavor,
+        Err(why) => {
+            diag.error(why.diagnostic());
+            return Ok(Outcome::Failure);
+        }
+    };
+    let binary = match cargo::vun_as(&root, profile, &flavor) {
         Ok(binary) => binary,
         Err(why) => {
             let msg = Msg::new().text("cannot build ").code("vun").text(" from the checkout");
@@ -109,6 +117,50 @@ fn crates(root: &Path, profile: &str) -> io::Result<Vec<Crate>> {
     let crates = Crate::all(root)?;
     Crate::build(root, &crates, profile, "build", None).map_err(io::Error::other)?;
     Ok(crates)
+}
+
+/// How the installed `vun` is laid out.
+struct Optimized;
+
+impl Optimized {
+    /// By the profile of its own workloads when it is distributed and `llvm-tools` is installed
+    /// (decision 670), as built when not; without, a note says how to.
+    fn for_profile(root: &Path, profile: &str, shell: &mut Shell<'_>) -> Result<Flavor, PgoFailed> {
+        if profile != cargo::DISTRIBUTED {
+            return Ok(Flavor::default());
+        }
+        match Pgo::of(root).make() {
+            Ok(made) => Ok(Flavor { rustflags: Pgo::flags(&made), ..Flavor::default() }),
+            Err(PgoFailed::NoMerger) => {
+                shell.status(&Unoptimized);
+                Ok(Flavor::default())
+            }
+            Err(why) => Err(why),
+        }
+    }
+}
+
+/// The distributed `vun` built without its profile.
+struct Unoptimized;
+
+impl Record for Unoptimized {
+    fn kind(&self) -> &'static str {
+        "unoptimized"
+    }
+
+    fn text(&self) -> Text {
+        Text::of(Style::Dim, "without its profile: `rustup component add llvm-tools` makes one")
+    }
+
+    fn fields(&self) -> Object<'static> {
+        Object::new()
+    }
+}
+
+impl Status for Unoptimized {
+    fn verb(&self) -> Verb {
+        Verb::warned("Building")
+    }
 }
 
 /// A `vun` on the search path that is not the one installed.

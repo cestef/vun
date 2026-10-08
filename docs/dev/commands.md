@@ -331,6 +331,11 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   CARGO_TARGET_DIR=target/profiling cargo build --release -p vun-cli` and pass it as `--exe`.
   Run it on a remote with `valgrind` (`am3.wg`). Callgrind stops on an instruction it does not
   know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
+- Profile-guided optimization (decision 670): `cargo xtask pgo` writes `target/pgo/vun.profdata`
+  from a recording `vun` run over the profile workloads (needs `rustup component add llvm-tools`);
+  build with `RUSTFLAGS="-Cprofile-use=$PWD/target/pgo/vun.profdata -Cllvm-args=-pgo-warn-mismatch=false"`
+  to use it. `cargo xtask install` does both for `dist`. Compare a build with and without by
+  `vun debug profile <workloads> --measure time --exe <vun>` for each (11 to 15% on am3).
 - Kept machine code (decision 669): `.vun/code/<hash>` beside the root file, one per toolchain,
   target and profile; `VUN_LOG=vun_driver=debug` reports how many functions were read and compiled.
 - Against other languages: `scripts/remote --host am3.wg scripts/bench-compare` builds the programs of

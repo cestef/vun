@@ -40,7 +40,8 @@ above already include it.
 3. Query-table overhead, engine-wide so it helps warm and edit too: `Db::table_of` goes through a
    thread-local `RefCell<HashMap>` on every lookup (877k calls) and papaya slots are 9% of cold
    instructions (`Table<Parsed>::slot` 2.9%). `Value::clone` is only 1.1%: dropped.
-4. PGO plus BOLT of `vun`. The allocator is not an item (mimalloc is in).
+4. BOLT of `vun`. PGO is in (decision 670, `cargo xtask pgo`; a `dist` built with it is not yet
+   timed); mimalloc v3 measured the same as v2.
 5. Queries that wait run other ready work, designed before built. Helping nests tasks on the
    waiter's stack: the helper can take work needing a claim held lower on its own stack or by the
    thread it waits on (false deadlock), and the depth is unbounded. `base/query/src/claim.rs` cycle
@@ -51,17 +52,9 @@ above already include it.
    primed toolchain first.
 7. Faster comptime (`metered_call` is 13 to 26% of a run): a register-based interpreter with
    superinstructions, or the native backend as a baseline JIT.
-8. A per-function code cache (the edit loop, ~80 ms of re-emitting for one constant, and warm
-   builds: `Built::of` runs 41k times in a warm `hello`). `Native::compile`
-   (`native/core/src/lib.rs`) takes the whole `Unit`, but `vun_codegen::compile` reads from it only
-   `pointer_bits` and the signatures of callees and imports, besides the function itself. So the key
-   is the hash of the function plus the convention, processor features, `listed`, `pointer_bits`
-   and the signatures it calls. The obstacle: the `Compiled` code relocates against `Address`es
-   numbered by the unit (`FuncId`, `DataId`), which change when other functions come or go. Store
-   the relocations against the callee's or datum's linkage instead and renumber on reuse. Keep the
-   cache beside the memos so prime can ship it. Expected: the share of warm instructions in isel and
-   regalloc (~10% for `Scan::fixed_from` and `Built::of` alone in a warm `hello`), and the compile
-   of unchanged functions in an edit.
+8. Machine code is kept per function (decision 669: warm `build-hello` 248 to 160 M instructions).
+   Left: key it before legalizing, which still runs for the whole unit (~2.5 ms warm `fib`), and
+   ship it with a primed toolchain.
 
 Generated-code items (another session works on optimizations): recursion inlining in LIR, cheaper
 frame setup, redundant-move cleanup, peepholes declared as verified data.

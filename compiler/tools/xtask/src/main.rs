@@ -7,6 +7,7 @@ mod hooks;
 mod install;
 mod layers;
 mod lines;
+mod pgo;
 mod release;
 mod report;
 mod runtimes;

@@ -63,6 +63,11 @@ pub(crate) const HOOKS: Task = Task::new(
     "set this repository's jj aliases that run tasks: `jj check`, `jj push`",
     Work::Run(crate::hooks::install_all),
 );
+pub(crate) const PGO: Task = Task::new(
+    "pgo",
+    "record a `vun` running the profile workloads, the profile a `dist` build is optimized by",
+    Work::Run(crate::pgo::pgo),
+);
 pub(crate) const INSTALL: Task = Task::new(
     "install",
     "build `vun` from this checkout and install it as the default toolchain",
@@ -99,6 +104,7 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     LINES,
     COMPONENTS,
     PACKAGE,
+    PGO,
     PUSH,
     RELEASE,
     RUNTIMES,

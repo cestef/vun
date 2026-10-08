@@ -1,5 +1,6 @@
 //! Running cargo on the workspace, for the checks that read what it reports.
 
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::{fmt, io};
@@ -18,6 +19,36 @@ const DIST: &str = "dist";
 
 /// The variable the driver reads its build from.
 const BUILD: &str = "VUN_BUILD";
+/// The variables cargo reads rustc's flags from: separated by spaces, and by unit separators,
+/// which the second takes before the first.
+const RUSTFLAGS: &str = "RUSTFLAGS";
+const ENCODED_RUSTFLAGS: &str = "CARGO_ENCODED_RUSTFLAGS";
+const SEPARATOR: &str = "\x1f";
+const TARGET_DIR: &str = "CARGO_TARGET_DIR";
+
+/// How a `vun` is built besides its profile.
+#[derive(Default)]
+pub(crate) struct Flavor {
+    /// With the package's default features, which link the components in, whatever the profile.
+    pub(crate) linked: bool,
+    /// Flags rustc takes after those of the environment.
+    pub(crate) rustflags: Vec<OsString>,
+    /// Where cargo builds, when not in the workspace's target directory.
+    pub(crate) target_dir: Option<PathBuf>,
+}
+
+impl Flavor {
+    /// The variables cargo runs with.
+    fn env(&self) -> Vec<(&'static str, OsString)> {
+        let mut env: Vec<(&str, OsString)> = self.target_dir.iter().map(|d| (TARGET_DIR, d.into())).collect();
+        if !self.rustflags.is_empty() {
+            let outer = std::env::var(RUSTFLAGS).unwrap_or_default();
+            let flags = outer.split_whitespace().map(OsString::from).chain(self.rustflags.iter().cloned());
+            env.push((ENCODED_RUSTFLAGS, flags.collect::<Vec<_>>().join(std::ffi::OsStr::new(SEPARATOR))));
+        }
+        env
+    }
+}
 
 /// Why cargo reported nothing.
 #[derive(Debug)]
@@ -56,13 +87,23 @@ impl std::error::Error for CargoFailed {
 /// # Errors
 /// Returns why cargo cannot run or fails, or built no executable.
 pub(crate) fn vun(root: &Path, profile: &str) -> Result<PathBuf, CargoFailed> {
+    vun_as(root, profile, &Flavor::default())
+}
+
+/// [`vun`], built as `flavor` says.
+///
+/// # Errors
+/// As [`vun`].
+pub(crate) fn vun_as(root: &Path, profile: &str, flavor: &Flavor) -> Result<PathBuf, CargoFailed> {
     let mut args = ["build", "--message-format=json", "--profile", profile, "--package", PACKAGE]
         .map(String::from)
         .to_vec();
-    if profile == DISTRIBUTED {
+    if profile == DISTRIBUTED && !flavor.linked {
         args.extend(["--no-default-features", "--features", DIST].map(String::from));
     }
-    let messages = run(root, &args, Build::of(root).as_deref())?;
+    let mut env = flavor.env();
+    env.extend(Build::of(root).map(|id| (BUILD, id.into())));
+    let messages = run(root, &args, &env)?;
     executable(&messages).ok_or(CargoFailed::NoExecutable)
 }
 
@@ -88,7 +129,7 @@ pub(crate) fn components(
             format!("{package}/export"),
         ]);
     }
-    run(root, &args, None).map(drop)
+    run(root, &args, &[]).map(drop)
 }
 
 /// The executable the last compiler-artifact message names, if any.
@@ -108,7 +149,7 @@ pub(crate) fn executable(messages: &str) -> Option<PathBuf> {
 /// # Errors
 /// Returns why cargo cannot run or fails.
 pub(crate) fn output(root: &Path, args: &[&str]) -> Result<String, CargoFailed> {
-    run(root, &args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>(), None)
+    run(root, &args.iter().map(|a| (*a).to_owned()).collect::<Vec<_>>(), &[])
 }
 
 /// What `cargo metadata` says of the workspace at `root`, its crates alone.
@@ -138,14 +179,15 @@ impl Build {
     }
 }
 
-/// [`output`], with the commit the build is of set for the driver to report.
-fn run(root: &Path, args: &[String], build: Option<&str>) -> Result<String, CargoFailed> {
+/// [`output`], with the variables `env` set: the commit the build is of, for the driver to
+/// report, and how it is built.
+fn run(root: &Path, args: &[String], env: &[(&str, OsString)]) -> Result<String, CargoFailed> {
     let cargo =
         Program::Cargo.path().ok_or_else(|| CargoFailed::Unstarted(io::ErrorKind::NotFound.into()))?;
     let output = Command::new(cargo)
         .current_dir(root)
         .args(args)
-        .envs(build.map(|id| (BUILD, id)))
+        .envs(env.iter().map(|(name, value)| (name, value)))
         .stderr(Stdio::inherit())
         .output()
         .map_err(CargoFailed::Unstarted)?;
