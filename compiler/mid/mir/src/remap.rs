@@ -39,6 +39,9 @@ impl Remap {
         {
             self.place(place);
         }
+        for place in value.outputs_mut() {
+            self.place(place);
+        }
     }
 
     pub(crate) fn stmt(&self, stmt: &mut Stmt) {

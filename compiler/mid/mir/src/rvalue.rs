@@ -192,6 +192,14 @@ impl Rvalue {
             _ => Vec::new(),
         }
     }
+
+    /// The places `outputs` names, to renumber.
+    pub fn outputs_mut(&mut self) -> Vec<&mut Place> {
+        match self {
+            Self::Asm(asm) => asm.outputs_mut().collect(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 impl Rvalue {

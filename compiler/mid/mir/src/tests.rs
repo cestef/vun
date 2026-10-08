@@ -3,6 +3,7 @@ use vun_origin::OriginTable;
 use vun_span::{SourceFiles, Span};
 
 use crate::place::Place;
+use crate::remap::Remap;
 use crate::verify::{Entity, Malformed};
 use crate::{Block, Body, LocalDecl, Operand, Role, Rvalue, Stmt, Terminator, TerminatorKind};
 
@@ -59,4 +60,26 @@ fn the_verifier_checks_what_an_assembly_block_writes_and_where_it_ends() {
     assert_eq!(verify(0, false, TerminatorKind::Return), Err(Malformed::PastNever(0)));
     let at = Entity::Stmt { block: 0, index: 0 };
     assert_eq!(verify(7, true, TerminatorKind::Return), Err(Malformed::UnknownLocal { at, local: 7 }));
+}
+
+#[test]
+fn remapping_renumbers_what_an_assembly_block_writes() {
+    use vun_inline::{Block as Asm, Bound, FormId, Inst, OpId, Operand as Bind, SizeId};
+    let origins = OriginTable::new();
+    let mut body = body(&origins, |b| {
+        let block = &mut b.blocks[Idx::new(0)];
+        let origin = block.stmts[0].origin;
+        let operands = vec![Bind::Bound(Bound::Out { place: Place::of(Idx::new(1)), reg: None })];
+        let inst = Inst { op: OpId(0), form: FormId(0), size: SizeId(0), operands, origin };
+        let arch = vun_items::lang::arch_x86_64::arith.parent().expect("a namespace");
+        block.stmts[0].value =
+            Rvalue::Asm(Box::new(Asm { arch, insts: vec![inst], returns: true, needs: Vec::new() }));
+    });
+    let remap = Remap {
+        locals: IndexVec::from(vec![Idx::new(4), Idx::new(5)]),
+        blocks: IndexVec::from(vec![Idx::new(0)]),
+    };
+    let stmt = &mut body.blocks[Idx::new(0)].stmts[0];
+    remap.stmt(stmt);
+    assert_eq!(stmt.value.outputs(), vec![(&Place::of(Idx::new(5)), false)]);
 }

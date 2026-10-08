@@ -72,6 +72,14 @@ impl<V, P, S> Block<V, P, S> {
         })
     }
 
+    /// The places the block writes, to renumber or rewrite them.
+    pub fn outputs_mut(&mut self) -> impl Iterator<Item = &mut P> {
+        self.bindings_mut().filter_map(|b| match b {
+            Bound::Out { place, .. } | Bound::InOut { place, .. } => Some(place),
+            Bound::In { .. } => None,
+        })
+    }
+
     /// The values, `{in e}`, and the symbols the block reads, in order.
     pub fn reads(&self) -> impl Iterator<Item = Read<&V, &S>> {
         self.insts.iter().flat_map(|inst| &inst.operands).flat_map(|o| {
