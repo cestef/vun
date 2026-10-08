@@ -3,7 +3,7 @@
 
 use vun_clang::{Cursor, Kind, TypeKind};
 use vun_syntax::case::Case;
-use vun_syntax::make::{Expr, Field, File, Item};
+use vun_syntax::make::{Bind, Expr, Field, File, Item, Member, Param};
 
 use crate::types::Position;
 use crate::{Binder, Opacity, Reason, items, macros};
@@ -12,21 +12,22 @@ use crate::{Binder, Opacity, Reason, items, macros};
 const BYTES: &str = "_bytes";
 
 /// An item without doc, attributes or type.
-fn item(name: String, value: Expr) -> Item {
-    Item { doc: Vec::new(), attrs: Vec::new(), mutable: false, name, ty: None, value }
+fn item(name: &str, value: Expr) -> Item {
+    Bind::new(name, value).item()
 }
 
 /// An alias of the type `value`: annotated `type`, which is how a binding is known to bind one
 /// (spec 10, section 5).
-fn alias_of(name: String, value: Expr) -> Item {
-    Item { ty: Some(Expr::local("type")), ..item(name, value) }
+fn alias_of(name: &str, value: Expr) -> Item {
+    item(name, value).typed(Expr::local("type"))
 }
 
 impl Binder<'_> {
     /// The Vun file binding the header named `header`.
     pub(crate) fn file(&mut self, header: &str) -> File {
         let doc = vec![
-            ["Bindings to the C header `", header, "`, written by `vun ffi bind`: regenerate them"].concat(),
+            ["Bindings to the C header `", header, "`, written by `vun util ffi bind`: regenerate them"]
+                .concat(),
             "rather than edit them.".to_owned(),
         ];
         self.params_reserved = self.top_names();
@@ -66,32 +67,30 @@ impl Binder<'_> {
         Some(match self.opaque.get(&name) {
             Some(Opacity::Incomplete) => Item {
                 doc: vec!["Declared without fields in C: reached through pointers only.".to_owned()],
-                ..item(name, Expr::Struct(Vec::new()))
+                ..item(&name, Expr::Struct(Vec::new()))
             },
             Some(Opacity::Sized) => {
-                let bytes = Expr::Array(
-                    Box::new(Expr::Int(i128::from(ty.size()?))),
-                    Box::new(items::integer(false, 8)),
-                );
+                let bytes =
+                    Expr::ArrayType(Box::new(Expr::int(ty.size()?)), Box::new(items::integer(false, 8)));
                 Item {
                     doc: vec![
                         "Bound as its size and alignment only: its fields are private to C.".to_owned(),
                     ],
                     attrs: vec![items::layout_c(), items::align(ty.align()?)],
-                    ..item(name, Expr::Struct(vec![Field { name: BYTES.to_owned(), ty: bytes }]))
+                    ..item(&name, Expr::Struct(vec![Member::Field(Field::new(BYTES, bytes))]))
                 }
             }
             None => {
                 let fields = decl.children().into_iter().filter(|f| f.kind() == Kind::Field);
                 let fields = fields
                     .map(|f| {
-                        Some(Field {
-                            name: self.vun_name(&f.name(), Case::Snake),
-                            ty: self.ty(f.ty(), Position::Field).ok()??,
-                        })
+                        Some(Member::Field(Field::new(
+                            &self.vun_name(&f.name(), Case::Snake),
+                            self.ty(f.ty(), Position::Field).ok()??,
+                        )))
                     })
                     .collect::<Option<Vec<_>>>()?;
-                Item { attrs: vec![items::layout_c()], ..item(name, Expr::Struct(fields)) }
+                Item { attrs: vec![items::layout_c()], ..item(&name, Expr::Struct(fields)) }
             }
         })
     }
@@ -103,17 +102,14 @@ impl Binder<'_> {
         let mut made = Vec::new();
         let ty = match self.bound(decl) {
             Some(name) => {
-                made.push(alias_of(name.clone(), int));
+                made.push(alias_of(&name, int));
                 Expr::local(&name)
             }
             None => int,
         };
         for constant in decl.children().iter().filter(|c| c.kind() == Kind::EnumConstant) {
-            let value = Expr::Int(i128::from(constant.enum_value()));
-            made.push(Item {
-                ty: Some(ty.clone()),
-                ..item(self.vun_name(&constant.name(), Case::Snake), value)
-            });
+            let value = Expr::int(i128::from(constant.enum_value()));
+            made.push(item(&self.vun_name(&constant.name(), Case::Snake), value).typed(ty.clone()));
         }
         made
     }
@@ -126,7 +122,7 @@ impl Binder<'_> {
             self.ty(under, Position::Field).map(|t| t.unwrap_or(Expr::Unit))
         };
         match ty {
-            Ok(ty) => Some(alias_of(self.bound(decl)?, ty)),
+            Ok(ty) => Some(alias_of(&self.bound(decl)?, ty)),
             Err(why) => {
                 self.skip(decl, Reason::Unsupported(why));
                 None
@@ -145,11 +141,11 @@ impl Binder<'_> {
             let name = param.name();
             let name = if name.is_empty() { Self::positional(i) } else { self.vun_name(&name, Case::Snake) };
             let name = if self.params_reserved.contains(&name) { self.renamed(&name) } else { name };
-            Ok(Field { name, ty: self.ty(param.ty(), Position::Param)?.unwrap_or(Expr::Unit) })
+            Ok(Param::named(&name, self.ty(param.ty(), Position::Param)?.unwrap_or(Expr::Unit)))
         });
-        let signature = params
-            .collect::<Result<Vec<_>, _>>()
-            .and_then(|params| Ok(Expr::Fn(params, self.ty(decl.result(), Position::Result)?.map(Box::new))));
+        let signature = params.collect::<Result<Vec<_>, _>>().and_then(|params| {
+            Ok(Expr::FnType(params, self.ty(decl.result(), Position::Result)?.map(Box::new)))
+        });
         match signature {
             Ok(signature) => Some(self.linked(decl, false, items::unchecked(signature))),
             Err(why) => {
@@ -175,15 +171,13 @@ impl Binder<'_> {
         let symbol = decl.name();
         Item {
             attrs: vec![items::symbol(&symbol), items::abi_c()],
-            mutable,
-            ty: Some(ty),
-            ..item(self.vun_name(&symbol, Case::Snake), Expr::Hole)
+            ..item(&self.vun_name(&symbol, Case::Snake), Expr::Hole).typed(ty).mutable(mutable)
         }
     }
 
     fn constant(&self, decl: &Cursor<'_>) -> Option<Item> {
         let tokens = decl.tokens();
         let value = macros::integer(tokens.get(1..)?)?;
-        Some(item(self.vun_name(&decl.name(), Case::Snake), Expr::Int(value)))
+        Some(item(&self.vun_name(&decl.name(), Case::Snake), Expr::int(value)))
     }
 }

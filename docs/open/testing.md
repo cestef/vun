@@ -20,3 +20,6 @@ Spec 11 is the reference.
 - `#[test.fuel(n)]` means something only where a mode counts steps (`interp`, not built).
 - Loose files stay in no namespace (`test.no_namespace`); recommended to keep, the owner may
   overrule.
+- `vun debug smith` (see spec 11): not generated yet are generic iterators, coroutines that
+  return or are cancelled, tasks, `unsafe`, and layout attributes. Untriaged: a text-fuzz crash
+  at `compiler/low/lower/src/func/constant.rs:38` (`f16` constants).

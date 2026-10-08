@@ -9,6 +9,8 @@ use vun_term::{Document, Shell};
 use super::PROGRAM;
 use vun_driver::Session;
 
+pub(super) const GROUP: &str = "util";
+
 const SHELL: Param = Param::positional("shell")
     .about("the shell to complete in")
     .values(Values::Choice(|| Dialect::ALL.iter().map(|d| d.name()).collect()));

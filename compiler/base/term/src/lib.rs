@@ -8,6 +8,7 @@
 mod color;
 mod markdown;
 mod pager;
+mod progress;
 mod record;
 mod shell;
 mod style;
@@ -19,6 +20,7 @@ mod text;
 mod units;
 
 pub use color::{Color, ColorChoice, Env, Stream};
+pub use progress::{Bar, DEFAULT_WIDTH, Held, Live, Progress, Unit};
 pub use record::{Document, Format, Record, Row, Status};
 pub use shell::{Out, Shell, Verb, Verbosity};
 pub use style::Style;

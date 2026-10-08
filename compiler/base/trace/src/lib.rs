@@ -31,7 +31,7 @@ pub use tracing;
 use vun_term::{Color, ColorChoice, Stream};
 
 pub use filter::Filter;
-pub use timings::{Activity, Kind, Relay, Relaying, Report, Row, Timeline, Timer, Timings};
+pub use timings::{Activity, Kind, Live, Relay, Relaying, Report, Row, Timeline, Timer, Timings};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Format {
@@ -75,6 +75,16 @@ impl Config {
             timeline: var(Self::TIMELINE_VAR).filter(|v| !v.is_empty()).map(Into::into),
             color: Stream::Stderr.color(ColorChoice::named(var(Self::COLOR_VAR).as_deref())),
         }
+    }
+
+    /// The logs `-v` flags ask for, when `VUN_LOG` does not decide: none for one (a flag shows
+    /// steps, not logs), then `info`, `debug` and `trace`.
+    #[must_use]
+    pub fn verbose(flags: usize) -> Option<Self> {
+        const LEVELS: [&str; 3] = ["info", "debug", "trace"];
+        let level = LEVELS[flags.checked_sub(2)?.min(LEVELS.len() - 1)];
+        let config = Self::from_env();
+        config.filter.is_none().then(|| Self { filter: Some(level.to_owned()), ..config })
     }
 
     /// Starts timing and recording the timeline if asked, and installs the global subscriber if a filter asks for logs:

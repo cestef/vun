@@ -14,7 +14,7 @@ fn header(name: &str, text: &str) -> PathBuf {
 
 #[test]
 fn a_header_reads_as_declarations_with_target_sizes() {
-    // Machines without libclang cannot run this; `vun ffi bind` reports the same absence.
+    // Machines without libclang cannot run this; `vun util ffi bind` reports the same absence.
     let Ok(clang) = Clang::load() else {
         eprintln!("libclang not found; skipped");
         return;

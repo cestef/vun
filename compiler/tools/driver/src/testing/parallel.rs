@@ -9,12 +9,15 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::time::Instant;
 
-use vun_term::{Document, Shell};
+use vun_term::{Document, Noun, Shell, Text, Unit, Verb};
 
 use super::report::Collected;
 use super::tally::Tally;
 use super::{Line, Options, Reported, Totals};
 use crate::Session;
+
+/// The tests of a run, as the bar counts them.
+const TESTS: Noun = Noun { one: "test", many: "tests" };
 
 impl Session {
     /// The names of the tests `program` would run for the tests `names` and `options`, each once,
@@ -56,6 +59,12 @@ impl Session {
         shell: &mut Shell<'_>,
     ) -> io::Result<Reported> {
         let started = Instant::now();
+        let bar = shell.bar(
+            Verb::good("Testing"),
+            Text::new(),
+            u64::try_from(names.len()).unwrap_or(u64::MAX),
+            Unit::Items(TESTS),
+        );
         let (sender, receiver) = mpsc::channel::<(String, io::Result<Collected>)>();
         let mut queue = names.iter();
         let (mut running, mut passed) = (0_usize, true);
@@ -76,6 +85,8 @@ impl Session {
             let Ok((name, collected)) = receiver.recv() else { break };
             running -= 1;
             let collected = collected?;
+            bar.advance(1);
+            bar.subject(Text::from(name.clone()));
             for tested in &collected.tests {
                 shell.status(tested);
             }
@@ -95,6 +106,7 @@ impl Session {
             passed &= collected.clean();
             tests.extend(collected.tests);
         }
+        drop(bar);
         totals.nanos = u64::try_from(started.elapsed().as_nanos()).ok();
         shell.status(&Tally(totals));
         Ok(Reported { tests, passed, covered: None })

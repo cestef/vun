@@ -11,7 +11,7 @@ use vun_renderer::{Renderer, Short};
 use vun_span::SourceFiles;
 use vun_term::{ColorChoice, Document, Env, Format, Out, Record, Shell, Stream, Text, Verbosity};
 
-use crate::{Action, Args, COLOR, Detail, FORMAT, Outcome, Program, QUIET, Refusal, Request};
+use crate::{Action, Args, COLOR, Detail, FORMAT, Outcome, Program, QUIET, Refusal, Request, VERBOSE};
 
 /// A command stopped by an input or output error it did not report itself.
 const FAILED: DiagId = DiagId::new("command.failed");
@@ -23,6 +23,8 @@ const HELP: &str = "help";
 /// report what was collected once the command is done.
 pub trait Context {
     fn refused(&mut self, diagnostic: Diagnostic);
+    /// A command is about to run: its options are applied, and the shell decides what is shown.
+    fn started(&mut self, _shell: &mut Shell<'_>) {}
     /// Reports the diagnostics collected, and whatever else is shown at exit.
     fn finish(&mut self, shell: &mut Shell<'_>);
 }
@@ -105,7 +107,10 @@ impl<Cx> Program<Cx> {
     ///
     /// # Errors
     /// Returns a refusal for usage errors and for commands that are not implemented yet.
-    pub fn run(&self, words: &[String], cx: &mut Cx, shell: &mut Shell<'_>) -> Result<Outcome, Refusal> {
+    pub fn run(&self, words: &[String], cx: &mut Cx, shell: &mut Shell<'_>) -> Result<Outcome, Refusal>
+    where
+        Cx: Context,
+    {
         let usage = |diagnostic| Refusal { outcome: Outcome::Usage, diagnostic };
         Self::apply(&self.globals(words), shell);
         let request = self.parse(words).map_err(usage)?;
@@ -129,6 +134,7 @@ impl<Cx> Program<Cx> {
                 Action::Run(run) => {
                     (self.defaults)(cx, &selected, &mut args).map_err(usage)?;
                     (self.configure)(cx, &args).map_err(usage)?;
+                    cx.started(shell);
                     run(cx, &args, shell)
                 }
                 Action::Group(_) => unreachable!("parse turns a bare group into a help request"),
@@ -175,6 +181,10 @@ impl<Cx> Program<Cx> {
         }
         if args.flag(&QUIET) {
             shell.verbosity = Verbosity::Quiet;
+        } else if args.flag(&VERBOSE) {
+            shell.verbosity = Verbosity::Verbose;
         }
+        // The logs and the bars would tear each other.
+        shell.animate(std::env::var_os("VUN_LOG").is_some() || args.times(&VERBOSE) > 1);
     }
 }

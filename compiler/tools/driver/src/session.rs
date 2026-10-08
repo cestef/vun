@@ -60,6 +60,9 @@ pub struct Session {
     pub persistence: Persistence,
     /// The directory of the libraries' memos shared between projects, if they are shared.
     pub shared: Option<PathBuf>,
+    /// Whether the memos this session computes are added to the shared ones when it is saved; a
+    /// session that compiles many programs made once reads them and leaves them as they are.
+    pub shares_new: bool,
     /// Whether what the queries did with their memos is reported at exit (`Tally`).
     pub tally: bool,
     /// The machine's tools file, the user's unless set (`Tools::path`).
@@ -75,6 +78,10 @@ pub struct Session {
     /// How the program running the session writes its `check` command, for messages that
     /// suggest it; `None` where no command line runs the session.
     pub check: Option<String>,
+    /// The bars of work in progress, drawn when the command shows them.
+    pub progress: vun_term::Progress,
+    /// The line saying which stages run, until the command ends.
+    pub(crate) working: Option<vun_term::Bar>,
     /// The errors already shown and taken out of `diag`.
     shown_errors: usize,
 }
@@ -111,11 +118,14 @@ impl Session {
             persistence: Persistence::Off,
             tally: std::env::var(vun_query::Tally::VAR).is_ok_and(|v| v == "1"),
             shared: None,
+            shares_new: true,
             tools: vun_build::tools::Tools::path(),
             equipped: None,
             memory: Vec::new(),
             sections: Vec::new(),
             check: None,
+            progress: vun_term::Progress::off(),
+            working: None,
             shown_errors: 0,
         }
     }

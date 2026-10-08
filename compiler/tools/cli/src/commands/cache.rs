@@ -1,4 +1,4 @@
-//! `vun cache`: the user's store of fetched packages (spec 12, section 3).
+//! `vun util cache`: the user's store of fetched packages (spec 12, section 3).
 
 use std::io;
 

@@ -180,7 +180,7 @@ fn tested(
     // tests reach.
     let program = session
         .root_at(root, Some(&announced), shell)
-        .filter(|_| session.checked(covered))
+        .filter(|_| session.checked(covered, shell))
         .and_then(|file| {
             let ns = session.tested(file, within)?;
             let program = session.build_tests(file, ns.clone(), output).ok()?;

@@ -240,6 +240,7 @@ impl<'p, Cx> Selected<'p, Cx> {
         let written = match *given {
             Given::Long(name, _) => format!("{LONG}{name}"),
             Given::Short(c) => format!("{SHORT}{c}"),
+            Given::Repeated(c, times) => format!("{SHORT}{}", c.to_string().repeat(times)),
         };
         let msg =
             Msg::new().text("unknown option ").code(written.clone()).text(" for ").code(self.invocation());

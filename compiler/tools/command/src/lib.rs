@@ -22,8 +22,8 @@ pub use vun_term::Shell;
 
 pub use complete::Dialect;
 pub use param::{
-    Args, Arity, COLOR, Catalog, FORMAT, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERSION,
-    Values,
+    Args, Arity, COLOR, Catalog, FORMAT, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERBOSE,
+    VERSION, Values,
 };
 pub use parse::{Detail, Request, Selected};
 pub use run::{Context, Diagnostics};

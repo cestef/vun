@@ -17,6 +17,8 @@ use vun_term::{Record, Shell, Status, Style, Text, Verb};
 use vun_driver::Session;
 use vun_driver::subject::Subject;
 
+use super::status::{Step, Visit};
+
 const PATHS: Param = Param::positional("paths")
     .arity(Arity::Many)
     .about("files, directories or packages to lay out; the package around this directory if none")
@@ -95,8 +97,12 @@ fn fmt(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
         files.extend(found);
     }
     let mut pending = false;
+    let visit = Visit::of(shell, Step::Fmt, files.len());
     for path in &files {
-        let Some(laid) = session.laid_out(&*formatter, path, width) else { continue };
+        visit.begin(shell, Subject::relative(path));
+        let laid = session.laid_out(&*formatter, path, width);
+        visit.end();
+        let Some(laid) = laid else { continue };
         let change = if check { Change::Pending } else { Change::Written };
         if change == Change::Written {
             path.put(laid)?;

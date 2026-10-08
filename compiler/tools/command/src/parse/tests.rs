@@ -222,3 +222,11 @@ fn settings_fill_the_options_the_command_line_leaves_out() {
     };
     assert_eq!(args.defaulted(&selected, &bad).unwrap_err().id, errors::CLI_INVALID_VALUE);
 }
+
+#[test]
+fn a_flag_repeated_in_one_word_is_given_as_often() {
+    for (line, times) in [("x a.vun", 0), ("x a.vun -v", 1), ("x a.vun -vv", 2), ("x -v a.vun -v -vv", 4)] {
+        let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv(line)) else { panic!("not a run: {line}") };
+        assert_eq!(args.times(&crate::VERBOSE), times, "{line}");
+    }
+}

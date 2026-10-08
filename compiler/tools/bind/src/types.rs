@@ -3,7 +3,7 @@
 //! pointer as `?#[abi.c] (...) -> R`, a record, enum or typedef by the name it is bound under.
 
 use vun_clang::{Cursor, Kind, Type, TypeKind};
-use vun_syntax::make::{Expr, Field};
+use vun_syntax::make::{Expr, Param};
 
 use crate::{Binder, Opacity, Unsupported, items};
 
@@ -37,7 +37,7 @@ impl Binder<'_> {
             TypeKind::Array => {
                 let item = self.ty(ty.element(), Position::Field)?.ok_or_else(unsupported)?;
                 let len = ty.array_len().ok_or_else(unsupported)?;
-                Expr::Array(Box::new(Expr::Int(i128::from(len))), Box::new(item))
+                Expr::ArrayType(Box::new(Expr::int(len)), Box::new(item))
             }
             TypeKind::Record | TypeKind::Enum => {
                 let decl = ty.declaration();
@@ -112,11 +112,11 @@ impl Binder<'_> {
             .enumerate()
             .map(|(i, p)| {
                 let ty = self.ty(p, Position::Param)?.unwrap_or(Expr::Unit);
-                Ok(Field { name: Self::positional(i), ty })
+                Ok(Param::named(&Self::positional(i), ty))
             })
             .collect::<Result<Vec<_>, Unsupported>>()?;
         let result = self.ty(ty.result(), Position::Result)?.map(Box::new);
-        Ok(items::c_abi(Expr::Fn(params, result)))
+        Ok(items::c_abi(Expr::FnType(params, result)))
     }
 
     /// The name of the parameter at `i` that C leaves unnamed.

@@ -625,7 +625,7 @@ pub trait DiagSink {
   - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,
     packages, diagnostic renderers and the pure-Rust backends (C text, Cranelift); enough to check,
     build and run a program with nothing else installed. Cargo features choose the set.
-  - *a native library loaded on first use*: libclang for `vun ffi bind`, libLLVM for the LLVM
+  - *a native library loaded on first use*: libclang for `vun util ffi bind`, libLLVM for the LLVM
     backend, through a thin adapter crate each, the only crates allowed `unsafe`. Never linked in;
     missing, it is one diagnostic naming the library and the versions accepted, and every other
     command works.

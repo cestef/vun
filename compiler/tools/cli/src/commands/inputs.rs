@@ -14,7 +14,7 @@ use vun_span::FileId;
 use vun_term::Shell;
 
 use super::PATH;
-use super::status::{Conclude, Report, Started, Step};
+use super::status::{Conclude, Report, Started, Step, Visit};
 
 /// What a command's path names, once its project is ready, and how it is shown.
 pub(super) struct Named {
@@ -42,7 +42,7 @@ pub(super) trait Inputs {
     /// Checks every file `subject` covers, as `vun check` does, so that a build of a package or
     /// of tests holds its files to the checks a file reached by no program is held to; whether
     /// none failed.
-    fn checked(&mut self, subject: &Subject) -> bool;
+    fn checked(&mut self, subject: &Subject, shell: &mut Shell<'_>) -> bool;
 
     /// Builds what the path `args` gives names, reporting how it went: the program of a file, or
     /// the programs the plan of each package records.
@@ -79,11 +79,15 @@ impl Inputs for Session {
         self.ready(path, started, shell).then(|| self.load(path)).flatten()
     }
 
-    fn checked(&mut self, subject: &Subject) -> bool {
-        for path in self.files(subject) {
+    fn checked(&mut self, subject: &Subject, shell: &mut Shell<'_>) -> bool {
+        let files = self.files(subject);
+        let visit = Visit::of(shell, Step::Check, files.len());
+        for path in files {
+            visit.begin(shell, Subject::relative(&path));
             if let Some(file) = self.load(&path) {
                 self.check(file);
             }
+            visit.end();
         }
         !self.failed()
     }
@@ -94,7 +98,7 @@ impl Inputs for Session {
             return Ok(None);
         };
         let output = args.value(&vun_driver::program::OUTPUT).map(Path::new);
-        let built = if !ready || (subject.file().is_none() && !self.checked(&subject)) {
+        let built = if !ready || (subject.file().is_none() && !self.checked(&subject, shell)) {
             None
         } else if let Some(file) = subject.file() {
             // A program its package's plan records is built as the plan says; any other file

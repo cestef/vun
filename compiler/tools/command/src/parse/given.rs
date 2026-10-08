@@ -39,6 +39,10 @@ impl Args {
     ) -> Result<(), Box<Diagnostic>> {
         match (param.kind, given, value) {
             (ParamKind::Flag, Given::Long(_, Some(value)), _) => Err(param.unexpected_value(value)),
+            (ParamKind::Flag, Given::Repeated(_, times), _) => {
+                self.flags.extend(std::iter::repeat_n(param.name, times));
+                Ok(())
+            }
             (ParamKind::Flag, ..) => {
                 self.flags.push(param.name);
                 Ok(())
@@ -91,6 +95,8 @@ impl Args {
 pub(super) enum Given<'a> {
     Long(&'a str, Option<&'a str>),
     Short(char),
+    /// One short option written several times in a word, such as `-vv`.
+    Repeated(char, usize),
 }
 
 impl<'a> Given<'a> {
@@ -98,7 +104,7 @@ impl<'a> Given<'a> {
     pub(super) fn names(&self, param: &Param) -> bool {
         match *self {
             Self::Long(name, _) => param.name == name,
-            Self::Short(c) => param.short == Some(c),
+            Self::Short(c) | Self::Repeated(c, _) => param.short == Some(c),
         }
     }
 
@@ -127,11 +133,15 @@ impl<'a> Given<'a> {
             };
             return Some(Self::Long(name, value));
         }
-        // A single dash with several letters is read as a long option, so `-help` still resolves.
+        // A single dash with several letters is read as a long option, so `-help` still resolves;
+        // one letter repeated, as `-vv`, is that option given as often.
         let short = arg.strip_prefix(SHORT)?;
         let mut chars = short.chars();
         match (chars.next(), chars.next()) {
             (Some(c), None) => Some(Self::Short(c)),
+            (Some(c), Some(_)) if short.chars().all(|d| d == c) => {
+                Some(Self::Repeated(c, short.chars().count()))
+            }
             (Some(_), Some(_)) => Some(Self::Long(short, None)),
             (None, _) => None,
         }

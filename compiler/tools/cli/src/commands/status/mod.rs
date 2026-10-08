@@ -4,6 +4,7 @@
 
 mod hash;
 mod packages;
+mod visit;
 
 use std::time::{Duration, Instant};
 
@@ -13,6 +14,7 @@ use vun_term::{Elapsed, Noun, Record, Shell, Status, Style, Text, Verb};
 
 pub(super) use hash::{HashText, Shown};
 pub(super) use packages::{Added, Collected, Packed, Source, UpToDate, Updated};
+pub(super) use visit::Visit;
 
 use vun_driver::Session;
 
@@ -31,10 +33,25 @@ pub(super) enum Step {
     Flash,
     New,
     Install,
+    Fmt,
 }
 
 impl Step {
-    const fn name(self) -> &'static str {
+    /// The verb of a status line begun on this step.
+    pub(super) const fn verb(self) -> Verb {
+        match self {
+            Self::Check => Verb::good("Checking"),
+            Self::Fix => Verb::good("Fixing"),
+            Self::Build => Verb::good("Building"),
+            Self::Run => Verb::good("Running"),
+            Self::Flash => Verb::good("Flashing"),
+            Self::New => Verb::good("Creating"),
+            Self::Install => Verb::good("Installing"),
+            Self::Fmt => Verb::good("Formatting"),
+        }
+    }
+
+    pub(super) const fn name(self) -> &'static str {
         match self {
             Self::Check => "check",
             Self::Fix => "fix",
@@ -43,6 +60,7 @@ impl Step {
             Self::Flash => "flash",
             Self::New => "new",
             Self::Install => "install",
+            Self::Fmt => "fmt",
         }
     }
 }
@@ -69,15 +87,7 @@ impl Record for Started {
 
 impl Status for Started {
     fn verb(&self) -> Verb {
-        match self.step {
-            Step::Check => Verb::good("Checking"),
-            Step::Fix => Verb::good("Fixing"),
-            Step::Build => Verb::good("Building"),
-            Step::Run => Verb::good("Running"),
-            Step::Flash => Verb::good("Flashing"),
-            Step::New => Verb::good("Creating"),
-            Step::Install => Verb::good("Installing"),
-        }
+        self.step.verb()
     }
 }
 

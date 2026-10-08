@@ -1,4 +1,4 @@
-//! `vun ffi bind` (spec 07, section 5): bindings from a C header check cleanly, and Vun lays
+//! `vun util ffi bind` (spec 07, section 5): bindings from a C header check cleanly, and Vun lays
 //! their structs out as the C compiler does.
 
 use crate::common::{Fixture, built_component};

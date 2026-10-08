@@ -69,7 +69,7 @@ link-msvc = ["vun-driver/link-msvc"]
 link-external = ["vun-driver/link-external"]
 # Backends and linkers loaded from the toolchain's `components` directory.
 components = ["vun-driver/components"]
-# `vun ffi bind` linked in, which loads libclang.
+# `vun util ffi bind` linked in, which loads libclang.
 ffi = ["dep:vun-component-binder-c"]
 # `vun doc`.
 doc = ["dep:vun-component-documenter-html"]

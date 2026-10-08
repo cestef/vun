@@ -2,7 +2,7 @@
 
 A C declaration was left out of the bindings, or bound without its fields.
 
-`vun ffi bind` binds what Vun can say exactly and never approximates the rest (spec 07,
+`vun util ffi bind` binds what Vun can say exactly and never approximates the rest (spec 07,
 section 5):
 
 - a function taking `...` is left out;
@@ -14,7 +14,7 @@ section 5):
 ## Example
 
 ```console
-$ vun ffi bind sensor.h
+$ vun util ffi bind sensor.h
 warning[tool.bind_skipped]: `log_line` is left out: it takes arguments past its parameters (`...`)
 ```
 

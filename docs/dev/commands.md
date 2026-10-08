@@ -59,7 +59,7 @@ jj git push --tag 0.1.0
 
 `.github/workflows/release.yml` runs the checks, builds `vun` in the `dist` profile on each
 machine (`--no-default-features --features dist`: it links only what is not a component; Linux with
-`cargo zigbuild` against glibc 2.28, dynamically linked so that `vun ffi bind` can load libclang),
+`cargo zigbuild` against glibc 2.28, dynamically linked so that `vun util ffi bind` can load libclang),
 builds the component libraries (`cargo xtask components [--tool zigbuild] [--target <t>]`, from
 every crate with a `[package.metadata.vun-component] profile`), packs it with
 the library and each component beside it (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`,
@@ -177,6 +177,7 @@ cargo run -q -p vun-cli -- test <path> <name> --seed <n> [--cases <n>]   # repla
 cargo run -q -p vun-cli -- bench [--release] [path] [names]... [--samples n] [--measure instructions] [--save] [--fail-over 3%]   # the benchmarks alone, measured over samples, against a baseline in .vun/bench/
 cargo run -q -p vun-cli -- fuzz [path] [names]... [--cases n]   # the properties alone, fuzzed, built --cover
 cargo run -q -p vun-cli -- cover [path] [names]... [--functions] [--lcov file]   # lines and functions the tests reach, built --cover
+cargo run -q -p vun-cli -- debug smith --count 30 --seed 0 --reach run --out <dir> [--reduce] [--jobs 5] [--warm]   # programs made by chance, tried through every stage and backend
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- debug compare --runs 20 <file>   # run time as the median of 20 runs
@@ -209,8 +210,14 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 
 ## Logging
 
+Progress bars (`vun_term::Progress`): open one with `shell.bar(..)` in a command or
+`Progress::ambient().bar(..)` in library code, advance it from any thread, drop it when done.
+A program that writes to the terminal itself (`vun run`) calls `Session::foreground()` first.
+Check the drawing on a terminal with a pty (`script`, or Python's `pty.fork`), not a pipe.
+
 `VUN_LOG=<filter>` (`info` a step of a run, `debug` a unit of work, `trace` an element),
-`VUN_LOG_FORMAT=tree`. Useful filters:
+`VUN_LOG_FORMAT=tree`; `-vv` is `VUN_LOG=info`, `-vvv` `debug`, `-vvvv` `trace` (`VUN_LOG` wins). Logs and
+progress bars tear each other, so bars are not drawn while logging. Useful filters:
 
 | Filter | Shows |
 |--------|-------|
@@ -262,7 +269,7 @@ GCC refuses `r7` in the Thumb runtime's blocks (its Thumb frame pointer), hence 
 `vun-cli` builds what its features name; the default has all of them. `backends` and `linkers`
 group the code generators and linkers (each is also a feature: `backend-llvm`, `link-wild`, ...),
 `native-x86_64`, `native-arm64` and `native-thumb` the architectures of the native backend,
-`ffi` is `vun ffi bind` (libclang) linked in (the release has it as a library), `lsp` is `vun util lsp` linked in (the release has it as a library), `mimalloc` the allocator. A build
+`ffi` is `vun util ffi bind` (libclang) linked in (the release has it as a library), `lsp` is `vun util lsp` linked in (the release has it as a library), `mimalloc` the allocator. A build
 without a component reports it where it is asked for: no backend or linker of that name, `util
 lsp` unavailable. `cargo check -p vun-cli --no-default-features` is the smallest toolchain, and
 `--features backend-c,link-gnu` adds to it. `vun-driver` has the same features with no default

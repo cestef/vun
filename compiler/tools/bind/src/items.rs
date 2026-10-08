@@ -11,7 +11,7 @@ use vun_syntax::make::Expr;
 /// `lang.int.unsigned(bits)` or `lang.int.signed(bits)`.
 pub(crate) fn integer(signed: bool, bits: u64) -> Expr {
     let width = if signed { lang::int::signed } else { lang::int::unsigned };
-    Expr::call(Expr::decl(width), vec![Expr::Int(i128::from(bits))])
+    Expr::call(Expr::decl(width), vec![Expr::int(bits)])
 }
 
 pub(crate) fn float(bits: u64) -> Option<Expr> {
@@ -63,7 +63,7 @@ pub(crate) fn layout_c() -> Expr {
 
 /// `lang.layout.align(bytes)`
 pub(crate) fn align(bytes: u64) -> Expr {
-    Expr::call(Expr::decl(lang::layout::align), vec![Expr::Int(i128::from(bytes))])
+    Expr::call(Expr::decl(lang::layout::align), vec![Expr::int(bytes)])
 }
 
 /// The token a table's `rows` write `item` with.

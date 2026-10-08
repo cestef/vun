@@ -10,10 +10,11 @@ use vun_command::{Args, Command, Example, Outcome, Param};
 use vun_data::Object;
 use vun_driver::Session;
 use vun_driver::fix::{Applied, Fixed};
+use vun_driver::subject::Subject;
 use vun_fs::Edit;
 use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
-use super::status::{Conclude, Step};
+use super::status::{Conclude, Step, Visit};
 use super::{COMPILE, Inputs, Named, PATH};
 
 const UNSAFE: Param =
@@ -65,12 +66,16 @@ fn fix(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
         return Ok(session.outcome());
     };
     let files = if ready { session.files(&subject) } else { Vec::new() };
+    let visit = Visit::of(shell, Step::Fix, files.len());
     for path in files {
-        let Some(file) = session.load(&path) else { continue };
-        for Fixed { path, fixes, text } in session.fix(file, applied) {
-            path.put(text)?;
-            shell.status(&Written { path, fixes });
+        visit.begin(shell, Subject::relative(&path));
+        if let Some(file) = session.load(&path) {
+            for Fixed { path, fixes, text } in session.fix(file, applied) {
+                path.put(text)?;
+                shell.status(&Written { path, fixes });
+            }
         }
+        visit.end();
     }
     session.conclude(shell, shown, started);
     Ok(session.outcome())

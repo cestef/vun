@@ -1,6 +1,6 @@
 # tool.bind_failed
 
-`vun ffi bind` could not read the header.
+`vun util ffi bind` could not read the header.
 
 Bindings are written only from a header clang reads without errors, with the flags the build
 compiles it with: a missing include directory or macro would otherwise bind the wrong
@@ -10,7 +10,7 @@ diagnostic as notes.
 ## Example
 
 ```console
-$ vun ffi bind sensor.h
+$ vun util ffi bind sensor.h
 error[tool.bind_failed]: clang could not read `sensor.h`
   = note: sensor.h:1:10: fatal error: 'board.h' file not found
 ```
@@ -20,5 +20,5 @@ error[tool.bind_failed]: clang could not read `sensor.h`
 Pass the build's compile flags, such as include directories and definitions:
 
 ```console
-$ vun ffi bind sensor.h --cflags "-Ivendor/include -DBOARD_REV=2"
+$ vun util ffi bind sensor.h --cflags "-Ivendor/include -DBOARD_REV=2"
 ```

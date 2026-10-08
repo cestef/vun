@@ -118,7 +118,7 @@ impl Session {
     /// with those it loaded, when it computed some the file loaded lacked. Older files are
     /// removed once kept long enough.
     pub fn share(&self) {
-        let Some(dir) = self.shared_dir() else { return };
+        let Some(dir) = self.shared_dir().filter(|_| self.shares_new) else { return };
         let Some(bytes) = self.db.save_shared() else { return };
         let Some(id) = Layering::of(&bytes).ok().and_then(|layering| layering.id) else { return };
         let path = dir.join(id.digest());

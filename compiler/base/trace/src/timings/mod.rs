@@ -15,10 +15,12 @@ use std::time::{Duration, Instant};
 
 use vun_variants::Variants;
 
+mod live;
 mod relay;
 mod report;
 mod timeline;
 
+pub use live::Live;
 pub use relay::{Relay, Relaying};
 pub use report::{Report, Row};
 pub use timeline::Timeline;
@@ -88,6 +90,8 @@ thread_local! {
 #[must_use = "the activity is timed until the timer is dropped"]
 pub struct Timer {
     running: Running,
+    /// The stage shown as running, until it ends.
+    live: Option<&'static str>,
     thread: PhantomData<*const ()>,
 }
 
@@ -142,19 +146,22 @@ impl Activity {
     /// Times the activity until the timer returned is dropped: in the host's table where a
     /// relay takes it, else in this process's.
     pub fn start(self) -> Timer {
+        let live = Live::enter(self);
         if !Timings::enabled() {
-            return Timer { running: Running::Off, thread: PhantomData };
+            return Timer { running: Running::Off, live, thread: PhantomData };
         }
         if Relaying::begin(self) {
-            return Timer { running: Running::Relayed, thread: PhantomData };
+            return Timer { running: Running::Relayed, live, thread: PhantomData };
         }
-        self.start_here()
+        let mut timer = self.start_here();
+        timer.live = live;
+        timer
     }
 
     /// Times the activity in this process's table, whatever relay there is.
     pub fn start_here(self) -> Timer {
         if !Timings::enabled() {
-            return Timer { running: Running::Off, thread: PhantomData };
+            return Timer { running: Running::Off, live: None, thread: PhantomData };
         }
         let sums = SUMS.with_borrow_mut(|sums| {
             Arc::clone(
@@ -163,12 +170,15 @@ impl Activity {
             )
         });
         OPEN.with_borrow_mut(|open| open.push(Open { started: Instant::now(), inner: Duration::ZERO }));
-        Timer { running: Running::Here(self, sums), thread: PhantomData }
+        Timer { running: Running::Here(self, sums), live: None, thread: PhantomData }
     }
 }
 
 impl Drop for Timer {
     fn drop(&mut self) {
+        if let Some(name) = self.live {
+            Live::leave(name);
+        }
         let (activity, sums) = match std::mem::replace(&mut self.running, Running::Off) {
             Running::Off => return,
             Running::Relayed => return Relaying::end(),

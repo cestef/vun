@@ -197,8 +197,8 @@ build := (b: &mut std.build.Build) {
   Loading a stored package recomputes its tree hash; a difference is `package.hash_mismatch`, which
   names every file added, removed or modified since the fetch.
 - **Roots and collection.** Writing a lockfile registers its project under `<store>/roots/`. `vun
-  cache gc` keeps every entry a registered lockfile records, removes the rest and all staging, and
-  forgets projects whose lockfile is gone; `vun cache list` shows each entry's size, label and
+  util cache gc` keeps every entry a registered lockfile records, removes the rest and all staging, and
+  forgets projects whose lockfile is gone; `vun util cache list` shows each entry's size, label and
   whether a lockfile keeps it.
 - **Fetching** is implicit: before compiling (`vun build`, `vun run`, `vun check`) and after
   `vun pkg update`, the dependency graph is walked from the project and every archive dependency
@@ -334,7 +334,7 @@ dependency, else the checkout it was built from, which is how development builds
 **A toolchain under WASI.** `vun` also builds for `wasm32-wasip1`, where a program has no home,
 starts no process and no thread, and loads no library. There it is a user without a home: the
 store is kept in the working directory and the tools file is only the one `VUN_TOOLS` names;
-`vun ffi`, which loads libclang, is left out; the work spread over threads elsewhere runs on the
+`vun util ffi`, which loads libclang, is left out; the work spread over threads elsewhere runs on the
 one thread; the executable is the file its first argument names, which the host starting it
 sets, and the library the one beside it or `VUN_LIBRARY` names. The playground runs it in a
 browser, a toolchain's tree in a file system held in memory, building for `wasi.wasm32.p1`,
@@ -478,11 +478,11 @@ package's directory, and with none the package around the current directory, its
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
 | `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7); it writes only into a directory that is empty, absent or marked `.vun-doc` by an earlier run (`doc.foreign_output`), so a site's own `index.html` is never overwritten |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
-| `vun ffi bind <header>` | C declarations as Vun |
+| `vun util ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |
 | `vun toolchain show` | this toolchain's version, where it and its library are, its backends and linkers |
 | `vun toolchain list`, `install [version] [--default]`, `remove <version>`, `update` | the toolchains installed beside it (section 6) |
-| `vun cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
+| `vun util cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
 | `vun debug dump tokens\|cst\|manifest\|plan\|hir\|types\|values\|mir\|layout\|program\|lir\|code\|frames <file>` | every representation with origins (spec 10) |
@@ -490,13 +490,15 @@ package's directory, and with none the package around the current directory, its
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
 Still to come, each as a verb or a group verb: `test`, `bench`, `fuzz`, `fix`,
-`pkg vendor|why|tag|api`, `ffi header|svd`, `target flash|attach|debug`.
+`pkg vendor|why|tag|api`, `util ffi header|svd`, `target flash|attach|debug`.
 
 Options:
 
 - **Global**, on every command: `--color <auto|always|never>` (or `VUN_COLOR`), `--format
   <human|json|styled>` (or `VUN_FORMAT`; below), `-q`/`--quiet`
-  (results and diagnostics only, no status lines), `-h` (help) and `--help` (the long page,
+  (results and diagnostics only, no status lines), `-v`/`--verbose` (a status line for each file
+  or step; `-vv`, `-vvv`, `-vvvv` also turn on the compiler's log at `info`, `debug`, `trace`, as
+  `VUN_LOG` does), `-h` (help) and `--help` (the long page,
   through the pager on a terminal: aliases, the values and variables of options, examples),
   and `-V`/`--version` on the root.
 - **Compile options**, a set shared by every command that compiles (`build`, `run`, `check`,
@@ -507,7 +509,13 @@ Options:
 Output follows cargo's shell: results go to standard output, progress to standard error as status
 lines whose verb is right-aligned in a column (`Checking`, `Building`, `Running`, `Downloaded`,
 `Finished` with the time taken, `Failed` with the errors), after the diagnostics of the step.
-Colors are decided per stream: `auto` shows them on a terminal unless `NO_COLOR` is set, or
+On a terminal, work that takes a while also draws bars on standard error under the lines the
+command writes: a line naming the stages running once a command has run for a moment, and a bar
+with a count, rate and elapsed time for downloads, the files of `check`, `fix` and `fmt`, the
+tests of a parallel `vun test` and the chunks of `debug smith --jobs`. A bar is taken off the
+screen before anything else is written to either stream, and never drawn in the middle of a line;
+a pipe, `--format json`, `--quiet` and the logs (`VUN_LOG`, `-vv`) draw none, and a program that
+`vun run` starts has the terminal to itself. Colors are decided per stream: `auto` shows them on a terminal unless `NO_COLOR` is set, or
 `CLICOLOR_FORCE` forces them, or `CLICOLOR=0` or `TERM=dumb` turns them off.
 
 Output is machine-readable with `--format json`: every line of standard output is then one JSON
@@ -551,18 +559,18 @@ Wrap the vendor's tree; never repackage it.
 - `b.c_library(.{ .sources, .include, .defines })` compiles C through the configured C toolchain.
 - `b.cmake(.{ .source = dep, .outputs = .{ "libfoo.a" } })` runs a vendor CMake build as a declared
   step with declared outputs.
-- `vun ffi bind` runs against the step's `compile_commands.json` and generated configuration
+- `vun util ffi bind` runs against the step's `compile_commands.json` and generated configuration
   headers, so bindings match the real build's macros.
 
 **Vun inside a vendor build.**
 - `vun build --library static` produces a library, which the target's archiver
   (`lang.target.CCompiler.archiver`, or the machine's tools file's `archiver`) bundles;
-  `vun ffi header` writes its C header.
+  `vun util ffi header` writes its C header.
 - The toolchain ships `vun.cmake` with `vun_add_library(name DIR ...)`.
 - A package can ship an `idf_component.yml` (ESP-IDF) and a `zephyr/module.yml` (Zephyr, pulled in
   by west) that call it. The SDK keeps ownership of startup, linking and its component manager.
 
-**Build steps.** Tool steps (C compilers, CMake, `vun ffi bind`) are nodes in the build graph
+**Build steps.** Tool steps (C compilers, CMake, `vun util ffi bind`) are nodes in the build graph
 with declared inputs and outputs. The driver runs them and caches each by the hash of (tool, its
 arguments, its inputs). On Linux they run inside a namespace sandbox that exposes only the declared
 inputs. The cache keys are designed to work with a remote cache later.
@@ -578,7 +586,7 @@ inputs. The cache keys are designed to work with a remote cache later.
   a non-loaded section, and at run time writes only the string's index and the packed arguments to
   a transport (RTT, UART, USB). `vun target attach` decodes using the ELF. Level filtering happens
   at compile time. Trap messages use the same table (spec 07).
-- **Register packages** are generated with `vun ffi svd` into checked-in Vun source (plain
+- **Register packages** are generated with `vun util ffi svd` into checked-in Vun source (plain
   register values in the style of chiptool, not ownership singletons), so diffs and docs are
   visible. For small parts, `svd.Peripheral` can do the same at compile time from `std.meta.embed`
   (spec 03); the generator is the same code.

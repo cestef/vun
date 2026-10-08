@@ -74,16 +74,23 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             test::FUZZ,
             coverage::COVER,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
-            #[cfg(not(target_os = "wasi"))]
-            Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
             Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),
             Command::group(
                 toolchain::GROUP,
                 "this toolchain: its version, library and components",
                 toolchain::COMMANDS,
             ),
-            Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
-            Command::group("util", "infrequently used commands", &[util::COMPLETION, util::LSP]),
+            Command::group(
+                util::GROUP,
+                "infrequently used commands",
+                &[
+                    util::COMPLETION,
+                    util::LSP,
+                    Command::group(cache::GROUP, "the shared store of fetched packages", cache::COMMANDS),
+                    #[cfg(not(target_os = "wasi"))]
+                    Command::group(ffi::GROUP, "bindings to and from other languages", &[ffi::BIND]),
+                ],
+            ),
             Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS)
                 .sets(&[COMPILE]),
         ],
@@ -142,6 +149,9 @@ const MEMOS: Param = Param::flag("memos").about("report what each query did with
 
 /// Applies the options of the command.
 fn configure(session: &mut Session, args: &Args) -> Result<(), Box<vun_diag::Diagnostic>> {
+    if let Some(logs) = vun_trace::Config::verbose(args.times(&vun_command::VERBOSE)) {
+        logs.install();
+    }
     if args.flag(&TIMINGS) {
         vun_trace::Timings::enable();
     }
@@ -167,6 +177,7 @@ fn run(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     let Some(built) = session.built(args, shell)? else { return Ok(session.outcome()) };
     let Some(program) = session.to_run(&built) else { return Ok(session.outcome()) };
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program.path) });
+    session.foreground();
     let status = session.command(&program.path).args(args.values(&ARGS)).status()?;
     // A program ended by a signal has no status to pass on.
     Ok(status.code().and_then(|c| u8::try_from(c).ok()).map_or(Outcome::Failure, Outcome::Exited))
@@ -178,7 +189,7 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
         return Ok(session.outcome());
     };
     if ready {
-        session.checked(&subject);
+        session.checked(&subject, shell);
     }
     session.conclude(shell, shown, started);
     Ok(session.outcome())

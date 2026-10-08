@@ -40,12 +40,14 @@ const ALL: Param =
     Param::flag("all").about("keep the program of every seed in `--out`, not only of findings");
 const REDUCE: Param =
     Param::flag("reduce").about("make each finding's program smaller while it still finds it");
+const WARM: Param = Param::flag("warm")
+    .about("add what this run computes of the libraries to the shared memos, which other runs only read: once after a rebuild");
 const TRIALS: Param = Param::option("trials")
     .about("the most programs tried to reduce one finding (300)")
     .values(Values::Count);
 
 pub(super) const PARAMS: &[Param] =
-    &[SEED, COUNT, OUT, LIMIT, REACH, REDUCE, ALL, TRIALS, JOBS, CHUNK, vun_driver::codegen::BACKEND];
+    &[SEED, COUNT, OUT, LIMIT, REACH, REDUCE, ALL, TRIALS, WARM, JOBS, CHUNK, vun_driver::codegen::BACKEND];
 
 /// What a program found: the compiler against itself, or against the model.
 enum Cause<'a> {
@@ -139,6 +141,7 @@ impl Status for Summary {
 pub(super) fn smith(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     // Nothing of programs made once is worth keeping beside them.
     session.persistence = Persistence::Off;
+    session.shares_new = args.flag(&WARM);
     let first = args.count(&SEED).unwrap_or(0);
     let count = args.count(&COUNT).unwrap_or(20);
     let jobs = args.count(&JOBS).unwrap_or(1);

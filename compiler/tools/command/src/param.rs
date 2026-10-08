@@ -186,9 +186,13 @@ pub const FORMAT: Param = Param::option("format")
     .env("VUN_FORMAT");
 pub const QUIET: Param =
     Param::flag("quiet").short('q').about("show results and diagnostics, without status lines");
+pub const VERBOSE: Param = Param::flag("verbose")
+    .short('v')
+    .about("show more of what is done: `-v` each step, `-vv` the log of the compiler");
 /// Options every command accepts, applied by the program before the command runs; the root
 /// accepts `VERSION` besides.
-pub const GLOBAL: OptionSet = OptionSet { title: "Global options", params: &[COLOR, FORMAT, QUIET, HELP] };
+pub const GLOBAL: OptionSet =
+    OptionSet { title: "Global options", params: &[COLOR, FORMAT, QUIET, VERBOSE, HELP] };
 
 /// Options several commands take, shown in help under their own title, as cargo's
 /// `Compilation Options`.
@@ -222,6 +226,12 @@ impl Args {
     #[must_use]
     pub fn flag(&self, param: &Param) -> bool {
         self.flags.contains(&param.name)
+    }
+
+    /// How many times a flag is given, as `-vv` gives `verbose` twice.
+    #[must_use]
+    pub fn times(&self, param: &Param) -> usize {
+        self.flags.iter().filter(|name| **name == param.name).count()
     }
 
     /// The number a count parameter is given; parsing checked that it is one.

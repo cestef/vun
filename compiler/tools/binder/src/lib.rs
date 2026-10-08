@@ -1,5 +1,5 @@
 //! Binders as components (decision 498): a [`Binder`] reads a foreign header into Vun
-//! declarations (spec 07, section 5), as `vun ffi bind` asks. [`Binders`] is the interface a
+//! declarations (spec 07, section 5), as `vun util ffi bind` asks. [`Binders`] is the interface a
 //! binder library is served through, [`Remote`] the `Binder` the host calls it by. The binder is
 //! the same crate linked in or loaded, and asks nothing of the host.
 

@@ -1,4 +1,4 @@
-//! `vun ffi`: C bindings, C headers and register packages (spec 12, section 7).
+//! `vun util ffi`: C bindings, C headers and register packages (spec 12, section 7).
 
 use std::io;
 use std::path::{Path, PathBuf};
@@ -34,7 +34,7 @@ pub(super) const BIND: Command<Session> = Command::run("bind", "generate declara
         about: "bind a header",
     }]);
 
-/// `vun ffi bind <header>`: the header's declarations as Vun, through libclang loaded now.
+/// `vun util ffi bind <header>`: the header's declarations as Vun, through libclang loaded now.
 fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let header =
         PathBuf::from(args.value(&HEADER).expect("positional parameters are present when a command runs"));
@@ -45,7 +45,7 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let dir = place.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let reserved = session.names_seen_in(dir);
     let Some(binder) = session.registry.binders.get(C) else {
-        let msg = Msg::new().text("this program runs without ").code("ffi bind");
+        let msg = Msg::new().text("this program runs without ").code("util ffi bind");
         session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
         return Ok(Outcome::Failure);
     };
@@ -77,7 +77,7 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
     match failure {
         Failure::Missing(missing) => {
             let msg = Msg::new()
-                .code(PROGRAM.invocation(&[GROUP, BIND.name]).expect("bind is a command"))
+                .code(PROGRAM.invocation(&[super::util::GROUP, GROUP, BIND.name]).expect("bind is a command"))
                 .text(" needs libclang ")
                 .num(i128::from(missing.oldest))
                 .text(" or later, and none was found");

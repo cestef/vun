@@ -4,14 +4,13 @@
 
 use std::ffi::{OsStr, OsString};
 use std::io;
-use std::process::Command;
-use std::process::ExitStatus;
-use std::sync::Mutex;
+use std::process::{Command, ExitStatus, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc;
 
 use vun_command::Outcome;
 use vun_data::Object;
-use vun_term::{Record, Shell, Status, Style, Text, Verb};
+use vun_term::{Noun, Record, Shell, Status, Style, Text, Unit, Verb};
 
 use super::smith::{CHUNK, COUNT, JOBS, SEED};
 
@@ -85,6 +84,16 @@ fn kept(args: impl Iterator<Item = OsString>) -> Vec<OsString> {
     kept
 }
 
+/// The programs a chunk is made of, as the bar counts them.
+const PROGRAMS: Noun = Noun { one: "program", many: "programs" };
+
+/// A chunk whose process ended: what it wrote, and how.
+struct Done {
+    from: u64,
+    size: u64,
+    ran: io::Result<Output>,
+}
+
 pub(super) fn run(
     first: u64,
     count: u64,
@@ -96,11 +105,16 @@ pub(super) fn run(
     let common = kept(std::env::args_os().skip(1));
     let chunk = chunk.max(1);
     let chunks = count.div_ceil(chunk);
-    let (next, failed) = (AtomicU64::new(0), AtomicU64::new(0));
-    let lost = Mutex::new(Vec::new());
-    std::thread::scope(|scope| {
-        for _ in 0..jobs.min(chunks) {
-            scope.spawn(|| {
+    let next = AtomicU64::new(0);
+    let (workers, tried) =
+        (jobs.min(chunks), shell.bar(Verb::good("Trying"), Text::new(), count, Unit::Items(PROGRAMS)));
+    let (mut failed, mut lost) = (0, Vec::new());
+    let (send, receive) = mpsc::channel();
+    // A worker's words are shown here, one chunk at a time, where the bar makes room for them.
+    std::thread::scope(|scope| -> io::Result<()> {
+        for _ in 0..workers {
+            let (send, next, exe, common) = (send.clone(), &next, &exe, &common);
+            scope.spawn(move || {
                 loop {
                     let n = next.fetch_add(1, Ordering::Relaxed);
                     if n >= chunks {
@@ -108,37 +122,47 @@ pub(super) fn run(
                     }
                     let from = first + n * chunk;
                     let size = chunk.min(count - n * chunk);
-                    let ran = Command::new(&exe)
-                        .args(&common)
+                    let ran = Command::new(exe)
+                        .args(common)
                         .args([
                             OsStr::new("--seed"),
                             from.to_string().as_ref(),
                             OsStr::new("--count"),
                             size.to_string().as_ref(),
                         ])
-                        .status();
-                    match ran {
-                        Ok(status) if status.success() => {}
-                        Ok(status) if status.code() != Some(1) => {
-                            failed.fetch_add(1, Ordering::Relaxed);
-                            lost.lock().expect("no worker panics holding it").push(Lost {
-                                from,
-                                size,
-                                status,
-                            });
-                        }
-                        _ => {
-                            failed.fetch_add(1, Ordering::Relaxed);
-                        }
+                        .output();
+                    if send.send(Done { from, size, ran }).is_err() {
+                        return;
                     }
                 }
             });
         }
-    });
-    for lost in lost.into_inner().expect("no worker panics holding it") {
+        drop(send);
+        for Done { from, size, ran } in receive {
+            tried.advance(size);
+            tried.subject(Text::from(format!("seeds {from}..{}", from + size)));
+            match ran {
+                Ok(output) => {
+                    shell.out.writer().write_all(&output.stdout)?;
+                    shell.err.writer().write_all(&output.stderr)?;
+                    match output.status {
+                        status if status.success() => {}
+                        status if status.code() != Some(1) => {
+                            failed += 1;
+                            lost.push(Lost { from, size, status });
+                        }
+                        _ => failed += 1,
+                    }
+                }
+                Err(_) => failed += 1,
+            }
+        }
+        Ok(())
+    })?;
+    drop(tried);
+    for lost in lost {
         shell.result(&lost)?;
     }
-    let failed = failed.into_inner();
     shell.status(&Chunks { total: chunks, failed });
     Ok(if failed == 0 { Outcome::Success } else { Outcome::Failure })
 }

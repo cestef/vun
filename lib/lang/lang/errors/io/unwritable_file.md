@@ -3,7 +3,7 @@
 A file the command writes cannot be written.
 
 Commands write the manifest (`vun pkg add`), the lockfile (the commands that compile, `vun pkg add` and `update`), archives (`vun
-pkg pack`) and the store (`vun cache`, spec 12, section 3). The file system's reason is kept as
+pkg pack`) and the store (`vun util cache`, spec 12, section 3). The file system's reason is kept as
 the chain of causes (spec 10, section 2).
 
 ## Example
