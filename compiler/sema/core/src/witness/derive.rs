@@ -77,10 +77,10 @@ impl Env<'_, '_> {
 }
 
 impl Witness {
-    /// The witness `derive` gives `ty`, when `has` holds for every part of it.
-    pub(super) fn derived(cx: &Cx<'_>, derive: &Derive, ty: Ty, has: impl Fn(Ty) -> bool) -> Option<Self> {
-        // The parts of a struct or an enum, of a tuple (the unit among them) and of a record.
-        let parts: Vec<Ty> = match &*ty {
+    /// The parts of `ty` a derived witness is built from: of a struct or an enum, of a tuple (the
+    /// unit among them) and of a record.
+    fn parts(cx: &Cx<'_>, ty: Ty) -> Option<Vec<Ty>> {
+        match &*ty {
             TyKind::Nominal(nominal) if nominal.kind != NominalKind::Empty => {
                 let members = cx.get::<Members>(&ty)?;
                 if !members.complete {
@@ -88,15 +88,21 @@ impl Witness {
                 }
                 let fields = members.fields.iter().map(|f| f.ty.as_ref());
                 let payloads = members.variants.iter().flat_map(|v| v.payload.iter().map(Result::as_ref));
-                fields.chain(payloads).map(|part| part.ok().copied()).collect::<Option<_>>()?
+                fields.chain(payloads).map(|part| part.ok().copied()).collect::<Option<_>>()
             }
-            TyKind::Tuple(items) => items.clone(),
-            TyKind::Record(fields) => fields.iter().map(|(_, ty)| *ty).collect(),
-            _ => return None,
-        };
-        if !parts.into_iter().all(has) {
-            return None;
+            TyKind::Tuple(items) => Some(items.clone()),
+            TyKind::Record(fields) => Some(fields.iter().map(|(_, ty)| *ty).collect()),
+            _ => None,
         }
+    }
+
+    /// Whether an interface can be derived for `ty`: `has` holds for every part of it.
+    pub(super) fn derivable(cx: &Cx<'_>, ty: Ty, has: impl Fn(Ty) -> bool) -> bool {
+        Self::parts(cx, ty).is_some_and(|parts| parts.into_iter().all(has))
+    }
+
+    /// The witness `derive` gives `ty`, once [`Self::derivable`] holds.
+    pub(super) fn derived(cx: &Cx<'_>, derive: &Derive, ty: Ty) -> Option<Self> {
         let env = Env::of(cx, &derive.decl.file)?;
         let witness = env.apply(derive.with.clone(), vec![Value::Type(ty)]).ok()?.as_type()?;
         let call = Instance { f: derive.interface.clone(), args: vec![Value::Type(ty)] };

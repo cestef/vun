@@ -64,6 +64,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (IMPL_DUPLICATE, "lang/lang/errors/impl/duplicate.md"),
     (IMPL_COLLISION, "lang/lang/errors/impl/collision.md"),
     (COROUTINE_RECURSIVE_FRAME, "lang/lang/errors/coroutine/recursive_frame.md"),
+    (COROUTINE_NOT_SUSPENDING, "lang/lang/errors/coroutine/not_suspending.md"),
     (LAYOUT_BITS_WIDTH, "lang/lang/errors/layout/bits_width.md"),
     (LAYOUT_NOT_C, "lang/lang/errors/layout/not_c.md"),
     (LAYOUT_TAG, "lang/lang/errors/layout/tag.md"),

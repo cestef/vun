@@ -6,3 +6,4 @@ pub const COROUTINE: DiagId = DiagId::Lang(Lang::Coroutine);
 pub const COROUTINE_RECURSIVE_FRAME: DiagId = DiagId::Lang(
     Lang::CoroutineRecursiveFrame,
 );
+pub const COROUTINE_NOT_SUSPENDING: DiagId = DiagId::Lang(Lang::CoroutineNotSuspending);

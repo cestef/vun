@@ -137,6 +137,9 @@ impl Typer<'_, '_, '_> {
             }
         }
         (self.result, self.written, self.loops, self.yields, self.framing) = outer;
+        if let (false, Some(returns)) = (coroutine, returns) {
+            self.unyielding(returns, found);
+        }
         let signature_result = if inferred { found.map(|known| known.ty) } else { signature_result };
         Some(Signature::new(types?, signature_result?))
     }

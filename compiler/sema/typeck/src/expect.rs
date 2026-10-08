@@ -180,7 +180,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
     }
 
     /// The value of the annotation `expr`, or why it has none.
-    fn annotated(&mut self, expr: ExprId) -> Result<Value, GaveUp> {
+    pub(super) fn annotated(&mut self, expr: ExprId) -> Result<Value, GaveUp> {
         let evaluated = self.known_value(expr, None);
         if let Err(why) = &evaluated {
             self.needed_when_compiling(expr, why);

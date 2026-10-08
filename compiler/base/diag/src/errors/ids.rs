@@ -90,6 +90,7 @@ pub enum Lang {
     /// Coroutine frames (spec 06, section 1).
     Coroutine,
     CoroutineRecursiveFrame,
+    CoroutineNotSuspending,
     /// Layout attributes (spec 05, section 6).
     Layout,
     LayoutBitsWidth,

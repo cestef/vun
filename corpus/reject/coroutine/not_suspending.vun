@@ -1,0 +1,5 @@
+//! A function that returns an interface must yield (spec 06, section 1).
+
+none := () -> Iter(u32) { //~ coroutine.not_suspending
+    ()
+};

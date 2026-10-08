@@ -104,6 +104,7 @@ impl := struct {
 /// Coroutine frames (spec 06, section 1).
 coroutine := struct {
     recursive_frame := diag.Diag{};
+    not_suspending := diag.Diag{};
 };
 
 /// Layout attributes (spec 05, section 6).

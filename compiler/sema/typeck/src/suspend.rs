@@ -4,7 +4,7 @@
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_grammar::TokenKind;
 use vun_hir::tree::{ExprId, ExprKind};
-use vun_sema_ty::{Ty, TyKind};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::{Known, Stage, Typer};
 
@@ -21,6 +21,22 @@ impl Typer<'_, '_, '_> {
             Msg::new().text("recurse in an ordinary function, or hold each nested frame in an ").code("Own");
         let d = Diagnostic::error(errors::COROUTINE_RECURSIVE_FRAME, msg)
             .at(self.hir().exprs[literal].origin, None)
+            .child(ChildKind::Help, help);
+        self.diag.error(d);
+    }
+
+    /// Reports a function annotated with an interface that never yields, `found` the type of its
+    /// body: it has no frame to return, so its body must not finish, as a task that loops
+    /// forever (spec 06, section 1).
+    pub(super) fn unyielding(&mut self, returns: ExprId, found: Option<Known>) {
+        let finishes = found.is_some_and(|f| Some(f.ty) != self.never().map(|n| n.ty));
+        if !finishes || !matches!(self.annotated(returns), Ok(Value::Interface(_))) {
+            return;
+        }
+        let msg = Msg::new().text("this function returns an interface but never yields");
+        let help = Msg::new().text("yield from the body, or return a type");
+        let d = Diagnostic::error(errors::COROUTINE_NOT_SUSPENDING, msg)
+            .at(self.hir().exprs[returns].origin, None)
             .child(ChildKind::Help, help);
         self.diag.error(d);
     }

@@ -8,6 +8,7 @@
 //! arguments (decision 92). `#[impl(T)]`, with no interface, gives `T` the declarations of its
 //! value as methods, found by the same lookup (decision 102).
 
+mod candidate;
 mod conformance;
 mod derive;
 mod lookup;
@@ -15,6 +16,7 @@ mod requirement;
 
 use std::sync::Arc;
 
+pub use candidate::{Candidate, Resolved, Source};
 pub use conformance::{Conformance, Shortfall, Unmet};
 pub use derive::{Derive, Derives};
 pub use lookup::{Method, Required, Witness, Witnesses};
@@ -110,7 +112,7 @@ impl Env<'_, '_> {
             return Some(args);
         }
         let tiers = Witnesses::tiers(self.cx, &self.file, ty);
-        let made = tiers.iter().flat_map(|tier| tier.iter()).filter_map(|w| w.decl.contract.as_ref()?.made());
+        let made = tiers.iter().flat_map(|tier| tier.iter()).filter_map(Candidate::made);
         if let Some(made) = made.into_iter().find(|made| Value::Fn(made.f.clone()) == *constructor) {
             return Some(made.args);
         }

@@ -9,3 +9,6 @@ use crate::Item;
 pub const recursive_frame: Item = Item::new(
     &["lang", "errors", "coroutine", "recursive_frame"],
 );
+pub const not_suspending: Item = Item::new(
+    &["lang", "errors", "coroutine", "not_suspending"],
+);

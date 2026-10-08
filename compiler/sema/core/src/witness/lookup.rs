@@ -13,7 +13,7 @@ use vun_sema_ty::call::{Func, Instance};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Conformance, Derive, Derives, ImplDecl, Impls, Unmet};
+use super::{Candidate, Conformance, Derive, Derives, ImplDecl, Impls, Source, Unmet};
 use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::eval::Call;
@@ -42,14 +42,14 @@ pub struct Method {
     pub witness: Witness,
 }
 
-/// The witnesses of a type that a file sees, by the impls declared in its scope and in the
-/// package declaring the type.
+/// The candidates for the witnesses of a type that a file sees, by the impls declared in its
+/// scope and in the package declaring the type.
 pub struct Witnesses;
 
 impl Query for Witnesses {
     const NAME: &'static str = "witnesses";
     type Key = (FileRef, Ty);
-    type Value = Arc<[Witness]>;
+    type Value = Arc<[Candidate]>;
 
     fn compute(cx: &Cx<'_>, (file, ty): &Self::Key) -> Self::Value {
         let Some(env) = Env::of(cx, file) else { return Arc::from([]) };
@@ -59,13 +59,14 @@ impl Query for Witnesses {
         };
         let files = env.impl_files(home);
         let impls = files.iter().flat_map(|f| cx.get::<Impls>(f).to_vec());
-        let mut witnesses: Vec<Witness> = impls.filter_map(|decl| Witness::of(cx, decl, *ty)).collect();
+        let mut candidates: Vec<Candidate> = impls
+            .filter(|decl| Witness::covering(decl, *ty).is_some())
+            .map(|decl| Candidate { ty: *ty, source: Source::Impl(decl) })
+            .collect();
         // An interface a type has no impl of may derive one from the type's parts.
         let derives: Vec<Derive> = files.iter().flat_map(|f| cx.get::<Derives>(f).to_vec()).collect();
         for derive in derives {
-            let declared =
-                |w: &Witness| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface);
-            if witnesses.iter().any(declared) {
+            if candidates.iter().any(|c| c.implements(&derive.interface)) {
                 continue;
             }
             // Operators and methods reach a value through its borrows, so a borrowed part has
@@ -77,11 +78,13 @@ impl Query for Witnesses {
                 Self::tiers(cx, file, part)
                     .iter()
                     .flat_map(|tier| tier.iter())
-                    .any(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == derive.interface))
+                    .any(|c| c.implements(&derive.interface))
             };
-            witnesses.extend(Witness::derived(cx, &derive, *ty, has));
+            if Witness::derivable(cx, *ty, has) {
+                candidates.push(Candidate { ty: *ty, source: Source::Derive(derive) });
+            }
         }
-        witnesses.into()
+        candidates.into()
     }
 
     fn cycle(_: &Cx<'_>, _: &Self::Key, _: &Cycle) -> Self::Value {
@@ -90,11 +93,11 @@ impl Query for Witnesses {
 }
 
 impl Witnesses {
-    /// The witnesses `ty` has, in tiers, the nearest first: its own, then, for an array, those
+    /// The candidates `ty` has, in tiers, the nearest first: its own, then, for an array, those
     /// of the slice of its items (spec 05, section 1). An array is read as its items, as a borrow
     /// of it is a borrow of them, so it has the impls of that slice; what it has of itself serves
     /// first, a method or an interface it declares shadowing the slice's.
-    pub(crate) fn tiers(cx: &Cx<'_>, file: &FileRef, ty: Ty) -> Vec<Arc<[Witness]>> {
+    pub(crate) fn tiers(cx: &Cx<'_>, file: &FileRef, ty: Ty) -> Vec<Arc<[Candidate]>> {
         let items = ty.as_array().map(|(_, items)| TyKind::slice(items));
         std::iter::once(ty).chain(items).map(|ty| cx.get::<Witnesses>(&(file.clone(), ty))).collect()
     }
@@ -103,7 +106,7 @@ impl Witnesses {
 impl Witness {
     /// The arguments the value of `decl` takes for `ty`, if its target covers `ty`: those of the
     /// constructor that made `ty`, or `ty` and the arguments of the interface it implements.
-    fn covering(decl: &ImplDecl, ty: Ty) -> Option<Vec<Value>> {
+    pub(super) fn covering(decl: &ImplDecl, ty: Ty) -> Option<Vec<Value>> {
         ty.made_by(&decl.target).or_else(|| {
             let args = ty.implements(&decl.target)?;
             Some(std::iter::once(Value::Type(ty)).chain(args).collect())
@@ -111,7 +114,7 @@ impl Witness {
     }
 
     /// The witness `decl` gives for `ty`, if it covers `ty`.
-    fn of(cx: &Cx<'_>, decl: ImplDecl, ty: Ty) -> Option<Self> {
+    pub(super) fn of(cx: &Cx<'_>, decl: ImplDecl, ty: Ty) -> Option<Self> {
         let args = Self::covering(&decl, ty)?;
         let value = cx.get::<DeclValue>(&decl.decl).ok()?;
         let (witness, requirements) = if let Value::Type(_) = decl.target {
@@ -223,7 +226,8 @@ impl Env<'_, '_> {
         tiers
             .iter()
             .flat_map(|tier| tier.iter())
-            .find(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == *interface))
+            .filter(|c| c.implements(interface))
+            .find_map(|c| c.witness(self.cx))
             .map(|w| w.ty)
     }
 
@@ -237,7 +241,8 @@ impl Env<'_, '_> {
         tiers
             .iter()
             .flat_map(|tier| tier.iter())
-            .filter(|w| w.decl.contract.as_ref().is_some_and(|c| c.interface == interface))
+            .filter(|c| c.implements(&interface))
+            .filter_map(|c| c.witness(self.cx))
             .find_map(|w| w.method(self.cx, function))
     }
 
@@ -257,11 +262,12 @@ impl Env<'_, '_> {
         let fits = |made: &[Value]| {
             made.len() == args.len() && made.iter().zip(args).all(|(m, a)| a.as_ref().is_none_or(|a| a == m))
         };
-        let made = |c: &super::Contract| c.made().is_some_and(|i| i.f == constructor && fits(&i.args));
+        let made = |c: &Candidate| c.made().is_some_and(|i| i.f == constructor && fits(&i.args));
         let tiers = Witnesses::tiers(self.cx, &self.file, ty);
-        let concrete =
-            tiers.iter().flat_map(|tier| tier.iter()).filter(|w| w.decl.contract.as_ref().is_some_and(made));
-        if let Some(method) = concrete.into_iter().find_map(|w| w.method(self.cx, function)) {
+        let concrete = tiers.iter().flat_map(|tier| tier.iter()).filter(|c| made(c));
+        if let Some(method) =
+            concrete.filter_map(|c| c.witness(self.cx)).find_map(|w| w.method(self.cx, function))
+        {
             return Some(method);
         }
         let home = match &*ty {
@@ -280,8 +286,9 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn methods(&self, ty: Ty, name: Symbol) -> Vec<Method> {
         let tiers = Witnesses::tiers(self.cx, &self.file, ty);
-        let mut methods =
-            tiers.iter().map(|tier| tier.iter().filter_map(|w| w.method(self.cx, name)).collect());
+        let mut methods = tiers
+            .iter()
+            .map(|tier| tier.iter().filter_map(|c| c.witness(self.cx)?.method(self.cx, name)).collect());
         methods.find(|found: &Vec<Method>| !found.is_empty()).unwrap_or_default()
     }
 }
