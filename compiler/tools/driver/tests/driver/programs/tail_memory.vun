@@ -1,5 +1,6 @@
 //! Guaranteed tail calls that pass values in memory, each a million deep: arguments on the
-//! stack, a record too large for registers passed and returned, one forwarded unchanged.
+//! stack, a record too large for registers passed and returned, one forwarded unchanged, two
+//! records passed in the other order of their sizes.
 //! Exits with the number of checks that fail: 0 when all hold.
 
 start := std.os.start(main);
@@ -21,10 +22,21 @@ forward := (n: u32, big: Big) -> Big {
     return lang.flow.tail(forward, (n - 1, big));
 };
 
+Mid := struct { a: u64, b: u64, c: u64 };
+
+ping := (n: u32, mid: Mid, big: Big) -> u32 {
+    return lang.flow.tail(pong, (n, big, mid));
+};
+
+pong := (n: u32, big: Big, mid: Mid) -> u32 {
+    if n == 0 { return (mid.c + big.d).wrap(u32); }
+    return lang.flow.tail(pong, (n - 1, big, mid));
+};
+
 main := (sys: &mut std.os.System) -> std.os.Exit {
     n: u32 = sys.args().len().sat(u32);
     steps: u32 = (1000000 * n).wrap(u32);
-    mut failed: Int(0..=3) = 0;
+    mut failed: Int(0..=4) = 0;
     if rotate(steps, 1, 2, 3, 4, 5, 6, 7, 8) != 204 { failed +|= 1; }
     folded := fold(steps, Big{ .a = 1, .b = 2, .c = 3, .d = 4 });
     if !(folded.a == 250001 and folded.b == 250002 and folded.c == 250003 and folded.d == 250004) {
@@ -32,5 +44,8 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     }
     kept := forward(steps, Big{ .a = 5, .b = 6, .c = 7, .d = 8 });
     if !(kept.a == 5 and kept.b == 6 and kept.c == 7 and kept.d == 8) { failed +|= 1; }
+    if ping(steps, Mid{ .a = 1, .b = 2, .c = 3 }, Big{ .a = 5, .b = 6, .c = 7, .d = 8 }) != 11 {
+        failed +|= 1;
+    }
     std.os.Exit.of(failed)
 };

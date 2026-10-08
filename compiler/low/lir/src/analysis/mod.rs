@@ -1,6 +1,6 @@
 //! Analyses every backend reads (spec 13, section 8.1), computed once per function: the control
 //! flow graph, the dominator tree, the loop forest, the order blocks are emitted in, the live range of each value and
-//! the moves filling a jump's target parameters; over a whole unit, the functions reached and those whose address is taken, the
+//! the moves filling a jump's target parameters; over a whole unit, the functions reached, the
 //! call graph callees first and the worst-case stack use of each function.
 
 mod calls;
@@ -12,7 +12,6 @@ mod moves;
 mod order;
 mod reach;
 mod stack;
-mod taken;
 
 pub use cfg::Cfg;
 pub use dominators::Dominators;
@@ -22,7 +21,6 @@ pub use moves::{Location, Move, Moves};
 pub use order::Order;
 pub use reach::Reached;
 pub use stack::{StackUse, Unbounded};
-pub use taken::Taken;
 
 #[cfg(test)]
 mod tests;

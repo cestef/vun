@@ -69,15 +69,17 @@ pub enum Form {
     /// A binding of an assembly block to a place without storage, or to a symbol naming no
     /// function, link symbol or static.
     Asm,
-    /// A tail call whose callee does not share the caller's convention and result, or passes a
-    /// value in memory that fits none the caller received.
+    /// A tail call whose callee does not share the caller's convention and result, or takes
+    /// variadic arguments.
     Tail,
+    /// A tail call passing a value in memory that fits none the caller received.
+    TailMemory,
 }
 
 impl fmt::Display for Unlowered {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.why {
-            Why::Unready(unready) => unready.fmt(f),
+            Why::Unready(_) => f.write_str("the function is not ready for code generation"),
             Why::NoLayout(ty) => write!(f, "the type `{ty}` has no layout at run time"),
             Why::Unsupported(form) => write!(f, "lowering to LIR does not handle {} yet", form.what()),
             Why::Primitive(p) => write!(f, "lowering to LIR does not handle `{}` at run time yet", p.item()),
@@ -101,7 +103,14 @@ impl fmt::Display for Unlowered {
     }
 }
 
-impl std::error::Error for Unlowered {}
+impl std::error::Error for Unlowered {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self.why {
+            Why::Unready(unready) => Some(unready),
+            _ => None,
+        }
+    }
+}
 
 impl Why {
     /// A short name of the kind of failure, which summaries count by.
@@ -193,6 +202,7 @@ impl Form {
             Self::Quote => "quote",
             Self::Asm => "asm",
             Self::Tail => "tail",
+            Self::TailMemory => "tail memory",
         }
     }
 
@@ -208,7 +218,8 @@ impl Form {
             Self::Frame => "a coroutine frame",
             Self::Quote => "a code value at run time",
             Self::Asm => "this binding of an assembly block",
-            Self::Tail => "a tail call of a function with another convention or result",
+            Self::Tail => "a tail call of a function with another convention or result, or variadic",
+            Self::TailMemory => "a tail call passing a value in memory that fits none the caller received",
         }
     }
 }

@@ -80,17 +80,23 @@ impl Passing {
             return None;
         }
         let first = u32::from(caller.through());
-        let mut held = (first..).zip(&caller.parts).filter_map(|(param, part)| match *part {
-            Part::Copy { size, align } => Some((param, size, align)),
-            _ => None,
-        });
+        let mut held = (first..)
+            .zip(&caller.parts)
+            .filter_map(|(param, part)| match *part {
+                Part::Copy { size, align } => Some((param, size, align)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
         self.parts
             .iter()
             .filter_map(|part| match *part {
                 Part::Copy { size, align } => Some((size, align)),
                 _ => None,
             })
-            .map(|(size, align)| held.find(|&(_, s, a)| s >= size && a >= align).map(|(param, ..)| param))
+            .map(|(size, align)| {
+                let slot = held.iter().position(|&(_, s, a)| s >= size && a >= align)?;
+                Some(held.remove(slot).0)
+            })
             .collect()
     }
 

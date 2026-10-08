@@ -32,3 +32,10 @@ fn a_tail_call_whose_copy_fits_none_of_the_callers_is_refused() {
     assert_eq!(passing(vec![record(16, 16)], None).reuse(&caller), None);
     assert_eq!(passing(vec![record(16, 8), record(16, 8)], None).reuse(&caller), None);
 }
+
+#[test]
+fn a_tail_call_takes_the_first_slot_not_taken_that_holds_a_copy_not_the_first_after_the_last() {
+    let caller = passing(vec![record(16, 8), record(32, 8)], None);
+    let swapped = passing(vec![record(32, 8), record(16, 8)], None);
+    assert_eq!(swapped.reuse(&caller), Some(vec![1, 0]));
+}

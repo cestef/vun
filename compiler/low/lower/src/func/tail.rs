@@ -17,7 +17,8 @@ impl FnLower<'_, '_, '_> {
         let own = self.b.signature();
         let shared = own.conv == signature.conv
             && own.convention == signature.convention
-            && own.result == signature.result;
+            && own.result == signature.result
+            && signature.variadic.is_none();
         if !shared {
             return Err(Unlowered::unsupported(self.at, Form::Tail));
         }
@@ -36,13 +37,13 @@ impl FnLower<'_, '_, '_> {
     /// read a copy in the frame being left, and stays where none is received that fits. The
     /// values are copied there once all are written, as one may be read from another.
     fn reuse_received(&mut self, callee: &Signature, args: &mut [Value]) -> Result<(), Unlowered> {
-        let mut received = self.b.signature().held().collect::<Vec<_>>().into_iter();
+        let mut received = self.b.signature().held().collect::<Vec<_>>();
         let mut moves = Vec::new();
         for held in callee.held() {
             let fits = |own: &Held| own.size >= held.size && own.align >= held.align;
-            match (received.find(fits), held.reuse) {
+            match (received.iter().position(fits).map(|slot| received.remove(slot)), held.reuse) {
                 (Some(own), _) => moves.push((held.at, self.received[own.at], held.size)),
-                (None, Reuse::Must) => return Err(Unlowered::unsupported(self.at, Form::Tail)),
+                (None, Reuse::Must) => return Err(Unlowered::unsupported(self.at, Form::TailMemory)),
                 (None, Reuse::May) => {}
             }
         }
