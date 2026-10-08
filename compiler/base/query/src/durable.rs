@@ -36,9 +36,13 @@ impl Db {
     /// The fingerprint of every input shared as far as `level` or further as they are now: what a
     /// memo saved at that level is marked as holding under.
     pub(crate) fn shared_inputs_now(&self, level: Sharing) -> Fingerprint {
-        self.tables
-            .iter()
-            .fold(Fingerprint::default(), |all, (_, table)| all.with(table.shared_inputs(level)))
+        self.tables.iter().fold(Fingerprint::default(), |all, (_, table)| {
+            let inputs = table.shared_inputs(level);
+            if inputs != Fingerprint::default() {
+                tracing::trace!(query = table.name(), ?level, ?inputs, "shared inputs");
+            }
+            all.with(inputs)
+        })
     }
 
     /// Whether a memo as durable as `durability` holds at once in `revision`: its inputs shared,
