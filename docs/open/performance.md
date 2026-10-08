@@ -26,6 +26,6 @@
   (`VUN_QUERY_CHECK=1` panics in `reuse.rs`). A session whose target is not chosen now keeps no
   queries (`Session::untargeted`), which hides it; the cause is a read of the unset `TargetOf`
   input, saved with the memo but not held against the value set later.
-- `Concrete::propagate` reaches its fixed point one constant level per scan of the body
-  (`concrete/mod.rs`); a worklist over writes would do it in one. It does not show in the
-  profile of a warm `vun test lib/std`; measure a cold run before changing it.
+- Cold `vun test lib/std` on `am3.wg` (empty `VUN_STORE`): `Body::propagate` is 3.4% of the samples
+  with its callees and 0.07% on its own, so the repeated scans cost nothing; the rest is the
+  compile-time calls `fold` evaluates, which `concrete` (2.6 s total across threads) holds.

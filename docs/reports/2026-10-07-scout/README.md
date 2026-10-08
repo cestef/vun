@@ -49,8 +49,8 @@ report overstates in places; what holds and what was done:
   once per node; `settled` is cleared at each new revision; `replaced` is searched by bisection;
   `exponent_cap` is gone; `derive` is documented as `lang.derive`.
 - **Left,** in `docs/open/`: the `Cond` maps (the `Cc` types are generated per ISA), `i128`
-  literals (the literal writer is for data), and `Concrete::propagate`, which does not show in a
-  profile.
+  literals (the literal writer is for data), and `Concrete::propagate`, measured cold: 0.07% of the
+  samples on its own, so a worklist gains nothing.
 
 ## Caveat on the baseline
 
