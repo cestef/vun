@@ -1,0 +1,4 @@
+//! Coroutine frames (spec 06, section 1).
+
+recursive_frame := diag.Diag{};
+not_suspending := diag.Diag{};

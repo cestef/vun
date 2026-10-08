@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The 100-nanosecond intervals of the system's real clock between 1601-01-01, where it starts,
 /// and 1970-01-01, where `std.time.Clock.real` does.

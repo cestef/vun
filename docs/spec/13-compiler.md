@@ -358,7 +358,7 @@ constructors and interface requirements included. Rust reads what a handle decla
 (`Item::parent`, `Item::symbol`), and a borrow mode is a row of the table `borrows`
 (`vun_desugar::Borrow`), never its words. `grammar.vun` and `nodes.vun` go to `vun-grammar`, which the parser is built
 from, and `desugar.vun` to `vun-desugar`, which only later stages read. The same task generates the
-diagnostic ids of `vun-diag` from `lang/errors.vun`, a typed handle (`vun_items::Item`) for every
+diagnostic ids of `vun-diag` from the files of `lang/errors/`, one per group, a typed handle (`vun_items::Item`) for every
 public declaration and namespace of `lang` and `std` (`vun_items::lang::int::unsigned`), through
 which Rust code names a declaration, never by a string, and the compiler's primitives from `lang`
 itself: every top-level declaration

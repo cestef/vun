@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// With the single-precision floating-point unit (`fpv4-sp-d16`), the hard-float EABI.
 pub const eabihf: Item = Item::new(&["targets", "bare", "thumbv7em", "eabihf"]);

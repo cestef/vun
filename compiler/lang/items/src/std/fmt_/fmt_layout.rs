@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Where an argument sits in the width it is given.
 pub const Align: Item = Item::new(&["std", "fmt", "layout", "Align"]);

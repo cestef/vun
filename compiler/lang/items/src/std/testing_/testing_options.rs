@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The option drawing every property's cases from the seed that follows it.
 pub const seed_option: Item = Item::new(&["std", "testing", "options", "seed_option"]);

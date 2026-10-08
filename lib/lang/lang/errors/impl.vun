@@ -1,0 +1,6 @@
+//! Interface conformance (spec 02, section 3).
+
+missing_requirement := diag.Diag{};
+requirement_type := diag.Diag{};
+duplicate := diag.Diag{};
+collision := diag.Diag{};

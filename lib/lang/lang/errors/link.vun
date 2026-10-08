@@ -1,0 +1,8 @@
+//! Linking (spec 13).
+
+unavailable := diag.Diag{};
+unsupported := diag.Diag{};
+export_mismatch := diag.Diag{};
+undefined := diag.Diag{};
+duplicate := diag.Diag{};
+malformed := diag.Diag{};

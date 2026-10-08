@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// `66` at 16 bits, REX.W at 64: integer operations.
 pub const size: Item = Item::new(&["lang", "arch", "x86_64", "W", "size"]);

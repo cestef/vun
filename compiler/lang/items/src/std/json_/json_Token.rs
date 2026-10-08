@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const object_begin: Item = Item::new(&["std", "json", "Token", "object_begin"]);
 pub const object_end: Item = Item::new(&["std", "json", "Token", "object_end"]);

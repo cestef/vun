@@ -5,68 +5,88 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.abi`.
+/// Calling conventions (spec 07, section 4).
 pub const abi: Item = Item::new(&["lang", "abi"]);
-/// The namespace `lang.arch`.
+/// The instruction sets a block of instructions is written in, each a namespace declaring its
+/// table (spec 07, section 6): `x86_64`, `arm64`, `thumb` and `wasm32`; and what a block is written
+/// with, whatever its instruction set.
 pub const arch: Item = Item::new(&["lang", "arch"]);
-/// The namespace `lang.bounds`.
+/// What bounds hold (spec 04): the iterator of `lang.Bounds` in `lang.ops` reads them.
 pub const bounds: Item = Item::new(&["lang", "bounds"]);
-/// The namespace `lang.check`.
+/// Checks of unsafe code at run time (spec 07, section 7; spec 13, section 8.7): what a program
+/// may be built to check, the operations its runtime provides for the checks, and how a failed
+/// one is reported.
 pub const check: Item = Item::new(&["lang", "check"]);
-/// The namespace `lang.comptime`.
+/// Compile-time evaluation budgets (spec 03, section 7).
 pub const comptime: Item = Item::new(&["lang", "comptime"]);
-/// The namespace `lang.cover`.
+/// Coverage (spec 11, section 6): a program built covered, as `vun fuzz` and `vun cover` build
+/// one, counts how often each block of its code started in `map`, the count of the block's number
+/// modulo `size`. `std.testing.fuzz` reads the counts to tell inputs apart by what they ran.
 pub const cover: Item = Item::new(&["lang", "cover"]);
-/// The namespace `lang.diag`.
+/// Diagnostics as values (spec 10).
 pub const diag: Item = Item::new(&["lang", "diag"]);
-/// The namespace `lang.errors`.
-pub const errors: Item = Item::new(&["lang", "errors"]);
-/// The namespace `lang.float`.
+/// Floating-point operations that are explicit about precision (spec 04, section 2).
 pub const float: Item = Item::new(&["lang", "float"]);
-/// The namespace `lang.flow`.
+/// Guaranteed tail calls (spec 09, section 3).
 pub const flow: Item = Item::new(&["lang", "flow"]);
-/// The namespace `lang.gate`.
+/// Language features a package opts into (spec 12, section 2).
 pub const gate: Item = Item::new(&["lang", "gate"]);
-/// The namespace `lang.hint`.
+/// Hints inside function bodies (spec 09, section 3).
 pub const hint: Item = Item::new(&["lang", "hint"]);
-/// The namespace `lang.int`.
+/// Integer types by width (spec 04, section 1). `lang` declares them, since its own declarations
+/// need them; `std.prelude` re-exports them.
 pub const int: Item = Item::new(&["lang", "int"]);
-/// The namespace `lang.kind`.
+/// Kind restrictions (spec 05, section 1).
 pub const kind: Item = Item::new(&["lang", "kind"]);
-/// The namespace `lang.layout`.
+/// Layout attributes (spec 05, section 6).
 pub const layout: Item = Item::new(&["lang", "layout"]);
-/// The namespace `lang.link`.
+/// Linking attributes (spec 08).
 pub const link: Item = Item::new(&["lang", "link"]);
-/// The namespace `lang.lint`.
+/// Lints as values (spec 10, section 4). A lint states its group, its default level and a check
+/// for each kind of node it looks at; the compiler walks the typed code once per file and runs
+/// each check a lint states on each node of its kind, at compile time. A check sees the code
+/// through `Cx` and the nodes as plain data, a view versioned with `lang`, and reports by
+/// appending to `Cx`: running it is a pure compile-time call.
 pub const lint: Item = Item::new(&["lang", "lint"]);
-/// The namespace `lang.lower`.
+/// How the compiler lowers what no instruction computes (spec 13, section 3).
 pub const lower: Item = Item::new(&["lang", "lower"]);
-/// The namespace `lang.mem`.
+/// Borrows, raw pointers and memory access (spec 05).
 pub const mem: Item = Item::new(&["lang", "mem"]);
-/// The namespace `lang.meta`.
+/// Code values, names, reflection and origins (spec 03).
 pub const meta: Item = Item::new(&["lang", "meta"]);
-/// The namespace `lang.ops`.
+/// Operators as interfaces. Every operator desugars to one of these (spec 02, section 4); the
+/// table `operators` of `lang.syntax.desugar` says which.
 pub const ops: Item = Item::new(&["lang", "ops"]);
-/// The namespace `lang.opt`.
+/// Optimization controls; none changes meaning (spec 09, section 3).
 pub const opt: Item = Item::new(&["lang", "opt"]);
-/// The namespace `lang.panic`.
+/// Traps and the typed link symbol that handles them (spec 07, section 3; spec 08).
 pub const panic: Item = Item::new(&["lang", "panic"]);
-/// The namespace `lang.safety`.
+/// What `unsafe` marks (spec 07, section 4): something used only where someone vouched for the
+/// facts the compiler cannot check. A block or expression is vouched for where it is written;
+/// a function, or a function type, at each call.
 pub const safety: Item = Item::new(&["lang", "safety"]);
-/// The namespace `lang.scope`.
+/// Where a restricted name is visible (spec 01, section 7): the argument of `lang.visible`.
 pub const scope: Item = Item::new(&["lang", "scope"]);
-/// The namespace `lang.simd`.
+/// Vector types (spec 04, section 3): `lanes` values of one type, operated on together. A vector
+/// is laid out as the array of its lanes, aligned to its size when that is a power of two;
+/// `lanes` and `of` move between the two, over which `std.simd` gives vectors their operators and
+/// methods.
 pub const simd: Item = Item::new(&["lang", "simd"]);
-/// The namespace `lang.stack`.
+/// Stack bounds (spec 07, section 4).
 pub const stack: Item = Item::new(&["lang", "stack"]);
-/// The namespace `lang.syntax`.
+/// The syntax of Vun as types, for compile-time code reading code values (spec 03, section 4).
+/// Token and node types are generated from `syntax/grammar.vun`.
 pub const syntax: Item = Item::new(&["lang", "syntax"]);
-/// The namespace `lang.target`.
+/// Target descriptions and feature requirements.
 pub const target: Item = Item::new(&["lang", "target"]);
-/// The namespace `lang.thread`.
+/// Storage per thread (spec 07, section 2).
 pub const thread: Item = Item::new(&["lang", "thread"]);
-/// The namespace `lang.trace`.
+/// What the compiler tells a program of its own code, so that a trap reports where it was written
+/// and the calls that led to it (spec 07, section 3): the program's functions, its trap sites and
+/// the places in source they name. The compiler lays the table out as these declarations do and
+/// gives it the link symbol `symbols.table`, which a runtime declares to read it.
 pub const trace: Item = Item::new(&["lang", "trace"]);
 pub const r#type: Item = Item::new(&["lang", "type"]);
 /// The integer type whose values are exactly those of the range `r` (spec 04).

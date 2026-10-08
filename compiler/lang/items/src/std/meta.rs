@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// What a code value tells of itself (spec 03, section 4). A code value is passed by borrow:
 /// a parameter of type `Code(T)` itself would receive its argument as code.

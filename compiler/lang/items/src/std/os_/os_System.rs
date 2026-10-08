@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The process's system, started with `args`. Only a runtime claims it, once, before `main`.
 pub const claim: Item = Item::new(&["std", "os", "System", "claim"]);

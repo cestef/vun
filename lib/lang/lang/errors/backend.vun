@@ -1,0 +1,8 @@
+//! Code generation backends (spec 13).
+
+unavailable := diag.Diag{};
+unsupported := diag.Diag{};
+unchosen := diag.Diag{};
+lacks := diag.Diag{};
+tool := diag.Diag{};
+unlowered := diag.Diag{};

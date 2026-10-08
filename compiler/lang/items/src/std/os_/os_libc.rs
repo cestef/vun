@@ -5,12 +5,17 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.libc.library`.
+/// Loading libraries through the C library (`dlopen`, `dlsym`, `dlclose`): the exports a
+/// runtime on top of it holds, `library := std.os.libc.library.exports`. The loader reports a
+/// failure as text rather than an error number, so each is `unresolved`.
 pub const library: Item = Item::new(&["std", "os", "libc", "library"]);
-/// The namespace `std.os.libc.pages`.
+/// `std.os.pages`'s exports for a runtime on top of the C library: `mprotect`, and a query of
+/// `/proc/self/maps` where the system is Linux's, which gives a process no other way to its own.
 pub const pages: Item = Item::new(&["std", "os", "libc", "pages"]);
-/// The namespace `std.os.libc.random`.
+/// `std.os.entropy` for the runtime over a C library: `getentropy`, which glibc and the system
+/// library of macOS both have, and which gives at most 256 bytes a call.
 pub const random: Item = Item::new(&["std", "os", "libc", "random"]);
 pub const write: Item = Item::new(&["std", "os", "libc", "write"]);
 pub const read: Item = Item::new(&["std", "os", "libc", "read"]);

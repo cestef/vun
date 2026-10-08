@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// What a runtime starts a thread at: a function given the address of the thread's context.
 pub const Start: Item = Item::new(&["std", "os", "thread", "Start"]);

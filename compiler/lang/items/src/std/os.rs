@@ -5,26 +5,53 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.file`.
+/// Files a hosted program opens through its `std.os.System` (spec 08, section 2).
 pub const file: Item = Item::new(&["std", "os", "file"]);
-/// The namespace `std.os.libc`.
+/// A runtime on top of the C library: exports C `main`, the trap handler, the critical section
+/// and the executors' sleep, and reaches the system through the C library's functions (spec 08,
+/// section 2).
 pub const libc: Item = Item::new(&["std", "os", "libc"]);
-/// The namespace `std.os.library`.
+/// Libraries a hosted program loads as it runs (spec 08, section 2): shared objects the system
+/// finds by path or name, whose functions the program calls once it has their addresses. The
+/// system names a library by a number, as it does a file.
 pub const library: Item = Item::new(&["std", "os", "library"]);
-/// The namespace `std.os.linux`.
+/// Linux.
 pub const linux: Item = Item::new(&["std", "os", "linux"]);
-/// The namespace `std.os.macos`.
+/// macOS.
 pub const macos: Item = Item::new(&["std", "os", "macos"]);
-/// The namespace `std.os.memory`.
+/// The functions of C's `string.h` a freestanding C program must provide, which a C compiler
+/// calls for copies and fills of its own: a runtime with no C library holds them. Copies and
+/// fills are written in assembly: a loop in Vun would be read back by the C compiler as a call of
+/// the function it is.
 pub const memory: Item = Item::new(&["std", "os", "memory"]);
-/// The namespace `std.os.pages`.
+/// The pages of the process's own address space (spec 08, section 2): what a range of them
+/// allows, and the range an address is mapped within. An address passed here must be one the
+/// system gave the process: through a library it loaded, its own code and data, or memory it
+/// mapped.
 pub const pages: Item = Item::new(&["std", "os", "pages"]);
-/// The namespace `std.os.thread`.
+/// Threads the system runs beside the one starting them (spec 08, section 2). A thread runs a
+/// closure borrowed for as long as it runs: `Thread` is linear and holds the borrow, so the
+/// closure, and what it borrows, stay until the thread is joined, and joining gives what the
+/// closure returned. Values safe to share are safe to share across threads (spec 07, section 2),
+/// so a closure may borrow what the thread starting it goes on reading.
+///
+/// A runtime starts a thread through `std.os.spawn`, with a function of this namespace and a copy
+/// of the thread's context it keeps until `std.os.join` copies it back.
+///
+/// A trap ends the thread it happens in (spec 07, section 3): the runtime's handler keeps the trap
+/// where `join` reads how the thread ended, and ends that thread alone. A trap in the thread the
+/// program started in ends the program.
 pub const thread: Item = Item::new(&["std", "os", "thread"]);
-/// The namespace `std.os.wasi`.
+/// WASI preview 1 (spec 08, section 2): a runtime exporting `_start`, which reaches the system
+/// through the functions of preview 1's import module. A module runs one thread and takes no
+/// signals, so its critical section is nothing to take.
 pub const wasi: Item = Item::new(&["std", "os", "wasi"]);
-/// The namespace `std.os.windows`.
+/// Windows (spec 08, section 2): a runtime calling `kernel32` itself, with no C runtime, for
+/// programs that run one thread. A file number is a handle (`file`), the command line is split
+/// into arguments by the C runtime's rules (`command_line`), and the system's errors are the
+/// ones `std.os.Error` names, or its own number.
 pub const windows: Item = Item::new(&["std", "os", "windows"]);
 /// A status a process ends with, besides success: what every system passes on unchanged. A shell
 /// reads 126 and 127 as a program that could not run and 128 plus `n` as one killed by signal

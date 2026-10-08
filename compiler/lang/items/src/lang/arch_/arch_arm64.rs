@@ -5,16 +5,23 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.arch.arm64.control`.
+/// Branches, calls, traps, barriers and page addresses (Arm A64 ISA, branches, exception
+/// generation and system instructions).
 pub const control: Item = Item::new(&["lang", "arch", "arm64", "control"]);
-/// The namespace `lang.arch.arm64.fp`.
+/// Scalar floating-point instructions (Arm A64 ISA, scalar floating-point data processing): the
+/// instruction's width is the precision, or for a conversion the integer's width.
 pub const fp: Item = Item::new(&["lang", "arch", "arm64", "fp"]);
-/// The namespace `lang.arch.arm64.int`.
+/// Integer moves, arithmetic, logic, shifts, extensions and conditional selects (Arm A64 ISA,
+/// data processing).
 pub const int: Item = Item::new(&["lang", "arch", "arm64", "int"]);
-/// The namespace `lang.arch.arm64.memory`.
+/// Loads, stores and atomics (Arm A64 ISA, loads and stores). A single access has a form per
+/// addressing mode, tried in order: a scaled offset, an unscaled one (`ldur`), a register index,
+/// pre- and post-index, then the low bits of a symbol's address.
 pub const memory: Item = Item::new(&["lang", "arch", "arm64", "memory"]);
-/// The namespace `lang.arch.arm64.operand`.
+/// What an operand position of an arm64 form takes, and how its operand is encoded: registers
+/// by width, immediates, addressing modes, conditions and branch targets.
 pub const operand: Item = Item::new(&["lang", "arch", "arm64", "operand"]);
 /// The width of an operation or an operand.
 pub const Size: Item = Item::new(&["lang", "arch", "arm64", "Size"]);

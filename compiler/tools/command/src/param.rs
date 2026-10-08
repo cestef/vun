@@ -64,7 +64,7 @@ pub struct Catalog {
     pub names: fn() -> Vec<&'static str>,
     /// What each name is: `an error`.
     pub what: &'static str,
-    /// Where they are declared: `lib/lang/lang/errors.vun`.
+    /// Where they are declared: `lib/lang/lang/errors/`.
     pub declared_in: &'static str,
 }
 
@@ -77,7 +77,7 @@ pub enum PathKind {
 }
 
 impl Catalog {
-    /// What its names are, and where they are declared: an error, as `lib/lang/lang/errors.vun`
+    /// What its names are, and where they are declared: an error, as `lib/lang/lang/errors/`
     /// declares them.
     #[must_use]
     pub fn described(&self) -> String {

@@ -1,0 +1,4 @@
+//! Starting a project from a template (`vun new`).
+
+exists := diag.Diag{};
+no_template := diag.Diag{};

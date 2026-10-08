@@ -5,8 +5,9 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.dyn.tests`.
+/// Tests of `std.Dyn`.
 pub const tests: Item = Item::new(&["std", "dyn", "tests"]);
 /// What a `Dyn` erases its target to: it is only ever pointed to.
 pub const Erased: Item = Item::new(&["std", "dyn", "Erased"]);

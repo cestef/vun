@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The `count` arguments at `values`, each ending with a zero byte, as C's `main` receives
 /// them; they must stay unchanged for as long as the arguments are read.

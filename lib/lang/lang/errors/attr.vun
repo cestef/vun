@@ -1,0 +1,3 @@
+//! Attributes (spec 02, section 5).
+
+misplaced := diag.Diag{};

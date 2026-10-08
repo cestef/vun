@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// One: bare metal, WASI. Storage per thread is the program's.
 pub const one: Item = Item::new(&["lang", "target", "Threads", "one"]);

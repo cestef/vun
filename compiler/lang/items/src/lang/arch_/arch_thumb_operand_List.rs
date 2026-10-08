@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// `r0` to `r7` in eight bits, and `lr` in bit 8: a 16-bit `push`.
 pub const push: Item = Item::new(&["lang", "arch", "thumb", "operand", "List", "push"]);

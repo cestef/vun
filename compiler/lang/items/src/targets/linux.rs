@@ -5,12 +5,14 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `targets.linux.arm`.
+/// 32-bit ARM: Armv7-A with division in hardware, as Cortex-A7 and A15 on have it, its code
+/// Thumb-2, floats in the floating-point extension's registers (the hard-float EABI).
 pub const arm: Item = Item::new(&["targets", "linux", "arm"]);
-/// The namespace `targets.linux.arm64`.
+/// 64-bit ARM (AArch64).
 pub const arm64: Item = Item::new(&["targets", "linux", "arm64"]);
-/// The namespace `targets.linux.riscv64`.
+/// 64-bit RISC-V with the general extensions (RV64GC), whose kernel no runtime of `std` calls yet.
 pub const riscv64: Item = Item::new(&["targets", "linux", "riscv64"]);
-/// The namespace `targets.linux.x86_64`.
+/// 64-bit x86.
 pub const x86_64: Item = Item::new(&["targets", "linux", "x86_64"]);

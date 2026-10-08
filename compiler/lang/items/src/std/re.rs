@@ -5,12 +5,14 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.re.dump`.
+/// The hex dump `std.re.hexdump` writes: the bytes of a run, a line of 16 at a time.
 pub const dump: Item = Item::new(&["std", "re", "dump"]);
-/// The namespace `std.re.pattern`.
+/// Byte patterns as a reverse engineer writes them: hexadecimal bytes separated by spaces, with
+/// `?` or `??` for a byte that may be any, as in `48 8B ?? 05`.
 pub const pattern: Item = Item::new(&["std", "re", "pattern"]);
-/// The namespace `std.re.tests`.
+/// Tests of `std.re`: patterns with wildcards found in bytes, and hex dumps.
 pub const tests: Item = Item::new(&["std", "re", "tests"]);
 /// A pattern of up to `n` bytes, each a byte to match or any byte.
 pub const Pattern: Item = Item::new(&["std", "re", "Pattern"]);

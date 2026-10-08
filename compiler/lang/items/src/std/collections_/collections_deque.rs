@@ -5,8 +5,9 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.collections.deque.tests`.
+/// Tests of `std.collections.Deque`.
 pub const tests: Item = Item::new(&["std", "collections", "deque", "tests"]);
 /// The fewest items a buffer is made for.
 pub const grown_least: Item = Item::new(&["std", "collections", "deque", "grown_least"]);

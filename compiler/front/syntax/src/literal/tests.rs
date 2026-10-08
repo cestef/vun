@@ -208,3 +208,15 @@ fn fields_keep_their_docs() {
     assert_eq!((fields[0].name, fields[0].doc.as_slice()), ("x", ["what x is"].as_slice()));
     assert_eq!(fields[1].doc, Vec::<&str>::new());
 }
+
+#[test]
+fn a_file_keeps_its_module_doc() {
+    let text = "//! What it holds.\n//! More.\n\n/// x\nx := 1;\n";
+    let file = SourceFiles::new().add("t.vun", text);
+    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
+    let tokens = Tokens::lex(file, text, &mut cx);
+    let cst = Cst::parse(&tokens, text, &mut cx);
+    assert_eq!(cst.module_doc(&tokens, text), ["What it holds.", "More."]);
+    assert_eq!(cst.declarations(&tokens, text)[0].doc, ["x"]);
+}

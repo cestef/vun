@@ -5,11 +5,17 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.collections.btree.node`.
+/// A node of a `BTreeMap`: up to `keys_max` keys, the value of each and, unless the node is a
+/// leaf, one child more than keys, each the position of a node in the map's pool. Only the root
+/// has fewer than `degree - 1` keys.
 pub const node: Item = Item::new(&["std", "collections", "btree", "node"]);
-/// The namespace `std.collections.btree.pool`.
+/// The nodes of a `BTreeMap`, in one `Vec` an allocator gave, and the moves that keep them within
+/// their bounds: splitting a full child, merging two thin ones, rotating a key through the
+/// parent. Nodes are named by their position; one nobody uses is kept in a list for the next
+/// that is wanted, so taking a key away needs no allocator.
 pub const pool: Item = Item::new(&["std", "collections", "btree", "pool"]);
-/// The namespace `std.collections.btree.tests`.
+/// Tests of `std.collections.BTreeMap`.
 pub const tests: Item = Item::new(&["std", "collections", "btree", "tests"]);
 pub const BTreeMap: Item = Item::new(&["std", "collections", "btree", "BTreeMap"]);

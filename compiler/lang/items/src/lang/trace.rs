@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// How much of its code a program's table describes, and so what a trap reports.
 pub const Detail: Item = Item::new(&["lang", "trace", "Detail"]);

@@ -1,0 +1,3 @@
+//! Checks of unsafe code at run time (spec 07, section 7).
+
+unsupported := diag.Diag{};

@@ -5,8 +5,9 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.io.tests`.
+/// Tests of `std.io`: a reader of a slice.
 pub const tests: Item = Item::new(&["std", "io", "tests"]);
 /// Where bytes are written: `std.fmt.Writer`.
 pub const Writer: Item = Item::new(&["std", "io", "Writer"]);

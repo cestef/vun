@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// A branch; its 32-bit form first, as a label's distance is not known when it is chosen.
 pub const b_always: Item = Item::new(&["lang", "arch", "thumb", "branch", "b_always"]);

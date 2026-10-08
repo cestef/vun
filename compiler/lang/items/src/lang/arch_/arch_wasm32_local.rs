@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Pushes the value of a bound local: `local_get(in(a))`.
 pub const local_get: Item = Item::new(&["lang", "arch", "wasm32", "local", "local_get"]);

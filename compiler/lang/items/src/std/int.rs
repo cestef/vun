@@ -5,14 +5,20 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.int.bits`.
+/// Integers as the bits of their storage (spec 04, rule 8): rotating them and counting them. A
+/// signed value is its two's complement, so every `Int(r)` is rotated and counted by its word.
 pub const bits: Item = Item::new(&["std", "int", "bits"]);
-/// The namespace `std.int.bytes`.
+/// Integers as the bytes of their storage (spec 04, rule 7): `to_le` and `to_be` give the bytes of
+/// a value, `from_le` and `from_be` read a value from them. A signed value is its two's
+/// complement, so every `Int(r)` is read and written alike.
 pub const bytes: Item = Item::new(&["std", "int", "bytes"]);
-/// The namespace `std.int.math`.
+/// Integer arithmetic that is not an operator: dividing upward, aligning, powers of two,
+/// logarithms, roots and the greatest common divisor. These are for values of zero and above;
+/// each result is narrowed into `Int(r)` and traps where it does not fit, as `.to` does.
 pub const math: Item = Item::new(&["std", "int", "math"]);
-/// The namespace `std.int.tests`.
+/// Tests of `std.int`: integers read from text.
 pub const tests: Item = Item::new(&["std", "int", "tests"]);
 /// The types that are integers: every `Int(r)`, and so what narrowing brings a value into.
 pub const Integer: Item = Item::new(&["std", "int", "Integer"]);

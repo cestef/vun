@@ -21,22 +21,15 @@ dropped; arm64 `f16` truncation to `i32` past the format's range). Next: rerun i
 --host am3.wg`, `--jobs 3 --chunk 5`, `--warm` once after a rebuild), triage what it finds.
 Progress bars and `-v` are in; give long commands a `Visit`/`shell.bar` as they are written.
 
-CLI rework (decisions 659 to 661, proposed): `vun component list|add|remove` replaces `toolchain
-component`; bad paths, targets and test names are errors; compile options split by detail. Next:
-try `vun component add` against a real release (`VUN_RELEASES=file://...`, `cargo xtask install`
-now keeps a manifest), and give the plan's `Building build.vun` line a name people recognize.
-`lib/lang/lang/errors.vun` is at 300 lines: the next id needs the generator to read a directory.
+CLI rework (decisions 659 to 661, proposed) is tried end to end: `vun component list|add|remove`
+against a signed release on am3 (`VUN_RELEASES=file://<dir>` laid out as a forge's). A package is
+shown by its directory in `Building <dir>`.
 
 The owner's queue, in order:
 
 1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).
 2. Backends: the rp2350 on hardware
    ([`open/backends.md`](open/backends.md)).
-
-## For the owner
-
-`~/.config/vun/toolchain.vun` needs a `linux.gnu.arm64` row (same compiler, sysroot and runner as
-`linux.arm64`) for glibc arm64 programs.
 
 ## Areas
 

@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// A scope: the namespaces, packages or workspace a name starting with `_` is visible in.
 pub const Scope: Item = Item::new(&["lang", "scope", "Scope"]);

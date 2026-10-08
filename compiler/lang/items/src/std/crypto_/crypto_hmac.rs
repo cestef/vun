@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The HMAC-SHA-256 of `message` under `key`.
 pub const sha256: Item = Item::new(&["std", "crypto", "hmac", "sha256"]);

@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// `cp` in UTF-8; `replacement` where it is a surrogate or past `max`.
 pub const of: Item = Item::new(&["std", "text", "utf8", "Encoded", "of"]);

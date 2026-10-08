@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The state of a slot holding nothing yet: no key was ever put in it.
 pub const vacant: Item = Item::new(&["std", "collections", "map", "vacant"]);

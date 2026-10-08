@@ -5,22 +5,23 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.lints.correctness`.
+/// Code that is wrong or useless.
 pub const correctness: Item = Item::new(&["std", "lints", "correctness"]);
-/// The namespace `std.lints.layout`.
+/// Organization of namespaces, files and directories (spec 10, section 5).
 pub const layout: Item = Item::new(&["std", "lints", "layout"]);
-/// The namespace `std.lints.naming`.
+/// Naming conventions: case follows what a binding is (spec 10, section 5).
 pub const naming: Item = Item::new(&["std", "lints", "naming"]);
-/// The namespace `std.lints.nursery`.
+/// New lints, still being tuned.
 pub const nursery: Item = Item::new(&["std", "lints", "nursery"]);
-/// The namespace `std.lints.pedantic`.
+/// Strict checks, with the occasional false positive.
 pub const pedantic: Item = Item::new(&["std", "lints", "pedantic"]);
-/// The namespace `std.lints.perf`.
+/// Performance lints: padding, large copies, wide intermediates.
 pub const perf: Item = Item::new(&["std", "lints", "perf"]);
-/// The namespace `std.lints.restriction`.
+/// Restrictions a project chooses, such as no `unsafe`.
 pub const restriction: Item = Item::new(&["std", "lints", "restriction"]);
-/// The namespace `std.lints.style`.
+/// Code that is written in an unusual way.
 pub const style: Item = Item::new(&["std", "lints", "style"]);
-/// The namespace `std.lints.suspicious`.
+/// Code that is most likely wrong.
 pub const suspicious: Item = Item::new(&["std", "lints", "suspicious"]);

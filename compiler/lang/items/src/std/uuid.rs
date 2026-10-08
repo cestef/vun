@@ -5,8 +5,9 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.uuid.tests`.
+/// Tests of `std.uuid`.
 pub const tests: Item = Item::new(&["std", "uuid", "tests"]);
 pub const Uuid: Item = Item::new(&["std", "uuid", "Uuid"]);
 /// Why a text is no UUID.

@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// How a value is written as JSON. A struct, an enum, a tuple or a record whose parts have it has
 /// it without an impl, as `derive(T)` writes it.

@@ -1,0 +1,14 @@
+//! Type checking (spec 02).
+
+mismatch := diag.Diag{};
+no_member := diag.Diag{};
+not_dereferenceable := diag.Diag{};
+no_impl := diag.Diag{};
+cannot_infer := diag.Diag{};
+arity := diag.Diag{};
+slice_value := diag.Diag{};
+bad_index := diag.Diag{};
+pack_position := diag.Diag{};
+untyped_param := diag.Diag{};
+hole_length := diag.Diag{};
+no_items := diag.Diag{};

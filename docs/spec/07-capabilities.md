@@ -372,7 +372,7 @@ a trap carrying its origin:
   `allocated(address, bytes)`, `freed(address, bytes)`, `hold(held)`, `evict(allocator)`. A
   runtime without them cannot run a
   checked program: linking fails naming the missing operation and the check needing it
-  (`check.unsupported`, declared in `lang/errors.vun` with its page).
+  (`check.unsupported`, declared in `lang/errors/check.vun` with its page).
 - **Checked versions are Vun.** A function, primitive or interface requirement marked
   `#[lang.check.by(kind, f)]` runs as `f` in a program built with `kind` checked: each call of it
   becomes a call of `f`, with the same arguments plus the call's origin as a compile-time

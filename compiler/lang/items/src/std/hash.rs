@@ -5,12 +5,17 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.hash.adler32`.
+/// Adler-32 (zlib's checksum): two sums modulo 65521, of the bytes and of the first sum after each
+/// byte. Faster than a CRC and weaker on short inputs.
 pub const adler32: Item = Item::new(&["std", "hash", "adler32"]);
-/// The namespace `std.hash.crc32`.
+/// CRC-32 (the checksum of Ethernet, zlib and PNG): the remainder of the bytes as a polynomial,
+/// reflected, with the polynomial `0xEDB88320`. It is a checksum against accidents, not a hash
+/// against an adversary.
 pub const crc32: Item = Item::new(&["std", "hash", "crc32"]);
-/// The namespace `std.hash.tests`.
+/// Tests of `std.hash`: equal values hash equal, different ones almost never do, and types hash by
+/// their parts without an impl.
 pub const tests: Item = Item::new(&["std", "hash", "tests"]);
 /// Where the bytes of a value are mixed into a hash.
 pub const Hasher: Item = Item::new(&["std", "hash", "Hasher"]);

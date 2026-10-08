@@ -1,0 +1,10 @@
+//! Blocks of an architecture's instructions (spec 07, section 6).
+
+unknown_arch := diag.Diag{};
+unknown_mnemonic := diag.Diag{};
+unknown_operand := diag.Diag{};
+no_form := diag.Diag{};
+immediate_too_wide := diag.Diag{};
+register_class := diag.Diag{};
+stack := diag.Diag{};
+unavailable := diag.Diag{};

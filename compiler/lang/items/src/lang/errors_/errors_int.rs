@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const does_not_fit: Item = Item::new(&["lang", "errors", "int", "does_not_fit"]);
 pub const width_cap: Item = Item::new(&["lang", "errors", "int", "width_cap"]);

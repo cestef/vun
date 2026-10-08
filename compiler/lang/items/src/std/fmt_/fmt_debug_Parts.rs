@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const tuple: Item = Item::new(&["std", "fmt", "debug", "Parts", "tuple"]);
 pub const fields: Item = Item::new(&["std", "fmt", "debug", "Parts", "fields"]);

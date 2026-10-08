@@ -5,8 +5,9 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.mem.alloc`.
+/// Allocators are capabilities (spec 07, section 1).
 pub const alloc: Item = Item::new(&["std", "mem", "alloc"]);
 /// An owning pointer (spec 05, section 5): linear, free, and read through with `.*` and `.`.
 /// Freeing it needs the allocator it came from.

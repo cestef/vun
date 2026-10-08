@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Waits until no guard is held, then holds one.
 pub const acquire: Item = Item::new(&["std", "sync", "Mutex", "Guard", "acquire"]);

@@ -5,10 +5,12 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.json.tests`.
+/// Tests of the JSON reader.
 pub const tests: Item = Item::new(&["std", "json", "tests"]);
-/// The namespace `std.json.text`.
+/// The text and numbers a document's tokens hold: a string with its escapes decoded, a number as
+/// the integer or float type asked.
 pub const text: Item = Item::new(&["std", "json", "text"]);
 /// What a document holds, one piece at a time.
 pub const Token: Item = Item::new(&["std", "json", "Token"]);

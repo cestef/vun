@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Eight bits at 0, conditional: a 16-bit `b<c>`.
 pub const narrow_cond: Item = Item::new(

@@ -1,0 +1,8 @@
+//! Package manifests: the `package` literal of `build.vun` (spec 12, section 2).
+
+missing_package := diag.Diag{};
+missing_field := diag.Diag{};
+unknown_field := diag.Diag{};
+toolchain_too_old := diag.Diag{};
+invalid_field := diag.Diag{};
+uneditable := diag.Diag{};

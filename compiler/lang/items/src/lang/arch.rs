@@ -5,14 +5,51 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.arch.arm64`.
+/// 64-bit ARM (spec 07, section 6): its registers, and each instruction with its forms as the
+/// toolchain's assembler encodes them (Arm A64 ISA), with what each form reads and writes. The
+/// instructions are declared in `control`, `fp`, `int` and `memory`, what their operand positions
+/// take in `operand`; `vun-isa-arm64`'s tables are generated from these declarations. An alias is an instruction of its own, its fixed fields in
+/// its base word: `mov` is `orr` from the zero register, `cmp` is `subs` into it.
 pub const arm64: Item = Item::new(&["lang", "arch", "arm64"]);
-/// The namespace `lang.arch.thumb`.
+/// Thumb, the instruction set of Arm's M profile and of Arm's A profile in its Thumb state (spec
+/// 07, section 6): its registers, and each instruction with its forms as the toolchain's
+/// assembler encodes them (Armv7-M, Thumb-2 with the floating-point extension), with what each
+/// form reads and writes. The instructions are declared in `branch`, `data`, `fp`, `memory`,
+/// `multiply` and `system`, what their operand positions take in `operand`; `vun-isa-thumb`'s
+/// tables are generated from these declarations.
+///
+/// A form's base is its encoding: a halfword for a 16-bit instruction, the two halfwords of a
+/// 32-bit one as one word, the first in the high bits, and a field's position counts in that word.
+/// A 16-bit form that computes sets the flags outside an `if-then` block (`it`): it is declared
+/// under the mnemonic ending in `s`, as the unified syntax writes it there.
 pub const thumb: Item = Item::new(&["lang", "arch", "thumb"]);
-/// The namespace `lang.arch.wasm32`.
+/// WebAssembly 32-bit, the instruction set of the `wasm32` targets (spec 07, section 6): the
+/// instructions of its stack machine with what each pops and pushes, as the toolchain's backend
+/// encodes them. They are declared in `arithmetic`, `atomic`, `compare`, `control`, `convert`,
+/// `local`, `memory`, `rmw`, `rmw_2`, `simd_*` and `symbol`; `vun-isa-wasm32`'s tables are generated from these
+/// declarations.
+///
+/// A block of wasm is the body of a function written as the text format has it, with Vun values
+/// bound to the function's locals: `local_get(in(a))` pushes the value of `a`, `local_set(out(r))`
+/// pops into the place `r`, and an instruction between them takes the stack as it stands. A
+/// register of the table is a local, and its class the value type it holds. A block starts and ends
+/// with an empty stack. Its structured control (`block`, `loop`, `if_`, `else_`, `end`, `br`,
+/// `br_if`, `br_table`) nests blocks that give nothing, or one value named by the type a block is
+/// given (`block(yield_i32)`); a branch to a block carries that value, to a loop nothing, and a
+/// branch reaches only the blocks the same block of assembly opens. There is no `return`: a function
+/// the block is in may be inlined, and what follows the block in it is the backend's.
+///
+/// A form's base is its opcode: the prefix byte (`0xfc` for the saturating conversions and the bulk
+/// memory instructions) in bits 16 to 23, and the code, a byte or the LEB128 number after the
+/// prefix, in the low bits.
 pub const wasm32: Item = Item::new(&["lang", "arch", "wasm32"]);
-/// The namespace `lang.arch.x86_64`.
+/// x86-64 (spec 07, section 6): its registers, and each instruction with its forms as the
+/// toolchain's assembler encodes them (Intel SDM volume 2), with what each form reads and writes.
+/// The instructions are declared in `arith`, `control`, `int` and `sse`; `vun-isa-x86_64`'s tables
+/// are generated from these declarations, so the language, the assembler and its listings share
+/// one table. `names` holds what a block of instructions is written with.
 pub const x86_64: Item = Item::new(&["lang", "arch", "x86_64"]);
 /// What a form of an instruction set's table, or a width of it, needs of a processor beyond what
 /// every processor of the set has: a feature of the set (`Feature`, `lang.target.Spec.features`),

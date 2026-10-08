@@ -5,18 +5,32 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.linux.kernel.calls`.
+/// The numbers of the system calls the kernel runtime makes, which each architecture assigns
+/// its own.
 pub const calls: Item = Item::new(&["std", "os", "linux", "kernel", "calls"]);
-/// The namespace `std.os.linux.kernel.division`.
+/// The hooks the Arm EABI's division functions call for a divisor of zero (`__aeabi_idiv0`,
+/// `__aeabi_ldiv0`), which the platform may supply. A C compiler for 32-bit Arm divides through
+/// functions of its own library, and GCC's Linux one answers a zero divisor through the C
+/// library's `raise`; a program without one supplies the hooks itself. Vun checks its divisors,
+/// so reaching a hook is a trap.
 pub const division: Item = Item::new(&["std", "os", "linux", "kernel", "division"]);
-/// The namespace `std.os.linux.kernel.pages`.
+/// `std.os.pages`'s exports for the kernel runtime: `mprotect` by raw system call, and a query of
+/// `/proc/self/maps`, which `std.os.linux.pages` reads needing no system call of its own.
 pub const pages: Item = Item::new(&["std", "os", "linux", "kernel", "pages"]);
-/// The namespace `std.os.linux.kernel.random`.
+/// `std.os.entropy` for the kernel runtime: `getrandom`, which the kernel keeps for secrets.
 pub const random: Item = Item::new(&["std", "os", "linux", "kernel", "random"]);
-/// The namespace `std.os.linux.kernel.thread`.
+/// Threads of a program calling the kernel itself. Each runs on a stack of its own, mapped for it
+/// with its lowest pages left inaccessible so that running past its end faults, and starts from
+/// `clone`, sharing the process's memory, files and signal handlers. The kernel clears the
+/// thread's id in its record when the thread ends and wakes whoever waits on that word
+/// (`CLONE_CHILD_CLEARTID`): joining waits for it, then unmaps the stack.
 pub const thread: Item = Item::new(&["std", "os", "linux", "kernel", "thread"]);
-/// The namespace `std.os.linux.kernel.tls`.
+/// Storage per thread of a program calling the kernel itself (spec 07, section 2). The program's
+/// TLS segment, which the auxiliary vector the kernel starts it with leads to, is the image each
+/// thread's block starts as; a block is laid out as the architecture's ABI says, and the thread
+/// pointer, which code reaches the block from, is set to it for each thread.
 pub const tls: Item = Item::new(&["std", "os", "linux", "kernel", "tls"]);
 /// The numbers of the system calls, the architecture's being built for.
 pub const numbers: Item = Item::new(&["std", "os", "linux", "kernel", "numbers"]);

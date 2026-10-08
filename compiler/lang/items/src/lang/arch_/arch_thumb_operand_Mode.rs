@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// `[base, #offset]`: the base low at 3, the offset a count of accesses in five bits at 6.
 pub const narrow: Item = Item::new(

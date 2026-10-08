@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// It is not 36 bytes, or lacks the dashes of 8-4-4-4-12.
 pub const shape: Item = Item::new(&["std", "uuid", "Problem", "shape"]);

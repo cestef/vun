@@ -5,18 +5,28 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.math.big`.
+/// A fixed-size unsigned integer of 4096 bits, enough for the exact arithmetic that printing and
+/// reading a float take (a float is at most 2^1024 and at least 2^-1074, and a decimal string of
+/// 800 digits is 10^800). Limbs are 32 bits, least significant first. An operation that would
+/// pass 4096 bits traps.
 pub const big: Item = Item::new(&["std", "math", "big"]);
-/// The namespace `std.math.exp`.
+/// Exponentials and logarithms by range reduction and a series on the small remainder. Each
+/// result is within a few units in the last place, not correctly rounded.
 pub const exp: Item = Item::new(&["std", "math", "exp"]);
-/// The namespace `std.math.root`.
+/// The square root, correctly rounded: the significand's integer square root with a bit of
+/// sticky remainder, rounded once to nearest, ties to even, as the instruction does.
 pub const root: Item = Item::new(&["std", "math", "root"]);
-/// The namespace `std.math.round`.
+/// Classifying and rounding floats, written on the encoding and on whole numbers, so every
+/// backend gives the same bits. The functions take an `f64`; the methods of `std.math` bring
+/// every float type through it.
 pub const round: Item = Item::new(&["std", "math", "round"]);
-/// The namespace `std.math.tests`.
+/// Tests of `std.math`.
 pub const tests: Item = Item::new(&["std", "math", "tests"]);
-/// The namespace `std.math.trig`.
+/// Trigonometry by reduction to a quarter turn and a series on the remainder. The reduction is
+/// accurate for arguments below about 100000 in magnitude and loses digits above; an infinity
+/// gives a NaN. Each result is within a few units in the last place.
 pub const trig: Item = Item::new(&["std", "math", "trig"]);
 /// The ratio of a circle's circumference to its diameter.
 pub const pi: Item = Item::new(&["std", "math", "pi"]);

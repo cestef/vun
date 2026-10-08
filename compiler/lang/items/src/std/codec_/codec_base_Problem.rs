@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The byte at this position is not in the alphabet.
 pub const symbol: Item = Item::new(&["std", "codec", "base", "Problem", "symbol"]);

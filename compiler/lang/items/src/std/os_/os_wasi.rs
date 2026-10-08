@@ -5,14 +5,15 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.wasi.memory`.
+/// The linear memory of a WASI program, which grows by whole pages and is never given back.
 pub const memory: Item = Item::new(&["std", "os", "wasi", "memory"]);
-/// The namespace `std.os.wasi.poll`.
+/// What preview 1's `poll_oneoff` takes and gives, as the host lays it out.
 pub const poll: Item = Item::new(&["std", "os", "wasi", "poll"]);
-/// The namespace `std.os.wasi.random`.
+/// `std.os.entropy` for WASI: `random_get`.
 pub const random: Item = Item::new(&["std", "os", "wasi", "random"]);
-/// The namespace `std.os.wasi.stack`.
+/// The stack of a WASI program, in the linear memory the linker lays out.
 pub const stack: Item = Item::new(&["std", "os", "wasi", "stack"]);
 /// Preview 1 programs run through this namespace's runtime.
 pub const runtime: Item = Item::new(&["std", "os", "wasi", "runtime"]);

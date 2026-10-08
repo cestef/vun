@@ -1,0 +1,7 @@
+//! The toolchain's tools and the native libraries they load (decision 131).
+
+missing_library := diag.Diag{};
+bind_failed := diag.Diag{};
+bind_skipped := diag.Diag{};
+nothing_to_reduce := diag.Diag{};
+disasm_failed := diag.Diag{};

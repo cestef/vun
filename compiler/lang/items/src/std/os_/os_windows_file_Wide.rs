@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// `path` in UTF-16; `.path` where it is too long, is no UTF-8 or holds a zero byte.
 pub const of: Item = Item::new(&["std", "os", "windows", "file", "Wide", "of"]);

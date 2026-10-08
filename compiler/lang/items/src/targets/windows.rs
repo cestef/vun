@@ -5,8 +5,11 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `targets.windows.x86`.
+/// 32-bit x86 Windows. Its programs link `ntdll` too, which defines what its C compiler calls for:
+/// the division of 64-bit integers (`_aulldiv` and the like), the probe of a large frame
+/// (`_chkstk`), and the copies and fills.
 pub const x86: Item = Item::new(&["targets", "windows", "x86"]);
-/// The namespace `targets.windows.x86_64`.
+/// 64-bit x86 Windows.
 pub const x86_64: Item = Item::new(&["targets", "windows", "x86_64"]);

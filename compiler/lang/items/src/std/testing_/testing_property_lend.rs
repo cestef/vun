@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// How many items a slice lent to a parameter holds at most.
 pub const longest: Item = Item::new(&["std", "testing", "property", "lend", "longest"]);

@@ -1,0 +1,3 @@
+//! The API documentation of packages (spec 12, section 7).
+
+foreign_output := diag.Diag{};

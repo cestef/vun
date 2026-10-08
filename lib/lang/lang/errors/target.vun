@@ -1,0 +1,3 @@
+//! Targets (spec 13, section 7).
+
+unchosen := diag.Diag{};

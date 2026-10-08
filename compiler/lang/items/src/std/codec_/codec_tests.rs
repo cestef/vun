@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const Slab: Item = Item::new(&["std", "codec", "tests", "Slab"]);
 pub const Failed: Item = Item::new(&["std", "codec", "tests", "Failed"]);

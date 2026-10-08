@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// An allocator over `storage`, which it borrows for as long as it lives.
 pub const init: Item = Item::new(&["std", "mem", "alloc", "Fixed", "init"]);

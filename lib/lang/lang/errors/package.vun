@@ -1,0 +1,12 @@
+//! Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
+
+missing_dep := diag.Diag{};
+missing_namespace := diag.Diag{};
+hash_mismatch := diag.Diag{};
+fetch_failed := diag.Diag{};
+no_project := diag.Diag{};
+duplicate_dep := diag.Diag{};
+unnamed := diag.Diag{};
+version_conflict := diag.Diag{};
+stale_lock := diag.Diag{};
+missing_member := diag.Diag{};

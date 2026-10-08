@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `targets.wasi.wasm32`.
+/// 32-bit WebAssembly.
 pub const wasm32: Item = Item::new(&["targets", "wasi", "wasm32"]);

@@ -5,8 +5,12 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.int.ops`.
+/// Integers' operators (spec 04): every operator on integers is a call of its `lang.ops`
+/// interface's function, which these impls give as the primitives of `lang.int` (spec 02,
+/// section 4). Each takes the right operand's range per call, so a result's range is computed
+/// from both operands' (rule 1), and bit operations keep a `uN` type (rule 8).
 pub const ops: Item = Item::new(&["lang", "int", "ops"]);
 /// The unsigned integers of `bits` bits: `Int(0..2^bits)`.
 pub const unsigned: Item = Item::new(&["lang", "int", "unsigned"]);

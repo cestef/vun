@@ -5,18 +5,27 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.text.ascii`.
+/// ASCII bytes (decision 43): which class a byte is of, its other case and the digit it writes.
+/// Bytes past 127 are in no class and stay as they are.
 pub const ascii: Item = Item::new(&["std", "text", "ascii"]);
-/// The namespace `std.text.num`.
+/// Reading integers from text: an optional sign and the digits of a radix from 2 to 36, with no
+/// space around them. The magnitude is held below 2^120, so a longer number is an overflow
+/// whatever integer type it is read into.
 pub const num: Item = Item::new(&["std", "text", "num"]);
-/// The namespace `std.text.string`.
+/// `String`: bytes of text a program grows, in a buffer an allocator gave. Like `Vec`, which it
+/// holds, it is linear, and each call that grows it is passed the allocator, which `deinit` must be
+/// given back. Text is UTF-8 in `&[u8]`; a string keeps whatever bytes were put in it.
 pub const string: Item = Item::new(&["std", "text", "string"]);
-/// The namespace `std.text.tests`.
+/// Tests of `std.text`: a slab written to as any writer, read back as bytes.
 pub const tests: Item = Item::new(&["std", "text", "tests"]);
-/// The namespace `std.text.utf16`.
+/// UTF-16, as Windows spells text: units of 16 bits, a code point past U+FFFF written as a pair of
+/// surrogates. Text in a program is UTF-8 (decision 43); these read and write the units a system
+/// call takes, and turn one into the other.
 pub const utf16: Item = Item::new(&["std", "text", "utf16"]);
-/// The namespace `std.text.utf8`.
+/// UTF-8 (decision 43): text is bytes, and these read and write the code points in them. A code
+/// point is a `u32`.
 pub const utf8: Item = Item::new(&["std", "text", "utf8"]);
 /// Bytes of text a program grows, in a buffer an allocator gave.
 pub const String: Item = Item::new(&["std", "text", "String"]);

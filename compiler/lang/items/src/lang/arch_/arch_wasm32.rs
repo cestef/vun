@@ -5,50 +5,62 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.arch.wasm32.arithmetic`.
+/// Arithmetic on integers and floats, each popping its operands (the last on top) and pushing its
+/// result.
 pub const arithmetic: Item = Item::new(&["lang", "arch", "wasm32", "arithmetic"]);
-/// The namespace `lang.arch.wasm32.atomic`.
+/// Atomic memory accesses of the threads proposal (prefix `0xfe`), needing the `atomics` feature.
+/// An access takes its address on the stack and the alignment, which must be the width's own, and
+/// an offset, as the plain loads and stores do. Accesses to memory that is not shared are allowed,
+/// waiting is not. Narrow forms (`8`, `16`, `32`) zero-extend what they read.
 pub const atomic: Item = Item::new(&["lang", "arch", "wasm32", "atomic"]);
-/// The namespace `lang.arch.wasm32.compare`.
+/// Comparisons: each pops its operands (the last on top) and pushes 1 or 0 as an `i32`.
 pub const compare: Item = Item::new(&["lang", "arch", "wasm32", "compare"]);
-/// The namespace `lang.arch.wasm32.control`.
+/// What stops the code, does nothing, or structures it: blocks, loops and `if`s, and the branches
+/// out of them. A block's type is empty, the byte each form ends with, or the one value named
+/// (`block(yield_i32)`). A name that is a keyword of Vun ends in an underscore, which the text
+/// format leaves out.
 pub const control: Item = Item::new(&["lang", "arch", "wasm32", "control"]);
-/// The namespace `lang.arch.wasm32.convert`.
+/// Conversions between integer and float types, and extensions of narrow integers.
 pub const convert: Item = Item::new(&["lang", "arch", "wasm32", "convert"]);
-/// The namespace `lang.arch.wasm32.local`.
+/// Locals and the stack.
 pub const local: Item = Item::new(&["lang", "arch", "wasm32", "local"]);
-/// The namespace `lang.arch.wasm32.memory`.
+/// Loads and stores, and the size of memory. An access takes its address on the stack and two
+/// immediates: the alignment as a power of two, and an offset added to the address.
 pub const memory: Item = Item::new(&["lang", "arch", "wasm32", "memory"]);
-/// The namespace `lang.arch.wasm32.rmw`.
+/// Atomic read-modify-write instructions of the threads proposal: the address and the operand
+/// popped, the value the address held pushed. `cmpxchg` stores its replacement where the value
+/// equals the expected one, popping the address, the expected value and the replacement. Each
+/// operation is declared for the widths of the loads in `atomic`.
 pub const rmw: Item = Item::new(&["lang", "arch", "wasm32", "rmw"]);
-/// The namespace `lang.arch.wasm32.rmw_2`.
+/// Atomic read-modify-write instructions: `xor`, `xchg` and `cmpxchg`. (continued)
 pub const rmw_2: Item = Item::new(&["lang", "arch", "wasm32", "rmw_2"]);
-/// The namespace `lang.arch.wasm32.simd_bitwise`.
+/// Bit operations on the whole vector.
 pub const simd_bitwise: Item = Item::new(&["lang", "arch", "wasm32", "simd_bitwise"]);
-/// The namespace `lang.arch.wasm32.simd_compare`.
+/// Comparisons lane by lane, each lane all ones where it holds.
 pub const simd_compare: Item = Item::new(&["lang", "arch", "wasm32", "simd_compare"]);
-/// The namespace `lang.arch.wasm32.simd_compare_2`.
+/// Comparisons lane by lane, each lane all ones where it holds. (continued)
 pub const simd_compare_2: Item = Item::new(
     &["lang", "arch", "wasm32", "simd_compare_2"],
 );
-/// The namespace `lang.arch.wasm32.simd_f32x4`.
+/// The f32x4 lane instructions.
 pub const simd_f32x4: Item = Item::new(&["lang", "arch", "wasm32", "simd_f32x4"]);
-/// The namespace `lang.arch.wasm32.simd_f64x2`.
+/// The f64x2 lane instructions.
 pub const simd_f64x2: Item = Item::new(&["lang", "arch", "wasm32", "simd_f64x2"]);
-/// The namespace `lang.arch.wasm32.simd_i16x8`.
+/// The i16x8 lane instructions.
 pub const simd_i16x8: Item = Item::new(&["lang", "arch", "wasm32", "simd_i16x8"]);
-/// The namespace `lang.arch.wasm32.simd_i32x4`.
+/// The i32x4 lane instructions.
 pub const simd_i32x4: Item = Item::new(&["lang", "arch", "wasm32", "simd_i32x4"]);
-/// The namespace `lang.arch.wasm32.simd_i64x2`.
+/// The i64x2 lane instructions.
 pub const simd_i64x2: Item = Item::new(&["lang", "arch", "wasm32", "simd_i64x2"]);
-/// The namespace `lang.arch.wasm32.simd_i8x16`.
+/// The i8x16 lane instructions.
 pub const simd_i8x16: Item = Item::new(&["lang", "arch", "wasm32", "simd_i8x16"]);
-/// The namespace `lang.arch.wasm32.simd_lane`.
+/// Vectors made of scalars and scalars taken from them, and lanes rearranged.
 pub const simd_lane: Item = Item::new(&["lang", "arch", "wasm32", "simd_lane"]);
-/// The namespace `lang.arch.wasm32.simd_memory`.
+/// Loads, stores and constants of vectors.
 pub const simd_memory: Item = Item::new(&["lang", "arch", "wasm32", "simd_memory"]);
-/// The namespace `lang.arch.wasm32.symbol`.
+/// What names something the linker places: a function called, and a global it defines.
 pub const symbol: Item = Item::new(&["lang", "arch", "wasm32", "symbol"]);
 /// The width of a value a local holds.
 pub const Size: Item = Item::new(&["lang", "arch", "wasm32", "Size"]);

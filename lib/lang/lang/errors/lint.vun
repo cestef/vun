@@ -1,0 +1,4 @@
+//! Lints and their configuration (spec 10, section 4).
+
+unknown := diag.Diag{};
+unfulfilled := diag.Diag{};

@@ -1,0 +1,16 @@
+//! Tokens and syntax trees (spec 01).
+
+unknown_character := diag.Diag{};
+unterminated_string := diag.Diag{};
+unterminated_char := diag.Diag{};
+invalid_escape := diag.Diag{};
+malformed_number := diag.Diag{};
+stray_escape := diag.Diag{};
+expected_token := diag.Diag{};
+expected_expression := diag.Diag{};
+expected_declaration := diag.Diag{};
+expected_name := diag.Diag{};
+unclosed_delimiter := diag.Diag{};
+chained_operator := diag.Diag{};
+nesting_too_deep := diag.Diag{};
+unknown_borrow := diag.Diag{};

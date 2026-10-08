@@ -1,0 +1,5 @@
+//! Stack bounds (spec 07, section 4).
+
+exceeded := diag.Diag{};
+unbounded := diag.Diag{};
+unreported := diag.Diag{};

@@ -1,0 +1,4 @@
+//! Components, backends and linkers loaded from the toolchain (spec 12, section 6).
+
+invalid := diag.Diag{};
+failed := diag.Diag{};

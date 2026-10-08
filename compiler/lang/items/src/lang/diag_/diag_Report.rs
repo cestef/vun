@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Where the problem is written; by default, the call that led to the report.
 pub const at: Item = Item::new(&["lang", "diag", "Report", "at"]);

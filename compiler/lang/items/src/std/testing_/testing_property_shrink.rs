@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The smallest case found from `failing` that still traps, within `tries` cases: a shorter
 /// stream, then each choice at 0 or halved, until none of them traps.

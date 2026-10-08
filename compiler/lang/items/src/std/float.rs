@@ -5,8 +5,12 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.float.parse`.
+/// Reading a float from text, rounded once to the nearest float of the type, ties to even: an
+/// optional sign, then `inf`, `infinity` or `nan` in any case, or digits with an optional point
+/// and an optional exponent, `-12.5e-3`. The digits are held exactly (up to 800, the rest only
+/// deciding a tie), so the result is the correctly rounded one whatever the input.
 pub const parse: Item = Item::new(&["std", "float", "parse"]);
-/// The namespace `std.float.tests`.
+/// Tests of reading floats from text.
 pub const tests: Item = Item::new(&["std", "float", "tests"]);

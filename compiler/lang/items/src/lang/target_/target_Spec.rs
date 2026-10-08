@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The instruction set: `x86_64`, `arm64`, `riscv64`, `riscv32`, `arm`, `wasm32`.
 pub const arch: Item = Item::new(&["lang", "target", "Spec", "arch"]);

@@ -5,76 +5,77 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// Tokens and syntax trees (spec 01).
-pub const syntax: Item = Item::new(&["lang", "errors", "syntax"]);
-/// Attributes (spec 02, section 5).
-pub const attr: Item = Item::new(&["lang", "errors", "attr"]);
-/// Language features (spec 12, section 2).
-pub const gate: Item = Item::new(&["lang", "errors", "gate"]);
-/// Lints and their configuration (spec 10, section 4).
-pub const lint: Item = Item::new(&["lang", "errors", "lint"]);
-/// Range integers (spec 04).
-pub const int: Item = Item::new(&["lang", "errors", "int"]);
-/// Type checking (spec 02).
-pub const types: Item = Item::new(&["lang", "errors", "types"]);
-/// Name resolution and visibility (spec 01, sections 3, 7 and 8).
-pub const names: Item = Item::new(&["lang", "errors", "names"]);
-/// Bindings and patterns (spec 01, sections 3 and 6).
-pub const binding: Item = Item::new(&["lang", "errors", "binding"]);
-/// The `unsafe` boundary (spec 01, section 3; spec 05, section 5).
-pub const safety: Item = Item::new(&["lang", "errors", "safety"]);
-/// Blocks of an architecture's instructions (spec 07, section 6).
-pub const asm: Item = Item::new(&["lang", "errors", "asm"]);
-/// Interface conformance (spec 02, section 3).
-pub const r#impl: Item = Item::new(&["lang", "errors", "impl"]);
-/// Coroutine frames (spec 06, section 1).
-pub const coroutine: Item = Item::new(&["lang", "errors", "coroutine"]);
-/// Layout attributes (spec 05, section 6).
-pub const layout: Item = Item::new(&["lang", "errors", "layout"]);
-/// Compile-time evaluation and reflection (spec 03).
-pub const meta: Item = Item::new(&["lang", "errors", "meta"]);
-/// Compile-time evaluation (spec 03, section 7).
-pub const comptime: Item = Item::new(&["lang", "errors", "comptime"]);
-/// Control flow primitives (spec 09, section 3).
-pub const flow: Item = Item::new(&["lang", "errors", "flow"]);
-/// Place states (spec 05, section 2).
-pub const place: Item = Item::new(&["lang", "errors", "place"]);
-/// Scoped borrows and exclusivity (spec 05, sections 4 and 8).
-pub const borrow: Item = Item::new(&["lang", "errors", "borrow"]);
-/// Trap freedom (spec 07, section 3).
-pub const panic: Item = Item::new(&["lang", "errors", "panic"]);
-/// Checks of unsafe code at run time (spec 07, section 7).
-pub const check: Item = Item::new(&["lang", "errors", "check"]);
-/// Code generation backends (spec 13).
-pub const backend: Item = Item::new(&["lang", "errors", "backend"]);
-/// Components, backends and linkers loaded from the toolchain (spec 12, section 6).
-pub const component: Item = Item::new(&["lang", "errors", "component"]);
-/// Stack bounds (spec 07, section 4).
-pub const stack: Item = Item::new(&["lang", "errors", "stack"]);
-/// Targets (spec 13, section 7).
-pub const target: Item = Item::new(&["lang", "errors", "target"]);
-/// Linking (spec 13).
-pub const link: Item = Item::new(&["lang", "errors", "link"]);
 /// Calling conventions (spec 07, section 4).
 pub const abi: Item = Item::new(&["lang", "errors", "abi"]);
+/// Blocks of an architecture's instructions (spec 07, section 6).
+pub const asm: Item = Item::new(&["lang", "errors", "asm"]);
+/// Attributes (spec 02, section 5).
+pub const attr: Item = Item::new(&["lang", "errors", "attr"]);
+/// Code generation backends (spec 13).
+pub const backend: Item = Item::new(&["lang", "errors", "backend"]);
+/// Bindings and patterns (spec 01, sections 3 and 6).
+pub const binding: Item = Item::new(&["lang", "errors", "binding"]);
+/// Scoped borrows and exclusivity (spec 05, sections 4 and 8).
+pub const borrow: Item = Item::new(&["lang", "errors", "borrow"]);
+/// Checks of unsafe code at run time (spec 07, section 7).
+pub const check: Item = Item::new(&["lang", "errors", "check"]);
+/// The command line (spec 12, section 7).
+pub const cli: Item = Item::new(&["lang", "errors", "cli"]);
+/// Components, backends and linkers loaded from the toolchain (spec 12, section 6).
+pub const component: Item = Item::new(&["lang", "errors", "component"]);
+/// Compile-time evaluation (spec 03, section 7).
+pub const comptime: Item = Item::new(&["lang", "errors", "comptime"]);
+/// Coroutine frames (spec 06, section 1).
+pub const coroutine: Item = Item::new(&["lang", "errors", "coroutine"]);
+/// The API documentation of packages (spec 12, section 7).
+pub const doc: Item = Item::new(&["lang", "errors", "doc"]);
+/// Control flow primitives (spec 09, section 3).
+pub const flow: Item = Item::new(&["lang", "errors", "flow"]);
+/// Language features (spec 12, section 2).
+pub const gate: Item = Item::new(&["lang", "errors", "gate"]);
+/// Interface conformance (spec 02, section 3).
+pub const r#impl: Item = Item::new(&["lang", "errors", "impl"]);
+/// Range integers (spec 04).
+pub const int: Item = Item::new(&["lang", "errors", "int"]);
+/// Reading and writing files.
+pub const io: Item = Item::new(&["lang", "errors", "io"]);
+/// Layout attributes (spec 05, section 6).
+pub const layout: Item = Item::new(&["lang", "errors", "layout"]);
+/// Linking (spec 13).
+pub const link: Item = Item::new(&["lang", "errors", "link"]);
+/// Lints and their configuration (spec 10, section 4).
+pub const lint: Item = Item::new(&["lang", "errors", "lint"]);
 /// Package manifests: the `package` literal of `build.vun` (spec 12, section 2).
 pub const manifest: Item = Item::new(&["lang", "errors", "manifest"]);
-/// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
-pub const package: Item = Item::new(&["lang", "errors", "package"]);
-/// A package's plan, which its `build` records (spec 12, section 2).
-pub const plan: Item = Item::new(&["lang", "errors", "plan"]);
+/// Compile-time evaluation and reflection (spec 03).
+pub const meta: Item = Item::new(&["lang", "errors", "meta"]);
+/// Name resolution and visibility (spec 01, sections 3, 7 and 8).
+pub const names: Item = Item::new(&["lang", "errors", "names"]);
 /// Starting a project from a template (`vun new`).
 pub const new: Item = Item::new(&["lang", "errors", "new"]);
+/// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
+pub const package: Item = Item::new(&["lang", "errors", "package"]);
+/// Trap freedom (spec 07, section 3).
+pub const panic: Item = Item::new(&["lang", "errors", "panic"]);
+/// Place states (spec 05, section 2).
+pub const place: Item = Item::new(&["lang", "errors", "place"]);
+/// A package's plan, which its `build` records (spec 12, section 2).
+pub const plan: Item = Item::new(&["lang", "errors", "plan"]);
+/// The `unsafe` boundary (spec 01, section 3; spec 05, section 5).
+pub const safety: Item = Item::new(&["lang", "errors", "safety"]);
+/// Stack bounds (spec 07, section 4).
+pub const stack: Item = Item::new(&["lang", "errors", "stack"]);
+/// Tokens and syntax trees (spec 01).
+pub const syntax: Item = Item::new(&["lang", "errors", "syntax"]);
+/// Targets (spec 13, section 7).
+pub const target: Item = Item::new(&["lang", "errors", "target"]);
 /// Running a namespace's tests through `std.testing.runner` (spec 11).
 pub const test: Item = Item::new(&["lang", "errors", "test"]);
 /// The toolchain's tools and the native libraries they load (decision 131).
 pub const tool: Item = Item::new(&["lang", "errors", "tool"]);
 /// The toolchains installed side by side, and releases (spec 12, section 6).
 pub const toolchain: Item = Item::new(&["lang", "errors", "toolchain"]);
-/// Reading and writing files.
-pub const io: Item = Item::new(&["lang", "errors", "io"]);
-/// The API documentation of packages (spec 12, section 7).
-pub const doc: Item = Item::new(&["lang", "errors", "doc"]);
-/// The command line (spec 12, section 7).
-pub const cli: Item = Item::new(&["lang", "errors", "cli"]);
+/// Type checking (spec 02).
+pub const types: Item = Item::new(&["lang", "errors", "types"]);

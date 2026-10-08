@@ -5,8 +5,13 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.mem.soft`.
+/// Atomic accesses of integers wider than an address, for a processor whose atomic instructions
+/// reach one word (`lang.lower.soft`): on Thumb, where Arm's A profile has exclusive loads and
+/// stores of two words (`lang.arch.thumb.Feature.application`), loops of them between barriers,
+/// as the word's are made, which makes each sequentially consistent whatever order it asks. No
+/// other processor has one written yet, and reaching one there is an error while compiling.
 pub const soft: Item = Item::new(&["lang", "mem", "soft"]);
 pub const Ref: Item = Item::new(&["lang", "mem", "Ref"]);
 pub const RefMut: Item = Item::new(&["lang", "mem", "RefMut"]);

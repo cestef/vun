@@ -93,7 +93,7 @@ fn emit_desugar(sources: &[Source<'_>]) -> Read<Vec<Module>> {
 /// module also has `uses`, the imports of kinds declared elsewhere.
 fn emit(sources: &[Source<'_>], part: Part, uses: &TokenStream) -> Read<Vec<Module>> {
     let decls = sources.iter().flat_map(|s| s.decls.iter().cloned()).collect();
-    let all = Source { path: SYNTAX.to_owned(), decls };
+    let all = Source { path: SYNTAX.to_owned(), doc: Vec::new(), decls };
     let own = sources.iter().filter(|s| Part::of(s) == part);
     let own: HashSet<&str> = own.flat_map(|s| s.decls.iter().map(|d| d.name)).collect();
     let model = Model::read(sources)?;

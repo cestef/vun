@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// What a significand shifted up to the root's width holds: below 2^118.
 pub const Wide: Item = Item::new(&["std", "math", "root", "Wide"]);

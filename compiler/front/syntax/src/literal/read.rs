@@ -52,6 +52,12 @@ impl<'s> Reader<'_, 's> {
         nodes.filter_map(|n| self.decl(n, Vec::new(), Vec::new())).collect()
     }
 
+    /// The lines of the module doc comments among `nodes`.
+    pub(super) fn module_doc(&self, nodes: impl Iterator<Item = NodeId>) -> Vec<&'s str> {
+        let docs = nodes.filter(|&n| self.cst.kind(n) == NodeKind::ModuleDoc);
+        docs.filter_map(|n| self.doc_line(n)).collect()
+    }
+
     fn decl(&self, n: NodeId, mut doc: Vec<&'s str>, mut attrs: Vec<Literal<'s>>) -> Option<Decl<'s>> {
         let children = self.children(n);
         match self.cst.kind(n) {

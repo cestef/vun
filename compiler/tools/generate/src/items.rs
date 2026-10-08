@@ -70,7 +70,11 @@ impl Handles {
             if let [parent @ .., name] = namespace.as_slice()
                 && !parent.is_empty()
             {
-                let doc = docs(&[&format!("The namespace `{}`.", namespace.join(SEPARATOR))]);
+                let doc = if source.doc.is_empty() {
+                    docs(&[&format!("The namespace `{}`.", namespace.join(SEPARATOR))])
+                } else {
+                    docs(&source.doc)
+                };
                 handles.push(parent, name, &doc);
             }
         }
@@ -119,6 +123,7 @@ impl Handles {
                         non_snake_case,
                         reason = "handles and the modules of types' members are spelled as their declarations"
                     )]
+                    #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
                     use crate::Item;
                     #(#items)*
                 };

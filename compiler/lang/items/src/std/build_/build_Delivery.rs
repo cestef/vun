@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Copy it to a mounted drive holding the file `mark`, which every UF2 drive does.
 pub const drive: Item = Item::new(&["std", "build", "Delivery", "drive"]);

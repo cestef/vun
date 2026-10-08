@@ -1,0 +1,8 @@
+//! Compile-time evaluation (spec 03, section 7).
+
+trap := diag.Diag{};
+exhausted := diag.Diag{};
+reported := diag.Diag{};
+unsupported := diag.Diag{};
+runtime := diag.Diag{};
+export := diag.Diag{};

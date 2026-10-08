@@ -86,7 +86,7 @@ impl Location {
     }
 
     /// The namespace path of the source `file` of the package in `dir`: in `lib/lang`,
-    /// `lib/lang/lang/errors.vun` is `lang.errors`.
+    /// `lib/lang/lang/errors/int.vun` is `lang.errors.int`.
     #[must_use]
     pub fn path_of(dir: &Path, file: &Path) -> Option<Vec<String>> {
         let relative = file.strip_prefix(dir).ok()?.with_extension("");

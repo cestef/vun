@@ -1,0 +1,4 @@
+//! Compile-time evaluation and reflection (spec 03).
+
+frozen := diag.Diag{};
+escape := diag.Diag{};

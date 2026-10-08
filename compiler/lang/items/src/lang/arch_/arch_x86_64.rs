@@ -5,14 +5,17 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.arch.x86_64.arith`.
+/// Integer arithmetic, logic, comparisons and shifts; each writes the flags.
 pub const arith: Item = Item::new(&["lang", "arch", "x86_64", "arith"]);
-/// The namespace `lang.arch.x86_64.control`.
+/// Conditions, jumps, calls, the stack, and atomic and string operations.
 pub const control: Item = Item::new(&["lang", "arch", "x86_64", "control"]);
-/// The namespace `lang.arch.x86_64.int`.
+/// Integer moves and arithmetic.
 pub const int: Item = Item::new(&["lang", "arch", "x86_64", "int"]);
-/// The namespace `lang.arch.x86_64.sse`.
+/// SSE instructions: moves between general and SSE registers, scalar float arithmetic,
+/// comparisons and conversions. Each has its mandatory prefix before REX, then `0F` and its
+/// opcode.
 pub const sse: Item = Item::new(&["lang", "arch", "x86_64", "sse"]);
 /// The width of an operation or an operand.
 pub const Size: Item = Item::new(&["lang", "arch", "x86_64", "Size"]);

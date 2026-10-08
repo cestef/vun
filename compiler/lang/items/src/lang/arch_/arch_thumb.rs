@@ -5,20 +5,28 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.arch.thumb.branch`.
+/// Branches, calls, returns and traps (Armv7-M, branches and exception-generating instructions).
 pub const branch: Item = Item::new(&["lang", "arch", "thumb", "branch"]);
-/// The namespace `lang.arch.thumb.data`.
+/// Moves, arithmetic, logic, shifts, comparisons, extensions and bit operations (Armv7-M, data
+/// processing). A family's members differ in the operation's four bits at 21 and the flags' bit
+/// at 20.
 pub const data: Item = Item::new(&["lang", "arch", "thumb", "data"]);
-/// The namespace `lang.arch.thumb.fp`.
+/// The floating-point extension: arithmetic, comparisons, moves, loads and stores, and
+/// conversions, single precision and double (Armv7-M FPv5, the encodings of VFPv4). Where a form
+/// is defined at both precisions, its double-precision one sets bit 8 (`sz`).
 pub const fp: Item = Item::new(&["lang", "arch", "thumb", "fp"]);
-/// The namespace `lang.arch.thumb.memory`.
+/// Loads and stores, of pairs, of lists of registers and exclusive ones (Armv7-M, load and
+/// store). Each access width has its own encodings, so each is an instruction of its own.
 pub const memory: Item = Item::new(&["lang", "arch", "thumb", "memory"]);
-/// The namespace `lang.arch.thumb.multiply`.
+/// Multiplication, with accumulation and 64-bit products, and division (Armv7-M, multiply and
+/// divide).
 pub const multiply: Item = Item::new(&["lang", "arch", "thumb", "multiply"]);
-/// The namespace `lang.arch.thumb.operand`.
+/// What an operand position of a Thumb form takes, and how its operand is encoded: registers,
+/// immediates, addressing modes, lists, branch targets and conditions.
 pub const operand: Item = Item::new(&["lang", "arch", "thumb", "operand"]);
-/// The namespace `lang.arch.thumb.system`.
+/// The special registers, interrupt masks, waits and barriers (Armv7-M, system instructions).
 pub const system: Item = Item::new(&["lang", "arch", "thumb", "system"]);
 /// The width of an operation or an access.
 pub const Size: Item = Item::new(&["lang", "arch", "thumb", "Size"]);

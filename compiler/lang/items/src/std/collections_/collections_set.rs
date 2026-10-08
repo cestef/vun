@@ -5,7 +5,8 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.collections.set.tests`.
+/// Tests of `std.collections.HashSet`.
 pub const tests: Item = Item::new(&["std", "collections", "set", "tests"]);
 pub const HashSet: Item = Item::new(&["std", "collections", "set", "HashSet"]);

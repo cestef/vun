@@ -1,0 +1,13 @@
+//! A package's plan, which its `build` records (spec 12, section 2).
+
+missing_build := diag.Diag{};
+stopped := diag.Diag{};
+unread := diag.Diag{};
+unsupported := diag.Diag{};
+nothing_to_run := diag.Diag{};
+ambiguous_run := diag.Diag{};
+unknown_setting := diag.Diag{};
+unflashed := diag.Diag{};
+runs_elsewhere := diag.Diag{};
+nothing_to_flash := diag.Diag{};
+undelivered := diag.Diag{};

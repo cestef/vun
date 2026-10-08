@@ -5,14 +5,23 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.check.quarantine`.
+/// Memory given back to allocators, held poisoned before they may hand it out again (spec 13,
+/// section 8.7): a ring of what was given back, oldest first. Past `lang.check.quarantine` bytes,
+/// each free gives back the oldest memory of the allocator freeing, so memory leaves only for an
+/// allocator known to be alive.
 pub const quarantine: Item = Item::new(&["std", "check", "quarantine"]);
-/// The namespace `std.check.stack`.
+/// The checks of the stack (spec 13, section 8.7): the export of a runtime that checks the frames of
+/// its stack and nothing else, over the bounds it knows.
 pub const stack: Item = Item::new(&["std", "check", "stack"]);
-/// The namespace `std.check.table`.
+/// What allocators have handed out, for the checks of allocations (spec 13, section 8.7): the
+/// bytes handed out at each address, open-addressed by linear probing. A removal moves later
+/// entries of its run back rather than leaving a tombstone, so probes stay as short as the table
+/// is full.
 pub const table: Item = Item::new(&["std", "check", "table"]);
-/// The namespace `std.check.words`.
+/// Words of memory a runtime gives the checks, read and written by atomic accesses, which no
+/// check rewrites.
 pub const words: Item = Item::new(&["std", "check", "words"]);
 /// The bytes of memory one shadow byte describes.
 pub const granule: Item = Item::new(&["std", "check", "granule"]);

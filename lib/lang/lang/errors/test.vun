@@ -1,0 +1,6 @@
+//! Running a namespace's tests through `std.testing.runner` (spec 11).
+
+no_namespace := diag.Diag{};
+unrunnable := diag.Diag{};
+no_coverage := diag.Diag{};
+unmatched := diag.Diag{};

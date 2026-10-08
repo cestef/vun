@@ -5,7 +5,8 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.collections.heap.tests`.
+/// Tests of `std.collections.BinaryHeap`.
 pub const tests: Item = Item::new(&["std", "collections", "heap", "tests"]);
 pub const BinaryHeap: Item = Item::new(&["std", "collections", "heap", "BinaryHeap"]);

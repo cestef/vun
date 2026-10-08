@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const read_uninit: Item = Item::new(&["lang", "errors", "place", "read_uninit"]);
 pub const linear_leak: Item = Item::new(&["lang", "errors", "place", "linear_leak"]);

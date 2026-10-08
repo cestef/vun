@@ -1,0 +1,3 @@
+//! Language features (spec 12, section 2).
+
+disabled := diag.Diag{};

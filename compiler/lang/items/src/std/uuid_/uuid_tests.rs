@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const shown: Item = Item::new(&["std", "uuid", "tests", "shown"]);
 pub const a_random_identifier_has_its_version_and_variant: Item = Item::new(

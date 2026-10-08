@@ -5,12 +5,18 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.codec.base`.
+/// Encodings that cut bytes into groups of 4, 5 or 6 bits (RFC 4648), each group a symbol of an
+/// alphabet that is a power of two long. The three are one rule with a table: the group size, the
+/// alphabet, whether a block of symbols is padded to its full size, and whether letters of either
+/// case decode.
 pub const base: Item = Item::new(&["std", "codec", "base"]);
-/// The namespace `std.codec.tests`.
+/// Tests of `std.codec`: the vectors of RFC 4648, strictness of decoding, varints.
 pub const tests: Item = Item::new(&["std", "codec", "tests"]);
-/// The namespace `std.codec.varint`.
+/// Variable-length integers (LEB128): seven bits of the number to a byte, least significant first,
+/// the high bit of a byte set when another follows. A signed number goes by its zigzag, which keeps
+/// small magnitudes short.
 pub const varint: Item = Item::new(&["std", "codec", "varint"]);
 /// An encoding that writes a group of `bits` bits of the bytes as one symbol of its alphabet.
 pub const Base: Item = Item::new(&["std", "codec", "Base"]);

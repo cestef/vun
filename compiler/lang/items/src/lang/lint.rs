@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// How a lint's reports are shown (spec 10, section 4).
 pub const Level: Item = Item::new(&["lang", "lint", "Level"]);

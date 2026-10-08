@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Ownership of what `p` points to, which nothing else may hold or free.
 pub const from_raw: Item = Item::new(&["std", "mem", "Own", "from_raw"]);

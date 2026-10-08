@@ -1,0 +1,3 @@
+//! The `unsafe` boundary (spec 01, section 3; spec 05, section 5).
+
+requires_unsafe := diag.Diag{};

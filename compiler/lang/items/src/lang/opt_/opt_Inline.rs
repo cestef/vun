@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const always: Item = Item::new(&["lang", "opt", "Inline", "always"]);
 pub const never: Item = Item::new(&["lang", "opt", "Inline", "never"]);

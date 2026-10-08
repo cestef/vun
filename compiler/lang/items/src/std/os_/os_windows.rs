@@ -5,22 +5,48 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.windows.clock`.
+/// The system's clocks and sleep, in the units `std.time` keeps.
 pub const clock: Item = Item::new(&["std", "os", "windows", "clock"]);
-/// The namespace `std.os.windows.command_line`.
+/// The command line of a Windows process: one string of UTF-16, which a program splits into its
+/// arguments itself. The rules are the C runtime's, as Microsoft documents them:
+///
+/// - The program's name is up to the first space or tab, or, when it starts with a double quote,
+///   up to the next one; nothing in it is escaped.
+/// - The other arguments are separated by spaces and tabs, which a double quote protects: a
+///   quote starts a quoted stretch and the next one ends it, neither being part of the argument,
+///   and two quotes together inside a stretch are one quote of the argument.
+/// - Backslashes are themselves, except before a double quote: a run of them there stands for
+///   half as many, and if the run is odd the quote is one of the argument, else it starts or
+///   ends a stretch.
 pub const command_line: Item = Item::new(&["std", "os", "windows", "command_line"]);
-/// The namespace `std.os.windows.file`.
+/// Files as the system hands them out: handles, which a `std.os` file number stands for, the
+/// modes `std.os.file.Mode` asks for in the system's words, and paths in UTF-16.
 pub const file: Item = Item::new(&["std", "os", "windows", "file"]);
-/// The namespace `std.os.windows.kernel32`.
+/// The functions of `kernel32` the runtime calls, each by its link symbol (spec 08, section 3):
+/// the system's own, which a program of this runtime links by name and no C runtime stands
+/// between. They are `stdcall`, the system's convention on 32-bit x86, which x86-64 takes for its
+/// one. A handle is a `usize`, a `BOOL` an `i32`, a `DWORD` a `u32`.
 pub const kernel32: Item = Item::new(&["std", "os", "windows", "kernel32"]);
-/// The namespace `std.os.windows.library`.
+/// Loading libraries through `kernel32`: the exports a runtime holds,
+/// `library := std.os.windows.library.exports`. A module's number is its handle, the address it
+/// is loaded at; the loader reports a failure as an error number, which none here is told apart
+/// by, so each is `unresolved`.
 pub const library: Item = Item::new(&["std", "os", "windows", "library"]);
-/// The namespace `std.os.windows.pages`.
+/// Pages as `VirtualProtect` and `VirtualQuery` take and give them: `PAGE_*`'s eight kinds of
+/// access, and the fields of `MEMORY_BASIC_INFORMATION` past `AllocationBase`, which a pointer's
+/// width places: `AllocationProtect` is padded to keep `RegionSize` a pointer's width aligned, so
+/// the longest a pointer is wide places every field from it on.
 pub const pages: Item = Item::new(&["std", "os", "windows", "pages"]);
-/// The namespace `std.os.windows.stack`.
+/// The stack probe a Windows program provides. Windows commits a thread's stack a page at a time,
+/// as the thread touches the guard page below what it has committed, so a function with a frame
+/// of more than a page touches each page of it in order first: it calls `__chkstk` with the size
+/// of its frame in `rax`, and the call leaves every register but `r10`, `r11` and the flags as
+/// they were. The frame itself is taken by the caller after it.
 pub const stack: Item = Item::new(&["std", "os", "windows", "stack"]);
-/// The namespace `std.os.windows.tests`.
+/// Tests of `std.os.windows`: a command line split into the arguments a program is given, and a
+/// clock before the epoch.
 pub const tests: Item = Item::new(&["std", "os", "windows", "tests"]);
 /// Windows runs programs through a runtime calling the system itself.
 pub const runtime: Item = Item::new(&["std", "os", "windows", "runtime"]);

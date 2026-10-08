@@ -5,18 +5,36 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.fmt.debug`.
+/// Debug output, `{?}` in a format string: a value written as the expression that builds it, for a
+/// reader of the program. An integer is its digits, a `bool` `true` or `false`, bytes a quoted
+/// string, other items `[a, b]`, a tuple `(a, b)`, a variant `.name` or `.name(a, b)` and a struct
+/// `Name{ .field = a, .other = b }`, as the compiler shows values. A struct or an enum whose parts
+/// have `Debug` has it without an impl, by `derive_debug`.
 pub const debug: Item = Item::new(&["std", "fmt", "debug"]);
-/// The namespace `std.fmt.float`.
+/// Floats as text: the shortest decimal that reads back as the same float (Burger and Dybvig's
+/// free-format algorithm, on `std.math.big`), `NaN`, `inf` and `-inf`, and `fixed`, the exact value
+/// rounded to a number of decimals. `{}` writes `1`, `1.5`, `0.1`, `1e21` and `1e-7`; `{?}` writes
+/// the same with `.0` after a whole number, `1.0`, as the expression that makes it.
 pub const float: Item = Item::new(&["std", "fmt", "float"]);
-/// The namespace `std.fmt.json`.
+/// JSON (RFC 8259) written from typed values, each type writing itself through `Json`: an integer
+/// is a number, a float a number of its shortest digits (`null` for a NaN and an infinity, which JSON
+/// has no number for), a `bool` `true` or `false`, bytes
+/// a string, another sequence an array and an option its value or `null`. `derive(T)` writes a
+/// struct or a record as an object of its fields, a tuple as an array of its items, and an enum's
+/// value as its variant's name, or, where the variant holds parts, as an object naming it; a type
+/// of these without a `Json` of its own is written as `derive(T)` writes it.
 pub const json: Item = Item::new(&["std", "fmt", "json"]);
-/// The namespace `std.fmt.layout`.
+/// The layout of an argument in a format string (spec 03, section 4): after a `:` in its place, an
+/// optional fill and alignment, `<`, `>` or `^`, and a width, as in `{x:0>8}` or `{:^5}`. An
+/// argument shorter than the width is padded with the fill; a longer one is written whole.
 pub const layout: Item = Item::new(&["std", "fmt", "layout"]);
-/// The namespace `std.fmt.places`.
+/// The places of arguments in a format string (spec 03, section 4): `{}`, `{?}`, `{x}` and `{b}`,
+/// each a row of `specs`, then optionally a `:` and a layout (`fmt/layout.vun`), read once at
+/// compile time into the text between them, or the first problem.
 pub const places: Item = Item::new(&["std", "fmt", "places"]);
-/// The namespace `std.fmt.tests`.
+/// Tests of `std.fmt`: the places of arguments in a format string, and debug output.
 pub const tests: Item = Item::new(&["std", "fmt", "tests"]);
 /// Where bytes are written (spec 02, section 3).
 pub const Writer: Item = Item::new(&["std", "fmt", "Writer"]);

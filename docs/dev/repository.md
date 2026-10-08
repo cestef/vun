@@ -2,7 +2,7 @@
 
 ```
 lib/lang/lang/syntax/{grammar,desugar}.vun   tokens, nodes, parse tables; appendix B as tables
-lib/lang/lang/errors.vun + errors/           every diagnostic id and its explanation page
+lib/lang/lang/errors/                         a group of diagnostic ids per file, and their explanation pages
 lib/lang, lib/std, lib/targets               `lang` primitives, `std`, one `lang.target.Spec` per target
 corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; waiting for APIs; stand-ins
 compiler/<group>/<crate>                     see crates.md; layering in spec 13 section 9
@@ -24,7 +24,7 @@ longer generated. Generated files are held to the 300-line limit too.
 |-----------|--------|
 | `compiler/lang/grammar/src/generated/` | `lib/lang/lang/syntax/grammar.vun` |
 | `compiler/front/desugar/src/generated/` | `lib/lang/lang/syntax/desugar.vun` |
-| `compiler/base/diag/src/errors/` | `lib/lang/lang/errors.vun` |
+| `compiler/base/diag/src/errors/` | `lib/lang/lang/errors/` |
 | `compiler/lang/primitives/src/generated/` | the `= _` declarations of `lib/lang` |
 | `compiler/lang/items/src/{lang,std,targets}/` | a handle per public declaration of `lib`; the modules of a namespace's descendants in a directory `<namespace>_/` (`arch_/`), re-exported flat |
 

@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The surrogates that start a pair (high) and end it (low), by their first and last units.
 pub const high_first: Item = Item::new(&["std", "text", "utf16", "high_first"]);

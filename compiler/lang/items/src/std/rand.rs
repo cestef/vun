@@ -5,14 +5,18 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.rand.pcg`.
+/// PCG-XSH-RR 64/32: a 64-bit linear congruential state, whose output is 32 bits xored, shifted
+/// and rotated. A stream picks one of 2^63 sequences, so two generators on one seed can differ.
 pub const pcg: Item = Item::new(&["std", "rand", "pcg"]);
-/// The namespace `std.rand.splitmix`.
+/// SplitMix64: the state steps by a constant and is mixed on the way out. Every seed is good, and
+/// the same seed gives the same numbers on every target.
 pub const splitmix: Item = Item::new(&["std", "rand", "splitmix"]);
-/// The namespace `std.rand.tests`.
+/// Tests of `std.rand`: the reference outputs of each generator, and what every `Rng` guarantees.
 pub const tests: Item = Item::new(&["std", "rand", "tests"]);
-/// The namespace `std.rand.xoshiro`.
+/// xoshiro256**: four words of state, a period of 2^256 - 1. The state must not be all zero, so
+/// a seed is spread over it by `SplitMix64`, which never gives four zeros.
 pub const xoshiro: Item = Item::new(&["std", "rand", "xoshiro"]);
 /// Where random numbers come from.
 pub const Rng: Item = Item::new(&["std", "rand", "Rng"]);

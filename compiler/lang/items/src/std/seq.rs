@@ -5,14 +5,19 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.seq.search`.
+/// Looking in a slice and cutting it (spec 05): methods of every `[T]`, and so of every `[n]T`,
+/// whose items have `==`, text among them, by an impl without an interface.
 pub const search: Item = Item::new(&["std", "seq", "search"]);
-/// The namespace `std.seq.shape`.
+/// Moving items in a slice and cutting it into runs (spec 05): methods of every `[T]`, and so of
+/// every `[n]T`. A stable sort needs room as long as the slice, which the caller gives.
 pub const shape: Item = Item::new(&["std", "seq", "shape"]);
-/// The namespace `std.seq.sort`.
+/// Ordering a slice in place (spec 05): methods of every `[T]`, and so of every `[n]T`, with no
+/// allocator. Short runs are insertion sorted; longer ones are heap sorted, so no input is slow.
+/// The sort is not stable: items that are equal may change places.
 pub const sort: Item = Item::new(&["std", "seq", "sort"]);
-/// The namespace `std.seq.tests`.
+/// Tests of `std.seq`: looking in a slice and cutting it.
 pub const tests: Item = Item::new(&["std", "seq", "tests"]);
 /// A run of items.
 pub const Sequence: Item = Item::new(&["std", "seq", "Sequence"]);

@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Days from 1970-01-01, far past any date that matters: 10^12.
 pub const Days: Item = Item::new(&["std", "time", "date", "Days"]);

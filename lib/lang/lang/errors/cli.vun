@@ -1,0 +1,10 @@
+//! The command line (spec 12, section 7).
+
+unknown_command := diag.Diag{};
+missing_argument := diag.Diag{};
+unexpected_argument := diag.Diag{};
+unknown_option := diag.Diag{};
+missing_value := diag.Diag{};
+invalid_value := diag.Diag{};
+unavailable := diag.Diag{};
+missing_path := diag.Diag{};

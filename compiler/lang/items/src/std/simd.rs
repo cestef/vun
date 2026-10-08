@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const Vector: Item = Item::new(&["std", "simd", "Vector"]);
 /// How many lanes of `T` the target's vector registers hold (`lang.target.Spec.vector_bits`), one

@@ -5,10 +5,13 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.testing.property.lend`.
+/// How a property's case passes an argument of a type that borrows what it reaches (spec 11,
+/// section 2): it holds a value generated as any other, and lends it.
 pub const lend: Item = Item::new(&["std", "testing", "property", "lend"]);
-/// The namespace `std.testing.property.shrink`.
+/// Shrinking a failing case (spec 11, section 2): on the choices it took, whatever generated them,
+/// towards fewer and smaller ones.
 pub const shrink: Item = Item::new(&["std", "testing", "property", "shrink"]);
 /// How many choices a case takes at most; past them, each is 0.
 pub const room: Item = Item::new(&["std", "testing", "property", "room"]);

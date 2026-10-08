@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// ln 2 as a high part with trailing zero bits, so `k * ln_2_high` is exact, and the rest.
 pub const ln_2_high: Item = Item::new(&["std", "math", "exp", "ln_2_high"]);

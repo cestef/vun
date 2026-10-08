@@ -1,0 +1,7 @@
+//! Name resolution and visibility (spec 01, sections 3, 7 and 8).
+
+unresolved := diag.Diag{};
+shadowed := diag.Diag{};
+private := diag.Diag{};
+visibility := diag.Diag{};
+duplicate := diag.Diag{};

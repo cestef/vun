@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// Attribute: every top-level binding of the type has one storage per thread, each starting as
 /// the binding's value; where the target runs one thread, the one storage is the program's.

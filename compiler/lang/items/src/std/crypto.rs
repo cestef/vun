@@ -5,16 +5,28 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.crypto.chacha20`.
+/// ChaCha20 (RFC 8439): a stream cipher making blocks of 64 bytes from a 32-byte key, a 12-byte
+/// nonce and a block counter, by 20 rounds on sixteen 32-bit words. Encrypting and decrypting are
+/// the same exclusive or with the stream; never use a key and a nonce for two messages.
+/// `ChaCha20Rng` is a generator over the stream, for seeds that are secret and unique.
 pub const chacha20: Item = Item::new(&["std", "crypto", "chacha20"]);
-/// The namespace `std.crypto.hmac`.
+/// HMAC (RFC 2104): a hash keyed so that only who holds the key can make it. The key is padded
+/// with zeros to a block, or hashed first when longer; the message is hashed under the key with
+/// 0x36 mixed in, and that hash again under the key with 0x5c mixed in.
 pub const hmac: Item = Item::new(&["std", "crypto", "hmac"]);
-/// The namespace `std.crypto.secure`.
+/// A generator for secrets: ChaCha20 keyed from the system's source of entropy, with fast key
+/// erasure. Each block of the stream makes a new key from its first 32 bytes and gives the other
+/// 32 as output, so a state taken later reveals nothing of what was drawn earlier. The key is mixed
+/// with fresh entropy after every `reseed_after` bytes, so one taken once does not predict what is
+/// drawn long after. An entropy source that cannot be read is fatal: no output is better than
+/// output that can be guessed.
 pub const secure: Item = Item::new(&["std", "crypto", "secure"]);
-/// The namespace `std.crypto.sha2`.
+/// SHA-256 (FIPS 180-4): the message in blocks of 64 bytes, each mixed into eight 32-bit words by
+/// 64 rounds. The message is padded with a one bit, zeros, and its length in bits.
 pub const sha2: Item = Item::new(&["std", "crypto", "sha2"]);
-/// The namespace `std.crypto.tests`.
+/// Tests of `std.crypto` against published vectors.
 pub const tests: Item = Item::new(&["std", "crypto", "tests"]);
 /// SHA-256 (FIPS 180-4): a hash of 32 bytes.
 pub const Sha256: Item = Item::new(&["std", "crypto", "Sha256"]);

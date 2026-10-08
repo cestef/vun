@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const i16x8_extadd_pairwise_i8x16_s: Item = Item::new(
     &["lang", "arch", "wasm32", "simd_i16x8", "i16x8_extadd_pairwise_i8x16_s"],

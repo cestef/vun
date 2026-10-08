@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const a_slice_starts_and_ends_with_what_it_does: Item = Item::new(
     &["std", "seq", "tests", "a_slice_starts_and_ends_with_what_it_does"],

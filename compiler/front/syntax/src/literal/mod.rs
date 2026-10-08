@@ -201,4 +201,11 @@ impl Cst {
         let reader = Reader { cst: self, tokens, source };
         reader.decls(self.children(self.root()))
     }
+
+    /// The `//!` lines opening a parsed file, which document the file's namespace.
+    #[must_use]
+    pub fn module_doc<'s>(&self, tokens: &Tokens, source: &'s str) -> Vec<&'s str> {
+        let reader = Reader { cst: self, tokens, source };
+        reader.module_doc(self.children(self.root()))
+    }
 }

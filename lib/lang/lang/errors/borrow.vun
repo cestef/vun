@@ -1,0 +1,5 @@
+//! Scoped borrows and exclusivity (spec 05, sections 4 and 8).
+
+conflict := diag.Diag{};
+escape := diag.Diag{};
+in_free_value := diag.Diag{};

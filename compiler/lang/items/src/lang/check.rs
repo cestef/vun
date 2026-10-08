@@ -5,8 +5,10 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.check.mem`.
+/// The operations of `lang.mem` on raw pointers, checked (`#[check.by(.pointers, f)]`): each
+/// checks the bytes it touches, then does what it checks.
 pub const mem: Item = Item::new(&["lang", "check", "mem"]);
 /// What a program may be built to check (`std.build.Options.checks`).
 pub const Kind: Item = Item::new(&["lang", "check", "Kind"]);

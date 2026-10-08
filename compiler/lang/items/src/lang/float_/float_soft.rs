@@ -5,12 +5,21 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.float.soft.arith`.
+/// IEEE 754 arithmetic written with integers, for a processor computing no float of the type
+/// (`lang.lower.soft`): each operand taken apart through `lang.float.bits`, the result exact in
+/// integers twice as wide as the float, then rounded once to nearest, ties to even; a NaN result
+/// is the canonical NaN, as the instructions' are made (spec 04, section 2).
 pub const arith: Item = Item::new(&["lang", "float", "soft", "arith"]);
-/// The namespace `lang.float.soft.compare`.
+/// IEEE 754 comparisons written with integers, for a processor computing no float of the type
+/// (`lang.lower.soft`): a NaN is equal to nothing and in no order, zeros of both signs are equal,
+/// and other floats are in the order of their signed magnitudes.
 pub const compare: Item = Item::new(&["lang", "float", "soft", "compare"]);
-/// The namespace `lang.float.soft.convert`.
+/// Conversions written with integers, for a processor that does not convert between the types
+/// (`lang.lower.soft`): a float it lacks, or an integer wider than an address. Each takes the
+/// encoding apart through `lang.float.bits` and rounds once, to nearest, ties to even, as the
+/// primitives of `lang.float` say.
 pub const convert: Item = Item::new(&["lang", "float", "soft", "convert"]);
 /// `a` less `b` as many whole times as it goes, the quotient rounded toward zero: IEEE 754
 /// `fmod`, which is exact. A NaN when `b` is zero or a NaN, or `a` an infinity or a NaN.

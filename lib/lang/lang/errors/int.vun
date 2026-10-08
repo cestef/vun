@@ -1,0 +1,4 @@
+//! Range integers (spec 04).
+
+does_not_fit := diag.Diag{};
+width_cap := diag.Diag{};

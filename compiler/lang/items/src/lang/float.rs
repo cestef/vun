@@ -5,10 +5,14 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.float.ops`.
+/// Floats' operators (spec 02, section 4): the impls of `lang.ops` for every float type, over
+/// the constructor `lang.Float`, as the primitives of `lang.float`.
 pub const ops: Item = Item::new(&["lang", "float", "ops"]);
-/// The namespace `lang.float.soft`.
+/// Float operations no instruction computes, written with those that do (spec 13, section 3):
+/// each takes its operands' encodings apart through `lang.float.bits`, computes on integers, and
+/// assembles the result as IEEE 754 gives it. `lang.float.rem` and `mul_add` run as these.
 pub const soft: Item = Item::new(&["lang", "float", "soft"]);
 pub const mul_add: Item = Item::new(&["lang", "float", "mul_add"]);
 /// IEEE 754 arithmetic in the float type `T`, rounding to nearest: none traps, a division by

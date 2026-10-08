@@ -5,16 +5,29 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `targets.bare`.
+/// Bare metal: no system and no baseline machine, so a namespace per instruction set profile
+/// (`thumbv7em`, as Arm names it), holding a target per ABI. A program brings its own runtime
+/// (spec 08), links without the C runtime but with the compiler's helpers (`libgcc`), through its
+/// C compiler's linker, which places its sections in the memory its build declares, and starts
+/// at its reset handler. A board names the target of its processor in its manifest (`.target`).
 pub const bare: Item = Item::new(&["targets", "bare"]);
-/// The namespace `targets.linux`.
+/// Linux: a namespace per architecture, holding a target per ABI. `kernel` builds static programs
+/// that call the kernel themselves, with no C library (`linux.x86_64.kernel`); `gnu` builds
+/// programs on the GNU C library, which calling C needs (`linux.x86_64.gnu`).
 pub const linux: Item = Item::new(&["targets", "linux"]);
-/// The namespace `targets.macos`.
+/// macOS: a namespace per architecture, holding a target per ABI. A program records the oldest release it runs on, which its C compiler and its linker
+/// are told, and links the system's library, `libSystem`, from the SDK the machine keeps (its
+/// tools file's `sysroot`).
 pub const macos: Item = Item::new(&["targets", "macos"]);
-/// The namespace `targets.wasi`.
+/// WebAssembly System Interface: a namespace per architecture, holding a target per preview
+/// (`p1`).
 pub const wasi: Item = Item::new(&["targets", "wasi"]);
-/// The namespace `targets.windows`.
+/// Windows: a namespace per architecture, holding a target per ABI. A program is a PE file linked
+/// by `lld-link` against the import libraries of the system in the target's sysroot (its tools
+/// file's `sysroot`: the directory holding `kernel32.lib`, as the Windows SDK, xwin or
+/// mingw-w64 lay it out), and calls `kernel32` itself, with no C runtime (`std.os.windows`).
 pub const windows: Item = Item::new(&["targets", "windows"]);
 /// The targets a build is for unless told otherwise: the first whose `arch` and `os` are the
 /// machine running the toolchain's.

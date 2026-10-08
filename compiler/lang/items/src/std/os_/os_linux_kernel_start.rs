@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// The kernel enters with the stack pointer at the argument count, without a return address
 /// and with the stack aligned: the frame pointer is cleared to end the chain of frames, and

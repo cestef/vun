@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 pub const eax: Item = Item::new(&["lang", "arch", "x86_64", "R32", "eax"]);
 pub const ecx: Item = Item::new(&["lang", "arch", "x86_64", "R32", "ecx"]);

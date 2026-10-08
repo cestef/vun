@@ -5,6 +5,7 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
 /// What infix operators desugar to (appendix B): `a op b` calls `function`, a requirement of an
 /// interface, in the witness of that interface for the type of `a`, the operands passed as the

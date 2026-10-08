@@ -8,7 +8,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use vun_build::layout::{Location, SEPARATOR};
+use vun_build::layout::Location;
 use vun_diag::{ChildKind, DiagCtxt, DiagCx, DiagId, Diagnostic, Msg};
 use vun_fs::{Relative, Tree};
 use vun_origin::OriginTable;
@@ -49,6 +49,8 @@ pub(crate) enum Emit {
 pub(crate) struct Source<'s> {
     /// Relative to the repository root.
     pub(crate) path: String,
+    /// The `//!` lines opening the file.
+    pub(crate) doc: Vec<&'s str>,
     pub(crate) decls: Vec<Decl<'s>>,
 }
 
@@ -92,18 +94,17 @@ impl Generator {
 
 impl Source<'_> {
     /// The binding path of the file, as a namespace of its package in [`PACKAGES`]:
-    /// `lib/lang/lang/errors.vun` is `lang.errors`. `None` for a file outside the package's root
+    /// `lib/lang/lang/errors/int.vun` is `lang.errors.int`. `None` for a file outside the package's root
     /// namespace, such as its manifest.
     pub(crate) fn namespace(&self) -> Option<Vec<String>> {
-        let path = Path::new(&self.path);
+        Self::namespace_of(Path::new(&self.path))
+    }
+
+    /// [`Self::namespace`] of the file or directory at `path`, relative to the repository root.
+    pub(crate) fn namespace_of(path: &Path) -> Option<Vec<String>> {
         let package = path.strip_prefix(PACKAGES).ok()?.iter().next()?;
         let names = Location::path_of(&Path::new(PACKAGES).join(package), path)?;
         (names.first().map(String::as_str) == package.to_str()).then_some(names)
-    }
-
-    /// [`Self::namespace`] joined as written.
-    pub(crate) fn namespace_text(&self) -> String {
-        self.namespace().unwrap_or_default().join(SEPARATOR)
     }
 }
 
@@ -208,6 +209,10 @@ impl Generator {
             let d = errors.fold(Diagnostic::error(SYNTAX, msg), |d, e| d.child(ChildKind::Note, e));
             return Err(Box::new(d));
         }
-        Ok(Source { path: path.to_owned(), decls: cst.declarations(&tokens, text) })
+        Ok(Source {
+            path: path.to_owned(),
+            doc: cst.module_doc(&tokens, text),
+            decls: cst.declarations(&tokens, text),
+        })
     }
 }

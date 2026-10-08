@@ -5,26 +5,52 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.collections.array`.
+/// `ArrayVec(n, T)`: up to `n` items of one type held in the value itself, with no allocator. The
+/// room is `lang.mem.Uninit`, storage that holds no `T` until one is written, so `T` needs no value
+/// to fill it with. Items are not dropped: ones owning memory are taken out first. Storage owns
+/// nothing, so the vector is linear whatever `T` is, as `Vec` is: it cannot be copied into two
+/// owners of one item, and `deinit` ends it.
 pub const array: Item = Item::new(&["std", "collections", "array"]);
-/// The namespace `std.collections.bitset`.
+/// `BitSet`: small integers held once, a bit each, over a `Vec` of words. It grows to hold the
+/// largest it was given, from an allocator the caller passes, and is linear as `Vec` is: the
+/// allocator that grew it is the one `deinit` must be given.
 pub const bitset: Item = Item::new(&["std", "collections", "bitset"]);
-/// The namespace `std.collections.btree`.
+/// `BTreeMap(K, V)`: values by key, kept in the order `<` gives the keys, in a B-tree whose nodes
+/// lie in one `Vec` (decision 560). A lookup, an insert and a remove each walk one path from the
+/// root, splitting full nodes and growing thin ones on the way down, so none walks back up; each
+/// is logarithmic. It is linear and holds no allocator, as `Vec` is: the one passed to a call
+/// that grows it is the one `deinit` must be given. Keys and values are not dropped: ones owning
+/// memory are taken out first.
 pub const btree: Item = Item::new(&["std", "collections", "btree"]);
-/// The namespace `std.collections.deque`.
+/// `Deque(T)`: items added and taken at both ends, in a ring over one buffer an allocator gave.
+/// It is linear, as `Vec` is, and holds no allocator: the one passed to a call that grows it is
+/// the one `deinit` must be given. Items are not dropped: ones owning memory are taken out first.
 pub const deque: Item = Item::new(&["std", "collections", "deque"]);
-/// The namespace `std.collections.heap`.
+/// `BinaryHeap(T)`: items taken out largest first by `<`, over a `Vec`. It is linear and holds no
+/// allocator, as `Vec` is: the one passed to a call that grows it is the one `deinit` must be
+/// given. Items are not dropped: ones owning memory are taken out first.
 pub const heap: Item = Item::new(&["std", "collections", "heap"]);
-/// The namespace `std.collections.map`.
+/// `HashMap(K, V)`: values by key, in open addressing over one buffer an allocator gave: the
+/// states of the slots, then the keys, then the values. Keys are compared by `Eq` and hashed by
+/// `std.hash.Hash`, both derived for the types made of ones that have them. It is linear, as
+/// `Vec` is, and holds no allocator: the one passed to a call that grows it is the one `deinit`
+/// must be given. Keys and values are not dropped: ones owning memory are taken out first.
 pub const map: Item = Item::new(&["std", "collections", "map"]);
-/// The namespace `std.collections.set`.
+/// `HashSet(T)`: keys with no values, a `HashMap` of `T` to the unit. Like it, it is linear and
+/// holds no allocator: the one passed to a call that grows it is the one `deinit` must be given.
 pub const set: Item = Item::new(&["std", "collections", "set"]);
-/// The namespace `std.collections.sorted`.
+/// `SortedMap(K, V)`: values by key, kept in the order `<` gives the keys, over two `Vec`s. A
+/// lookup is a binary search; an insert or a remove moves the items after it. It is linear and
+/// holds no allocator, as `Vec` is: the one passed to a call that grows it is the one `deinit`
+/// must be given.
 pub const sorted: Item = Item::new(&["std", "collections", "sorted"]);
-/// The namespace `std.collections.tests`.
+/// Tests of `std.collections`.
 pub const tests: Item = Item::new(&["std", "collections", "tests"]);
-/// The namespace `std.collections.vec`.
+/// `Vec(T)`: items of one type in a buffer an allocator gave, grown as they are pushed. It is
+/// linear: it owns its buffer, which `deinit` gives back to the allocator it came from, the one
+/// each growing call is passed. No allocator is held, so one allocator serves any number of them.
 pub const vec: Item = Item::new(&["std", "collections", "vec"]);
 /// A growable array, whose buffer an allocator gives.
 pub const Vec: Item = Item::new(&["std", "collections", "Vec"]);

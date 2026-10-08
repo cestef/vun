@@ -1,0 +1,7 @@
+//! Place states (spec 05, section 2).
+
+read_uninit := diag.Diag{};
+linear_leak := diag.Diag{};
+ambiguous_join := diag.Diag{};
+out_unwritten := diag.Diag{};
+move_out_of_borrow := diag.Diag{};

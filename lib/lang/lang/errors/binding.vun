@@ -1,0 +1,7 @@
+//! Bindings and patterns (spec 01, sections 3 and 6).
+
+hole_value := diag.Diag{};
+rest_value := diag.Diag{};
+irrefutable_test := diag.Diag{};
+unequal_alternatives := diag.Diag{};
+missing_case := diag.Diag{};

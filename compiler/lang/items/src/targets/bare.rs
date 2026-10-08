@@ -5,12 +5,13 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `targets.bare.riscv32imc`.
+/// 32-bit RISC-V with multiplication and compressed instructions (RV32IMC).
 pub const riscv32imc: Item = Item::new(&["targets", "bare", "riscv32imc"]);
-/// The namespace `targets.bare.thumbv7em`.
+/// Armv7E-M: Cortex-M4 and M7, Thumb-2 with the DSP extension.
 pub const thumbv7em: Item = Item::new(&["targets", "bare", "thumbv7em"]);
-/// The namespace `targets.bare.thumbv7m`.
+/// Armv7-M: Cortex-M3, Thumb-2 without a floating-point unit.
 pub const thumbv7m: Item = Item::new(&["targets", "bare", "thumbv7m"]);
-/// The namespace `targets.bare.thumbv8m_main`.
+/// Armv8-M Mainline: Cortex-M33 and M55, Thumb-2 with the DSP extension and TrustZone.
 pub const thumbv8m_main: Item = Item::new(&["targets", "bare", "thumbv8m_main"]);

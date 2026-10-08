@@ -5,16 +5,46 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `lang.syntax.desugar`.
+/// What syntax means (appendix B): the `lang` items operators, borrows and other forms desugar
+/// into, as data the compiler looks up, so no `lang` name is written in the compiler. Read with
+/// `grammar.vun`, whose token kinds these tables name. A table naming `lang` items by their paths
+/// is a tuple, since the items it names have types of their own.
 pub const desugar: Item = Item::new(&["lang", "syntax", "desugar"]);
-/// The namespace `lang.syntax.editors`.
+/// How editors show and navigate Vun, beside its grammar (spec 13, section 5): what the
+/// tree-sitter queries capture and the Sublime syntax scopes. `cargo gen` reads it with
+/// `grammar.vun` and `nodes.vun`; captures and scopes are named as the generator declares them,
+/// and each editor names a capture its own way.
+///
+/// A pattern captures nodes `.{ .nodes = &[...], .capture = .c }`, named after a node kind or a
+/// token kind, or captures a node where it stands `.{ .kinds = [.k], .field = .f, .node = .n,
+/// .capture = .c }`: a node `n` in the field `f` of a `k`, or, with `.inner = .g`, in the field `g`
+/// of what that field holds.
 pub const editors: Item = Item::new(&["lang", "syntax", "editors"]);
-/// The namespace `lang.syntax.grammar`.
+/// The grammar of Vun, defined once with `nodes.vun`, which holds the kinds of nodes and their
+/// productions, and `tables.vun`, the tables that say how they nest: its tokens and tables. Generates the Rust `vun-grammar` crate, `lang.syntax`, the
+/// formatter's tables and the editor grammars (spec 13, section 5).
+///
+/// `cargo gen` reads both files as literal data. Into Rust it translates each declaration by shape,
+/// never by name:
+/// - a record of lists marked `#[syntax.kind]` defines a kind: its entries are the kind's variants, and each
+///   list is also a table of its own. An entry is `.name`, a spelling `"text"` (named after
+///   itself), `.{ .name = .x, .text = "..." }`, or `.name(terms...)` for a kind with a production
+///   (see `NodeKind`), whose fields and their counts, variants of `Count`, it derives;
+/// - an `enum` declaration defines an enum;
+/// - any other list is a table; `.name` items resolve to the one kind or enum that has them all.
+///
+/// What it interprets, the productions and the tables editors and the parser share (`parts`,
+/// `admits`, `precedence`, ...), it reads by type, and resolves every name and path in them; what
+/// editors make of the grammar is in `editors.vun`.
 pub const grammar: Item = Item::new(&["lang", "syntax", "grammar"]);
-/// The namespace `lang.syntax.nodes`.
+/// The kinds of syntax tree nodes and their productions, part of the grammar with `grammar.vun`,
+/// whose header says how both are read.
 pub const nodes: Item = Item::new(&["lang", "syntax", "nodes"]);
-/// The namespace `lang.syntax.tables`.
+/// The tables that say how kinds nest and are told apart, part of the grammar with `grammar.vun`
+/// and `nodes.vun`, whose productions name them (the header of `grammar.vun` says how all are
+/// read).
 pub const tables: Item = Item::new(&["lang", "syntax", "tables"]);
 /// `#[syntax.kind]`: in the grammar's sources, the record of lists is a kind, of which the grammar
 /// generator makes an enum, its lists tables of their own.

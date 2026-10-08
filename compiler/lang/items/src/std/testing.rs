@@ -5,22 +5,40 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.testing.bench`.
+/// Benchmarks (spec 11, section 5): a test whose one parameter is `&mut std.testing.Bench`. Run as
+/// a test, its loop runs the body once; measured (`vun bench`), the loop runs the body in batches,
+/// each as many times as all before it, until it has run `least` nanoseconds, and the benchmark
+/// reports how many times the body ran and how long that took. The clock is read between batches
+/// only, and the body never sees how many times it runs.
 pub const bench: Item = Item::new(&["std", "testing", "bench"]);
-/// The namespace `std.testing.counting`.
+/// An allocator that counts what it is asked, over another one, to test what code gives back.
 pub const counting: Item = Item::new(&["std", "testing", "counting"]);
-/// The namespace `std.testing.cover`.
+/// The coverage a run of the tests writes (spec 11, section 6).
 pub const cover: Item = Item::new(&["std", "testing", "cover"]);
-/// The namespace `std.testing.fuzz`.
+/// Coverage-guided fuzzing (spec 11, section 2): `vun fuzz` builds the tests covered (spec 11,
+/// section 6) and runs each property, fuzz target and simulation over as many cases as `--fuzz`
+/// asks. A case replays the choices of a stream kept, mutated, then draws; or draws new ones. It
+/// is kept in turn when it set a flag of `lang.cover.map` no case before set, so the streams kept
+/// reach ever more of the code. A case that traps is shrunk and reported as a property's is.
 pub const fuzz: Item = Item::new(&["std", "testing", "fuzz"]);
-/// The namespace `std.testing.options`.
+/// How a run of the tests' program is asked for: the options its arguments give (spec 11,
+/// section 3).
 pub const options: Item = Item::new(&["std", "testing", "options"]);
-/// The namespace `std.testing.outcome`.
+/// What became of a test, and the totals of a run (spec 11, section 3).
 pub const outcome: Item = Item::new(&["std", "testing", "outcome"]);
-/// The namespace `std.testing.property`.
+/// Property tests (spec 11, section 2): a test's arguments are generated from its parameters'
+/// types, each read from a stream of choices, so the case that fails is replayed and shrunk as
+/// its choices, whatever generated it. A parameter whose type borrows, such as `&[u8]`, is lent
+/// what the case holds for it (`lend`).
 pub const property: Item = Item::new(&["std", "testing", "property"]);
-/// The namespace `std.testing.sim`.
+/// Deterministic simulation (spec 11, section 4): a test whose one parameter is `&mut Sim` runs
+/// tasks, `std.task.Async` frames, on a virtual clock, one at a time, each next one chosen among
+/// those ready by the case's choices. They are the choices a property's arguments are read from,
+/// so a simulation runs over the cases a property does, a failing one is shrunk on its choices,
+/// and `--seed` replays it exactly. Time passes only when no task is ready: the clock jumps to the
+/// earliest time a task sleeps until.
 pub const sim: Item = Item::new(&["std", "testing", "sim"]);
 /// Marks a binding as a test. Plain data: the runner finds tests by reflection.
 pub const test: Item = Item::new(&["std", "testing", "test"]);

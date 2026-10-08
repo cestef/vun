@@ -5,10 +5,15 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.os.linux.kernel`.
+/// A runtime calling the kernel itself, for static programs without a C library (spec 08,
+/// section 2). `_start` finds the arguments where the kernel puts them, on the stack it starts
+/// the process with, and every request is a system call. The C compiler may call the four
+/// functions of C's `string.h` a freestanding program must provide, so the runtime exports them.
 pub const kernel: Item = Item::new(&["std", "os", "linux", "kernel"]);
-/// The namespace `std.os.linux.pages`.
+/// Pages as Linux's `mprotect` takes them, and as `/proc/self/maps` describes them: a line per
+/// mapped range, its ends in hex and `rwxp` for what it allows, before whatever else it holds.
 pub const pages: Item = Item::new(&["std", "os", "linux", "pages"]);
 /// Linux runs static programs through a runtime calling the kernel itself, with no C library.
 pub const runtime: Item = Item::new(&["std", "os", "linux", "runtime"]);

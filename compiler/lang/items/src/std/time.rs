@@ -5,10 +5,14 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.time.date`.
+/// Dates in the proleptic Gregorian calendar and times of day in UTC, from the count of days or
+/// seconds since 1970-01-01 (Howard Hinnant's civil-date algorithms). `Date.new` checks a date,
+/// `DateTime` carries a time of day to the nanosecond, and both read and write ISO 8601:
+/// `2024-02-29` and `2024-02-29T12:30:45.5Z`. Leap seconds are not counted, as Unix time does not.
 pub const date: Item = Item::new(&["std", "time", "date"]);
-/// The namespace `std.time.tests`.
+/// Tests of `std.time`.
 pub const tests: Item = Item::new(&["std", "time", "tests"]);
 pub const nanos_per_micro: Item = Item::new(&["std", "time", "nanos_per_micro"]);
 pub const nanos_per_milli: Item = Item::new(&["std", "time", "nanos_per_milli"]);

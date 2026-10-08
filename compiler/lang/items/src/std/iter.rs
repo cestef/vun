@@ -5,12 +5,13 @@
     non_snake_case,
     reason = "handles and the modules of types' members are spelled as their declarations"
 )]
+#![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// The namespace `std.iter.peek`.
+/// `Peekable(T, F)`: an iterator whose next item can be looked at before it is taken.
 pub const peek: Item = Item::new(&["std", "iter", "peek"]);
-/// The namespace `std.iter.range`.
+/// Ranges read from their end (spec 06): bounds with an end give their items last first.
 pub const range: Item = Item::new(&["std", "iter", "range"]);
-/// The namespace `std.iter.tests`.
+/// Tests of the iterator adapters, and the combinators of options and results.
 pub const tests: Item = Item::new(&["std", "iter", "tests"]);
 /// An iterator whose next item can be looked at, over a frame.
 pub const Peekable: Item = Item::new(&["std", "iter", "Peekable"]);
