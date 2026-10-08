@@ -88,15 +88,17 @@ impl Arch for Arm {
         code.access(Op::Str, Size::B64, src.into(), FP, i64::from(offset), FAR);
     }
 
-    /// A constant one move takes, and an address in the frame; a symbol's takes two
-    /// instructions.
+    /// A constant one move takes, and an address in the frame that an unscaled access reaches
+    /// from the frame pointer; a symbol's takes two instructions, a farther slot's several.
     fn in_place(what: Recompute, bits: u32) -> bool {
         match what {
             Recompute::Const(c) => {
                 let v = vun_asm::imm::sign_extend(vun_asm::imm::low64(c), bits);
                 Op::Mov.form(Size::B64, &[Opnd::Reg(FAR), Opnd::Imm(v)]).is_some()
             }
-            Recompute::Addr(Place { anchor, .. }) => anchor == Anchor::Frame,
+            Recompute::Addr(Place { anchor, disp }) => {
+                anchor == Anchor::Frame && (-UNSCALED_REACH..UNSCALED_REACH).contains(&disp)
+            }
         }
     }
 
@@ -117,6 +119,9 @@ impl Arch for Arm {
         code.emit(Op::BAlways, Size::B64, &[to.into()]);
     }
 }
+
+/// The bytes an unscaled load or store (`ldur`, `stur`) reaches either way from its base.
+const UNSCALED_REACH: i64 = 256;
 
 impl Emits for Arm {
     type Op = Op;

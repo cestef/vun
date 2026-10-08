@@ -11,7 +11,7 @@ use vun_codec::{Decode, Encode};
 use vun_hash::Map;
 use vun_index::Idx;
 use vun_lir::{Address, DataId, FuncId, Function, ImportId, Site};
-use vun_lir_passes::{InlineCalls, Tidy};
+use vun_lir_passes::{Hoist, InlineCalls, Tidy};
 use vun_origin::{OriginId, OriginTable, Via};
 use vun_query::{Cx, Cycle, Query};
 use vun_sema::target::TargetOf;
@@ -64,8 +64,15 @@ impl Inlining {
         Some(Self { piece, unchecked: self.unchecked.clone() })
     }
 
-    /// Its LIR with the small functions it calls inlined, and tidied again.
+    /// Its LIR with the small functions it calls inlined, tidied again, and the addresses its
+    /// loops use made before them.
     fn inlined(&self, cx: &Cx<'_>) -> Result<Lir, Unlowered> {
+        let mut lir = self.merged(cx)?;
+        lir.function.hoist_addresses();
+        Ok(lir)
+    }
+
+    fn merged(&self, cx: &Cx<'_>) -> Result<Lir, Unlowered> {
         let mut lir = cx.get::<FunctionLir>(&self.piece).as_ref().clone()?;
         let mut called: Vec<FuncId> = lir.function.callees().collect();
         called.sort_unstable();
