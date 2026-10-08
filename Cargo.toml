@@ -169,7 +169,7 @@ prettyplease = "0.2"
 annotate-snippets = "0.12"
 anstyle = "1"
 ariadne = "0.6"
-blake3 = { version = "1", default-features = false, features = ["std", "pure"] }
+blake3 = { version = "1", default-features = false, features = ["std"] }
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 # Ed25519, already built for `ureq`'s TLS: the signatures of releases.
 ring = { version = "0.17", default-features = false }
