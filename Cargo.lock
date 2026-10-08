@@ -1298,14 +1298,12 @@ dependencies = [
  "vun-diag",
  "vun-dwarf",
  "vun-hash",
- "vun-index",
  "vun-inline",
  "vun-intern",
  "vun-items",
  "vun-lir",
  "vun-lir-passes",
  "vun-origin",
- "vun-query",
  "vun-target",
 ]
 
@@ -1886,6 +1884,7 @@ name = "vun-driver"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "vun-asm",
  "vun-backend",
  "vun-backend-c",
  "vun-backend-component",
@@ -2552,7 +2551,6 @@ dependencies = [
  "vun-object",
  "vun-origin",
  "vun-par",
- "vun-query",
  "vun-span",
  "vun-target",
  "vun-trace",
