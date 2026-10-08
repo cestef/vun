@@ -113,8 +113,15 @@
   )
 }
 
-// A card holding `body` on the scheme's surface, `title` over it.
-#let card(t, title, body) = {
-  set page(width: auto, height: auto, margin: t.unit * 3, fill: rgb(t.background))
-  stack(spacing: t.unit * 2.2, label(t, title, role: "muted", size: 1.1), body)
+// A card holding `body` on the scheme's surface, `title` over it. With a `radius` the card is a
+// rounded surface with a hairline edge, and the page around it is left clear.
+#let card(t, title, body, radius: 0pt) = {
+  let content = stack(spacing: t.unit * 2.2, label(t, title, role: "muted", size: 1.1), body)
+  if radius == 0pt {
+    set page(width: auto, height: auto, margin: t.unit * 3, fill: rgb(t.background))
+    content
+  } else {
+    set page(width: auto, height: auto, margin: 0pt, fill: none)
+    box(fill: rgb(t.background), radius: radius, stroke: 1pt + rgb(t.echo), inset: t.unit * 3, content)
+  }
 }

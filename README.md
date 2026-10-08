@@ -33,15 +33,8 @@ The same three programs written in each language, built by that language's compi
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/bench/run/dark.svg">
-    <img alt="Run time of fib, sieve and xorshift built by Vun, gcc, clang, rustc, Zig, Go and Hare" src="assets/cards/bench/run/light.svg" width="720">
-  </picture>
-</p>
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/bench/compile/dark.svg">
-    <img alt="Time to build the same programs with each compiler" src="assets/cards/bench/compile/light.svg" width="480">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/bench/dark.svg">
+    <img alt="Run time of fib, sieve and xorshift and the time to build them, for Vun, gcc, clang, rustc, Zig, Go and Hare" src="assets/cards/bench/light.svg" width="900">
   </picture>
 </p>
 

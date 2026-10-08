@@ -84,31 +84,36 @@
   stack(spacing: u * 0.15, ..drawn)
 }
 
-// One panel per program, rows for the variants, a gap where the language changes. `measure` is
-// "run" or "compile"; `shown` limits the variants.
-#let chart(t, measure, programs, shown: variants, panel: 11) = {
+// A column of a chart: the program it measures (none for the mean of them) and what is measured,
+// "run" or "compile".
+#let column(program, measure) = (program: program, measure: measure)
+
+// One column per entry of `columns`, rows for the variants, a gap where the language changes and
+// a wider one where the measure changes; `shown` limits the variants.
+#let chart(t, columns, shown: variants, panel: 11) = {
   let u = t.unit
   let width = panel * u
-  let top = programs.map(p => calc.max(..shown.map(name => bars(name, p, measure).map(b => b.value)).flatten())).map(m => m * 1.0)
+  let top = columns.map(c => calc.max(..shown.map(name => bars(name, c.program, c.measure).map(b => b.value)).flatten()))
 
   let cells = ()
   cells.push([])
-  for p in programs {
-    let title = if p == none { "mean of the three programs" } else { titles.at(p) }
-    let remark = if p != none and p in remarks { (label(t, remarks.at(p), role: "muted", size: 0.65),) } else { () }
-    cells.push(stack(spacing: u * 0.25, label(t, title, role: "muted", size: 0.85), ..remark))
+  for c in columns {
+    let title = if c.measure == "compile" { "build" } else { titles.at(c.program) }
+    let remark = if c.measure == "compile" { "mean of the three" } else { remarks.at(c.program, default: none) }
+    cells.push(stack(spacing: u * 0.25, label(t, title, role: "muted", size: 0.85), ..if remark != none { (label(t, remark, role: "muted", size: 0.65),) }))
   }
   let previous = none
   for name in shown {
     let language = language-of(name)
     if previous != none and language != previous {
-      cells.push(grid.cell(colspan: programs.len() + 1, v(u * 0.2)))
+      cells.push(grid.cell(colspan: columns.len() + 1, v(u * 0.2)))
     }
     previous = language
     cells.push(align(right + horizon, label(t, name, role: if language == "vun" { "accent" } else { "text" }, size: 0.8, weight: if language == "vun" { "bold" } else { "regular" })))
-    for (i, p) in programs.enumerate() { cells.push(align(horizon, row-bars(t, bars(name, p, measure), top.at(i), width))) }
+    for (i, c) in columns.enumerate() { cells.push(align(horizon, row-bars(t, bars(name, c.program, c.measure), top.at(i), width))) }
   }
-  grid(columns: (auto, ..programs.map(_ => auto)), column-gutter: u * 1.2, row-gutter: u * 0.55, ..cells)
+  let gutters = columns.enumerate().map(((i, c)) => if i > 0 and columns.at(i - 1).measure != c.measure { u * 3 } else { u * 1.2 })
+  grid(columns: (auto, ..columns.map(_ => auto)), column-gutter: (u * 1.2, ..gutters.slice(1)), row-gutter: u * 0.55, ..cells)
 }
 
 // A swatch of what a bar looks like, and what it says.
@@ -136,10 +141,13 @@
   label(t, setup, role: "muted", size: 0.7),
 )
 
+#let runs = data.programs.map(p => column(p, "run"))
+#let builds = (column(none, "compile"),)
+
 // `footnotes` false leaves the key to a caption.
 #let run(t, panel: 11, footnotes: true) = stack(
   spacing: t.unit * 1.6,
-  chart(t, "run", data.programs, panel: panel),
+  chart(t, runs, panel: panel),
   ..if footnotes {
     (key(
       t,
@@ -151,7 +159,7 @@
 
 #let compile(t, panel: 18, footnotes: true) = stack(
   spacing: t.unit * 1.6,
-  chart(t, "compile", (none,), panel: panel),
+  chart(t, builds, panel: panel),
   ..if footnotes {
     (key(
       t,
@@ -159,4 +167,18 @@
       [median of #data.results.first().compile.cold.n builds, lower is better],
     ),)
   },
+)
+
+// Both on the same rows, run times then build time.
+#let both(t, panel: 11) = stack(
+  spacing: t.unit * 1.8,
+  chart(t, runs + builds, panel: panel),
+  key(
+    t,
+    (
+      ("filled", "optimized"), ("outlined", "unoptimized"), ("accent", "vun"), ("whisker", "quartiles"),
+      ("thin", "rebuild, caches filled"),
+    ),
+    [median of #data.machine.samples runs and #data.results.first().compile.cold.n builds, lower is better],
+  ),
 )
