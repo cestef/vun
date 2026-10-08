@@ -2,7 +2,7 @@
 //! takes, over the unit's call graph, from the frame size of each function and the bound each
 //! import's declaration states.
 
-use vun_hash::Map;
+use vun_hash::{Map, Set};
 
 use vun_codec::{Decode, Encode};
 use vun_diag::Msg;
@@ -68,7 +68,8 @@ impl StackUse {
     pub fn of(unit: &Unit, frames: &[(FuncId, u64)]) -> Self {
         let frames: Map<FuncId, u64> = frames.iter().copied().collect();
         let count = unit.functions.len();
-        let mut walk = Walker { unit, frames, state: IndexVec::filled(Walk::Unseen, count) };
+        let own = IndexVec::filled(None, count);
+        let mut walk = Walker { unit, frames, state: IndexVec::filled(Walk::Unseen, count), own };
         let uses: Vec<_> = unit.functions.iter().map(|(f, _)| walk.visit(f)).collect();
         Self(uses.into())
     }
@@ -82,10 +83,19 @@ impl StackUse {
     }
 }
 
+/// What one function adds on its own: the most its frame and its plain calls take, with its tail
+/// calls to imports, and the functions it tail calls, which replace its frame.
+#[derive(Clone)]
+struct Own {
+    worst: u64,
+    tails: Vec<FuncId>,
+}
+
 struct Walker<'u> {
     unit: &'u Unit,
     frames: Map<FuncId, u64>,
     state: IndexVec<FuncId, Walk>,
+    own: IndexVec<FuncId, Option<Result<Own, Unbounded>>>,
 }
 
 impl Walker<'_> {
@@ -104,35 +114,50 @@ impl Walker<'_> {
     /// The most bytes of stack a call of `f` takes: the frame of each function it reaches by tail
     /// calls alone, which replace one another, and the deepest plain call each makes.
     fn deepest(&mut self, f: FuncId) -> Result<u64, Unbounded> {
-        let unit = self.unit;
         let mut reached = vec![f];
+        let mut seen: Set<FuncId> = std::iter::once(f).collect();
         let mut worst = 0;
         let mut next = 0;
         while let Some(&h) = reached.get(next) {
             next += 1;
-            let frame = self.frames.get(&h).copied().ok_or(Unbounded::Unreported(h))?;
-            let mut deepest = 0;
-            for (_, inst) in unit.functions[h].insts.iter() {
-                let InstKind::Call { callee, kind, .. } = &inst.kind else { continue };
-                let used = match callee {
-                    Callee::Func(g) if *kind == CallKind::Tail => {
-                        if !reached.contains(g) {
-                            reached.push(*g);
-                        }
-                        continue;
-                    }
-                    Callee::Func(g) => self.visit(*g)?,
-                    Callee::Import(i) => unit.imports[*i].stack_max.ok_or(Unbounded::Import(*i))?,
-                    Callee::Indirect(..) => return Err(Unbounded::Indirect(h)),
-                };
-                if *kind == CallKind::Tail {
-                    worst = worst.max(used);
-                } else {
-                    deepest = deepest.max(used);
-                }
-            }
-            worst = worst.max(frame + deepest);
+            let own = self.own_of(h)?;
+            worst = worst.max(own.worst);
+            reached.extend(own.tails.into_iter().filter(|&g| seen.insert(g)));
         }
         Ok(worst)
+    }
+
+    /// What `h` adds on its own, worked out once.
+    fn own_of(&mut self, h: FuncId) -> Result<Own, Unbounded> {
+        if let Some(own) = &self.own[h] {
+            return own.clone();
+        }
+        let own = self.measure(h);
+        self.own[h] = Some(own.clone());
+        own
+    }
+
+    fn measure(&mut self, h: FuncId) -> Result<Own, Unbounded> {
+        let unit = self.unit;
+        let frame = self.frames.get(&h).copied().ok_or(Unbounded::Unreported(h))?;
+        let (mut worst, mut deepest, mut tails) = (0, 0, Vec::new());
+        for (_, inst) in unit.functions[h].insts.iter() {
+            let InstKind::Call { callee, kind, .. } = &inst.kind else { continue };
+            let used = match callee {
+                Callee::Func(g) if *kind == CallKind::Tail => {
+                    tails.push(*g);
+                    continue;
+                }
+                Callee::Func(g) => self.visit(*g)?,
+                Callee::Import(i) => unit.imports[*i].stack_max.ok_or(Unbounded::Import(*i))?,
+                Callee::Indirect(..) => return Err(Unbounded::Indirect(h)),
+            };
+            if *kind == CallKind::Tail {
+                worst = worst.max(used);
+            } else {
+                deepest = deepest.max(used);
+            }
+        }
+        Ok(Own { worst: worst.max(frame + deepest), tails })
     }
 }

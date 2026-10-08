@@ -142,13 +142,22 @@ impl Allocation {
 impl Move {
     /// Orders a parallel copy so that nothing is overwritten before every move reading it has
     /// read it; a cycle is broken through `Loc::Temp`.
-    fn sequence(mut pending: Vec<Self>) -> Vec<Self> {
+    pub(crate) fn sequence(mut pending: Vec<Self>) -> Vec<Self> {
         pending.retain(|m| m.from != Source::At(m.to));
+        let mut reads: HashMap<Loc, usize> = HashMap::new();
+        for m in &pending {
+            if let Source::At(at) = m.from {
+                *reads.entry(at).or_default() += 1;
+            }
+        }
         let mut moves = Vec::with_capacity(pending.len());
         while !pending.is_empty() {
-            let read = |pending: &[Self], at: Loc| pending.iter().any(|m| m.from == Source::At(at));
-            if let Some(i) = pending.iter().position(|m| !read(&pending, m.to)) {
-                moves.push(pending.remove(i));
+            if let Some(i) = pending.iter().position(|m| reads.get(&m.to).is_none_or(|&n| n == 0)) {
+                let done = pending.remove(i);
+                if let Source::At(at) = done.from {
+                    *reads.entry(at).or_default() -= 1;
+                }
+                moves.push(done);
                 continue;
             }
             // Every pending move is on a cycle: save one destination, and read it from there.
@@ -160,6 +169,8 @@ impl Move {
                     m.from = Source::At(Loc::Temp);
                 }
             }
+            let rerouted = reads.insert(saved, 0).unwrap_or_default();
+            *reads.entry(Loc::Temp).or_default() += rerouted;
         }
         moves
     }

@@ -147,3 +147,18 @@ fn fixed_ranges_near_a_span_are_found_among_many() {
     assert_eq!(spans(150, 250), [(200, 202)]);
     assert_eq!(spans(101, 150), []);
 }
+
+#[test]
+fn a_parallel_copy_reads_each_place_before_it_is_written_and_breaks_a_cycle_through_the_temporary() {
+    use crate::plan::{Loc, Move, Source};
+    let value = vun_lir::Value::new;
+    let (a, b, c) = (Loc::Home(value(0)), Loc::Home(value(1)), Loc::Home(value(2)));
+    let copy = |from: Loc, to: Loc, v: usize| Move { from: Source::At(from), to, value: value(v) };
+    // `a = b; b = c` writes `a` first, as `b` is read for it; written the other way round, it waits.
+    let chain = vec![copy(b, a, 1), copy(c, b, 2)];
+    assert_eq!(Move::sequence(chain.clone()), chain);
+    assert_eq!(Move::sequence(chain.iter().rev().copied().collect()), chain);
+    // A swap saves one place and reads it from there.
+    let swap = Move::sequence(vec![copy(b, a, 1), copy(a, b, 0)]);
+    assert_eq!(swap, [copy(a, Loc::Temp, 0), copy(b, a, 1), copy(Loc::Temp, b, 0)]);
+}

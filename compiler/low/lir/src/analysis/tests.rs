@@ -188,3 +188,20 @@ fn a_cycle_of_tail_calls_takes_the_stack_of_its_largest_frame() {
     let unit = calling_as(origin, &[vec![(1, Tail)], vec![(0, Plain)], vec![]]);
     assert_eq!(StackUse::of(&unit, &frames).of_function(f(0)), Err(Unbounded::Recursive(f(0))));
 }
+
+#[test]
+fn a_chain_of_tail_calls_takes_the_stack_of_the_largest_frame_after_each_function() {
+    use crate::CallKind::Tail;
+    const LENGTH: usize = 2000;
+    let origin = origin(&OriginTable::new());
+    let f = crate::FuncId::new;
+    let calls: Vec<_> =
+        (0..LENGTH).map(|i| if i + 1 < LENGTH { vec![(i + 1, Tail)] } else { vec![] }).collect();
+    let unit = calling_as(origin, &calls);
+    let frames: Vec<_> = (0..LENGTH).map(|i| (f(i), if i == LENGTH / 2 { 4096 } else { 8 })).collect();
+    let uses = StackUse::of(&unit, &frames);
+    for i in 0..LENGTH {
+        let worst = if i <= LENGTH / 2 { 4096 } else { 8 };
+        assert_eq!(uses.of_function(f(i)), Ok(worst), "function {i}");
+    }
+}
