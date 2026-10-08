@@ -56,6 +56,11 @@ impl Fold for Function {
         let mut count = replaced.len();
         for (_, data) in self.blocks.iter_mut() {
             data.insts.retain(|inst| !dropped.contains(inst));
+            // A block no path reaches is visited after the rest, in no order of definitions, so
+            // an operation there may read a value another folded after it was read.
+            for &inst in &data.insts {
+                self.insts[inst].kind.map_values(|v| replaced.resolve(v));
+            }
             data.term.map_values(|v| replaced.resolve(v));
         }
         let blocks: Vec<Block> = self.blocks.iter().map(|(b, _)| b).collect();

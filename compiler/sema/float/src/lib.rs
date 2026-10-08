@@ -46,6 +46,12 @@ impl Binary {
         Self { format, bits: format.sign(negative) | format.exponent_all() << format.fraction() }
     }
 
+    /// The finite float of `format` greatest in magnitude, with the sign `negative`.
+    #[must_use]
+    pub fn largest(format: Format, negative: bool) -> Self {
+        Self { format, bits: Self::infinity(format, negative).bits - 1 }
+    }
+
     #[must_use]
     pub fn zero(format: Format, negative: bool) -> Self {
         Self { format, bits: format.sign(negative) }

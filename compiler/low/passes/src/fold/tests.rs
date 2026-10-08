@@ -42,3 +42,34 @@ fn a_function_folds_what_became_constant_and_branches_on_it() {
     assert_eq!(func.constant(wide), Some((Scalar::I32, 0xffff_fffe)));
     assert_eq!(func.blocks[Block::new(0)].term, Terminator::Jump(to(yes)));
 }
+
+#[test]
+fn an_operation_in_an_unreached_block_reads_what_another_such_block_folded_away() {
+    use vun_lir::{BinOp, Terminator};
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: Vec::new(),
+        result: Some(vun_lir::AbiType::Int(Scalar::I32, vun_lir::Ext::Sign)),
+        variadic: None,
+        convention: None,
+    };
+    let mut build = Builder::new(Linkage::Internal, signature, at);
+    let zero = build.constant(Scalar::I32, 0, at);
+    build.terminate(Terminator::Return(Some(zero)));
+    // Blocks nothing enters, as code after a `break` is: the one reading comes first.
+    let reading = build.block(&[], at);
+    let defining = build.block(&[Scalar::I32], at);
+    build.switch_to(defining);
+    let param = build.params(defining)[0];
+    let same =
+        build.push(InstKind::Binary { op: BinOp::Add, a: param, b: zero }, Some(Scalar::I32), at).unwrap();
+    build.terminate(Terminator::Return(Some(same)));
+    build.switch_to(reading);
+    let twice =
+        build.push(InstKind::Binary { op: BinOp::Add, a: same, b: same }, Some(Scalar::I32), at).unwrap();
+    build.terminate(Terminator::Return(Some(twice)));
+    let mut func = build.finish();
+    assert_eq!(func.fold(), 1, "the addition of zero");
+}

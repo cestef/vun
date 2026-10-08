@@ -15,6 +15,12 @@ what the corpus waits for. Decisions awaiting the owner are the rows marked `pro
 
 ## Next
 
+Fuzzing (`vun debug smith`, spec 11, [`open/testing.md`](open/testing.md)): a 2000-program campaign
+(seeds 30000.., run reach) found two bugs, both fixed (an unreached block read a value `fold`
+dropped; arm64 `f16` truncation to `i32` past the format's range). Next: rerun it on am3 (`scripts/remote
+--host am3.wg`, `--jobs 3 --chunk 5`, `--warm` once after a rebuild), triage what it finds.
+Progress bars and `-v` are in; give long commands a `Visit`/`shell.bar` as they are written.
+
 The owner's queue, in order:
 
 1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).

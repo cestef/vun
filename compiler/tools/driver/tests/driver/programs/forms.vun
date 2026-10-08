@@ -11,6 +11,10 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
     if !(f <= 7.0 and !(f <= 6.5)) { failed +|= 1; }
     if lang.float.mul_add(f64, f, 2.0, 1.0) != 15.0 { failed +|= 1; }
     if f.truncate(i8) != 7 { failed +|= 1; }
+    // A half float past its range cannot hold the bounds of an integer, and still truncates to them.
+    half: f16 = if n == 1 { (65504.0).nearest(f32).nearest(f16) } else { (0.0).nearest(f32).nearest(f16) };
+    below: f16 = if n == 1 { (-65504.0).nearest(f32).nearest(f16) } else { (0.0).nearest(f32).nearest(f16) };
+    if (below - half).truncate(i32) != -2147483648 or (half + half).truncate(i32) != 2147483647 { failed +|= 1; }
     // Integers compared as a total order.
     two: u8 = 2;
     match lang.int.compare(0..256, 0..256, &n, &two) { .less => {}, _ => { failed +|= 1; } }

@@ -70,17 +70,32 @@ impl FnLower<'_, '_, '_> {
             (Integer::from(-1), Integer::power_of_two(bits))
         };
         let (under, over) = if signed { (Cond::FLt, Cond::FGe) } else { (Cond::FLe, Cond::FGe) };
-        let bound = constant(self, &least);
+        // A bound past the format's range (`f16` holds up to 65504) rounds to an infinity, which
+        // nothing is below: the least finite float stands for it, and only the infinity is under
+        // it. Its integer is put in after the conversion, like the greatest.
+        let reaches = Binary::of_integer(format, &least) != Binary::infinity(format, true);
+        let bound = if reaches {
+            constant(self, &least)
+        } else {
+            let largest = Binary::largest(format, true);
+            self.b.constant(float, u128::from(largest.bits), at)
+        };
         let under = self.b.compare(under, x, bound, at);
         let top = constant(self, &past);
         let over = self.b.compare(over, x, top, at);
         let ordered = self.b.compare(Cond::FEq, x, x, at);
-        let floor = if signed { bound } else { zero };
+        let floor = if signed && reaches { bound } else { zero };
         let inside = self.b.select(under, floor, x, at);
         let inside = self.b.select(over, zero, inside, at);
         let inside = self.b.select(ordered, inside, zero, at);
         let op = if signed { CastOp::FToS } else { CastOp::FToU };
         let value = self.b.cast(op, inside, int, at);
+        let value = if signed && !reaches {
+            let least = self.b.constant(int, int.truncate(least.to_i128().ok_or_else(unsupported)?), at);
+            self.b.select(under, least, value, at)
+        } else {
+            value
+        };
         let greatest = &past - &Integer::from(1);
         let greatest = self.b.constant(int, int.truncate(greatest.to_i128().ok_or_else(unsupported)?), at);
         let value = self.b.select(over, greatest, value, at);
