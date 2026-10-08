@@ -13,6 +13,7 @@ mod conformance;
 mod derive;
 mod lookup;
 mod requirement;
+mod scope;
 
 use std::sync::Arc;
 
@@ -21,11 +22,11 @@ pub use conformance::{Conformance, Shortfall, Unmet};
 pub use derive::{Derive, Derives};
 pub use lookup::{Method, Required, Witness, Witnesses};
 pub use requirement::{Implemented, Implementing, Requirement};
+pub use scope::{PackageDerives, PackageImpls, Scope};
 use vun_codec::{Decode, Encode};
 use vun_desugar::CALLS;
-use vun_hir::db::{FileRef, Package, PackageId};
+use vun_hir::db::FileRef;
 use vun_hir::tree::{Arg, Entry, ExprId, ExprKind, Member, each_entry};
-use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::lang::Lang;
@@ -249,38 +250,5 @@ impl Env<'_, '_> {
             })
             .collect::<Option<_>>()?;
         Some(Holed { constructor, args })
-    }
-}
-
-impl Env<'_, '_> {
-    /// The files whose impls this file sees: itself, the namespaces of its package, and those of every
-    /// package its package depends on, directly or not (spec 02, section 3: an impl lives in the
-    /// package of its type or of its interface, which the code using both depends on); and those
-    /// of `home`, the file a type is declared in, and its package, where a generic body
-    /// instantiated with the type finds the type's impls.
-    #[must_use]
-    pub fn impl_files(&self, home: Option<&FileRef>) -> Vec<FileRef> {
-        let mut packages: Vec<PackageId> = vec![self.file.package];
-        let mut i = 0;
-        while let Some(&package) = packages.get(i) {
-            for dep in &self.cx.get::<Package>(&package).deps {
-                if let Ok(dep) = &dep.package
-                    && !packages.contains(dep)
-                {
-                    packages.push(*dep);
-                }
-            }
-            i += 1;
-        }
-        packages.extend(home.map(|f| f.package).filter(|home| !packages.contains(home)));
-        let mut files = vec![self.file.clone()];
-        files.extend(home.filter(|&home| *home != self.file).cloned());
-        for package in packages {
-            let data = self.cx.get::<Package>(&package);
-            let namespaces = data.files.iter().filter(|path| data.namespace_of(path).is_some());
-            let paths = namespaces.map(|path| FileRef { package, path: Symbol::intern(path) });
-            files.extend(paths.filter(|f| *f != self.file && Some(f) != home));
-        }
-        files
     }
 }

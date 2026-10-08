@@ -30,9 +30,10 @@ impl Checker<'_, '_, '_> {
 
     /// Reports `decl` when an impl before it registers a witness for a pair it covers too.
     fn unique(&mut self, decl: &ImplDecl) {
-        let cx = self.env.cx;
-        let impls = self.env.impl_files(None).into_iter().flat_map(|f| cx.get::<Impls>(&f).to_vec());
-        let Some(first) = impls
+        let Some(first) = self
+            .env
+            .impls(None)
+            .into_iter()
             .filter(|other| other.decl < decl.decl && other.overlaps(decl))
             .min_by(|a, b| a.decl.cmp(&b.decl))
         else {

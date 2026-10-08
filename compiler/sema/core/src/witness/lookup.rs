@@ -13,7 +13,7 @@ use vun_sema_ty::call::{Func, Instance};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, TyKind, Value};
 
-use super::{Candidate, Conformance, Derive, Derives, ImplDecl, Impls, Source, Unmet};
+use super::{Candidate, Conformance, ImplDecl, Source, Unmet};
 use crate::decl::DeclValue;
 use crate::env::Env;
 use crate::eval::Call;
@@ -57,15 +57,14 @@ impl Query for Witnesses {
             TyKind::Nominal(nominal) => Some(&nominal.literal.file),
             _ => None,
         };
-        let files = env.impl_files(home);
-        let impls = files.iter().flat_map(|f| cx.get::<Impls>(f).to_vec());
-        let mut candidates: Vec<Candidate> = impls
+        let mut candidates: Vec<Candidate> = env
+            .impls(home)
+            .into_iter()
             .filter(|decl| Witness::covering(decl, *ty).is_some())
             .map(|decl| Candidate { ty: *ty, source: Source::Impl(decl) })
             .collect();
         // An interface a type has no impl of may derive one from the type's parts.
-        let derives: Vec<Derive> = files.iter().flat_map(|f| cx.get::<Derives>(f).to_vec()).collect();
-        for derive in derives {
+        for derive in env.derives(home) {
             if candidates.iter().any(|c| c.implements(&derive.interface)) {
                 continue;
             }
@@ -274,8 +273,8 @@ impl Env<'_, '_> {
             TyKind::Nominal(nominal) => Some(&nominal.literal.file),
             _ => None,
         };
-        let impls = self.impl_files(home).into_iter().flat_map(|f| self.cx.get::<Impls>(&f).to_vec());
-        impls
+        self.impls(home)
+            .into_iter()
             .filter(|d| d.holed.as_ref().is_some_and(|h| h.constructor == constructor))
             .filter_map(|d| Witness::holed(self.cx, &d, ty, args))
             .find_map(|w| w.method(self.cx, function))

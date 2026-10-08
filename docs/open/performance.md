@@ -1,7 +1,12 @@
 # Open: compile speed
 
 - A cold `vun test lib/std` takes ~4.5 s on `am3.wg`, spread over `mir`, `typed`, lint rules run as
-  Vun code (18 000 compile-time calls) and writing the memos (0.6 s).
+  Vun code (18 000 compile-time calls) and writing the memos (0.7 s for a 59 MB project file of
+  `lib/std`). What the file holds is mostly the dependency edges: `typed` 1.2M reads, `metered_call`
+  960k, `mir` 590k (`vun debug queries lib/std/std.vun`); the library-shared file is 0.4 MB, so
+  nothing is encoded twice. The witness lookup read one `Impls` and `Derives` per file of the
+  toolchain for every type (2.4M reads, 367 ms own); it reads one memo per package now
+  (`PackageImpls`, 55k reads, 57 ms).
   `VUN_LOG=vun_lir_passes::promote=trace` reports each slot promotion's cost.
 - Truly cold (empty store), threads wait ~1.1 s on the same `std` claims, once per toolchain.
 - A cold run saves the shared file through one writer (~37 ms for 4.3 MB): values encoded, copied
@@ -21,3 +26,10 @@
   (`VUN_QUERY_CHECK=1` panics in `reuse.rs`). A session whose target is not chosen now keeps no
   queries (`Session::untargeted`), which hides it; the cause is a read of the unset `TargetOf`
   input, saved with the memo but not held against the value set later.
+- `Concrete::propagate` reaches its fixed point one constant level per scan of the body
+  (`concrete/mod.rs`); a worklist over writes would do it in one.
+- `Table::entries` hashes every key again to test that it is canonical, on each save and load
+  (`table/mod.rs`); the hash could be kept in the `Entry`.
+- The lint pass rebuilds a node's description once per lint that visits it (`lint/src/rule.rs`).
+- `Cx` verify-ahead results (`settled`, `cx/settle.rs`) are never pruned: a long-lived `Db`, the
+  language server's, grows with every edit.
