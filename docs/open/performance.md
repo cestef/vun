@@ -56,7 +56,7 @@
   Cold counts vary ~1% between runs (warm 0.0%); find why (a time- or address-dependent order).
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`
-  8.4 M (2.3 ms), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries
+  8.4 M (2.3 ms, measured at 400 000 flags; the benchmark sieves 4 000 000 now), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries
   carry no function names (`f129`), so `profile` cannot name a hot function there: emit symbols
   for local functions. Nothing yet compares the backends instruction for instruction in one
   report; run the same `run-*` with `--backend`.

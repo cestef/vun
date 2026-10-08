@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""Vun against C and Rust on the programs of corpus/bench, written to assets/bench/results.json.
+
+    scripts/remote --host am3.wg scripts/bench-compare [--samples N] [--core CPU] [--vun PATH]
+
+Method, so the numbers compare:
+  - one algorithm, one source per language (corpus/bench/<p>.vun, corpus/bench/ref/<language>/<p>.*), wrapping
+    integer arithmetic everywhere, the same constants; every executable must print what the
+    reference prints, or the run aborts;
+  - every executable is a native process timed from spawn to exit (startup included, which the
+    `floor` row measures: an empty C program), pinned to one core with taskset, on the machine's
+    fastest core by default, after warm-up runs; the median of the samples is reported with the
+    quartiles;
+  - the optimized and the unoptimized builds of each compiler are both reported, because the native
+    backend is a single-pass one: its class is -O0, its ceiling -O2;
+  - compile time is the median of fresh builds. A toolchain that keeps what it computed (Vun's
+    store, the caches of Zig, Go and Hare) is measured cold (empty caches) and warm (an unchanged
+    rebuild with the caches an earlier build filled); gcc, clang and rustc keep nothing.
+"""
+
+import argparse
+import json
+import os
+import shutil
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+BENCH = ROOT / "corpus" / "bench"
+RESULTS = ROOT / "assets" / "bench" / "results.json"
+PROGRAMS = ("fib", "sieve", "mix")
+WARMUP = 3
+FLOOR = "floor"
+
+
+@dataclass(frozen=True)
+class Variant:
+    """One way of building a program: a name for the charts, the group it is drawn in."""
+
+    name: str
+    language: str
+    level: str
+    command: tuple[str, ...]  # with {src}, {out} and {tools}
+    env: tuple[tuple[str, str], ...] = ()  # values with {tools} and {cache}
+
+    @property
+    def cached(self) -> bool:
+        """Whether the toolchain keeps what it computed between builds: Vun's store, Zig's, Go's and Hare's caches."""
+        return self.language == "vun" or any("{cache}" in value for _, value in self.env)
+
+    def source(self, program: str) -> Path:
+        if self.language == "vun":
+            return BENCH / f"{program}.vun"
+        extension = {"c": "c", "rust": "rs", "zig": "zig", "go": "go", "hare": "ha"}[self.language]
+        return BENCH / "ref" / self.language / f"{program}.{extension}"
+
+
+def vun_variants(vun: str) -> list[Variant]:
+    return [
+        Variant(f"vun {backend}", "vun", "release", (vun, "build", "-r", "--backend", backend, "-o", "{out}", "{src}"))
+        for backend in ("native", "cranelift", "c")
+    ]
+
+
+VARIANTS_REFERENCE = [
+    Variant("gcc -O0", "c", "none", ("gcc", "-O0", "-o", "{out}", "{src}")),
+    Variant("gcc -O2", "c", "release", ("gcc", "-O2", "-o", "{out}", "{src}")),
+    Variant("clang -O0", "c", "none", ("clang", "-O0", "-o", "{out}", "{src}")),
+    Variant("clang -O2", "c", "release", ("clang", "-O2", "-o", "{out}", "{src}")),
+    Variant("rustc -O0", "rust", "none", ("rustc", "-C", "opt-level=0", "-o", "{out}", "{src}")),
+    Variant("rustc -O2", "rust", "release", ("rustc", "-C", "opt-level=2", "-o", "{out}", "{src}")),
+]
+
+ZIG = ("{tools}/zig/zig", "build-exe", "-lc")
+ZIG_ENV = (("ZIG_GLOBAL_CACHE_DIR", "{cache}/zig"),)
+GO_ROOT = "{tools}/root/usr/lib/golang"
+GO_ENV = (("GOROOT", GO_ROOT), ("GOCACHE", "{cache}/go"), ("GOTOOLCHAIN", "local"), ("GOFLAGS", ""))
+HARE_ENV = (
+    ("PATH", "{tools}/hare-out/bin:{tools}/root/usr/bin:/usr/bin:/bin"),
+    ("HAREPATH", "{tools}/hare-out/src/hare/stdlib"),
+    ("HARECACHE", "{cache}/hare"),
+)
+
+VARIANTS_OTHER = [
+    Variant("zig Debug", "zig", "none", (*ZIG, "-O", "Debug", "-femit-bin={out}", "{src}"), ZIG_ENV),
+    Variant("zig ReleaseFast", "zig", "release", (*ZIG, "-O", "ReleaseFast", "-femit-bin={out}", "{src}"), ZIG_ENV),
+    Variant("go -N -l", "go", "none", (GO_ROOT + "/bin/go", "build", "-gcflags=all=-N -l", "-o", "{out}", "{src}"), GO_ENV),
+    Variant("go", "go", "release", (GO_ROOT + "/bin/go", "build", "-o", "{out}", "{src}"), GO_ENV),
+    Variant("hare", "hare", "release", ("{tools}/hare-out/bin/hare", "build", "-o", "{out}", "{src}"), HARE_ENV),
+]
+
+
+def quartiles(samples: list[float]) -> dict[str, float]:
+    q = statistics.quantiles(samples, n=4, method="inclusive")
+    return {"median": q[1], "q1": q[0], "q3": q[2], "min": min(samples), "max": max(samples), "n": len(samples)}
+
+
+def timed(command: list[str], env: dict[str, str] | None = None, cwd: Path | None = None) -> tuple[float, bytes]:
+    start = time.perf_counter()
+    done = subprocess.run(command, capture_output=True, env=env, cwd=cwd, check=False)
+    elapsed = time.perf_counter() - start
+    if done.returncode != 0:
+        sys.exit(f"{' '.join(command)} failed:\n{done.stderr.decode(errors='replace')}")
+    return elapsed, done.stdout
+
+
+def pinned(core: int, command: list[str]) -> list[str]:
+    return ["taskset", "-c", str(core), *command]
+
+
+class Bench:
+    def __init__(self, args: argparse.Namespace) -> None:
+        self.args = args
+        self.scratch = Path(tempfile.mkdtemp(prefix="vun-bench-"))
+        self.variants = vun_variants(args.vun) + VARIANTS_REFERENCE + VARIANTS_OTHER
+        self.reference: dict[str, bytes] = {}
+
+    def build(self, variant: Variant, program: str, dest: Path, cache: Path | None = None) -> float:
+        dest.mkdir(parents=True, exist_ok=True)
+        src = dest / variant.source(program).name
+        shutil.copy(variant.source(program), src)
+        out = dest / "exe"
+        env = dict(os.environ)
+        cache = cache or self.scratch / "cache"
+        env["VUN_STORE"] = str(cache / "vun")
+        fill = {"tools": self.args.tools, "cache": cache, "src": src, "out": out}
+        env.update({name: value.format(**fill) for name, value in variant.env})
+        command = [part.format(**fill) for part in variant.command]
+        elapsed, _ = timed(command, env=env, cwd=dest)
+        return elapsed
+
+    def compile_times(self, variant: Variant, program: str) -> dict[str, dict[str, float]]:
+        samples = self.args.build_samples
+        if not variant.cached:
+            times = []
+            for i in range(samples):
+                dest = self.scratch / f"b-{variant.name}-{program}-{i}"
+                times.append(self.build(variant, program, dest))
+                shutil.rmtree(dest)
+            return {"cold": quartiles(times)}
+        cold, warm = [], []
+        for i in range(samples):
+            dest = self.scratch / f"b-{variant.name}-{program}-{i}"
+            cache = Path(tempfile.mkdtemp(dir=self.scratch))
+            cold.append(self.build(variant, program, dest, cache))
+            warm.append(self.build(variant, program, dest, cache))
+            shutil.rmtree(dest)
+            shutil.rmtree(cache)
+        return {"cold": quartiles(cold), "warm": quartiles(warm)}
+
+    def run_times(self, exe: Path, program: str) -> dict[str, float]:
+        command = pinned(self.args.core, [str(exe)])
+        for _ in range(WARMUP):
+            timed(command)
+        samples = []
+        for _ in range(self.args.samples):
+            elapsed, stdout = timed(command)
+            if stdout != self.reference[program]:
+                sys.exit(f"{exe} printed {stdout!r}, expected {self.reference[program]!r}")
+            samples.append(elapsed)
+        return quartiles(samples)
+
+    def floor(self) -> dict[str, float]:
+        src = self.scratch / "floor.c"
+        src.write_text("int main(void) { return 0; }\n")
+        exe = self.scratch / "floor"
+        subprocess.run(["gcc", "-O2", "-o", str(exe), str(src)], check=True)
+        command = pinned(self.args.core, [str(exe)])
+        for _ in range(WARMUP):
+            timed(command)
+        return quartiles([timed(command)[0] for _ in range(self.args.samples)])
+
+    def measure(self) -> dict:
+        gcc0 = next(v for v in self.variants if v.name == "gcc -O0")
+        for program in PROGRAMS:
+            dest = self.scratch / f"ref-{program}"
+            self.build(gcc0, program, dest)
+            self.reference[program] = timed([str(dest / "exe")])[1]
+        results = []
+        for variant in self.variants:
+            for program in PROGRAMS:
+                dest = self.scratch / f"run-{variant.name}-{program}"
+                self.build(variant, program, dest)
+                exe = dest / "exe"
+                results.append(
+                    {
+                        "variant": variant.name,
+                        "language": variant.language,
+                        "level": variant.level,
+                        "program": program,
+                        "run": self.run_times(exe, program),
+                        "size": exe.stat().st_size,
+                        "compile": self.compile_times(variant, program),
+                    }
+                )
+                print(f"{variant.name:12} {program:6} {results[-1]['run']['median'] * 1000:8.2f} ms", file=sys.stderr)
+        return {
+            "machine": self.machine(),
+            "floor": self.floor(),
+            "programs": list(PROGRAMS),
+            "results": results,
+        }
+
+    def machine(self) -> dict:
+        def first_line(*command: str) -> str:
+            return subprocess.run(command, capture_output=True, text=True, check=False).stdout.splitlines()[0]
+
+        return {
+            "host": first_line("hostname"),
+            "kernel": first_line("uname", "-r"),
+            "core": self.args.core,
+            "samples": self.args.samples,
+            "warmup": WARMUP,
+            "tools": {
+                "gcc": first_line("gcc", "--version"),
+                "clang": first_line("clang", "--version"),
+                "rustc": first_line("rustc", "--version"),
+                "vun": first_line(self.args.vun, "--version"),
+                "zig": first_line(f"{self.args.tools}/zig/zig", "version"),
+                "go": first_line(f"{self.args.tools}/root/usr/lib/golang/bin/go", "version"),
+                "hare": first_line(f"{self.args.tools}/hare-out/bin/hare", "version"),
+            },
+            "revision": self.args.revision,
+        }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--samples", type=int, default=21)
+    parser.add_argument("--build-samples", type=int, default=5)
+    parser.add_argument("--core", type=int, default=7)
+    parser.add_argument("--tools", type=Path, default=Path.home() / "bench-tools", help="Zig, Go and Hare, unpacked")
+    parser.add_argument("--vun", default=str(ROOT / "target" / "release" / "vun"))
+    parser.add_argument("--revision", default="", help="the commit measured, for the record")
+    parser.add_argument("--output", type=Path, default=RESULTS)
+    args = parser.parse_args()
+    bench = Bench(args)
+    try:
+        data = bench.measure()
+    finally:
+        shutil.rmtree(bench.scratch, ignore_errors=True)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"wrote {args.output}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

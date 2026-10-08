@@ -27,6 +27,24 @@ With a recent (1.90+ maybe?) Rust toolchain and a C compiler:
 cargo run -q -p vun-cli -- run corpus/accept/programs/tour.vun
 ```
 
+## Performance
+
+The same three programs written in each language, built by that language's compiler and timed on one machine.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/bench/run/dark.svg">
+    <img alt="Run time of fib, sieve and xorshift built by Vun, gcc, clang, rustc, Zig, Go and Hare" src="assets/cards/bench/run/light.svg" width="720">
+  </picture>
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/cards/bench/compile/dark.svg">
+    <img alt="Time to build the same programs with each compiler" src="assets/cards/bench/compile/light.svg" width="480">
+  </picture>
+</p>
+
 ## Learn more
 
 - [Whitepaper](whitepaper/main.typ): the design in one read.

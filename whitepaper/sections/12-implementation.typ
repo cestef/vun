@@ -1,5 +1,5 @@
 #import "../template.typ": *
-#import "../figures.typ": pipeline, code-size
+#import "../figures.typ": pipeline, code-size, bench-run, bench-compile
 
 = Implementation <sec-implementation>
 
@@ -113,9 +113,7 @@ earlier groups: `base` < `lang` < `isa`, `object` < `front` < `sema` < `mid` < `
 
 The native backend follows TPDE @tpde: one pass over LIR, instructions selected from snippets
 declared as data, and every instruction of each architecture declared once in a table that the
-encoder, the printer and instruction selection read. A loop of 50 million steps of a linear
-congruential generator runs in 56 ms through it, against 51 ms for the C backend compiled with
-`-O2`. This is one small program and says little about larger ones.
+encoder, the printer and instruction selection read.
 
 A Pico 2 W (RP2350) board package starts, initializes memory, reports faults and returns to its boot
 ROM on hardware; its timer, interrupts and a serial link are not working yet, and bare targets
@@ -148,3 +146,45 @@ Backends and linkers are chosen per target and profile from lists the target dec
 those the machine's toolchain provides. QBE and LLVM backends and the MSVC linker are
 declared as interfaces without an implementation; a program asking for one is refused with a
 diagnostic naming what is available.
+
+== Measurements <sec-measurements>
+
+@fig-bench-run compares Vun with C (gcc and clang), Rust, Zig, Go and Hare on three small
+programs: the recursive Fibonacci number of 34, a sieve of Eratosthenes over four million flags,
+and 40 million steps of a xorshift generator folded into a hash. Each program is written in every
+language with the same algorithm, the same constants and wrapping integer arithmetic; each
+executable must print the reference output; each is timed as a process, 21 times, pinned to one
+core of an aarch64 machine. A toolchain with optimization levels appears twice, because the native
+backend is a single pass over LIR and belongs with the unoptimized builds; Vun's C backend hands its
+output to gcc, and its builds are all made with the release profile. Rust, Go and Hare keep their
+bounds checks, which C and Zig's release build do not have.
+
+On `fib` and `sieve` the native backend runs in 30 ms and 18 ms, against 30 ms and 31 ms for gcc
+without optimization, 38 ms and 20 ms for clang and 42 ms and 49 ms for rustc: in the range of the
+other unoptimized builds. The
+C backend matches gcc `-O2` (9 ms and 12 ms against 10 ms and 11 ms). The xorshift loop is one serial
+chain of multiplications, so every optimizing build ties at 70 to 78 ms, as does the native
+backend, and the unoptimized builds of C, Rust and Zig take two and a half to four times as long;
+the program does not separate the backends that keep the state in registers. Three small programs on one machine say little about larger ones, and two runs
+of the whole set differed by up to 10% on the same builds, which is the size below which a
+difference in @fig-bench-run is not a claim.
+
+#figure(
+  bench-run,
+  caption: [Run time of the same programs built by each compiler. Filled bars are builds with
+    optimizations, outlined bars builds without; whiskers span the quartiles of 21 runs.],
+) <fig-bench-run>
+
+@fig-bench-compile gives the time to build them. A Vun build from an empty store, which parses and
+checks the library, takes about 0.3 s with the native backend and 0.5 s through C; an unchanged
+rebuild from the store the first one filled takes 36 ms. The C compilers take 30 to 50 ms and rustc
+about 95 ms, none of them keeping anything between builds. Zig, Go and Hare, which keep a cache,
+take 0.5 to 3.6 s from empty caches and 22 to 97 ms when it is filled (Zig's debug build compiles
+its program again every time, 1.9 s). Compiling from an empty cache is where Vun is slowest
+relative to the C compilers, and is the subject of the open work on parse and check speed.
+
+#figure(
+  bench-compile,
+  caption: [Time to build the programs, as the mean of the three. The bar is a build from empty
+    caches, the thin bar an unchanged rebuild with the caches the first one filled.],
+) <fig-bench-compile>

@@ -4,6 +4,7 @@
 #import "@preview/cetz:0.4.2"
 #import "@preview/lilaq:0.5.0" as lq
 #import "template.typ": accent, small-size
+#import "/assets/diagrams/chart.typ" as chart
 
 #let ink = luma(35)
 #let faint = luma(150)
@@ -191,3 +192,9 @@
     lq.hbar(lines, ys, fill: accent.lighten(40%), stroke: 0.4pt + accent, width: 0.6),
   )
 }
+
+// Run and build times against other languages (section on implementation): the cards' charts in
+// the brand's mono scheme, with the paper's accent.
+#let bench-theme = (..toml("/assets/palette.toml").mono, accent: accent.to-hex(), unit: 7.4pt)
+#let bench-run = chart.run(bench-theme, panel: 7.5, footnotes: false)
+#let bench-compile = chart.compile(bench-theme, panel: 16, footnotes: false)

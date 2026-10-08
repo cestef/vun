@@ -86,6 +86,7 @@ pub(crate) const ALL: &[Document] = &[
     card!("release", PIXEL),
     // Twice the cards' density, for documents that show them at their size on dense screens.
     card!("diagrams", &[Format::Png { ppi: 144 }, Format::Svg]),
+    card!("bench", &[Format::Png { ppi: 288 }, Format::Svg]),
 ];
 
 const FAILED: DiagId = DiagId::new("xtask.typeset.failed");

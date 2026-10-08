@@ -321,6 +321,16 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   CARGO_TARGET_DIR=target/profiling cargo build --release -p vun-cli` and pass it as `--exe`.
   Run it on a remote with `valgrind` (`am3.wg`). Callgrind stops on an instruction it does not
   know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
+- Against other languages: `scripts/remote --host am3.wg scripts/bench-compare` builds the programs of
+  `corpus/bench` and their ports (`corpus/bench/ref/<language>/`: C, Rust, Zig, Go, Hare) and writes
+  `assets/bench/results.json`; `cargo xtask typeset` draws it as the charts of `assets/cards/bench`
+  (the README) and of the whitepaper's implementation section. The ports use the same algorithm and
+  constants with wrapping arithmetic, and every executable's output is compared with a reference.
+  Each is timed as a process, pinned to the fastest core, over `--samples` runs after warm-up, with
+  its optimized and its unoptimized build both reported; compile times are fresh builds, those that keep a cache (Vun,
+  Zig, Go, Hare) from empty caches (cold) and rebuilt with the caches a build filled (warm). Zig, Go and Hare are unpacked into
+  `~/bench-tools` (`--tools`): Zig from its release tarball, Go and `harec` from the Fedora
+  packages, Hare's standard library built from the tag that matches `harec`.
 - Memory per nesting level of compile-time calls: evaluate a recursion through an annotation
   (`depth := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + depth(n - 1)).sat(u32) } };
   c: Int(depth(N)..=depth(N)) = 1;`) for two depths, each from nothing (`rm -rf .vun`,
