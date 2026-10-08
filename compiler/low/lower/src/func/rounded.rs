@@ -88,7 +88,11 @@ impl FnLower<'_, '_, '_> {
         let range = ty.interval().ok_or_else(unsupported)?;
         let cut = |e: &Extended, edge: &Integer| e.finite().filter(|n| *n != edge).and_then(Integer::to_i128);
         let least = if signed { least } else { Integer::zero() };
-        let cuts = Cuts { lo: cut(range.lo(), &least), hi: cut(range.hi(), &(&past - &Integer::from(1))) };
+        let cuts = Cuts {
+            lo: cut(range.lo(), &least),
+            hi: cut(range.hi(), &(&past - &Integer::from(1))),
+            apart: None,
+        };
         Ok(self.clamp(value, int, signed, &cuts))
     }
 }

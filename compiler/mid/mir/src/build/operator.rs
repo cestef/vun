@@ -2,6 +2,7 @@
 //! included. The operands are passed as the function's parameters ask, each reached through
 //! its borrows, then borrowed in the mode its parameter is written with, or read.
 
+use vun_desugar::Access;
 use vun_hir::tree::{Arg, Entry, ExprId};
 use vun_origin::OriginId;
 use vun_sema::callable::Callable;
@@ -45,7 +46,9 @@ impl Builder<'_, '_, '_> {
             }
         };
         fill(&mut values);
-        for side in std::iter::once(receiver).chain(args) {
+        let sides: Vec<Side> = std::iter::once(receiver).chain(args).collect();
+        let last = sides.len() - 1;
+        for (at, side) in sides.into_iter().enumerate() {
             let mode = modes.get(values.len()).copied().flatten();
             // An operand that is no borrow, passed by value, is read as any argument is.
             if let (None, Side::Expr(expr)) = (mode, &side)
@@ -59,6 +62,18 @@ impl Builder<'_, '_, '_> {
             let place = match side {
                 Side::Expr(expr) => self.through_borrows(expr)?,
                 Side::Matched(place, ty) => Self::reach(place, ty),
+            };
+            // A number lent to the call is copied first when an operand is still to be built, since
+            // the later operands run after it is read, not while it is lent.
+            let place = match mode {
+                Some(mode)
+                    if at < last
+                        && mode.access() == Access::Shared
+                        && place.ty(self.env.cx, &self.locals).is_some_and(|t| t.is_number()) =>
+                {
+                    Place::of(self.temp_local(Rvalue::Use(Operand::Place(place)), origin))
+                }
+                _ => place,
             };
             let value = match mode {
                 Some(mode) => self.temp(Rvalue::Ref { mode, place }, origin),

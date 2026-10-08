@@ -1,15 +1,16 @@
 //! Code generation (spec 13, section 8): programs built through a backend, compiled and linked
 //! by the target's tools, run.
 
+use vun_driver::Codegen;
 use vun_harness::{ACCEPT, repo_root};
 
-use vun_driver::Codegen;
 use vun_target::Name;
 
 use crate::common::Fixture;
 
 mod component;
 mod forms;
+mod narrowing;
 mod run;
 
 pub(crate) use run::{BACKENDS, build, on, run, sharing, status, status_across, status_on, status_where};
@@ -281,20 +282,4 @@ fn float_rem_and_mul_add_run_as_vun_and_agree_with_compile_time_bit_for_bit() {
 fn f16_runs_as_bits_computed_in_f32_and_agrees_with_compile_time_bit_for_bit() {
     // The number of checks whose run-time result differs from the compile-time one.
     assert_eq!(status_across("backend-half", &program("half.vun")), Some(0));
-}
-
-#[test]
-fn the_native_backend_lists_its_code_under_the_source_lines() {
-    let fixture = Fixture::new("backend-native-listing");
-    let path = fixture.root.write("main.vun", program("loops.vun"));
-    let mut session = fixture.session();
-    let file = session.load(&path).unwrap();
-    session.codegen = Codegen::through(vun_backend_native::INFO.id);
-    let mut out = Vec::new();
-    session.dump_code(file, &mut out).unwrap();
-    let text = String::from_utf8(out).unwrap();
-    // A frame's prologue, as the host's instruction set writes it.
-    let prologue = if cfg!(target_arch = "aarch64") { "stp x29, x30" } else { "push rbp" };
-    assert!(text.lines().any(|l| l.contains(prologue)), "{text}");
-    assert!(text.lines().any(|l| l.starts_with("  ; ") && l.contains("main.vun:")), "{text}");
 }

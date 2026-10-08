@@ -17,7 +17,13 @@ use crate::unlowered::{Form, Unlowered};
 pub(super) struct Cuts {
     pub(super) lo: Option<i128>,
     pub(super) hi: Option<i128>,
+    pub(super) apart: Option<Apart>,
 }
+
+/// A target range with no value in common with the source's: its nearest bound, which
+/// saturating gives, and which the source's storage need not hold.
+#[derive(Clone, Copy)]
+pub(super) struct Apart(pub(super) i128);
 
 impl FnLower<'_, '_, '_> {
     /// `operand` brought into the integer type `ty` (spec 04, rule 9): trapping outside it,
@@ -41,11 +47,15 @@ impl FnLower<'_, '_, '_> {
                 self.resize(x, source, signed, target)
             }
             Narrowing::Sat => {
-                let x = self.clamp(x, source, signed, &cuts);
-                self.resize(x, source, signed, target)
+                if let Some(Apart(bound)) = cuts.apart {
+                    self.b.constant(target, target.truncate(bound), at)
+                } else {
+                    let x = self.clamp(x, source, signed, &cuts);
+                    self.resize(x, source, signed, target)
+                }
             }
             // A value already of the range is its own reduction.
-            Narrowing::Wrap if cuts.lo.is_none() && cuts.hi.is_none() => {
+            Narrowing::Wrap if cuts.lo.is_none() && cuts.hi.is_none() && cuts.apart.is_none() => {
                 self.resize(x, source, signed, target)
             }
             Narrowing::Wrap => {
@@ -94,7 +104,9 @@ impl FnLower<'_, '_, '_> {
         // and the size, taken modulo the size, a negative remainder moved up by it.
         let offsets = own.sub(&Interval::singleton(lo.clone()));
         let reach = Interval::closed(Integer::zero(), size.clone()).ok_or_else(unsupported)?;
-        let (wide, wide_signed) = Types::storing(&offsets.hull(&reach)).ok_or_else(unsupported)?;
+        let Some((wide, wide_signed)) = Types::storing(&offsets.hull(&reach)) else {
+            return self.wrap_wide(x, (source, signed, own), (&lo, &size), target);
+        };
         let (lo, size) = (lo.to_bits().ok_or_else(unsupported)?, size.to_bits().ok_or_else(unsupported)?);
         let x = self.resize(x, source, signed, wide);
         let (low, modulus) = (
@@ -128,10 +140,22 @@ impl FnLower<'_, '_, '_> {
         let bound = |e: &Extended| e.finite().and_then(Integer::to_bits).ok_or_else(unsupported);
         // Only a bound inside the source's range cuts it, and such a bound fits the source's
         // storage: checks and clamps compare there, and nothing widens past both storages.
-        let lo = if range.lo() > own.lo() { Some(bound(range.lo())?) } else { None };
-        let hi = if range.hi() < own.hi() { Some(bound(range.hi())?) } else { None };
+        let apart = if range.hi() < own.lo() {
+            Some(Apart(bound(range.hi())?))
+        } else if range.lo() > own.hi() {
+            Some(Apart(bound(range.lo())?))
+        } else {
+            None
+        };
+        let (lo, hi) = if apart.is_some() {
+            (None, None)
+        } else {
+            let lo = if range.lo() > own.lo() { Some(bound(range.lo())?) } else { None };
+            let hi = if range.hi() < own.hi() { Some(bound(range.hi())?) } else { None };
+            (lo, hi)
+        };
         let x = self.b.load(source, temp, Access::Plain, self.at);
-        Ok((x, source, signed, Cuts { lo, hi }))
+        Ok((x, source, signed, Cuts { lo, hi, apart }))
     }
 
     /// Whether the integer `operand` is a value of `ty`: 1 or 0, an `i8`; `None` when every value
@@ -156,6 +180,9 @@ impl FnLower<'_, '_, '_> {
 
     /// Whether `x`, in the storage `source`, is within `cuts`: `None` when nothing cuts.
     fn inside(&mut self, x: Value, source: Scalar, signed: bool, cuts: &Cuts) -> Option<Value> {
+        if cuts.apart.is_some() {
+            return Some(self.b.constant(Scalar::I8, 0, self.at));
+        }
         let (ge, le) = if signed { (Cond::SGe, Cond::SLe) } else { (Cond::UGe, Cond::ULe) };
         let mut inside = None;
         for (cond, n) in [(ge, cuts.lo), (le, cuts.hi)] {

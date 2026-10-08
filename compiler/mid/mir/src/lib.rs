@@ -13,7 +13,7 @@ mod types;
 pub mod verify;
 
 pub use body::{Block, BlockId, Body, Local, LocalDecl, Role, Stmt, Terminator, TerminatorKind};
-pub use build::{Mir, Unbuilt, Why};
+pub use build::{Check, Mir, Unbuilt, Why};
 pub use concrete::{Concrete, Lowered, Map, Region, Unready};
 pub use place::{Place, Projection};
 pub use program::{Program, Programs, Reached, Roots, Statement};

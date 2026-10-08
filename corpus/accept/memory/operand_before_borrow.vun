@@ -1,0 +1,10 @@
+//! A number on the left of an operator is read before the operands after it run, so they may
+//! borrow its place (spec 05).
+
+compare := () -> bool {
+    mut x: u8 = 1;
+    x >= {
+        mut c := [&mut x] () -> u8 { 0 };
+        c()
+    }
+};

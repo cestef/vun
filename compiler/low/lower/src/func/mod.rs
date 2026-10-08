@@ -13,6 +13,7 @@ mod cover;
 mod float;
 mod int;
 mod memory;
+mod modular;
 mod narrow;
 mod place;
 mod primitive;

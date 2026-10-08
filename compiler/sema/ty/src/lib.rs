@@ -250,6 +250,13 @@ impl TyKind {
         }
     }
 
+    /// Whether its values are numbers, an integer or a float, which a read copies.
+    #[must_use]
+    pub fn is_number(&self) -> bool {
+        use crate::float::FloatType;
+        self.interval().is_some() || vun_sema_float::Format::of(self).is_some()
+    }
+
     /// The range of an integer type.
     #[must_use]
     pub fn interval(&self) -> Option<Interval> {

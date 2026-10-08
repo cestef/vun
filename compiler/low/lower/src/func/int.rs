@@ -70,7 +70,13 @@ impl FnLower<'_, '_, '_> {
         let (int, _) = self.l.types.int(ty).ok_or_else(unsupported)?;
         let x = self.int_operand(x, int)?;
         let amount = self.resize(amount, own, signed, int);
-        let value = self.b.binary(op, x, amount, at);
+        let mut value = self.b.binary(op, x, amount, at);
+        // A `uN` narrower than its storage keeps its low `N` bits: what a left shift moves past
+        // them is dropped.
+        if op == BinOp::Shl && width < int.bits(self.l.types.pointer_bits()) {
+            let mask = self.b.constant(int, (1u128 << width) - 1, at);
+            value = self.b.binary(BinOp::And, value, mask, at);
+        }
         self.b.store(value, dest, Access::Plain, at);
         Ok(())
     }

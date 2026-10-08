@@ -1,0 +1,7 @@
+//! A position names an item of a tuple; a struct's fields are named (spec 02, section 2).
+
+Point := struct { x: u8, y: u8 };
+
+first := (p: Point) -> u8 {
+    p.0 //~ types.no_member "no member `0`"
+};

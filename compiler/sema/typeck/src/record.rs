@@ -17,7 +17,12 @@ impl Typer<'_, '_, '_> {
     pub(super) fn position(&mut self, expr: ExprId, object: ExprId, at: usize) -> Option<Known> {
         let known = self.typed(object)?;
         let tuple = std::iter::successors(Some(known.ty), |t| t.borrowed()).last()?;
-        let TyKind::Tuple(items) = &*tuple else { return None };
+        let TyKind::Tuple(items) = &*tuple else {
+            if !tuple.is_required() {
+                self.no_member(self.hir().exprs[expr].origin, tuple, Symbol::intern(&at.to_string()));
+            }
+            return None;
+        };
         let found = items.get(at).copied();
         if found.is_none() {
             self.no_member(self.hir().exprs[expr].origin, tuple, Symbol::intern(&at.to_string()));
