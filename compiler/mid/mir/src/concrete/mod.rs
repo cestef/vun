@@ -18,6 +18,7 @@ use vun_sema_ty::trap::Unevaluated;
 
 mod covered;
 mod fold;
+mod forward;
 mod unready;
 
 pub use covered::{Map, Region};
@@ -58,6 +59,7 @@ impl Concrete {
         body.compile_time_arguments(&env)?;
         body.propagate(&env, &i.args);
         body.checked(&env, &cx.get::<ChecksOf>(&()), &i.f);
+        body.forward();
         body.typed()?;
         body.verified();
         Ok(Arc::new(body))

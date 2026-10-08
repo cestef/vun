@@ -83,3 +83,42 @@ fn remapping_renumbers_what_an_assembly_block_writes() {
     remap.stmt(stmt);
     assert_eq!(stmt.value.outputs(), vec![(&Place::of(Idx::new(5)), false)]);
 }
+
+/// `t = (); b = t; _0 = b` with the temporary `t` read as many times as `reads` says; `forward`
+/// applied.
+fn forwarded(origins: &OriginTable, reads: usize) -> Body {
+    use vun_intern::Symbol;
+    use vun_sema_ty::TyKind;
+
+    use crate::Aggregate;
+
+    let mut body = body(origins, |_| {});
+    let origin = body.origin;
+    let unit = Some(TyKind::unit());
+    let temp = body.locals.push(LocalDecl { name: None, ty: unit, role: Role::Held, origin });
+    let bound =
+        body.locals.push(LocalDecl { name: Some(Symbol::intern("b")), ty: unit, role: Role::Held, origin });
+    let stmt = |place: Place, value| Stmt { place, value, origin };
+    let read = |local| Rvalue::Use(Operand::Place(Place::of(local)));
+    let mut stmts = vec![
+        stmt(Place::of(temp), Rvalue::Aggregate { kind: Aggregate::Tuple, parts: Vec::new() }),
+        stmt(Place::of(bound), read(temp)),
+    ];
+    stmts.extend((1..reads).map(|_| stmt(Place::of(body.ret), read(temp))));
+    body.blocks[Idx::new(0)].stmts = stmts;
+    body.forward();
+    body
+}
+
+#[test]
+fn a_temporary_moved_into_a_binding_is_built_there() {
+    let origins = OriginTable::new();
+    let alone = forwarded(&origins, 1);
+    let stmts = &alone.blocks[Idx::new(0)].stmts;
+    assert_eq!(stmts[0].place.local, Idx::new(3));
+    assert_eq!(stmts[1].value, Rvalue::Dead);
+    let read_again = forwarded(&origins, 2);
+    let stmts = &read_again.blocks[Idx::new(0)].stmts;
+    assert_eq!(stmts[0].place.local, Idx::new(2));
+    assert_ne!(stmts[1].value, Rvalue::Dead);
+}
