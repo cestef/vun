@@ -72,6 +72,7 @@ vun-trace.workspace = true
 vun-span.workspace = true
 vun-origin.workspace = true
 vun-diag.workspace = true
+vun-codec.workspace = true
 vun-query.workspace = true
 vun-reduce.workspace = true
 vun-target.workspace = true

@@ -5,10 +5,12 @@
 
 mod assist;
 mod compiled;
+mod kept;
 mod lack;
 
 pub use assist::{Assist, Assisted, Unassisted};
 pub use compiled::Compiled;
+pub use kept::Kept;
 pub use lack::{AsmOperand, Lack, Missing};
 
 mod caps;
@@ -217,6 +219,8 @@ pub struct Request<'a> {
     pub profile: Profile,
     /// Whether to add a listing of the code to the artifacts ([`Emits::Listing`]).
     pub listing: bool,
+    /// Where the code of each function is kept between builds, if anywhere.
+    pub kept: Option<&'a dyn Kept>,
 }
 
 /// A backend declared, which cannot generate code yet: its facts, for choosing and reporting.

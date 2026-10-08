@@ -52,6 +52,7 @@ impl<'a> Emit<'a> {
             assist: asking,
             profile: self.profile,
             listing: self.listing,
+            kept: None,
         }
     }
 

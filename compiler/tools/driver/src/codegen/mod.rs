@@ -2,6 +2,7 @@
 //! for the backend chosen (`Registry::choose`: the one `--backend` names, else the target's
 //! preferences for the profile, `--release` or debug), then emitted.
 
+mod kept;
 mod unchosen;
 
 use std::path::PathBuf;
@@ -19,8 +20,8 @@ use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_target::{Name, Output, Profile, TargetSpec};
 use vun_trace::Activity;
 
-use crate::Session;
 use crate::registry::Codegen;
+use crate::{Persistence, Session};
 
 /// Lowering the program to LIR, as timed.
 const LOWER: Activity = Activity::stage("lower");
@@ -190,6 +191,11 @@ impl Session {
             return Err(Uncoded::Reported(self.diag.error(d)));
         }
         drop(legalizing);
+        let root = PathBuf::from(&self.sources.file(file).path);
+        // Code is kept between builds as memos are, when they are.
+        let kept = (self.persistence != Persistence::Off)
+            .then(|| kept::Kept::open(&self.work(&root), &root, &target, self.codegen.profile))
+            .flatten();
         let request = Request {
             unit: &unit,
             target: &target,
@@ -197,12 +203,16 @@ impl Session {
             assist: &self.registry.assist(),
             profile: self.codegen.profile,
             listing: listed == Listed::Yes,
+            kept: kept.as_ref().map(|k| k as &dyn vun_backend::Kept),
         };
         let mut emitted = Emitted::default();
         let backend = self.registry.backend(info.id.symbol()).expect("chosen from the registry");
         let emitting = EMIT.start();
         backend.emit(&request, &mut emitted, &mut self.diag).map_err(Uncoded::Reported)?;
         drop(emitting);
+        if let Some(kept) = kept {
+            kept.close();
+        }
         Ok(Coded { artifacts: emitted.artifacts, frames: emitted.frames, backend: info.id, unit, target })
     }
 }

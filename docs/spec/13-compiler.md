@@ -178,6 +178,18 @@ LLVM and C is sharded by function hash to stay parallel.
 `List(u32)` and `List(i32)` exactly. This is the sharing rustc could not do at MIR level. Linker
 identical-code folding runs on top.
 
+**Machine code by content.** A function's machine code is kept by what it is compiled from, so a
+build compiles only the functions that changed. The backend compiles a function in its own
+numbering: the functions, imports and data it names are renumbered in the order first met, so its
+code does not depend on what else the unit holds, and its relocations name those numbers, mapped
+to the unit's when the code is used. The key is the stable hash of the toolchain, the backend's
+architecture, convention and processor, the pointer width, whether a listing is made, the
+renumbered function (its trap-site ids, which the code holds as immediates, included) and, for
+each name, its kind and the signature it is called with. Origins hash by identity, so marks are
+resolved to lines when the object is written. A program's code is kept in one file per target and
+profile, read when code generation starts and written back with the entries the build used, so it
+holds one program's code at most.
+
 **Measured from the start.** Synthetic corpus generators produce large programs; CI tracks lines
 per second per stage and fails on regressions.
 

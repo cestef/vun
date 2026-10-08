@@ -187,6 +187,7 @@ fn what_a_backend_emits_arrives_with_the_lines_it_asked_the_host() {
         assist: &Unassisted,
         profile: Profile::Debug,
         listing: false,
+        kept: None,
     };
     let (mut emitted, mut diag) = (Emitted::default(), DiagCtxt::new());
     remote!(Located).emit(&request, &mut emitted, &mut diag).unwrap();
@@ -205,6 +206,7 @@ fn emitted_by(remote: &Remote) -> (Result<(), ErrorGuaranteed>, DiagCtxt) {
         assist: &Unassisted,
         profile: Profile::Debug,
         listing: false,
+        kept: None,
     };
     let (mut emitted, mut diag) = (Emitted::default(), DiagCtxt::new());
     (remote.emit(&request, &mut emitted, &mut diag), diag)
@@ -240,6 +242,7 @@ fn what_a_backend_cannot_express_is_compiled_by_the_assist_of_the_host() {
         assist: helper.assist().unwrap(),
         profile: Profile::Debug,
         listing: false,
+        kept: None,
     };
     let (mut emitted, mut diag) = (Emitted::default(), DiagCtxt::new());
     remote!(Needy).emit(&request, &mut emitted, &mut diag).unwrap();
@@ -258,6 +261,7 @@ fn a_line_the_host_gave_is_not_asked_again_in_the_same_call() {
         assist: &Unassisted,
         profile: Profile::Debug,
         listing: false,
+        kept: None,
     };
     remote!(Repeating).emit(&request, &mut Emitted::default(), &mut DiagCtxt::new()).unwrap();
     assert_eq!(known.1.get(), 1);

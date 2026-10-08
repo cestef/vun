@@ -29,6 +29,7 @@ mod fuzz;
 mod generics;
 mod hover;
 mod impls;
+mod kept;
 mod layout;
 mod library;
 mod link;

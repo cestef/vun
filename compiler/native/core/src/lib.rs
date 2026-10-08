@@ -14,7 +14,7 @@ use std::fmt::Display;
 
 use vun_asm::Isa;
 use vun_backend::Compiled;
-use vun_backend::{Artifact, Emits, Emitted, Lack, Part, Request};
+use vun_backend::{Artifact, Emits, Emitted, Kept, Lack, Part, Request};
 use vun_codegen::{Assembly, Isel, Processor};
 use vun_index::{Idx, IndexVec};
 use vun_lir::analysis::Reached;
@@ -23,6 +23,7 @@ use vun_lir::{Address, FuncId, Function};
 use vun_lir_passes::legalize::Division;
 use vun_object::{Format, Machine};
 use vun_par::Parallel;
+use vun_query::Fingerprint;
 use vun_target::TargetSpec;
 use vun_trace::Activity;
 
@@ -68,7 +69,8 @@ pub trait Native: Isel {
     }
 
     /// The machine code of the functions of `unit` that `chosen` says, for `processor`, compiled in
-    /// parallel, listed when `listed`; the others have none.
+    /// parallel, listed when `listed`; the others have none. Unlisted code is taken from `kept`
+    /// where it holds it under `target` (decision 669), and kept there when compiled.
     ///
     /// # Errors
     /// Returns the first thing a function needs that the backend cannot compile yet, or that the
@@ -79,6 +81,7 @@ pub trait Native: Isel {
         processor: Processor<Self>,
         listed: bool,
         chosen: &(dyn Fn(FuncId) -> bool + Sync),
+        kept: Option<(&dyn Kept, &TargetSpec)>,
     ) -> Result<IndexVec<FuncId, Code<Self>>, Lack>
     where
         Code<Self>: Send,
@@ -86,13 +89,18 @@ pub trait Native: Isel {
         // A function inlined everywhere it was called is left to nothing: it has no code.
         let reached = Reached::of(unit);
         let functions: Vec<(FuncId, &Function)> = unit.functions.iter().collect();
+        let kept = kept.filter(|_| !listed).map(|(kept, target)| (kept, Fingerprint::of(target)));
         let compiling = COMPILE.start();
         let compiled = functions.par_map(|&(id, f)| {
             if !reached.contains(id) || !chosen(id) {
                 return Ok(Compiled::unreached());
             }
             let _span = vun_trace::tracing::debug_span!("native", f = %f.linkage).entered();
-            let compiled = vun_codegen::compile::<Self>(unit, f, convention, processor, listed);
+            let compile = || vun_codegen::compile::<Self>(unit, f, convention, processor, listed);
+            let compiled = match kept {
+                Some((kept, target)) => kept.code(target, unit, f, compile),
+                None => compile(),
+            };
             if let Ok(c) = &compiled {
                 vun_trace::tracing::debug!(bytes = c.code.bytes.len(), frame = c.frame, "compiled");
             }
@@ -115,7 +123,9 @@ pub trait Native: Isel {
     {
         let convention = Self::convention(request.target).expect("checked before assisting");
         let processor = Self::processor(request.target);
-        let code = Self::compile(request.unit, convention, processor, false, &|id| ids.contains(&id))?;
+        let chosen = |id| ids.contains(&id);
+        let kept = request.kept.map(|kept| (kept, request.target));
+        let code = Self::compile(request.unit, convention, processor, false, &chosen, kept)?;
         let code = code.into_vec().into_iter().enumerate();
         Ok(code.map(|(i, c)| (FuncId::new(i), c.unlisted())).filter(|(id, _)| ids.contains(id)).collect())
     }
@@ -140,6 +150,7 @@ pub trait Native: Isel {
             Self::processor(request.target),
             request.listing,
             &|_| true,
+            request.kept.map(|kept| (kept, request.target)),
         )?;
         let writing = WRITE.start();
         let bytes = Assembly {

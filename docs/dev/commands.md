@@ -331,6 +331,8 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   CARGO_TARGET_DIR=target/profiling cargo build --release -p vun-cli` and pass it as `--exe`.
   Run it on a remote with `valgrind` (`am3.wg`). Callgrind stops on an instruction it does not
   know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
+- Kept machine code (decision 669): `.vun/code/<hash>` beside the root file, one per toolchain,
+  target and profile; `VUN_LOG=vun_driver=debug` reports how many functions were read and compiled.
 - Against other languages: `scripts/remote --host am3.wg scripts/bench-compare` builds the programs of
   `corpus/bench` and their ports (`corpus/bench/ref/<language>/`: C, Rust, Zig, Go, Hare) and writes
   `assets/bench/results.json`; `cargo xtask typeset` draws it as the charts of `assets/cards/bench`
