@@ -11,13 +11,11 @@ use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
 use vun_intern::Symbol;
-use vun_lower::{Lowered, Unlowered};
-use vun_mir::{Body, Mir, Program, Programs, Roots, Unbuilt};
+use vun_mir::Roots;
 use vun_origin::OriginTable;
 use vun_query::Db;
 use vun_sema::decl::DeclValue;
 use vun_sema::target::Choice;
-use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef};
 use vun_sema_ty::{Ty, Value};
 use vun_span::{FileId, SourceFiles, SourceMap};
@@ -218,24 +216,6 @@ impl Session {
             types.extend(binders.first().map(|&b| (hir.binders[b].name, ty)));
         }
         types
-    }
-
-    /// The program whose root is `file`: its roots and the functions they reach.
-    pub fn program(&mut self, file: FileId) -> Arc<Program> {
-        let key = self.file_ref(file);
-        self.db.get::<Programs>(&(key, self.roots))
-    }
-
-    /// The LIR of the program whose root is `file`, or why it does not lower.
-    pub fn lir(&mut self, file: FileId) -> Arc<Result<vun_lir::Unit, Unlowered>> {
-        let key = self.file_ref(file);
-        self.db.get::<Lowered>(&(key, self.roots))
-    }
-
-    /// The MIR of each function literal of `file`, in source order.
-    pub fn bodies(&mut self, file: FileId) -> Vec<(ExprRef, Result<Arc<Body>, Unbuilt>)> {
-        let functions = self.functions(file);
-        functions.into_iter().map(|f| (f.clone(), self.db.get::<Mir>(&Instantiation::plain(f)))).collect()
     }
 
     /// How the queries name `file`, with the inputs of its package graph and its text set.

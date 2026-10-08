@@ -3,13 +3,15 @@
 //! and `vun debug compare` shows it: what each backend cost, and where they part.
 
 mod diff;
+mod ending;
 #[cfg(test)]
 mod tests;
 
 use std::process::Output;
 use std::time::{Duration, Instant};
 
-pub use diff::{Difference, Stream};
+pub use diff::{Difference, Policy, Stream};
+pub use ending::{Ending, Trap};
 use vun_backend::Backend;
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::Captured;
@@ -31,10 +33,30 @@ pub struct Ran {
 }
 
 impl Ran {
+    /// How the run ended.
+    #[must_use]
+    pub fn ending(&self) -> Ending {
+        Ending::of(&self.output.status)
+    }
+
     /// Whether `runs` all ended alike and printed the same.
     #[must_use]
     pub fn agree(runs: &[Self]) -> bool {
-        runs.split_first().is_none_or(|(reference, rest)| rest.iter().all(|r| r.differs(reference).is_none()))
+        runs.is_empty() || Self::consensus(runs).1 == runs.len()
+    }
+
+    /// The run the others are held against, and how many runs agree with it: the one most of the
+    /// runs agree with, the first of them where the runs are split evenly. Holding them against
+    /// the first would blame every backend for a fault of that one.
+    ///
+    /// # Panics
+    /// If there are no runs.
+    #[must_use]
+    pub fn consensus(runs: &[Self]) -> (usize, usize) {
+        let agreeing = |candidate: &Self| runs.iter().filter(|r| r.differs(candidate).is_none()).count();
+        let counts: Vec<usize> = runs.iter().map(agreeing).collect();
+        let most = counts.iter().copied().max().expect("there are runs");
+        (counts.iter().position(|&n| n == most).expect("one has the most"), most)
     }
 
     /// The middle one of the run times.

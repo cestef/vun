@@ -544,6 +544,12 @@ than guess.
 Every backend is checked against the interpreter by differential testing, on the corpus and on
 randomly generated programs in the style of Csmith. That is what keeps guarantees 3 and 4 true.
 
+Two runs agree when they have one outcome (decision 654): the same `Ending` (a returned code, a
+trap by whichever signal the backend uses, or a crash by another signal) and the same output
+under a policy of the stream: all of stdout and stderr for a program that returned; for one that
+trapped or crashed, stdout up to the shorter run and no stderr. Where backends part, the reference
+is the run most of them agree with.
+
 ## 7. Extension points
 
 ```rust

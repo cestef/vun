@@ -1,6 +1,6 @@
 //! `vun debug compare`: a program built and run through every backend that generates code: what
 //! each one cost (code generation, the program's size, its run time), how it ended and what it
-//! wrote, and for each that parts from the first, the first line where it does.
+//! wrote, and for each that parts from the reference, the first line where it does.
 
 use std::io;
 use std::path::Path;
@@ -9,7 +9,7 @@ use std::time::Duration;
 use vun_command::{Args, Outcome, Param, Values};
 use vun_data::Object;
 use vun_driver::Session;
-use vun_driver::compare::{Difference, Ran};
+use vun_driver::compare::{Difference, Ending, Ran};
 use vun_term::{Bytes, Column, Elapsed, Nanos, Record, Row, Shell, Status, Style, Text, Verb};
 
 use super::FILE;
@@ -21,11 +21,12 @@ const RUNS: Param = Param::option("runs")
 pub(super) const PARAMS: &[Param] = &[FILE, RUNS];
 
 /// How a backend's program ended, as people read it.
-fn exit(code: Option<i32>) -> Text {
-    match code {
-        Some(0) => Text::of(Style::Good, "0"),
-        Some(code) => Text::of(Style::Warning, code.to_string()),
-        None => Text::of(Style::Error, "signal"),
+fn exit(ending: Ending) -> Text {
+    match ending {
+        Ending::Returned(0) => Text::of(Style::Good, "0"),
+        Ending::Returned(code) => Text::of(Style::Warning, code.to_string()),
+        Ending::Trapped => Text::of(Style::Warning, "trap"),
+        Ending::Crashed(signal) => Text::of(Style::Error, format!("signal {signal}")),
     }
 }
 
@@ -33,7 +34,7 @@ fn nanos(time: Duration) -> u64 {
     u64::try_from(time.as_nanos()).unwrap_or(u64::MAX)
 }
 
-/// One backend's program, set against the first backend's.
+/// One backend's program, set against the reference's, the run most backends agree with.
 struct Backend<'a> {
     ran: &'a Ran,
     difference: Option<Difference>,
@@ -54,6 +55,7 @@ impl Record for Backend<'_> {
         Object::new()
             .with("backend", *backend)
             .with("exit", output.status.code())
+            .with("ending", format!("{:?}", self.ran.ending()))
             .with("stdout", output.stdout.len())
             .with("stderr", output.stderr.len())
             .with("size", *size)
@@ -74,18 +76,18 @@ impl Row for Backend<'_> {
         Column::right("code"),
         Column::right("built"),
         Column::right("run"),
-        Column::left("vs first"),
+        Column::left("vs reference"),
     ];
 
     fn cells(&self) -> Vec<Text> {
         let versus = match (&self.difference, self.reference) {
-            (_, true) => Text::of(Style::Dim, "first"),
+            (_, true) => Text::of(Style::Dim, "reference"),
             (None, false) => Text::of(Style::Good, "same"),
             (Some(_), false) => Text::of(Style::Error, "differs"),
         };
         vec![
             Text::of(Style::Literal, self.ran.backend),
-            exit(self.ran.output.status.code()),
+            exit(self.ran.ending()),
             Text::from(Bytes(self.ran.output.stdout.len() as u64).to_string()),
             Text::from(Bytes(self.ran.output.stderr.len() as u64).to_string()),
             Text::from(Bytes(self.ran.size).to_string()),
@@ -96,7 +98,7 @@ impl Row for Backend<'_> {
     }
 }
 
-/// Where one backend parts from the first.
+/// Where one backend parts from the reference.
 struct Parting<'a> {
     reference: &'a str,
     other: &'a str,
@@ -124,8 +126,8 @@ impl Record for Parting<'_> {
             .plain(" parts from ")
             .styled(Style::Literal, self.reference.to_owned());
         match &self.difference {
-            Difference::Exit { reference, other } => {
-                head.plain(": exit ").append(exit(*other)).plain(" where it was ").append(exit(*reference))
+            Difference::Ending { reference, other } => {
+                head.plain(": ended ").append(exit(*other)).plain(" where it was ").append(exit(*reference))
             }
             Difference::Terminator { stream, reference } => head.plain(format!(
                 ": the last line of {} {} a line break",
@@ -145,9 +147,10 @@ impl Record for Parting<'_> {
         let base =
             Object::new().with("reference", self.reference.to_owned()).with("backend", self.other.to_owned());
         match &self.difference {
-            Difference::Exit { reference, other } => {
-                base.with("what", "exit").with("expected", *reference).with("found", *other)
-            }
+            Difference::Ending { reference, other } => base
+                .with("what", "ending")
+                .with("expected", format!("{reference:?}"))
+                .with("found", format!("{other:?}")),
             Difference::Terminator { stream, reference } => {
                 base.with("what", stream.name()).with("reference_terminated", *reference)
             }
@@ -177,7 +180,7 @@ impl Record for Verdict {
         } else {
             Text::of(
                 Style::Strong,
-                format!("{} of {} backends differ from the first", self.parting, self.backends),
+                format!("{} of {} backends differ from the reference", self.parting, self.backends),
             )
         }
     }
@@ -198,11 +201,15 @@ pub(super) fn compare(session: &mut Session, args: &Args, shell: &mut Shell<'_>)
     let times = args.count(&RUNS).and_then(|n| usize::try_from(n).ok()).unwrap_or(1);
     let Some(file) = session.load(Path::new(path)) else { return Ok(session.outcome()) };
     let Ok(runs) = session.run_each(file, times) else { return Ok(session.outcome()) };
-    let Some(reference) = runs.first() else { return Ok(Outcome::Success) };
+    if runs.is_empty() {
+        return Ok(Outcome::Success);
+    }
+    let held = Ran::consensus(&runs).0;
+    let reference = &runs[held];
     let rows: Vec<Backend<'_>> = runs
         .iter()
         .enumerate()
-        .map(|(i, ran)| Backend { ran, difference: ran.differs(reference), reference: i == 0 })
+        .map(|(i, ran)| Backend { ran, difference: ran.differs(reference), reference: i == held })
         .collect();
     shell.table(&rows)?;
     let partings: Vec<Parting<'_>> = rows

@@ -2,7 +2,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Output};
 use std::time::Duration;
 
-use super::{Difference, Ran, Stream};
+use super::{Difference, Ending, Ran, Stream};
 
 fn ran(code: i32, stdout: &str, stderr: &str) -> Ran {
     let output = Output {
@@ -23,7 +23,10 @@ fn runs_that_end_and_write_alike_agree() {
 #[test]
 fn the_exit_code_parts_runs_before_what_they_wrote() {
     let (reference, other) = (ran(0, "a", ""), ran(3, "b", ""));
-    assert_eq!(other.differs(&reference), Some(Difference::Exit { reference: Some(0), other: Some(3) }));
+    assert_eq!(
+        other.differs(&reference),
+        Some(Difference::Ending { reference: Ending::Returned(0), other: Ending::Returned(3) })
+    );
 }
 
 #[test]
@@ -77,4 +80,37 @@ fn a_missing_final_line_break_is_a_difference_of_its_own() {
         other.differs(&reference),
         Some(Difference::Terminator { stream: Stream::Stdout, reference: true })
     );
+}
+
+fn killed(signal: i32, stdout: &str, stderr: &str) -> Ran {
+    let mut r = ran(0, stdout, stderr);
+    r.output.status = ExitStatus::from_raw(signal);
+    r
+}
+
+#[test]
+fn every_trap_is_one_ending_and_a_fault_is_another() {
+    use super::Trap;
+    let ends: Vec<Ending> = Trap::ALL.iter().map(|t| killed(*t as i32, "", "").ending()).collect();
+    assert!(ends.iter().all(|e| *e == Ending::Trapped));
+    assert_eq!(killed(11, "", "").ending(), Ending::Crashed(11));
+    assert_eq!(
+        killed(11, "", "").differs(&killed(6, "", "")),
+        Some(Difference::Ending { reference: Ending::Trapped, other: Ending::Crashed(11) })
+    );
+}
+
+#[test]
+fn a_trapped_program_may_have_lost_what_it_buffered_and_says_why_its_own_way() {
+    let (reference, other) = (killed(4, "a\nb\n", "ud2"), killed(6, "a\n", "abort"));
+    assert_eq!(other.differs(&reference), None);
+    let (reference, other) = (killed(4, "a\nb\n", ""), killed(6, "a\nx\n", ""));
+    assert!(matches!(other.differs(&reference), Some(Difference::Output { line: 2, .. })));
+}
+
+#[test]
+fn the_reference_is_what_most_runs_agree_with() {
+    let runs = [ran(1, "", ""), ran(0, "a", ""), ran(0, "a", "")];
+    assert_eq!(Ran::consensus(&runs), (1, 2));
+    assert!(!Ran::agree(&runs));
 }

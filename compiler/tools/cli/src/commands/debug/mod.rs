@@ -8,6 +8,8 @@ mod disasm;
 mod dump;
 mod queries;
 mod reduce;
+mod smith;
+mod workers;
 
 use vun_command::Command;
 
@@ -63,4 +65,10 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         reduce::reduce,
     )
     .params(&[FILE, reduce::KEEP, vun_driver::codegen::BACKEND]),
+    Command::run(
+        "smith",
+        "programs made by chance, each tried through every stage and backend",
+        smith::smith,
+    )
+    .params(smith::PARAMS),
 ];
