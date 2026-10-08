@@ -196,7 +196,7 @@ class Bench:
         src.write_text("int main(void) { return 0; }\n")
         exe = self.scratch / "floor"
         subprocess.run(["gcc", "-O2", "-o", str(exe), str(src)], check=True)
-        command = pinned(self.args.core, [str(exe), *ARGUMENTS.get(program, [])])
+        command = pinned(self.args.core, [str(exe)])
         for _ in range(WARMUP):
             timed(command)
         return quartiles([timed(command)[0] for _ in range(self.args.samples)])
