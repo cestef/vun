@@ -12,12 +12,16 @@ type Sym = &'static str;
 
 const REGS: [Reg; 5] = [Reg::Rax, Reg::Rsi, Reg::Rbp, Reg::R9, Reg::R12];
 const XMMS: [Xmm; 2] = [Xmm(1), Xmm(9)];
-const MEMS: [Mem<Sym>; 5] = [
+const MEMS: [Mem<Sym>; 9] = [
     Mem::at(Reg::Rbp, -8),
     Mem::at(Reg::Rsp, 0),
     Mem::at(Reg::R13, 0),
     Mem::at(Reg::R12, 300),
     Mem::at(Reg::Rax, -129),
+    Mem::sum(Reg::Rbp, Reg::Rsi, -8),
+    Mem::sum(Reg::R13, Reg::R9, 0),
+    Mem::sum(Reg::R12, Reg::R12, 300),
+    Mem::sum(Reg::Rsp, Reg::Rax, 0),
 ];
 const IMMS: [i64; 7] = [0, -1, 127, 128, -32768, 0xffff_ffff, 0x1234_5678_9abc_def0];
 const CCS: [Cc; 3] = [Cc::B, Cc::Nz, Cc::G];

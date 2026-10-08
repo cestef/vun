@@ -151,6 +151,10 @@ impl Emits for Arm {
         Mem::at(base, 0).into()
     }
 
+    fn indexed(_: Opnd, _: Reg) -> Option<Opnd> {
+        None
+    }
+
     /// Narrow values compute at 32 bits: the bits above a value's own are undefined in a register.
     fn size(width: Width<Size>, size: Size) -> Size {
         match width {

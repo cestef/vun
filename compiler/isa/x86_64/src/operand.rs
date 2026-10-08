@@ -9,6 +9,8 @@ use crate::reg::{Cc, Reg, Xmm};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Base<S> {
     Reg(Reg),
+    /// The sum of two registers, the second a byte index (never `rsp`).
+    Sum(Reg, Reg),
     /// The instruction's own address: something the linker places.
     Rip(S, Via),
     /// The calling thread's block, in the segment `fs` names: `disp` is an offset in it, `0`
@@ -27,6 +29,12 @@ impl<S> Mem<S> {
     #[must_use]
     pub const fn at(base: Reg, disp: i32) -> Self {
         Self { base: Base::Reg(base), disp }
+    }
+
+    /// `disp` bytes past the sum of `base` and `index`.
+    #[must_use]
+    pub const fn sum(base: Reg, index: Reg, disp: i32) -> Self {
+        Self { base: Base::Sum(base, index), disp }
     }
 
     #[must_use]

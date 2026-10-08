@@ -120,6 +120,7 @@ impl<S: Copy + fmt::Display> fmt::Display for Text<'_, S> {
 fn write_mem<S: fmt::Display>(f: &mut fmt::Formatter<'_>, mem: &Mem<S>) -> fmt::Result {
     match &mem.base {
         Base::Reg(r) => write!(f, "[{}", r.name(Size::B64))?,
+        Base::Sum(r, index) => write!(f, "[{} + {} * 1", r.name(Size::B64), index.name(Size::B64))?,
         Base::Rip(target, via) => {
             let how = match via {
                 vun_isa::Via::Direct => "",

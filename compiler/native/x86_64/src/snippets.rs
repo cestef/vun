@@ -5,7 +5,7 @@
 //! `xmm1`, which hold no value between instructions.
 
 use vun_asm_x86_64::{Cc, Op, Operand, Reg, Size, Xmm};
-use vun_codegen::snippet::Slot::{At, Cond, In, Out, Temp};
+use vun_codegen::snippet::Slot::{At, Cond, In, Indexed, Out, Temp};
 use vun_codegen::snippet::{Slot, Snippet, Step, Width};
 
 use super::X86;
@@ -40,6 +40,9 @@ two_address! {
     XOR = Op::Xor;
     MUL = Op::Imul;
 }
+
+/// `out` as the address `In(0)` plus the register `In(1)`: one `lea` over the two.
+pub(super) const ADDRESS_SUM: Snippet<X86> = &[S::new(Op::Lea, B64, &[Out, Indexed(0, 1)])];
 
 /// Division through `rax` and `rdx`, the operands extended as the division reads them; `$out`
 /// holds the quotient or the remainder.

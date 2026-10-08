@@ -11,10 +11,10 @@ use vun_lir::{
 };
 
 use crate::snippets::{
-    ADD, AND, COMPARE_EXCHANGE, DOUBLE_TO_INT, FADD, FCOMPARE, FDIV, FEQUAL, FETCH_ADD, FETCH_SUB, FMUL,
-    FSUB, KEEP, LOAD, MUL, NARROW, OR, SAR, SDIV, SELECT, SET, SEXT, SHL, SHR, SIGNED_TO_DOUBLE,
-    SIGNED_TO_SINGLE, SINGLE_TO_INT, SREM, STORE, STORE_SEQ_CST, SUB, SWAP, UDIV, UNSIGNED_TO_DOUBLE,
-    UNSIGNED_TO_SINGLE, UREM, WIDEN, XOR, ZEXT,
+    ADD, ADDRESS_SUM, AND, COMPARE_EXCHANGE, DOUBLE_TO_INT, FADD, FCOMPARE, FDIV, FEQUAL, FETCH_ADD,
+    FETCH_SUB, FMUL, FSUB, KEEP, LOAD, MUL, NARROW, OR, SAR, SDIV, SELECT, SET, SEXT, SHL, SHR,
+    SIGNED_TO_DOUBLE, SIGNED_TO_SINGLE, SINGLE_TO_INT, SREM, STORE, STORE_SEQ_CST, SUB, SWAP, UDIV,
+    UNSIGNED_TO_DOUBLE, UNSIGNED_TO_SINGLE, UREM, WIDEN, XOR, ZEXT,
 };
 use crate::{X86, condition};
 use vun_native::inline::Inlined;
@@ -161,7 +161,11 @@ impl<'a> Look<'_, 'a> {
             &InstKind::CompareExchange { addr, expected, new, .. } => {
                 snippet(COMPARE_EXCHANGE, &[addr, expected, new], self.size(new)?, None)
             }
-            &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B64, None),
+            // A constant offset adds as an immediate; any other is a sum the address reaches.
+            &InstKind::Offset { base, offset } => {
+                let chosen = if self.0.imm(offset).is_some() { ADD } else { ADDRESS_SUM };
+                snippet(chosen, &[base, offset], Size::B64, None)
+            }
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
             InstKind::Asm(asm, check) => {
                 asm.check::<X86>()?;

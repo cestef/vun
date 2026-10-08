@@ -110,6 +110,16 @@ impl<A: Emits> Cx<'_, A> {
                             ops.push(A::at(base), None);
                         }
                     }
+                    Slot::Indexed(k, j) => {
+                        let (base, index) = (args.ins[k as usize], args.ins[j as usize]);
+                        let index = self.reg(index);
+                        let placed = self.place(base).and_then(A::mem);
+                        let summed = placed.and_then(|mem| A::indexed(mem, index)).or_else(|| {
+                            let base = self.reg(base);
+                            A::indexed(A::at(base), index)
+                        });
+                        ops.push(summed.expect("the architecture adds an index to an address"), None);
+                    }
                     Slot::Temp(k) => {
                         let r = match temps[k as usize] {
                             Some(r) => r,
@@ -182,10 +192,9 @@ impl<A: Emits> Cx<'_, A> {
 
     /// Whether a step after step `i` reads operand `k`.
     fn read_after(snippet: Snippet<A>, i: usize, k: u8) -> bool {
-        snippet[i + 1..]
-            .iter()
-            .flat_map(|s| s.slots)
-            .any(|s| matches!(*s, Slot::In(j) | Slot::At(j) if j == k))
+        snippet[i + 1..].iter().flat_map(|s| s.slots).any(
+            |s| matches!(*s, Slot::In(j) | Slot::At(j) | Slot::Indexed(j, _) | Slot::Indexed(_, j) if j == k),
+        )
     }
 
     /// The result's register where the move of step `i` into it needs no instruction: the

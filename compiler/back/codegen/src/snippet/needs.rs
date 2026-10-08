@@ -20,7 +20,7 @@ impl<A: Emits> Cx<'_, A> {
             snippet.iter().rposition(|s| {
                 s.slots
                     .iter()
-                    .any(|&slot| matches!(slot, Slot::In(j) | Slot::At(j) | Slot::Through(_, j) if j == k))
+                    .any(|&slot| matches!(slot, Slot::In(j) | Slot::At(j) | Slot::Through(_, j) | Slot::Indexed(j, _) | Slot::Indexed(_, j) if j == k))
             })
         };
         // The operand a move gives the result the register of, which it is then read in.
@@ -54,6 +54,23 @@ impl<A: Emits> Cx<'_, A> {
                             }
                             (_, false) => needs.uses.push(Read { value: v, need: Need::Reg, late }),
                             (_, true) => needs.temps.push(Bank::General),
+                        }
+                    }
+                    // The address and the index each in a register, a scratch one where the
+                    // address is made where used.
+                    Slot::Indexed(a, b) => {
+                        for k in [a, b] {
+                            if read.contains(&k) {
+                                continue;
+                            }
+                            read.push(k);
+                            let v = args.ins[k as usize];
+                            let late = written.is_some_and(|w| last(k).is_some_and(|l| l > w));
+                            if self.recomputed(v).is_some() {
+                                needs.temps.push(Bank::General);
+                            } else {
+                                needs.uses.push(Read { value: v, need: Need::Reg, late });
+                            }
                         }
                     }
                     Slot::Fixed(r) => needs.reserved = needs.reserved.with(A::preg(r)),
@@ -97,7 +114,9 @@ impl<A: Emits> Cx<'_, A> {
             return false;
         };
         let reading = |step: &Step<A>| {
-            step.slots.iter().any(|s| matches!(*s, Slot::In(j) | Slot::At(j) | Slot::Through(_, j) if j == k))
+            step.slots.iter().any(|s| {
+                matches!(*s, Slot::In(j) | Slot::At(j) | Slot::Through(_, j) | Slot::Indexed(j, _) | Slot::Indexed(_, j) if j == k)
+            })
         };
         let mut steps = snippet.iter().filter(|step| reading(step)).peekable();
         steps.peek().is_some()
@@ -110,7 +129,7 @@ impl<A: Emits> Cx<'_, A> {
                         Slot::In(j) if in_memory.contains(&j) => None,
                         Slot::In(j) => Some(self.imm(args.ins[j as usize]).map_or(A::reg(A::TEMP), A::imm)),
                         Slot::At(j) | Slot::Through(_, j) if j == k => None,
-                        Slot::At(_) => Some(A::at(A::TEMP)),
+                        Slot::At(_) | Slot::Indexed(..) => Some(A::at(A::TEMP)),
                         Slot::Cond => args.cond.map(A::cond),
                         Slot::Is(operand) => Some(operand),
                         Slot::Out | Slot::Temp(_) | Slot::Fixed(_) | Slot::Through(..) => {

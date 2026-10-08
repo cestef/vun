@@ -186,6 +186,10 @@ impl Emits for Thumb2 {
         Mem::at(base, 0).into()
     }
 
+    fn indexed(_: Opnd, _: Reg) -> Option<Opnd> {
+        None
+    }
+
     /// Every value computes at 32 bits: the bits above a narrow value's own are undefined in a
     /// register.
     fn size(width: Width<Size>, size: Size) -> Size {

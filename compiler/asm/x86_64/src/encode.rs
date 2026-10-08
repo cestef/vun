@@ -102,7 +102,7 @@ fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operan
         W::Never => false,
     };
     let base_high = match rm {
-        Some(Operand::Mem(Mem { base: Base::Reg(r), .. })) => r.high(),
+        Some(Operand::Mem(Mem { base: Base::Reg(r) | Base::Sum(r, _), .. })) => r.high(),
         Some(o @ (Operand::Reg(_) | Operand::Xmm(_))) => fields(o).1,
         _ => plus.is_some_and(|(_, high)| high),
     };
@@ -111,7 +111,12 @@ fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operan
         .kinds()
         .zip(operands)
         .any(|(k, o)| k.width(size) == Some(Size::B8) && matches!(o, Operand::Reg(r) if r.byte_needs_rex()));
-    let rex = REX | u8::from(w) << 3 | u8::from(reg.is_some_and(|(_, high)| high)) << 2 | u8::from(base_high);
+    let index_high = matches!(rm, Some(Operand::Mem(Mem { base: Base::Sum(_, index), .. })) if index.high());
+    let rex = REX
+        | u8::from(w) << 3
+        | u8::from(reg.is_some_and(|(_, high)| high)) << 2
+        | u8::from(index_high) << 1
+        | u8::from(base_high);
     if rex != REX || byte_rex {
         asm.put(&[rex]);
     }
@@ -158,15 +163,27 @@ fn encode<S: Copy>(asm: &mut Asm<S>, form: &Form, size: Size, operands: &[Operan
 fn modrm<S: Copy>(asm: &mut Asm<S>, field: u8, rm: &Operand<S>, trailing: u32) {
     match rm {
         Operand::Reg(_) | Operand::Xmm(_) => asm.put(&[0xc0 | field << 3 | fields(rm).0]),
-        Operand::Mem(Mem { base: Base::Reg(b), disp }) => {
+        Operand::Mem(Mem { base: base @ (Base::Reg(_) | Base::Sum(..)), disp }) => {
+            let (b, index) = match *base {
+                Base::Reg(b) => (b, None),
+                Base::Sum(b, index) => (b, Some(index)),
+                _ => unreachable!("matched above"),
+            };
             let (mode, wide) = match disp {
                 0 if b.low() != Reg::Rbp.low() => (0b00, None),
                 d if i8::try_from(*d).is_ok() => (0b01, Some(false)),
                 _ => (0b10, Some(true)),
             };
-            asm.put(&[mode << 6 | field << 3 | b.low()]);
-            if b.low() == Reg::Rsp.low() {
-                asm.put(&[0x24]);
+            // A SIB byte: scale 1, the index, the base; `rsp` as an index means none.
+            let sib = |index: u8| index << 3 | b.low();
+            if let Some(index) = index {
+                assert!(index != Reg::Rsp, "rsp is no index");
+                asm.put(&[mode << 6 | field << 3 | 0b100, sib(index.low())]);
+            } else {
+                asm.put(&[mode << 6 | field << 3 | b.low()]);
+                if b.low() == Reg::Rsp.low() {
+                    asm.put(&[0x24]);
+                }
             }
             match wide {
                 Some(false) => asm.put(&disp.to_le_bytes()[..1]),

@@ -11,7 +11,7 @@ mod tests;
 
 use vun_asm::Via;
 use vun_asm::imm::{low64, sign_extend};
-use vun_asm_x86_64::{Asm, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
+use vun_asm_x86_64::{Asm, Base, Cc, Emit, Mem, Op, Operand, Reg, Size, X86_64};
 use vun_codegen::snippet::{Emits, Width};
 use vun_codegen::{Anchor, Arch, Place, Processor, Recompute};
 use vun_dwarf::CallFrame;
@@ -133,6 +133,15 @@ impl Emits for X86 {
 
     fn at(base: Reg) -> Opnd {
         Mem::at(base, 0).into()
+    }
+
+    fn indexed(base: Opnd, index: Reg) -> Option<Opnd> {
+        match base {
+            Opnd::Mem(Mem { base: Base::Reg(base), disp }) if index != Reg::Rsp => {
+                Some(Mem::sum(base, index, disp).into())
+            }
+            _ => None,
+        }
     }
 
     /// Narrow values compute at 32 bits: the bits above a value's own are undefined in a register.

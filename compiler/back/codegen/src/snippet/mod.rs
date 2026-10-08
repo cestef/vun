@@ -37,6 +37,8 @@ pub trait Emits: Arch {
     fn mem(place: Place) -> Option<Self::Operand>;
     /// Memory at the address in `base`.
     fn at(base: Self::Reg) -> Self::Operand;
+    /// Memory `index` bytes past the address `base` is, when an operand addresses that.
+    fn indexed(base: Self::Operand, index: Self::Reg) -> Option<Self::Operand>;
     /// The size a step of `width` runs at, in an operation of `size`.
     fn size(width: Width<Self::Size>, size: Self::Size) -> Self::Size;
     /// Whether a form of `op` that `processor` has takes `operands` at `size`.
@@ -64,6 +66,9 @@ pub enum Slot<A: Emits> {
     In(u8),
     /// Memory at the address an operand of the operation holds.
     At(u8),
+    /// Memory at the address an operand holds, a byte index past it that another holds, in a
+    /// register: `In(index)` as an address.
+    Indexed(u8, u8),
     /// The operation's result, in its register.
     Out,
     /// A scratch register of the snippet, by number, taken when first named.
