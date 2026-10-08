@@ -148,20 +148,34 @@ Dyn := ($I: lang.Interface) -> type { struct {
 } };
 
 /// A `Dyn(I)` that owns its target, kept in the memory an allocator gave: linear, so it ends
-/// with `deinit`, which gives that memory back. The target is not dropped, so it must own nothing.
+/// with `deinit`, which runs the `finish` it was made with on the target, then gives that memory
+/// back.
 #[lang.lint.allow(std.lints.naming.case, "a type constructor, whose methods receive its instances")]
 OwnedDyn := ($I: lang.Interface) -> type { #[kind.linear] struct {
     _dyn: Dyn(I),
     _size: usize,
     _align: usize,
+    _finish: ?(target: *Erased) -> (),
 
-    /// A `T` holding `value`, in memory from `a`, as `I` sees it.
-    new := ($T: type, $A: std.mem.alloc.Allocator, a: &mut A, value: T) -> Result(OwnedDyn(I), A.Error) {
+    /// A `T` holding `value`, in memory from `a`, as `I` sees it. `finish` consumes the value in
+    /// place when the `OwnedDyn` ends, for a `T` that owns something; `.none` for one that owns
+    /// nothing.
+    new := (
+        $T: type,
+        $A: std.mem.alloc.Allocator,
+        a: &mut A,
+        value: T,
+        finish: ?(target: *T) -> ()
+    ) -> Result(OwnedDyn(I), A.Error) {
         size := lang.meta.size(T);
         align := lang.meta.align(T);
         target := unsafe a.alloc(size, align)?.cast(T);
         unsafe target.write(value);
-        .ok(.{ ._dyn = unsafe Dyn(I).of(T, target), ._size = size, ._align = align })
+        finisher: ?(target: *Erased) -> () = match finish {
+            .some(f) => .some(unsafe lang.mem.function_cast((target: *T) -> (), (target: *Erased) -> (), f)),
+            .none => .none,
+        };
+        .ok(.{ ._dyn = unsafe Dyn(I).of(T, target), ._size = size, ._align = align, ._finish = finisher })
     };
 
     /// The target, as a `Dyn`.
@@ -169,9 +183,10 @@ OwnedDyn := ($I: lang.Interface) -> type { #[kind.linear] struct {
     /// The target, as a `Dyn` that may change it.
     get_mut := (self: &mut OwnedDyn(I)) -> &mut Dyn(I) { &mut self._dyn };
 
-    /// Gives the target's memory back to `a`, which it came from.
+    /// Finishes the target, then gives its memory back to `a`, which it came from.
     deinit := (self: OwnedDyn(I), $A: std.mem.alloc.Allocator, a: &mut A) {
-        .{ ._dyn = held, ._size = size, ._align = align } := self;
+        .{ ._dyn = held, ._size = size, ._align = align, ._finish = finish } := self;
+        if .some(f) = finish { f.call((held.data,)); }
         a.free(unsafe held.data.cast(u8), size, align);
     };
 } };

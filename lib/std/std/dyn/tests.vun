@@ -36,11 +36,35 @@ a_dyn_calls_the_function_of_its_target := () {
 an_owned_dyn_keeps_its_target_and_gives_the_memory_back := () {
     mut storage: [256]u8 = [0; 256];
     mut a := std.testing.Counting(Fixed).over(Fixed.init(&mut storage));
-    mut owned := std.dyn.OwnedDyn(Shape).new(Square, std.testing.Counting(Fixed), &mut a, Square{ .side = 5 })
+    mut owned := std.dyn.OwnedDyn(Shape)
+        .new(Square, std.testing.Counting(Fixed), &mut a, Square{ .side = 5 }, .none)
         .expect("room");
     std.testing.assert(owned.get().area() == 25);
     owned.get_mut().grow(1);
     std.testing.assert(owned.get().area() == 36 and a.allocs == 1 and a.frees == 0);
     owned.deinit(std.testing.Counting(Fixed), &mut a);
     std.testing.assert(a.frees == 1);
+};
+
+Guarded := struct { side: u64, ended: *bool };
+
+impl Shape for Guarded {
+    area := (self) -> u64 { self.side };
+    grow := (self, by) { self.side = (self.side + by).wrap(u64); };
+}
+
+ends := (target: *Guarded) { unsafe target.read().ended.write(true); };
+
+#[test]
+an_owned_dyn_finishes_its_target_when_it_ends := () {
+    mut storage: [256]u8 = [0; 256];
+    mut a := std.testing.Counting(Fixed).over(Fixed.init(&mut storage));
+    mut ended: bool = false;
+    flag := lang.mem.pointer_to(bool, &ended);
+    mut owned := std.dyn.OwnedDyn(Shape)
+        .new(Guarded, std.testing.Counting(Fixed), &mut a, Guarded{ .side = 2, .ended = flag }, .some(ends))
+        .expect("room");
+    std.testing.assert(owned.get().area() == 2 and !ended);
+    owned.deinit(std.testing.Counting(Fixed), &mut a);
+    std.testing.assert(ended and a.frees == 1);
 };

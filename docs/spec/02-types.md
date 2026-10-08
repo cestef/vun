@@ -269,9 +269,9 @@ d := unsafe std.Dyn(Shape).of(Square, lang.mem.pointer_to(Square, &square));
 `Dyn(I).of(T, p)` is `unsafe`: the table holds the functions of `witness(I, T)` cast to the
 receiver `Dyn(I)` takes (`lang.mem.function_cast`), and the methods read the pointer back as the
 receiver, so `p` must point to a `T` for as long as the `Dyn` is used. A `Dyn` does not own its
-target; `std.dyn.OwnedDyn(I).new(T, A, a, value)` does, keeping the `T` in memory from the
-allocator `a`, linear, ended with `deinit(A, a)` which gives the memory back (the target is not
-dropped, so it owns nothing). The receiver of a requirement is a borrow, shared or `&mut`, of
+target; `std.dyn.OwnedDyn(I).new(T, A, a, value, finish)` does, keeping the `T` in memory from the
+allocator `a`, linear, ended with `deinit(A, a)` which runs `finish` on the target (a function of
+`*T`, or `.none` for a `T` that owns nothing) and gives the memory back. The receiver of a requirement is a borrow, shared or `&mut`, of
 `Self`; a requirement taking `Self` by value, or no receiver, and a requirement that is not a
 function, such as a type (`Error: type = _`) which names no type for every target, cannot be in
 a table, and making such a `Dyn` is a compile-time error (`comptime.reported`) naming the
