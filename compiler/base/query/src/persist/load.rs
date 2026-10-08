@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use vun_codec::{Blob, Context, Malformed, Pools};
+use vun_codec::{Blob, Context, Malformed, Owned, Pools};
 use vun_hash::Hash;
 
 use super::saved::{Build, Growth, Loaded, Named, Saved, Unloaded};
@@ -20,14 +20,14 @@ impl Db {
     /// # Errors
     /// Returns an error if the bytes are not saved memos of this format and build, if they are
     /// layered over a file of shared memos, or if memos were loaded already.
-    pub fn load(&self, bytes: Vec<u8>) -> Result<usize, Unloaded> {
+    pub fn load(&self, bytes: impl AsRef<[u8]> + Send + Sync + 'static) -> Result<usize, Unloaded> {
         let _timer = LOAD.start();
-        let file = File::read(bytes)?;
+        let file = File::read(Box::new(bytes))?;
         if file.header.base.is_some() {
             return Err(Unloaded::Base);
         }
         let growth = file.growth();
-        let stream = Context::within(file.bytes.into_boxed_slice(), file.body.pools);
+        let stream = Context::within(file.bytes, file.body.pools);
         let queries =
             file.body.queries.into_iter().map(|q| (q.name, Layers { base: None, own: Some(q.query) }));
         self.attach(Arc::new(stream), Some(growth), queries.collect(), None, Taking::Missing)
@@ -39,32 +39,38 @@ impl Db {
     /// # Errors
     /// As [`Db::load`], and if `base` is not a file of shared memos or `own` is layered over
     /// another.
-    pub fn load_over(&self, base: Vec<u8>, own: Option<Vec<u8>>) -> Result<usize, Unloaded> {
-        self.layer(base, own, Taking::Missing)
+    pub fn load_over(
+        &self,
+        base: impl AsRef<[u8]> + Send + Sync + 'static,
+        own: Option<Vec<u8>>,
+    ) -> Result<usize, Unloaded> {
+        self.layer(Box::new(base), own, Taking::Missing)
     }
 
     /// Loads `own` over `base`, taking what `taking` says of their memos.
     pub(super) fn layer(
         &self,
-        base: Vec<u8>,
+        base: Bytes,
         own: Option<Vec<u8>>,
         taking: Taking<'_>,
     ) -> Result<usize, Unloaded> {
         let _timer = LOAD.start();
         let base = File::read(base)?;
         let id = base.header.id.filter(|_| base.header.base.is_none()).ok_or(Unloaded::Base)?;
-        let own = own.map(File::read).transpose()?;
+        let own = own.map(|own| File::read(Box::new(own))).transpose()?;
         if own.as_ref().is_some_and(|own| own.header.base != Some(id)) {
             return Err(Unloaded::Base);
         }
-        let under = Arc::new(Context::within(base.bytes.into_boxed_slice(), base.body.pools));
+        let under = Arc::new(Context::within(base.bytes, base.body.pools));
         let (stream, growth, own) = match own {
             Some(own) => {
                 let growth = own.growth();
-                let stream = Context::over(under, own.bytes.into_boxed_slice(), own.body.pools);
+                let stream = Context::over(under, own.bytes, own.body.pools);
                 (stream, Some(growth), own.body.queries)
             }
-            None => (Context::over(under, Box::default(), Pools::default()), None, Vec::new()),
+            None => {
+                (Context::over(under, Box::new(Box::<[u8]>::default()), Pools::default()), None, Vec::new())
+            }
         };
         let mut own = own.into_iter().map(|q| (q.name, stream.place(q.query)));
         let mut queries = Vec::new();
@@ -117,20 +123,23 @@ pub(crate) enum Taking<'a> {
     Written(&'a Numbers),
 }
 
+/// The bytes of a saved file, in memory or mapped.
+type Bytes = Owned;
+
 /// A saved file, its header and body read.
 struct File {
     header: Saved<Blob>,
     body: Loaded,
-    bytes: Vec<u8>,
+    bytes: Bytes,
 }
 
 impl File {
-    fn read(bytes: Vec<u8>) -> Result<Self, Unloaded> {
-        let header = Saved::header(&bytes)?;
+    fn read(bytes: Bytes) -> Result<Self, Unloaded> {
+        let header = Saved::header((*bytes).as_ref())?;
         if header.build.is_none() || header.build != Build::identity() {
             return Err(Unloaded::Build);
         }
-        let body: Loaded = header.body.read(&bytes).map_err(Unloaded::Decode)?;
+        let body: Loaded = header.body.read((*bytes).as_ref()).map_err(Unloaded::Decode)?;
         // Each query is saved once, so that its positions name its own memos.
         let mut names = HashSet::new();
         if !body.queries.iter().all(|q: &Named<Blob>| names.insert(q.name.as_str())) {

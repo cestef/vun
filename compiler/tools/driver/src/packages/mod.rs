@@ -33,7 +33,7 @@ use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hash::{Hash, Snapshot};
 use vun_intern::Symbol;
 use vun_sema::target::TargetPath;
-use vun_span::{FileId, PackageId, Span};
+use vun_span::{FileId, Locations, PackageId, Span};
 use vun_target::Features;
 use vun_trace::tracing;
 
@@ -96,7 +96,7 @@ pub struct Packages {
     /// once, and again only after writing into it (`Packages::wrote`).
     seen: HashMap<PathBuf, Option<PackageKey>>,
     /// Packages whose query inputs are set.
-    published: HashSet<PackageKey>,
+    pub(crate) published: HashSet<PackageKey>,
     /// What selection chose for the project's graph, computed once.
     selection: Option<Result<Lock, ErrorGuaranteed>>,
 }
@@ -184,6 +184,8 @@ impl Session {
                     version: manifest.version,
                 }
             };
+            // Where the package is on this machine, before any file of it is shown.
+            Locations::global().set(self.db.id(), id, dir.display().to_string());
             let package = Package {
                 id,
                 name,

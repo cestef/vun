@@ -16,7 +16,6 @@ fn packages(app: &str) -> (vun_query::Db, vun_hir::db::FileRef) {
     let files = |name: &str| vec![format!("{name}.vun")];
     let data = |name: &str, deps, prelude| PackageData {
         name: Some(Symbol::intern(name)),
-        dir: format!("/{name}"),
         deps,
         prelude,
         files: files(name),

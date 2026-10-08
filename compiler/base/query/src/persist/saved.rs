@@ -16,35 +16,61 @@
 //! keys that file lacks, and the memos of that file's keys it computed again.
 
 use std::fmt;
+use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 
 use vun_codec::{Blob, Context, Decode, Encode, Malformed, Pools};
-use vun_hash::Hash;
+use vun_fs::Edit;
+use vun_hash::{Algorithm, Hash};
 
+use super::keys::PackedKeys;
 use crate::db::Sharing;
 use crate::fingerprint::Fingerprint;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 12;
+pub(super) const FORMAT: u32 = 14;
 
 /// The compiler running, as saved memos name it.
 pub struct Build;
 
+/// Where the identity of each executable seen is remembered, set by whoever owns a directory for it.
+static REMEMBERED: OnceLock<PathBuf> = OnceLock::new();
+
 impl Build {
-    /// The running executable ([`vun_fs::EXECUTABLE`]), by its path, its size and when it was
-    /// written: another build of the compiler is another executable, and its memos may hold
-    /// values of types changed since. `None` when the executable cannot be found, where no memo
-    /// is trusted.
+    /// Remembers the identity of an executable in `dir`, by its path, size and time written, so
+    /// that only the first run of a build reads the whole file. Applies from the first call.
+    pub fn remember_in(dir: impl Into<PathBuf>) {
+        let _ = REMEMBERED.set(dir.into());
+    }
+
+    /// The running executable ([`vun_fs::EXECUTABLE`]) by its contents: the same build is the
+    /// same compiler wherever it is installed, so memos written by it, such as those a
+    /// toolchain ships, hold for every copy; another build is another executable, and its memos
+    /// may hold values of types changed since. `None` when the executable cannot be found or
+    /// read, where no memo is trusted.
     #[must_use]
     pub fn identity() -> Option<Hash> {
         static IDENTITY: OnceLock<Option<Hash>> = OnceLock::new();
-        *IDENTITY.get_or_init(|| {
-            let exe = vun_fs::EXECUTABLE.as_deref()?;
-            let meta = std::fs::metadata(exe).ok()?;
-            let written = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?;
-            Some(Hash::of_value(&(exe.as_os_str().as_encoded_bytes(), meta.len(), written.as_nanos())))
-        })
+        *IDENTITY.get_or_init(Self::of_executable)
+    }
+
+    fn of_executable() -> Option<Hash> {
+        let exe = vun_fs::EXECUTABLE.as_deref()?;
+        let meta = std::fs::metadata(exe).ok()?;
+        let written = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?;
+        let located = Hash::of_value(&(exe.as_os_str().as_encoded_bytes(), meta.len(), written.as_nanos()));
+        let note = REMEMBERED.get().map(|dir| dir.join(located.digest()));
+        let known = note.as_ref().and_then(|note| std::fs::read_to_string(note).ok());
+        if let Some(hash) = known.and_then(|text| Hash::from_digest(Algorithm::Blake3, text.trim())) {
+            return Some(hash);
+        }
+        let hash = Hash::of_reader(std::fs::File::open(exe).ok()?).ok()?;
+        if let Some(note) = note {
+            // A directory that cannot be written only costs the next run a read of the file.
+            let _ = note.put(hash.digest());
+        }
+        Some(hash)
     }
 }
 
@@ -129,7 +155,7 @@ impl Growth {
 /// layered over another, the memos of that file's keys computed again.
 #[derive(Encode, Decode)]
 pub(crate) struct SavedQuery<B = Vec<u8>> {
-    pub(super) keys: Vec<SavedKey<B>>,
+    pub(super) keys: PackedKeys<B>,
     pub(super) replaced: Vec<Replaced<B>>,
 }
 
@@ -138,18 +164,6 @@ pub(crate) struct SavedQuery<B = Vec<u8>> {
 pub(crate) struct Replaced<B = Vec<u8>> {
     pub(super) at: u32,
     pub(super) memo: B,
-}
-
-/// A key, the stable hash of its value, by which it is found, and the fingerprint of its memo if
-/// it had one when first saved: the one its memo and reads of it saw unless they record their
-/// own.
-#[derive(Clone, Encode, Decode)]
-pub(crate) struct SavedKey<B = Vec<u8>> {
-    pub(super) key: B,
-    pub(super) hash: u64,
-    pub(super) fingerprint: Option<Fingerprint>,
-    /// A [`SavedMemo`].
-    pub(super) memo: Option<B>,
 }
 
 #[derive(Encode, Decode)]

@@ -327,7 +327,8 @@ target's declaration, an option, a line of the tools file).
 
 **The toolchain's directory.** A toolchain is a directory holding the executable `bin/vun` and
 its library in `lib/`: the packages `lang`, `std`, `targets` and `boards`, and the pages of
-`vun explain`. A release archive unpacks to one. `vun` reads the library the environment
+`vun explain`; and `memos/`, the libraries' memos, made by `vun toolchain prime` (spec 13,
+section 2), which a toolchain built from a checkout runs on itself. A release archive unpacks to one. `vun` reads the library the environment
 variable `VUN_LIBRARY` names, else `lib/` beside its own `bin/` when that holds every default
 dependency, else the checkout it was built from, which is how development builds run.
 
@@ -346,7 +347,7 @@ from the releases of the project's repository, each tagged with its version as i
 or from the base `VUN_RELEASES` names (a mirror, or a directory as a `file:` URI), laid out as a
 forge lays releases out. Each release carries a manifest, `release.json`, naming for each machine
 (`arch` and `os`, as targets name them) its archive, `vun-<arch>-<os>.tar.gz`, and the BLAKE3
-hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSES/`, which is
+hash of the toolchain tree the archive unpacks to, `bin/`, `lib/`, `LICENSES/` and `memos/`, which is
 checked before anything is kept. The manifest is signed: `release.json.sig` is the Ed25519
 signature of its bytes, checked against the key `vun` is built with, or the one
 `VUN_RELEASES_KEY` names (`ed25519:<base32>`, for a mirror signing its own), so the manifest and,
@@ -403,7 +404,7 @@ and each component's (`vun-<kind>-<id>-<arch>-<os>.tar.gz`, a tree holding the l
 kind and id (`backend-cranelift`, `linker-wasm`) and belongs to the smallest *profile* that holds
 it, `minimal` (what builds for the machine), `default` or `full`; a profile holds the components
 of its own and of the smaller ones. The libraries are apart from the toolchain's tree (`bin/`,
-`lib/`, `LICENSES/`), so that adding one changes no hash the release names. `vun toolchain
+`lib/`, `LICENSES/`, `memos/`), so that adding one changes no hash the release names. `vun toolchain
 install` and `update` take `--profile` (`default` when none), `vun component list`
 shows what a toolchain has and its release builds, `vun component add` and `remove` change the
 installed set, reading the manifest kept with the toolchain (a name the release does not build is

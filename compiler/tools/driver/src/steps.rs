@@ -252,6 +252,7 @@ impl Session {
             Persistence::On | Persistence::At(_) => Persistence::On,
         };
         session.shared.clone_from(&self.shared);
+        session.shipped.clone_from(&self.shipped);
         session.choice = choice;
         session
     }

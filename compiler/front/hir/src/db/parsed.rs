@@ -8,12 +8,12 @@ use vun_diag::{DiagCtxt, DiagCx};
 use vun_hash::Hash;
 use vun_origin::OriginTable;
 use vun_query::{Cx, Query};
-use vun_span::{FileId, SourceFiles};
+use vun_span::{FileId, Locations, SourceFiles};
 use vun_syntax::cst::Cst;
 use vun_syntax::tokens::Tokens;
 use vun_trace::tracing;
 
-use super::input::{FileRef, FileText, Package};
+use super::input::{FileRef, FileText};
 use crate::lower;
 use crate::resolve::{Res, Resolution};
 use crate::tree::{BinderId, ExprId, ExprKind, Hir};
@@ -82,9 +82,8 @@ impl Query for Parsed {
 
     fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
         let text = cx.get::<FileText>(key)?;
-        let package = cx.get::<Package>(&key.package);
         let (sources, origins) = (SourceFiles::global(), OriginTable::global());
-        let file = sources.add_as(key.clone(), package.display(key.path.as_str()), &*text);
+        let file = sources.add_as(key.clone(), Locations::global().display_in(cx.db().id(), key), &*text);
         let mut diag = DiagCtxt::new();
         let mut dcx = DiagCx { diag: &mut diag, origins };
         let tokens = Tokens::lex(file, &text, &mut dcx);

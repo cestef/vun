@@ -19,7 +19,7 @@ use std::fmt;
 
 pub use blob::Blob;
 pub use pool::{Pool, Pooled, Pools};
-pub use reader::{Context, Reader};
+pub use reader::{Context, Owned, Reader};
 pub use vun_codec_derive::{Decode, Encode};
 pub use writer::Writer;
 

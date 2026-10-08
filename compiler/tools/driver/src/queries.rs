@@ -15,7 +15,7 @@ use std::hash::Hash as _;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use vun_fs::{Edit, Tree};
+use vun_fs::{Edit, Mapped, Tree};
 use vun_hash::{Algorithm, Hash, Hasher, Stable};
 use vun_query::{Build, Db, Layering, Unloaded};
 use vun_trace::tracing;
@@ -81,7 +81,11 @@ impl Session {
         {
             let loaded = match Layering::of(&bytes).map(|layering| layering.base) {
                 Ok(Some(base)) => {
-                    match self.shared_dir().and_then(|dir| std::fs::read(dir.join(base.digest())).ok()) {
+                    match self
+                        .shared_dirs()
+                        .iter()
+                        .find_map(|dir| Mapped::open(&dir.join(base.digest())).ok())
+                    {
                         Some(shared) => self.db.load_over(shared, Some(bytes)),
                         None => Err(Unloaded::Base),
                     }
@@ -93,8 +97,8 @@ impl Session {
                 return;
             }
         }
-        if let Some((_, path)) = self.shared_files().into_iter().next()
-            && let Ok(bytes) = std::fs::read(&path)
+        if let Some(path) = self.shared_files().into_iter().next()
+            && let Ok(bytes) = Mapped::open(&path)
         {
             Self::loaded(self.db.load_over(bytes, None), &path);
         }
@@ -128,7 +132,7 @@ impl Session {
         }
         let now = SystemTime::now();
         let old = |written: &SystemTime| now.duration_since(*written).is_ok_and(|age| age > SHARED_KEPT);
-        let files = self.shared_files();
+        let files = Self::files_in(&dir);
         for (_, stale) in files.iter().skip(1).filter(|(written, _)| old(written)) {
             if let Err(error) = std::fs::remove_file(stale) {
                 tracing::debug!(%error, path = %stale.display(), "cannot remove shared queries");
@@ -150,18 +154,38 @@ impl Session {
     }
 
     /// The directory of the shared files for the running toolchain, in a directory of its own,
-    /// the target chosen, the checks and the coverage, if the session shares memos.
-    fn shared_dir(&self) -> Option<PathBuf> {
-        let dir = self.shared.as_ref()?.join(Build::identity()?.digest());
+    /// the target chosen, the checks and the coverage, below `root`.
+    fn shared_in(&self, root: &Path) -> Option<PathBuf> {
+        let dir = root.join(Build::identity()?.digest());
         let mut hasher = Hasher::default();
         (Stable::of(&self.choice), Stable::of(&self.checks()), Stable::of(&self.covered())).hash(&mut hasher);
         Some(dir.join(hasher.finish_hash().digest()))
     }
 
-    /// The shared files for the running toolchain, target and checks, the newest first, with
-    /// when each was written: those named by a hash, as written whole.
-    fn shared_files(&self) -> Vec<(SystemTime, PathBuf)> {
-        let Some(dir) = self.shared_dir() else { return Vec::new() };
+    /// Where the session writes shared files, if it shares memos.
+    fn shared_dir(&self) -> Option<PathBuf> {
+        self.shared_in(self.shared.as_deref()?)
+    }
+
+    /// Where shared files are read from: the session's own, then the toolchain's.
+    fn shared_dirs(&self) -> Vec<PathBuf> {
+        [self.shared.as_deref(), self.shipped.as_deref()]
+            .into_iter()
+            .flatten()
+            .filter_map(|root| self.shared_in(root))
+            .collect()
+    }
+
+    /// The shared files for the running toolchain, target and checks to load, the session's own
+    /// before the toolchain's, each the newest first.
+    fn shared_files(&self) -> Vec<PathBuf> {
+        let files = self.shared_dirs().into_iter().flat_map(|dir| Self::files_in(&dir));
+        files.map(|(_, path)| path).collect()
+    }
+
+    /// The shared files in `dir`, the newest first, with when each was written: those named by a
+    /// hash, as written whole.
+    pub(crate) fn files_in(dir: &Path) -> Vec<(SystemTime, PathBuf)> {
         let named = |path: &PathBuf| {
             let name = path.file_name()?.to_str()?;
             Algorithm::ALL.iter().find_map(|&algorithm| Hash::from_digest(algorithm, name))?;

@@ -21,6 +21,7 @@ pub mod packages;
 mod pages;
 mod plan;
 mod positions;
+pub mod prime;
 pub mod program;
 mod provided;
 mod queries;

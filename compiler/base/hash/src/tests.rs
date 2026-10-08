@@ -124,3 +124,9 @@ fn a_file_is_no_directory_in_a_snapshot() {
     assert_eq!(Snapshot::parse(&format!("{h} - a\n{h} - a/b")), None);
     assert!(Snapshot::parse(&format!("{h} - a\n{h} - ab/c")).is_some());
 }
+
+#[test]
+fn a_reader_is_hashed_as_the_bytes_it_gives() {
+    let bytes: Vec<u8> = (0..200_000u32).map(|n| n.to_le_bytes()[0]).collect();
+    assert_eq!(Hash::of_reader(bytes.as_slice()).unwrap(), Hash::of(&bytes));
+}

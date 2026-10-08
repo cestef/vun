@@ -7,6 +7,7 @@
 //! value in verifying its dependents, and the value is computed only if it is read.
 
 mod census;
+mod keys;
 mod load;
 mod query;
 mod saved;
@@ -21,6 +22,7 @@ use vun_hash::Hash;
 use vun_trace::{Activity, tracing};
 
 pub use self::census::{Census, Counted};
+use self::keys::PackedKeys;
 pub(crate) use self::load::Taking;
 pub(crate) use self::query::Persisted;
 use self::query::{Layout, Numbers, Persisting};
@@ -184,7 +186,8 @@ impl<'a> Part<'a> {
             Self::Carried { store, query } => {
                 let own = query.layers.own.filter(|_| keeps.extends().is_some());
                 let bytes = own.map(|blob| store.stream.bytes(blob).to_vec());
-                let empty = || SavedQuery::<Vec<u8>> { keys: Vec::new(), replaced: Vec::new() }.encoded();
+                let empty =
+                    || SavedQuery::<Vec<u8>> { keys: PackedKeys::pack(&[]), replaced: Vec::new() }.encoded();
                 Named { name: query.name.clone(), query: bytes.unwrap_or_else(empty) }
             }
         }
@@ -252,7 +255,7 @@ impl<'a> Keeps<'a> {
         match self {
             Self::Nothing => 0,
             Self::Base { .. } => keys.base,
-            Self::Loaded(_) => u32::try_from(keys.saved.len()).expect("fewer than 2^32 keys per query"),
+            Self::Loaded(_) => keys.len(),
         }
     }
 }

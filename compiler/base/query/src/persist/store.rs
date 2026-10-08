@@ -8,10 +8,11 @@
 use std::sync::{Arc, OnceLock};
 
 use vun_codec::{Blob, Context};
-use vun_hash::{Hash, Map, Stable};
+use vun_hash::{Hash, Stable};
 use vun_trace::{Activity, tracing};
 
-use super::saved::{Growth, SavedDep, SavedKey, SavedMemo, SavedQuery};
+use super::keys::{KeyHead, PackedKeys, SavedKey};
+use super::saved::{Growth, SavedDep, SavedMemo, SavedQuery};
 use crate::Query;
 use crate::db::Db;
 use crate::memo::{Dep, Memo, ReadValue, Saved};
@@ -52,18 +53,68 @@ pub(crate) struct Layers {
     pub(crate) own: Option<Blob>,
 }
 
-/// A query's saved keys, found by their hashes, and the slot each was given in this process.
+/// A query's saved keys, found by their hashes without reading the others, and the slot each was
+/// given in this process.
 pub(crate) struct StoredKeys {
-    /// The shared file's keys, then the file's own, each with the memo that stands.
-    pub(crate) saved: Vec<SavedKey<Blob>>,
+    stream: Arc<Context>,
+    /// The shared file's keys, and the file's own.
+    base_keys: Option<Table>,
+    own_keys: Option<Table>,
     /// How many keys are the shared file's.
     pub(crate) base: u32,
+    len: u32,
     /// The positions of the shared file's keys whose memo the file layered over it replaces, in
-    /// order.
+    /// order, and the memo that stands for each.
     pub(crate) replaced: Vec<u32>,
-    /// The first position of each hash.
-    index: Map<u64, u32>,
+    memos: Vec<Blob>,
     slots: Box<[OnceLock<Slot>]>,
+}
+
+/// One file's keys of a query, as places in the stream.
+#[derive(Clone, Copy)]
+struct Table {
+    count: u32,
+    starts: Blob,
+    probe: Blob,
+    data: Blob,
+}
+
+impl Table {
+    fn of(keys: &PackedKeys<Blob>) -> Self {
+        Self { count: keys.count, starts: keys.starts, probe: keys.table, data: keys.data }
+    }
+
+    /// Where key `at` starts, as a place in the stream.
+    fn start(&self, stream: &Context, at: u32) -> Option<Blob> {
+        let starts = stream.bytes(self.starts).get(at as usize * 4..)?.first_chunk::<4>()?;
+        let start = u32::from_le_bytes(*starts) as usize;
+        Some(Blob { at: self.data.at + start, len: self.data.len.checked_sub(start)? })
+    }
+
+    fn hash(&self, stream: &Context, at: u32) -> Option<u64> {
+        let head: KeyHead = stream.front_blob(self.start(stream, at)?).ok()?;
+        Some(head.hash.0)
+    }
+
+    fn get(&self, stream: &Context, at: u32) -> Option<SavedKey<Blob>> {
+        stream.front_blob(self.start(stream, at)?).ok()
+    }
+
+    /// The position of the first key of `hash`.
+    #[expect(clippy::cast_possible_truncation, reason = "only the low bits of a hash index the table")]
+    fn find(&self, stream: &Context, hash: u64) -> Option<u32> {
+        let table = stream.bytes(self.probe);
+        let mask = table.len() / 4 - 1;
+        let mut slot = hash as usize & mask;
+        loop {
+            let held = u32::from_le_bytes(*table.get(slot * 4..)?.first_chunk::<4>()?);
+            let at = held.checked_sub(1)?;
+            if self.hash(stream, at)? == hash {
+                return Some(at);
+            }
+            slot = (slot + 1) & mask;
+        }
+    }
 }
 
 impl Store {
@@ -71,7 +122,7 @@ impl Store {
     pub(crate) fn dep(&self, db: &Db, dep: SavedDep) -> Option<Dep> {
         let query = self.queries.get(dep.query as usize)?;
         let table = query.table?;
-        let base = query.keys(&self.stream)?.saved.get(dep.key as usize)?.fingerprint;
+        let base = query.keys(&self.stream)?.head(dep.key)?.fingerprint;
         let slot = db.any_table(table).saved_slot(dep.key)?;
         Some(Dep { table, slot, fingerprint: dep.fingerprint.or(base)? })
     }
@@ -83,7 +134,7 @@ impl Store {
         for query in &self.queries {
             let (Some(table), Some(keys)) = (query.table, query.keys(&self.stream)) else { continue };
             let table = db.any_table(table);
-            let len = u32::try_from(keys.saved.len()).expect("fewer than 2^32 keys per query");
+            let len = keys.len();
             let (first, replaced) = if over_base { (keys.base, &keys.replaced[..]) } else { (0, &[][..]) };
             for at in (first..len).chain(replaced.iter().copied()) {
                 table.saved_slot(at);
@@ -98,14 +149,14 @@ impl StoredQuery {
     }
 
     /// Its keys, read the first time; `None` when they do not decode.
-    pub(crate) fn keys(&self, stream: &Context) -> Option<&StoredKeys> {
+    pub(crate) fn keys(&self, stream: &Arc<Context>) -> Option<&StoredKeys> {
         self.keys
             .get_or_init(|| {
                 let _timer = KEYS.start();
                 let read = |blob: Option<Blob>| blob.map(|blob| stream.read_blob::<SavedQuery<Blob>>(blob));
                 let (base, own) = (read(self.layers.base).transpose(), read(self.layers.own).transpose());
                 match base.and_then(|base| Ok((base, own?))) {
-                    Ok((base, own)) => StoredKeys::new(base, own),
+                    Ok((base, own)) => StoredKeys::new(stream, base, own),
                     Err(malformed) => {
                         tracing::debug!(query = self.name, %malformed, "saved keys not read");
                         None
@@ -119,32 +170,72 @@ impl StoredQuery {
 impl StoredKeys {
     /// The keys of the shared file's query and of the file's own; `None` when the shared file's
     /// replaces memos, or the file's replaces a key the shared file lacks.
-    fn new(base: Option<SavedQuery<Blob>>, own: Option<SavedQuery<Blob>>) -> Option<Self> {
-        let mut saved = Vec::new();
-        if let Some(base) = base {
-            if !base.replaced.is_empty() {
-                return None;
-            }
-            saved = base.keys;
-        }
-        let first = u32::try_from(saved.len()).ok()?;
-        let mut replaced = Vec::new();
+    fn new(
+        stream: &Arc<Context>,
+        base: Option<SavedQuery<Blob>>,
+        own: Option<SavedQuery<Blob>>,
+    ) -> Option<Self> {
+        let base = match base {
+            Some(base) if !base.replaced.is_empty() => return None,
+            Some(base) => Some(Table::of(&base.keys)),
+            None => None,
+        };
+        let first = base.map_or(0, |table| table.count);
+        let (mut replaced, mut memos, mut own_keys) = (Vec::new(), Vec::new(), None);
+        let mut len = first;
         if let Some(own) = own {
             for replacing in own.replaced {
                 (replacing.at < first).then_some(())?;
-                saved[replacing.at as usize].memo = Some(replacing.memo);
                 replaced.push(replacing.at);
+                memos.push(replacing.memo);
             }
-            replaced.sort_unstable();
-            saved.extend(own.keys);
+            let table = Table::of(&own.keys);
+            len += table.count;
+            own_keys = Some(table);
         }
-        let mut index = Map::default();
-        index.reserve(saved.len());
-        for (at, key) in (0..).zip(&saved) {
-            index.entry(key.hash).or_insert(at);
+        let slots = std::iter::repeat_with(OnceLock::new).take(len as usize).collect();
+        Some(Self {
+            stream: Arc::clone(stream),
+            base_keys: base,
+            own_keys,
+            base: first,
+            len,
+            replaced,
+            memos,
+            slots,
+        })
+    }
+
+    /// How many keys there are.
+    pub(crate) fn len(&self) -> u32 {
+        self.len
+    }
+
+    /// The key at `at`, with the memo that stands for it.
+    pub(crate) fn get(&self, at: u32) -> Option<SavedKey<Blob>> {
+        let mut key = match at.checked_sub(self.base) {
+            Some(own) => self.own_keys?.get(&self.stream, own)?,
+            None => self.base_keys?.get(&self.stream, at)?,
+        };
+        if let Ok(replaced) = self.replaced.binary_search(&at) {
+            key.memo = Some(self.memos[replaced]);
         }
-        let slots = std::iter::repeat_with(OnceLock::new).take(saved.len()).collect();
-        Some(Self { saved, base: first, replaced, index, slots })
+        Some(key)
+    }
+
+    /// What leads the key at `at`.
+    pub(crate) fn head(&self, at: u32) -> Option<KeyHead> {
+        let (table, at) = match at.checked_sub(self.base) {
+            Some(own) => (self.own_keys?, own),
+            None => (self.base_keys?, at),
+        };
+        self.stream.front_blob(table.start(&self.stream, at)?).ok()
+    }
+
+    /// The position of the first key of `hash`, the shared file's before the file's own.
+    pub(crate) fn find(&self, hash: u64) -> Option<u32> {
+        let base = self.base_keys.and_then(|table| table.find(&self.stream, hash));
+        base.or_else(|| Some(self.base + self.own_keys?.find(&self.stream, hash)?))
     }
 }
 
@@ -174,13 +265,13 @@ impl<Q: Query> Attached<Q> {
 
     /// The position of `key` among the saved keys, if it is one of them.
     pub(crate) fn find(&self, key: &Q::Key) -> Option<u32> {
-        let at = *self.keys()?.index.get(&Stable::of(key))?;
+        let at = self.keys()?.find(Stable::of(key))?;
         (self.key(at)? == *key).then_some(at)
     }
 
     /// The key saved at `at`, read from the file; `None` when it does not decode.
     pub(crate) fn key(&self, at: u32) -> Option<Q::Key> {
-        let saved = self.keys()?.saved.get(at as usize)?;
+        let saved = self.keys()?.get(at)?;
         let _timer = KEYS.start();
         (self.key)(&self.store.stream, saved.key)
             .inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved key not read"))
@@ -190,14 +281,14 @@ impl<Q: Query> Attached<Q> {
     /// The memo saved for the key at `at`, as never verified: its value and reads are read when
     /// first needed.
     pub(crate) fn memo(&self, at: u32) -> Option<Memo<Q>> {
-        let key = self.keys()?.saved.get(at as usize)?;
+        let key = self.keys()?.get(at)?;
         let _timer = RESTORE.start();
         let memo = self.store.stream.read_blob::<SavedMemo<Blob>>(key.memo?);
         let memo =
             memo.inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved memo not read"));
         let memo = memo.ok()?;
         let saved = self.value.zip(memo.value).map(|(read, at)| Saved { at, read });
-        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint)?, memo.deps, memo.under))
+        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint())?, memo.deps, memo.under))
     }
 
     /// The slot of the key at `at`, set once it is given one.

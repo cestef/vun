@@ -1,7 +1,6 @@
 //! What the driver sets once it has loaded a package graph: each package's description, the
 //! text of its source files and the bytes of every file it holds. Everything else is computed from these by queries.
 
-use std::path::Path;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
@@ -18,8 +17,6 @@ pub use vun_span::{FileRef, PackageId};
 pub struct PackageData {
     /// `None` for files outside any package, which have no root namespace.
     pub name: Option<Symbol>,
-    /// Its directory as shown to users; the paths of its files are relative to it.
-    pub dir: String,
     pub deps: Vec<DepData>,
     /// The namespaces whose public names its files see, by path.
     pub prelude: Vec<Vec<Symbol>>,
@@ -52,14 +49,6 @@ pub enum Unloaded {
     Absent(DiagCtxt),
     /// Already reported while the graph was loaded, such as a version conflict.
     Reported,
-}
-
-impl PackageData {
-    /// `path`, one of its files, as shown to users.
-    #[must_use]
-    pub fn display(&self, path: &str) -> String {
-        Path::new(&self.dir).join(path).display().to_string()
-    }
 }
 
 /// Input: a package's description; an unset one is empty.

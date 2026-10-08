@@ -47,6 +47,16 @@ impl Hash {
         Self { algorithm: Algorithm::Blake3, digest: *blake3::hash(bytes).as_bytes() }
     }
 
+    /// The hash of everything `reader` gives.
+    ///
+    /// # Errors
+    /// Returns the error of the read.
+    pub fn of_reader(reader: impl std::io::Read) -> std::io::Result<Self> {
+        let mut blake3 = blake3::Hasher::new();
+        blake3.update_reader(reader)?;
+        Ok(Self { algorithm: Algorithm::Blake3, digest: *blake3.finalize().as_bytes() })
+    }
+
     /// Reads the text form; `None` for an unknown algorithm or a malformed digest.
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {

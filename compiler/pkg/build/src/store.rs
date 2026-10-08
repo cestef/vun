@@ -55,6 +55,15 @@ impl Store {
     /// The libraries' memos shared between projects (spec 13, section 2).
     pub const MEMOS: &str = "memos";
 
+    /// The contents hash of each build of the compiler seen, by where and when it was written.
+    pub const BUILDS: &str = "builds";
+
+    /// The directory of the hashes of the builds of the compiler seen.
+    #[must_use]
+    pub fn builds(&self) -> PathBuf {
+        self.root.join(Self::BUILDS)
+    }
+
     /// The directory of the libraries' memos shared between projects.
     #[must_use]
     pub fn memos(&self) -> PathBuf {

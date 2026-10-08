@@ -29,41 +29,24 @@
 - Cold `vun test lib/std` on `am3.wg` (empty `VUN_STORE`): `Body::propagate` is 3.4% of the samples
   with its callees and 0.07% on its own, so the repeated scans cost nothing; the rest is the
   compile-time calls `fold` evaluates, which `concrete` (2.6 s total across threads) holds.
-- `vun debug profile` on `am3.wg` (2026-10-08, hello, warm unless said): 332 M instructions, 47 ms.
-  Where it goes, in order of what to try:
-  1. Parsing: a warm check parsed 23 library files only to read their diagnostics. `parse_report`
-     (`Reported`) saves them with their value now: warm `hello` 332 M to 115 M instructions, one
-     file parsed. The parser itself costs ~7000 instructions a token (11 MiB/s): the engine
-     decides over the whole frame stack for each token (`decide`, `holding`, `taking`), which a
-     cold run still pays for every library file (`parsed` is 25% of cold time). The cold parser is
-     ~17% of a cold run (1.4 G of 8.2 G, `hello`) and a cold run happens once per toolchain: it is
-     flat (`Spec` built ~4.6M times, `KindSet` tests, `decide` walking the stack for each token),
-     so only caching decisions across tokens, or saving the parsed file, would change it much.
-     Warm `hello` is 28.6 ms now (47 ms before); blake3 is 19% of what is left.
-  2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold: `blake3` is built with
-     `pure` (decision 67, no C or assembly), which also drops its SIMD paths (NEON on aarch64,
-     AVX2 on x86). Dropping `pure` buys most of that back and costs a C compiler; the owner's
-     call. Hashing fewer bytes (what is hashed on a warm run) costs nothing.
-  3. Cold: `Table<Parsed>::slot` 2.4M calls at 140 instructions each (3.9%), `Table<Typed>::slot`
-     and `Table<DeclValue>::slot` the same shape; `Value::clone` 10.7M calls and its drop 6.0M
-     (4.2% together).
-  4. Time cold (hello 534 ms): `parsed` 25%, `metered_call` 13%, `typed` 12.5%, `mir` 9%,
-     `save memos` 9%, waiting for claims 6%. Comptime-heavy (`corpus/bench/comptime.vun`)
-     is 857 ms, 26% in `metered_call` over 31 000 calls.
-  `Vec<u8>` encoded byte by byte (3.8% cold): fixed, cold `hello` 8.70 G to 8.25 G instructions.
-  SipHash (2.3% cold, the shared-memo scan's `known` map) is `vun_hash::Map` now: cold `hello` 8.25 G to
-  8.09 G. Other `std` maps with the default hasher may remain.
-  Cold counts vary ~1% between runs (warm 0.0%); find why (a time- or address-dependent order).
+- `vun debug profile` on `am3.wg` (2026-10-08, `hello`): a first check from nothing is 4.7 G
+  instructions, 600 ms; on a primed toolchain (`vun toolchain prime`, decision 667) 0.7 G, 70 ms;
+  warm 0.13 G, 25 ms. Open, by size:
+  1. The shipped layer is 75 MB (10 to 13 MB compressed): it is every non-generic body of `lang`,
+     `std` and `targets`. Generic instantiations a program needs are computed and saved with the
+     project. Wanted: a small second layer from sample programs for the common instantiations
+     (`fmt`, collections), and memos for the other targets (wasm, bare): each target and set of
+     checks is a file of its own, primed for the host only. The playground keeps nothing between
+     visits unless it ships the file too.
+  2. Cold parse (a run with no memos, a library the toolchain does not ship, a package edited):
+     ~7000 instructions a token, 27% of a cold run, flat (`Spec` built 4.6M times, kind-set
+     tests, `decide` walking the frame stack). Only caching decisions across tokens would
+     change it.
+  3. Cold counts vary ~1% between runs (warm 0.0%); find why.
+  4. `blake3` hashes with NEON for long inputs (decision 665); single blocks stay portable.
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`
   8.4 M (2.3 ms, measured at 400 000 flags; the benchmark sieves 4 000 000 now), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries
   carry no function names (`f129`), so `profile` cannot name a hot function there: emit symbols
   for local functions. Nothing yet compares the backends instruction for instruction in one
   report; run the same `run-*` with `--backend`.
-- Cold `hello` (am3): linting the library files the program reaches was 41% of the instructions
-  (7.90 G to 4.65 G, wall 614 to 358 ms); only the checked package is linted now (decision 666).
-  What a cold check still computes: 316 files parsed (134 ms), 2900 bodies typed and MIR built for
-  the lint rules and the comptime they run, 5.6k `signed`. Ideas, by size: ship the shared library
-  memos with the toolchain (a first run becomes a warm one); make `Table::slot` cheaper (papaya
-  is 15% of cold: 2.7M lookups of `Parsed` alone, each hashing a `FileRef`); parse the library
-  lazily (only the declarations a program reaches).

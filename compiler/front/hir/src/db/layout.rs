@@ -33,10 +33,10 @@ impl PackageData {
         Some(names.map(Symbol::as_str).collect::<Vec<_>>().join(&SEPARATOR.to_string()))
     }
 
-    /// The directory of the namespace at `path`, as shown to users.
+    /// The directory of the namespace at `path`, below the package's: `p/a/b`.
     #[must_use]
     pub fn directory(&self, path: &[Symbol]) -> Option<String> {
-        Some(self.display(&self.base(path)?))
+        self.base(path)
     }
 
     /// The source file of the namespace at `path`, if it has one.

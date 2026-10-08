@@ -5,9 +5,10 @@
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::process::{Command, ExitStatus};
 
 use vun_build::release::{Build, Release};
-use vun_build::toolchains::{BIN, COMPONENTS, CONTENTS, Toolchains};
+use vun_build::toolchains::{BIN, COMPONENTS, CONTENTS, MEMOS, Toolchains};
 use vun_data::ToData;
 use vun_data::json::Json;
 use vun_fs::{Edit, Tree};
@@ -30,7 +31,7 @@ impl Stage {
     }
 
     /// Lays the tree at an empty directory: the built `binary` as `bin/<its name>`, what the
-    /// checkout ships beside it, `CONTENTS` except the executable, and the component `libraries`
+    /// checkout ships beside it, `CONTENTS` except the executable and the memos, which priming makes, and the component `libraries`
     /// in `components/`.
     ///
     /// # Errors
@@ -41,7 +42,7 @@ impl Stage {
         let exe = self.dir.join(BIN).join(binary.file_name().unwrap_or_default());
         exe.parent().map(fs::create_dir_all).transpose()?;
         fs::copy(binary, &exe)?;
-        for part in CONTENTS.iter().filter(|&&c| c != BIN) {
+        for part in CONTENTS.iter().filter(|&&c| c != BIN && c != MEMOS) {
             for file in self.checkout.join(part).files()? {
                 let relative = file.strip_prefix(&self.checkout).unwrap_or(&file);
                 self.dir.join(relative).put(fs::read(&file)?)?;
@@ -52,6 +53,18 @@ impl Stage {
             self.dir.join(COMPONENTS).join(name).put(fs::read(library)?)?;
         }
         Ok(())
+    }
+
+    /// Primes the toolchain laid here: its own executable, `binary` copied into the tree, is run
+    /// over the templates of the library beside it, which keeps the libraries' memos in the
+    /// tree. Memos name the executable by its contents, so they hold for every copy of it.
+    ///
+    /// # Errors
+    /// Returns an error if the executable cannot be run, or priming ends without success.
+    pub(crate) fn prime(&self, binary: &Path) -> io::Result<()> {
+        let exe = self.dir.join(BIN).join(binary.file_name().unwrap_or_default());
+        let status = Command::new(exe).args(["toolchain", "prime"]).status()?;
+        status.success().then_some(()).ok_or_else(|| io::Error::other(Unprimed(status)))
     }
 
     /// Keeps beside the tree laid here the manifest of the release it stands for: a release of
@@ -83,3 +96,15 @@ impl Stage {
         &self.dir
     }
 }
+
+/// Priming ended without success.
+#[derive(Debug)]
+struct Unprimed(ExitStatus);
+
+impl std::fmt::Display for Unprimed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "priming the toolchain ended with {}", self.0)
+    }
+}
+
+impl std::error::Error for Unprimed {}

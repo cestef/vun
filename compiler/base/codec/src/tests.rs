@@ -200,7 +200,7 @@ fn a_layer_names_the_handles_of_the_stream_under_it() {
     let pools = w.into_pools();
     assert_eq!(pools.0.iter().map(|p| p.entries.len()).sum::<usize>(), 1, "written without the base's");
     let (input, pools) = pools.placed();
-    let layer = Context::over(base, input, pools);
+    let layer = Context::over(base, Box::new(input), pools);
     let texts: Vec<String> =
         [&old_a, &new].iter().map(|bytes| layer.read::<Name>(bytes).unwrap().text()).collect();
     assert_eq!(texts, ["a", "b"]);

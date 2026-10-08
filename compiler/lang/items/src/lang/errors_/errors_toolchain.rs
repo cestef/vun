@@ -18,3 +18,6 @@ pub const no_component: Item = Item::new(
     &["lang", "errors", "toolchain", "no_component"],
 );
 pub const required: Item = Item::new(&["lang", "errors", "toolchain", "required"]);
+pub const prime_failed: Item = Item::new(
+    &["lang", "errors", "toolchain", "prime_failed"],
+);

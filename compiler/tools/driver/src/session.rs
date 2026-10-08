@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use vun_build::manifest::Manifest;
 use vun_build::store::Store;
+use vun_build::toolchains::Toolchains;
 use vun_command::Diagnostics;
 use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed};
 use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
@@ -13,7 +14,7 @@ use vun_hir::tree::{ExprKind, Hir};
 use vun_intern::Symbol;
 use vun_mir::Roots;
 use vun_origin::OriginTable;
-use vun_query::Db;
+use vun_query::{Build, Db};
 use vun_sema::decl::DeclValue;
 use vun_sema::target::Choice;
 use vun_sema_ty::item::{DeclRef, ExprRef};
@@ -60,6 +61,9 @@ pub struct Session {
     pub persistence: Persistence,
     /// The directory of the libraries' memos shared between projects, if they are shared.
     pub shared: Option<PathBuf>,
+    /// The directory of the memos the toolchain ships, laid out as `shared` is, if it has any:
+    /// read when the session's own hold none, never written by a session that shares.
+    pub shipped: Option<PathBuf>,
     /// Whether the memos this session computes are added to the shared ones when it is saved; a
     /// session that compiles many programs made once reads them and leaves them as they are.
     pub shares_new: bool,
@@ -118,6 +122,7 @@ impl Session {
             persistence: Persistence::Off,
             tally: std::env::var(vun_query::Tally::VAR).is_ok_and(|v| v == "1"),
             shared: None,
+            shipped: None,
             shares_new: true,
             tools: vun_build::tools::Tools::path(),
             equipped: None,
@@ -142,6 +147,8 @@ impl Session {
         let mut session = Self::new();
         session.persistence = Persistence::On;
         session.shared = Some(session.store.memos());
+        session.shipped = Toolchains::shipped_memos();
+        Build::remember_in(session.store.builds());
         session
     }
 
@@ -237,8 +244,12 @@ impl Session {
         let package = self.package_of(file);
         self.publish(package);
         let key = self.packages.list[&package].file(&path);
-        // The file as loaded, which its package's files do not include when it is loose.
-        self.db.set::<FileText>(&key, Some(Arc::from(self.text(file))));
+        // The file as loaded, which its package's files do not include when it is loose, or hold
+        // other text than the buffer, which a library's inputs, shared, are left alone for.
+        let loaded: Option<Arc<str>> = Some(Arc::from(self.text(file)));
+        if self.db.get::<FileText>(&key) != loaded {
+            self.db.set::<FileText>(&key, loaded);
+        }
         // Reported once when none is; what needs it then stays unknown.
         let _ = self.target_for(&key);
         key

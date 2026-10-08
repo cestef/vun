@@ -11,9 +11,9 @@ Tests, clippy, `lines` and `layers` are clean. Decisions awaiting the owner are 
 
 ## Next
 
-Profiling (`vun debug profile`, decision 664, [`open/performance.md`](open/performance.md) lists what
-it found): next try its first targets (parse trees saved, blake3 NEON, `Vec<u8>::encode`), name
-functions in native binaries, and find the ~1% variance of cold counts.
+Profiling and priming (`vun debug profile`, decisions 664 to 668, [`open/performance.md`](open/performance.md)):
+a primed toolchain makes a first check 70 ms. Next: run `cargo xtask package` once on a machine and
+check a program from the unpacked archive; a second layer from sample programs; the other targets.
 
 Fuzzing (`vun debug smith`, spec 11, [`open/testing.md`](open/testing.md)): a 2000-program campaign
 (seeds 30000.., run reach) found two bugs, both fixed (an unreached block read a value `fold`

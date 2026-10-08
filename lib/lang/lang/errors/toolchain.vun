@@ -5,3 +5,4 @@ not_installed := diag.Diag{};
 in_use := diag.Diag{};
 no_component := diag.Diag{};
 required := diag.Diag{};
+prime_failed := diag.Diag{};

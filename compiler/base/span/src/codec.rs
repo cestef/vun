@@ -3,7 +3,7 @@
 
 use vun_codec::{Decode, Encode, Malformed, Pooled, Reader, Writer};
 
-use crate::{ByteRange, FileId, FileRef, SourceFiles, SourceMap, Span};
+use crate::{ByteRange, FileId, FileRef, Locations, SourceFiles, SourceMap, Span};
 
 impl Pooled for FileId {
     const POOL: &'static str = "file";
@@ -11,12 +11,16 @@ impl Pooled for FileId {
     fn write(self, w: &mut Writer<'_>) {
         let files = SourceFiles::global();
         let file = files.file(self);
-        (files.key(self), file.path.as_str(), file.text.as_str()).encode(w);
+        (files.key(self), file.text.as_str()).encode(w);
     }
 
     fn read(r: &mut Reader<'_>) -> Result<Self, Malformed> {
-        let (key, path, text) = <(FileRef, String, String)>::decode(r)?;
-        Ok(SourceFiles::global().add_as(key, path, text))
+        let (key, text) = <(FileRef, String)>::decode(r)?;
+        let files = SourceFiles::global();
+        // The file as the process added it under whatever path, else as this machine shows it.
+        Ok(files
+            .read(&key, &text)
+            .unwrap_or_else(|| files.add_as(key.clone(), Locations::global().display(&key), text)))
     }
 }
 

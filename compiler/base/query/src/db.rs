@@ -89,6 +89,12 @@ pub struct Db {
 }
 
 impl Db {
+    /// What names this database among the others of the process.
+    #[must_use]
+    pub fn id(&self) -> u64 {
+        self.id.0
+    }
+
     /// A database reusing memos as the environment asks ([`Reuse::from_env`]).
     #[must_use]
     pub fn new() -> Self {

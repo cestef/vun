@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::{Captured, Edit, Mode, Modes, Refusal, Relative, Scratch, Tree, WORK};
+use super::{Captured, Edit, Mapped, Mode, Modes, Refusal, Relative, Scratch, Tree, WORK};
 
 fn names(paths: &[PathBuf], root: &std::path::Path) -> Vec<String> {
     paths.iter().map(|p| p.strip_prefix(root).unwrap().to_string_lossy().into_owned()).collect()
@@ -164,4 +164,13 @@ fn a_command_ends_with_its_process_not_with_a_daemon_holding_its_streams() {
     assert_eq!((output.stdout, output.stderr), (b"out\n".to_vec(), b"err\n".to_vec()));
     assert_eq!(output.status.code(), Some(3));
     assert!(started.elapsed() < std::time::Duration::from_secs(3));
+}
+
+#[test]
+fn a_mapped_file_holds_the_bytes_it_was_written_with() {
+    let dir = Scratch::new("mapped");
+    let bytes: Vec<u8> = (0..100_000u32).map(|n| n.to_le_bytes()[1]).collect();
+    let path = dir.write("memos", &bytes);
+    assert_eq!(Mapped::open(&path).unwrap().as_ref(), bytes.as_slice());
+    assert!(Mapped::open(&dir.join("absent")).is_err());
 }

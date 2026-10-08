@@ -97,8 +97,8 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   `vun-codec` (`#[derive(Encode, Decode)]`). A handle into a process table (a symbol, an
   interned value, a file, an origin) is written once per file by content and recorded again when
   read, and those tables are the process's, as interners are. Memos are saved by query name and
-  key position in `.vun/queries/<toolchain>` of the root file's project (spec 12, section 5), the toolchain named by its
-  executable. A memo whose trace reads a query that is not persisted is not saved; inputs
+  key position in `.vun/queries/<toolchain>` of the root file's project (spec 12, section 5), the toolchain named by the
+  hash of its executable, so that memos written by a build hold for every copy of it, wherever installed. A memo whose trace reads a query that is not persisted is not saved; inputs
   (`Query::INPUT`) never are. A loaded memo is verified before its first use like any memo of an
   earlier revision, so a stale file costs recomputation, never a wrong result; a traced memo
   that holds stands for its value, which is computed only if read (red-green, as rustc's
@@ -134,7 +134,12 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   (`Novelty`): one read again for its value, as a traced query's, is not new. Files older than
   a week but the newest are removed, and those of other toolchains. Loaded memos are verified
   before use, so a shared file never makes a result wrong, only a build faster: `lang` and `std`
-  are checked and built into MIR once per toolchain, target and checks.
+  are checked and built into MIR once per toolchain, target and checks, or never by a user when
+  the toolchain ships them: `vun toolchain prime` checks every file of the libraries and keeps the
+  shared memos in the toolchain's `memos/`, which sessions read after their own shared files.
+  Nothing a memo holds depends on where a package is: a file is its key and text, shown under
+  the directory of its package (`Locations`), and a package's input has no directory. Shared
+  files are mapped, not read, and a query's keys are found by hash without reading the others.
 - A project's memos are saved layered over the shared file it loaded (`Db::load_over`), naming
   it by its hash: the stream continues that file's (places and pool numbers past its own), each
   query of that file keeps its position, and each query's keys follow that file's, so that a read

@@ -152,6 +152,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (TOOLCHAIN_IN_USE, "lang/lang/errors/toolchain/in_use.md"),
     (TOOLCHAIN_NO_COMPONENT, "lang/lang/errors/toolchain/no_component.md"),
     (TOOLCHAIN_REQUIRED, "lang/lang/errors/toolchain/required.md"),
+    (TOOLCHAIN_PRIME_FAILED, "lang/lang/errors/toolchain/prime_failed.md"),
     (TYPES_MISMATCH, "lang/lang/errors/types/mismatch.md"),
     (TYPES_NO_MEMBER, "lang/lang/errors/types/no_member.md"),
     (TYPES_NOT_DEREFERENCEABLE, "lang/lang/errors/types/not_dereferenceable.md"),

@@ -51,7 +51,7 @@ impl Db {
             sharing.known.into_iter().filter(|&(_, shared)| shared).map(|(k, _)| k).collect();
         let (bytes, numbers) = self.save_keys(Some(&included));
         if !self.restored()
-            && let Err(unloaded) = self.layer(bytes.clone(), None, Taking::Written(&numbers))
+            && let Err(unloaded) = self.layer(Box::new(bytes.clone()), None, Taking::Written(&numbers))
         {
             tracing::debug!(%unloaded, "the shared memos saved are not layered under");
         }
@@ -126,11 +126,18 @@ impl Sharing<'_> {
     /// none, and a memo of a query not persisted, or an input not shared, cannot.
     fn facts(&self, (table, slot): (TableId, Slot)) -> Option<Remaining> {
         if !self.tables.contains(&table) {
+            tracing::debug!(query = self.db.any_table(table).name(), "not shared: not persisted");
             return None;
         }
         let facts = self.db.any_table(table).facts(self.db, slot)?;
         match (facts.input, facts.shared) {
-            (true, false) => None,
+            (true, false) => {
+                tracing::debug!(
+                    query = self.db.any_table(table).name(),
+                    "not shared: an input of the project"
+                );
+                None
+            }
             (true, true) => Some(Remaining { deps: Vec::new(), computed: false }),
             (false, _) => Some(Remaining { deps: facts.deps.into_vec(), computed: facts.computed }),
         }

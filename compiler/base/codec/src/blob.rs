@@ -31,6 +31,17 @@ impl Blob {
     }
 }
 
+impl Blob {
+    /// Reads a value from the front of these bytes of `input`, as [`Blob::read`] does, whatever
+    /// follows it unread.
+    ///
+    /// # Errors
+    /// Returns why the front of the bytes is not a value of this type.
+    pub fn front<T: Decode>(self, input: &[u8]) -> Result<T, Malformed> {
+        Reader::plain_front(self.of(input), self.at)
+    }
+}
+
 impl Decode for Blob {
     fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
         let len = usize::decode(r)?;

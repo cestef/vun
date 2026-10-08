@@ -118,3 +118,16 @@ fn a_place_is_the_byte_offset_of_a_line_and_a_column_of_characters() {
         assert_eq!(bad.parse::<Place>(), Err(NoPlace));
     }
 }
+
+#[test]
+fn a_file_is_shown_under_the_directory_of_its_package_where_it_is_located() {
+    let (located, loose) = (hal("hal.vun"), FileRef::loose("/x/loose.vun"));
+    let locations = Locations::default();
+    assert_eq!(locations.display(&located), "hal.vun", "not located yet");
+    locations.set(1, located.package, "/home/a/hal");
+    locations.set(2, located.package, "/home/b/hal");
+    assert_eq!(locations.display_in(1, &located), "/home/a/hal/hal.vun");
+    assert_eq!(locations.display_in(2, &located), "/home/b/hal/hal.vun");
+    assert_eq!(locations.display(&located), "/home/b/hal/hal.vun", "the latest, where no database is known");
+    assert_eq!(locations.display(&loose), "/x/loose.vun");
+}

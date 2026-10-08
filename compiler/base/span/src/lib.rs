@@ -11,10 +11,12 @@ mod codec;
 mod data;
 mod file;
 mod key;
+mod locations;
 mod place;
 
 pub use file::{LineCol, SourceFile};
 pub use key::{FileRef, PackageId, Version};
+pub use locations::Locations;
 pub use place::{NoPlace, Place};
 
 /// The extension of Vun source files, as a literal for [`source_file!`].

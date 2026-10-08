@@ -37,6 +37,7 @@ impl Census {
         let sum = |blobs: &mut dyn Iterator<Item = Blob>| blobs.map(|b| b.len).sum::<usize>();
         let queries = body.queries.iter().map(|q| {
             let SavedQuery { keys, replaced } = q.query.read::<SavedQuery<Blob>>(bytes)?;
+            let keys = keys.read(bytes)?;
             let memos = keys.iter().filter_map(|k| k.memo).chain(replaced.iter().map(|r| r.memo));
             let memos = memos.map(|m| m.read::<SavedMemo<Blob>>(bytes));
             let memos = memos.collect::<Result<Vec<_>, _>>()?;

@@ -32,7 +32,7 @@ pub use signature::Signature;
 use std::path::PathBuf;
 
 use vun_diag::DiagCtxt;
-use vun_hir::db::{Package, Parsed};
+use vun_hir::db::{FileRef, Package, Parsed};
 use vun_hir::tree::{ExprKind, Name};
 
 use vun_origin::Resolve;
@@ -41,7 +41,7 @@ use vun_sema::site::{Declaration, NameSite};
 use vun_sema::typed::{Known, Typed};
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::{DeclRef, ExprRef, Site};
-use vun_span::{FileId, Span};
+use vun_span::{FileId, Locations, Span};
 
 use crate::Session;
 
@@ -123,7 +123,10 @@ impl Session {
             }
             Declaration::Site(Site::Namespace(ns)) => {
                 let package = self.db.get::<Package>(&ns.package);
-                package.file_of(&ns.path).map(|f| Target::File(PathBuf::from(package.display(f))))
+                package.file_of(&ns.path).map(|f| {
+                    let file = FileRef { package: ns.package, path: vun_intern::Symbol::intern(f) };
+                    Target::File(PathBuf::from(Locations::global().display_in(self.db.id(), &file)))
+                })
             }
         }
     }

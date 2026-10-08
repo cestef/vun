@@ -189,6 +189,16 @@ cargo run -q -p vun-cli -- target list           # every target: backend, linker
 cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
 ```
 
+`vun toolchain prime` checks the libraries whole and keeps their shared memos in the running
+toolchain's `memos/` (`--into <dir>` elsewhere): about 5 s and 75 MB on `am3.wg`, 10 to 13 MB in a
+release archive. `cargo xtask package` and `install` run it on the staged executable; a build in
+`target/` has no `memos/` and primes its own shared files on first use. The compiler is named by
+the hash of its executable, remembered in `<store>/builds`, so the first run of a new build reads
+the whole file (a debug build is 300 MB: a few hundred milliseconds); measure from a store whose
+`builds` is kept and `memos` is emptied, or the first run is the hash. To try a primed toolchain
+where it was not made, copy `bin/vun`, `lib/` and `memos/` to a new directory and run it: the
+memos hold wherever the tree is.
+
 Saved queries live in `.vun/queries/` of the project (its package's directory, a workspace's root, or beside a file outside any package; delete it to start cold), builds in
 `.vun/build/`. The libraries' memos are shared entries of the store (`<store>/memos`, per
 toolchain, target and checks).

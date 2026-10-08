@@ -5,6 +5,7 @@
 mod captured;
 mod edit;
 mod executable;
+mod mapped;
 mod mode;
 mod mounts;
 mod process;
@@ -16,6 +17,7 @@ mod walk;
 pub use captured::{Captured, Ended};
 pub use edit::{Edit, Part};
 pub use executable::EXECUTABLE;
+pub use mapped::Mapped;
 pub use mode::{Mode, Modes};
 pub use mounts::Mounts;
 pub use process::PROCESS;

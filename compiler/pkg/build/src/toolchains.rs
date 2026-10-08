@@ -16,7 +16,10 @@ use crate::release::Piece;
 pub const NAME: &str = "vun";
 /// What a toolchain's tree holds, as snapshots name it: what a release archive holds and the
 /// release's hash covers.
-pub const CONTENTS: [&str; 3] = [BIN, "lib", "LICENSES"];
+pub const CONTENTS: [&str; 4] = [BIN, "lib", "LICENSES", MEMOS];
+/// The directory of the libraries' memos a toolchain ships, laid out as the store's
+/// (`Store::MEMOS`), made by priming the toolchain once it is built (`vun toolchain prime`).
+pub const MEMOS: &str = "memos";
 /// The directory of a toolchain's executable.
 pub const BIN: &str = "bin";
 /// The directory of a toolchain's components, libraries installed one by one: apart from the
@@ -188,6 +191,13 @@ impl Toolchains {
     pub fn hash_of(dir: &Path, contents: &[&str]) -> io::Result<Hash> {
         let contents: Vec<String> = contents.iter().map(|&c| c.to_owned()).collect();
         Snapshot::of(dir, &contents).map(|s| s.root())
+    }
+
+    /// The memos shipped with the running toolchain, if its tree holds some.
+    #[must_use]
+    pub fn shipped_memos() -> Option<PathBuf> {
+        let tree = vun_fs::EXECUTABLE.as_deref()?.parent()?.parent()?;
+        Some(tree.join(MEMOS)).filter(|dir| dir.is_dir())
     }
 
     /// The file name of a toolchain's executable on this system.

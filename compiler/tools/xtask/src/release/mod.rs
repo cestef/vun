@@ -52,6 +52,7 @@ pub(crate) fn package(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io
     let out = Path::new(args.value(&OUT).expect("positional parameters are present"));
     let staging = Stage::at(repo_root(), out.join(STAGE));
     staging.lay(binary, &[])?;
+    staging.prime(binary)?;
     let contents: Vec<String> = CONTENTS.iter().map(|&c| c.to_owned()).collect();
     let format = Format::of(Build::SUFFIX).expect("toolchain archives are of a known format");
     let (bytes, snapshot) = format.pack(staging.dir(), &contents, NAME)?;

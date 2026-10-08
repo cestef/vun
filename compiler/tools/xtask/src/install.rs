@@ -64,8 +64,10 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
     };
     let staging = Stage::at(&root, toolchains.staging(version));
     let libraries: Vec<PathBuf> = crates.iter().map(|c| c.beside(&binary)).collect();
-    let laid =
-        staging.lay(&binary, &libraries).and_then(|()| staging.keep_release(version, &binary, &crates));
+    let laid = staging
+        .lay(&binary, &libraries)
+        .and_then(|()| staging.prime(&binary))
+        .and_then(|()| staging.keep_release(version, &binary, &crates));
     if let Err(why) = laid {
         staging.dir().remove()?;
         let msg = Msg::new().text("cannot put the toolchain ").code(version.to_string()).text(" together");

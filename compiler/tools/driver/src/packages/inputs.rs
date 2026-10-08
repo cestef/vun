@@ -14,7 +14,8 @@ use vun_hir::db::{
 use vun_intern::Symbol;
 use vun_par::Parallel;
 use vun_query::Sharing;
-use vun_span::{EXTENSION, FileId};
+use vun_span::{EXTENSION, FileId, Locations, Span};
+use vun_trace::tracing;
 
 use super::deps::Unfetched;
 use super::{Package, PackageKey, Packages};
@@ -113,14 +114,27 @@ impl Session {
             deps.push(DepData { name, package: target });
         }
         let p = &self.packages.list[&package];
+        // The span is of the manifest as the package's file, named by the package, not by where
+        // the manifest was first read, so that the input holds wherever the package is.
+        let prelude_span = p
+            .prelude_span
+            .zip(p.sources.texts().find(|(path, _)| *path == MANIFEST))
+            .and_then(|(span, (path, text))| {
+                let key = FileRef { package: id, path: Symbol::intern(path) };
+                let file = self.sources.add_as(
+                    key.clone(),
+                    Locations::global().display_in(self.db.id(), &key),
+                    text?.to_string(),
+                );
+                Some(Span { file, range: span.range })
+            });
         let prelude =
             p.prelude.iter().map(|path| path.split(SEPARATOR).map(Symbol::intern).collect()).collect();
         let data = PackageData {
             name: p.name,
-            dir: p.dir.display().to_string(),
             deps,
             prelude,
-            prelude_span: p.prelude_span,
+            prelude_span,
             features: p.features.clone(),
             target: p.target.clone(),
             files: p.sources.texts().map(|(path, _)| path.clone()).collect(),
@@ -132,6 +146,7 @@ impl Session {
                 .map(|path| Symbol::intern(path)),
         };
         // A library's inputs are the same in every project, so what reads them alone is shared.
+        tracing::debug!(?data, "package set");
         let sharing = if self.packages.library(package) { Sharing::Shared } else { Sharing::Own };
         for (path, text) in p.sources.texts() {
             let key = FileRef { package: id, path: Symbol::intern(path) };

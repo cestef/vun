@@ -9,6 +9,9 @@ use vun_par::Map;
 
 use crate::{Blob, Decode, Malformed, Pooled, Pools};
 
+/// The bytes of a stream's input, wherever they are held: in memory, or mapped from a file.
+pub type Owned = Box<dyn AsRef<[u8]> + Send + Sync>;
+
 /// What the values of one stream are read against: its input, its pools as places in the input,
 /// and the handles already read from them, so that each entry is recorded once however often it
 /// is referenced. Threads share it without locks, so values can be read when first needed, in
@@ -17,9 +20,8 @@ use crate::{Blob, Decode, Malformed, Pooled, Pools};
 /// A stream can be layered over another: its input follows the other's, so that a place names
 /// the input of the layer holding it, and each of its pools numbers its entries after the other's
 /// entries of that pool, so that its values name the other's handles as the other's values do.
-#[derive(Default)]
 pub struct Context {
-    input: Box<[u8]>,
+    input: Owned,
     /// Where `input` starts in the stream: the end of the stream it is layered over.
     offset: usize,
     base: Option<Arc<Context>>,
@@ -27,6 +29,12 @@ pub struct Context {
     pools: HashMap<String, Vec<Blob>>,
     /// The handles read from each pool of this layer, by the handle's type.
     read: Map<TypeId, Arc<dyn Any + Send + Sync>>,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Self::within(Box::new(Box::<[u8]>::default()), Pools::default())
+    }
 }
 
 /// Each entry of one pool's handle, once read.
@@ -37,7 +45,7 @@ struct PoolReader<T: Pooled> {
 impl Context {
     /// A stream of `input`, whose pools are the places `pools` give in it.
     #[must_use]
-    pub fn within(input: Box<[u8]>, pools: Pools<Blob>) -> Self {
+    pub fn within(input: Owned, pools: Pools<Blob>) -> Self {
         let pools = pools.0.into_iter().map(|pool| (pool.name, pool.entries)).collect();
         Self { input, offset: 0, base: None, pools, read: Map::default() }
     }
@@ -45,7 +53,7 @@ impl Context {
     /// A stream of `input` layered over `base`, whose pools are the places `pools` give in
     /// `input`.
     #[must_use]
-    pub fn over(base: Arc<Context>, input: Box<[u8]>, pools: Pools<Blob>) -> Self {
+    pub fn over(base: Arc<Context>, input: Owned, pools: Pools<Blob>) -> Self {
         let offset = base.end();
         let mut stream = Self { offset, base: Some(base), ..Self::within(input, Pools::default()) };
         let pools = pools
@@ -70,14 +78,14 @@ impl Context {
 
     /// Where the stream ends: where a stream layered over it starts.
     fn end(&self) -> usize {
-        self.offset + self.input.len()
+        self.offset + self.input.as_ref().as_ref().len()
     }
 
     /// A stream with `pools`, as written.
     #[must_use]
     pub fn new(pools: Pools) -> Self {
         let (input, pools) = pools.placed();
-        Self::within(input, pools)
+        Self::within(Box::new(input), pools)
     }
 
     /// The bytes of `blob`, read from this stream's input.
@@ -85,7 +93,7 @@ impl Context {
     pub fn bytes(&self, blob: Blob) -> &[u8] {
         match &self.base {
             Some(base) if blob.at < self.offset => base.bytes(blob),
-            _ => Blob { at: blob.at - self.offset, len: blob.len }.of(&self.input),
+            _ => Blob { at: blob.at - self.offset, len: blob.len }.of(self.input.as_ref().as_ref()),
         }
     }
 
@@ -112,6 +120,15 @@ impl Context {
     /// As [`Context::read`].
     pub fn read_blob<T: Decode>(&self, blob: Blob) -> Result<T, Malformed> {
         Reader { bytes: self.bytes(blob), at: blob.at, context: self }.whole()
+    }
+
+    /// Reads a value from the front of `blob`, a place in this stream's input, as the places it
+    /// holds being places in the stream; what follows it is not read.
+    ///
+    /// # Errors
+    /// Returns why the front of the bytes is not a value of this type.
+    pub fn front_blob<T: Decode>(&self, blob: Blob) -> Result<T, Malformed> {
+        T::decode(&mut Reader { bytes: self.bytes(blob), at: blob.at, context: self })
     }
 
     /// The entries of each pool of this layer, as bytes.
@@ -197,6 +214,11 @@ impl<'a> Reader<'a> {
     /// As [`Reader::plain`], for `bytes` starting at `at` in the input.
     pub(crate) fn plain_at<T: Decode>(bytes: &'a [u8], at: usize) -> Result<T, Malformed> {
         Reader { bytes, at, context: &Context::default() }.whole()
+    }
+
+    /// As [`Reader::plain_at`], whatever follows the value unread.
+    pub(crate) fn plain_front<T: Decode>(bytes: &'a [u8], at: usize) -> Result<T, Malformed> {
+        T::decode(&mut Reader { bytes, at, context: &Context::default() })
     }
 
     fn whole<T: Decode>(mut self) -> Result<T, Malformed> {

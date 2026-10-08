@@ -224,6 +224,7 @@ pub enum Lang {
     ToolchainInUse,
     ToolchainNoComponent,
     ToolchainRequired,
+    ToolchainPrimeFailed,
     /// Type checking (spec 02).
     Types,
     TypesMismatch,

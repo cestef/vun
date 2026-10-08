@@ -4,6 +4,7 @@
 mod default;
 mod install;
 mod list;
+mod prime;
 mod remove;
 mod show;
 
@@ -16,8 +17,15 @@ use vun_span::Version;
 
 pub(super) const GROUP: &str = "toolchain";
 
-pub(super) const COMMANDS: &[Command<Session>] =
-    &[show::SHOW, list::LIST, install::INSTALL, install::UPDATE, default::DEFAULT, remove::REMOVE];
+pub(super) const COMMANDS: &[Command<Session>] = &[
+    show::SHOW,
+    list::LIST,
+    install::INSTALL,
+    install::UPDATE,
+    default::DEFAULT,
+    remove::REMOVE,
+    prime::PRIME,
+];
 
 /// The user's toolchains; their absence, for a user without a home, is reported.
 pub(in crate::commands) fn toolchains(session: &mut Session) -> Option<Toolchains> {

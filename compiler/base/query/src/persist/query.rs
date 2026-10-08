@@ -9,8 +9,9 @@ use vun_hash::{Map, Stable};
 use vun_trace::tracing;
 
 use super::Keeps;
+use super::keys::{Fixed, KeyHead, PackedKeys, SavedKey};
 use super::load::Taking;
-use super::saved::{Replaced, SavedDep, SavedKey, SavedMemo, SavedQuery};
+use super::saved::{Replaced, SavedDep, SavedMemo, SavedQuery};
 use super::shared::Included;
 use super::store::{Attached, Store};
 use crate::db::{Db, Sharing};
@@ -136,7 +137,7 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             }
             numbers[slot.index()] = Some(match (loaded, entry.at.get()) {
                 (Some(keys), Some(&at)) if at < kept => {
-                    Number { at, base: keys.saved[at as usize].fingerprint }
+                    Number { at, base: keys.head(at).and_then(|head| head.fingerprint) }
                 }
                 _ => {
                     next += 1;
@@ -157,14 +158,13 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         let mut replaced: Map<u32, Vec<u8>> = Map::default();
         if let (Some(store), Some(loaded)) = (extends, loaded) {
             let copy = |blob| store.stream.bytes(blob).to_vec();
-            let saved = loaded.saved[first as usize..].iter().map(|key| SavedKey {
+            let saved = (first..loaded.len()).filter_map(|at| loaded.get(at)).map(|key| SavedKey {
+                head: key.head,
                 key: copy(key.key),
-                hash: key.hash,
-                fingerprint: key.fingerprint,
                 memo: key.memo.map(copy),
             });
             keys = saved.map(Some).collect();
-            let memos = loaded.replaced.iter().map(|&at| (at, loaded.saved[at as usize].memo));
+            let memos = loaded.replaced.iter().map(|&at| (at, loaded.get(at).and_then(|key| key.memo)));
             replaced = memos.filter_map(|(at, memo)| Some((at, copy(memo?)))).collect();
         }
         let len = numbers.iter().flatten().map(|number| number.at + 1).max().unwrap_or(0);
@@ -186,9 +186,8 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             let memo = self.memo(db, w, layout, extends, number, memo.as_deref());
             // A key loaded is kept as it was, with the memo it has now.
             let key = keys[(number.at - first) as usize].get_or_insert_with(|| SavedKey {
+                head: KeyHead { hash: Fixed(Stable::of(table.key(slot))), fingerprint: number.base },
                 key: w.encode(table.key(slot)),
-                hash: Stable::of(table.key(slot)),
-                fingerprint: number.base,
                 memo: None,
             });
             key.memo = memo;
@@ -196,7 +195,8 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
         let mut replaced: Vec<Replaced> =
             replaced.into_iter().map(|(at, memo)| Replaced { at, memo }).collect();
         replaced.sort_unstable_by_key(|replaced| replaced.at);
-        SavedQuery { keys: keys.into_iter().flatten().collect(), replaced }
+        let keys: Vec<SavedKey> = keys.into_iter().flatten().collect();
+        SavedQuery { keys: PackedKeys::pack(&keys), replaced }
     }
 }
 
