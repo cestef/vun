@@ -34,6 +34,17 @@ impl<T> Compiled<T> {
         Compiled { code, frame: self.frame, marks: self.marks, unwind: self.unwind }
     }
 
+    /// A copy of the code without the listing of its instructions.
+    #[must_use]
+    pub fn to_unlisted<U>(&self) -> Compiled<U> {
+        let code = vun_asm::Code {
+            bytes: self.code.bytes.clone(),
+            relocs: self.code.relocs.clone(),
+            listing: Vec::new(),
+        };
+        Compiled { code, frame: self.frame, marks: self.marks.clone(), unwind: self.unwind.clone() }
+    }
+
     /// The code of a function nothing reaches: none.
     #[must_use]
     pub fn unreached() -> Self {

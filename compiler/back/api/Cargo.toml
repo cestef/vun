@@ -24,5 +24,3 @@ vun-diag.workspace = true
 vun-intern.workspace = true
 vun-items.workspace = true
 vun-hash.workspace = true
-vun-index.workspace = true
-vun-query.workspace = true

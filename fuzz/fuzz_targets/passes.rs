@@ -35,7 +35,7 @@ fuzz_target!(|data: &[u8]| {
         convention: Convention::Aapcs,
         division: Division::Restoring,
     };
-    if narrow.apply(&mut unit).is_ok()
+    if narrow.apply(&mut unit, &|_| false).is_ok()
         && let Err(malformed) = unit.verify(&origins)
     {
         panic!("legalized: {malformed:?}");

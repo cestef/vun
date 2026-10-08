@@ -16,6 +16,7 @@ use vun_lir_passes::Outline;
 use vun_lir_passes::legalize::Legalize;
 use vun_lower::Unlowered;
 use vun_origin::{OriginId, OriginTable, Resolve, Via};
+use vun_query::Fingerprint;
 use vun_span::{FileId, SourceFiles, SourceMap};
 use vun_target::{Name, Output, Profile, TargetSpec};
 use vun_trace::Activity;
@@ -27,6 +28,8 @@ use crate::{Persistence, Session};
 const LOWER: Activity = Activity::stage("lower");
 /// Splitting what the backend cannot compute with, as timed.
 const LEGALIZE: Activity = Activity::stage("legalize");
+/// Writing the table of trap sites the program reports traps by, as timed.
+const TRACE: Activity = Activity::stage("trace table");
 /// The backend making the program's artifacts, as timed.
 const EMIT: Activity = Activity::stage("emit");
 
@@ -168,19 +171,30 @@ impl Session {
         if !info.caps.has(Feature::InlineAsm) {
             unit.outline();
         }
+        let tracing = TRACE.start();
         unit.trace(&SourceLines, target.endian);
+        drop(tracing);
         let widest =
             Scalar::int(info.caps.widest.on(&target)).expect("a backend computes with an integer width");
-        if let Err(unlegal) = (Legalize {
+        let legalize = Legalize {
             widest,
             endian: target.endian,
             half: info.caps.half,
             floats: info.caps.floats.on(&target),
             convention: target.convention,
             division: backend.division(&target),
-        })
-        .apply(&mut unit)
-        {
+        };
+        let root = PathBuf::from(&self.sources.file(file).path);
+        // Code is kept between builds as memos are, when they are, for a backend taking it.
+        let keeps =
+            self.persistence != Persistence::Off && listed == Listed::No && info.caps.has(Feature::Keeps);
+        let kept = keeps
+            .then(|| {
+                let context = Fingerprint::of(&(info.id.0, legalize));
+                kept::Kept::open(&self.work(&root), &root, (&target, self.codegen.profile), context, &unit)
+            })
+            .flatten();
+        if let Err(unlegal) = legalize.apply(&mut unit, &|id| kept.as_ref().is_some_and(|k| k.holds(id))) {
             let msg = Msg::new()
                 .text("backend ")
                 .code(info.id.0)
@@ -191,11 +205,6 @@ impl Session {
             return Err(Uncoded::Reported(self.diag.error(d)));
         }
         drop(legalizing);
-        let root = PathBuf::from(&self.sources.file(file).path);
-        // Code is kept between builds as memos are, when they are.
-        let kept = (self.persistence != Persistence::Off)
-            .then(|| kept::Kept::open(&self.work(&root), &root, &target, self.codegen.profile))
-            .flatten();
         let request = Request {
             unit: &unit,
             target: &target,

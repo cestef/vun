@@ -92,6 +92,7 @@ vun-interp.workspace = true
 vun-lir.workspace = true
 vun-lower.workspace = true
 vun-lir-passes.workspace = true
+vun-asm.workspace = true
 vun-backend.workspace = true
 vun-link.workspace = true
 vun-build.workspace = true

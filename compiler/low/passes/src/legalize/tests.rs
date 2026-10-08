@@ -51,7 +51,7 @@ fn wider(unit: &Unit, widest: Scalar) -> bool {
 fn wide_integers_become_halves_and_division_a_helper() {
     let origins = OriginTable::new();
     let mut unit = arithmetic(Conv::C, &origins);
-    HOST.apply(&mut unit).unwrap();
+    HOST.apply(&mut unit, &|_| false).unwrap();
     assert_eq!(unit.verify(&origins), Ok(()));
     assert!(!wider(&unit, Scalar::I64), "{unit}");
     // The division helper was added, each parameter became a pair of halves passed together
@@ -70,7 +70,7 @@ fn integers_four_times_the_widest_become_four_limbs_under_vun_s_convention_alone
     let origins = OriginTable::new();
     let thumb = Legalize { widest: Scalar::I32, ..HOST };
     let mut unit = Unit { pointer_bits: 32, ..arithmetic(Conv::Vun, &origins) };
-    thumb.apply(&mut unit).unwrap();
+    thumb.apply(&mut unit, &|_| false).unwrap();
     assert_eq!(unit.verify(&origins), Ok(()));
     assert!(!wider(&unit, Scalar::I32), "{unit}");
     let f = &unit.functions.iter().next().unwrap().1;
@@ -108,7 +108,7 @@ const PROMOTED: Legalize = Legalize { half: Half::Promoted, ..HOST };
 fn a_promoted_f16_becomes_its_bits_computed_in_f32() {
     let origins = OriginTable::new();
     let mut unit = half(Conv::Vun, &origins);
-    PROMOTED.apply(&mut unit).unwrap();
+    PROMOTED.apply(&mut unit, &|_| false).unwrap();
     assert_eq!(unit.verify(&origins), Ok(()));
     let f = &unit.functions.iter().next().unwrap().1;
     assert!(!f.values.iter().any(|(_, v)| v.ty == Scalar::F16), "{unit}");
@@ -120,7 +120,7 @@ fn a_promoted_f16_becomes_its_bits_computed_in_f32() {
 fn a_promoted_f16_is_not_passed_under_the_c_convention() {
     let origins = OriginTable::new();
     let mut unit = half(Conv::C, &origins);
-    assert_eq!(PROMOTED.apply(&mut unit).map_err(|e| e.why), Err(Unlegalized::HalfAbi));
+    assert_eq!(PROMOTED.apply(&mut unit, &|_| false).map_err(|e| e.why), Err(Unlegalized::HalfAbi));
 }
 
 /// A 32-bit processor computing `f32` alone, whose C functions follow `convention`.
@@ -154,7 +154,7 @@ fn choose(conv: Conv, add: bool, origins: &OriginTable) -> Unit {
 fn a_float_the_processor_lacks_is_its_bits_in_limbs() {
     let origins = OriginTable::new();
     let mut unit = choose(Conv::Vun, false, &origins);
-    single(Convention::AapcsVfp).apply(&mut unit).unwrap();
+    single(Convention::AapcsVfp).apply(&mut unit, &|_| false).unwrap();
     assert_eq!(unit.verify(&origins), Ok(()));
     let f = &unit.functions.iter().next().unwrap().1;
     assert!(!f.values.iter().any(|(_, v)| v.ty == Scalar::F64 || v.ty == Scalar::I64), "{unit}");
@@ -165,10 +165,10 @@ fn a_float_the_processor_lacks_is_its_bits_in_limbs() {
 fn a_float_held_as_bits_reaches_c_only_in_general_registers() {
     let origins = OriginTable::new();
     let mut hard = choose(Conv::C, false, &origins);
-    let refused = single(Convention::AapcsVfp).apply(&mut hard).map_err(|e| e.why);
+    let refused = single(Convention::AapcsVfp).apply(&mut hard, &|_| false).map_err(|e| e.why);
     assert_eq!(refused, Err(Unlegalized::FloatAbi));
     let mut soft = choose(Conv::C, false, &origins);
-    single(Convention::Aapcs).apply(&mut soft).unwrap();
+    single(Convention::Aapcs).apply(&mut soft, &|_| false).unwrap();
     assert_eq!(soft.verify(&origins), Ok(()));
 }
 
@@ -176,7 +176,7 @@ fn a_float_held_as_bits_reaches_c_only_in_general_registers() {
 fn arithmetic_on_a_float_held_as_bits_is_refused() {
     let origins = OriginTable::new();
     let mut unit = choose(Conv::Vun, true, &origins);
-    let refused = single(Convention::AapcsVfp).apply(&mut unit).map_err(|e| e.why);
+    let refused = single(Convention::AapcsVfp).apply(&mut unit, &|_| false).map_err(|e| e.why);
     assert_eq!(refused, Err(Unlegalized::HeldFloat));
 }
 
@@ -208,7 +208,7 @@ fn without_a_division_instruction_every_division_calls_the_helper_of_one_limb() 
     for ty in [Scalar::I8, Scalar::I32] {
         let origins = OriginTable::new();
         let mut unit = divided(ty, &origins);
-        restoring.apply(&mut unit).unwrap();
+        restoring.apply(&mut unit, &|_| false).unwrap();
         assert_eq!(unit.verify(&origins), Ok(()));
         // One helper for both, and no division left.
         assert_eq!(unit.functions.len(), 2, "{unit}");
@@ -243,6 +243,44 @@ fn a_tail_call_of_a_wide_result_writes_through_the_address_received() {
     b.terminate(Terminator::Return(result));
     let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
     unit.functions.push(b.finish());
-    HOST.apply(&mut unit).unwrap();
+    HOST.apply(&mut unit, &|_| false).unwrap();
     assert_eq!(unit.verify(&origins), Ok(()));
+}
+
+/// A function of an `i64` computing in `i128`: `trunc(sext(x) * sext(x))`.
+fn widened(origins: &OriginTable) -> Unit {
+    let at = origin(origins);
+    let narrow = AbiType::Int(Scalar::I64, Ext::Sign);
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: vec![narrow.clone()],
+        result: Some(narrow),
+        variadic: None,
+        convention: None,
+    };
+    let mut b = Builder::new(Linkage::Export(Symbol::intern("f")), signature, at);
+    let x = b.params(b.current())[0];
+    let wide = b.cast(CastOp::SExt, x, Scalar::I128, at);
+    let square = b.binary(BinOp::Mul, wide, wide, at);
+    let back = b.cast(CastOp::Trunc, square, Scalar::I64, at);
+    b.terminate(Terminator::Return(Some(back)));
+    let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
+    unit.functions.push(b.finish());
+    unit
+}
+
+#[test]
+fn a_kept_function_is_left_as_lowered_where_its_signature_is_legal() {
+    let origins = OriginTable::new();
+    let mut kept = widened(&origins);
+    let lowered = kept.functions.iter().next().unwrap().1.clone();
+    HOST.apply(&mut kept, &|_| true).unwrap();
+    assert_eq!(kept.functions.iter().next().unwrap().1, &lowered);
+    let mut compiled = widened(&origins);
+    HOST.apply(&mut compiled, &|_| false).unwrap();
+    assert!(!wider(&compiled, Scalar::I64), "{compiled}");
+    // A signature that is not legal is legalized, kept or not: callers pass the halves.
+    let mut wide = arithmetic(Conv::C, &origins);
+    HOST.apply(&mut wide, &|_| true).unwrap();
+    assert!(!wider(&wide, Scalar::I64), "{wide}");
 }

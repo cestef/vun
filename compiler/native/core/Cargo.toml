@@ -14,7 +14,6 @@ workspace = true
 testing = []
 
 [dependencies]
-vun-query.workspace = true
 vun-abi.workspace = true
 vun-asm.workspace = true
 vun-backend.workspace = true

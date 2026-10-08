@@ -32,6 +32,9 @@ pub enum Feature {
     /// Writes blocks of inline assembly in the function holding them; otherwise the driver moves
     /// each into a function of its own first (`Outline`).
     InlineAsm,
+    /// Takes the code an earlier build kept for a function ([`Request::kept`](crate::Request::kept))
+    /// instead of compiling it; the driver legalizes only the functions it holds no code for.
+    Keeps,
 }
 
 /// Capabilities a program may require of its backend.

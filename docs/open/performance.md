@@ -13,8 +13,6 @@
   into each enclosing blob, hashed whole.
 - A shared file stays as its first writer left it: later projects recompute the library instances
   it lacks (a few ms each) and keep them in their own files.
-- Warm builds legalize the whole unit again before the kept code (decision 669) is looked up, as it is
-  keyed by the legalized function (~2.5 ms for `fib`); keying it before legalizing would skip that.
 - A build after an edit instantiating library generics parses those files again (~18 ms for 31
   files of `tour`): parse trees are traced, not saved.
 - `vun-par` callers wait on uneven items (2 to 25 ms). Parse is ~11 MiB/s, the lexer ~145; the

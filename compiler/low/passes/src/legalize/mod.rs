@@ -35,10 +35,11 @@ use vun_origin::OriginId;
 use vun_target::{Convention, Endian, Floats};
 
 use rewrite::Rewrite;
-use vun_lir::{AbiType, Conv, Ext, FuncId, ImportKind, Scalar, Signature, Unit};
+use vun_hash::Set;
+use vun_lir::{AbiType, Address, Conv, Ext, FuncId, Function, ImportKind, Scalar, Signature, Unit};
 
 /// How a unit is legalized for a backend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Legalize {
     /// The widest integer the backend computes with.
     pub widest: Scalar,
@@ -53,7 +54,7 @@ pub struct Legalize {
 }
 
 /// How a backend divides integers no wider than its widest.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Division {
     /// By an instruction: the target's processor's, or the one a compiler it hands its code to
     /// chooses.
@@ -64,7 +65,7 @@ pub enum Division {
 }
 
 /// How a backend holds `f16`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Half {
     /// As a float it computes with.
     Computed,
@@ -221,11 +222,14 @@ impl Legalize {
         })
     }
 
-    /// Splits every integer of `unit` wider than `self.widest` into limbs; see the module.
+    /// Splits every integer of `unit` wider than `self.widest` into limbs; see the module. A
+    /// function the backend holds code for (`kept`) is left as it is where legalizing changes
+    /// neither its signature, which callers read, nor that of what it names, which it calls: the
+    /// backend reads no more than its signature.
     ///
     /// # Errors
     /// Returns the first operation on a wide integer that has no sequence over limbs.
-    pub fn apply(self, unit: &mut Unit) -> Result<(), Unlegal> {
+    pub fn apply(self, unit: &mut Unit, kept: &(dyn Fn(FuncId) -> bool + Sync)) -> Result<(), Unlegal> {
         let legalize = self;
         if legalize.widest == Scalar::I128
             && legalize.half == Half::Computed
@@ -235,13 +239,29 @@ impl Legalize {
             return Ok(());
         }
         let mut helpers = Helpers { next: FuncId::new(unit.functions.len()), divide: Vec::new() };
-        let rewritten = unit
-            .functions
-            .iter()
-            .map(|(_, f)| Rewrite::function(unit, f, legalize, &mut helpers))
-            .collect::<Result<Vec<_>, _>>()?;
-        for (id, f) in rewritten.into_iter().enumerate() {
-            unit.functions[FuncId::new(id)] = f;
+        // The functions and imports whose signatures legalizing changes, which a function calling
+        // them is rewritten for, kept or not.
+        let differs = |s: &Signature| legalize.signature(s).map_or(true, |legal| legal != *s);
+        let functions =
+            unit.functions.iter().filter(|(_, f)| differs(&f.signature)).map(|(id, _)| Address::Func(id));
+        let imports = unit.imports.iter().filter_map(|(id, import)| match &import.kind {
+            ImportKind::Func(signature) if differs(signature) => Some(Address::Import(id)),
+            _ => None,
+        });
+        let changed: Set<Address> = functions.chain(imports).collect();
+        let left = |id: FuncId, f: &Function| {
+            kept(id)
+                && !changed.contains(&Address::Func(id))
+                && (changed.is_empty() || !f.addresses().any(|a| changed.contains(&a)))
+        };
+        let mut rewritten = Vec::new();
+        for (id, f) in unit.functions.iter() {
+            if !left(id, f) {
+                rewritten.push((id, Rewrite::function(unit, f, legalize, &mut helpers)?));
+            }
+        }
+        for (id, f) in rewritten {
+            unit.functions[id] = f;
         }
         for (_, import) in unit.imports.iter_mut() {
             if let ImportKind::Func(signature) = &import.kind {

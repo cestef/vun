@@ -96,6 +96,12 @@ impl Function {
         }
     }
 
+    /// Each function, datum and import it names, where [`Self::map_addresses`] maps them.
+    pub fn addresses(&self) -> impl Iterator<Item = Address> {
+        let insts = self.insts.iter().flat_map(|(_, inst)| inst.kind.addresses());
+        insts.chain(self.stack_check.as_ref().map(|check| check.call))
+    }
+
     /// The block control starts in.
     #[must_use]
     pub fn entry(&self) -> Option<Block> {

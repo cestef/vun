@@ -99,6 +99,7 @@ pub const INFO: BackendInfo = BackendInfo {
             Feature::DebugInfo,
             Feature::Assist,
             Feature::InlineAsm,
+            Feature::Keeps,
         ],
         widest: Widest::Register,
         half: Half::Promoted,

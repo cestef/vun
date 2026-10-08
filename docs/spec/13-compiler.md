@@ -179,16 +179,19 @@ LLVM and C is sharded by function hash to stay parallel.
 identical-code folding runs on top.
 
 **Machine code by content.** A function's machine code is kept by what it is compiled from, so a
-build compiles only the functions that changed. The backend compiles a function in its own
-numbering: the functions, imports and data it names are renumbered in the order first met, so its
-code does not depend on what else the unit holds, and its relocations name those numbers, mapped
-to the unit's when the code is used. The key is the stable hash of the toolchain, the backend's
-architecture, convention and processor, the pointer width, whether a listing is made, the
-renumbered function (its trap-site ids, which the code holds as immediates, included) and, for
-each name, its kind and the signature it is called with. Origins hash by identity, so marks are
-resolved to lines when the object is written. A program's code is kept in one file per target and
-profile, read when code generation starts and written back with the entries the build used, so it
-holds one program's code at most.
+build legalizes and compiles only the functions that changed. A function is looked up as lowered,
+before legalizing, in its own numbering: the functions, imports and data it names are renumbered in
+the order first met, so its code does not depend on what else the unit holds, and its relocations
+name those numbers, mapped to the unit's when the code is used. The key is the stable hash of the
+toolchain, the target, the backend and how it legalizes, the pointer width, the renumbered function
+(its trap-site ids, which the code holds as immediates, included) and, for each name, its kind and
+the signature it is called with. A function whose code is kept is left as lowered, unless
+legalizing changes its signature, which its callers read; code calling a helper legalizing adds
+names what the lowered function does not, and is compiled each build. Only a backend declaring it
+(`Feature::Keeps`) is given kept code, never when a listing is made. Origins hash by identity, so
+marks are resolved to lines when the object is written. A program's code is kept in one file per
+target and profile, read when code generation starts and written back with the entries the build
+used, so it holds one program's code at most.
 
 **Measured from the start.** Synthetic corpus generators produce large programs; CI tracks lines
 per second per stage and fails on regressions.
