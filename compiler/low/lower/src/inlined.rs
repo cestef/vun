@@ -10,7 +10,7 @@ use std::sync::Arc;
 use vun_codec::{Decode, Encode};
 use vun_hash::Map;
 use vun_index::Idx;
-use vun_lir::{Address, DataId, FuncId, ImportId, Site};
+use vun_lir::{Address, DataId, FuncId, Function, ImportId, Site};
 use vun_lir_passes::{InlineCalls, Tidy};
 use vun_origin::{OriginId, OriginTable, Via};
 use vun_query::{Cx, Cycle, Query};
@@ -70,11 +70,12 @@ impl Inlining {
         let mut called: Vec<FuncId> = lir.function.callees().collect();
         called.sort_unstable();
         called.dedup();
-        let callees: Vec<(FuncId, Self)> = called
+        let named: Vec<(FuncId, Self)> = called
             .into_iter()
             .filter_map(|g| Some((g, self.callee(&lir.refs.functions[g.index()])?)))
-            .filter(|(_, callee)| callee != self)
             .collect();
+        let own: Vec<FuncId> = named.iter().filter(|(_, callee)| callee == self).map(|&(g, _)| g).collect();
+        let callees: Vec<(FuncId, Self)> = named.into_iter().filter(|(_, callee)| callee != self).collect();
         let keys: Vec<Self> = callees.iter().map(|(_, callee)| callee.clone()).collect();
         let bodies = cx.get_all::<InlinedLir>(&keys);
         let at = lir.function.origin;
@@ -82,25 +83,39 @@ impl Inlining {
         // Where the table describes calls, a callee is inlined only if no call it makes returns
         // into it: a return address then lies in the code of the function it names.
         let leaves = cx.get::<TraceOf>(&()) == Detail::Calls;
+        let allowed = |function: &Function| function.small() && !(leaves && function.returning_calls());
         let mut small = Vec::new();
         for ((g, _), body) in callees.iter().zip(&bodies) {
             if let Ok(body) = body.as_ref()
-                && body.function.small()
-                && !(leaves && body.function.returning_calls())
+                && allowed(&body.function)
             {
                 small.push((*g, merging.place(body, at)?));
             }
         }
-        if small.is_empty() {
+        if small.is_empty() && own.is_empty() {
             return Ok(lir);
         }
         lir.function.inline_small(small.iter().map(|(g, body)| (*g, body)));
         let target = cx.get::<TargetOf>(&()).ok_or(Unlowered::new(at, Why::Untargeted))?;
         let types = Types::new(cx, &target).map_err(|bits| Unlowered::new(at, Why::Address(bits)))?;
-        lir.function.tidy(types.pointer_bits());
+        let bits = types.pointer_bits();
+        // A function calling itself is inlined into itself again, tidied between, while it stays
+        // small: a call then does the work of several of the recursion.
+        lir.function.tidy(bits);
+        for _ in 0..UNROLLED {
+            let body = lir.function.clone();
+            if !allowed(&body) || !own.iter().any(|g| body.callees().any(|c| c == *g)) {
+                break;
+            }
+            lir.function.inline_small(own.iter().map(|&g| (g, &body)));
+            lir.function.tidy(bits);
+        }
         Ok(lir)
     }
 }
+
+/// How many times a function that calls itself is inlined into itself.
+const UNROLLED: usize = 3;
 
 /// A function's own tables, taking the ids of the callees inlined into it: each function, link
 /// declaration and top-level binding once, the constants and trap sites of each callee after

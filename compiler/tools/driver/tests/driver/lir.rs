@@ -159,3 +159,34 @@ fn what_library_code_reports_for_a_target_is_shown_as_it_reports_it() {
     assert_eq!(d.id, vun_diag::errors::COMPTIME_REPORTED);
     assert_eq!(d.message.to_string(), "no atomic access of an integer wider than an address on this target");
 }
+
+#[test]
+fn a_small_function_calling_itself_is_inlined_into_itself() {
+    use vun_lir::{Callee, InstKind};
+
+    let fixture = Fixture::new("lir-recursion");
+    let path = fixture.root.write(
+        "p.vun",
+        "\
+fib := (n: u32) -> u64 { if n < 2 { n.to(u64) } else { (fib(n - 1) + fib(n - 2)).wrap(u64) } };
+#[link.export(\"run\")]
+run := (n: u32) -> u64 { fib(n) };
+",
+    );
+    let mut session = fixture.session();
+    // A debug build keeps the calls of its trace, so inlines no call that returns into it.
+    session.set_trace(vun_target::Detail::Sites);
+    let file = session.load(&path).unwrap();
+    let lowered = session.lir(file);
+    let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    assert_eq!(unit.verify(session.origins), Ok(()));
+    let own_calls = |id, f: &vun_lir::Function| {
+        f.insts
+            .iter()
+            .filter(|(_, i)| matches!(&i.kind, InstKind::Call { callee: Callee::Func(g), .. } if *g == id))
+            .count()
+    };
+    let most = unit.functions.iter().map(|(id, f)| own_calls(id, f)).max();
+    // One round leaves two calls of itself in each of the two bodies it was inlined for.
+    assert!(most.is_some_and(|n| n > 2), "{most:?}");
+}
