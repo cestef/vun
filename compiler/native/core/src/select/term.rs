@@ -84,6 +84,7 @@ pub trait Terminates: Frames {
                 }
                 cx.jump(default, next);
             }
+            Terminator::Return(_) if f.ends_in_tail_call(block) => {}
             Terminator::Return(value) => {
                 Self::returned(cx, *value)?;
                 Self::epilogue(cx);

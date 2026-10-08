@@ -3,9 +3,9 @@
 
 use vun_index::IndexVec;
 
-use crate::entity::FuncId;
+use crate::entity::{Block, FuncId};
 use crate::func::Function;
-use crate::inst::{Callee, InstKind};
+use crate::inst::{CallKind, Callee, InstKind};
 use crate::unit::Unit;
 
 impl Function {
@@ -15,6 +15,18 @@ impl Function {
             InstKind::Call { callee: Callee::Func(f), .. } => Some(f),
             _ => None,
         })
+    }
+}
+
+impl Function {
+    /// Whether `block` ends in a tail call, which replaces the frame: the return after it, passing
+    /// the callee's result on, is never reached.
+    #[must_use]
+    pub fn ends_in_tail_call(&self, block: Block) -> bool {
+        self.blocks[block]
+            .insts
+            .last()
+            .is_some_and(|&i| matches!(self.insts[i].kind, InstKind::Call { kind: CallKind::Tail, .. }))
     }
 }
 

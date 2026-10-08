@@ -54,6 +54,7 @@ impl Sel<'_, '_> {
                 }
                 self.jump(default, next);
             }
+            Terminator::Return(_) if self.f.ends_in_tail_call(block) => {}
             Terminator::Return(value) => self.ret(*value)?,
             Terminator::Unreachable => self.asm.emit(Op::Ud2, Size::B64, &[]),
         }

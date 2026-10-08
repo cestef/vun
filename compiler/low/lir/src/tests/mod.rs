@@ -1,3 +1,5 @@
+mod tail;
+
 use vun_index::Idx;
 use vun_intern::Symbol;
 use vun_origin::OriginTable;
@@ -229,67 +231,4 @@ fn a_naked_function_holds_nothing_but_blocks_without_bindings() {
     assert_eq!(verify(false, false, Terminator::Unreachable), Ok(()));
     assert_eq!(verify(true, false, Terminator::Unreachable), Err(Reason::Naked));
     assert_eq!(verify(false, true, Terminator::Unreachable), Err(Reason::Naked));
-}
-
-#[test]
-fn the_verifier_accepts_a_tail_call_only_as_the_last_instruction_returning_its_value() {
-    use crate::{CallKind, Callee};
-    let origins = OriginTable::new();
-    let o = origin(&origins);
-    let verify = |kind: CallKind, term: fn(Option<crate::Value>) -> Terminator| {
-        let int = crate::AbiType::Int(Scalar::I64, crate::Ext::Zero);
-        let signature = Signature {
-            conv: Conv::Vun,
-            params: vec![int.clone()],
-            result: Some(int),
-            variadic: None,
-            convention: None,
-        };
-        let mut b = Builder::new(Linkage::Internal, signature, o);
-        let n = b.params(b.current())[0];
-        let call = InstKind::Call { callee: Callee::Func(FuncId::new(0)), args: vec![n], kind };
-        let result = b.push(call, Some(Scalar::I64), o);
-        b.terminate(term(result));
-        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
-        unit.functions.push(b.finish());
-        unit.verify(&origins).map_err(|m| m.reason)
-    };
-    assert_eq!(verify(CallKind::Plain, Terminator::Return), Ok(()));
-    assert_eq!(verify(CallKind::Tail, Terminator::Return), Ok(()));
-    assert_eq!(verify(CallKind::Tail, |_| Terminator::Unreachable), Err(Reason::Tail));
-}
-
-#[test]
-fn the_verifier_accepts_a_tail_call_writing_a_result_in_memory_only_through_the_address_received() {
-    use crate::{CallKind, Callee};
-    let origins = OriginTable::new();
-    let o = origin(&origins);
-    let verify = |received: bool| {
-        let int = crate::AbiType::Int(Scalar::I64, crate::Ext::Zero);
-        let signature = Signature {
-            conv: Conv::Vun,
-            params: vec![int],
-            result: Some(crate::AbiType::Memory { size: 16, align: 8 }),
-            variadic: None,
-            convention: None,
-        };
-        let mut b = Builder::new(Linkage::Internal, signature, o);
-        let [n, out] = b.params(b.current())[..] else {
-            unreachable!("a parameter and the result's address")
-        };
-        let slot = b.slot(16, 8, o);
-        let local = b.slot_addr(slot, o);
-        let call = InstKind::Call {
-            callee: Callee::Func(FuncId::new(0)),
-            args: vec![n, if received { out } else { local }],
-            kind: CallKind::Tail,
-        };
-        b.push(call, None, o);
-        b.terminate(Terminator::Return(None));
-        let mut unit = Unit { pointer_bits: 64, ..Unit::default() };
-        unit.functions.push(b.finish());
-        unit.verify(&origins).map_err(|m| m.reason)
-    };
-    assert_eq!(verify(true), Ok(()));
-    assert_eq!(verify(false), Err(Reason::Tail));
 }

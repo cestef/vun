@@ -172,6 +172,7 @@ impl<'s, 'l, 'a> Emit<'s, 'l, 'a> {
                 Ok(())
             }
             Terminator::Switch { value, cases, default } => self.switch(block, *value, cases, default),
+            Terminator::Return(_) if self.lower.f.ends_in_tail_call(block) => Ok(()),
             Terminator::Return(result) => self.lower.ret(*result).map_err(|m| m.at(at)),
             Terminator::Unreachable => {
                 self.lower.op(Op::Unreachable);
