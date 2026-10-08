@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+foldhash.workspace = true
 vun-codec.workspace = true
 vun-bytes.workspace = true
 vun-object.workspace = true

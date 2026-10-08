@@ -11,6 +11,9 @@ mod line;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
+use std::ffi::OsString;
 use std::path::PathBuf;
 
 use vun_object::{Object, SectionId, SymbolId};
@@ -52,6 +55,9 @@ pub struct Declared {
 #[derive(Default)]
 pub struct Lines {
     files: Vec<PathBuf>,
+    /// Each of `files` by the bytes of its path: a row looks its file up by hash, as comparing
+    /// or hashing a `Path` walks its components.
+    numbers: HashMap<OsString, File, foldhash::fast::RandomState>,
     functions: Vec<Function>,
 }
 
@@ -68,11 +74,14 @@ impl Lines {
     /// # Panics
     /// Past 2^32 files.
     pub fn file(&mut self, path: PathBuf) -> File {
-        let at = self.files.iter().position(|f| *f == path).unwrap_or_else(|| {
-            self.files.push(path);
-            self.files.len() - 1
-        });
-        File(u32::try_from(at).expect("fewer than 2^32 files"))
+        match self.numbers.entry(path.into_os_string()) {
+            Entry::Occupied(file) => *file.get(),
+            Entry::Vacant(entry) => {
+                let file = File(u32::try_from(self.files.len()).expect("fewer than 2^32 files"));
+                self.files.push(entry.key().into());
+                *entry.insert(file)
+            }
+        }
     }
 
     pub fn function(&mut self, function: Function) {

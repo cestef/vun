@@ -1978,6 +1978,7 @@ dependencies = [
 name = "vun-dwarf"
 version = "0.1.0"
 dependencies = [
+ "foldhash",
  "vun-bytes",
  "vun-codec",
  "vun-object",
