@@ -140,6 +140,8 @@ vun-http = { path = "compiler/pkg/http" }
 vun-fmt = { path = "compiler/tools/fmt" }
 vun-doc = { path = "compiler/tools/doc" }
 vun-reduce = { path = "compiler/tools/reduce" }
+vun-smith = { path = "compiler/tools/smith" }
+vun-campaign = { path = "compiler/tools/campaign" }
 vun-disasm = { path = "compiler/tools/disasm" }
 vun-bind = { path = "compiler/tools/bind" }
 vun-clang = { path = "compiler/tools/clang" }

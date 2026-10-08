@@ -1,38 +1,24 @@
-use vun_diag::{DiagCtxt, DiagCx};
 use vun_grammar::TokenKind;
 use vun_items::lang;
-use vun_origin::OriginTable;
-use vun_span::SourceFiles;
 
-use super::{Expr, Field, File, Item};
-use crate::cst::Cst;
-use crate::tokens::Tokens;
+use super::read;
+use crate::make::{Bind, Expr, Field, File, Item, Member, Param};
 
-/// Whether `text` lexes and parses without a report.
-fn parses(text: &str) -> bool {
-    let file = SourceFiles::new().add("t.vun", text);
-    let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
-    let mut cx = DiagCx { diag: &mut diag, origins: &origins };
-    let tokens = Tokens::lex(file, text, &mut cx);
-    Cst::parse(&tokens, text, &mut cx);
-    diag.error_count() == 0
+fn item(name: &str, value: Expr) -> Item {
+    Bind::new(name, value).item()
 }
 
-fn item(name: &str, ty: Option<Expr>, value: Expr) -> Item {
-    Item { doc: Vec::new(), attrs: Vec::new(), mutable: false, name: name.to_owned(), ty, value }
-}
-
-fn field(name: &str, ty: Expr) -> Field {
-    Field { name: name.to_owned(), ty }
+fn field(name: &str, ty: Expr) -> Member {
+    Member::Field(Field::new(name, ty))
 }
 
 #[test]
 fn made_items_print_as_the_parser_reads_them() {
-    let u32 = Expr::call(Expr::decl(lang::int::unsigned), vec![Expr::Int(32)]);
+    let u32 = Expr::call(Expr::decl(lang::int::unsigned), vec![Expr::int(32)]);
     let pointer = Expr::prefix(TokenKind::Question, Expr::prefix(TokenKind::Star, Expr::Unit));
     let callback = Expr::Attributed(
         vec![Expr::decl(lang::abi::c)],
-        Box::new(Expr::Fn(vec![field("user", pointer.clone())], Some(Box::new(u32.clone())))),
+        Box::new(Expr::FnType(vec![Param::named("user", pointer.clone())], Some(Box::new(u32.clone())))),
     );
     let file = File {
         doc: vec!["Made.".to_owned()],
@@ -42,14 +28,13 @@ fn made_items_print_as_the_parser_reads_them() {
                 attrs: vec![Expr::decl(lang::layout::c)],
                 ..item(
                     "point",
-                    None,
                     Expr::Struct(vec![
                         field("x", u32.clone()),
                         field(
                             "inner",
                             Expr::Struct(vec![field(
                                 "match",
-                                Expr::Array(Box::new(Expr::Int(4)), Box::new(u32.clone())),
+                                Expr::ArrayType(Box::new(Expr::int(4)), Box::new(u32.clone())),
                             )]),
                         ),
                         field("on_done", Expr::prefix(TokenKind::Question, callback)),
@@ -61,17 +46,13 @@ fn made_items_print_as_the_parser_reads_them() {
                     Expr::call(Expr::decl(lang::link::symbol), vec![Expr::String("area".to_owned())]),
                     Expr::decl(lang::abi::c),
                 ],
-                ..item(
-                    "area",
-                    Some(Expr::prefix(
-                        TokenKind::Unsafe,
-                        Expr::Fn(vec![field("p", pointer)], Some(Box::new(u32))),
-                    )),
-                    Expr::Hole,
-                )
+                ..item("area", Expr::Hole).typed(Expr::prefix(
+                    TokenKind::Unsafe,
+                    Expr::FnType(vec![Param::named("p", pointer)], Some(Box::new(u32))),
+                ))
             },
-            Item { mutable: true, ..item("counter", Some(Expr::decl(lang::int::i32)), Expr::Hole) },
-            item("LIMIT", None, Expr::Int(-16)),
+            item("counter", Expr::Hole).typed(Expr::decl(lang::int::i32)).mutable(true),
+            item("LIMIT", Expr::int(-16)),
         ],
     };
     let text = file.source();
@@ -97,5 +78,5 @@ mut counter: lang.int.i32 = _;
 LIMIT := -16;
 "
     );
-    assert!(parses(&text), "{text}");
+    read(&text);
 }

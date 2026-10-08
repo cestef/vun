@@ -13,7 +13,7 @@ mod relative;
 mod scratch;
 mod walk;
 
-pub use captured::Captured;
+pub use captured::{Captured, Ended};
 pub use edit::{Edit, Part};
 pub use executable::EXECUTABLE;
 pub use mode::{Mode, Modes};

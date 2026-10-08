@@ -19,6 +19,9 @@ impl Level {
     /// Looser than or as loose as every form's.
     pub const LOWEST: Self = Self { row: 0, infix: 0 };
 
+    /// Tighter than or as tight as every form's: a form holding no operand at its ends.
+    pub const HIGHEST: Self = Self { row: u8::MAX, infix: u8::MAX };
+
     /// The next tighter level, for the right operand of a left-associative operator.
     #[must_use]
     pub const fn tighter(self) -> Self {

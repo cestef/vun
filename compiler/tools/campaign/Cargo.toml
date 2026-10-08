@@ -1,0 +1,16 @@
+[package]
+name = "vun-campaign"
+description = "Programs made by chance, tried through every stage and backend, and what comes of each."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-driver.workspace = true
+vun-fs.workspace = true
+vun-smith.workspace = true

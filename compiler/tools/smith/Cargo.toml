@@ -1,0 +1,24 @@
+[package]
+name = "vun-smith"
+description = "Programs made by chance: well-typed Vun with a known meaning, to try every stage and backend against."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+num-bigint.workspace = true
+vun-grammar.workspace = true
+vun-index.workspace = true
+vun-items.workspace = true
+vun-syntax.workspace = true
+vun-variants.workspace = true
+
+[dev-dependencies]
+vun-diag.workspace = true
+vun-origin.workspace = true
+vun-span.workspace = true
