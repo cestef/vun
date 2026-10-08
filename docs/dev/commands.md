@@ -345,7 +345,8 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   constants with wrapping arithmetic, and every executable's output is compared with a reference.
   Each is timed as a process, pinned to the fastest core, over `--samples` runs after warm-up, with
   its optimized and its unoptimized build both reported; compile times are fresh builds, those that keep a cache (Vun,
-  Zig, Go, Hare) from empty caches (cold) and rebuilt with the caches a build filled (warm). Zig, Go and Hare are unpacked into
+  Zig, Go, Hare) from empty caches (cold) and rebuilt with the caches a build filled (warm); Vun's
+  is the executable in a toolchain with its libraries primed, as installed (`--unprimed`: bare). Zig, Go and Hare are unpacked into
   `~/bench-tools` (`--tools`): Zig from its release tarball, Go and `harec` from the Fedora
   packages, Hare's standard library built from the tag that matches `harec`.
 - Memory per nesting level of compile-time calls: evaluate a recursion through an annotation

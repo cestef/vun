@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vun against C and Rust on the programs of corpus/bench, written to assets/bench/results.json.
 
-    scripts/remote --host am3.wg scripts/bench-compare [--samples N] [--core CPU] [--vun PATH]
+    scripts/remote --host am3.wg scripts/bench-compare [--samples N] [--core CPU] [--vun PATH] [--unprimed]
 
 Method, so the numbers compare:
   - one algorithm, one source per language (corpus/bench/<p>.vun, corpus/bench/ref/<language>/<p>.*), wrapping
@@ -15,7 +15,11 @@ Method, so the numbers compare:
     backend is a single-pass one: its class is -O0, its ceiling -O2;
   - compile time is the median of fresh builds. A toolchain that keeps what it computed (Vun's
     store, the caches of Zig, Go and Hare) is measured cold (empty caches) and warm (an unchanged
-    rebuild with the caches an earlier build filled); gcc, clang and rustc keep nothing.
+    rebuild with the caches an earlier build filled); gcc, clang and rustc keep nothing. A Vun
+    toolchain ships the memos of its libraries (`vun toolchain prime`, part of every release), so
+    the build measured is of one installed so: a copy of `--vun` with its libraries primed, the
+    store of cold builds empty. `--unprimed` measures the executable alone, which parses and
+    types the libraries on its first build.
 """
 
 import argparse
@@ -117,8 +121,26 @@ class Bench:
     def __init__(self, args: argparse.Namespace) -> None:
         self.args = args
         self.scratch = Path(tempfile.mkdtemp(prefix="vun-bench-"))
+        if not args.unprimed:
+            args.vun = self.primed(args.vun)
         self.variants = vun_variants(args.vun) + VARIANTS_REFERENCE + VARIANTS_OTHER
         self.reference: dict[str, bytes] = {}
+
+    def primed(self, vun: str) -> str:
+        """A toolchain of the executable `vun` and the libraries of the checkout, their memos kept."""
+        tree = self.scratch / "toolchain"
+        (tree / "bin").mkdir(parents=True)
+        shutil.copy(vun, tree / "bin" / "vun")
+        shutil.copytree(ROOT / "lib", tree / "lib")
+        env = dict(os.environ, VUN_STORE=str(self.scratch / "prime"))
+        timed([str(tree / "bin" / "vun"), "toolchain", "prime"], env=env, cwd=tree)
+        return str(tree / "bin" / "vun")
+
+    def remember(self, store: Path) -> None:
+        """The name `vun` knows the executable by, in a fresh `store`: an installed toolchain made it once."""
+        known = self.scratch / "prime" / "builds"
+        if known.exists() and not (store / "builds").exists():
+            shutil.copytree(known, store / "builds")
 
     def build(self, variant: Variant, program: str, dest: Path, cache: Path | None = None) -> float:
         dest.mkdir(parents=True, exist_ok=True)
@@ -128,6 +150,8 @@ class Bench:
         env = dict(os.environ)
         cache = cache or self.scratch / "cache"
         env["VUN_STORE"] = str(cache / "vun")
+        if variant.language == "vun" and not self.args.unprimed:
+            self.remember(cache / "vun")
         fill = {"tools": self.args.tools, "cache": cache, "src": src, "out": out}
         env.update({name: value.format(**fill) for name, value in variant.env})
         command = [part.format(**fill) for part in variant.command]
@@ -225,6 +249,7 @@ class Bench:
                 "go": first_line(f"{self.args.tools}/root/usr/lib/golang/bin/go", "version"),
                 "hare": first_line(f"{self.args.tools}/hare-out/bin/hare", "version"),
             },
+            "primed": not self.args.unprimed,
             "revision": self.args.revision,
         }
 
@@ -236,6 +261,7 @@ def main() -> None:
     parser.add_argument("--core", type=int, default=7)
     parser.add_argument("--tools", type=Path, default=Path.home() / "bench-tools", help="Zig, Go and Hare, unpacked")
     parser.add_argument("--vun", default=str(ROOT / "target" / "release" / "vun"))
+    parser.add_argument("--unprimed", action="store_true", help="measure the executable without the memos of its libraries")
     parser.add_argument("--revision", default="", help="the commit measured, for the record")
     parser.add_argument("--output", type=Path, default=RESULTS)
     args = parser.parse_args()

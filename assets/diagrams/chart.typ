@@ -179,6 +179,8 @@
       ("filled", "optimized"), ("outlined", "unoptimized"), ("accent", "vun"), ("whisker", "quartiles"),
       ("thin", "rebuild, caches filled"),
     ),
-    [median of #data.machine.samples runs and #data.results.first().compile.cold.n builds, lower is better],
+    [
+      median of #data.machine.samples runs and #data.results.first().compile.cold.n builds, lower is better#if data.machine.at("primed", default: false) [; vun builds with its libraries primed, as installed]
+    ],
   ),
 )
