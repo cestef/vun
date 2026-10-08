@@ -1344,6 +1344,9 @@ the registers are taken. A signature whose placements still differ is refused
 (`Missing::Placement`). x86-64 copies a struct argument with a call of `memcpy`, which the runtime
 provides.
 
+A `Volatile` access is emitted as an atomic one, which Cranelift's alias analysis never merges, moves or
+drops as it does plain loads and stores; a float goes through the integer of its width.
+
 What Cranelift does not express is a typed `Lack` per function: inline assembly, naked
 functions, C records it would place differently or whose register part is not a scalar's size,
 wide integers under the C convention and floats passed as integers in variadic calls. A backend without `Feature::InlineAsm` has each block of assembly

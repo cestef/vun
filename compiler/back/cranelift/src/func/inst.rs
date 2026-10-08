@@ -130,12 +130,18 @@ impl Lower<'_, '_> {
         }
     }
 
+    /// A volatile access is an atomic one, which Cranelift's alias analysis never merges, moves or
+    /// drops as it does plain ones (a float goes through the integer of its width).
     fn load(&mut self, ty: Scalar, addr: Val, access: Access, at: OriginId) -> Result<Val, Lack> {
         let ty = self.ty(ty, at)?;
         let flags = Self::plain();
         Ok(match access {
             Access::Atomic(_) => self.b.ins().atomic_load(ty, flags, addr),
-            Access::Plain | Access::Volatile => self.b.ins().load(ty, flags, addr, 0),
+            Access::Plain => self.b.ins().load(ty, flags, addr, 0),
+            Access::Volatile => {
+                let value = self.b.ins().atomic_load(ty.as_int(), flags, addr);
+                if ty.is_float() { self.b.ins().bitcast(ty, flags, value) } else { value }
+            }
         })
     }
 
@@ -145,8 +151,14 @@ impl Lower<'_, '_> {
             Access::Atomic(_) => {
                 self.b.ins().atomic_store(flags, value, addr);
             }
-            Access::Plain | Access::Volatile => {
+            Access::Plain => {
                 self.b.ins().store(flags, value, addr, 0);
+            }
+            Access::Volatile => {
+                let ty = self.b.func.dfg.value_type(value);
+                let value =
+                    if ty.is_float() { self.b.ins().bitcast(ty.as_int(), flags, value) } else { value };
+                self.b.ins().atomic_store(flags, value, addr);
             }
         }
     }
