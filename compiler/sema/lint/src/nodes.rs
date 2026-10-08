@@ -2,6 +2,8 @@
 //! the local bindings and calls in their values, each with the lints `#[lint.allow]` silences
 //! around it.
 
+use std::cell::OnceCell;
+
 use vun_intern::Symbol;
 use vun_items::{Item, lang};
 use vun_origin::OriginId;
@@ -35,12 +37,38 @@ pub(super) struct Node {
     pub(super) allowed: Vec<Value>,
     /// The declaration, field or variant holding it, where an attribute allowing a lint goes.
     pub(super) declared: OriginId,
+    /// What checks are shown of it, built the first time one asks: the same for every lint.
+    shown: OnceCell<Option<(Value, Value)>>,
 }
 
 impl Node {
+    pub(super) fn new(kind: Kind, origin: OriginId, allowed: Vec<Value>, declared: OriginId) -> Self {
+        Self { kind, origin, allowed, declared, shown: OnceCell::new() }
+    }
+
     /// The nodes of the file `env` reads.
     pub(super) fn of(env: &Env<'_, '_>) -> Vec<Self> {
         Walk::of(env)
+    }
+
+    /// The type of the `lang.lint` shape checks of its kind take, and its value in `env`; `None` where it
+    /// cannot be described.
+    pub(super) fn shown(&self, env: &Env<'_, '_>) -> Option<&(Value, Value)> {
+        self.shown
+            .get_or_init(|| {
+                let (shape, facts) = match self.kind {
+                    Kind::Decl { .. } => (lang::lint::Decl, DECL),
+                    Kind::Local { .. } => (lang::lint::Local, LOCAL),
+                    Kind::Call { .. } => (lang::lint::Call, CALL),
+                };
+                let Ok(Value::Array(mut shown)) = env.describe(shape, std::slice::from_ref(self), facts)
+                else {
+                    return None;
+                };
+                let (shown, Ok(ty)) = (shown.pop()?, env.item(shape)) else { return None };
+                Some((ty, shown))
+            })
+            .as_ref()
     }
 }
 

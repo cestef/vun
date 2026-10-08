@@ -58,7 +58,8 @@ pub(crate) struct StoredKeys {
     pub(crate) saved: Vec<SavedKey<Blob>>,
     /// How many keys are the shared file's.
     pub(crate) base: u32,
-    /// The positions of the shared file's keys whose memo the file layered over it replaces.
+    /// The positions of the shared file's keys whose memo the file layered over it replaces, in
+    /// order.
     pub(crate) replaced: Vec<u32>,
     /// The first position of each hash.
     index: Map<u64, u32>,
@@ -134,6 +135,7 @@ impl StoredKeys {
                 saved[replacing.at as usize].memo = Some(replacing.memo);
                 replaced.push(replacing.at);
             }
+            replaced.sort_unstable();
             saved.extend(own.keys);
         }
         let mut index = Map::default();

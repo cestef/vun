@@ -17,7 +17,7 @@ use vun_syntax::make::{Attributes, Expr};
 
 use super::DefinedLints;
 use super::levels::Configured;
-use super::nodes::{CALL, DECL, Kind, LOCAL, Node};
+use super::nodes::{Kind, Node};
 use super::tables::Level;
 use vun_sema::decl::DeclValue;
 use vun_sema::env::Env;
@@ -148,17 +148,14 @@ impl Lint {
         // `forbid` is final: no attribute allows the lint.
         let allowed = |n: &&Node| self.level != Level::Forbid && n.allowed.contains(&self.value);
         for node in nodes.iter().filter(|n| !allowed(n)) {
-            let (check, shape, facts) = match node.kind {
-                Kind::Decl { .. } => (&self.decl, lang::lint::Decl, DECL),
-                Kind::Local { .. } => (&self.local, lang::lint::Local, LOCAL),
-                Kind::Call { .. } => (&self.call, lang::lint::Call, CALL),
+            let check = match node.kind {
+                Kind::Decl { .. } => &self.decl,
+                Kind::Local { .. } => &self.local,
+                Kind::Call { .. } => &self.call,
             };
             let Some(check) = check else { continue };
-            let Ok(Value::Array(mut shown)) = env.describe(shape, std::slice::from_ref(node), facts) else {
-                continue;
-            };
-            let (Some(shown), Ok(ty)) = (shown.pop(), env.item(shape)) else { continue };
-            let args = vec![ty, check.clone(), namespace.clone(), shown];
+            let Some((ty, shown)) = node.shown(env) else { continue };
+            let args = vec![ty.clone(), check.clone(), namespace.clone(), shown.clone()];
             match call(env, lang::lint::reports, args) {
                 Ok(Value::Array(reports)) => {
                     for report in &reports {

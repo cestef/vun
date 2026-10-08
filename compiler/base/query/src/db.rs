@@ -146,7 +146,12 @@ impl Db {
             Some(current) if current.is_input() && current.fingerprint == fingerprint => {
                 current.verified.get()
             }
-            Some(_) => Some(Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1)),
+            Some(_) => {
+                let next = Revision(self.revision.fetch_add(1, Ordering::AcqRel) + 1);
+                // What was found of earlier revisions is never asked again.
+                self.settled.pin().clear();
+                Some(next)
+            }
             None => Some(self.revision()),
         };
         let revision = revision.unwrap_or_else(|| self.revision());

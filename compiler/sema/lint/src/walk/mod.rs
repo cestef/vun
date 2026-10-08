@@ -105,7 +105,7 @@ impl<'e, 'a, 'db> Walk<'e, 'a, 'db> {
 
     fn push(&mut self, kind: Kind, origin: OriginId) {
         let declared = self.declared.unwrap_or(origin);
-        self.nodes.push(Node { kind, origin, allowed: self.allowed.clone(), declared });
+        self.nodes.push(Node::new(kind, origin, self.allowed.clone(), declared));
     }
 
     /// A local binding or a parameter: the lint `#[lint.allow]` around its declaration is in

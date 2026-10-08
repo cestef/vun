@@ -4,7 +4,7 @@
 //! its slot by its position there, once, and is read from them the first time it is needed:
 //! verifying a memo reaches the memos it read without reading their keys.
 
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 
 use arc_swap::ArcSwapOption;
@@ -57,6 +57,9 @@ pub(crate) struct Entry<Q: Query> {
     pub(crate) claims: Claims,
     /// Its key's position among the query's keys in the saved memos loaded.
     pub(crate) at: OnceLock<u32>,
+    /// Set for the entry of a thread that lost the race to add its key: the slot stored stands
+    /// for it.
+    lost: AtomicBool,
 }
 
 impl<Q: Query> Table<Q> {
@@ -91,7 +94,16 @@ impl<Q: Query> Table<Q> {
         // Another thread may add the same key meanwhile: the first slot stored stands for both.
         let stored = probe.stored();
         let held = stored.key().clone();
-        *self.slots.pin().get_or_insert_with(stored, || self.push(OnceLock::from(held), None))
+        let mut pushed = None;
+        let slot = *self.slots.pin().get_or_insert_with(stored, || {
+            let slot = self.push(OnceLock::from(held), None);
+            pushed = Some(slot);
+            slot
+        });
+        if let Some(lost) = pushed.filter(|&pushed| pushed != slot) {
+            self.entry(lost).lost.store(true, Ordering::Relaxed);
+        }
+        slot
     }
 
     /// The slot of the key saved at `at`, made the first time it is asked for, its key unread.
@@ -111,6 +123,7 @@ impl<Q: Query> Table<Q> {
             memo: ArcSwapOption::new(memo),
             claims: Claims::default(),
             at: at.map_or_else(OnceLock::new, OnceLock::from),
+            lost: AtomicBool::new(false),
         };
         Slot::at(self.entries.push(entry))
     }
@@ -165,13 +178,8 @@ impl<Q: Query> Table<Q> {
 
     /// Every entry of a key, by slot: not those pushed by a thread another added the key before.
     pub(crate) fn entries(&self) -> impl Iterator<Item = (Slot, &Entry<Q>)> {
-        let slots = self.slots.pin();
         let entries = self.entries.iter().map(|(index, entry)| (Slot::at(index), entry));
-        let own = move |(slot, entry): &(Slot, &Entry<Q>)| {
-            entry.at.get().is_some()
-                || entry.key.get().is_none_or(|key| slots.get(&Probe::of(&**key)) == Some(slot))
-        };
-        entries.filter(own)
+        entries.filter(|(_, entry)| !entry.lost.load(Ordering::Relaxed))
     }
 
     /// Every entry with a memo.

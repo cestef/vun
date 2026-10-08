@@ -175,7 +175,7 @@ impl<Q: Query<Key: Encode + Decode>> Persisted for Persisting<Q> {
             if number.at < first {
                 // A key left to the shared file: its memo there stands unless replaced.
                 let replacing = memo.as_deref().is_some_and(Memo::fresh)
-                    || loaded.is_some_and(|keys| keys.replaced.contains(&number.at));
+                    || loaded.is_some_and(|keys| keys.replaced.binary_search(&number.at).is_ok());
                 if let Some(memo) = memo.as_deref().filter(|_| replacing)
                     && let Some(bytes) = self.memo(db, w, layout, extends, number, Some(memo))
                 {
