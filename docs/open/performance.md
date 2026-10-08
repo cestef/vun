@@ -31,10 +31,12 @@
   compile-time calls `fold` evaluates, which `concrete` (2.6 s total across threads) holds.
 - `vun debug profile` on `am3.wg` (2026-10-08, hello, warm unless said): 332 M instructions, 47 ms.
   Where it goes, in order of what to try:
-  1. Parsing: `parsed` is 50% of the warm time (24 ms for 23 files) and `Parser::read_root`
-     runs 1.0M times at 13.7% own, `taking` 9%, `Positions::filter` 6%. Warm still parses the
-     library because parse trees are not saved; saving them or making `read_root` cheaper
-     per call (45 instructions each, 1.0M calls) is the largest single win.
+  1. Parsing: a warm check parsed 23 library files only to read their diagnostics. `parse_report`
+     (`Reported`) saves them with their value now: warm `hello` 332 M to 115 M instructions, one
+     file parsed. The parser itself costs ~7000 instructions a token (11 MiB/s): the engine
+     decides over the whole frame stack for each token (`decide`, `holding`, `taking`), which a
+     cold run still pays for every library file (`parsed` is 25% of cold time). Next: make the
+     per-token decision cheaper, or save the parsed file.
   2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold: `blake3` is built with
      `pure` (decision 67, no C or assembly), which also drops its SIMD paths (NEON on aarch64,
      AVX2 on x86). Dropping `pure` buys most of that back and costs a C compiler; the owner's

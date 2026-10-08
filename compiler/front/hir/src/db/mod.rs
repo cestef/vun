@@ -13,7 +13,7 @@ pub use input::{DepData, FileBytes, FileRef, FileText, Package, PackageData, Pac
 pub use layout::Namespace;
 pub use names::{CheckedNames, FileNames, FileScope, Spreads};
 pub use namespace::{Exports, Members, NamespaceAt, Unfound, Written};
-pub use parsed::{Parsed, ParsedFile};
+pub use parsed::{Parsed, ParsedFile, Reported};
 pub use scope::{Outer, Scope, ScopeData};
 
 use vun_query::Db;
@@ -25,6 +25,7 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<FileText>,
     Db::trace::<FileBytes>,
     Db::trace::<Parsed>,
+    Db::persist::<Reported>,
     Db::persist::<FileNames>,
     Db::persist::<Scope>,
     Db::persist::<NamespaceAt>,

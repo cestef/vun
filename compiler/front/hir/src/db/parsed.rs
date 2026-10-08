@@ -96,3 +96,17 @@ impl Query for Parsed {
         Some(Arc::new(ParsedFile { file, tokens, cst, hir, resolution, diag, text }))
     }
 }
+
+/// What lexing, parsing, lowering and resolving a file reported, which is saved with its value
+/// where the file's own is only traced, so that a run reporting a library file need not read it.
+pub struct Reported;
+
+impl Query for Reported {
+    const NAME: &'static str = "parse_report";
+    type Key = FileRef;
+    type Value = Option<Arc<DiagCtxt>>;
+
+    fn compute(cx: &Cx<'_>, key: &FileRef) -> Self::Value {
+        Some(Arc::new(cx.get::<Parsed>(key)?.diag.clone()))
+    }
+}

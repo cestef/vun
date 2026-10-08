@@ -6,7 +6,7 @@
 use std::collections::BTreeSet;
 
 use vun_diag::{DiagCtxt, DiagId, errors};
-use vun_hir::db::{FileNames, FileRef, Parsed};
+use vun_hir::db::{FileNames, FileRef, Reported};
 use vun_mir::{Programs, Roots};
 use vun_mir_passes::borrows::BorrowChecks;
 use vun_mir_passes::panics::PanicChecks;
@@ -166,9 +166,9 @@ impl Session {
             program.instantiations().map(|i| &i.f.literal.file).filter(|&f| *f != key).collect();
         for file in reached {
             let mut parsed_clean = true;
-            if let Some(parsed) = self.db.get::<Parsed>(file) {
-                parsed_clean = parsed.diag.error_count() == 0;
-                self.diag.absorb(&parsed.diag);
+            if let Some(reported) = self.db.get::<Reported>(file) {
+                parsed_clean = reported.error_count() == 0;
+                self.diag.absorb(&reported);
             }
             // A name left unresolved by a syntax error is its consequence, not a report of its own.
             if let Some(named) = self.db.get::<FileNames>(file).filter(|_| parsed_clean) {
