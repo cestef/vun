@@ -23,3 +23,6 @@ Spec 11 is the reference.
 - `vun debug smith` (see spec 11): not generated yet are generic iterators, coroutines that
   return or are cancelled, tasks, `unsafe`, and layout attributes. Untriaged: a text-fuzz crash
   at `compiler/low/lower/src/func/constant.rs:38` (`f16` constants).
+- `vun test main.vun` is `test.no_namespace` for a program's root file: a package's namespaces are the
+  files its root namespace names, which the `hello` template's `main.vun` is not, so the template
+  has nowhere to put a test.

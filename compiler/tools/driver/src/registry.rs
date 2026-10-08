@@ -2,10 +2,13 @@ mod assist;
 mod choose;
 #[cfg(feature = "components")]
 mod components;
+mod entries;
 
 pub use choose::{Codegen, Link, Linkage, Pick, Picked, Unchosen, Unfit};
 #[cfg(feature = "components")]
 pub use components::Components;
+pub(crate) use entries::Entry;
+pub use entries::{Id, Kind};
 
 use std::path::PathBuf;
 

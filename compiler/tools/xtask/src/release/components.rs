@@ -72,16 +72,16 @@ impl Crate {
         cargo::components(root, profile, tool, target, &packages)
     }
 
-    /// Packs the library built beside `binary` as the archive of its component for `machine`,
-    /// written in `out`.
+    /// The component's piece of a release for `machine`, and the bytes of its archive, from the
+    /// library built beside `binary`.
     ///
     /// # Errors
-    /// Returns why the library is not there, is not a component, or the archive is not written.
-    pub(crate) fn pack(&self, binary: &Path, out: &Path, machine: Machine) -> io::Result<Piece> {
+    /// Returns why the library is not there or is not a component.
+    pub(crate) fn staged(&self, binary: &Path, machine: Machine) -> io::Result<(Piece, Vec<u8>)> {
         let library = self.beside(binary);
         let name = Components::named(&library).map_err(io::Error::other)?;
         let name = name.as_str();
-        let stage = out.join(format!(".stage-{name}"));
+        let stage = std::env::temp_dir().join(format!(".vun-stage-{name}-{}", std::process::id()));
         stage.fresh()?;
         stage.join(COMPONENTS).join(&self.library).put(std::fs::read(&library)?)?;
         let format = Format::of(Build::SUFFIX).expect("component archives are of a known format");
@@ -93,15 +93,25 @@ impl Crate {
                 "the staged component {name} hashes apart from its snapshot"
             )));
         }
-        let archive = Piece::archive_name(name, machine);
-        out.join(&archive).put(bytes)?;
-        Ok(Piece {
+        let piece = Piece {
             name: name.to_owned(),
-            archive,
+            archive: Piece::archive_name(name, machine),
             file: self.library.clone(),
             hash: snapshot.root(),
             profile: self.profile,
             needs: self.needs.clone(),
-        })
+        };
+        Ok((piece, bytes))
+    }
+
+    /// Packs the library built beside `binary` as the archive of its component for `machine`,
+    /// written in `out`.
+    ///
+    /// # Errors
+    /// Returns why the library is not there, is not a component, or the archive is not written.
+    pub(crate) fn pack(&self, binary: &Path, out: &Path, machine: Machine) -> io::Result<Piece> {
+        let (piece, bytes) = self.staged(binary, machine)?;
+        out.join(&piece.archive).put(bytes)?;
+        Ok(piece)
     }
 }

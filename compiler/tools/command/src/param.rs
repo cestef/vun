@@ -4,6 +4,8 @@
 use vun_span::Place;
 use vun_term::Percent;
 
+use crate::Detail;
+
 /// A parameter, declared as a constant with the builders below:
 /// `Param::option("target").about("...").values(Values::Text).env("VUN_TARGET")`.
 #[derive(Debug)]
@@ -191,8 +193,11 @@ pub const VERBOSE: Param = Param::flag("verbose")
     .about("show more of what is done: `-v` each step, `-vv` the log of the compiler");
 /// Options every command accepts, applied by the program before the command runs; the root
 /// accepts `VERSION` besides.
-pub const GLOBAL: OptionSet =
-    OptionSet { title: "Global options", params: &[COLOR, FORMAT, QUIET, VERBOSE, HELP] };
+pub const GLOBAL: OptionSet = OptionSet {
+    title: "Global options",
+    params: &[COLOR, FORMAT, QUIET, VERBOSE, HELP],
+    detail: Detail::Short,
+};
 
 /// Options several commands take, shown in help under their own title, as cargo's
 /// `Compilation Options`.
@@ -200,6 +205,8 @@ pub const GLOBAL: OptionSet =
 pub struct OptionSet {
     pub title: &'static str,
     pub params: &'static [Param],
+    /// The shortest help page listing it: sets for the rare cases are left to the long page.
+    pub detail: Detail,
 }
 
 /// The values given to a command's parameters.

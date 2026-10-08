@@ -3,6 +3,7 @@
 //! unpacked beside the installed ones, its tree hashed and checked against the manifest's hash,
 //! then moved in with the manifest, which a lockfile pinning the release records the hash of.
 
+mod catalog;
 mod components;
 mod pin;
 mod uninstalled;
@@ -17,9 +18,11 @@ use vun_span::Version;
 use vun_target::Machine;
 use vun_trace::tracing;
 
+pub use crate::registry::{Id, Kind};
+pub use catalog::{Component, Has};
 pub use components::Held;
 pub use pin::{ENV, LOCAL};
-pub use uninstalled::Uninstalled;
+pub use uninstalled::{Fetched, Uninstalled};
 
 use crate::Session;
 
@@ -41,9 +44,15 @@ impl Session {
         let releases = Releases::user().map_err(Uninstalled::Repository)?;
         let url = releases.manifest(wanted);
         tracing::debug!(%url, key = %releases.key, "release manifest");
-        let manifest = self.registry.schemes().get(&url).map_err(Uninstalled::Manifest)?;
-        let signature =
-            self.registry.schemes().get(&releases.signature(wanted)).map_err(Uninstalled::Unsigned)?;
+        let manifest =
+            self.registry.schemes().get(&url).map_err(Fetched::of(&url)).map_err(Uninstalled::Manifest)?;
+        let signed = releases.signature(wanted);
+        let signature = self
+            .registry
+            .schemes()
+            .get(&signed)
+            .map_err(Fetched::of(&signed))
+            .map_err(Uninstalled::Unsigned)?;
         releases.key.verify(&manifest, &signature).map_err(Uninstalled::Forged)?;
         let text = String::from_utf8_lossy(&manifest);
         let value = vun_data::json::parse(&text).map_err(Uninstalled::Json)?;
@@ -73,6 +82,7 @@ impl Session {
         let staging = toolchains.staging(release.version);
         Mirror::of(&url, &self.registry.schemes())
             .and_then(|m| m.fetch(&staging))
+            .map_err(Fetched::of(&url))
             .map_err(Uninstalled::Archive)?;
         let found = Toolchains::hash(&staging).map_err(Uninstalled::Io)?;
         if found != build.hash {
@@ -91,6 +101,11 @@ impl Session {
             Some(version) => msg.text(" ").code(version.to_string()),
             None => msg.text(" of the latest release"),
         };
-        self.diag.error(Diagnostic::error(errors::TOOLCHAIN_INSTALL_FAILED, msg).caused_by(why))
+        let mut d = Diagnostic::error(errors::TOOLCHAIN_INSTALL_FAILED, msg).caused_by(why);
+        if why.from_releases() {
+            let help = Msg::new().text("releases are read from the repository, or from ").code(Releases::ENV);
+            d = d.help(help);
+        }
+        self.diag.error(d)
     }
 }

@@ -55,6 +55,19 @@ impl Output {
         }
     }
 
+    /// Writes `files` here, unless the directory is one the documentation may not be written to;
+    /// whether it was.
+    fn write(&self, files: Vec<vun_documenter::Written>) -> io::Result<bool> {
+        if !self.open()? {
+            return Ok(false);
+        }
+        self.0.join(STAMP).put("")?;
+        for written in files {
+            self.0.join(&written.path).put(written.contents)?;
+        }
+        Ok(true)
+    }
+
     fn refusal(&self) -> Diagnostic {
         let msg = Msg::new()
             .code(self.0.display().to_string())
@@ -127,15 +140,18 @@ fn doc(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     let work = session.work(&packages[0].join(MANIFEST));
     let dir = args.value(&OUTPUT).map_or_else(|| work.join(DOCS), PathBuf::from);
     let output = Output(dir);
-    if !output.open()? {
-        session.diag.error(output.refusal());
-        return Ok(session.outcome());
+    match output.write(site.files) {
+        Ok(true) => {}
+        Ok(false) => {
+            session.diag.error(output.refusal());
+            return Ok(session.outcome());
+        }
+        Err(e) => {
+            session.diag.error(Diagnostic::unwritable(&output.0, &e));
+            return Ok(session.outcome());
+        }
     }
     let dir = output.0;
-    dir.join(STAMP).put("")?;
-    for written in site.files {
-        dir.join(&written.path).put(written.contents)?;
-    }
     shell.status(&Documented { namespaces: site.namespaces, dir });
     Ok(session.outcome())
 }

@@ -118,7 +118,7 @@ impl Session {
     /// with those it loaded, when it computed some the file loaded lacked. Older files are
     /// removed once kept long enough.
     pub fn share(&self) {
-        let Some(dir) = self.shared_dir().filter(|_| self.shares_new) else { return };
+        let Some(dir) = self.shared_dir().filter(|_| self.shares_new && self.keeps_queries()) else { return };
         let Some(bytes) = self.db.save_shared() else { return };
         let Some(id) = Layering::of(&bytes).ok().and_then(|layering| layering.id) else { return };
         let path = dir.join(id.digest());
@@ -141,6 +141,12 @@ impl Session {
                 tracing::debug!(%error, path = %stale.display(), "cannot remove shared queries");
             }
         }
+    }
+
+    /// Whether what the queries computed holds for a later session: not when no target was chosen,
+    /// since everything that reads it was computed without one.
+    fn keeps_queries(&self) -> bool {
+        !self.untargeted()
     }
 
     /// The directory of the shared files for the running toolchain, in a directory of its own,
@@ -176,6 +182,10 @@ impl Session {
     pub fn save(&self) {
         self.share();
         let Persistence::At(path) = &self.persistence else { return };
+        if !self.keeps_queries() {
+            tracing::debug!(path = %path.display(), "queries not kept: no target is chosen");
+            return;
+        }
         if !self.db.changed() {
             tracing::debug!(path = %path.display(), "queries unchanged");
             return;

@@ -204,6 +204,7 @@ pub enum Lang {
     TestNoNamespace,
     TestUnrunnable,
     TestNoCoverage,
+    TestUnmatched,
     /// The toolchain's tools and the native libraries they load (decision 131).
     Tool,
     ToolMissingLibrary,
@@ -216,6 +217,8 @@ pub enum Lang {
     ToolchainInstallFailed,
     ToolchainNotInstalled,
     ToolchainInUse,
+    ToolchainNoComponent,
+    ToolchainRequired,
     /// Reading and writing files.
     Io,
     IoUnreadableFile,
@@ -232,4 +235,5 @@ pub enum Lang {
     CliMissingValue,
     CliInvalidValue,
     CliUnavailable,
+    CliMissingPath,
 }

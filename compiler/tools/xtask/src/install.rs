@@ -54,8 +54,8 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
             return Ok(Outcome::Failure);
         }
     };
-    let libraries = match libraries(&root, profile, &binary) {
-        Ok(libraries) => libraries,
+    let crates = match crates(&root, profile) {
+        Ok(crates) => crates,
         Err(why) => {
             let msg = Msg::new().text("cannot build the components of ").code("vun");
             diag.error(Diagnostic::error(UNBUILT, msg).caused_by(&why));
@@ -63,7 +63,10 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
         }
     };
     let staging = Stage::at(&root, toolchains.staging(version));
-    if let Err(why) = staging.lay(&binary, &libraries) {
+    let libraries: Vec<PathBuf> = crates.iter().map(|c| c.beside(&binary)).collect();
+    let laid =
+        staging.lay(&binary, &libraries).and_then(|()| staging.keep_release(version, &binary, &crates));
+    if let Err(why) = laid {
         staging.dir().remove()?;
         let msg = Msg::new().text("cannot put the toolchain ").code(version.to_string()).text(" together");
         diag.error(Diagnostic::error(UNSTAGED, msg).caused_by(&why));
@@ -95,15 +98,15 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
     Ok(Outcome::Success)
 }
 
-/// The libraries of the components `vun` loads, built beside it: of the distributed profile only,
-/// the others link them in.
-fn libraries(root: &Path, profile: &str, binary: &Path) -> io::Result<Vec<PathBuf>> {
+/// The component crates whose libraries `vun` loads, built beside it: of the distributed profile
+/// only, the others link them in.
+fn crates(root: &Path, profile: &str) -> io::Result<Vec<Crate>> {
     if profile != cargo::DISTRIBUTED {
         return Ok(Vec::new());
     }
     let crates = Crate::all(root)?;
     Crate::build(root, &crates, profile, "build", None).map_err(io::Error::other)?;
-    Ok(crates.iter().map(|c| c.beside(binary)).collect())
+    Ok(crates)
 }
 
 /// A `vun` on the search path that is not the one installed.

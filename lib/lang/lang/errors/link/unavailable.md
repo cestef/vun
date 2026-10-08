@@ -18,8 +18,8 @@ error[link.unavailable]: linker `external` cannot link yet
 
 ## Fix
 
-Name a linker that links, or none: the target's then links. `vun toolchain show` lists the
-linkers compiled into this toolchain, and `vun target show` which one a build takes, why, and
+Name a linker that links, or none: the target's then links. `vun component list` lists the
+linkers this toolchain has, and `vun target show` which one a build takes, why, and
 whether the machine has the programs it runs.
 
 ```console

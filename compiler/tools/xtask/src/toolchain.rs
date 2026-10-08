@@ -6,9 +6,16 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use vun_build::release::{Build, Release};
 use vun_build::toolchains::{BIN, COMPONENTS, CONTENTS, Toolchains};
+use vun_data::ToData;
+use vun_data::json::Json;
 use vun_fs::{Edit, Tree};
 use vun_hash::Hash;
+use vun_span::Version;
+use vun_target::Machine;
+
+use crate::release::Crate;
 
 /// A toolchain's tree being put together from the checkout, in a staging directory.
 pub(crate) struct Stage {
@@ -45,6 +52,22 @@ impl Stage {
             self.dir.join(COMPONENTS).join(name).put(fs::read(library)?)?;
         }
         Ok(())
+    }
+
+    /// Keeps beside the tree laid here the manifest of the release it stands for: a release of
+    /// one machine, whose components are those `crates` built beside `binary`. A toolchain
+    /// installed from a checkout then has what one from a release has, and needs no signature,
+    /// being as trusted as the executable itself.
+    ///
+    /// # Errors
+    /// Returns an error if a component cannot be packed or the manifest written.
+    pub(crate) fn keep_release(&self, version: Version, binary: &Path, crates: &[Crate]) -> io::Result<()> {
+        let machine = Machine::RUNNING;
+        let components =
+            crates.iter().map(|c| Ok(c.staged(binary, machine)?.0)).collect::<io::Result<_>>()?;
+        let build = Build { machine, archive: Build::archive_name(machine), hash: self.hash()?, components };
+        let release = Release { version, builds: vec![build] };
+        self.dir.join(Release::FILE).put(Json(&release.to_data()).to_string())
     }
 
     /// The hash of the tree laid here, as a release names it.

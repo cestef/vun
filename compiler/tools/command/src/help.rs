@@ -40,9 +40,10 @@ impl<Cx> Selected<'_, Cx> {
             [Text::join(names, ", "), Text::from(c.about)]
         });
         let arguments = command.positionals().flat_map(|p| p.rows(p.placeholder(), detail));
-        let options = self.sections().into_iter().map(|(title, params)| {
-            (title, params.into_iter().flat_map(|p| p.rows(p.spelling(), detail)).collect())
-        });
+        let options =
+            self.sections().into_iter().filter(|s| long || s.detail == Detail::Short).map(|s| {
+                (s.title, s.params.into_iter().flat_map(|p| p.rows(p.spelling(), detail)).collect())
+            });
         let examples = command.examples.iter().filter(|_| long).map(|e| {
             [
                 Text::of(Style::Literal, format!("{} {}", self.invocation(), e.line)),

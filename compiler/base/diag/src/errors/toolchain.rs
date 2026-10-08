@@ -6,3 +6,5 @@ pub const TOOLCHAIN: DiagId = DiagId::Lang(Lang::Toolchain);
 pub const TOOLCHAIN_INSTALL_FAILED: DiagId = DiagId::Lang(Lang::ToolchainInstallFailed);
 pub const TOOLCHAIN_NOT_INSTALLED: DiagId = DiagId::Lang(Lang::ToolchainNotInstalled);
 pub const TOOLCHAIN_IN_USE: DiagId = DiagId::Lang(Lang::ToolchainInUse);
+pub const TOOLCHAIN_NO_COMPONENT: DiagId = DiagId::Lang(Lang::ToolchainNoComponent);
+pub const TOOLCHAIN_REQUIRED: DiagId = DiagId::Lang(Lang::ToolchainRequired);

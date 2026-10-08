@@ -9,7 +9,7 @@ use vun_command::{Args, Param};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_hir::db::{FileRef, Package};
 use vun_query::Sharing;
-use vun_sema::target::{Choice, Chosen, Target, TargetOf, TargetPath};
+use vun_sema::target::{Choice, Chosen, Target, TargetOf, TargetPath, Targets};
 use vun_target::TargetSpec;
 use vun_trace::tracing;
 
@@ -61,13 +61,7 @@ impl Session {
                 Ok(spec)
             }
             Err(why) => {
-                let msg = Msg::new().text("no target is chosen");
-                let help = Msg::new()
-                    .text("choose one with ")
-                    .code("--target")
-                    .text(", of those ")
-                    .code("vun target list")
-                    .text(" lists");
+                let (msg, help) = self.unnamed(key);
                 Err(self
                     .diag
                     .error(Diagnostic::error(errors::TARGET_UNCHOSEN, msg).caused_by(&why).help(help)))
@@ -75,5 +69,27 @@ impl Session {
         };
         self.target = Some(target.clone());
         target
+    }
+
+    /// Whether choosing the target failed, which is reported: what reads it is unknown.
+    #[must_use]
+    pub fn untargeted(&self) -> bool {
+        matches!(self.target, Some(Err(_)))
+    }
+
+    /// What reports that the target the session was asked for is none: the path `--target` gave,
+    /// and the target it is closest to, else where the targets are listed.
+    fn unnamed(&self, key: &FileRef) -> (Msg, Msg) {
+        let Choice::Path(path) = &self.choice else {
+            let help = Msg::new().text("choose one with ").code("--target").text(", of those ");
+            return (Msg::new().text("no target is chosen"), help.code("vun target list").text(" lists"));
+        };
+        let named: Vec<String> = self.db.get::<Targets>(key).iter().map(|l| l.path.to_string()).collect();
+        let given = path.to_string();
+        let help = vun_suggest::closest(&given, named.iter().map(String::as_str)).map_or_else(
+            || Msg::new().text("the targets are listed by ").code("vun target list"),
+            Msg::did_you_mean,
+        );
+        (Msg::new().text("no target is named ").code(given), help)
     }
 }

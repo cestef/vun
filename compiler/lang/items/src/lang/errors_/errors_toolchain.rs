@@ -13,3 +13,7 @@ pub const not_installed: Item = Item::new(
     &["lang", "errors", "toolchain", "not_installed"],
 );
 pub const in_use: Item = Item::new(&["lang", "errors", "toolchain", "in_use"]);
+pub const no_component: Item = Item::new(
+    &["lang", "errors", "toolchain", "no_component"],
+);
+pub const required: Item = Item::new(&["lang", "errors", "toolchain", "required"]);

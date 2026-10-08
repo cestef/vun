@@ -23,15 +23,17 @@ impl Record for Tally {
 
     fn text(&self) -> Text {
         let Totals { passed, trapped, falsified, ignored, measured, fuzzed, nanos } = self.0;
+        // What did not happen is left out, except the passes: a run that passed nothing says so.
         let counts = [
-            PASSED.count(passed),
-            TRAPPED.count(trapped),
-            FALSIFIED.count(falsified),
-            IGNORED.count(ignored),
-            MEASURED.count(measured),
-            FUZZED.count(fuzzed),
+            (PASSED, passed, true),
+            (TRAPPED, trapped, false),
+            (FALSIFIED, falsified, false),
+            (IGNORED, ignored, false),
+            (MEASURED, measured, false),
+            (FUZZED, fuzzed, false),
         ];
-        let counts = Text::join(counts.map(|count| Text::from(count.to_string())), ", ");
+        let counts = counts.into_iter().filter(|&(_, n, always)| always || n > 0);
+        let counts = Text::join(counts.map(|(noun, n, _)| Text::from(noun.count(n).to_string())), ", ");
         match nanos {
             Some(nanos) => counts.append(Text::of(Style::Dim, format!(" in {}", Nanos::from(nanos)))),
             None => counts,

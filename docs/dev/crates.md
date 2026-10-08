@@ -66,7 +66,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   module besides `vun-par`'s pool), `vun-backend-component`, `vun-link-component`, `vun-scheme-component` (`compiler/pkg/component`) `vun-server` (`compiler/tools/server`, with the `Server` trait) and `vun-renderer` (`compiler/render/api`, with the `Renderer` trait, `Short` and `Remote`), `vun-binder` (`compiler/tools/binder`, with the `Binder` trait and what binding gives), `vun-formatter` (`compiler/tools/formatter`, the `Formatter` trait and `WIDTH`; `vun_fmt::Vun` serves it) and `vun-documenter` (`compiler/tools/documenter`, the `Documenter` trait, `Source`, `Site` and `Types`, which the host answers; `vun_doc::Html` serves it; the
   interface of each kind, `Remote` the host's `Backend`, `Linker` or `Scheme` over a component), and the
   libraries under `compiler/components/` (`vun-component-<kind>-<id>`, a cdylib of one `export!`: `backend-cranelift`, `link-lld`, `scheme-https`, `renderer-terminal`, `renderer-ariadne`, `renderer-sarif`, `server-lsp`, `binder-c`, `formatter-vun` and `documenter-html`, the last four in `compiler/tools/` since it serves a driver session).
-  The driver's `Registry::load` registers what a directory holds, `vun toolchain show` says where
+  The driver's `Registry::load` registers what a directory holds, `vun component list` says where
   each comes from.
 - **Native backend** (`compiler/native`, TPDE's layers): `vun-native` (the `Native` trait, whose
   `compile` and `object` every architecture shares; `select` with `Carries`, `Frames`,

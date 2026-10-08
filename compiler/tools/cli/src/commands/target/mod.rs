@@ -20,10 +20,10 @@ pub(super) const GROUP: &str = "target";
 pub(super) const COMMANDS: &[Command<Session>] = &[
     Command::run("list", "list the targets, what builds for each, and what the machine lacks", list::list)
         .params(&[PATH])
-        .sets(&[COMPILE]),
+        .sets(&COMPILE),
     Command::run("show", "show what a build for the target uses and where each part comes from", show::show)
         .params(&[PATH])
-        .sets(&[COMPILE]),
+        .sets(&COMPILE),
 ];
 
 const PATH: Param = Param::positional("file")

@@ -19,3 +19,4 @@ pub const unknown_option: Item = Item::new(&["lang", "errors", "cli", "unknown_o
 pub const missing_value: Item = Item::new(&["lang", "errors", "cli", "missing_value"]);
 pub const invalid_value: Item = Item::new(&["lang", "errors", "cli", "invalid_value"]);
 pub const unavailable: Item = Item::new(&["lang", "errors", "cli", "unavailable"]);
+pub const missing_path: Item = Item::new(&["lang", "errors", "cli", "missing_path"]);

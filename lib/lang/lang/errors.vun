@@ -1,6 +1,5 @@
-//! Every compiler diagnostic, grouped by area. `cargo gen` derives the ids of
-//! `vun-diag` from this file. Each entry's explanation page is the file its binding path names,
-//! `errors/<group>/<name>.md` (spec 10, section 1).
+//! Every compiler diagnostic, grouped by area; `cargo gen` derives the ids of `vun-diag` from this
+//! file. An entry's explanation page is `errors/<group>/<name>.md` (spec 10, section 1).
 
 /// Tokens and syntax trees (spec 01).
 syntax := struct {
@@ -256,6 +255,7 @@ test := struct {
     no_namespace := diag.Diag{};
     unrunnable := diag.Diag{};
     no_coverage := diag.Diag{};
+    unmatched := diag.Diag{};
 };
 
 /// The toolchain's tools and the native libraries they load (decision 131).
@@ -272,6 +272,8 @@ toolchain := struct {
     install_failed := diag.Diag{};
     not_installed := diag.Diag{};
     in_use := diag.Diag{};
+    no_component := diag.Diag{};
+    required := diag.Diag{};
 };
 
 /// Reading and writing files.
@@ -294,4 +296,5 @@ cli := struct {
     missing_value := diag.Diag{};
     invalid_value := diag.Diag{};
     unavailable := diag.Diag{};
+    missing_path := diag.Diag{};
 };

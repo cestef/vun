@@ -10,3 +10,4 @@ pub const CLI_UNKNOWN_OPTION: DiagId = DiagId::Lang(Lang::CliUnknownOption);
 pub const CLI_MISSING_VALUE: DiagId = DiagId::Lang(Lang::CliMissingValue);
 pub const CLI_INVALID_VALUE: DiagId = DiagId::Lang(Lang::CliInvalidValue);
 pub const CLI_UNAVAILABLE: DiagId = DiagId::Lang(Lang::CliUnavailable);
+pub const CLI_MISSING_PATH: DiagId = DiagId::Lang(Lang::CliMissingPath);

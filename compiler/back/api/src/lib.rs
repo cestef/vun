@@ -47,7 +47,7 @@ pub enum Emits {
 }
 
 impl Emits {
-    /// Its name, as `vun toolchain show` lists it.
+    /// Its name, as `vun component list` lists it.
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {

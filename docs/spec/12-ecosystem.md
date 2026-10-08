@@ -320,7 +320,7 @@ Four things decide how a program is built, each declared in one place:
 | component | a backend, a linker, a URL scheme, a server, a binder or a renderer, linked into `vun` or a library beside it | the toolchain's executable, or `components/` |
 | tools | the programs of this machine building and running for a target | the machine's tools file |
 
-`vun toolchain show` says which toolchain runs and what it holds, each component with where it comes from (`linked`, or its library); `vun target list` lists the
+`vun toolchain show` says which toolchain runs, where it and its library are and how many components it has; `vun component list` lists the components, each as built in, loaded from a library, installed from the release or only available there; `vun target list` lists the
 targets with what builds for each and what the machine lacks; `vun target show` gives every part
 of a build for the chosen target, where each program is and why each part is the one (the
 target's declaration, an option, a line of the tools file).
@@ -350,7 +350,7 @@ hash of the toolchain tree the archive unpacks to, `bin/`, `lib/` and `LICENSES/
 checked before anything is kept. The manifest is signed: `release.json.sig` is the Ed25519
 signature of its bytes, checked against the key `vun` is built with, or the one
 `VUN_RELEASES_KEY` names (`ed25519:<base32>`, for a mirror signing its own), so the manifest and,
-through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|remove|update|component` manages them;
+through its hashes, every archive are the project's. An installed toolchain keeps its manifest. `vun toolchain list|install|update|default|remove` manages them;
 `update` installs the latest release and makes it the default, the one `~/.local/bin/vun` links
 to; the default and the running toolchain are not removed. A first installation runs the
 repository's `install.sh`, which downloads this machine's archive of the latest release somewhere
@@ -404,9 +404,10 @@ kind and id (`backend-cranelift`, `linker-wasm`) and belongs to the smallest *pr
 it, `minimal` (what builds for the machine), `default` or `full`; a profile holds the components
 of its own and of the smaller ones. The libraries are apart from the toolchain's tree (`bin/`,
 `lib/`, `LICENSES/`), so that adding one changes no hash the release names. `vun toolchain
-install` and `update` take `--profile` (`default` when none), `vun toolchain component list`
-shows what a toolchain's release builds and which are installed, `add` and `remove` change the
-set, and `.components` beside `.toolchain` in `build.vun` names the components a project builds
+install` and `update` take `--profile` (`default` when none), `vun component list`
+shows what a toolchain has and its release builds, `vun component add` and `remove` change the
+installed set, reading the manifest kept with the toolchain (a name the release does not build is
+`toolchain.no_component`, a component another needs `toolchain.required`), and `.components` beside `.toolchain` in `build.vun` names the components a project builds
 with, installed with the pinned toolchain when missing (the lockfile's hash of the release's
 manifest covers their hashes). The `vun` of a release links only the backends and linkers not
 built yet; every other is a component. A target's backend preferences (spec 13, section 8) choose
@@ -480,8 +481,9 @@ package's directory, and with none the package around the current directory, its
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun util ffi bind <header>` | C declarations as Vun |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |
-| `vun toolchain show` | this toolchain's version, where it and its library are, its backends and linkers |
-| `vun toolchain list`, `install [version] [--default]`, `remove <version>`, `update` | the toolchains installed beside it (section 6) |
+| `vun toolchain show` | this toolchain's version, where it and its library are, how many components it has |
+| `vun toolchain list`, `install [version] [--default]`, `default <version>`, `remove <version>`, `update` | the toolchains installed beside it (section 6) |
+| `vun component list`, `add <name>...`, `remove <name>...` | the components of a toolchain, built in or installed from its release; `--toolchain <version>` names another |
 | `vun util cache list\|gc` | the shared store: entries, sizes, labels; collection by lockfile roots |
 | `vun util completion <shell>` | the completion script of bash, zsh, fish or nushell |
 | `vun util lsp` | serve the language server over standard input and output (spec 13, section 11) |
@@ -501,9 +503,10 @@ Options:
   `VUN_LOG` does), `-h` (help) and `--help` (the long page,
   through the pager on a terminal: aliases, the values and variables of options, examples),
   and `-V`/`--version` on the root.
-- **Compile options**, a set shared by every command that compiles (`build`, `run`, `check`,
-  `debug`): `--target <path>` (`VUN_TARGET`), `--diagnostics <format>` (`VUN_DIAGNOSTICS`),
-  `--timings`.
+- **Compile options**, sets shared by every command that compiles (`build`, `run`, `check`,
+  `debug`): `--target <path>` (`VUN_TARGET`), `--lint`, `--release` and `--diagnostics <format>`
+  (`VUN_DIAGNOSTICS`) on every help page; `--checks`, `--cover`, `--trace` and the profiling
+  options `--timings`, `--timeline` and `--memos` on the long page (`--help`) only.
 - A command's own options, such as `--backend` and `-o`.
 
 Output follows cargo's shell: results go to standard output, progress to standard error as status
@@ -517,6 +520,10 @@ screen before anything else is written to either stream, and never drawn in the 
 a pipe, `--format json`, `--quiet` and the logs (`VUN_LOG`, `-vv`) draw none, and a program that
 `vun run` starts has the terminal to itself. Colors are decided per stream: `auto` shows them on a terminal unless `NO_COLOR` is set, or
 `CLICOLOR_FORCE` forces them, or `CLICOLOR=0` or `TERM=dumb` turns them off.
+
+The exit status is `0` for success, `1` when errors were reported, `64` (`EX_USAGE`) for a command line
+that does not parse, and for `vun run` the status of the program it ran; `101` is a crash of `vun`
+itself, always a bug.
 
 Output is machine-readable with `--format json`: every line of standard output is then one JSON
 object naming its `type`, for results (`component`, `stored`, `dump`, `explanation`, ...), progress

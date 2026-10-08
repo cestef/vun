@@ -76,7 +76,7 @@ fn chosen(words: &[&str]) -> (Option<std::path::PathBuf>, Vec<String>) {
         panic!("{words:?} did not parse")
     };
     let chosen = test::Chosen::of(&args);
-    (chosen.path.map(Path::to_path_buf), chosen.names.into_iter().map(str::to_owned).collect())
+    (chosen.path.map(Path::to_path_buf), chosen.selection.names.into_iter().map(str::to_owned).collect())
 }
 
 #[test]
@@ -154,4 +154,35 @@ build := (b: &mut std.build.Build) {};
     assert_eq!(std::fs::read_to_string(landing).unwrap(), "mine");
     assert_eq!(documented(&package, &ours), Outcome::Success);
     assert_eq!(documented(&package, &ours), Outcome::Success);
+}
+
+#[test]
+fn components_are_a_group_of_their_own() {
+    let request = |line: &[&str]| PROGRAM.parse(&line.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>());
+    assert!(matches!(request(&["component", "add", "cranelift"]), Ok(vun_command::Request::Run(..))));
+    assert!(request(&["toolchain", "component", "list"]).is_err(), "no longer under the toolchain");
+}
+
+#[test]
+fn the_compile_options_a_page_shows_depend_on_its_detail() {
+    use vun_command::{Detail, Request};
+    let Ok(Request::Run(selected, _)) = PROGRAM.parse(&["build".to_owned()]) else { panic!("not a run") };
+    let (short, long) = (selected.help(Detail::Short).to_string(), selected.help(Detail::Long).to_string());
+    assert!(short.contains("--target") && !short.contains("--timings"), "{short}");
+    assert!(long.contains("--target") && long.contains("--timings") && long.contains("--checks"), "{long}");
+}
+
+/// `vun check <path>`, its outcome.
+fn checked_path(path: &std::path::Path) -> Outcome {
+    let argv = ["check", path.to_str().unwrap()].map(str::to_owned);
+    let (mut session, mut out, mut err) = (Session::new(), Vec::new(), Vec::new());
+    PROGRAM.run(&argv, &mut session, &mut Shell::plain(&mut out, &mut err)).unwrap()
+}
+
+#[test]
+fn a_path_naming_nothing_fails_the_command() {
+    let dir = Scratch::new("missing-path");
+    let present = dir.write("here.vun", "x := 1;\n");
+    assert_eq!(checked_path(&present), Outcome::Success);
+    assert_eq!(checked_path(&dir.join("there.vun")), Outcome::Failure);
 }

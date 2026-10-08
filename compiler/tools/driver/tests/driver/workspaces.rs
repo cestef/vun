@@ -120,3 +120,26 @@ fn sources_of_a_directory_in_no_package_are_every_file_below_it() {
     assert_eq!(session.sources(Some(&fx.root.join("group"))).unwrap(), Some(vec![a, b]));
     assert!(!session.failed());
 }
+
+#[test]
+fn a_path_naming_nothing_is_reported_with_the_closest_name() {
+    let fx = Fixture::new("subject-missing");
+    fx.root.write("main.vun", "x := 1;\n");
+    let mut session = fx.session();
+    assert_eq!(session.subject(Some(&fx.root.join("mian.vun"))).unwrap(), None);
+    assert_eq!(reported(&session), [errors::CLI_MISSING_PATH]);
+}
+
+#[test]
+fn a_target_naming_nothing_is_reported_and_keeps_no_queries() {
+    use vun_sema::target::{Choice, TargetPath};
+
+    let fx = Fixture::new("target-unnamed");
+    let path = fx.root.write("main.vun", "x := 1;\n");
+    let mut session = fx.session();
+    session.choice = Choice::Path(TargetPath::parse("linux.nope"));
+    let file = session.load(&path).unwrap();
+    assert!(session.shown(file).is_err());
+    assert_eq!(reported(&session), [errors::TARGET_UNCHOSEN]);
+    assert!(session.untargeted());
+}

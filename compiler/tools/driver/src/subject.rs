@@ -100,6 +100,10 @@ impl Session {
     /// # Errors
     /// Fails when the current directory cannot be read.
     pub fn subject(&mut self, path: Option<&Path>) -> io::Result<Option<Subject>> {
+        if let Some(missing) = path.filter(|p| !p.exists()) {
+            self.missing(missing);
+            return Ok(None);
+        }
         let (dir, within) = match path {
             None => match self.project()? {
                 Some((dir, _)) => (dir, None),
@@ -172,6 +176,29 @@ impl Session {
             return dir.files_with(EXTENSION).map(Some);
         }
         Ok(self.subject(path)?.map(|subject| self.files(&subject)))
+    }
+
+    /// Reports that `path` names nothing, suggesting the closest name beside it.
+    fn missing(&mut self, path: &Path) {
+        let beside = path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+        let names: Vec<String> = std::fs::read_dir(beside)
+            .into_iter()
+            .flatten()
+            .filter_map(|entry| Some(entry.ok()?.file_name().to_str()?.to_owned()))
+            .collect();
+        let given = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+        let near = vun_suggest::closest(given, names.iter().map(String::as_str));
+        let msg = Msg::new().code(path.display().to_string()).text(" does not exist");
+        let mut d = Diagnostic::error(errors::CLI_MISSING_PATH, msg);
+        if let Some(near) = near {
+            let near = if path.parent().is_some_and(|p| !p.as_os_str().is_empty()) {
+                beside.join(near)
+            } else {
+                near.into()
+            };
+            d = d.help(Msg::did_you_mean(near.display().to_string()));
+        }
+        self.diag.error(d);
     }
 
     /// Reports that `dir` is in no package.

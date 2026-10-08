@@ -70,8 +70,8 @@ impl Laid {
 
     fn install(&self) -> Result<Vec<(String, Installed)>, Uninstalled> {
         let session = self.fixture.session();
-        let names = Session::profile_components(&self.published, Profile::Default)?;
-        session.install_components(&self.toolchains, &self.releases, &self.published, &names)
+        let names = Session::profile_components(&self.published.release, Profile::Default)?;
+        session.install_components(&self.toolchains, &self.releases, &self.published.release, &names)
     }
 
     fn library(&self) -> Option<Vec<u8>> {
@@ -108,8 +108,78 @@ fn an_archive_that_is_not_the_one_the_manifest_names_installs_nothing() {
 #[test]
 fn the_profiles_hold_the_components_of_their_own_and_smaller_ones() {
     let laid = Laid::new("components-profiles", b"library", None);
-    let names = |profile| Session::profile_components(&laid.published, profile).unwrap();
+    let names = |profile| Session::profile_components(&laid.published.release, profile).unwrap();
     assert!(names(Profile::Minimal).is_empty());
     assert_eq!(names(Profile::Default), ["backend-x"]);
     assert_eq!(names(Profile::Full), ["backend-x"]);
+}
+
+fn reported(session: &Session) -> Vec<vun_diag::DiagId> {
+    session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
+}
+
+#[test]
+fn a_toolchain_lists_what_its_release_builds_and_how_it_has_each() {
+    use vun_driver::install::{Has, Kind};
+
+    let laid = Laid::new("components-listed", b"library", None);
+    laid.toolchains.dir(laid.version).join(Release::FILE).put(&laid.published.manifest).unwrap();
+    let listed = || {
+        let session = laid.fixture.session();
+        let all = session.components_of(Some(&laid.toolchains), laid.version);
+        all.into_iter().map(|c| (c.kind, c.name, c.has)).collect::<Vec<_>>()
+    };
+    let x = |has| vec![(Some(Kind::Backend), "x".to_owned(), has)];
+    assert_eq!(listed(), x(Has::Available));
+    laid.install().unwrap();
+    assert_eq!(listed(), x(Has::Installed));
+}
+
+#[test]
+fn a_component_is_named_in_full_or_by_the_name_only_it_has() {
+    let laid = Laid::new("components-named", b"library", None);
+    let build = laid.published.release.build_for(Machine::RUNNING).unwrap();
+    let mut session = laid.fixture.session();
+    let full = vec!["backend-x".to_owned()];
+    assert_eq!(session.pieces_named(build, &["backend-x"]), Some(full.clone()));
+    assert_eq!(session.pieces_named(build, &["x"]), Some(full));
+    assert!(!session.failed());
+    assert_eq!(session.pieces_named(build, &["backend-y"]), None);
+    assert_eq!(reported(&session), [vun_diag::errors::TOOLCHAIN_NO_COMPONENT]);
+}
+
+#[test]
+fn a_component_another_needs_is_not_removed() {
+    let laid = Laid::new("components-needed", b"library", None);
+    let dir = laid.toolchains.dir(laid.version);
+    let piece = |name: &str, needs: &[&str]| {
+        let file = format!("libvun_component_{name}.so");
+        dir.join(COMPONENTS).join(&file).put(name.as_bytes()).unwrap();
+        let mut piece = Piece {
+            name: name.to_owned(),
+            archive: String::new(),
+            file,
+            hash: Hash::of(b""),
+            profile: Profile::Default,
+            needs: needs.iter().map(|n| (*n).to_owned()).collect(),
+        };
+        piece.hash = Toolchains::hash_of(&dir, &[&Toolchains::library(&piece)]).unwrap();
+        piece
+    };
+    let base = piece("backend-base", &[]);
+    let top = piece("backend-top", &["backend-base"]);
+    let machine = Machine::RUNNING;
+    let build = Build { machine, archive: String::new(), hash: Hash::of(b""), components: vec![base, top] };
+    let mut session = laid.fixture.session();
+    let base_only = ["backend-base".to_owned()];
+    assert!(session.uninstall_components(&laid.toolchains, laid.version, &build, &base_only).is_err());
+    assert_eq!(reported(&session), [vun_diag::errors::TOOLCHAIN_REQUIRED]);
+    assert!(laid.toolchains.components(laid.version).join("libvun_component_backend-base.so").exists());
+
+    let mut session = laid.fixture.session();
+    let both = ["backend-top".to_owned(), "backend-base".to_owned()];
+    let removed = session.uninstall_components(&laid.toolchains, laid.version, &build, &both).unwrap();
+    assert_eq!(removed, [("backend-top".to_owned(), true), ("backend-base".to_owned(), true)]);
+    let again = session.uninstall_components(&laid.toolchains, laid.version, &build, &both).unwrap();
+    assert!(again.iter().all(|(_, was)| !was));
 }

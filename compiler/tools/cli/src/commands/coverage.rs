@@ -39,7 +39,7 @@ pub(super) const COVER: Command<Session> =
             vun_driver::codegen::LINKER,
             vun_driver::program::OUTPUT,
         ])
-        .sets(&[COMPILE])
+        .sets(&COMPILE)
         .examples(&[
             Example { line: "", about: "the lines the tests of the package around this directory reach" },
             Example { line: "--functions", about: "also each function, reached or not" },

@@ -4,7 +4,9 @@ use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-use vun_command::{Args, Arity, Command, Example, OptionSet, Outcome, Param, PathKind, Program, Values};
+use vun_command::{
+    Args, Arity, Command, Detail, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
+};
 use vun_term::Shell;
 
 use inputs::{Inputs, Named};
@@ -36,7 +38,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                 vun_driver::codegen::LIBRARY,
                 vun_driver::program::OUTPUT,
             ])
-            .sets(&[COMPILE])
+            .sets(&COMPILE)
             .examples(&[
                 Example { line: "main.vun", about: "build the program, named after its file" },
                 Example {
@@ -57,7 +59,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                     vun_driver::codegen::LINKER,
                     vun_driver::program::OUTPUT,
                 ])
-                .sets(&[COMPILE])
+                .sets(&COMPILE)
                 .examples(&[
                     Example { line: "", about: "run the program the plan of the package around this directory builds" },
                     Example { line: "main.vun -- --verbose input.txt", about: "pass arguments to the program" },
@@ -75,10 +77,11 @@ pub(crate) const PROGRAM: Program<Session> = Program {
             coverage::COVER,
             Command::group(pkg::GROUP, "dependencies and releases", pkg::COMMANDS),
             Command::group(target::GROUP, "what builds for each target, and from where", target::COMMANDS),
+            Command::group(toolchain::GROUP, "the toolchains installed: this one, and releases", toolchain::COMMANDS),
             Command::group(
-                toolchain::GROUP,
-                "this toolchain: its version, library and components",
-                toolchain::COMMANDS,
+                component::GROUP,
+                "the backends, linkers and other parts of a toolchain, and which it has",
+                component::COMMANDS,
             ),
             Command::group(
                 util::GROUP,
@@ -92,7 +95,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                 ],
             ),
             Command::group(debug::GROUP, "low-level commands for developing the compiler", debug::COMMANDS)
-                .sets(&[COMPILE]),
+                .sets(&COMPILE),
         ],
     ),
 };
@@ -100,7 +103,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
 const CHECK: Command<Session> = Command::run("check", "analyze without generating code", check)
     .aliases(&["c"])
     .params(&[PATH])
-    .sets(&[COMPILE])
+    .sets(&COMPILE)
     .examples(&[
         Example {
             line: "",
@@ -112,22 +115,26 @@ const CHECK: Command<Session> = Command::run("check", "analyze without generatin
 /// Where `vun check` is below the root, for messages that suggest it.
 pub(crate) const CHECK_PATH: [&str; 1] = [CHECK.name];
 
-/// The options of every command that compiles a file.
-pub(crate) const COMPILE: OptionSet = OptionSet {
-    title: "Compile options",
-    params: &[
-        vun_driver::target::TARGET,
-        checks::CHECKS,
-        cover::COVER,
-        vun_driver::lints::LINTS,
-        trace::TRACE,
-        codegen::RELEASE,
-        formats::DIAGNOSTICS,
-        TIMINGS,
-        TIMELINE,
-        MEMOS,
-    ],
-};
+/// The options of every command that compiles a file: the usual ones, then those the long help
+/// page adds for tuning and for measuring the compiler.
+pub(crate) const COMPILE: [OptionSet; 3] = [
+    OptionSet {
+        title: "Compile options",
+        params: &[
+            vun_driver::target::TARGET,
+            vun_driver::lints::LINTS,
+            codegen::RELEASE,
+            formats::DIAGNOSTICS,
+        ],
+        detail: Detail::Short,
+    },
+    OptionSet {
+        title: "Run-time check options",
+        params: &[checks::CHECKS, cover::COVER, trace::TRACE],
+        detail: Detail::Long,
+    },
+    OptionSet { title: "Profiling options", params: &[TIMINGS, TIMELINE, MEMOS], detail: Detail::Long },
+];
 
 pub(crate) const FILE: Param =
     Param::positional("file").about("the root source file").values(Values::Path(PathKind::File));
@@ -196,6 +203,7 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
 }
 
 mod cache;
+mod component;
 mod coverage;
 mod debug;
 mod doc;

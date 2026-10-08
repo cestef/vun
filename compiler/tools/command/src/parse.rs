@@ -6,7 +6,8 @@ use vun_suggest::closest;
 use given::Given;
 
 use crate::{
-    Args, Arity, Catalog, Command, GLOBAL, HELP, HELP_COMMAND, Param, ParamKind, Program, VERSION, Values,
+    Args, Arity, Catalog, Command, GLOBAL, HELP, HELP_COMMAND, OptionSet, Param, ParamKind, Program, VERSION,
+    Values,
 };
 
 /// Prefix of long options.
@@ -23,6 +24,20 @@ pub(crate) const OPTIONS_END: &str = "--";
 pub enum Detail {
     Short,
     Long,
+}
+
+/// The options of a help page that share a title.
+pub struct Section<'p> {
+    pub title: &'static str,
+    /// The shortest page listing it.
+    pub detail: Detail,
+    pub params: Vec<&'p Param>,
+}
+
+impl<'p> Section<'p> {
+    fn of(set: &'p OptionSet) -> Self {
+        Self { title: set.title, detail: set.detail, params: set.params.iter().collect() }
+    }
 }
 
 pub enum Request<'p, Cx: 'static> {
@@ -76,13 +91,17 @@ impl<'p, Cx> Selected<'p, Cx> {
     /// above it, which apply to every command below them; then the sets these commands take;
     /// then the global ones.
     #[must_use]
-    pub fn sections(&self) -> Vec<(&'static str, Vec<&'p Param>)> {
+    pub fn sections(&self) -> Vec<Section<'p>> {
         let chain: Vec<_> = self.iter().collect::<Vec<_>>().into_iter().rev().collect();
         let own = chain.iter().flat_map(|c| c.params).filter(|p| !p.is_positional()).collect();
-        let sets = chain.iter().flat_map(|c| c.sets).map(|set| (set.title, set.params.iter().collect()));
+        let sets = chain.iter().flat_map(|c| c.sets).map(Section::of);
         let version: &'static [Param] = if self.is_root() { &[VERSION] } else { &[] };
-        let global = (GLOBAL.title, GLOBAL.params.iter().chain(version).collect());
-        std::iter::once((OWN, own)).chain(sets).chain([global]).collect()
+        let global =
+            Section { params: GLOBAL.params.iter().chain(version).collect(), ..Section::of(&GLOBAL) };
+        std::iter::once(Section { title: OWN, detail: Detail::Short, params: own })
+            .chain(sets)
+            .chain([global])
+            .collect()
     }
 
     /// Whether the last command accepts an option named `name`.
@@ -93,7 +112,7 @@ impl<'p, Cx> Selected<'p, Cx> {
 
     /// Every option the last command accepts.
     pub fn options(&self) -> impl Iterator<Item = &'p Param> {
-        self.sections().into_iter().flat_map(|(_, params)| params)
+        self.sections().into_iter().flat_map(|section| section.params)
     }
 
     /// The command line selecting these commands: `vun debug dump cst`.

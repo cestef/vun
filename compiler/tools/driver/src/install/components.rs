@@ -4,28 +4,27 @@
 
 use std::fs;
 
-use vun_build::release::{Build, Piece, Profile, Published, Release, Releases};
+use vun_build::release::{Build, Piece, Profile, Release, Releases};
 use vun_build::toolchains::{COMPONENTS, Toolchains};
 use vun_fetch::Mirror;
 use vun_fs::Edit;
 use vun_target::Machine;
 use vun_trace::tracing;
 
-use super::{Installed, Uninstalled};
+use super::{Fetched, Installed, Uninstalled};
 use crate::Session;
 
 impl Session {
-    /// The components `profile` holds in `published` for the running machine.
+    /// The components `profile` holds in `release` for the running machine.
     ///
     /// # Errors
     /// Returns [`Uninstalled::Unbuilt`] when the release has no build for the machine.
-    pub fn profile_components(published: &Published, profile: Profile) -> Result<Vec<String>, Uninstalled> {
-        let build =
-            published.release.build_for(Machine::RUNNING).ok_or(Uninstalled::Unbuilt(Machine::RUNNING))?;
+    pub fn profile_components(release: &Release, profile: Profile) -> Result<Vec<String>, Uninstalled> {
+        let build = release.build_for(Machine::RUNNING).ok_or(Uninstalled::Unbuilt(Machine::RUNNING))?;
         Ok(build.in_profile(profile).map(|piece| piece.name.clone()).collect())
     }
 
-    /// Installs the components `names` of `published`, and what they need, for the running machine into the installed
+    /// Installs the components `names` of `release`, and what they need, for the running machine into the installed
     /// toolchain of its version, each unless it is there whole.
     ///
     /// # Errors
@@ -34,10 +33,9 @@ impl Session {
         &self,
         toolchains: &Toolchains,
         releases: &Releases,
-        published: &Published,
+        release: &Release,
         names: &[String],
     ) -> Result<Vec<(String, Installed)>, Uninstalled> {
-        let release = &published.release;
         let build = release.build_for(Machine::RUNNING).ok_or(Uninstalled::Unbuilt(Machine::RUNNING))?;
         let mut installed = Vec::new();
         let pieces = build.with_needs(names).map_err(|name| Uninstalled::Uncomponented(name.to_owned()))?;
@@ -63,6 +61,7 @@ impl Session {
         let staging = toolchains.staging(version);
         Mirror::of(&url, &self.registry.schemes())
             .and_then(|m| m.fetch(&staging))
+            .map_err(Fetched::of(&url))
             .map_err(Uninstalled::Archive)?;
         let found = Toolchains::hash_of(&staging, &[COMPONENTS]).map_err(Uninstalled::Io)?;
         if found != piece.hash {

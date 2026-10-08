@@ -25,7 +25,7 @@ pub use param::{
     Args, Arity, COLOR, Catalog, FORMAT, GLOBAL, HELP, OptionSet, Param, ParamKind, PathKind, QUIET, VERBOSE,
     VERSION, Values,
 };
-pub use parse::{Detail, Request, Selected};
+pub use parse::{Detail, Request, Section, Selected};
 pub use run::{Context, Diagnostics};
 pub use settings::{Setting, Settings};
 

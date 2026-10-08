@@ -12,15 +12,21 @@ use std::time::Instant;
 use vun_command::{Args, Arity, Command, Example, Outcome, Param};
 use vun_driver::Session;
 use vun_driver::subject::Subject;
-use vun_driver::testing::Mode;
+use vun_driver::testing::{Mode, Selection};
 use vun_sema::cover::Coverage;
 use vun_term::Shell;
 
 use super::status::{Conclude, Started, Step};
 use super::{COMPILE, Inputs, PATH};
 
-pub(super) const NAMES: Param =
-    Param::positional("names").arity(Arity::Many).about("the tests to run, by name; every one if none");
+/// The words after the path, choosing by name among what the command runs.
+const fn names(about: &'static str) -> Param {
+    Param::positional("names").arity(Arity::Many).about(about)
+}
+
+pub(super) const NAMES: Param = names("the tests to run, by name; every one if none");
+const BENCHMARKS: Param = names("the benchmarks to measure, by name; every one if none");
+const PROPERTIES: Param = names("the properties to fuzz, by name; every one if none");
 
 pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of a namespace", test)
     .aliases(&["t"])
@@ -35,7 +41,7 @@ pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of
         vun_driver::codegen::LINKER,
         vun_driver::program::OUTPUT,
     ])
-    .sets(&[COMPILE])
+    .sets(&COMPILE)
     .examples(&[
         Example { line: "", about: "run the tests of the package around this directory" },
         Example { line: "--jobs 1", about: "run them in one process, in the order they are declared" },
@@ -49,7 +55,7 @@ pub(super) const BENCH: Command<Session> =
     Command::run("bench", "run the benchmarks of a namespace, measured", bench)
         .params(&[
             PATH,
-            NAMES,
+            BENCHMARKS,
             vun_driver::testing::FILTER,
             vun_driver::testing::MEASURE,
             vun_driver::testing::SAMPLES,
@@ -60,7 +66,7 @@ pub(super) const BENCH: Command<Session> =
             vun_driver::codegen::LINKER,
             vun_driver::program::OUTPUT,
         ])
-        .sets(&[COMPILE])
+        .sets(&COMPILE)
         .examples(&[
             Example { line: "", about: "measure the benchmarks of the package around this directory" },
             Example { line: "main.vun memcpy_4k", about: "measure one benchmark of a file" },
@@ -79,7 +85,7 @@ pub(super) const FUZZ: Command<Session> =
     Command::run("fuzz", "fuzz the properties of a namespace, guided by what their cases cover", fuzz)
         .params(&[
             PATH,
-            NAMES,
+            PROPERTIES,
             vun_driver::testing::FILTER,
             vun_driver::testing::SEED,
             vun_driver::testing::FUZZED,
@@ -87,7 +93,7 @@ pub(super) const FUZZ: Command<Session> =
             vun_driver::codegen::LINKER,
             vun_driver::program::OUTPUT,
         ])
-        .sets(&[COMPILE])
+        .sets(&COMPILE)
         .examples(&[
             Example { line: "", about: "fuzz the properties of the package around this directory" },
             Example { line: "main.vun decode_raw --cases 1000000", about: "fuzz one property longer" },
@@ -110,8 +116,7 @@ fn fuzz(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
 /// first test's name, the path being the package around this directory.
 pub(super) struct Chosen<'a> {
     pub(super) path: Option<&'a Path>,
-    pub(super) names: Vec<&'a str>,
-    pub(super) filter: Option<&'a str>,
+    pub(super) selection: Selection<'a>,
 }
 
 impl<'a> Chosen<'a> {
@@ -121,20 +126,9 @@ impl<'a> Chosen<'a> {
             Some(word) if !Path::new(word).exists() => (None, Some(word)),
             _ => (path.map(Path::new), None),
         };
-        Self {
-            path,
-            names: first.into_iter().chain(args.values(&NAMES)).collect(),
-            filter: args.value(&vun_driver::testing::FILTER),
-        }
-    }
-
-    /// What the tests' program is given to choose the tests: the names, then the filter.
-    pub(super) fn arguments(&self) -> Vec<String> {
-        let filter = self
-            .filter
-            .into_iter()
-            .flat_map(|text| [vun_driver::testing::FILTER.long_form(), text.to_owned()]);
-        self.names.iter().map(|&name| name.to_owned()).chain(filter).collect()
+        let names = first.into_iter().chain(args.values(&NAMES)).collect();
+        let filter = args.value(&vun_driver::testing::FILTER);
+        Self { path, selection: Selection { names, filter } }
     }
 }
 
@@ -149,11 +143,9 @@ pub(super) fn tests(
     let chosen = Chosen::of(args);
     let Some(subject) = session.subject(chosen.path)? else { return Ok(session.outcome()) };
     let mut passed = true;
-    let given = chosen.arguments();
-    let given: Vec<&str> = given.iter().map(String::as_str).collect();
     for (root, within) in subject.tested() {
         let place = (root.as_path(), within.as_deref());
-        let Some(reported) = tested(session, args, &given, shell, mode, (&subject, place))? else {
+        let Some(reported) = tested(session, args, &chosen.selection, shell, mode, (&subject, place))? else {
             return Ok(session.outcome());
         };
         passed &= reported;
@@ -167,7 +159,7 @@ pub(super) fn tests(
 fn tested(
     session: &mut Session,
     args: &Args,
-    names: &[&str],
+    selection: &Selection<'_>,
     shell: &mut Shell<'_>,
     mode: Mode,
     (covered, (root, within)): (&Subject, (&Path, Option<&Path>)),
@@ -188,27 +180,34 @@ fn tested(
         });
     session.conclude(shell, shown, started);
     let Some((program, file, ns)) = program else { return Ok(None) };
+    let options = vun_driver::testing::Options::of(args, mode);
+    let listed = session.listed(&program, selection, options)?;
+    if session.unmatched(&program, selection, options, &listed, shell)? {
+        return Ok(Some(false));
+    }
+    if listed.is_empty() {
+        session.nothing_declared(options, shell);
+        return Ok(Some(true));
+    }
     shell.status(&Started { step: Step::Run, subject: Subject::relative(&program) });
+    let names: Vec<String> = selection.arguments();
     if mode == Mode::Bench {
         let plan = vun_driver::testing::Plan::of(args);
         let package = root.parent().unwrap_or(root);
-        return Ok(Some(session.bench(&program, package, names, &plan, shell)?));
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        return Ok(Some(session.bench(&program, package, &names, &plan, shell)?));
     }
-    let options = vun_driver::testing::Options::of(args, mode);
     // Tests run each in a process of its own, as many at once as asked; benchmarks and fuzzing
     // measure and guide, so they run alone and in order.
     let jobs = args
         .count(&vun_driver::testing::JOBS)
         .and_then(|n| usize::try_from(n).ok())
         .unwrap_or_else(|| std::thread::available_parallelism().map_or(1, usize::from));
-    if mode == Mode::Test && jobs > 1 {
-        let listed = session.list_tests(&program, names.iter().copied(), options)?;
-        if listed.len() > 1 {
-            let reported = session.run_tests_parallel(&program, &listed, options, jobs, shell)?;
-            return Ok(Some(reported.passed));
-        }
+    if mode == Mode::Test && jobs > 1 && listed.len() > 1 {
+        let reported = session.run_tests_parallel(&program, &listed, options, jobs, shell)?;
+        return Ok(Some(reported.passed));
     }
-    let reported = session.run_tests(&program, names.iter().copied(), options)?.report(shell)?;
+    let reported = session.run_tests(&program, &names, options)?.report(shell)?;
     if mode == Mode::Cover {
         super::coverage::report(
             session,

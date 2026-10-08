@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Catalog, Dialect, Outcome, PathKind, Shell, Values};
+use crate::{Catalog, Dialect, OptionSet, Outcome, PathKind, Shell, Values};
 use std::io::Write;
 
 const FILE: Param = Param::positional("file").about("a source file").values(Values::Path(PathKind::File));
@@ -16,6 +16,8 @@ const KEEP: Param = Param::option("keep").values(Values::Catalog(Catalog {
     what: "an error",
     declared_in: "errors.vun",
 }));
+const RARE: Param = Param::flag("rare").about("seldom wanted");
+const TUNING: OptionSet = OptionSet { title: "Tuning options", params: &[RARE], detail: Detail::Long };
 const TIMES: Param = Param::option("times").about("how many times").values(Values::Count);
 /// Named as the root's `--version` flag, but an option of its command.
 const RELEASE: Param = Param::option("version").about("which release");
@@ -38,7 +40,7 @@ const PROGRAM: Program<()> = Program {
                 "print things",
                 &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
-            Command::run("go", "run it too", ok).params(&[MAYBE, REST]),
+            Command::run("go", "run it too", ok).params(&[MAYBE, REST]).sets(&[TUNING]),
             Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, TIMES, REST]).aliases(&["x"]),
         ],
     )
@@ -229,4 +231,14 @@ fn a_flag_repeated_in_one_word_is_given_as_often() {
         let Ok(Request::Run(_, args)) = PROGRAM.parse(&argv(line)) else { panic!("not a run: {line}") };
         assert_eq!(args.times(&crate::VERBOSE), times, "{line}");
     }
+}
+
+#[test]
+fn a_set_of_rare_options_is_left_to_the_long_page_but_accepted_everywhere() {
+    let Ok(Request::Run(path, args)) = PROGRAM.parse(&argv("go --rare")) else { panic!("not a run") };
+    assert!(args.flag(&RARE));
+    let short = path.help(Detail::Short).to_string();
+    let long = path.help(Detail::Long).to_string();
+    assert!(!short.contains("--rare") && !short.contains("Tuning options"), "{short}");
+    assert!(long.contains("--rare") && long.contains("Tuning options"), "{long}");
 }

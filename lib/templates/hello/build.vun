@@ -1,4 +1,4 @@
-//! A hosted program: `vun run main.vun` builds and runs it.
+//! A hosted program: `vun run` builds and runs it.
 
 package := .{
     .name = "hello",
@@ -9,4 +9,6 @@ package := .{
     .deps = .{},
 };
 
-build := (b: &mut std.build.Build) {};
+build := (b: &mut std.build.Build) {
+    b.program(.{ .root = "main.vun", .target = lang.target.current });
+};

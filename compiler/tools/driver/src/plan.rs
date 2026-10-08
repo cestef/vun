@@ -46,6 +46,8 @@ impl Session {
                     .code([required.as_str(), " := (b: &mut std.build.Build) {};"].concat());
                 Diagnostic::error(errors::PLAN_MISSING_BUILD, msg).at(at, None).help(help)
             }
+            // What the plan reads of the target is unknown, which is reported as not chosen.
+            Err(Unplanned::Stopped { .. }) if self.untargeted() => return None,
             Err(Unplanned::Stopped { why: Unevaluated::Trapped(trap), at }) => trap.report(at),
             Err(Unplanned::Stopped { why, at }) => {
                 let msg = Msg::new().text("the plan of ").code(name).text(" could not run: ").text(why.why());

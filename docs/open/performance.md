@@ -16,3 +16,8 @@
 - A comptime-heavy benchmark is wanted before perf audits. The stack a nested compile-time call
   holds is still ~1.7 KB in `fetch`, `get` and `compute` of `MeteredCall` (`--emit asm`, `sub sp`;
   `Cx::computed` went from 960 to 496 bytes).
+- A memo computed while no target was chosen (`vun build main.vun --target nope`) was reused by a
+  later session that had one: `decl_value(lang.target.current)` came back untargeted
+  (`VUN_QUERY_CHECK=1` panics in `reuse.rs`). A session whose target is not chosen now keeps no
+  queries (`Session::untargeted`), which hides it; the cause is a read of the unset `TargetOf`
+  input, saved with the memo but not held against the value set later.

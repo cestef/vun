@@ -140,6 +140,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (TEST_NO_NAMESPACE, "lang/lang/errors/test/no_namespace.md"),
     (TEST_UNRUNNABLE, "lang/lang/errors/test/unrunnable.md"),
     (TEST_NO_COVERAGE, "lang/lang/errors/test/no_coverage.md"),
+    (TEST_UNMATCHED, "lang/lang/errors/test/unmatched.md"),
     (TOOL_MISSING_LIBRARY, "lang/lang/errors/tool/missing_library.md"),
     (TOOL_BIND_FAILED, "lang/lang/errors/tool/bind_failed.md"),
     (TOOL_BIND_SKIPPED, "lang/lang/errors/tool/bind_skipped.md"),
@@ -148,6 +149,8 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (TOOLCHAIN_INSTALL_FAILED, "lang/lang/errors/toolchain/install_failed.md"),
     (TOOLCHAIN_NOT_INSTALLED, "lang/lang/errors/toolchain/not_installed.md"),
     (TOOLCHAIN_IN_USE, "lang/lang/errors/toolchain/in_use.md"),
+    (TOOLCHAIN_NO_COMPONENT, "lang/lang/errors/toolchain/no_component.md"),
+    (TOOLCHAIN_REQUIRED, "lang/lang/errors/toolchain/required.md"),
     (IO_UNREADABLE_FILE, "lang/lang/errors/io/unreadable_file.md"),
     (IO_UNWRITABLE_FILE, "lang/lang/errors/io/unwritable_file.md"),
     (DOC_FOREIGN_OUTPUT, "lang/lang/errors/doc/foreign_output.md"),
@@ -158,4 +161,5 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (CLI_MISSING_VALUE, "lang/lang/errors/cli/missing_value.md"),
     (CLI_INVALID_VALUE, "lang/lang/errors/cli/invalid_value.md"),
     (CLI_UNAVAILABLE, "lang/lang/errors/cli/unavailable.md"),
+    (CLI_MISSING_PATH, "lang/lang/errors/cli/missing_path.md"),
 ];

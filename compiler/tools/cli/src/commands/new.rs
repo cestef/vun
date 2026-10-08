@@ -1,14 +1,15 @@
 //! `vun new <path> [--template name]`: starts a project from a template of the library.
 
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
+use vun_data::Object;
 use vun_driver::Session;
 use vun_driver::packages::Library;
 use vun_driver::subject::Subject;
 use vun_intern::Symbol;
-use vun_term::Shell;
+use vun_term::{Record, Shell, Status, Style, Text, Verb};
 
 use super::status::{Started, Step};
 
@@ -33,7 +34,39 @@ fn new(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<
     let dir = Path::new(args.value(&PATH).expect("positional parameters are present when a command runs"));
     let template = args.value(&TEMPLATE).unwrap_or(Library::DEFAULT_TEMPLATE);
     shell.status(&Started { step: Step::New, subject: Subject::relative(dir) });
-    let _ = session.new_project(dir, template);
+    let made = session.new_project(dir, template);
     session.emit(shell);
+    if let Ok(files) = made {
+        shell.status(&Created { dir: Subject::relative(dir), files });
+    }
     Ok(session.outcome())
+}
+
+/// A project started: where, and the files the template made.
+struct Created {
+    dir: String,
+    files: Vec<PathBuf>,
+}
+
+impl Record for Created {
+    fn kind(&self) -> &'static str {
+        "created"
+    }
+
+    fn text(&self) -> Text {
+        let files: Vec<String> = self.files.iter().map(|f| f.display().to_string()).collect();
+        Text::of(Style::Strong, self.dir.clone())
+            .append(Text::of(Style::Dim, format!(" with {}", files.join(", "))))
+    }
+
+    fn fields(&self) -> Object<'static> {
+        let files: Vec<String> = self.files.iter().map(|f| f.display().to_string()).collect();
+        Object::new().with("dir", self.dir.clone()).with("files", files)
+    }
+}
+
+impl Status for Created {
+    fn verb(&self) -> Verb {
+        Verb::good("Created")
+    }
 }

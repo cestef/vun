@@ -5,7 +5,7 @@ use std::io;
 use vun_command::{Args, Command, Outcome};
 use vun_data::Object;
 use vun_span::Version;
-use vun_term::{Column, Record, Row, Shell, Style, Text};
+use vun_term::{Column, Record, Row, Shell, Status, Style, Text, Verb};
 
 use vun_driver::{Session, VERSION};
 
@@ -28,8 +28,37 @@ fn list(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Ou
             dir: toolchains.dir(version).display().to_string(),
         })
         .collect();
-    shell.table(&rows)?;
+    if rows.is_empty() {
+        shell.status(&Bare);
+    } else {
+        shell.table(&rows)?;
+    }
     Ok(session.outcome())
+}
+
+/// No toolchain is installed: the running one is a build run in place.
+struct Bare;
+
+impl Record for Bare {
+    fn kind(&self) -> &'static str {
+        "no_toolchain"
+    }
+
+    fn text(&self) -> Text {
+        Text::of(Style::Dim, "none is installed, this one runs in place; ")
+            .append(Text::of(Style::Literal, "vun toolchain install"))
+            .append(Text::of(Style::Dim, " adds a release"))
+    }
+
+    fn fields(&self) -> Object<'static> {
+        Object::new()
+    }
+}
+
+impl Status for Bare {
+    fn verb(&self) -> Verb {
+        Verb::warned("Empty")
+    }
 }
 
 /// An installed toolchain.

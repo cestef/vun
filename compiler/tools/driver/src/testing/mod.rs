@@ -5,12 +5,14 @@ mod bench;
 mod build;
 mod parallel;
 mod report;
+mod selection;
 mod tally;
 
 pub use bench::{
     BASELINE, Baseline, Comparison, FAIL_OVER, MEASURE, Measure, Plan, SAMPLES, SAVE, Statistics, Verdict,
 };
 pub use report::{Collected, Reported, Run, Tested};
+pub use selection::Selection;
 
 use vun_command::{Args, Param, Values};
 use vun_data::{FromData, ToData};
@@ -265,3 +267,6 @@ impl Line {
         vun_data::json::parse(text).ok()?.read().ok()
     }
 }
+
+#[cfg(test)]
+mod tests;

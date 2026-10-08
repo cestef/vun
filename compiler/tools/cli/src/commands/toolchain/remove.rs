@@ -24,7 +24,8 @@ fn remove(session: &mut Session, args: &Args, _: &mut Shell<'_>) -> io::Result<O
     if !toolchains.installed()?.contains(&version) {
         session.diag.error(Diagnostic::error(errors::TOOLCHAIN_NOT_INSTALLED, named(" is not installed")));
     } else if toolchains.default() == Some(version) {
-        session.diag.error(Diagnostic::error(errors::TOOLCHAIN_IN_USE, named(" is the default")));
+        let help = Msg::new().text("make another the default first with ").code("vun toolchain default");
+        session.diag.error(Diagnostic::error(errors::TOOLCHAIN_IN_USE, named(" is the default")).help(help));
     } else if Version::parse(vun_driver::VERSION) == Some(version) {
         session.diag.error(Diagnostic::error(errors::TOOLCHAIN_IN_USE, named(" is running this command")));
     } else {

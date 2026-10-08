@@ -662,7 +662,7 @@ the target's architecture (`BackendInfo.arches`); that is `Registry::choose`, it
 fit; otherwise the build is refused with `backend.unavailable` or `backend.unsupported`, naming the
 backends that could, and a target none of whose preferences fit reports `backend.unchosen` with
 each one's reason. The profile also reaches the tools: a release build adds the target C
-compiler's `optimize` flags. `vun toolchain show` lists each backend with whether it
+compiler's `optimize` flags. `vun component list` lists each backend with whether it
 generates code and for which architectures. Linkers are named by the target (`linker`).
 
 ### 8.1 What every backend shares

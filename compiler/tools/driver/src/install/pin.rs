@@ -61,7 +61,7 @@ impl Session {
             }
             let releases = Releases::user()
                 .map_err(|why| self.uninstalled(Some(pinned), &Uninstalled::Repository(why)))?;
-            self.install_components(&toolchains, &releases, &published, &components)
+            self.install_components(&toolchains, &releases, &published.release, &components)
                 .map_err(|why| self.uninstalled(Some(pinned), &why))?;
         }
         tracing::info!(%pinned, "handing the command to the pinned toolchain");

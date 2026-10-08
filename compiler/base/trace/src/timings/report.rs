@@ -72,6 +72,10 @@ impl fmt::Display for Kind {
     }
 }
 
+/// How many activities the report shows for people; the others are counted, and `--format json`
+/// lists every one.
+const SHOWN: usize = 15;
+
 /// The columns of the report.
 const COLUMNS: [Column; 5] = [
     Column::right("own"),
@@ -98,7 +102,7 @@ impl Record for Report {
         let title = Text::of(Style::Strong, Millis(self.wall).to_string()).plain(" wall, ");
         let title =
             title.styled(Style::Strong, Millis(self.work()).to_string()).plain(" of work over every thread");
-        let rows = self.rows.iter().map(|row| {
+        let rows = self.rows.iter().take(SHOWN).map(|row| {
             let Row { activity, runs, own, total, longest } = row;
             let name =
                 Text::of(Style::Dim, format!("{} ", activity.kind)).styled(Style::Literal, activity.name);
@@ -110,7 +114,13 @@ impl Record for Report {
                 name,
             ]
         });
-        title.newline().append(Table::new(&COLUMNS).rows(rows).text())
+        let table = title.newline().append(Table::new(&COLUMNS).rows(rows).text());
+        match self.rows.len().checked_sub(SHOWN).filter(|&more| more > 0) {
+            Some(more) => {
+                table.newline().append(Text::of(Style::Dim, format!("{more} more, in `--format json`")))
+            }
+            None => table,
+        }
     }
 
     fn fields(&self) -> Object<'static> {

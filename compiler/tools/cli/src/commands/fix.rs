@@ -23,7 +23,7 @@ const UNSAFE: Param =
 pub(super) const FIX: Command<Session> =
     Command::run("fix", "apply the fixes diagnostics propose, then report what is left", fix)
         .params(&[PATH, UNSAFE])
-        .sets(&[COMPILE])
+        .sets(&COMPILE)
         .examples(&[
             Example { line: "main.vun", about: "apply the fixes that keep what the program means" },
             Example { line: "--unsafe main.vun", about: "apply those that may change it as well" },

@@ -19,7 +19,7 @@ pub(super) const FLASH: Command<Session> = Command::run(
     flash,
 )
 .params(&[PATH, vun_driver::codegen::BACKEND, vun_driver::codegen::LINKER, vun_driver::program::OUTPUT])
-.sets(&[COMPILE])
+.sets(&COMPILE)
 .examples(&[Example {
     line: "",
     about: "write the program the plan of the package around this directory flashes to its device",

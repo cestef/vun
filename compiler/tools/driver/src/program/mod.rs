@@ -229,7 +229,7 @@ impl Session {
                 .text("choose another with ")
                 .code("--linker")
                 .text("; ")
-                .code("vun toolchain show")
+                .code("vun component list")
                 .text(" lists this toolchain's");
             return Err(self.diag.error(Diagnostic::error(errors::LINK_UNAVAILABLE, msg).help(help)));
         };

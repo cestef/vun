@@ -6,6 +6,7 @@ use std::path::Path;
 use vun_build::layout::MANIFEST;
 use vun_command::{Setting, Settings};
 use vun_origin::OriginId;
+use vun_sema::target::Choice;
 use vun_sema_plan::{Action, Planned};
 use vun_sema_ty::Value;
 
@@ -23,9 +24,12 @@ impl Session {
             None => here,
         };
         let (package, _) = self.package_around(&dir)?;
-        let file = self.load(&package.join(MANIFEST))?;
-        let key = self.file_ref(file);
-        let plan = self.db.get::<Planned>(&key)?.ok()?;
+        // The plan runs on this machine, in a session of its own: reading it here must not choose
+        // the target the command line has yet to give.
+        let mut host = self.child(Choice::Host);
+        let file = host.load(&package.join(MANIFEST))?;
+        let key = host.file_ref(file);
+        let plan = host.db.get::<Planned>(&key)?.ok()?;
         let steps = Action::steps(&plan).ok()?;
         let mut settings = Vec::new();
         for step in steps {

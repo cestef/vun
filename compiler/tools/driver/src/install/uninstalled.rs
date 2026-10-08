@@ -5,6 +5,29 @@ use std::{fmt, io};
 
 use vun_hash::Hash;
 use vun_target::Machine;
+use vun_uri::Uri;
+
+/// A fetch that failed, and where it was from.
+#[derive(Debug)]
+pub struct Fetched {
+    pub url: Uri,
+    pub why: vun_fetch::Failure,
+}
+
+impl Fetched {
+    /// The failure of the fetch of `url`, for `map_err`.
+    pub fn of(url: &Uri) -> impl FnOnce(vun_fetch::Failure) -> Box<Self> + '_ {
+        move |why| Box::new(Self { url: url.clone(), why })
+    }
+}
+
+impl Uninstalled {
+    /// Whether the releases were being read, where `VUN_RELEASES` names another place.
+    #[must_use]
+    pub fn from_releases(&self) -> bool {
+        matches!(self, Self::Manifest(_) | Self::Unsigned(_) | Self::Archive(_))
+    }
+}
 
 /// Why a toolchain could not be installed.
 #[derive(Debug)]
@@ -13,10 +36,10 @@ pub enum Uninstalled {
     Homeless,
     /// Where releases are found, or their key, does not read.
     Repository(vun_build::release::Misnamed),
-    /// The release's manifest could not be read.
-    Manifest(vun_fetch::Failure),
-    /// The manifest's signature could not be read.
-    Unsigned(vun_fetch::Failure),
+    /// The release's manifest could not be read from this address.
+    Manifest(Box<Fetched>),
+    /// The manifest's signature could not be read from this address.
+    Unsigned(Box<Fetched>),
     /// The manifest is not the one the releases' key signed.
     Forged(vun_build::release::Forged),
     /// The manifest is not the one the project's lockfile records.
@@ -30,8 +53,8 @@ pub enum Uninstalled {
     Shape(vun_data::Mismatch),
     /// The release has no toolchain for the running machine.
     Unbuilt(Machine),
-    /// The archive could not be fetched or unpacked.
-    Archive(vun_fetch::Failure),
+    /// The archive could not be fetched or unpacked from this address.
+    Archive(Box<Fetched>),
     /// The tree it unpacked to does not hash to the manifest's hash.
     Changed {
         expected: Hash,
@@ -47,8 +70,12 @@ impl fmt::Display for Uninstalled {
         match self {
             Self::Homeless => f.write_str("the user has no home directory to install it in"),
             Self::Repository(_) => f.write_str("where releases are found does not read"),
-            Self::Manifest(_) => f.write_str("the release's manifest cannot be read"),
-            Self::Unsigned(_) => f.write_str("the release's manifest has no signature to read"),
+            Self::Manifest(fetched) => {
+                write!(f, "the release's manifest cannot be read from `{}`", fetched.url)
+            }
+            Self::Unsigned(fetched) => {
+                write!(f, "the release's signature cannot be read from `{}`", fetched.url)
+            }
             Self::Forged(_) => f.write_str("the release's manifest is not the one its releases signed"),
             Self::Unlocked { expected, found } => {
                 write!(
@@ -60,7 +87,7 @@ impl fmt::Display for Uninstalled {
             Self::Unbuilt(Machine { arch, os }) => {
                 write!(f, "the release has no toolchain for `{arch}` on `{os}`")
             }
-            Self::Archive(_) => f.write_str("its archive cannot be fetched or unpacked"),
+            Self::Archive(fetched) => write!(f, "its archive cannot be fetched from `{}`", fetched.url),
             Self::Changed { expected, found } => {
                 write!(f, "its archive unpacks to `{found}`, where the release names `{expected}`")
             }
@@ -76,7 +103,7 @@ impl Error for Uninstalled {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Repository(e) => Some(e),
-            Self::Manifest(e) | Self::Unsigned(e) | Self::Archive(e) => Some(e),
+            Self::Manifest(e) | Self::Unsigned(e) | Self::Archive(e) => Some(&e.why),
             Self::Forged(e) => Some(e),
             Self::Json(e) => Some(e),
             Self::Shape(e) => Some(e),

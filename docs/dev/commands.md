@@ -181,10 +181,10 @@ cargo run -q -p vun-cli -- debug smith --count 30 --seed 0 --reach run --out <di
 cargo run -q -p vun-cli -- debug queries <file>   # what the saved queries hold, per query and pool
 cargo run -q -p vun-cli -- debug compare --target linux.arm64.kernel <file>   # every backend, through qemu
 cargo run -q -p vun-cli -- debug compare --runs 20 <file>   # run time as the median of 20 runs
-cargo run -q -p vun-cli -- toolchain show        # version, library and why there, each component's status
+cargo run -q -p vun-cli -- toolchain show        # version, library and why there, how many components
 cargo build -p vun-component-backend-cranelift --features vun-component-backend-cranelift/export   # a component as a library: target/<profile>/libvun_component_backend_cranelift.so
-VUN_COMPONENTS=target/debug vun toolchain show   # components loaded from that directory, beside the linked ones
-vun toolchain component list|add|remove          # what a toolchain's release builds, and which are installed
+VUN_COMPONENTS=target/debug vun component list  # components loaded from that directory, beside the built-in ones
+vun component add|remove <name>...               # install from the toolchain's release (its kept manifest), or take away
 cargo run -q -p vun-cli -- target list           # every target: backend, linker, where it runs, what is lacking
 cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part of a build and where it comes from
 ```

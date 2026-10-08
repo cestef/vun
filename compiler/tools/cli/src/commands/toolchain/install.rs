@@ -79,8 +79,8 @@ fn settle(
         }
     };
     let components = Releases::user().map_err(Uninstalled::Repository).and_then(|releases| {
-        let names = Session::profile_components(&published, profile)?;
-        session.install_components(&toolchains, &releases, &published, &names)
+        let names = Session::profile_components(&published.release, profile)?;
+        session.install_components(&toolchains, &releases, &published.release, &names)
     });
     if let Err(why) = components {
         session.uninstalled(Some(release.version), &why);

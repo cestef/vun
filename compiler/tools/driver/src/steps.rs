@@ -240,7 +240,7 @@ impl Session {
     }
 
     /// A session like this one, compiling for `choice`: its settings, none of its state.
-    fn child(&self, choice: Choice) -> Session {
+    pub(crate) fn child(&self, choice: Choice) -> Session {
         let mut session = Session::new();
         session.format = self.format;
         session.library.clone_from(&self.library);
