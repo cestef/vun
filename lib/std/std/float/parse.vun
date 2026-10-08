@@ -15,8 +15,6 @@ Problem := enum {
 
 /// The most significant digits that are kept.
 keep: usize = 800;
-/// An exponent past this is the same as this: the number is far past what any float holds.
-exponent_cap: std.math.Exponent = 2200;
 
 /// What a text holds once it is read: `digits` times 10 to the power `exponent`, and whether
 /// digits past `keep` were not zero.

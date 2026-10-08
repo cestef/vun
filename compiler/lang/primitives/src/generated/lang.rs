@@ -25,7 +25,7 @@ pub enum Lang {
     /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
     /// section 3).
     r#impl,
-    /// `#[derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
+    /// `#[lang.derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
     /// built by reflection, when every part of it has the interface too (spec 02, section 3).
     derive,
     /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to

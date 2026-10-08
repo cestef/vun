@@ -11,8 +11,6 @@ use crate::Item;
 pub const Problem: Item = Item::new(&["std", "float", "parse", "Problem"]);
 /// The most significant digits that are kept.
 pub const keep: Item = Item::new(&["std", "float", "parse", "keep"]);
-/// An exponent past this is the same as this: the number is far past what any float holds.
-pub const exponent_cap: Item = Item::new(&["std", "float", "parse", "exponent_cap"]);
 /// What a text holds once it is read: `digits` times 10 to the power `exponent`, and whether
 /// digits past `keep` were not zero.
 pub const Decimal: Item = Item::new(&["std", "float", "parse", "Decimal"]);

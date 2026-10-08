@@ -132,7 +132,7 @@ pub const Attribute: Item = Item::new(&["lang", "Attribute"]);
 /// `#[impl(I(T))]`: checks and registers a witness of the interface `I` for `T` (spec 02,
 /// section 3).
 pub const r#impl: Item = Item::new(&["lang", "impl"]);
-/// `#[derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
+/// `#[lang.derive(f)]` on an interface: a struct or an enum with no impl of it has the witness `f(T)`,
 /// built by reflection, when every part of it has the interface too (spec 02, section 3).
 pub const derive: Item = Item::new(&["lang", "derive"]);
 /// `#[visible(scope)]`: widens where a name starting with `_` is visible from its namespace to

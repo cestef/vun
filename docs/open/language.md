@@ -17,5 +17,3 @@
   (`front/hir/src/lower/mod.rs`, which has no diagnostics yet), a compile-time integer past `i128`
   has no `Literal` (`sema/ty/src/literal.rs`), and the declaration number of an origin is a `u16`
   (`Anchor::Declaration`).
-- `#[derive(f)]` is documented bare in `lang.vun`, but the prelude exports `impl` and not `derive`;
-  either the prelude or the doc changes.
