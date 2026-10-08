@@ -39,6 +39,8 @@ impl Default for Context {
 
 /// Each entry of one pool's handle, once read.
 struct PoolReader<T: Pooled> {
+    /// The number of its first entry: the entries of the layers below come before.
+    first: usize,
     handles: Box<[OnceLock<T>]>,
 }
 
@@ -152,23 +154,21 @@ impl Context {
         let mut numbers = self.base.as_ref().map(|base| base.numbers()).unwrap_or_default();
         let Some(pool) = self.read.pin().get(&TypeId::of::<T>()).cloned() else { return numbers };
         let pool = pool.downcast::<PoolReader<T>>().expect("one pool per handle type");
-        let first = self.first(T::POOL);
         let read = pool.handles.iter().enumerate();
-        numbers.extend(read.filter_map(|(number, handle)| Some((*handle.get()?, first + number))));
+        numbers.extend(read.filter_map(|(number, handle)| Some((*handle.get()?, pool.first + number))));
         numbers
     }
 
     /// The handle numbered `number` in the pool of `T`, recording its entry in the reading
     /// process's table the first time the stream references it.
     fn handle<T: Pooled>(&self, number: usize) -> Result<T, Malformed> {
-        let first = self.first(T::POOL);
+        let pool = self.pool::<T>();
         if let Some(base) = &self.base
-            && number < first
+            && number < pool.first
         {
             return base.handle(number);
         }
-        let pool = self.pool::<T>();
-        let own = number - first;
+        let own = number - pool.first;
         let slot = pool.handles.get(own).ok_or(Malformed::Unpooled { pool: T::POOL, number })?;
         if let Some(&handle) = slot.get() {
             return Ok(handle);
@@ -191,7 +191,8 @@ impl Context {
         let read = self.read.pin();
         let pool = read.get_or_insert_with(TypeId::of::<T>(), || {
             let count = self.pools.get(T::POOL).map_or(0, Vec::len);
-            Arc::new(PoolReader::<T> { handles: std::iter::repeat_with(OnceLock::new).take(count).collect() })
+            let handles = std::iter::repeat_with(OnceLock::new).take(count).collect();
+            Arc::new(PoolReader::<T> { first: self.first(T::POOL), handles })
         });
         Arc::clone(pool).downcast().expect("one pool per handle type")
     }
