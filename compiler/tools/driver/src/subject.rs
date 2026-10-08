@@ -69,11 +69,21 @@ impl Subject {
         }
     }
 
-    /// How it is named to people when no path named it: its root, below the current directory
-    /// when it is there.
+    /// How it is named to people when no path named it: a file by its path, below the current
+    /// directory when it is there; a package or a workspace by its directory, which is its own
+    /// name when it is the current one.
     #[must_use]
     pub fn shown(&self) -> String {
-        Self::relative(&self.root())
+        match self {
+            Self::Package { dir, within: None } | Self::Workspace { dir, .. } => {
+                let below = Self::relative(dir);
+                match (below.is_empty(), dir.file_name()) {
+                    (true, Some(name)) => name.to_string_lossy().into_owned(),
+                    _ => below,
+                }
+            }
+            Self::Loose(_) | Self::Package { .. } => Self::relative(&self.root()),
+        }
     }
 
     /// How `path` is named to people: below the current directory when it is there.

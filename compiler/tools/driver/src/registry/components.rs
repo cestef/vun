@@ -20,14 +20,14 @@ use vun_server::Servers;
 use vun_target::Machine;
 use vun_trace::tracing::{debug, warn};
 
-use super::{Provider, Registry};
+use super::{Id, Kind as Class, Provider, Registry};
 
 /// What opens a component of a kind into what the registry takes.
-type Open = fn(Component) -> Result<Served, Fault>;
+pub(super) type Open = fn(Component) -> Result<Served, Fault>;
 
 /// What a library serves, opened once for the process.
 #[derive(Clone)]
-enum Served {
+pub(super) enum Served {
     Backend(vun_backend_component::Remote),
     Linker(vun_link_component::Remote),
     Scheme(vun_scheme_component::Remote),
@@ -40,7 +40,7 @@ enum Served {
 
 impl Served {
     /// The kinds of component there are: each with what opens a component of it.
-    const KINDS: &[(Kind, Open)] = &[
+    pub(super) const KINDS: &[(Kind, Open)] = &[
         (Backends::KIND, |c| vun_backend_component::Remote::of(c).map(Self::Backend)),
         (Linkers::KIND, |c| vun_link_component::Remote::of(c).map(Self::Linker)),
         (Schemes::KIND, |c| vun_scheme_component::Remote::of(c).map(Self::Scheme)),
@@ -51,27 +51,24 @@ impl Served {
         (Renderers::KIND, |c| vun_renderer::Remote::of(c).map(Self::Renderer)),
     ];
 
-    /// What the component is called: its kind and its backend's or linker's id
-    /// (`backend-cranelift`).
-    fn name(&self) -> String {
-        match self {
-            Self::Backend(backend) => {
-                format!("{}-{}", Backends::KIND, vun_backend::Backend::info(backend).id)
-            }
-            Self::Linker(linker) => format!("{}-{}", Linkers::KIND, vun_link::Linker::info(linker).id),
-            Self::Renderer(renderer) => {
-                format!("{}-{}", Renderers::KIND, vun_renderer::Renderer::name(renderer))
-            }
-            Self::Binder(binder) => format!("{}-{}", Binders::KIND, vun_binder::Binder::name(binder)),
+    /// What the component is called: its kind and its interface's name for it (`backend-cranelift`,
+    /// `link-lld`), as a release names its pieces.
+    fn id(&self) -> Id {
+        let (kind, name) = match self {
+            Self::Backend(backend) => (Class::Backend, vun_backend::Backend::info(backend).id.to_string()),
+            Self::Linker(linker) => (Class::Linker, vun_link::Linker::info(linker).id.to_string()),
+            Self::Renderer(renderer) => (Class::Renderer, vun_renderer::Renderer::name(renderer).to_owned()),
+            Self::Binder(binder) => (Class::Binder, vun_binder::Binder::name(binder).to_owned()),
             Self::Formatter(formatter) => {
-                format!("{}-{}", Formatters::KIND, vun_formatter::Formatter::name(formatter))
+                (Class::Formatter, vun_formatter::Formatter::name(formatter).to_owned())
             }
             Self::Documenter(documenter) => {
-                format!("{}-{}", Documenters::KIND, vun_documenter::Documenter::name(documenter))
+                (Class::Documenter, vun_documenter::Documenter::name(documenter).to_owned())
             }
-            Self::Server(server) => format!("{}-{}", Servers::KIND, vun_server::Server::name(server)),
-            Self::Scheme(scheme) => format!("{}-{}", Schemes::KIND, vun_fetch::Scheme::name(scheme)),
-        }
+            Self::Server(server) => (Class::Server, vun_server::Server::name(server).to_owned()),
+            Self::Scheme(scheme) => (Class::Scheme, vun_fetch::Scheme::name(scheme).to_owned()),
+        };
+        Id { kind, name }
     }
 
     /// What the library at `path` serves, opened the first time and kept.
@@ -143,7 +140,7 @@ impl Components {
     /// # Errors
     /// Returns why it is not a component this toolchain can open.
     pub fn named(path: &Path) -> Result<String, Fault> {
-        Served::of(path).map(|served| served.name())
+        Served::of(path).map(|served| served.id().to_string())
     }
 
     /// Whether the library at `path` is the one the release names, if one does.

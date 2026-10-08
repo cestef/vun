@@ -26,3 +26,12 @@ fn every_registered_component_has_an_id_that_parses() {
         assert_eq!(Id::parse(&entry.id.to_string()), Some(entry.id.clone()));
     }
 }
+
+#[test]
+fn every_kind_of_component_is_served_under_its_name() {
+    let mut served: Vec<&str> = components::Served::KINDS.iter().map(|(kind, _)| kind.0).collect();
+    let mut kinds: Vec<&str> = Kind::ALL.iter().map(|kind| kind.name()).collect();
+    served.sort_unstable();
+    kinds.sort_unstable();
+    assert_eq!(served, kinds);
+}

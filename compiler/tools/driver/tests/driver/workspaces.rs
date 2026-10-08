@@ -33,6 +33,8 @@ fn a_path_names_a_loose_file_a_package_or_a_part_of_one() {
     let part = named(&mut session, &file).unwrap();
     assert_eq!(part, Subject::Package { dir: dir.clone(), within: Some(file.clone()) });
     assert_eq!((part.file(), package.file()), (Some(file.as_path()), None));
+    assert_eq!(package.shown(), Subject::relative(&dir), "a package is shown by its directory");
+    assert_eq!(part.shown(), Subject::relative(&file));
     assert_eq!(session.files(&package), [dir.join(MANIFEST), file.clone()], "the manifest first");
     assert_eq!(session.files(&part), [file]);
     assert!(!session.failed(), "{:?}", reported(&session));
