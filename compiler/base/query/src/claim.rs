@@ -8,6 +8,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, ThreadId};
+use std::time::{Duration, Instant};
 
 use vun_par::Pool;
 use vun_trace::Activity;
@@ -33,8 +34,8 @@ pub(crate) enum Claim<'c> {
     Owner(Owned<'c>),
     /// This thread computes it without telling others: waiting would never end.
     Alone,
-    /// Another thread computed it meanwhile, or gave up: look again.
-    Waited,
+    /// Another thread computed it meanwhile, or gave up, after this one waited so long: look again.
+    Waited(Duration),
 }
 
 /// A memo claimed, released when dropped, a panic included.
@@ -68,10 +69,11 @@ impl Claims {
             return Claim::Alone;
         }
         let _timer = WAIT.start();
+        let started = Instant::now();
         let done = other.done.lock().expect("a running computation");
         drop(other.finished.wait_while(done, |done| !*done).expect("a running computation"));
         waits.end(me);
-        Claim::Waited
+        Claim::Waited(started.elapsed())
     }
 }
 

@@ -145,7 +145,8 @@ impl<'db> Cx<'db> {
             return Some(self.closed(table, slot, &cycle));
         }
         let owned = match table.entry(slot).claims.claim(&self.db.waits) {
-            Claim::Waited => {
+            Claim::Waited(waited) => {
+                tracing::debug!(query = Q::NAME, key = ?table.key(slot), ?waited, "waited for another thread");
                 table.counts.add(Event::Waited);
                 return None;
             }
