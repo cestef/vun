@@ -26,13 +26,14 @@ use self::keys::PackedKeys;
 pub(crate) use self::load::Taking;
 pub(crate) use self::query::Persisted;
 use self::query::{Layout, Numbers, Persisting};
+pub(crate) use self::saved::Under;
 use self::saved::{Body, FORMAT, Named, SavedQuery};
 pub use self::saved::{Build, Layering, Unloaded};
 pub(crate) use self::saved::{Saved, SavedDep};
 pub(crate) use self::store::{Attached, Store};
 use self::store::{StoredKeys, StoredQuery};
 use super::Query;
-use super::db::{Db, Sharing};
+use super::db::Db;
 
 /// Loading saved memos, as timed: the rest is read as it is used.
 const LOAD: Activity = Activity::stage("load memos");
@@ -107,12 +108,7 @@ impl Db {
             Part::Table(p) => Some(p.number(self, keeps, include)),
             Part::Carried { .. } => None,
         });
-        let layout = Layout {
-            positions,
-            numbers: tables.zip(numbers).collect(),
-            revision: self.revision(),
-            shared: Sharing::LEVELS.map(|level| self.shared_inputs_now(level)),
-        };
+        let layout = Layout { positions, numbers: tables.zip(numbers).collect(), revision: self.revision() };
         let mut w = keeps.writer();
         let queries = parts.iter().map(|part| part.save(self, &mut w, &layout, keeps)).collect();
         let body = Body { pools: w.into_pools(), queries }.encoded();

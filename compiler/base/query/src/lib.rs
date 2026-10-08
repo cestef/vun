@@ -20,6 +20,7 @@ mod cx;
 mod db;
 mod durable;
 mod fingerprint;
+mod groups;
 mod hashed;
 mod memo;
 mod persist;
@@ -53,6 +54,14 @@ pub trait Query: 'static {
     /// Computes the value, reading other queries through `cx`. An input's is what a key that
     /// was never set holds.
     fn compute(cx: &Cx<'_>, key: &Self::Key) -> Self::Value;
+
+    /// What the input at `key` is grouped with: inputs of equal groups are one, so that a memo
+    /// holds while the inputs of the groups it reads do, whatever the others are. One group per
+    /// query by default.
+    #[must_use]
+    fn group(_: &Self::Key) -> impl std::hash::Hash {
+        Self::NAME
+    }
 
     /// What dependents see of the value; they re-run only when it changes. The whole value by
     /// default; a query whose dependents read part of it fingerprints that part.

@@ -9,7 +9,8 @@ use vun_trace::{Activity, tracing};
 
 use super::db::{Db, Sharing};
 use super::fingerprint::Fingerprint;
-use super::persist::SavedDep;
+use super::groups::{Groups, Reach};
+use super::persist::{SavedDep, Under};
 use super::table::{Slot, TableId};
 use super::tally::Event;
 use super::{Query, Revision};
@@ -66,21 +67,26 @@ pub(crate) enum Source {
     Unset,
 }
 
-/// How far the inputs a memo reads, through all it read, are shared: the least shared of them.
-/// A memo whose inputs are shared holds as long as they do, which one fingerprint of every input
-/// shared as far tells ([`Db::shared_inputs`]).
+/// Which inputs a memo reads, through all it read: the groups of the shared ones, or none when
+/// one is the database's own. A memo whose inputs are shared holds as long as the inputs of those
+/// groups do, which their fingerprint tells ([`Db::inputs_of`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Durability {
-    pub(crate) level: Sharing,
-    /// Loaded: the fingerprint of the inputs shared as far as its level when it last held.
+    pub(crate) groups: Option<Reach>,
+    /// Loaded: the fingerprint of the inputs of those groups when it last held.
     pub(crate) under: Option<Fingerprint>,
 }
 
 impl Durability {
-    pub(crate) const OWN: Self = Self { level: Sharing::Own, under: None };
+    pub(crate) const OWN: Self = Self { groups: None, under: None };
 
-    pub(crate) fn at(level: Sharing) -> Self {
-        Self { level, under: None }
+    pub(crate) fn reading(groups: Reach) -> Self {
+        Self { groups: Some(groups), under: None }
+    }
+
+    /// What a saved memo holds of it.
+    pub(crate) fn saved(under: Option<Under>) -> Self {
+        under.map_or(Self::OWN, |Under { groups, inputs }| Self { groups: Some(groups), under: Some(inputs) })
     }
 }
 
@@ -108,11 +114,12 @@ impl<Q: Query> Memo<Q> {
         fingerprint: Fingerprint,
         revision: Revision,
         source: Source,
+        group: Fingerprint,
     ) -> Self {
         let verified = Verified::at(revision);
-        let level = match source {
-            Source::Set(sharing) => sharing,
-            Source::Computed | Source::Unset => Sharing::Shared,
+        let durability = match source {
+            Source::Set(Sharing::Own) => Durability::OWN,
+            Source::Set(_) | Source::Computed | Source::Unset => Durability::reading(Groups::only(group)),
         };
         Self {
             value: OnceLock::from(value),
@@ -121,7 +128,7 @@ impl<Q: Query> Memo<Q> {
             deps: Deps::Read(Arc::from([])),
             verified,
             source,
-            durability: Durability::at(level),
+            durability,
             novelty: Novel::new(Novelty::New),
         }
     }
@@ -149,17 +156,16 @@ impl<Q: Query> Memo<Q> {
     }
 
     /// A memo of another process, never verified in this one; `under`, for one whose inputs are
-    /// shared, how far, and their fingerprint when it last held.
+    /// shared, their groups and their fingerprint when it last held.
     pub(crate) fn loaded(
         saved: Option<Saved<Q>>,
         fingerprint: Fingerprint,
         deps: Blob,
-        under: Option<(Sharing, Fingerprint)>,
+        under: Option<Under>,
     ) -> Self {
         let verified = Verified::default();
         let deps = Deps::Saved { at: deps, read: OnceLock::new() };
-        let durability =
-            under.map_or(Durability::OWN, |(level, under)| Durability { level, under: Some(under) });
+        let durability = Durability::saved(under);
         Self {
             value: OnceLock::new(),
             saved,

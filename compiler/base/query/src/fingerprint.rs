@@ -7,7 +7,7 @@ use std::hash::Hash;
 use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 use vun_hash::Stable;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Fingerprint(u128);
 
 /// Its sixteen bytes, as a hash has no short form.
@@ -29,6 +29,12 @@ impl Fingerprint {
     #[must_use]
     pub(crate) fn with(self, other: Self) -> Self {
         Self(self.0.wrapping_add(other.0))
+    }
+
+    /// The fingerprint of a set without `other`, which it has.
+    #[must_use]
+    pub(crate) fn without(self, other: Self) -> Self {
+        Self(self.0.wrapping_sub(other.0))
     }
 
     #[must_use]

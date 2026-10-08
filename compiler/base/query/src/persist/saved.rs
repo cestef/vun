@@ -25,11 +25,11 @@ use vun_fs::Edit;
 use vun_hash::{Algorithm, Hash};
 
 use super::keys::PackedKeys;
-use crate::db::Sharing;
 use crate::fingerprint::Fingerprint;
+use crate::groups::Reach;
 
 /// The version of the saved form; a file of another version is not read.
-pub(super) const FORMAT: u32 = 14;
+pub(super) const FORMAT: u32 = 15;
 
 /// The compiler running, as saved memos name it.
 pub struct Build;
@@ -174,8 +174,17 @@ pub(crate) struct SavedMemo<B = Vec<u8>> {
     pub(super) value: Option<B>,
     /// The reads, a list of [`SavedDep`]s, left unread until the memo is verified.
     pub(super) deps: B,
-    /// For a memo whose inputs are shared, how far, and their fingerprint when it last held.
-    pub(super) under: Option<(Sharing, Fingerprint)>,
+    /// For a memo whose inputs are shared, an [`Under`]; its groups are pooled, so it is written
+    /// with the stream's writer.
+    pub(super) under: Option<B>,
+}
+
+/// The groups of the shared inputs a memo reads, and the fingerprint of their inputs when it
+/// last held.
+#[derive(Clone, Copy, Encode, Decode)]
+pub(crate) struct Under {
+    pub(crate) groups: Reach,
+    pub(crate) inputs: Fingerprint,
 }
 
 /// A read: its query's position in the file, its key's among the query's keys, and the

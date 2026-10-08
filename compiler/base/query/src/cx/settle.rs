@@ -108,7 +108,7 @@ impl Settle<'_> {
             Err(recorded) => return (*recorded.current, Some(memo.fingerprint)),
         }
         table.counts.add(Event::Looked);
-        let durable = self.db.durable(memo.durability, self.revision);
+        let durable = self.db.durable(memo.durability);
         let found = if durable {
             Found::Holds
         } else {

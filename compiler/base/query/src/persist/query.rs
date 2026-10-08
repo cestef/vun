@@ -11,10 +11,10 @@ use vun_trace::tracing;
 use super::Keeps;
 use super::keys::{Fixed, KeyHead, PackedKeys, SavedKey};
 use super::load::Taking;
-use super::saved::{Replaced, SavedDep, SavedMemo, SavedQuery};
+use super::saved::{Replaced, SavedDep, SavedMemo, SavedQuery, Under};
 use super::shared::Included;
 use super::store::{Attached, Store};
-use crate::db::{Db, Sharing};
+use crate::db::Db;
 use crate::fingerprint::Fingerprint;
 use crate::memo::{Dep, Deps, Memo, ReadValue};
 use crate::table::{AnyTable, TableId};
@@ -58,10 +58,8 @@ pub(crate) struct Layout {
     /// Each table's query's position among the queries.
     pub(super) positions: Map<TableId, u32>,
     pub(super) numbers: Numbers,
-    /// The revision saved, and the fingerprint of the inputs shared as far as each level in it,
-    /// which a memo of that level holding in it is saved as holding under.
+    /// The revision saved: a memo holding in it is saved as holding under the inputs it has now.
     pub(super) revision: Revision,
-    pub(super) shared: [Fingerprint; Sharing::LEVELS.len()],
 }
 
 impl Layout {
@@ -228,9 +226,10 @@ impl<Q: Query<Key: Encode + Decode>> Persisting<Q> {
             (None, None) => memo.value(db).map(|value| (values.write)(w, value)),
         });
         let fingerprint = (number.base != Some(memo.fingerprint)).then_some(memo.fingerprint);
-        let level = memo.durability.level;
-        let now = level.level().filter(|_| memo.current(layout.revision)).map(|at| layout.shared[at]);
-        let under = now.or(memo.durability.under).map(|under| (level, under));
+        let durability = memo.durability;
+        let now = durability.groups.filter(|_| memo.current(layout.revision)).map(|g| db.inputs_of(g));
+        let under = durability.groups.zip(now.or(durability.under));
+        let under = under.map(|(groups, inputs)| w.encode(&Under { groups, inputs }));
         Some(SavedMemo { fingerprint, value, deps, under }.encoded())
     }
 }

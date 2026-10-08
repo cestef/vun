@@ -9,6 +9,7 @@ use super::why::Why;
 use super::{Cx, Cycle};
 use crate::claim::Owned;
 use crate::fingerprint::Fingerprint;
+use crate::groups::Groups;
 use crate::memo::{Dep, Memo, Source};
 use crate::table::{Slot, Table};
 use crate::tally::Event;
@@ -49,7 +50,13 @@ impl Cx<'_> {
         }
         let memo = if Q::INPUT {
             // An input not set holds what it computes until it is, alike in every database.
-            Memo::input(value.clone(), fingerprint, revision, Source::Unset)
+            Memo::input(
+                value.clone(),
+                fingerprint,
+                revision,
+                Source::Unset,
+                Groups::identity::<Q>(table.key(slot)),
+            )
         } else {
             let novelty = self.computing(table, slot, why, entry.memo.load().as_deref(), fingerprint, &reads);
             let durability = self.durability(&reads);

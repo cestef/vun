@@ -5,13 +5,13 @@ use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
-use arc_swap::ArcSwapOption;
 use vun_codec::{Decode, Encode};
 use vun_par::Map;
 
 use super::claim::Waits;
 use super::cx::{Cx, Found, Reuse};
 use super::fingerprint::Fingerprint;
+use super::groups::Groups;
 use super::memo::{Dep, Memo, Source};
 use super::persist::{Persisted, Store};
 use super::table::{AnyTable, Slot, Table, TableId};
@@ -46,16 +46,6 @@ pub enum Sharing {
     Shared,
 }
 
-impl Sharing {
-    /// The levels shared at all, each with a fingerprint of its inputs ([`Db::shared_inputs`]).
-    pub(crate) const LEVELS: [Self; 2] = [Self::Chosen, Self::Shared];
-
-    /// Its place among [`Self::LEVELS`]; `None` for [`Self::Own`].
-    pub(crate) fn level(self) -> Option<usize> {
-        Self::LEVELS.iter().position(|&level| level == self)
-    }
-}
-
 /// Every query's memos, and the current revision. Threads share it, each through its own
 /// [`Cx`]; reading a memo takes no lock.
 #[derive(Default)]
@@ -80,9 +70,8 @@ pub struct Db {
     pub(crate) reuse: Reuse,
     /// What verifying ahead found of each memo it looked at, by the revision it looked in.
     pub(crate) settled: Map<(TableId, Slot, Revision), Found>,
-    /// The fingerprint of the shared inputs, with the revision it was found in; unset when an
-    /// input is set.
-    pub(crate) shared_inputs: ArcSwapOption<(Revision, [Fingerprint; Sharing::LEVELS.len()])>,
+    /// The fingerprint of the shared inputs of each group, by its identity ([`Db::inputs_of`]).
+    pub(crate) groups: Map<Fingerprint, Fingerprint>,
     /// The lists of memos read that memos hold, each once: queries computed alike read alike.
     lists: Map<Arc<[Dep]>, ()>,
     resources: Map<TypeId, Arc<dyn Any + Send + Sync>>,
@@ -140,10 +129,10 @@ impl Db {
     /// If `Q` is not an input ([`Query::INPUT`]): what a query computes is never set.
     pub fn set_as<Q: Query>(&self, key: &Q::Key, value: Q::Value, sharing: Sharing) {
         assert!(Q::INPUT, "{} is set, but is not an input", Q::NAME);
-        self.shared_inputs.store(None);
         let fingerprint = Q::interface(&value);
         let table = self.table::<Q>();
         let entry = table.entry(table.slot(key));
+        let source = Source::Set(sharing);
         let revision = match &*entry.memo.load() {
             Some(current) if current.source == Source::Set(sharing) && current.fingerprint == fingerprint => {
                 return;
@@ -161,7 +150,10 @@ impl Db {
             None => Some(self.revision()),
         };
         let revision = revision.unwrap_or_else(|| self.revision());
-        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision, Source::Set(sharing)))));
+        let before = entry.memo.load().as_deref().map(|memo| (memo.source, memo.fingerprint));
+        self.regroup::<Q>(key, before, (source, fingerprint));
+        let group = Groups::identity::<Q>(key);
+        entry.memo.store(Some(Arc::new(Memo::input(value, fingerprint, revision, source, group))));
     }
 
     /// The value of `Q` at `key`, from a fresh context.

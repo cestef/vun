@@ -43,19 +43,14 @@
      change it.
   3. Cold counts vary ~1% between runs (warm 0.0%); find why.
   4. `blake3` hashes with NEON for long inputs (decision 665); single blocks stay portable.
-- The durable shortcut (`Db::durable`) almost never holds on a primed toolchain: a build of
-  `corpus/bench/sieve.vun` restores 28 000 memos and finds 710 durable, the rest verified through
-  their reads (`verify memos` 12 500 runs, ~12 ms own, `settle memos` ~6 ms, of 65 ms of work).
-  `VUN_LOG=vun_query::durable=trace` prints each input table's fingerprint per level: the
-  fingerprint folds over the inputs set in the session, so it differs from the priming one when
-  the project publishes other packages (a `corpus` file adds `support`, `stm32f4`: `package`,
-  `file_text`, `file_bytes` differ at `Shared`) and, at `Chosen`, when it sets `checks` or `trace`
-  that priming left unset (a memo that read none of them still mismatches). A fix reads fingerprints
-  per group of inputs a memo reached (a package, a chosen input) instead of per level; forcing
-  every saved memo durable (unsound, measurement only) cut a loose-file cold build 136 to 112 ms.
-  Priming one program through `lir` (the runtime start and `println`) saved ~1 MB and no time: the
-  instantiations a program needs differ (`println` of a `u32`), and ~73 library files are parsed
-  anew for them (46 ms of work, `parsed` is saved without its tree).
+- Durability is per group of inputs (decision 671): on a primed toolchain a build of
+  `corpus/bench/sieve.vun` restores 4 000 memos and 3 850 of them are durable (before: 28 000
+  restored, 710 durable), `settle memos` fell from ~18 ms to ~1.5 ms of work, and a cold build of
+  a loose file went 146 to 138 ms (hyperfine, 15 runs). What is left of its ~135 ms is work no
+  memo holds: 157 `typed`, ~190 `function_lir`/`inlined_lir` for the std instantiations a program
+  needs that priming did not make (`println` of a `u32`), 79 library files parsed anew (~50 ms of
+  work, `parsed` is saved without its tree), and ~90 ms of threads waiting on claims. Next: save
+  the parse trees of library files, prime common instantiations, and look at why claims wait.
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`
   8.4 M (2.3 ms, measured at 400 000 flags; the benchmark sieves 4 000 000 now), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries

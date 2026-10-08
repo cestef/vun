@@ -32,7 +32,7 @@ impl Cx<'_> {
         if memo.current(revision) {
             return Ok(memo);
         }
-        if self.db.durable(memo.durability, revision) {
+        if self.db.durable(memo.durability) {
             return Ok(self.held(table, slot, memo, revision, Event::Durable));
         }
         let deps = memo.deps.get(self.db).ok_or(Why::Unresolved)?;

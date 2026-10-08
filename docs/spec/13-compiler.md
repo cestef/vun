@@ -67,13 +67,15 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   that never computes a read keyed by an earlier read's value before that value holds; one
   thread looks at each memo, another reaching it leaves it to verifying in order. Durability
   (as Salsa's): an input is set as the database's own, as shared among databases that chose
-  alike (the target, the checks) or as shared by all (a library's sources), and a memo is as
-  durable as the least shared input it reads through all it read. A memo is saved with the
-  fingerprint of every input of its level or a more shared one when it last held, and holds at
-  once, its reads never looked at, while that fingerprint is the same: a library's memos hold
-  whatever the target, those reading the target while it is the one chosen. An input not set
-  stays out of every fingerprint, so a memo that read it unset never matches one that read it
-  set. Under
+  alike (the target, the checks) or as shared by all (a library's sources), and a memo
+  reading an input of the database's own, through all it read, is its own. Inputs are grouped (a query
+  names a key's group: a package's description and files are one, the target, the checks and the
+  trace each their own), and a memo reading shared inputs alone is saved with the groups it read
+  through and the fingerprint of their inputs when it last held, kept up to date as inputs are
+  set. It holds at once, its reads never looked at, while that fingerprint is the same: a
+  library's memos hold whatever the project, the other libraries and the options set, and those
+  reading the target while it is the one chosen. An input not set stays out of its group's
+  fingerprint, so a memo that read it unset never matches one that read it set. Under
   `VUN_QUERY_CHECK=1` what verifying ahead finds is only recorded, and verifying in order fails
   on a memo it found to hold whose reads changed. Traces hold fingerprints rather than revision
   numbers, so they stay valid in the next process. Each key gets a slot in its query's table

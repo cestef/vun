@@ -1,6 +1,7 @@
 //! What the driver sets once it has loaded a package graph: each package's description, the
 //! text of its source files and the bytes of every file it holds. Everything else is computed from these by queries.
 
+use std::hash::Hash;
 use std::sync::Arc;
 
 use vun_codec::{Decode, Encode};
@@ -60,6 +61,11 @@ impl Query for Package {
     type Key = PackageId;
     type Value = Arc<PackageData>;
 
+    /// A package's description is grouped with its files.
+    fn group(key: &PackageId) -> impl Hash {
+        *key
+    }
+
     fn compute(_: &Cx<'_>, _: &PackageId) -> Arc<PackageData> {
         Arc::default()
     }
@@ -75,6 +81,10 @@ impl Query for FileBytes {
     type Key = FileRef;
     type Value = Option<Arc<[u8]>>;
 
+    fn group(key: &FileRef) -> impl Hash {
+        key.package
+    }
+
     fn compute(_: &Cx<'_>, _: &FileRef) -> Option<Arc<[u8]>> {
         None
     }
@@ -88,6 +98,10 @@ impl Query for FileText {
     const INPUT: bool = true;
     type Key = FileRef;
     type Value = Option<Arc<str>>;
+
+    fn group(key: &FileRef) -> impl Hash {
+        key.package
+    }
 
     fn compute(_: &Cx<'_>, _: &FileRef) -> Option<Arc<str>> {
         None

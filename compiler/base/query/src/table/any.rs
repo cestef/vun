@@ -4,14 +4,12 @@
 use std::any::Any;
 use std::sync::atomic::Ordering;
 
-use vun_hash::Stable;
-
 use super::{Slot, Table, TableId};
 use crate::Query;
 use crate::cx::{Cx, Found, Settle};
 use crate::db::{Db, Sharing};
 use crate::fingerprint::Fingerprint;
-use crate::memo::{Dep, Source};
+use crate::memo::{Dep, Durability, Source};
 use crate::tally::Counts;
 
 /// A table whatever its query: what reads recorded by table and slot are verified and shown
@@ -33,11 +31,8 @@ pub(crate) trait AnyTable: Send + Sync {
     fn persist(&self);
     /// What was done with its memos.
     fn counts(&self) -> &Counts;
-    /// How far the inputs the memo at `slot` reads are shared; [`Sharing::Own`] without one.
-    fn level(&self, slot: Slot) -> Sharing;
-    /// The fingerprint of its inputs set as shared as far as `level` or further, by query, key
-    /// and value.
-    fn shared_inputs(&self, level: Sharing) -> Fingerprint;
+    /// Which inputs the memo at `slot` reads; [`Durability::OWN`] without one.
+    fn durability(&self, slot: Slot) -> Durability;
     /// What verifying ahead finds of the memo at `slot`, with its fingerprint ([`Settle::holds`]).
     fn settled(
         &self,
@@ -103,21 +98,8 @@ impl<Q: Query> AnyTable for Table<Q> {
         &self.counts
     }
 
-    fn level(&self, slot: Slot) -> Sharing {
-        self.entry(slot).memo.load().as_ref().map_or(Sharing::Own, |memo| memo.durability.level)
-    }
-
-    fn shared_inputs(&self, level: Sharing) -> Fingerprint {
-        if !Q::INPUT {
-            return Fingerprint::default();
-        }
-        let shared = self.entries().filter_map(|(slot, entry)| {
-            let memo = entry.memo.load_full()?;
-            let Source::Set(sharing) = memo.source else { return None };
-            (sharing >= level)
-                .then(|| Fingerprint::of(&(Q::NAME, Stable::of(self.key(slot)), memo.fingerprint)))
-        });
-        shared.fold(Fingerprint::default(), Fingerprint::with)
+    fn durability(&self, slot: Slot) -> Durability {
+        self.entry(slot).memo.load().as_ref().map_or(Durability::OWN, |memo| memo.durability)
     }
 
     fn settled(

@@ -12,7 +12,7 @@ use vun_hash::{Hash, Stable};
 use vun_trace::{Activity, tracing};
 
 use super::keys::{KeyHead, PackedKeys, SavedKey};
-use super::saved::{Growth, SavedDep, SavedMemo, SavedQuery};
+use super::saved::{Growth, SavedDep, SavedMemo, SavedQuery, Under};
 use crate::Query;
 use crate::db::Db;
 use crate::memo::{Dep, Memo, ReadValue, Saved};
@@ -288,7 +288,8 @@ impl<Q: Query> Attached<Q> {
             memo.inspect_err(|malformed| tracing::debug!(query = Q::NAME, %malformed, "saved memo not read"));
         let memo = memo.ok()?;
         let saved = self.value.zip(memo.value).map(|(read, at)| Saved { at, read });
-        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint())?, memo.deps, memo.under))
+        let under = memo.under.and_then(|at| self.store.stream.read_blob::<Under>(at).ok());
+        Some(Memo::loaded(saved, memo.fingerprint.or(key.fingerprint())?, memo.deps, under))
     }
 
     /// The slot of the key at `at`, set once it is given one.

@@ -11,6 +11,10 @@ impl Query for Text {
     const INPUT: bool = true;
     type Key = u32;
     type Value = String;
+    /// Files are grouped in pairs.
+    fn group(key: &u32) -> impl std::hash::Hash {
+        key / 2
+    }
     fn compute(_: &Cx<'_>, _: &u32) -> String {
         String::new()
     }
@@ -156,4 +160,43 @@ fn an_input_not_set_stays_out_of_the_fingerprint() {
     // are verified as usual. The lengths read the files alone and hold at once.
     let tally = second.tally();
     assert_eq!((tally.count("words", Event::Durable), tally.count("length", Event::Durable)), (0, 1));
+}
+
+/// A database whose files `0..4` hold `texts`, shared, and `note` set, an input of a group of its
+/// own that none of the lengths read.
+fn noted(texts: [&str; 4], note: Option<u32>) -> Db {
+    let db = files(Reuse::Trust, "", None);
+    for (i, text) in (0..).zip(texts) {
+        db.share::<Text>(&i, text.into());
+    }
+    db.trace::<Target>();
+    if let Some(note) = note {
+        db.set_as::<Target>(&(), note, crate::Sharing::Chosen);
+    }
+    db
+}
+
+#[test]
+fn a_memo_holds_whatever_groups_it_does_not_read_are_set_to() {
+    let first = noted(["a", "bb", "ccc", "dddd"], None);
+    first.get::<Total>(&4);
+    let saved = first.save();
+    // The lengths read no target: setting one leaves them durable, as does a text in another group.
+    let second = noted(["a", "bb", "ccc", "dddd"], Some(2));
+    second.load(saved).unwrap();
+    assert_eq!(second.get::<Total>(&4), 10);
+    assert_eq!(second.tally().total(Event::Durable), 1);
+}
+
+#[test]
+fn a_changed_group_breaks_only_the_memos_reading_it() {
+    let first = noted(["a", "bb", "ccc", "dddd"], None);
+    first.get::<Total>(&4);
+    let saved = first.save();
+    let second = noted(["a", "bb", "ccc", "ddddd"], None);
+    second.load(saved).unwrap();
+    assert_eq!(second.get::<Total>(&4), 11);
+    // The lengths of the first pair hold at once; those of the changed pair, and the total, do not.
+    let tally = second.tally();
+    assert_eq!((tally.count("length", Event::Durable), tally.count("total", Event::Durable)), (2, 0));
 }
