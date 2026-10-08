@@ -11,6 +11,7 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+vun-codec.workspace = true
 num-bigint.workspace = true
 vun-items.workspace = true
 vun-outline.workspace = true

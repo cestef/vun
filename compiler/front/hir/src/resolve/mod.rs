@@ -27,7 +27,7 @@ pub use outer::Outside;
 use scope::Scopes;
 
 /// What a name expression refers to.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub enum Res {
     Binder(BinderId),
     /// Not declared in this file: spread into namespace `ns` or one enclosing it, a package, a
@@ -39,6 +39,7 @@ pub enum Res {
 }
 
 /// The resolution of every name expression of a file.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Resolution {
     pub names: IndexVec<ExprId, Option<Res>>,
     /// The namespace enclosing each namespace; `None` for the file.

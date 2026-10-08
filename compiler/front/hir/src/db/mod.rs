@@ -19,12 +19,13 @@ pub use scope::{Outer, Scope, ScopeData};
 use vun_query::Db;
 
 /// The queries of the front end whose memos outlive the process: the inputs and the parsed file
-/// by their traces, since they are set or cheap to read again, and the rest with their values.
+/// by their traces, since they are set, and the rest with their values, a parsed file's tree
+/// too: reading it is cheaper than lexing, parsing, lowering and resolving it again.
 pub const PERSISTED: &[fn(&Db)] = &[
     Db::trace::<Package>,
     Db::trace::<FileText>,
     Db::trace::<FileBytes>,
-    Db::trace::<Parsed>,
+    Db::persist::<Parsed>,
     Db::persist::<Reported>,
     Db::persist::<FileNames>,
     Db::persist::<Scope>,

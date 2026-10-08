@@ -5,7 +5,7 @@
 use super::{BinderId, Hir, PatId};
 
 /// A binder of an alternative after the first, against the first alternative's binders.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub enum Joined {
     /// `other` binds the name `first` binds.
     Paired { first: BinderId, other: BinderId },

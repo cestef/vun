@@ -4,11 +4,13 @@ use vun_origin::OriginId;
 
 use super::{BinderId, ExprId, List, Name, PatId};
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Pat {
     pub kind: PatKind,
     pub origin: OriginId,
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum PatKind {
     Bind(BinderId),
     /// `_`

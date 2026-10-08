@@ -3043,6 +3043,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "num-bigint",
+ "vun-codec",
  "vun-diag",
  "vun-fs",
  "vun-grammar",

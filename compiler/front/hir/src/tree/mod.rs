@@ -34,7 +34,7 @@ index! {
 }
 
 /// One lowered file. Its root namespace holds the file's declarations.
-#[derive(Default)]
+#[derive(Default, vun_codec::Encode, vun_codec::Decode)]
 pub struct Hir {
     pub root: Option<NsId>,
     pub namespaces: IndexVec<NsId, Namespace>,
@@ -44,17 +44,17 @@ pub struct Hir {
     pub blocks: IndexVec<BlockId, Block>,
     pub binders: IndexVec<BinderId, Binder>,
     /// What each node relates to, found once, when first asked.
-    index: std::sync::OnceLock<index::Index>,
+    index: index::Cached,
 }
 
 impl Hir {
     fn index(&self) -> &index::Index {
-        self.index.get_or_init(|| index::Index::of(self))
+        self.index.0.get_or_init(|| index::Index::of(self))
     }
 }
 
 /// A name as written: literal, computed by `$(...)`, or the positional `_`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub enum Name {
     Plain(Symbol),
     /// `$(e)`: a name produced at compile time (spec 03, section 2).
@@ -77,12 +77,14 @@ impl std::fmt::Display for Name {
 }
 
 /// Declarations whose order does not matter: a file or a `struct` body.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Namespace {
     pub members: List<Member>,
     pub origin: OriginId,
 }
 
 /// `pattern := value` or `pattern: type = value` in a namespace or a block.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Decl {
     pub pat: PatId,
     pub ty: Option<ExprId>,
@@ -94,6 +96,7 @@ pub struct Decl {
 }
 
 /// A name introduced by a pattern: a local, a parameter, or a namespace member.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Binder {
     pub name: Symbol,
     pub mutable: bool,
@@ -103,6 +106,7 @@ pub struct Binder {
 }
 
 /// Statements run in order; the tail is the block's value.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Block {
     pub stmts: List<Stmt>,
     pub tail: Option<ExprId>,

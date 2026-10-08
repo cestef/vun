@@ -28,7 +28,7 @@ index! {
     pub struct NodeId;
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub enum Anchor {
     Token(TokenId),
     /// Absent from the source; it would stand right before this token.
@@ -44,6 +44,7 @@ impl Anchor {
     }
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Cst {
     kinds: IndexVec<NodeId, NodeKind>,
     anchors: IndexVec<NodeId, Anchor>,

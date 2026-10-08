@@ -3,6 +3,7 @@
 use std::hash::Hasher;
 use std::sync::Arc;
 
+use vun_codec::{Decode, Encode};
 use vun_desugar::Borrow;
 use vun_diag::{DiagCtxt, DiagCx};
 use vun_hash::Hash;
@@ -18,6 +19,7 @@ use crate::lower;
 use crate::resolve::{Res, Resolution};
 use crate::tree::{BinderId, ExprId, ExprKind, Hir};
 
+#[derive(Encode, Decode)]
 pub struct ParsedFile {
     pub file: FileId,
     pub tokens: Tokens,
@@ -54,9 +56,12 @@ impl std::hash::Hash for ParsedFile {
     }
 }
 
+/// By the file's key, which names it in every process, as it hashes: one read from saved memos
+/// is added under the path this machine shows, which may not be the path the same file was
+/// added under meanwhile.
 impl PartialEq for ParsedFile {
     fn eq(&self, other: &Self) -> bool {
-        (self.text, self.file) == (other.text, other.file)
+        (self.text, self.file.key()) == (other.text, other.file.key())
     }
 }
 

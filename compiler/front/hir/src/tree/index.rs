@@ -4,11 +4,26 @@
 //! literal and the member declaration around each expression, and what wraps an expression as
 //! attributes and prefixes do.
 
+use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 use vun_index::IndexVec;
 
 use super::binders::each_entry;
 use super::{BinderId, DeclId, ExprId, ExprKind, Hir, Member, NsId};
 use crate::visit::{self, Visitor};
+
+/// The index of a file, found when first asked: never saved, found again by a file read.
+#[derive(Default)]
+pub(crate) struct Cached(pub(crate) std::sync::OnceLock<Index>);
+
+impl Encode for Cached {
+    fn encode(&self, _: &mut Writer<'_>) {}
+}
+
+impl Decode for Cached {
+    fn decode(_: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Ok(Self::default())
+    }
+}
 
 pub(crate) struct Index {
     /// The declaration binding each binder, among members or in a block.

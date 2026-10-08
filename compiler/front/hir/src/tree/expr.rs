@@ -1,6 +1,7 @@
 //! Expressions, including types, which are compile-time values (spec 02).
 
 use num_bigint::BigInt;
+use vun_codec::{Decode, Encode, Malformed, Reader, Writer};
 use vun_desugar::Borrow;
 use vun_grammar::TokenKind;
 use vun_intern::Symbol;
@@ -8,6 +9,7 @@ use vun_origin::OriginId;
 
 use super::{Arm, BlockId, ExprId, List, Name, NsId, Param, PatId, Variant};
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Expr {
     pub kind: ExprKind,
     pub origin: OriginId,
@@ -21,24 +23,53 @@ pub enum Lit {
     String(Vec<u8>),
 }
 
+/// A tag, then the literal: an integer as its two's complement bytes, least significant first, a
+/// character as its code.
+impl Encode for Lit {
+    fn encode(&self, w: &mut Writer<'_>) {
+        match self {
+            Self::Int(n) => (0u8, n.to_signed_bytes_le()).encode(w),
+            Self::Float(text) => (1u8, text).encode(w),
+            Self::Char(c) => (2u8, u32::from(*c)).encode(w),
+            Self::String(bytes) => (3u8, bytes).encode(w),
+        }
+    }
+}
+
+impl Decode for Lit {
+    fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
+        Ok(match u8::decode(r)? {
+            0 => Self::Int(BigInt::from_signed_bytes_le(&Vec::<u8>::decode(r)?)),
+            1 => Self::Float(String::decode(r)?),
+            2 => Self::Char(char::from_u32(u32::decode(r)?).ok_or(Malformed::Invariant)?),
+            3 => Self::String(Vec::decode(r)?),
+            _ => return Err(Malformed::Invariant),
+        })
+    }
+}
+
 /// An argument or a literal field: `value`, or `.name = value`.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Arg {
     pub name: Option<Name>,
     pub value: ExprId,
 }
 
 /// The head of an `if`: a condition, or a pattern test `p = e`.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum Cond {
     Expr(ExprId),
     Test { pat: PatId, value: ExprId },
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum ForHead {
     Forever,
     While(Cond),
     In { pat: PatId, iter: ExprId },
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum ExprKind {
     Error,
     /// `_` as a value: provided from outside (spec 01, section 3).

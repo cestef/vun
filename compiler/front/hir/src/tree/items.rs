@@ -8,6 +8,7 @@ use super::{BinderId, BlockId, Cond, DeclId, ExprId, Name, NsId, PatId};
 /// A list whose entries may be generated at compile time.
 pub type List<T> = Vec<Entry<T>>;
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum Entry<T> {
     One(T),
     /// `$for` or `$if` producing entries of the same list (spec 03, section 2).
@@ -24,6 +25,7 @@ impl<T> Entry<T> {
     }
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum Staged<T> {
     For {
         pat: PatId,
@@ -40,6 +42,7 @@ pub enum Staged<T> {
     },
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum Member {
     Decl(DeclId),
     Field(FieldDef),
@@ -47,6 +50,7 @@ pub enum Member {
 }
 
 /// `..path` or `..path.{ a, b }`: members of the namespace at `path` become members here.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Spread {
     pub path: ExprId,
     /// The selected names, binders of the enclosing namespace; `None` spreads every public member.
@@ -55,6 +59,7 @@ pub struct Spread {
 }
 
 /// `name: T = default` in a `struct`.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct FieldDef {
     pub name: Name,
     pub mutable: bool,
@@ -65,6 +70,7 @@ pub struct FieldDef {
     pub origin: OriginId,
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Variant {
     pub name: Name,
     pub payload: Vec<ExprId>,
@@ -73,6 +79,7 @@ pub struct Variant {
     pub origin: OriginId,
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub enum Stmt {
     Decl(DeclId),
     Expr(ExprId),
@@ -92,6 +99,7 @@ pub enum Stmt {
 }
 
 /// A parameter of a function literal or a function type.
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Param {
     /// `None` in a function type written without names: `(u8, bool) -> u8`.
     pub pat: Option<PatId>,
@@ -100,6 +108,7 @@ pub struct Param {
     pub origin: OriginId,
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Arm {
     pub pat: PatId,
     pub guard: Option<ExprId>,

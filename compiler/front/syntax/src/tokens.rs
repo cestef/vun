@@ -19,12 +19,13 @@ index! {
 }
 
 /// One lexed piece of source: a token or a trivia run.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, vun_codec::Encode, vun_codec::Decode)]
 pub struct Lexeme {
     pub kind: TokenKind,
     pub range: ByteRange,
 }
 
+#[derive(vun_codec::Encode, vun_codec::Decode)]
 pub struct Tokens {
     file: FileId,
     kinds: IndexVec<TokenId, TokenKind>,

@@ -50,13 +50,14 @@
   memo holds: 157 `typed`, ~190 `function_lir`/`inlined_lir` for the std instantiations a program
   needs that priming did not make (`println` of a `u32`), 79 library files parsed anew (~50 ms of
   work, `parsed` is saved without its tree), and ~90 ms of threads waiting on claims.
-  `VUN_LOG=vun_query=debug` logs each wait (`waited for another thread`, query, key, time): on a
-  primed cold build 33 of 51 waits are on `inlined_lir` (~2.6 ms each), a callee another thread
-  computes while the waiter's own function needs it. Joining open parallel calls while waiting
-  (tried: `Pool::help_until`, with a per-thread stack of waits for the cycle check) gave no
-  speedup and 15% more CPU, since it waits on the critical path, not for lack of work (about one
-  wait in five had a call open). A real fix orders the inlining so callees are computed first.
-  Next: save the parse trees of library files, prime common instantiations, order the inlining.
+  `VUN_LOG=vun_query=debug` logs each wait (`waited for another thread`, query, key, time).
+  Joining open parallel calls while waiting (tried: `Pool::help_until`) gave no speedup and 15%
+  more CPU: the waits are on the critical path. What helped (am3, 40 runs, loose-file cold
+  build): inlining a program's functions callees first, layer by layer (`Inlining::layers`; the
+  waits on `inlined_lir` are gone), 122 to 119 ms and 9% less CPU, and saving the parse tree of
+  each file (`Parsed` persisted: tokens, CST, HIR and resolution; the toolchain's memos 75 to
+  82 MB), to 106 ms. Left: ~190 `function_lir` and 157 `typed` runs for std instantiations
+  priming did not make (`println` of a `u32`); prime common instantiations.
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`
   8.4 M (2.3 ms, measured at 400 000 flags; the benchmark sieves 4 000 000 now), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries
