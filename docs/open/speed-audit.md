@@ -51,8 +51,17 @@ above already include it.
    primed toolchain first.
 7. Faster comptime (`metered_call` is 13 to 26% of a run): a register-based interpreter with
    superinstructions, or the native backend as a baseline JIT.
-8. The edit loop: ~80 ms of re-checking and re-emitting for one constant; no per-function LIR code
-   cache exists.
+8. A per-function code cache (the edit loop, ~80 ms of re-emitting for one constant, and warm
+   builds: `Built::of` runs 41k times in a warm `hello`). `Native::compile`
+   (`native/core/src/lib.rs`) takes the whole `Unit`, but `vun_codegen::compile` reads from it only
+   `pointer_bits` and the signatures of callees and imports, besides the function itself. So the key
+   is the hash of the function plus the convention, processor features, `listed`, `pointer_bits`
+   and the signatures it calls. The obstacle: the `Compiled` code relocates against `Address`es
+   numbered by the unit (`FuncId`, `DataId`), which change when other functions come or go. Store
+   the relocations against the callee's or datum's linkage instead and renumber on reuse. Keep the
+   cache beside the memos so prime can ship it. Expected: the share of warm instructions in isel and
+   regalloc (~10% for `Scan::fixed_from` and `Built::of` alone in a warm `hello`), and the compile
+   of unchanged functions in an edit.
 
 Generated-code items (another session works on optimizations): recursion inlining in LIR, cheaper
 frame setup, redundant-move cleanup, peepholes declared as verified data.
