@@ -285,9 +285,12 @@ impl Env<'_, '_> {
     #[must_use]
     pub fn methods(&self, ty: Ty, name: Symbol) -> Vec<Method> {
         let tiers = Witnesses::tiers(self.cx, &self.file, ty);
-        let mut methods = tiers
-            .iter()
-            .map(|tier| tier.iter().filter_map(|c| c.witness(self.cx)?.method(self.cx, name)).collect());
+        let mut methods = tiers.iter().map(|tier| {
+            tier.iter()
+                .filter(|c| c.may_have(self.cx, name))
+                .filter_map(|c| c.witness(self.cx)?.method(self.cx, name))
+                .collect()
+        });
         methods.find(|found: &Vec<Method>| !found.is_empty()).unwrap_or_default()
     }
 }

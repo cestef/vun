@@ -1,11 +1,14 @@
 //! The impls and derived interfaces that may give a type a witness, each made when asked for.
 
 use vun_codec::{Decode, Encode};
+use vun_intern::Symbol;
 use vun_query::{Cx, Cycle, Query};
-use vun_sema_ty::Ty;
 use vun_sema_ty::call::{Func, Instance};
+use vun_sema_ty::{Ty, Value};
 
 use super::{Derive, ImplDecl, Witness};
+use crate::eval::Call;
+use crate::member::{Found, Members};
 
 /// Where a candidate's witness comes from.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
@@ -43,6 +46,18 @@ impl Candidate {
     #[must_use]
     pub fn implements(&self, interface: &Func) -> bool {
         self.interface() == Some(interface)
+    }
+
+    /// Whether its witness may have the member `name`. A derived witness has the members of its
+    /// interface, so one whose interface lacks `name` is not made to find out.
+    #[must_use]
+    pub fn may_have(&self, cx: &Cx<'_>, name: Symbol) -> bool {
+        let Source::Derive(derive) = &self.source else { return true };
+        let call = Instance { f: derive.interface.clone(), args: vec![Value::Type(self.ty)] };
+        let Some(requirements) = cx.get::<Call>(&call).ok().and_then(|value| value.as_type()) else {
+            return true;
+        };
+        cx.get::<Members>(&requirements).is_none_or(|members| !matches!(members.find(name), Found::Absent))
     }
 
     /// Its witness, `None` where the impl does not give one for the type.
