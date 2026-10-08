@@ -24,7 +24,9 @@ Generated code:
   and each `sub` is followed by a redundant `mov`.
 - Cranelift at `opt_level=speed` times the same as native: the shared LIR passes decide the speed.
   The gap to `-O2` is the middle-end (recursion inlining), not selection.
-- No custom global allocator; `dist` is fat LTO without PGO. `Value::clone` runs 10.7M times cold.
+- mimalloc is already the global allocator (`vun-cli`, feature `mimalloc`; 7.6% of cold instructions
+  are `libmimalloc-sys`). `dist` is fat LTO without PGO. Callgrind of a cold build: `Value::clone` is
+  2.5M runs and 1.1% of instructions (the 10.7M in `performance.md` is another workload).
 
 ## Where to speed up, in order
 
@@ -35,10 +37,10 @@ above already include it.
    owner not confirmed). Then re-profile: the cold path loses the 316 library files.
 2. Reachability, as a likely bug: `hello` still types ~2900 bodies (lint rules as Vun code and the
    comptime they run). Find what reaches them.
-3. `Value::clone` (10.7M calls cold): the cause of the allocator pressure. Share (`Arc`,
-   interning) or borrow in comptime before touching the allocator.
-4. PGO plus BOLT of `vun`: no policy obstacle. mimalloc is pending the user's decision on
-   decision 67 (no C code); not scheduled.
+3. Query-table overhead, engine-wide so it helps warm and edit too: `Db::table_of` goes through a
+   thread-local `RefCell<HashMap>` on every lookup (877k calls) and papaya slots are 9% of cold
+   instructions (`Table<Parsed>::slot` 2.9%). `Value::clone` is only 1.1%: dropped.
+4. PGO plus BOLT of `vun`. The allocator is not an item (mimalloc is in).
 5. Queries that wait run other ready work, designed before built. Helping nests tasks on the
    waiter's stack: the helper can take work needing a claim held lower on its own stack or by the
    thread it waits on (false deadlock), and the depth is unbounded. `base/query/src/claim.rs` cycle
