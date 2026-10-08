@@ -165,8 +165,16 @@ impl<'db> Cx<'db> {
     fn enter(&self, table: TableId, slot: Slot, why: Why) -> Entered<'_, 'db> {
         let any = self.db.any_table(table);
         tracing::debug!(query = any.name(), why = %why.show(self.db), "computing");
-        tracing::trace!(query = any.name(), key = any.show(slot), "key");
         let mut stack = self.stack.borrow_mut();
+        let parent = stack.last().map(|frame| (self.db.any_table(frame.table), frame.slot));
+        tracing::trace!(
+            query = any.name(),
+            key = any.show(slot),
+            depth = stack.len(),
+            parent = parent.map(|(table, _)| table.name()),
+            parent_key = parent.map(|(table, slot)| table.show(slot)),
+            "key"
+        );
         self.computing.borrow_mut().insert((table, slot), stack.len());
         stack.push(Frame { table, slot, reads: Vec::new(), head: None });
         Entered::new(self, Activity::query(any.name()).start())
