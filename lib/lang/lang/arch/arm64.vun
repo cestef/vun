@@ -169,6 +169,9 @@ Form := ($Base: type) -> type { struct {
     writes: &[Reg] = &[],
     flags: ?Access = .none,
     flow: Flow = .next,
+    /// Pairs of operand positions whose registers must differ, a memory operand's by its base:
+    /// the manual calls the instruction unpredictable where they do not.
+    apart: &[[2]u8] = &[],
     /// What a processor needs to have the form, if not every one has it.
     requires: ?Need = .none,
 } };

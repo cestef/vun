@@ -3,77 +3,80 @@ use crate::table;
 use crate::reg;
 pub(crate) const LDP: [table::Form; 6usize] = [
     table::Form::new(
-        0x2940_0000,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x8000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                10,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::Pair, table::Width::Inst),
-                5,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0x2940_0000,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x8000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    10,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::Pair, table::Width::Inst),
+                    5,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .apart(&[[0, 1]]),
     table::Form::new(
-        0x29c0_0000,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x8000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                10,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::PairPre, table::Width::Inst),
-                5,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0x29c0_0000,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x8000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    10,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::PairPre, table::Width::Inst),
+                    5,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .apart(&[[0, 1], [0, 2], [1, 2]]),
     table::Form::new(
-        0x28c0_0000,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x8000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                10,
-                table::Access::Write,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::PairPost, table::Width::Inst),
-                5,
-                table::Access::Read,
-            ),
-        ],
-    ),
+            0x28c0_0000,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x8000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    10,
+                    table::Access::Write,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::PairPost, table::Width::Inst),
+                    5,
+                    table::Access::Read,
+                ),
+            ],
+        )
+        .apart(&[[0, 1], [0, 2], [1, 2]]),
     table::Form::new(
         0x2d40_0000,
         &[

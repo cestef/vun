@@ -56,22 +56,23 @@ impl<S: Copy> Emit<S> for Asm<S> {
 /// Puts `word`, `op` encoded by `form`, with the references its fields leave, listing it where
 /// the code is listed.
 fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, word: u32, size: Size, operands: &[Operand<S>]) {
-    let at = asm.here();
-    let mut word = word;
-    for (arg, operand) in form.args.iter().zip(operands) {
-        match Link::of(arg.kind, operand) {
-            Some(Link::Label(label, fixup)) => asm.refer(at, label, fixup),
-            Some(Link::Reloc(target, kind, addend, field)) => {
-                asm.relocate(at, target, kind, addend);
-                word |= field.map_or(0, Fixup::addend);
+    asm.emitting(
+        || Inst::new(op, size, operands),
+        |asm, at| {
+            let mut word = word;
+            for (arg, operand) in form.args.iter().zip(operands) {
+                match Link::of(arg.kind, operand) {
+                    Some(Link::Label(label, fixup)) => asm.refer(at, label, fixup),
+                    Some(Link::Reloc(target, kind, addend, field)) => {
+                        asm.relocate(at, target, kind, addend);
+                        word |= field.map_or(0, Fixup::addend);
+                    }
+                    None => {}
+                }
             }
-            None => {}
-        }
-    }
-    asm.put(&bytes(word, form.wide()));
-    if asm.lists() {
-        asm.list(at, Inst::new(op, size, operands));
-    }
+            asm.put(&bytes(word, form.wide()));
+        },
+    );
 }
 
 /// The relocation filling a branch's field with a symbol's address.

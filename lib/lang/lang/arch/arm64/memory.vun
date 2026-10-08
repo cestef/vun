@@ -53,13 +53,21 @@ _r_m_rw: _a.Arg = .{ .kind = .gpr(.zr, .inst), .at = 16, .access = .read_write }
 _w_m_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b32)), .at = 16, .access = .write };
 _x_d_w: _a.Arg = .{ .kind = .gpr(.zr, .is(.b64)), .at = 0, .access = .write };
 
+/// A base written back is not the register loaded or stored; a load's pair of registers differ,
+/// and so does the status of an exclusive store from what it stores and where.
+_written_back: &[[2]u8] = &[[0, 1]];
+_loaded_pair: &[[2]u8] = &[[0, 1]];
+_pair_back: &[[2]u8] = &[[0, 1], [0, 2], [1, 2]];
+_pair_stored_back: &[[2]u8] = &[[0, 2], [1, 2]];
+_status: &[[2]u8] = &[[0, 1], [0, 2]];
+
 /// A load of the instruction's width, zero-extended.
 ldr := _a.Instruction{ .forms = &[
     .{ .base = 0x39400000, .sizes = _access, .args = &[_r_d_w, _mem_scaled_n] },
     .{ .base = 0x38400000, .sizes = _access, .args = &[_r_d_w, _mem_unscaled_n], .name = .some("ldur") },
     .{ .base = 0x38600800, .sizes = _access, .args = &[_r_d_w, _mem_index_n] },
-    .{ .base = 0x38400c00, .sizes = _access, .args = &[_r_d_w, _mem_pre_n] },
-    .{ .base = 0x38400400, .sizes = _access, .args = &[_r_d_w, _mem_post_n] },
+    .{ .base = 0x38400c00, .sizes = _access, .args = &[_r_d_w, _mem_pre_n], .apart = _written_back },
+    .{ .base = 0x38400400, .sizes = _access, .args = &[_r_d_w, _mem_post_n], .apart = _written_back },
     .{ .base = 0x39400000, .sizes = _access, .args = &[_r_d_w, _mem_lo12_n] },
     .{ .base = 0x3d400000, .sizes = _fp_access, .args = &[_f_d_w, _mem_scaled_n] },
     .{
@@ -78,8 +86,8 @@ str := _a.Instruction{ .forms = &[
     .{ .base = 0x39000000, .sizes = _access, .args = &[_r_d, _mem_scaled_n_w] },
     .{ .base = 0x38000000, .sizes = _access, .args = &[_r_d, _mem_unscaled_n_w], .name = .some("stur") },
     .{ .base = 0x38200800, .sizes = _access, .args = &[_r_d, _mem_index_n_w] },
-    .{ .base = 0x38000c00, .sizes = _access, .args = &[_r_d, _mem_pre_n_w] },
-    .{ .base = 0x38000400, .sizes = _access, .args = &[_r_d, _mem_post_n_w] },
+    .{ .base = 0x38000c00, .sizes = _access, .args = &[_r_d, _mem_pre_n_w], .apart = _written_back },
+    .{ .base = 0x38000400, .sizes = _access, .args = &[_r_d, _mem_post_n_w], .apart = _written_back },
     .{ .base = 0x39000000, .sizes = _access, .args = &[_r_d, _mem_lo12_n_w] },
     .{ .base = 0x3d000000, .sizes = _fp_access, .args = &[_f_d, _mem_scaled_n_w] },
     .{
@@ -99,15 +107,15 @@ ldrs := _a.Instruction{ .forms = &[
     .{ .base = 0x39800000, .sizes = _signed, .args = &[_x_d_w, _mem_scaled_n] },
     .{ .base = 0x38800000, .sizes = _signed, .args = &[_x_d_w, _mem_unscaled_n], .name = .some("ldurs") },
     .{ .base = 0x38a00800, .sizes = _signed, .args = &[_x_d_w, _mem_index_n] },
-    .{ .base = 0x38800c00, .sizes = _signed, .args = &[_x_d_w, _mem_pre_n] },
-    .{ .base = 0x38800400, .sizes = _signed, .args = &[_x_d_w, _mem_post_n] },
+    .{ .base = 0x38800c00, .sizes = _signed, .args = &[_x_d_w, _mem_pre_n], .apart = _written_back },
+    .{ .base = 0x38800400, .sizes = _signed, .args = &[_x_d_w, _mem_post_n], .apart = _written_back },
     .{ .base = 0x39800000, .sizes = _signed, .args = &[_x_d_w, _mem_lo12_n] },
 ] };
 
 ldp := _a.Instruction{ .forms = &[
-    .{ .base = 0x29400000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_n] },
-    .{ .base = 0x29c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_pre_n] },
-    .{ .base = 0x28c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_post_n] },
+    .{ .base = 0x29400000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_n], .apart = _loaded_pair },
+    .{ .base = 0x29c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_pre_n], .apart = _pair_back },
+    .{ .base = 0x28c00000, .sizes = _pairs, .args = &[_r_d_w, _r_a_w, _mem_pair_post_n], .apart = _pair_back },
     .{ .base = 0x2d400000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_n] },
     .{ .base = 0x2dc00000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_pre_n] },
     .{ .base = 0x2cc00000, .sizes = _fp_pairs, .args = &[_f_d_w, _f_a_w, _mem_pair_post_n] },
@@ -115,8 +123,18 @@ ldp := _a.Instruction{ .forms = &[
 
 stp := _a.Instruction{ .forms = &[
     .{ .base = 0x29000000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_n_w] },
-    .{ .base = 0x29800000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_pre_n_w] },
-    .{ .base = 0x28800000, .sizes = _pairs, .args = &[_r_d, _r_a, _mem_pair_post_n_w] },
+    .{
+        .base = 0x29800000,
+        .sizes = _pairs,
+        .args = &[_r_d, _r_a, _mem_pair_pre_n_w],
+        .apart = _pair_stored_back
+    },
+    .{
+        .base = 0x28800000,
+        .sizes = _pairs,
+        .args = &[_r_d, _r_a, _mem_pair_post_n_w],
+        .apart = _pair_stored_back
+    },
     .{ .base = 0x2d000000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_n_w] },
     .{ .base = 0x2d800000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_pre_n_w] },
     .{ .base = 0x2c800000, .sizes = _fp_pairs, .args = &[_f_d, _f_a, _mem_pair_post_n_w] },
@@ -139,7 +157,7 @@ stlr := _a.Instruction{ .forms = &[
 /// Exclusive stores, writing whether they failed.
 exclusive := _a.Family{
     .forms = &[
-        .{ .base = .\or(0x0), .sizes = _access, .args = &[_w_m_w, _r_d, _mem_base_n_w] },
+        .{ .base = .\or(0x0), .sizes = _access, .args = &[_w_m_w, _r_d, _mem_base_n_w], .apart = _status },
     ],
 };
 stxr := _a.Member{ .family = exclusive, .bits = 0x8007c00 };

@@ -27,53 +27,55 @@ pub(crate) const STP: [table::Form; 6usize] = [
         ],
     ),
     table::Form::new(
-        0x2980_0000,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x8000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                10,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::PairPre, table::Width::Inst),
-                5,
-                table::Access::Write,
-            ),
-        ],
-    ),
+            0x2980_0000,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x8000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    10,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::PairPre, table::Width::Inst),
+                    5,
+                    table::Access::Write,
+                ),
+            ],
+        )
+        .apart(&[[0, 2], [1, 2]]),
     table::Form::new(
-        0x2880_0000,
-        &[
-            table::Sized::new(reg::Size::B32, 0x0000_0000),
-            table::Sized::new(reg::Size::B64, 0x8000_0000),
-        ],
-        &[
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                0,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
-                10,
-                table::Access::Read,
-            ),
-            table::Arg::new(
-                table::Kind::Mem(table::Mode::PairPost, table::Width::Inst),
-                5,
-                table::Access::Write,
-            ),
-        ],
-    ),
+            0x2880_0000,
+            &[
+                table::Sized::new(reg::Size::B32, 0x0000_0000),
+                table::Sized::new(reg::Size::B64, 0x8000_0000),
+            ],
+            &[
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    0,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Gpr(table::R31::Zr, table::Width::Inst),
+                    10,
+                    table::Access::Read,
+                ),
+                table::Arg::new(
+                    table::Kind::Mem(table::Mode::PairPost, table::Width::Inst),
+                    5,
+                    table::Access::Write,
+                ),
+            ],
+        )
+        .apart(&[[0, 2], [1, 2]]),
     table::Form::new(
         0x2d00_0000,
         &[

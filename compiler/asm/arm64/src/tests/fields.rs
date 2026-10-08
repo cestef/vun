@@ -105,3 +105,22 @@ fn constants_fold_into_the_move_that_holds_them() {
     let add = |v: i64| Op::Add.form::<Sym>(Size::B64, &[Reg::X0.into(), Reg::Sp.into(), v.into()]).is_some();
     assert!(add(0xfff) && add(0xfff_000) && !add(0x1001) && !add(-1));
 }
+
+#[test]
+fn registers_the_manual_calls_unpredictable_are_refused() {
+    let form = |op: Op, operands: &[Operand<Sym>]| op.form(Size::B64, operands).is_some();
+    let (pair, back) = (Mem::<Sym>::at(Reg::X2, 0), Mem::<Sym>::Pre { base: Reg::X2, offset: 16 });
+    assert!(form(Op::Ldp, &[Reg::X0.into(), Reg::X1.into(), pair.into()]));
+    assert!(!form(Op::Ldp, &[Reg::X0.into(), Reg::X0.into(), pair.into()]));
+    assert!(form(Op::Stp, &[Reg::X0.into(), Reg::X0.into(), pair.into()]));
+    assert!(!form(Op::Ldp, &[Reg::X0.into(), Reg::X2.into(), back.into()]));
+    assert!(!form(Op::Stp, &[Reg::X0.into(), Reg::X2.into(), back.into()]));
+    assert!(!form(Op::Ldr, &[Reg::X2.into(), back.into()]));
+    let push = Mem::<Sym>::Pre { base: Reg::Sp, offset: -16 };
+    assert!(form(Op::Str, &[Reg::Zr.into(), push.into()]));
+    let exclusive = |status: Reg, value: Reg| {
+        form(Op::Stxr, &[status.into(), value.into(), Mem::<Sym>::at(Reg::X2, 0).into()])
+    };
+    assert!(exclusive(Reg::X0, Reg::X1));
+    assert!(!exclusive(Reg::X1, Reg::X1));
+}

@@ -16,5 +16,8 @@ pub const reads: Item = Item::new(&["lang", "arch", "arm64", "Form", "reads"]);
 pub const writes: Item = Item::new(&["lang", "arch", "arm64", "Form", "writes"]);
 pub const flags: Item = Item::new(&["lang", "arch", "arm64", "Form", "flags"]);
 pub const flow: Item = Item::new(&["lang", "arch", "arm64", "Form", "flow"]);
+/// Pairs of operand positions whose registers must differ, a memory operand's by its base:
+/// the manual calls the instruction unpredictable where they do not.
+pub const apart: Item = Item::new(&["lang", "arch", "arm64", "Form", "apart"]);
 /// What a processor needs to have the form, if not every one has it.
 pub const requires: Item = Item::new(&["lang", "arch", "arm64", "Form", "requires"]);

@@ -82,8 +82,8 @@ impl<S> From<i64> for Operand<S> {
 impl<S> vun_isa::word::Named for Operand<S> {
     fn named(&self) -> Option<u8> {
         match self {
-            Self::Reg(r) | Self::Shifted(r, _) | Self::Extended(r, ..) => Some(r.number()),
-            Self::Mem(mem) => Some(mem.base().number()),
+            Self::Reg(r) | Self::Shifted(r, _) | Self::Extended(r, ..) => Some(*r as u8),
+            Self::Mem(mem) => Some(mem.base() as u8),
             _ => None,
         }
     }

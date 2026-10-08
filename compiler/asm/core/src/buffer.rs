@@ -149,6 +149,16 @@ impl<I: Isa, S: Copy> Buffer<I, S> {
         }
     }
 
+    /// Emits one instruction with `emit`, given where it starts, and lists the `inst` it is where
+    /// the code is listed.
+    pub fn emitting(&mut self, inst: impl FnOnce() -> I::Inst<S>, emit: impl FnOnce(&mut Self, u64)) {
+        let at = self.here();
+        emit(self, at);
+        if self.lists() {
+            self.list(at, inst());
+        }
+    }
+
     /// Overwrites the bytes at `at`, emitted earlier.
     ///
     /// # Panics

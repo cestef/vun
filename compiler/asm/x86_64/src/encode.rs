@@ -62,11 +62,7 @@ impl<S: Copy> Emit<S> for Asm<S> {
 
 /// Encodes `op` by `form`, listing it where the code is listed.
 fn put<S: Copy>(asm: &mut Asm<S>, op: Op, form: &Form, size: Size, operands: &[Operand<S>]) {
-    let at = asm.here();
-    encode(asm, form, size, operands);
-    if asm.lists() {
-        asm.list(at, Inst::new(op, size, operands));
-    }
+    asm.emitting(|| Inst::new(op, size, operands), |asm, _| encode(asm, form, size, operands));
 }
 
 /// The three bits and the REX bit of a register operand.
