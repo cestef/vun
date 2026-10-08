@@ -1,0 +1,21 @@
+//! Memory and loops: the primes below 400000 by the sieve of Eratosthenes.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    mut composite: [400000]bool = [false; 400000];
+    mut count: u32 = 0;
+    for i in 2..400000 {
+        if !composite[i] {
+            count = (count + 1).wrap(u32);
+            mut j: usize = (i * i).wrap(usize);
+            for j < 400000 {
+                composite[j] = true;
+                j = (j + i).wrap(usize);
+            }
+        }
+    }
+    std.fmt.println(&mut out, "{}", count);
+    .ok
+};

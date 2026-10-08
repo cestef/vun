@@ -146,6 +146,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (TOOL_BIND_SKIPPED, "lang/lang/errors/tool/bind_skipped.md"),
     (TOOL_NOTHING_TO_REDUCE, "lang/lang/errors/tool/nothing_to_reduce.md"),
     (TOOL_DISASM_FAILED, "lang/lang/errors/tool/disasm_failed.md"),
+    (TOOL_PROFILE_FAILED, "lang/lang/errors/tool/profile_failed.md"),
     (TOOLCHAIN_INSTALL_FAILED, "lang/lang/errors/toolchain/install_failed.md"),
     (TOOLCHAIN_NOT_INSTALLED, "lang/lang/errors/toolchain/not_installed.md"),
     (TOOLCHAIN_IN_USE, "lang/lang/errors/toolchain/in_use.md"),

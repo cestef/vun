@@ -1,0 +1,22 @@
+[package]
+name = "vun-profile"
+description = "Where a compile spends its instructions and time: callgrind profiles folded into functions and crates, samples of timings, baselines."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+vun-data.workspace = true
+vun-driver.workspace = true
+vun-fs.workspace = true
+vun-intern.workspace = true
+vun-term.workspace = true
+vun-variants.workspace = true
+vun-build.workspace = true
+vun-par.workspace = true
+vun-trace.workspace = true

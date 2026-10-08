@@ -8,3 +8,4 @@ pub const TOOL_BIND_FAILED: DiagId = DiagId::Lang(Lang::ToolBindFailed);
 pub const TOOL_BIND_SKIPPED: DiagId = DiagId::Lang(Lang::ToolBindSkipped);
 pub const TOOL_NOTHING_TO_REDUCE: DiagId = DiagId::Lang(Lang::ToolNothingToReduce);
 pub const TOOL_DISASM_FAILED: DiagId = DiagId::Lang(Lang::ToolDisasmFailed);
+pub const TOOL_PROFILE_FAILED: DiagId = DiagId::Lang(Lang::ToolProfileFailed);

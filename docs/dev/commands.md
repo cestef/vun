@@ -303,6 +303,24 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   /tmp/v.perf target/release/vun check f.vun`, then `perf report -i /tmp/v.perf --no-children
   --sort symbol --stdio -g none`. A benchmark alone: `target/release/deps/<bench>-<hash> --bench
   --profile-time 5 <filter>` under `perf record`. Bound every run with `timeout`.
+- `vun debug profile [workload...]` measures the compiler and the programs it builds so that two
+  runs compare. `--measure instructions` (the default) runs under `valgrind --tool=callgrind`
+  with one thread: the count of a warm run repeats to under 0.1%, so a change of 0.5% is real;
+  it ranks crates (`Source`) and functions, with calls and, where the function is not in a call
+  cycle, the cost with its callees (`cycle` otherwise; most of the compiler is one cycle through
+  the query engine), and `--callers` lists who calls each. `--measure time` takes `--samples`
+  runs of `--timings` (cold from an empty `VUN_STORE` each time, warm after one unmeasured run)
+  and ranks stages and queries by own time with the spread. Workloads are `check-*` and
+  `build-*` (the compiler, `--phase cold|warm`, both by default) and `run-*` (`corpus/bench`: the
+  program is built unmeasured, then the program is counted or timed; `--backend` picks the code
+  generator, release profile). `--save` keeps the results as a snapshot under `.vun/profile/`,
+  and a later run prints the change against it (`--snapshot <name>`, `--fail-over <pct>` fails
+  on a regression). Cold counts differ by about 1% between runs, so judge a change on the warm
+  phase or on time. Names need debug information: build the measured compiler with
+  `RUSTFLAGS="-C force-frame-pointers=yes" CARGO_PROFILE_RELEASE_DEBUG=1
+  CARGO_TARGET_DIR=target/profiling cargo build --release -p vun-cli` and pass it as `--exe`.
+  Run it on a remote with `valgrind` (`am3.wg`). Callgrind stops on an instruction it does not
+  know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
 - Memory per nesting level of compile-time calls: evaluate a recursion through an annotation
   (`depth := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + depth(n - 1)).sat(u32) } };
   c: Int(depth(N)..=depth(N)) = 1;`) for two depths, each from nothing (`rm -rf .vun`,

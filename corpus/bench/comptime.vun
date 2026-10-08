@@ -1,0 +1,22 @@
+//! Compile-time evaluation: recursion and loops the interpreter runs while checking.
+
+depth := (n: u32) -> u32 { if n == 0 { 0 } else { (1 + depth(n - 1)).sat(u32) } };
+
+sum := (n: u32) -> u32 {
+    mut total: u32 = 0;
+    for i in 0..n {
+        total = (total + i).sat(u32);
+    }
+    total
+};
+
+fib := (n: u32) -> u32 { if n < 2 { n } else { (fib(n - 1) + fib(n - 2)).sat(u32) } };
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    $assert(depth(500) == 500);
+    $assert(sum(20000) == 199990000);
+    $assert(fib(22) == 17711);
+    .ok
+};

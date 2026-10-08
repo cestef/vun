@@ -216,6 +216,7 @@ pub enum Lang {
     ToolBindSkipped,
     ToolNothingToReduce,
     ToolDisasmFailed,
+    ToolProfileFailed,
     /// The toolchains installed side by side, and releases (spec 12, section 6).
     Toolchain,
     ToolchainInstallFailed,

@@ -92,7 +92,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   the session, codegen, builds, stacks, compare, `toolchain.rs`: the chosen target equipped with
   the machine's tools, `Session::command` running through the runner), `vun-cli` (the `vun`
   command tree, a shell over the driver), `vun-command` (declarative CLI, completions, JSON
-  output), `vun-doc`, `vun-disasm` (an ELF or PE file's code read back as instructions by yaxpeax,
+  output), `vun-doc`, `vun-profile` (`vun debug profile`: callgrind profiles read and folded into crates and functions, workloads, snapshots), `vun-disasm` (an ELF or PE file's code read back as instructions by yaxpeax,
   labelled by its symbols, `vun debug disasm`), `vun-lsp` (the server: a table of methods, each a protocol type the server
   `Answers` or `Hears`), `vun-lsp-protocol` (the protocol's values and methods as types),
   `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,

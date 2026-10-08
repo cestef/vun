@@ -85,6 +85,7 @@ vun-sema-ty.workspace = true
 vun-backend.workspace = true
 vun-build.workspace = true
 vun-campaign.workspace = true
+vun-profile.workspace = true
 vun-command.workspace = true
 vun-diag.workspace = true
 vun-disasm.workspace = true

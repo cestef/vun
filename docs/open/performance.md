@@ -29,3 +29,26 @@
 - Cold `vun test lib/std` on `am3.wg` (empty `VUN_STORE`): `Body::propagate` is 3.4% of the samples
   with its callees and 0.07% on its own, so the repeated scans cost nothing; the rest is the
   compile-time calls `fold` evaluates, which `concrete` (2.6 s total across threads) holds.
+- `vun debug profile` on `am3.wg` (2026-10-08, hello, warm unless said): 332 M instructions, 47 ms.
+  Where it goes, in order of what to try:
+  1. Parsing: `parsed` is 50% of the warm time (24 ms for 23 files) and `Parser::read_root`
+     runs 1.0M times at 13.7% own, `taking` 9%, `Positions::filter` 6%. Warm still parses the
+     library because parse trees are not saved; saving them or making `read_root` cheaper
+     per call (45 instructions each, 1.0M calls) is the largest single win.
+  2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold on aarch64: the build uses
+     the portable code, not NEON; enabling the `neon` feature of `blake3` should cut most of it.
+  3. Cold: `Table<Parsed>::slot` 2.4M calls at 140 instructions each (3.9%), `Table<Typed>::slot`
+     and `Table<DeclValue>::slot` the same shape; `<Vec<u8> as Encode>::encode` 875 instructions
+     per call (3.8%, per byte); SipHash `write` 2.3% (a `std` `HashMap` with the default hasher
+     somewhere hot; `foldhash` is used elsewhere); `Value::clone` 10.7M calls and its drop 6.0M
+     (4.2% together).
+  4. Time cold (hello 534 ms): `parsed` 25%, `metered_call` 13%, `typed` 12.5%, `mir` 9%,
+     `save memos` 9%, waiting for claims 6%. Comptime-heavy (`corpus/bench/comptime.vun`)
+     is 857 ms, 26% in `metered_call` over 31 000 calls.
+  Cold counts vary ~1% between runs (warm 0.0%); find why (a time- or address-dependent order).
+- Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
+  cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`
+  8.4 M (2.3 ms), 19% of it `memcpy` of the array initializer; `mix` 87 ms. Native binaries
+  carry no function names (`f129`), so `profile` cannot name a hot function there: emit symbols
+  for local functions. Nothing yet compares the backends instruction for instruction in one
+  report; run the same `run-*` with `--backend`.

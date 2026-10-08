@@ -1,0 +1,19 @@
+//! Integer arithmetic: a xorshift generator folded into a hash, with no memory and no calls.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut out := sys.stdout();
+    mut state: u64 = 88172645463325252;
+    mut hash: u64 = 14695981039346656037;
+    mut i: u32 = 0;
+    for i < 40000000 {
+        state = (state ^ (state << 13)).wrap(u64);
+        state = (state ^ (state >> 7)).wrap(u64);
+        state = (state ^ (state << 17)).wrap(u64);
+        hash = ((hash ^ state) * 1099511628211).wrap(u64);
+        i += 1;
+    }
+    std.fmt.println(&mut out, "{}", hash);
+    .ok
+};

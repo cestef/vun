@@ -1542,6 +1542,7 @@ dependencies = [
  "vun-link",
  "vun-mir",
  "vun-origin",
+ "vun-profile",
  "vun-query",
  "vun-reduce",
  "vun-sema",
@@ -2657,6 +2658,21 @@ dependencies = [
  "vun-codec",
  "vun-items",
  "vun-target",
+]
+
+[[package]]
+name = "vun-profile"
+version = "0.1.0"
+dependencies = [
+ "vun-build",
+ "vun-data",
+ "vun-driver",
+ "vun-fs",
+ "vun-intern",
+ "vun-par",
+ "vun-term",
+ "vun-trace",
+ "vun-variants",
 ]
 
 [[package]]

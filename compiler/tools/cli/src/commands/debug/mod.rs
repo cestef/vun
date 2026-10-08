@@ -6,6 +6,7 @@ mod compare;
 mod coverage;
 mod disasm;
 mod dump;
+mod profile;
 mod queries;
 mod reduce;
 mod smith;
@@ -65,6 +66,12 @@ pub(super) const COMMANDS: &[Command<Session>] = &[
         reduce::reduce,
     )
     .params(&[FILE, reduce::KEEP, vun_driver::codegen::BACKEND]),
+    Command::run(
+        "profile",
+        "a compile measured by instructions or time, ranked by function, crate, stage and query, against a snapshot",
+        profile::profile,
+    )
+    .params(profile::PARAMS),
     Command::run(
         "smith",
         "programs made by chance, each tried through every stage and backend",
