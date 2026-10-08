@@ -29,6 +29,9 @@ pub trait Emits: Arch {
     /// The size a move of a register to itself changes nothing at; narrower ones clear the
     /// bits above.
     const WHOLE: Self::Size;
+    /// The register that reads as zero, which an operand that is the constant 0 takes where no
+    /// form takes the constant.
+    const ZERO: Option<Self::Reg> = None;
 
     fn reg(r: Self::Reg) -> Self::Operand;
     fn imm(value: i64) -> Self::Operand;

@@ -3,7 +3,7 @@
 
 use vun_backend::Missing;
 use vun_lir::func::Conv;
-use vun_lir::{AbiType, BinOp, Cond, Ext, Scalar, Terminator};
+use vun_lir::{AbiType, Access, BinOp, Cond, Ext, Scalar, Terminator};
 use yaxpeax_arch::{Decoder, U8Reader};
 use yaxpeax_arm::armv8::a64::InstDecoder;
 
@@ -89,6 +89,18 @@ fn a_dying_operand_s_register_holds_the_result() {
             "ret"
         ]
     );
+}
+
+#[test]
+fn a_store_of_zero_writes_the_zero_register() {
+    let code = compiled::<Arm>(|b, n, origin| {
+        let zero = b.constant(Scalar::I64, 0, origin);
+        b.store(zero, n, Access::Plain, origin);
+        b.terminate(Terminator::Return(Some(n)));
+    });
+    let text = checked(&code);
+    assert!(text.iter().any(|i| i == "str xzr, [x0]"), "{text:#?}");
+    assert!(!text.iter().any(|i| i.starts_with("mov x1, #0x0")), "{text:#?}");
 }
 
 #[test]

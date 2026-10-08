@@ -160,7 +160,10 @@ impl<A: Emits> Cx<'_, A> {
             while !A::fits(self.asm.processor(), step.op, size, ops.all()) {
                 let Some(at) = ops.folded[..ops.len].iter().position(Option::is_some) else { break };
                 ops.chosen[at] = match ops.folded[at].take().expect("found folded") {
-                    Folded::Value(v) => A::reg(self.reg(v)),
+                    Folded::Value(v) => match self.zero_operand(v, at, &mut ops, size, step.op) {
+                        Some(zero) => zero,
+                        None => A::reg(self.reg(v)),
+                    },
                     Folded::Address(v) => A::at(self.reg(v)),
                     Folded::Through(v, r) => {
                         self.reg_to(v, r);
@@ -188,6 +191,25 @@ impl<A: Emits> Cx<'_, A> {
             }
         }
         (A::reg(self.reg(v)), None)
+    }
+
+    /// The zero register as operand `at`, when `v` is the constant 0 and a form takes it there.
+    fn zero_operand(
+        &self,
+        v: Value,
+        at: usize,
+        ops: &mut Operands<A>,
+        size: A::Size,
+        op: A::Op,
+    ) -> Option<A::Operand> {
+        let zero = A::reg(A::ZERO?);
+        if self.imm(v) != Some(0) {
+            return None;
+        }
+        let kept = std::mem::replace(&mut ops.chosen[at], zero);
+        let fits = A::fits(self.asm.processor(), op, size, ops.all());
+        ops.chosen[at] = kept;
+        fits.then_some(zero)
     }
 
     /// Whether a step after step `i` reads operand `k`.

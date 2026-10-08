@@ -131,6 +131,7 @@ impl Emits for Arm {
 
     const MOV: Op = Op::Mov;
     const WHOLE: Size = Size::B64;
+    const ZERO: Option<Reg> = Some(Reg::Zr);
 
     fn reg(r: Reg) -> Opnd {
         r.into()
