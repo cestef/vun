@@ -27,9 +27,5 @@
   queries (`Session::untargeted`), which hides it; the cause is a read of the unset `TargetOf`
   input, saved with the memo but not held against the value set later.
 - `Concrete::propagate` reaches its fixed point one constant level per scan of the body
-  (`concrete/mod.rs`); a worklist over writes would do it in one.
-- `Table::entries` hashes every key again to test that it is canonical, on each save and load
-  (`table/mod.rs`); the hash could be kept in the `Entry`.
-- The lint pass rebuilds a node's description once per lint that visits it (`lint/src/rule.rs`).
-- `Cx` verify-ahead results (`settled`, `cx/settle.rs`) are never pruned: a long-lived `Db`, the
-  language server's, grows with every edit.
+  (`concrete/mod.rs`); a worklist over writes would do it in one. It does not show in the
+  profile of a warm `vun test lib/std`; measure a cold run before changing it.

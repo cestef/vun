@@ -50,12 +50,7 @@ template and README (decisions 431 to 440).
 
 - C records by value are lowered from `vun_abi::Passing` (decisions 503, 511); a signature whose
   placements still differ from Cranelift's is handed over (`Missing::Placement`).
-- Native and wasm emit the return sequence after the jump of a tail call, as Cranelift and C do
-  not (`native/core/src/select/term.rs`, `back/wasm/src/build/control.rs`): dead code, but it adds a
-  `Returned` step to the CFI of the function. The framework could tell a terminator that follows
-  one.
-- The encoding backends each write `put` (`asm/{arm64,thumb,x86_64}/src/encode.rs`), with
-  different signatures, and the three native backends each map `Cond` to a condition code; x86-64's
-  `copy_bytes` panics on a displacement past 2 GiB where `Carries::copy_bytes` steps the address.
-- arm64's forms cannot say that two registers differ, so `ldp x0, x0, [x1]` assembles (thumb sets
-  `apart`).
+- The three native backends each map `Cond` to a condition code: the `Cc` types are generated per
+  ISA (`isa/*/src/generated/cond.rs`), so one map would need a trait naming every code twice.
+- A call whose stack arguments, or a function whose frame, passes 1 GiB is refused
+  (`Missing::Frame`); the by-value copies of records made for a call are not counted yet.

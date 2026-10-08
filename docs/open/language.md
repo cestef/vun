@@ -13,7 +13,5 @@
   result under the C backend with GCC, which refuses `musttail` there (`TailCalls` could say which
   compilers jump with one); the assisting backend compiles such a function. The x86-64 passing of
   records by address (Windows) is covered by unit tests only, no Windows target runs here.
-- Silent limits where a diagnostic belongs: a tuple index past `u32` lowers to `Name::Hole`
-  (`front/hir/src/lower/mod.rs`, which has no diagnostics yet), a compile-time integer past `i128`
-  has no `Literal` (`sema/ty/src/literal.rs`), and the declaration number of an origin is a `u16`
-  (`Anchor::Declaration`).
+- A compile-time integer past `i128` has no `Literal` (`sema/ty/src/literal.rs`), so tools show
+  no value for it.

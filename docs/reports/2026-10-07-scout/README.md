@@ -40,9 +40,17 @@ report overstates in places; what holds and what was done:
   identifier panic is only `raw` of `self`, `Self`, `super`, `crate` or `_`.
 - **Stale by the time of the triage:** list 5 and the merge items (`lines` passes; the `tmp_*`
   fixtures and the `TailResult` line are gone).
-- **Left,** in `docs/open/`: the dead epilogue after a tail jump, the three `put` encoders and
-  `Cond` maps, arm64 `apart`, the silent limits (tuple index, `i128` literals, `u16` declaration
-  number), the `derive` prelude question, and four performance items.
+- **Fixed in a second round:** the dead return after a tail jump (`Function::ends_in_tail_call`,
+  skipped by wasm and the native backends); the shared listing step of the three `put` encoders
+  (`Buffer::emitting`); arm64 `apart` (unpredictable pairs, write-back and exclusive status
+  registers); a tuple position past `u32` is `syntax.tuple_index_too_large`; the origin's
+  declaration number is a `u32`; frames and stack arguments past 1 GiB are `Missing::Frame` where
+  `copy_bytes` panicked; `Table::entries` no longer hashes keys again; the lint description is built
+  once per node; `settled` is cleared at each new revision; `replaced` is searched by bisection;
+  `exponent_cap` is gone; `derive` is documented as `lang.derive`.
+- **Left,** in `docs/open/`: the `Cond` maps (the `Cc` types are generated per ISA), `i128`
+  literals (the literal writer is for data), and `Concrete::propagate`, which does not show in a
+  profile.
 
 ## Caveat on the baseline
 
