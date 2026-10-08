@@ -1,6 +1,8 @@
 //! The frame: everything below the frame pointer, laid out as it is needed, its size known when
 //! the function ends.
 
+use vun_backend::Missing;
+
 /// The frame of the function compiled.
 #[derive(Default)]
 pub struct Frame {
@@ -11,6 +13,18 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// The most bytes of frame: its accesses are displacements of 32 bits, signed, and what stays
+    /// below the limit leaves room for the words a function reserves besides.
+    pub const LIMIT: u64 = 1 << 30;
+
+    /// Whether `bytes` fit a frame.
+    ///
+    /// # Errors
+    /// `Missing::Frame` where they do not.
+    pub const fn fit(bytes: u64) -> Result<(), Missing> {
+        if bytes > Self::LIMIT { Err(Missing::Frame(bytes)) } else { Ok(()) }
+    }
+
     /// Reserves `size` bytes at `align`: their offset from the frame pointer.
     ///
     /// # Panics
@@ -21,8 +35,19 @@ impl Frame {
     }
 
     /// Makes room for `bytes` of a call's stack arguments.
-    pub fn outgoing(&mut self, bytes: u64) {
+    ///
+    /// # Errors
+    /// `Missing::Frame` where they do not fit.
+    pub fn outgoing(&mut self, bytes: u64) -> Result<(), Missing> {
+        Self::fit(bytes)?;
         self.outgoing = self.outgoing.max(bytes);
+        Ok(())
+    }
+
+    /// Bytes below the frame pointer taken so far.
+    #[must_use]
+    pub const fn depth(&self) -> u64 {
+        self.depth
     }
 
     /// The frame's size, aligned to `align`.

@@ -217,3 +217,22 @@ fn a_checked_write_keeps_the_floating_point_registers_its_block_names() {
     };
     assert!(insts[..call].iter().any(spilled) && insts[call..].iter().any(reloaded), "{insts:#?}");
 }
+
+#[test]
+fn a_frame_past_what_displacements_reach_is_refused() {
+    let big = |bytes: u64| {
+        compile::<X86>(|b, n, origin| {
+            b.slot(bytes, 8, origin);
+            b.terminate(Terminator::Return(Some(n)));
+        })
+        .err()
+        .map(|lack| lack.missing)
+    };
+    assert_eq!(big(1 << 20), None);
+    assert_eq!(big(1 << 31), Some(Missing::Frame(1 << 31)));
+    let arm = compile::<Arm>(|b, n, origin| {
+        b.slot(1 << 31, 8, origin);
+        b.terminate(Terminator::Return(Some(n)));
+    });
+    assert_eq!(arm.err().map(|lack| lack.missing), Some(Missing::Frame(1 << 31)));
+}

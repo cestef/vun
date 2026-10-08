@@ -93,6 +93,7 @@ pub fn compile<A: Isel>(
         if slot.align > A::STACK_ALIGN {
             return Err(Missing::Align(slot.align).at(slot.origin));
         }
+        Frame::fit(frame.depth() + slot.size).map_err(|m| m.at(slot.origin))?;
         slots.push(frame.reserve(slot.size, slot.align));
     }
     let values = Assignment::all::<A>(f, &loops, &order, &slots, unit.pointer_bits);

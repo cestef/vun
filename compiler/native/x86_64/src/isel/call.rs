@@ -32,7 +32,7 @@ impl Sel<'_, '_> {
                 return Err(self.lack(Missing::TailCall));
             }
         }
-        self.frame.outgoing(passing.stack);
+        self.frame.outgoing(passing.stack).map_err(|m| self.lack(m))?;
         let copies = self.write_memory(args, &passing, kind);
         self.load_registers(signature, args, &passing, copies, kind)?;
         // A variadic C function reads how many SSE registers carry arguments from `al`.

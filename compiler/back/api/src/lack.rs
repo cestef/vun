@@ -60,6 +60,8 @@ pub enum Missing {
     /// An instruction needing what the target's processor lacks, which is all the backend
     /// compiles the operation to.
     Unavailable(Needed),
+    /// A frame of this many bytes, more than the displacements of its accesses reach.
+    Frame(u64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode)]
@@ -123,6 +125,7 @@ impl Missing {
             Missing::Variadic => Msg::new().text("variadic arguments of C functions"),
             Missing::Section => Msg::new().text("link sections"),
             Missing::PerThread => Msg::new().text("storage per thread"),
+            Missing::Frame(n) => Msg::new().text("a frame of ").num(n).text(" bytes"),
             Missing::Align(n) => Msg::new().text("an alignment of ").num(n).text(" bytes"),
             Missing::Width(n) => Msg::new().text("an integer of ").num(n).text(" bits on this target"),
             Missing::Unaligned(n) => Msg::new().text("an address at offset ").num(n).text(" of data"),

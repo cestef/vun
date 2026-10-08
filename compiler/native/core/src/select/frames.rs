@@ -73,7 +73,7 @@ pub trait Frames: Carries {
                 return Err(cx.lack(Missing::TailCall));
             }
         }
-        cx.frame.outgoing(passing.stack);
+        cx.frame.outgoing(passing.stack).map_err(|m| cx.lack(m))?;
         let copies = Self::write_memory(cx, args, &passing, kind);
         Self::load_registers(cx, signature, args, &passing, copies, kind)?;
         if kind == CallKind::Tail {
