@@ -30,6 +30,25 @@ pub enum Domain {
 }
 
 impl Cond {
+    /// The comparison that holds when this one does not, for an integer one: a float comparison
+    /// is false of a NaN either way.
+    #[must_use]
+    pub const fn negated(self) -> Option<Self> {
+        Some(match self {
+            Self::Eq => Self::Ne,
+            Self::Ne => Self::Eq,
+            Self::SLt => Self::SGe,
+            Self::SLe => Self::SGt,
+            Self::SGt => Self::SLe,
+            Self::SGe => Self::SLt,
+            Self::ULt => Self::UGe,
+            Self::ULe => Self::UGt,
+            Self::UGt => Self::ULe,
+            Self::UGe => Self::ULt,
+            Self::FEq | Self::FNe | Self::FLt | Self::FLe | Self::FGt | Self::FGe => return None,
+        })
+    }
+
     /// The comparison reading its operands as unsigned, for an integer one.
     #[must_use]
     pub const fn unsigned(self) -> Self {

@@ -73,3 +73,44 @@ fn an_operation_in_an_unreached_block_reads_what_another_such_block_folded_away(
     let mut func = build.finish();
     assert_eq!(func.fold(), 1, "the addition of zero");
 }
+
+#[test]
+fn the_truth_of_a_comparison_compared_with_zero_is_the_negated_comparison() {
+    use vun_lir::{AbiType, Ext, Terminator};
+    let origins = OriginTable::new();
+    let at = origin(&origins);
+    let signature = Signature {
+        conv: Conv::Vun,
+        params: vec![AbiType::Int(Scalar::I32, Ext::Sign)],
+        result: Some(AbiType::Int(Scalar::I8, Ext::Zero)),
+        variadic: None,
+        convention: None,
+    };
+    let mut build = Builder::new(Linkage::Internal, signature, at);
+    let entry = build.current();
+    let x = build.params(entry)[0];
+    let ten = build.constant(Scalar::I32, 10, at);
+    let [zero, one] = [0, 1].map(|bits| build.constant(Scalar::I8, bits, at));
+    let less = build.push(InstKind::Compare { cond: Cond::SLt, a: x, b: ten }, Some(Scalar::I8), at).unwrap();
+    let not_less =
+        build.push(InstKind::Compare { cond: Cond::Eq, a: less, b: zero }, Some(Scalar::I8), at).unwrap();
+    let still_less =
+        build.push(InstKind::Compare { cond: Cond::Eq, a: less, b: one }, Some(Scalar::I8), at).unwrap();
+    let both = build
+        .push(InstKind::Binary { op: vun_lir::BinOp::Xor, a: not_less, b: still_less }, Some(Scalar::I8), at)
+        .unwrap();
+    build.terminate(Terminator::Return(Some(both)));
+    let mut func = build.finish();
+    func.fold();
+    let conds: Vec<Cond> = func
+        .blocks
+        .iter()
+        .flat_map(|(_, b)| &b.insts)
+        .filter_map(|&i| match func.insts[i].kind {
+            InstKind::Compare { cond, .. } => Some(cond),
+            _ => None,
+        })
+        .collect();
+    // `(x < 10) == 0` is `x >= 10`; `(x < 10) == 1` is the comparison itself, which stays used.
+    assert_eq!(conds, [Cond::SLt, Cond::SGe]);
+}

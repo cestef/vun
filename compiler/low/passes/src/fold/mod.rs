@@ -10,8 +10,8 @@ use vun_hash::Set;
 use crate::replaced::Replaced;
 use vun_lir::analysis::{Cfg, Loops};
 use vun_lir::entity::{Block, Inst, Value};
-use vun_lir::func::Function;
-use vun_lir::inst::{BinOp, InstKind, Right, Terminator};
+use vun_lir::func::{Def, Function};
+use vun_lir::inst::{BinOp, Cond, InstKind, Right, Terminator};
 use vun_lir::ty::Scalar;
 
 pub trait Fold {
@@ -44,6 +44,7 @@ impl Fold for Function {
                 let result = self.insts[inst].result;
                 match self.folded(&kind) {
                     Some(Folded::Constant(ty, bits)) => kind = InstKind::Const { ty, bits },
+                    Some(Folded::Kind(folded)) => kind = folded,
                     Some(Folded::Value(v)) => {
                         replaced.insert(result.expect("a folded operation defines its value"), v);
                         dropped.insert(inst);
@@ -87,6 +88,10 @@ trait Steps {
     /// Whether a comparison defines `value`.
     fn compared(&self, value: Value) -> bool;
 
+    /// The comparison `a cond b` of a comparison's truth with 0 or 1 (`(x < y) == 0`) as that
+    /// comparison or its negation.
+    fn of_comparison(&self, cond: Cond, a: Value, b: Value) -> Option<Folded>;
+
     /// The jump a branch or switch on a constant takes, or one whose targets are all one.
     fn decided(&self, term: &Terminator) -> Option<Terminator>;
 }
@@ -122,6 +127,9 @@ impl Steps for Function {
                 }
             }
             InstKind::Compare { cond, a, b } => {
+                if let Some(folded) = self.of_comparison(cond, a, b) {
+                    return Some(folded);
+                }
                 let ((ty, ka), (_, kb)) = (self.constant(a)?, self.constant(b)?);
                 cond.fold(ty, ka, kb).map(|holds| Folded::Constant(Scalar::I8, u128::from(holds)))
             }
@@ -139,6 +147,21 @@ impl Steps for Function {
 
     fn compared(&self, value: Value) -> bool {
         matches!(self.values[value].def, vun_lir::func::Def::Inst(i) if matches!(self.insts[i].kind, InstKind::Compare { .. }))
+    }
+
+    fn of_comparison(&self, cond: Cond, a: Value, b: Value) -> Option<Folded> {
+        let (Def::Inst(inst), (_, truth)) = (self.values[a].def, self.constant(b)?) else { return None };
+        let InstKind::Compare { cond: inner, a: x, b: y } = self.insts[inst].kind else { return None };
+        // Whether the outer comparison holds when the inner one does.
+        let holds = match (cond, truth) {
+            (Cond::Eq, 1) | (Cond::Ne, 0) => true,
+            (Cond::Eq, 0) | (Cond::Ne, 1) => false,
+            _ => return None,
+        };
+        if holds {
+            return Some(Folded::Value(a));
+        }
+        Some(Folded::Kind(InstKind::Compare { cond: inner.negated()?, a: x, b: y }))
     }
 
     fn decided(&self, term: &Terminator) -> Option<Terminator> {
@@ -169,4 +192,6 @@ enum Folded {
     Constant(Scalar, u128),
     /// One of its operands, as `x * 1` is.
     Value(Value),
+    /// Another operation giving its value.
+    Kind(InstKind),
 }
