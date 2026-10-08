@@ -13,3 +13,8 @@ Aligned := struct {
     #[layout.offset(2)]
     word: u32, //~ layout.offset
 };
+
+Past := struct {
+    #[layout.offset(18446744073709551615)]
+    last: u8, //~ layout.offset
+};

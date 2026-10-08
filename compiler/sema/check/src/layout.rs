@@ -25,6 +25,16 @@ struct Laid<'a> {
     members: &'a MemberTable,
 }
 
+/// Why a field cannot lie where `#[layout.offset(N)]` or declaration order puts it.
+enum Misplaced {
+    /// It starts before the end of the fields before it.
+    Before { end: u64 },
+    /// It starts off its type's alignment.
+    Align { align: u64 },
+    /// It would end past `u64`.
+    Size,
+}
+
 impl Checker<'_, '_, '_> {
     /// Reports the layout attributes of the struct or enum declared by `decl` that its members
     /// break.
@@ -110,34 +120,44 @@ impl Checker<'_, '_, '_> {
     }
 
     /// `#[layout.offset(N)]`: a field lies at or past the end of the one before it, as the
-    /// compiler never reorders, and at a multiple of its alignment.
+    /// compiler never reorders, at a multiple of its alignment, and ends within the sizes a type has.
     fn offsets(&mut self, laid: &Laid<'_>) {
         let cx = self.env.cx;
         let mut end = 0u64;
         for field in &laid.members.fields {
             let Some(layout) = field.ty.as_ref().ok().and_then(|ty| Shapes::layout(cx, ty)) else { return };
-            let at = match field.offset {
-                Some(at) if at < end || at % layout.align != 0 => {
-                    self.offset(laid, field.name, at, end, layout.align);
+            let placed = match field.offset {
+                Some(at) if at < end => Err(Misplaced::Before { end }),
+                Some(at) if at % layout.align != 0 => Err(Misplaced::Align { align: layout.align }),
+                Some(at) => Ok(at),
+                None => end.checked_next_multiple_of(layout.align).ok_or(Misplaced::Size),
+            }
+            .and_then(|at| at.checked_add(layout.size).ok_or(Misplaced::Size));
+            match placed {
+                Ok(next) => end = next,
+                Err(why) => {
+                    self.offset(laid, field.name, field.offset, &why);
                     return;
                 }
-                Some(at) => at,
-                None => end.next_multiple_of(layout.align),
-            };
-            end = at + layout.size;
+            }
         }
     }
 
-    /// Reports the field `name` placed at `at`, before `end` or off its alignment `align`.
-    fn offset(&mut self, laid: &Laid<'_>, name: Symbol, at: u64, end: u64, align: u64) {
-        let msg = Msg::new().code(name.as_str()).text(" cannot be placed at ").num(at);
-        let why = if at < end {
-            Msg::new()
+    /// Reports the field `name`, given the offset `at` if it was, misplaced for `why`.
+    fn offset(&mut self, laid: &Laid<'_>, name: Symbol, at: Option<u64>, why: &Misplaced) {
+        let mut msg = Msg::new().code(name.as_str()).text(" cannot be placed");
+        if let Some(at) = at {
+            msg = msg.text(" at ").num(at);
+        }
+        let why = match *why {
+            Misplaced::Before { end } => Msg::new()
                 .text("the fields before it end at ")
                 .num(end)
-                .text("; fields keep their declaration order")
-        } else {
-            Msg::new().text("its type is aligned to ").num(align).text(" bytes")
+                .text("; fields keep their declaration order"),
+            Misplaced::Align { align } => {
+                Msg::new().text("its type is aligned to ").num(align).text(" bytes")
+            }
+            Misplaced::Size => Msg::new().text("it would end past the largest size a type has"),
         };
         let ns = laid.hir.decls[laid.decl].value.and_then(|v| match laid.hir.exprs[v].kind {
             ExprKind::Struct(ns) => Some(ns),
