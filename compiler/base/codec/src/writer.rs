@@ -78,6 +78,10 @@ impl<'r> Writer<'r> {
         self.bytes.push(byte);
     }
 
+    pub fn bytes(&mut self, bytes: &[u8]) {
+        self.bytes.extend_from_slice(bytes);
+    }
+
     /// The bytes of `value` alone, its handles written into this stream's pools.
     pub fn encode<T: Encode + ?Sized>(&mut self, value: &T) -> Vec<u8> {
         self.encode_with(|w| value.encode(w))

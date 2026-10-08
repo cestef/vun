@@ -31,9 +31,7 @@ impl Decode for String {
 impl<T: Encode> Encode for [T] {
     fn encode(&self, w: &mut Writer<'_>) {
         self.len().encode(w);
-        for item in self {
-            item.encode(w);
-        }
+        T::encode_items(self, w);
     }
 }
 
@@ -56,7 +54,7 @@ impl<T: Decode> Decode for Vec<T> {
         if len > most {
             return Err(Malformed::Truncated);
         }
-        (0..len).map(|_| T::decode(r)).collect()
+        T::decode_items(len, r)
     }
 }
 

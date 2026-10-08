@@ -35,16 +35,18 @@
      runs 1.0M times at 13.7% own, `taking` 9%, `Positions::filter` 6%. Warm still parses the
      library because parse trees are not saved; saving them or making `read_root` cheaper
      per call (45 instructions each, 1.0M calls) is the largest single win.
-  2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold on aarch64: the build uses
-     the portable code, not NEON; enabling the `neon` feature of `blake3` should cut most of it.
+  2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold: `blake3` is built with
+     `pure` (decision 67, no C or assembly), which also drops its SIMD paths (NEON on aarch64,
+     AVX2 on x86). Dropping `pure` buys most of that back and costs a C compiler; the owner's
+     call. Hashing fewer bytes (what is hashed on a warm run) costs nothing.
   3. Cold: `Table<Parsed>::slot` 2.4M calls at 140 instructions each (3.9%), `Table<Typed>::slot`
-     and `Table<DeclValue>::slot` the same shape; `<Vec<u8> as Encode>::encode` 875 instructions
-     per call (3.8%, per byte); SipHash `write` 2.3% (a `std` `HashMap` with the default hasher
+     and `Table<DeclValue>::slot` the same shape; SipHash `write` 2.3% (a `std` `HashMap` with the default hasher
      somewhere hot; `foldhash` is used elsewhere); `Value::clone` 10.7M calls and its drop 6.0M
      (4.2% together).
   4. Time cold (hello 534 ms): `parsed` 25%, `metered_call` 13%, `typed` 12.5%, `mir` 9%,
      `save memos` 9%, waiting for claims 6%. Comptime-heavy (`corpus/bench/comptime.vun`)
      is 857 ms, 26% in `metered_call` over 31 000 calls.
+  `Vec<u8>` encoded byte by byte (3.8% cold): fixed, cold `hello` 8.70 G to 8.25 G instructions.
   Cold counts vary ~1% between runs (warm 0.0%); find why (a time- or address-dependent order).
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`

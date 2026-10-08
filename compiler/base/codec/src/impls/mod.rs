@@ -92,11 +92,19 @@ impl Encode for u8 {
     fn encode(&self, w: &mut Writer<'_>) {
         w.byte(*self);
     }
+
+    fn encode_items(items: &[Self], w: &mut Writer<'_>) {
+        w.bytes(items);
+    }
 }
 
 impl Decode for u8 {
     fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed> {
         r.byte()
+    }
+
+    fn decode_items(len: usize, r: &mut Reader<'_>) -> Result<Vec<Self>, Malformed> {
+        r.take(len).map(<[u8]>::to_vec)
     }
 }
 

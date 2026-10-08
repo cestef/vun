@@ -29,6 +29,16 @@ extern crate self as vun_codec;
 pub trait Encode {
     fn encode(&self, w: &mut Writer<'_>);
 
+    /// The items of a sequence, after its length; a type whose items are bytes writes them at once.
+    fn encode_items(items: &[Self], w: &mut Writer<'_>)
+    where
+        Self: Sized,
+    {
+        for item in items {
+            item.encode(w);
+        }
+    }
+
     /// The encoding of `self` alone, which holds no pooled handle.
     fn encoded(&self) -> Vec<u8> {
         let mut w = Writer::new();
@@ -43,6 +53,14 @@ pub trait Decode: Sized {
     /// # Errors
     /// Returns why the bytes are not a value of this type.
     fn decode(r: &mut Reader<'_>) -> Result<Self, Malformed>;
+
+    /// The `len` items of a sequence, whose length is checked against the input already.
+    ///
+    /// # Errors
+    /// Returns why the bytes are not `len` values of this type.
+    fn decode_items(len: usize, r: &mut Reader<'_>) -> Result<Vec<Self>, Malformed> {
+        (0..len).map(|_| Self::decode(r)).collect()
+    }
 
     /// Reads a value that is the whole of `bytes`, which hold no pooled handle.
     ///
