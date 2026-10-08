@@ -10,6 +10,8 @@ pub(super) struct Spec {
     pub(super) free: bool,
     /// The kinds positions name.
     pub(super) named: KindSet,
+    /// Those, and the parts that may lead to them.
+    named_leading: KindSet,
     /// Whether a transparent node may stand for one of `named` (`.of`, `holds`).
     pub(super) through: bool,
     /// The parts it may be (`admits`).
@@ -28,6 +30,7 @@ impl Spec {
         Self {
             free: child.kinds.is_none(),
             named: child.kinds.unwrap_or_default(),
+            named_leading: child.leading,
             through: child.through(),
             admits: child.admitted,
             leading: child.field.leading(),
@@ -42,6 +45,7 @@ impl Spec {
         Self {
             free: self.free || other.free,
             named: self.named.union(other.named),
+            named_leading: self.named_leading.union(other.named_leading),
             through: self.through || other.through,
             admits: self.admits.union(other.admits),
             leading: self.leading.union(other.leading),
@@ -84,7 +88,7 @@ impl Spec {
     /// operand, any operand.
     pub(super) fn reachable(&self) -> KindSet {
         let continuing = !self.named.intersection(NodeKind::continuing()).is_empty();
-        let named = if continuing { self.named.leading() } else { self.named };
+        let named = if continuing { self.named_leading } else { self.named };
         let parts = named.union(self.leading);
         if self.free || continuing { parts.union(NodeKind::operands()) } else { parts }
     }

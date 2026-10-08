@@ -43,6 +43,9 @@ pub struct Child {
     pub starting: Option<TokenSet>,
     /// The parts it may be besides operands (`admits`).
     pub admitted: KindSet,
+    /// `kinds`, and the parts that may lead to one of them, and so on; set once every production
+    /// is known.
+    pub leading: KindSet,
 }
 
 /// How a child term restricts its node.
@@ -74,6 +77,7 @@ impl Read {
             exact,
             starting: None,
             admitted: admitted.unwrap_or_default(),
+            leading: KindSet::EMPTY,
         };
         Self::Child(match (named, restriction) {
             (Some(kind), _) => child(Some(KindSet::EMPTY.with(kind)), true),

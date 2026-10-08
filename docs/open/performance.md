@@ -35,8 +35,11 @@
      (`Reported`) saves them with their value now: warm `hello` 332 M to 115 M instructions, one
      file parsed. The parser itself costs ~7000 instructions a token (11 MiB/s): the engine
      decides over the whole frame stack for each token (`decide`, `holding`, `taking`), which a
-     cold run still pays for every library file (`parsed` is 25% of cold time). Next: make the
-     per-token decision cheaper, or save the parsed file.
+     cold run still pays for every library file (`parsed` is 25% of cold time). The cold parser is
+     ~17% of a cold run (1.4 G of 8.2 G, `hello`) and a cold run happens once per toolchain: it is
+     flat (`Spec` built ~4.6M times, `KindSet` tests, `decide` walking the stack for each token),
+     so only caching decisions across tokens, or saving the parsed file, would change it much.
+     Warm `hello` is 28.6 ms now (47 ms before); blake3 is 19% of what is left.
   2. `blake3::portable::compress_in_place` is 7.6% warm and 2.3% cold: `blake3` is built with
      `pure` (decision 67, no C or assembly), which also drops its SIMD paths (NEON on aarch64,
      AVX2 on x86). Dropping `pure` buys most of that back and costs a C compiler; the owner's

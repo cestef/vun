@@ -81,6 +81,11 @@ impl Derived {
             })
             .collect();
         let leading = |set: KindSet| set.iter().fold(set, |all, k| all.union(leads_to[k.index()]));
+        for read in automata.iter_mut().flatten().flat_map(|a| a.reads.iter_mut()) {
+            if let Read::Child(child) = read {
+                child.leading = leading(child.kinds.unwrap_or_default());
+            }
+        }
         let admitted = |field: &NodeField| {
             let rows = ADMITS.iter().filter(|row| row.fields.contains(field));
             leading(rows.fold(KindSet::EMPTY, |set, row| set.union(KindSet::of(row.kinds))))
