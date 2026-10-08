@@ -394,8 +394,8 @@ come back in the reply, and what it times is timed in the host's table, on every
 `component.failed`; its logs follow `VUN_LOG` as the host's do. Opening checks the library's
 descriptor (the boundary's layout, then the toolchain's release) against `vun`'s and refuses any
 other (`component.invalid`), and a toolchain installed from a release loads only the libraries its
-kept manifest names, each as hashed. This boundary is the one `unsafe` module of the toolchain
-besides `vun-par`'s pool.
+kept manifest names, each as hashed. This boundary is one of the three places of the toolchain that use `unsafe`,
+with `vun-par`'s pool and `vun-clang`.
 
 **Releases of components.** A component names the components it cannot work without (`needs`), which its manifest entry carries and installing it installs, in the same or a smaller profile. A release's manifest lists, for each machine, the toolchain's archive
 and each component's (`vun-<kind>-<id>-<arch>-<os>.tar.gz`, a tree holding the library in

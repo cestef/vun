@@ -1,7 +1,8 @@
 //! libclang, loaded when first needed and never linked in (decision 131): the C front end
 //! `vun util ffi bind` reads headers with, through a safe API of what bindings need.
 //!
-//! This is the only crate of the toolchain allowed `unsafe`: each call into libclang is wrapped
+//! This is one of the three places of the toolchain that use `unsafe` (the workspace denies it),
+//! with `vun-par`'s pool and the component boundary: each call into libclang is wrapped
 //! once, here. libclang is kept per thread by the loader, so a [`Clang`] and everything borrowed
 //! from it stay on the thread that loaded it.
 

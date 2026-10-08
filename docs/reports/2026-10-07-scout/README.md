@@ -17,6 +17,33 @@ itself carries the usual merge litter. The single largest cost in the compiler i
 save, which writes 79.5 MB and takes 1.8 s of a 5.8 s `vun check lib/std`; the parent reproduced
 that measurement.
 
+## Triage (2026-10-08)
+
+Every lane was re-read against the tree by a second pass, and the priority list was acted on. The
+report overstates in places; what holds and what was done:
+
+- **Fixed:** the memory-argument reuse search (list 2, lowering and wasm, with a driver fixture and
+  a wasm test); `Remap` and asm outputs (1, `Rvalue::outputs_mut`); `layout.offset` overflow (3,
+  `Misplaced`); `vun-disasm` errors (6); `Volatile` under Cranelift, which its alias analysis
+  merged and dropped (backends lane, now atomic accesses); `Form::Tail` split from `TailMemory`
+  and the variadic check; the dead `Taken`; `Unlowered::source`; the witness fanout (perf P1,
+  `PackageImpls`); `StackUse` (cached per-function contributions, a set); `Move::sequence`;
+  decision 652's wording; the `unsafe` exception list; the inline test module; the saved-deps
+  decode failure is logged; an LSP offset inside a character; a zero `lang.cover.size`.
+- **Wrong:** list 4. x86-64 memory the assembler cannot encode (an index register, an absolute
+  address) is accepted by `fit` on purpose (`corpus/accept/capabilities/asm.vun` uses
+  `mem(xs, scaled(i, 8), 16)`); the backend reports `backend.lacks` where it is built. Perf P0
+  names a double encoding that does not happen (the shared file is 0.4 MB for `lib/std`); the
+  59 MB is dependency edges, mostly `typed`, `metered_call` and `mir`, and the witness fanout was
+  4% of the file.
+- **Overstated:** list 7 (the HIR strings) is not a P1, nothing misbehaves silently; the generator
+  identifier panic is only `raw` of `self`, `Self`, `super`, `crate` or `_`.
+- **Stale by the time of the triage:** list 5 and the merge items (`lines` passes; the `tmp_*`
+  fixtures and the `TailResult` line are gone).
+- **Left,** in `docs/open/`: the dead epilogue after a tail jump, the three `put` encoders and
+  `Cond` maps, arm64 `apart`, the silent limits (tuple index, `i128` literals, `u16` declaration
+  number), the `derive` prelude question, and four performance items.
+
 ## Caveat on the baseline
 
 The working copy moved during the sweep (the parent commit changed twice, Cranelift gained

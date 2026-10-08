@@ -9,8 +9,8 @@
 //! its own interner, thread pool and allocator, and a buffer is freed by the side that allocated
 //! it.
 //!
-//! This is the one module of the toolchain besides `vun-par`'s pool that uses `unsafe` (the
-//! workspace denies it). Each block is the end of a pointer crossing, and the invariants are
+//! This is one of the three places of the toolchain that use `unsafe` (the workspace denies it),
+//! with `vun-par`'s pool and `vun-clang`. Each block is the end of a pointer crossing, and the invariants are
 //! four, each held where the pointer is made:
 //!
 //! - a descriptor is read for its layout's number first, so that a library of another layout is
