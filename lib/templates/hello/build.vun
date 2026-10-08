@@ -5,7 +5,7 @@ package := .{
     .id = 0,
     .version = "0.1.0",
     .edition = 2026,
-    .include = .{ "build.vun", "main.vun" },
+    .include = .{ "build.vun", "main.vun", "hello.vun", "hello" },
     .deps = .{},
 };
 

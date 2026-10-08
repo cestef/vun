@@ -1,5 +1,7 @@
 //! Starting a project from a template of the library (`vun new`).
 
+use std::path::Path;
+
 use vun_build::layout::MANIFEST;
 use vun_diag::errors;
 use vun_driver::packages::Library;
@@ -19,6 +21,22 @@ fn a_template_is_copied_with_the_name_of_its_directory_and_an_id_of_its_own() {
     let manifest = session.manifest_at(&dir.join(MANIFEST)).expect("the copy declares a package");
     assert_eq!(manifest.name, "mine");
     assert_ne!(manifest.id, 0, "the template's placeholder is replaced");
+}
+
+#[test]
+fn a_template_names_its_files_after_the_package_and_has_a_namespace_to_test() {
+    let fixture = Fixture::new("new-renamed");
+    let dir = fixture.root.join("mine");
+    let mut session = fixture.session();
+    let made = session.new_project(&dir, Library::DEFAULT_TEMPLATE).expect("the template is there");
+    let root = Path::new("mine.vun");
+    assert!(
+        made.iter().any(|file| file == root) && made.iter().any(|file| file == Path::new("mine/tests.vun"))
+    );
+    let manifest = session.manifest_at(&dir.join(MANIFEST)).expect("the copy declares a package");
+    assert_eq!(manifest.include, ["build.vun", "main.vun", "mine.vun", "mine"]);
+    let file = session.load(&dir.join(root)).unwrap();
+    assert!(session.tested(file, Some(&dir.join(root))).is_some(), "the package has a namespace to test");
 }
 
 #[test]

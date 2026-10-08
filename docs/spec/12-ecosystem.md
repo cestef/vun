@@ -470,7 +470,7 @@ package's directory, and with none the package around the current directory, its
 | Command | Does |
 |---------|------|
 | `vun build [path]` (`b`) | build the program a root file exports, or carry out the plan of a package, or of each package of a workspace, after checking every file of it as `vun check` does; `--library shared` or `static` builds a library of a file's exports |
-| `vun new <path> [--template <name>]` | start a project in a directory from a template of the library (`templates/`, each a project that builds as it is), named after the directory and given an id of its own; `new.exists`, `new.no_template` |
+| `vun new <path> [--template <name>]` | start a project in a directory from a template of the library (`templates/`, each a project that builds as it is), named after the directory and given an id of its own, the files and `include` entries named after the template renamed with it; `new.exists`, `new.no_template` |
 | `vun flash [path]` | build the programs of a package's plan and give each its flash steps made to its device (`plan.nothing_to_flash`, `plan.undelivered`) |
 | `vun run [path] [args]...` (`r`) | build and run it: a package's the program its plan builds, the one there is (`plan.nothing_to_run`, `plan.ambiguous_run`); a file the plan records as a program's root is built with the plan's options for it, any other as a program of its own; a program for a device this machine does not emulate is refused (`plan.runs_elsewhere`); words after `--` go to the program |
 | `vun check [path]` (`c`) | analyze without generating code: a file and what its program reaches, every file of a directory, or of a package with its plan, or of each package of a workspace |

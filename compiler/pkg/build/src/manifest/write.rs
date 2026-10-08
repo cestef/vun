@@ -2,6 +2,7 @@
 //! through the literal writer, so that what is written reads back as the same manifest.
 
 use std::borrow::Cow;
+use std::path::Path;
 
 use vun_diag::Edit;
 use vun_syntax::literal::{Decl, Literal, Unwritable};
@@ -9,7 +10,9 @@ use vun_syntax::literal::{Decl, Literal, Unwritable};
 use vun_span::Span;
 use vun_uri::Uri;
 
-use super::{DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Replacement, Source, field};
+use super::{
+    DEFAULT_PRELUDE, DEP_KINDS, Dep, DepKind, Manifest, PACKAGE, Rename, Replacement, Source, field,
+};
 
 impl Manifest {
     /// Its `package` literal: the fields the reader takes back, without defaults.
@@ -54,18 +57,33 @@ impl Manifest {
         Literal::Record(fields)
     }
 
-    /// The edits giving the `package` declared in `source`, read as `decls`, the name `name` and the
-    /// id `id`: what a project started from a template must have of its own.
+    /// The edits giving the `package` declared in `source`, read as `decls`, the name `rename`
+    /// gives, the files of `include` named after it, and the id `id`: what a project started from
+    /// a template must have of its own.
     ///
     /// # Errors
     /// Returns why a field cannot be written, or that there is no `package` record with them.
-    pub fn identify(decls: &[Decl<'_>], source: &str, name: &str, id: u64) -> Result<Vec<Edit>, Unwritable> {
+    pub fn identify(
+        decls: &[Decl<'_>],
+        source: &str,
+        rename: &Rename<'_>,
+        id: u64,
+    ) -> Result<Vec<Edit>, Unwritable> {
         let package = decls.iter().find(|d| d.name == PACKAGE).and_then(|d| d.value.decls());
         let field =
             |wanted| package.and_then(|p| p.iter().find(|d| d.name == wanted)).ok_or(Unwritable::NotRecord);
-        let name = field(field::NAME)?.set(source, &Literal::String(Cow::Borrowed(name)))?;
+        let name = field(field::NAME)?.set(source, &Literal::String(Cow::Borrowed(rename.to)))?;
         let id = field(field::ID)?.set(source, &Literal::Int(id.into()))?;
-        Ok(vec![name, id])
+        let include = field(field::INCLUDE)?;
+        let Literal::List(files) = &include.value else { return Err(Unwritable::NotRecord) };
+        let files = files.iter().map(|file| match file {
+            Literal::String(path) => Literal::String(Cow::Owned(
+                rename.path(Path::new(path.as_ref())).to_string_lossy().into_owned(),
+            )),
+            other => other.clone(),
+        });
+        let include = include.set(source, &Literal::List(files.collect()))?;
+        Ok(vec![name, id, include])
     }
 
     /// The `package` declaration of a `build.vun`.

@@ -6,6 +6,7 @@
 mod deps;
 mod identity;
 pub(crate) mod record;
+mod rename;
 #[cfg(test)]
 mod tests;
 mod version;
@@ -17,6 +18,7 @@ use vun_syntax::literal::Decl;
 
 pub use identity::Identity;
 use record::{Fields, Record};
+pub use rename::Rename;
 pub use version::Version;
 use vun_hash::Hash;
 use vun_target::{Feature, Features};

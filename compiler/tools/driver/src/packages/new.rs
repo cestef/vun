@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use vun_build::layout::MANIFEST;
-use vun_build::manifest::Manifest;
+use vun_build::manifest::{Manifest, Rename};
 use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::{Edit, Tree};
 use vun_hash::Hash;
@@ -36,25 +36,27 @@ impl Session {
             let help = Msg::new().text("choose a directory without a ").code(MANIFEST);
             return Err(self.diag.error(Diagnostic::error(errors::NEW_EXISTS, msg).help(help)));
         }
+        let name = std::path::absolute(dir).ok().and_then(|d| Some(d.file_name()?.to_str()?.to_owned()));
+        let name = name.unwrap_or_else(|| template.to_owned());
+        let rename = Rename { from: template, to: &name };
         let files = from.files().map_err(|e| self.diag.error(Diagnostic::unreadable(&from, &e)))?;
         let mut made = Vec::new();
         for file in files {
             let relative = file.strip_prefix(&from).unwrap_or(&file).to_path_buf();
             let bytes =
                 std::fs::read(&file).map_err(|e| self.diag.error(Diagnostic::unreadable(&file, &e)))?;
+            let relative = rename.path(&relative);
             let to = dir.join(&relative);
             to.put(bytes).map_err(|e| self.diag.error(Diagnostic::unwritable(&to, &e)))?;
             made.push(relative);
         }
-        let name = std::path::absolute(dir).ok().and_then(|d| Some(d.file_name()?.to_str()?.to_owned()));
-        let name = name.unwrap_or_else(|| template.to_owned());
         let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
         let id = Hash::of_value(&(&name, nanos)).short();
         let file = self.load(&manifest).ok_or_else(|| self.failure())?;
         let what = Msg::new().text("give ").code(&name).text(" its id");
-        if !self
-            .rewrite_manifest(file, &manifest, what, |decls, text| Manifest::identify(decls, text, &name, id))
-        {
+        if !self.rewrite_manifest(file, &manifest, what, |decls, text| {
+            Manifest::identify(decls, text, &rename, id)
+        }) {
             return Err(self.failure());
         }
         Ok(made)

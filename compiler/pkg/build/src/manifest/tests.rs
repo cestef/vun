@@ -8,7 +8,7 @@ use vun_syntax::literal::Decl;
 use vun_syntax::tokens::Tokens;
 use vun_target::{Feature, Features};
 
-use super::{DepKind, Identity, Manifest, Source, Version};
+use super::{DepKind, Identity, Manifest, Rename, Source, Version};
 use crate::layout::MANIFEST;
 
 fn parsed<R>(text: &str, f: impl FnOnce(&[Decl<'_>], FileId, &mut DiagCx<'_>) -> R) -> (R, Vec<DiagId>) {
@@ -194,4 +194,14 @@ fn declared_deps_read_back() {
     let deps: Vec<_> = manifest.unwrap().deps.into_iter().map(|d| (d.name, d.source, d.kind)).collect();
     let wanted: Vec<_> = wanted.into_iter().map(|(n, s, k)| (n.to_owned(), s, k)).collect();
     assert_eq!(deps, wanted, "{text}");
+}
+
+#[test]
+fn a_rename_changes_the_components_named_after_the_old_package() {
+    let rename = Rename { from: "hello", to: "mine" };
+    let path = |text| rename.path(std::path::Path::new(text));
+    assert_eq!(path("hello.vun"), std::path::Path::new("mine.vun"));
+    assert_eq!(path("hello/tests.vun"), std::path::Path::new("mine/tests.vun"));
+    assert_eq!(path("build.vun"), std::path::Path::new("build.vun"));
+    assert_eq!(path("src/hello_world.vun"), std::path::Path::new("src/hello_world.vun"));
 }
