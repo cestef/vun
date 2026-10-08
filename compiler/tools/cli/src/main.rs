@@ -22,7 +22,7 @@ fn main() -> ExitCode {
     session.registry.formatters.link(Box::new(vun_component_formatter_vun::component()));
     #[cfg(feature = "doc")]
     session.registry.documenters.link(Box::new(vun_component_documenter_html::component()));
-    #[cfg(feature = "ffi")]
+    #[cfg(all(feature = "ffi", not(target_os = "wasi")))]
     session.registry.binders.link(Box::new(vun_component_binder_c::component()));
     session.check = PROGRAM.invocation(&CHECK_PATH);
     let code = PROGRAM.main(&mut session);

@@ -2,6 +2,7 @@
 //! crashed. Which of two backends' signals is a trap is not the program's business: a `ud2`, a
 //! `brk` and a call of `abort` are one ending.
 
+#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
 
@@ -42,11 +43,22 @@ pub enum Ending {
 impl Ending {
     #[must_use]
     pub fn of(status: &ExitStatus) -> Self {
-        match (status.code(), status.signal()) {
+        match (status.code(), Self::signal(status)) {
             (Some(code), _) => Self::Returned(code),
             (None, Some(signal)) => Trap::of(signal).map_or(Self::Crashed(signal), |_| Self::Trapped),
             (None, None) => Self::Crashed(0),
         }
+    }
+
+    /// The signal that ended a process; a platform without signals has none.
+    #[cfg(unix)]
+    fn signal(status: &ExitStatus) -> Option<i32> {
+        status.signal()
+    }
+
+    #[cfg(not(unix))]
+    fn signal(_: &ExitStatus) -> Option<i32> {
+        None
     }
 
     /// Whether it ended on its own terms, so that what it wrote is all of what it would have.
