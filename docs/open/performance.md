@@ -40,13 +40,14 @@
      AVX2 on x86). Dropping `pure` buys most of that back and costs a C compiler; the owner's
      call. Hashing fewer bytes (what is hashed on a warm run) costs nothing.
   3. Cold: `Table<Parsed>::slot` 2.4M calls at 140 instructions each (3.9%), `Table<Typed>::slot`
-     and `Table<DeclValue>::slot` the same shape; SipHash `write` 2.3% (a `std` `HashMap` with the default hasher
-     somewhere hot; `foldhash` is used elsewhere); `Value::clone` 10.7M calls and its drop 6.0M
+     and `Table<DeclValue>::slot` the same shape; `Value::clone` 10.7M calls and its drop 6.0M
      (4.2% together).
   4. Time cold (hello 534 ms): `parsed` 25%, `metered_call` 13%, `typed` 12.5%, `mir` 9%,
      `save memos` 9%, waiting for claims 6%. Comptime-heavy (`corpus/bench/comptime.vun`)
      is 857 ms, 26% in `metered_call` over 31 000 calls.
   `Vec<u8>` encoded byte by byte (3.8% cold): fixed, cold `hello` 8.70 G to 8.25 G instructions.
+  SipHash (2.3% cold, the shared-memo scan's `known` map) is `vun_hash::Map` now: cold `hello` 8.25 G to
+  8.09 G. Other `std` maps with the default hasher may remain.
   Cold counts vary ~1% between runs (warm 0.0%); find why (a time- or address-dependent order).
 - Generated code (`run-*`, am3): `fib(34)` native 126 M instructions (20.8 ms) in 1.9M calls,
   cranelift 286 M in 27.7M calls, so native inlines the recursion about nine times; `sieve`

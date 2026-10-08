@@ -2,9 +2,9 @@
 //! [`Db::share`] alone, such as the libraries every project builds on, saved apart so that a
 //! database holding none of its own loads them instead of computing them again.
 
-use std::collections::{HashMap, HashSet};
 use std::sync::atomic::Ordering;
 
+use vun_hash::{Map, Set};
 use vun_trace::tracing;
 
 use super::super::db::Db;
@@ -12,7 +12,7 @@ use super::load::Taking;
 use crate::table::{Slot, TableId};
 
 /// The keys a file of shared memos holds, by table and slot.
-pub(crate) type Included = HashSet<(TableId, Slot)>;
+pub(crate) type Included = Set<(TableId, Slot)>;
 
 impl Db {
     /// The memos of persisted queries whose every read leads to shared inputs alone, with those
@@ -35,8 +35,8 @@ impl Db {
             return None;
         }
         let persisted = self.persisted.read().expect("persisted queries").clone();
-        let tables: HashSet<TableId> = persisted.iter().map(|p| p.table(self)).collect();
-        let mut sharing = Sharing { db: self, tables: &tables, known: HashMap::new(), computed: false };
+        let tables: Set<TableId> = persisted.iter().map(|p| p.table(self)).collect();
+        let mut sharing = Sharing { db: self, tables: &tables, known: Map::default(), computed: false };
         // The memos this process computed have slots: whether one is shared is known before the
         // memos loaded and never asked for are given theirs, which a save writes too.
         sharing.all();
@@ -63,8 +63,8 @@ impl Db {
 struct Sharing<'a> {
     db: &'a Db,
     /// The persisted tables: a read of any other is never saved.
-    tables: &'a HashSet<TableId>,
-    known: HashMap<(TableId, Slot), bool>,
+    tables: &'a Set<TableId>,
+    known: Map<(TableId, Slot), bool>,
     /// Whether a shared memo was computed in this process.
     computed: bool,
 }
