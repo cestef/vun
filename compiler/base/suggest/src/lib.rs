@@ -4,13 +4,15 @@
 /// rounded up, must change.
 const TYPO_DIVISOR: usize = 3;
 
-/// The candidate closest to `name` by edit distance, if it is close enough to be a typo.
+/// The candidate closest to `name` by edit distance, if it is close enough to be a typo. A
+/// candidate that is `name` itself is no suggestion: what is asked for is there, or is not what is
+/// wanted.
 pub fn closest<'a>(name: &str, candidates: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
     let limit = name.chars().count().div_ceil(TYPO_DIVISOR);
     candidates
         .into_iter()
         .map(|c| (distance(name, c), c))
-        .filter(|&(d, _)| d <= limit)
+        .filter(|&(d, _)| d > 0 && d <= limit)
         .min_by_key(|&(d, _)| d)
         .map(|(_, c)| c)
 }

@@ -16,3 +16,9 @@ fn suggests_only_close_names() {
     assert_eq!(closest("xyzzy", names), None);
     assert_eq!(distance("kitten", "sitting"), 3);
 }
+
+#[test]
+fn a_name_is_never_suggested_to_itself() {
+    assert_eq!(closest("shows", ["shows", "show"]), Some("show"));
+    assert_eq!(closest("shows", ["shows"]), None);
+}
