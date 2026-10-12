@@ -18,6 +18,16 @@ Index: type = Int(0..9);
 Error: type = ();
 ```
 
+An alias of a type constructor, a function giving a type, is annotated with the function type
+that says so, since it is no `type` itself:
+
+```vun
+Failure: ($E: type) -> type = std.ffi.cstr.Failure;
+```
+
+A `struct` holding no fields, only declarations, is a namespace and is named as a value
+(`snake_case`); one that holds a field is a type.
+
 The built-in type names keep their conventional lowercase (`u8`, `bool`, `type`, ...): they are
 listed in `std.lints.naming.lowercase_types`. Allow the lint where a name mirrors one written
 elsewhere, and say why:
