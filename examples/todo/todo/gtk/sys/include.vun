@@ -1,0 +1,4 @@
+//! Bindings to the C headers in `include`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+Gsize: type = lang.int.unsigned(64);

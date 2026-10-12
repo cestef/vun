@@ -7,8 +7,6 @@ Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `dec
 
 - A pointer is `?*T` unless its header says `_Nonnull` (decision 681): glibc's `__attribute__((nonnull))`
   and GLib's comments say it otherwise, and a call passes `.some(p)`.
-- A binding is one file, however many declarations it holds; splitting it per declaring
-  directory needs the imports between the files.
 - `gtk.h` binds only through a header that includes it (`#include <gtk/gtk.h>`): given as the
   header itself, GTK's include guard (`__GTK_H_INSIDE__`) refuses it.
 

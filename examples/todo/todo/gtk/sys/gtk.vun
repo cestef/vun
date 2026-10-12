@@ -1,0 +1,244 @@
+//! Bindings to the C headers in `gtk`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+GtkOrientation := enum {
+    horizontal = 0,
+    vertical = 1,
+};
+
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+GtkSelectionMode := enum {
+    none = 0,
+    single = 1,
+    browse = 2,
+    multiple = 3,
+};
+
+#[lang.layout.c]
+_GtkWidget := struct {
+    parent_instance: todo.gtk.sys.gobject.GInitiallyUnowned,
+    priv: ?*GtkWidgetPrivate,
+};
+
+GtkWidget: type = _GtkWidget;
+
+#[lang.layout.c]
+_GtkWindow := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkWindow: type = _GtkWindow;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkWidgetPrivate := struct {};
+
+GtkWidgetPrivate: type = _GtkWidgetPrivate;
+
+#[lang.link.symbol("gtk_widget_grab_focus"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_grab_focus: unsafe (widget: ?*GtkWidget) -> todo.gtk.sys.glib.Gboolean = _;
+
+#[lang.link.symbol("gtk_widget_set_sensitive"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_sensitive: unsafe (widget: ?*GtkWidget, sensitive: todo.gtk.sys.glib.Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_hexpand"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_hexpand: unsafe (widget: ?*GtkWidget, expand: todo.gtk.sys.glib.Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_vexpand"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_vexpand: unsafe (widget: ?*GtkWidget, expand: todo.gtk.sys.glib.Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_start"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_start: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_end"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_end: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_top"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_top: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_bottom"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_bottom: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_add_css_class"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_add_css_class: unsafe (widget: ?*GtkWidget, css_class: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkApplication := struct {
+    parent_instance: todo.gtk.sys.gio.GApplication,
+};
+
+GtkApplication: type = _GtkApplication;
+
+#[lang.link.symbol("gtk_application_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_application_new: unsafe (application_id: ?*lang.int.unsigned(8), flags: todo.gtk.sys.gio.GApplicationFlags) -> ?*GtkApplication = _;
+
+#[lang.link.symbol("gtk_window_set_title"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_title: unsafe (window: ?*GtkWindow, title: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_window_present"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_present: unsafe (window: ?*GtkWindow) = _;
+
+#[lang.link.symbol("gtk_window_set_default_size"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_default_size: unsafe (window: ?*GtkWindow, width: lang.int.signed(32), height: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_window_set_child"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_child: unsafe (window: ?*GtkWindow, child: ?*GtkWidget) = _;
+
+#[lang.link.symbol("gtk_application_window_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_application_window_new: unsafe (application: ?*GtkApplication) -> ?*GtkWidget = _;
+
+#[lang.layout.c]
+_GtkBox := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkBox: type = _GtkBox;
+
+#[lang.link.symbol("gtk_box_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_box_new: unsafe (orientation: GtkOrientation, spacing: lang.int.signed(32)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_box_append"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_box_append: unsafe (box: ?*GtkBox, child: ?*GtkWidget) = _;
+
+#[lang.layout.c]
+_GtkButton := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkButton: type = _GtkButton;
+
+#[lang.link.symbol("gtk_button_new_with_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_button_new_with_label: unsafe (label: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_button_set_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_button_set_label: unsafe (button: ?*GtkButton, label: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkToggleButton := struct {
+    button: GtkButton,
+};
+
+GtkToggleButton: type = _GtkToggleButton;
+
+#[lang.link.symbol("gtk_toggle_button_new_with_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_new_with_label: unsafe (label: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_toggle_button_set_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_set_active: unsafe (toggle_button: ?*GtkToggleButton, is_active: todo.gtk.sys.glib.Gboolean) = _;
+
+#[lang.link.symbol("gtk_toggle_button_get_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_get_active: unsafe (toggle_button: ?*GtkToggleButton) -> todo.gtk.sys.glib.Gboolean = _;
+
+#[lang.link.symbol("gtk_toggle_button_set_group"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_set_group: unsafe (toggle_button: ?*GtkToggleButton, group: ?*GtkToggleButton) = _;
+
+#[lang.layout.c]
+_GtkCheckButton := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkCheckButton: type = _GtkCheckButton;
+
+#[lang.link.symbol("gtk_check_button_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_check_button_get_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_get_active: unsafe (self: ?*GtkCheckButton) -> todo.gtk.sys.glib.Gboolean = _;
+
+#[lang.link.symbol("gtk_check_button_set_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_set_active: unsafe (self: ?*GtkCheckButton, setting: todo.gtk.sys.glib.Gboolean) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkEditable := struct {};
+
+GtkEditable: type = _GtkEditable;
+
+#[lang.link.symbol("gtk_editable_get_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_get_text: unsafe (editable: ?*GtkEditable) -> ?*lang.int.unsigned(8) = _;
+
+#[lang.link.symbol("gtk_editable_set_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_set_text: unsafe (editable: ?*GtkEditable, text: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_editable_set_position"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_set_position: unsafe (editable: ?*GtkEditable, position: lang.int.signed(32)) = _;
+
+#[lang.layout.c]
+_GtkEntry := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkEntry: type = _GtkEntry;
+
+#[lang.link.symbol("gtk_entry_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_entry_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_entry_set_placeholder_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_entry_set_placeholder_text: unsafe (entry: ?*GtkEntry, text: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkCssProvider := struct {
+    parent_instance: todo.gtk.sys.gobject.GObject,
+};
+
+GtkCssProvider: type = _GtkCssProvider;
+
+#[lang.link.symbol("gtk_css_provider_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_css_provider_new: unsafe () -> ?*GtkCssProvider = _;
+
+#[lang.link.symbol("gtk_css_provider_load_from_string"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_css_provider_load_from_string: unsafe (css_provider: ?*GtkCssProvider, string: ?*lang.int.unsigned(8)) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkLabel := struct {};
+
+GtkLabel: type = _GtkLabel;
+
+#[lang.link.symbol("gtk_label_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_new: unsafe (str: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_label_set_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_text: unsafe (self: ?*GtkLabel, str: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_label_set_ellipsize"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_ellipsize: unsafe (self: ?*GtkLabel, mode: todo.gtk.sys.pango.PangoEllipsizeMode) = _;
+
+#[lang.link.symbol("gtk_label_set_xalign"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_xalign: unsafe (self: ?*GtkLabel, xalign: lang.f32) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkListBox := struct {};
+
+GtkListBox: type = _GtkListBox;
+
+#[lang.link.symbol("gtk_list_box_append"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_append: unsafe (box: ?*GtkListBox, child: ?*GtkWidget) = _;
+
+#[lang.link.symbol("gtk_list_box_remove_all"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_remove_all: unsafe (box: ?*GtkListBox) = _;
+
+#[lang.link.symbol("gtk_list_box_set_selection_mode"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_set_selection_mode: unsafe (box: ?*GtkListBox, mode: GtkSelectionMode) = _;
+
+#[lang.link.symbol("gtk_list_box_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_new: unsafe () -> ?*GtkWidget = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkScrolledWindow := struct {};
+
+GtkScrolledWindow: type = _GtkScrolledWindow;
+
+#[lang.link.symbol("gtk_scrolled_window_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_scrolled_window_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_scrolled_window_set_child"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_scrolled_window_set_child: unsafe (scrolled_window: ?*GtkScrolledWindow, child: ?*GtkWidget) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkStyleProvider := struct {};
+
+GtkStyleProvider: type = _GtkStyleProvider;
+
+#[lang.link.symbol("gtk_style_context_add_provider_for_display"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_style_context_add_provider_for_display: unsafe (display: ?*todo.gtk.sys.gdk.GdkDisplay, provider: ?*GtkStyleProvider, priority: todo.gtk.sys.glib.Guint) = _;

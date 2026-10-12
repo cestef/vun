@@ -14,6 +14,7 @@ mod macros;
 mod names;
 mod paths;
 mod reach;
+mod split;
 mod types;
 
 use std::collections::{HashMap, HashSet};
@@ -63,6 +64,12 @@ pub(crate) struct Binder<'u> {
     closed: Vec<Glob>,
     /// The libraries the functions and variables are linked from, by the directory of their headers.
     libraries: Vec<Library>,
+    /// The namespace the bindings are written as, when each directory has a file of its own.
+    module: Option<Vec<String>>,
+    /// The file each type bound is in, by its name, when there are several.
+    homes: HashMap<String, String>,
+    /// The file being written.
+    part: Option<String>,
     skipped: Vec<Skipped>,
 }
 
@@ -76,7 +83,7 @@ impl vun_binder::Binder for CBinder {
 
     /// Fails when libclang is missing, or the header does not parse.
     fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
-        let Request { header, args, reserved, scope, only, closed, libraries } = request;
+        let Request { header, args, reserved, scope, only, closed, libraries, module } = request;
         let clang = Clang::load().map_err(|missing| Failure::Missing(Self::missing(missing)))?;
         let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
         let errors: Vec<String> = unit
@@ -117,6 +124,9 @@ impl vun_binder::Binder for CBinder {
                 .iter()
                 .map(|l| Library { headers: l.headers.as_deref().map(paths::real), ..l.clone() })
                 .collect(),
+            module: module.clone(),
+            homes: HashMap::new(),
+            part: None,
             skipped: Vec::new(),
         };
         binder.collect(&mine);
@@ -124,8 +134,8 @@ impl vun_binder::Binder for CBinder {
             binder.restrict(only);
         }
         let name = header.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        let source = binder.file(&name).source();
-        Ok(Bindings { source, skipped: binder.skipped })
+        let (root, parts) = binder.bindings(&name);
+        Ok(Bindings { source: root.source(), parts, skipped: binder.skipped })
     }
 }
 

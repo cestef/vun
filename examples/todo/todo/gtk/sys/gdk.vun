@@ -1,0 +1,10 @@
+//! Bindings to the C headers in `gdk`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+/// Declared without fields in C: reached through pointers only.
+_GdkDisplay := struct {};
+
+GdkDisplay: type = _GdkDisplay;
+
+#[lang.link.symbol("gdk_display_get_default"), lang.abi.c, lang.link.library("gtk-4")]
+gdk_display_get_default: unsafe () -> ?*GdkDisplay = _;

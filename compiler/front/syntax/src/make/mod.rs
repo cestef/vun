@@ -21,10 +21,11 @@ pub use expr::Expr;
 pub use integer::Integer;
 pub use parts::{Arm, Block, Borrow, Field, Function, Init, Member, Param, Property, Variant};
 
-/// A source file: its module doc lines, then its declarations.
+/// A source file: its module doc lines, the namespaces it spreads (`..a.b;`), then its declarations.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct File {
     pub doc: Vec<String>,
+    pub spreads: Vec<Vec<String>>,
     pub items: Vec<Item>,
 }
 

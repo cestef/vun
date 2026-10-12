@@ -31,16 +31,10 @@ fn alias_of(name: &str, value: Expr) -> Item {
 }
 
 impl Binder<'_> {
-    /// The Vun file binding the header named `header`.
-    pub(crate) fn file(&mut self, header: &str) -> File {
-        let doc = vec![
-            ["Bindings to the C header `", header, "`, written by `vun util ffi bind`: regenerate them"]
-                .concat(),
-            "rather than edit them.".to_owned(),
-        ];
-        self.params_reserved = self.top_names();
+    /// The Vun file binding `decls`.
+    pub(crate) fn file(&mut self, decls: Vec<Cursor<'_>>, doc: Vec<String>) -> File {
         let mut made = Vec::new();
-        for decl in self.decls.clone() {
+        for decl in decls {
             match decl.kind() {
                 Kind::Struct | Kind::Union => made.extend(self.record(&decl)),
                 Kind::Enum => made.extend(self.enumeration(&decl)),
@@ -51,11 +45,11 @@ impl Binder<'_> {
                 _ => {}
             }
         }
-        File { doc, items: made }
+        File { doc, spreads: Vec::new(), items: made }
     }
 
     /// The bindings' own top-level names, which parameters may not shadow.
-    fn top_names(&self) -> std::collections::HashSet<String> {
+    pub(crate) fn top_names(&self) -> std::collections::HashSet<String> {
         let ordinary = self.decls.iter().filter_map(|d| match d.kind() {
             Kind::Function | Kind::Var | Kind::Macro => Some(self.vun_name(&d.name(), Case::Snake)),
             _ => None,

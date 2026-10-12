@@ -1,0 +1,19 @@
+//! Bindings to the C headers in `glib`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+Gchar: type = lang.int.unsigned(8);
+
+Gint: type = lang.int.signed(32);
+
+Gboolean: type = Gint;
+
+Gulong: type = lang.int.unsigned(64);
+
+Guint: type = lang.int.unsigned(32);
+
+Gpointer: type = ?*();
+
+/// Declared without fields in C: reached through pointers only.
+_GData := struct {};
+
+GData: type = _GData;

@@ -1,0 +1,77 @@
+//! Bindings to the C headers in `gobject`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+GType: type = todo.gtk.sys.include.Gsize;
+
+/// Bound as its size and alignment only: its fields are private to C.
+#[lang.layout.c, lang.layout.align(8)]
+_GValue := struct {
+    _bytes: [24]lang.int.unsigned(8),
+};
+
+GValue: type = _GValue;
+
+#[lang.layout.c]
+_GTypeClass := struct {
+    g_type: GType,
+};
+
+GTypeClass: type = _GTypeClass;
+
+#[lang.layout.c]
+_GTypeInstance := struct {
+    g_class: ?*GTypeClass,
+};
+
+GTypeInstance: type = _GTypeInstance;
+
+/// Bound as its size and alignment only: its fields are private to C.
+#[lang.layout.c, lang.layout.align(8)]
+_GClosure := struct {
+    _bytes: [32]lang.int.unsigned(8),
+};
+
+GClosure: type = _GClosure;
+
+#[lang.layout.c]
+_GClosureNotifyData := struct {
+    data: todo.gtk.sys.glib.Gpointer,
+    notify: GClosureNotify,
+};
+
+GClosureNotifyData: type = _GClosureNotifyData;
+
+GCallback: type = ?#[lang.abi.c] () -> ();
+
+GClosureNotify: type = ?#[lang.abi.c] (p0: ?*(), p1: ?*_GClosure);
+
+GConnectFlags: type = lang.int.unsigned(32);
+
+g_connect_default: GConnectFlags = 0;
+
+g_connect_after: GConnectFlags = 1;
+
+g_connect_swapped: GConnectFlags = 2;
+
+#[lang.link.symbol("g_signal_connect_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_signal_connect_data: unsafe (instance: todo.gtk.sys.glib.Gpointer, detailed_signal: ?*todo.gtk.sys.glib.Gchar, c_handler: GCallback, data: todo.gtk.sys.glib.Gpointer, destroy_data: GClosureNotify, connect_flags: GConnectFlags) -> todo.gtk.sys.glib.Gulong = _;
+
+#[lang.layout.c]
+_GObject := struct {
+    g_type_instance: GTypeInstance,
+    ref_count: todo.gtk.sys.glib.Guint,
+    qdata: ?*todo.gtk.sys.glib.GData,
+};
+
+GObject: type = _GObject;
+
+GInitiallyUnowned: type = _GObject;
+
+#[lang.link.symbol("g_object_unref"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_unref: unsafe (object: todo.gtk.sys.glib.Gpointer) = _;
+
+#[lang.link.symbol("g_object_get_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_get_data: unsafe (object: ?*GObject, key: ?*todo.gtk.sys.glib.Gchar) -> todo.gtk.sys.glib.Gpointer = _;
+
+#[lang.link.symbol("g_object_set_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_set_data: unsafe (object: ?*GObject, key: ?*todo.gtk.sys.glib.Gchar, data: todo.gtk.sys.glib.Gpointer) = _;

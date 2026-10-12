@@ -6,6 +6,7 @@ pub const TOOL: DiagId = DiagId::Lang(Lang::Tool);
 pub const TOOL_MISSING_LIBRARY: DiagId = DiagId::Lang(Lang::ToolMissingLibrary);
 pub const TOOL_BIND_FAILED: DiagId = DiagId::Lang(Lang::ToolBindFailed);
 pub const TOOL_BIND_SKIPPED: DiagId = DiagId::Lang(Lang::ToolBindSkipped);
+pub const TOOL_SPLIT_PLACE: DiagId = DiagId::Lang(Lang::ToolSplitPlace);
 pub const TOOL_NOTHING_TO_REDUCE: DiagId = DiagId::Lang(Lang::ToolNothingToReduce);
 pub const TOOL_DISASM_FAILED: DiagId = DiagId::Lang(Lang::ToolDisasmFailed);
 pub const TOOL_PROFILE_FAILED: DiagId = DiagId::Lang(Lang::ToolProfileFailed);

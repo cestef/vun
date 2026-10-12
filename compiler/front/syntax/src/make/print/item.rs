@@ -12,6 +12,14 @@ impl Writer {
         for line in &file.doc {
             self.text(MODULE_DOC_COMMENT).text(" ").text(line).line("");
         }
+        for (i, path) in file.spreads.iter().enumerate() {
+            if i == 0 && !self.out.is_empty() {
+                self.line("");
+            }
+            self.token(TokenKind::DotDot);
+            self.expr(&Expr::Path(path.clone()), Place::TOP);
+            self.token(TokenKind::Semi).line("");
+        }
         for item in &file.items {
             if !self.out.is_empty() {
                 self.line("");

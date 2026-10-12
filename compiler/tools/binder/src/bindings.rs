@@ -4,11 +4,21 @@ use std::path::PathBuf;
 
 use vun_codec::{Decode, Encode};
 
-/// The bindings of a header: the text of a Vun file, and what it leaves out.
+/// The bindings of a header: the text of a Vun file, and what it leaves out. When the request
+/// split them, the file spreads the `parts` and declares nothing itself.
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Bindings {
     pub source: String,
+    pub parts: Vec<Part>,
     pub skipped: Vec<Skipped>,
+}
+
+/// The bindings of the headers of one directory, a file beside the one that spreads it.
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+pub struct Part {
+    /// The name of the file, without its extension, and of the namespace it makes.
+    pub name: String,
+    pub source: String,
 }
 
 /// A library a header's functions and variables are linked from.

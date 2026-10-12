@@ -25,7 +25,7 @@ impl Binder for Stub {
             line: 3,
             reason: Reason::Unsupported(Unsupported::Type(request.args.join(" "))),
         };
-        Ok(Bindings { source: "a := 1;".to_owned(), skipped: vec![skipped] })
+        Ok(Bindings { source: "a := 1;".to_owned(), parts: Vec::new(), skipped: vec![skipped] })
     }
 }
 

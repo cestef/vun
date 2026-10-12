@@ -211,7 +211,10 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   A C enum binds as an integer type and a constant for each value, since C may hold any integer
   in one; `--closed GtkAlign` binds the enums so named as Vun enums that name their tags
   (spec 05, section 6), the prefix their constants share dropped and a constant that repeats a
-  value a constant of the enum, for the enums C holds no other value in.
+  value a constant of the enum, for the enums C holds no other value in. `--split` with `--out`
+  inside a package writes a file for each directory the declarations are in (`gtk`, `glib`, ...)
+  under the directory of the output's name, and the output spreads them; a type of another file
+  is named by its path from the package.
   A pointer binds as `?*T`, C passing null as it likes, and as `*T` where the header says `_Nonnull`.
   A variadic function binds as an import with a pack, `($P: type, .., ..args: P)`; plain `char` is
   `u8`, as the bytes of text; an object-like macro of integers, floats or strings (`#define A (1 <<

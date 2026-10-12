@@ -169,3 +169,46 @@ fn a_request_binds_the_directories_it_names_and_only_what_it_asks_for() {
     let found = fixture.reported(&file);
     assert!(found.is_empty(), "{found:?}\n{text}");
 }
+
+/// A package whose namespace `demo.sys` the bindings are written as.
+const SPLIT_PACKAGE: &str = "package := .{
+    .name = \"demo\", .id = 78, .version = \"0.1.0\", .edition = 2026,
+    .include = .{ \"build.vun\", \"demo.vun\", \"demo/sys.vun\", \"demo/sys/dep.vun\", \"demo/sys/front.vun\" },
+};
+";
+
+#[test]
+fn bindings_split_by_directory_name_each_other_by_their_path() {
+    let fixture = Fixture::new("bind-split");
+    fixture.root.write("dep/dep.h", DEPENDENCY);
+    let header = fixture.root.write("front/front.h", FRONT);
+    fixture.root.write("build.vun", SPLIT_PACKAGE);
+    fixture.root.write("demo.vun", "//! Demo.\n");
+    let mut session = fixture.session();
+    let reserved = session.names_seen_in(&fixture.root.join("demo"));
+    let request = Request {
+        scope: vec![fixture.root.join("dep")],
+        only: vec![Glob::new("window_*")],
+        module: session.module_of(&fixture.root.join("demo/sys.vun")),
+        ..Request::new(header, vec!["--target=x86_64-linux-gnu".to_owned()], reserved)
+    };
+    assert_eq!(request.module, Some(vec!["demo".to_owned(), "sys".to_owned()]));
+    let bindings = match vun_bind::CBinder.bind(&request) {
+        Ok(bindings) => bindings,
+        Err(Failure::Missing(_)) => return,
+        Err(failure) => panic!("{failure:?}"),
+    };
+    let names: Vec<_> = bindings.parts.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["dep", "front"]);
+    // The file of the header spreads the files, and a type of one is named by its path in the other.
+    assert!(bindings.source.contains("..demo.sys.dep;"), "{}", bindings.source);
+    assert!(bindings.source.contains("..demo.sys.front;"), "{}", bindings.source);
+    let front = &bindings.parts[1].source;
+    assert!(front.contains("demo.sys.dep.Window"), "{front}");
+    assert!(!bindings.parts[0].source.contains("demo.sys.dep"), "{}", bindings.parts[0].source);
+    fixture.root.write("demo/sys/dep.vun", &bindings.parts[0].source);
+    fixture.root.write("demo/sys/front.vun", front);
+    let file = fixture.root.write("demo/sys.vun", &bindings.source);
+    let found = fixture.reported(&file);
+    assert!(found.is_empty(), "{found:?}\n{front}");
+}

@@ -56,7 +56,7 @@ impl<'p> Lowering<'p> {
         items.extend(self.program.types.iter().filter_map(|(_, ty)| self.declaration(ty)));
         items.extend(self.program.functions.iter().map(|(id, f)| self.function(id, f)));
         items.push(self.main());
-        make::File { doc: Vec::new(), items }
+        make::File { doc: Vec::new(), spreads: Vec::new(), items }
     }
 
     fn function(&self, id: FnId, function: &Function) -> make::Item {

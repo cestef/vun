@@ -147,6 +147,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (TOOL_MISSING_LIBRARY, "lang/lang/errors/tool/missing_library.md"),
     (TOOL_BIND_FAILED, "lang/lang/errors/tool/bind_failed.md"),
     (TOOL_BIND_SKIPPED, "lang/lang/errors/tool/bind_skipped.md"),
+    (TOOL_SPLIT_PLACE, "lang/lang/errors/tool/split_place.md"),
     (TOOL_NOTHING_TO_REDUCE, "lang/lang/errors/tool/nothing_to_reduce.md"),
     (TOOL_DISASM_FAILED, "lang/lang/errors/tool/disasm_failed.md"),
     (TOOL_PROFILE_FAILED, "lang/lang/errors/tool/profile_failed.md"),

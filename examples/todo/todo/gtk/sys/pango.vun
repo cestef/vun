@@ -1,0 +1,11 @@
+//! Bindings to the C headers in `pango`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+PangoEllipsizeMode := enum {
+    none = 0,
+    start = 1,
+    middle = 2,
+    end = 3,
+};

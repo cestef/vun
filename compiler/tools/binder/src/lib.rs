@@ -15,7 +15,9 @@ use std::path::PathBuf;
 
 use vun_codec::{Decode, Encode};
 
-pub use bindings::{Bindings, Bytes, Failure, Library, Missing, Reason, Skipped, Unavailable, Unsupported};
+pub use bindings::{
+    Bindings, Bytes, Failure, Library, Missing, Part, Reason, Skipped, Unavailable, Unsupported,
+};
 pub use glob::Glob;
 pub use protocol::{Call, Reply};
 pub use remote::Remote;
@@ -40,6 +42,9 @@ pub struct Request {
     pub closed: Vec<Glob>,
     /// The libraries the bound functions and variables are linked from (`#[link.library(name)]`).
     pub libraries: Vec<Library>,
+    /// The namespace the bindings are written as, such as `app.sys`, when each directory of
+    /// headers is bound in a file of its own under it: they name each other by it.
+    pub module: Option<Vec<String>>,
 }
 
 impl Request {
@@ -54,6 +59,7 @@ impl Request {
             only: Vec::new(),
             closed: Vec::new(),
             libraries: Vec::new(),
+            module: None,
         }
     }
 }

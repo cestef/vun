@@ -1,0 +1,42 @@
+//! Bindings to the C headers in `gio`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+GApplicationFlags: type = lang.int.unsigned(32);
+
+g_application_flags_none: GApplicationFlags = 0;
+
+g_application_default_flags: GApplicationFlags = 0;
+
+g_application_is_service: GApplicationFlags = 1;
+
+g_application_is_launcher: GApplicationFlags = 2;
+
+g_application_handles_open: GApplicationFlags = 4;
+
+g_application_handles_command_line: GApplicationFlags = 8;
+
+g_application_send_environment: GApplicationFlags = 16;
+
+g_application_non_unique: GApplicationFlags = 32;
+
+g_application_can_override_app_id: GApplicationFlags = 64;
+
+g_application_allow_replacement: GApplicationFlags = 128;
+
+g_application_replace: GApplicationFlags = 256;
+
+#[lang.layout.c]
+_GApplication := struct {
+    parent_instance: todo.gtk.sys.gobject.GObject,
+    priv: ?*GApplicationPrivate,
+};
+
+GApplication: type = _GApplication;
+
+/// Declared without fields in C: reached through pointers only.
+_GApplicationPrivate := struct {};
+
+GApplicationPrivate: type = _GApplicationPrivate;
+
+#[lang.link.symbol("g_application_run"), lang.abi.c, lang.link.library("gio-2.0")]
+g_application_run: unsafe (application: ?*GApplication, argc: lang.int.signed(32), argv: ?*?*lang.int.unsigned(8)) -> lang.int.signed(32) = _;

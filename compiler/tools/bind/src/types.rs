@@ -48,9 +48,9 @@ impl Binder<'_> {
                 let name = self.bound(&decl).ok_or_else(unsupported)?;
                 match (self.opaque.get(&name), at) {
                     (None | Some(Opacity::Sized), Position::Field) | (_, Position::Alias) => {
-                        Expr::local(&name)
+                        self.reference(&name)
                     }
-                    (None, _) if self.passable(&decl) => Expr::local(&name),
+                    (None, _) if self.passable(&decl) => self.reference(&name),
                     _ => return Err(Unsupported::Opaque(name)),
                 }
             }
@@ -58,7 +58,7 @@ impl Binder<'_> {
                 // Checked as what it stands for, written by its name.
                 Some(name) => {
                     self.ty(ty.canonical(), at)?;
-                    Expr::local(&name)
+                    self.reference(&name)
                 }
                 // A typedef not bound here, such as `size_t`: what it stands for.
                 None => return self.ty(ty.canonical(), at),
@@ -83,7 +83,7 @@ impl Binder<'_> {
             TypeKind::Void => Expr::Unit,
             TypeKind::Record | TypeKind::Enum | TypeKind::Typedef => match self.bound(&pointee.declaration())
             {
-                Some(name) => Expr::local(&name),
+                Some(name) => self.reference(&name),
                 None if pointee.kind() == TypeKind::Typedef => {
                     return self.pointer(pointee.canonical(), nonnull);
                 }

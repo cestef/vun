@@ -4,8 +4,9 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 vun=${VUN:-vun}
-header=$(mktemp --suffix=.h)
-trap 'rm -f "$header"' EXIT
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+header=$scratch/gtk.h
 echo '#include <gtk/gtk.h>' > "$header"
 
 flags=()
@@ -43,4 +44,4 @@ for name in \
     only+=(--only "$name")
 done
 
-"$vun" util ffi bind "$header" "${flags[@]}" "${scope[@]}" "${libraries[@]}" "${only[@]}" "${closed[@]}" -o todo/gtk/sys.vun
+"$vun" util ffi bind "$header" "${flags[@]}" "${scope[@]}" "${libraries[@]}" "${only[@]}" "${closed[@]}" --split -o todo/gtk/sys.vun

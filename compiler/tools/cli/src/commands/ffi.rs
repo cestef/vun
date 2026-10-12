@@ -35,13 +35,17 @@ const LIBRARY: Param = Param::option("library")
     .arity(Arity::Many)
     .about("a library the functions and variables are linked from, such as gtk-4, or gobject-2.0=<dir> for those of the headers under <dir>");
 
+const SPLIT: Param = Param::flag("split").about(
+    "write the bindings of each directory of headers to a file of its own, beside the one written to `--out`, which spreads them",
+);
+
 pub(super) const GROUP: &str = "ffi";
 
 /// The binder of C headers.
 const C: &str = "c";
 
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
-    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, CLOSED, LIBRARY])
+    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, CLOSED, LIBRARY, SPLIT])
     .examples(&[
         Example { line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun", about: "bind a header" },
         Example {
@@ -60,12 +64,28 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let place = target.as_deref().unwrap_or(&header);
     let dir = place.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let reserved = session.names_seen_in(dir);
+    let module = if args.flag(&SPLIT) {
+        let module = target.as_deref().and_then(|out| session.module_of(out));
+        if module.is_none() {
+            let msg = Msg::new()
+                .code(SPLIT.long())
+                .text(" needs ")
+                .code(OUT.long())
+                .text(" to name a file inside a package");
+            session.diag.error(Diagnostic::error(errors::TOOL_SPLIT_PLACE, msg));
+            return Ok(Outcome::Failure);
+        }
+        module
+    } else {
+        None
+    };
     let Some(binder) = session.registry.binders.get(C) else {
         let msg = Msg::new().text("this program runs without ").code("util ffi bind");
         session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
         return Ok(Outcome::Failure);
     };
     let request = Request {
+        module,
         scope: args.values(&SCOPE).map(PathBuf::from).collect(),
         only: args.values(&ONLY).map(Glob::new).collect(),
         closed: args.values(&CLOSED).map(Glob::new).collect(),
@@ -87,9 +107,17 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
         shell.result(&Document { kind: "bindings", name, text: bindings.source })?;
         return Ok(Outcome::Success);
     };
-    if let Err(e) = path.put(bindings.source.as_bytes()) {
-        session.diag.error(Diagnostic::unwritable(&path, &e));
-        return Ok(Outcome::Failure);
+    // The parts are beside the file that spreads them, in the directory of its name.
+    let beside = path.with_extension("");
+    let parts = bindings
+        .parts
+        .iter()
+        .map(|part| (beside.join(&part.name).with_extension(vun_span::EXTENSION), part.source.as_bytes()));
+    for (place, text) in std::iter::once((path.clone(), bindings.source.as_bytes())).chain(parts) {
+        if let Err(e) = place.put(text) {
+            session.diag.error(Diagnostic::unwritable(&place, &e));
+            return Ok(Outcome::Failure);
+        }
     }
     Ok(Outcome::Success)
 }

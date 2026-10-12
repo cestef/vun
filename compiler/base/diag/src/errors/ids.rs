@@ -217,6 +217,7 @@ pub enum Lang {
     ToolMissingLibrary,
     ToolBindFailed,
     ToolBindSkipped,
+    ToolSplitPlace,
     ToolNothingToReduce,
     ToolDisasmFailed,
     ToolProfileFailed,
