@@ -17,3 +17,8 @@ pub const a_dyn_calls_the_function_of_its_target: Item = Item::new(
 pub const an_owned_dyn_keeps_its_target_and_gives_the_memory_back: Item = Item::new(
     &["std", "dyn", "tests", "an_owned_dyn_keeps_its_target_and_gives_the_memory_back"],
 );
+pub const Guarded: Item = Item::new(&["std", "dyn", "tests", "Guarded"]);
+pub const ends: Item = Item::new(&["std", "dyn", "tests", "ends"]);
+pub const an_owned_dyn_finishes_its_target_when_it_ends: Item = Item::new(
+    &["std", "dyn", "tests", "an_owned_dyn_finishes_its_target_when_it_ends"],
+);

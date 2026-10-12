@@ -23,5 +23,6 @@ pub const Table: Item = Item::new(&["std", "dyn", "Table"]);
 pub const invoke: Item = Item::new(&["std", "dyn", "invoke"]);
 pub const Dyn: Item = Item::new(&["std", "dyn", "Dyn"]);
 /// A `Dyn(I)` that owns its target, kept in the memory an allocator gave: linear, so it ends
-/// with `deinit`, which gives that memory back. The target is not dropped, so it must own nothing.
+/// with `deinit`, which runs the `finish` it was made with on the target, then gives that memory
+/// back.
 pub const OwnedDyn: Item = Item::new(&["std", "dyn", "OwnedDyn"]);

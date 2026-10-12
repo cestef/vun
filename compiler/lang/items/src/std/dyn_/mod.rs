@@ -2,6 +2,7 @@
 pub mod dyn_Dyn;
 pub mod dyn_OwnedDyn;
 pub mod dyn_tests;
+pub mod dyn_tests_Guarded;
 pub mod dyn_tests_Rect;
 pub mod dyn_tests_Shape;
 pub mod dyn_tests_Square;

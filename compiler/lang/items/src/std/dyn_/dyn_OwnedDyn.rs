@@ -7,11 +7,13 @@
 )]
 #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
-/// A `T` holding `value`, in memory from `a`, as `I` sees it.
+/// A `T` holding `value`, in memory from `a`, as `I` sees it. `finish` consumes the value in
+/// place when the `OwnedDyn` ends, for a `T` that owns something; `.none` for one that owns
+/// nothing.
 pub const new: Item = Item::new(&["std", "dyn", "OwnedDyn", "new"]);
 /// The target, as a `Dyn`.
 pub const get: Item = Item::new(&["std", "dyn", "OwnedDyn", "get"]);
 /// The target, as a `Dyn` that may change it.
 pub const get_mut: Item = Item::new(&["std", "dyn", "OwnedDyn", "get_mut"]);
-/// Gives the target's memory back to `a`, which it came from.
+/// Finishes the target, then gives its memory back to `a`, which it came from.
 pub const deinit: Item = Item::new(&["std", "dyn", "OwnedDyn", "deinit"]);
