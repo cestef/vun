@@ -125,6 +125,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (SYNTAX_UNTERMINATED_STRING, "lang/lang/errors/syntax/unterminated_string.md"),
     (SYNTAX_UNTERMINATED_CHAR, "lang/lang/errors/syntax/unterminated_char.md"),
     (SYNTAX_INVALID_ESCAPE, "lang/lang/errors/syntax/invalid_escape.md"),
+    (SYNTAX_INTERIOR_NUL, "lang/lang/errors/syntax/interior_nul.md"),
     (SYNTAX_MALFORMED_NUMBER, "lang/lang/errors/syntax/malformed_number.md"),
     (SYNTAX_STRAY_ESCAPE, "lang/lang/errors/syntax/stray_escape.md"),
     (SYNTAX_EXPECTED_TOKEN, "lang/lang/errors/syntax/expected_token.md"),

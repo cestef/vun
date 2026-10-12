@@ -43,6 +43,9 @@ pub const diag: Item = Item::new(&["std", "diag"]);
 /// implementing the interface `I`, which it calls through a table of the functions its witness
 /// gives, one per requirement.
 pub const r#dyn: Item = Item::new(&["std", "dyn"]);
+/// Passing data to and from code written in C (spec 07, section 5): text that ends with a zero
+/// byte, which a literal `c"text"` writes, and a copy a program makes of text that is not.
+pub const ffi: Item = Item::new(&["std", "ffi"]);
 /// Float methods (spec 04, section 2): conversions, an impl for every float type over the
 /// primitives of `lang.float`.
 pub const float: Item = Item::new(&["std", "float"]);

@@ -5,7 +5,7 @@ use vun_grammar::TokenKind;
 
 use super::{
     BYTE_ESCAPE_DIGITS, ESCAPE, Lexer, SIMPLE_ESCAPES, UNICODE_ESCAPE_DIGITS, is_ident_continue,
-    is_ident_start,
+    is_ident_start, value,
 };
 
 impl Lexer<'_, '_, '_> {
@@ -27,6 +27,25 @@ impl Lexer<'_, '_, '_> {
             }
         }
         TokenKind::String
+    }
+
+    /// `c"text"`: an escaped string whose value ends with a zero byte, so that it holds none
+    /// before.
+    pub(super) fn c_string(&mut self) -> TokenKind {
+        let lo = self.pos;
+        self.bump();
+        let kind = self.string();
+        let written = &self.text[lo..self.pos];
+        if value::bytes(kind, written).is_some_and(|bytes| bytes[..bytes.len() - 1].contains(&0)) {
+            let msg = Msg::new().text("a string for C holds no zero byte before its end");
+            let help = Msg::new().text("use a string without ").code("c").text(" for bytes that hold one");
+            let span = self.span_from(lo);
+            self.cx.error_at(
+                span,
+                Diagnostic::error(errors::SYNTAX_INTERIOR_NUL, msg).child(ChildKind::Help, help),
+            );
+        }
+        kind
     }
 
     /// `\word` or `\"raw string"`.

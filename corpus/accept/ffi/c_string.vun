@@ -1,0 +1,21 @@
+//! `c"text"` is a string for C: its bytes and a zero byte (spec 01, section 5), which C functions
+//! read as the end of the string. `std.ffi.CStr` checks and borrows such bytes.
+
+#[link.symbol("strlen"), abi.c]
+strlen: unsafe (s: *u8) -> usize = _;
+
+#[link.symbol("puts"), abi.c]
+puts: unsafe (s: *u8) -> i32 = _;
+
+greeting := c"hello";
+
+length := () -> usize { unsafe { strlen(greeting.ptr()) } };
+
+say := (text: &std.ffi.cstr.CStr) -> i32 { unsafe { puts(text.ptr()) } };
+
+shout := () -> i32 {
+    match std.ffi.cstr.CStr.of(c"hey") {
+        .some(text) => say(&text),
+        .none => -1,
+    }
+};

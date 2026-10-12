@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use vun_grammar::TokenKind;
 
-use super::{BYTE_ESCAPE_DIGITS, ESCAPE, RAW_STRING_LINE, SIMPLE_ESCAPES};
+use super::{BYTE_ESCAPE_DIGITS, C_STRING, ESCAPE, RAW_STRING_LINE, SIMPLE_ESCAPES};
 
 /// A piece of a literal's body: a byte written as `\xHH`, or a character.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,6 +29,10 @@ fn body(kind: TokenKind, text: &str) -> Option<(usize, &str)> {
     let quoted =
         |open: &'static str, close: char| Some((open.len(), text.strip_prefix(open)?.strip_suffix(close)?));
     match kind {
+        TokenKind::String if text.starts_with(C_STRING) => {
+            let (open, body) = body(kind, &text[C_STRING.len_utf8()..])?;
+            Some((open + C_STRING.len_utf8(), body))
+        }
         TokenKind::String => quoted("\"", '"'),
         TokenKind::RawString => quoted("\\\"", '"'),
         TokenKind::RawStringLine => Some((RAW_STRING_LINE.len(), text.strip_prefix(RAW_STRING_LINE)?)),
@@ -40,10 +44,15 @@ fn body(kind: TokenKind, text: &str) -> Option<(usize, &str)> {
 #[must_use]
 pub fn bytes(kind: TokenKind, text: &str) -> Option<Cow<'_, [u8]>> {
     let (_, body) = body(kind, text)?;
-    if kind != TokenKind::String || !body.contains(ESCAPE) {
+    let terminated = kind == TokenKind::String && text.starts_with(C_STRING);
+    if !terminated && (kind != TokenKind::String || !body.contains(ESCAPE)) {
         return Some(Cow::Borrowed(body.as_bytes()));
     }
-    Some(Cow::Owned(located(kind, text)?.into_iter().map(|(b, _)| b).collect()))
+    let mut bytes: Vec<u8> = located(kind, text)?.into_iter().map(|(b, _)| b).collect();
+    if terminated {
+        bytes.push(0);
+    }
+    Some(Cow::Owned(bytes))
 }
 
 /// The bytes a string token denotes, each with the range of `text` writing it: an escape's

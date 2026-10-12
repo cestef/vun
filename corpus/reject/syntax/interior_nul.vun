@@ -1,0 +1,5 @@
+//! A string for C holds no zero byte before its end (spec 01, section 5).
+
+ok := c"fine";
+early := c"a\0b"; //~ syntax.interior_nul
+hex := c"a\x00b"; //~ syntax.interior_nul

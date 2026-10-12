@@ -1,0 +1,2 @@
+//! Passing data to and from code written in C (spec 07, section 5): text that ends with a zero
+//! byte, which a literal `c"text"` writes, and a copy a program makes of text that is not.

@@ -2,7 +2,9 @@
 //! comments, strings, characters, numbers, labels and escaped names, composed from the shared
 //! pieces of `grammar::lexical`.
 
-use vun_syntax::lexer::{COMMENT, DOC_COMMENT, ESCAPE, MODULE_DOC_COMMENT, RADIX_PREFIXES, RAW_STRING_LINE};
+use vun_syntax::lexer::{
+    C_STRING, COMMENT, DOC_COMMENT, ESCAPE, MODULE_DOC_COMMENT, RADIX_PREFIXES, RAW_STRING_LINE,
+};
 
 use super::syntax::{Context, Rule, Scope, Then};
 use crate::grammar::lexical::{
@@ -30,7 +32,8 @@ pub(super) fn strings() -> Vec<(Context, Vec<Rule>)> {
         Rule::of(Pattern::literal(RAW_STRING_LINE).through_line_end(), Scope::RawLine),
         Rule::of(char_of(ESCAPE).then(quote.clone()), Scope::StringBegin)
             .then(Then::Push(Context::RawString)),
-        Rule::of(quote.clone(), Scope::StringBegin).then(Then::Push(Context::String)),
+        Rule::of(char_of(C_STRING).optional().then(quote.clone()), Scope::StringBegin)
+            .then(Then::Push(Context::String)),
         Rule::of(character, Scope::Char),
     ];
     // Both end at their line's end, where the lexer reports them unterminated.

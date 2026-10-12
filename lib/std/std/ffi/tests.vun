@@ -1,0 +1,43 @@
+//! Tests of the strings for C.
+
+Fixed: type = std.mem.alloc.Fixed;
+CStr: type = std.ffi.cstr.CStr;
+
+#[test]
+a_literal_for_c_ends_with_a_zero_byte := () {
+    bytes := c"abc";
+    std.testing.assert(bytes.len() == 4);
+    std.testing.assert(bytes[3] == 0);
+    std.testing.assert(c"".len() == 1);
+};
+
+#[test]
+bytes_are_a_string_for_c_when_they_end_with_the_only_zero := () {
+    std.testing.assert(CStr.of(c"hi").expect("a string for C").text() == "hi");
+    std.testing.assert(CStr.of("hi").is_none());
+    std.testing.assert(CStr.of("a\0b\0").is_none());
+    std.testing.assert(CStr.of("").is_none());
+    std.testing.assert(CStr.of("\0").expect("the empty string").text() == "");
+};
+
+#[test]
+a_string_is_read_from_a_pointer_up_to_its_zero_byte := () {
+    bytes := c"read me";
+    read := unsafe { CStr.at(bytes.ptr()) };
+    std.testing.assert(read.text() == "read me");
+};
+
+#[test]
+text_is_copied_into_a_string_for_c_unless_it_holds_a_zero_byte := () {
+    mut storage: [256]u8 = [0; 256];
+    mut a := Fixed.init(&mut storage);
+    owned := std.ffi.cstr.CString.of(Fixed, &mut a, "copy").expect("room");
+    std.testing.assert(owned.as_c().text() == "copy");
+    std.testing.assert(unsafe { CStr.at(owned.ptr()) }.text() == "copy");
+    owned.deinit(Fixed, &mut a);
+    refused := std.ffi.cstr.CString.of(Fixed, &mut a, "a\0b");
+    std.testing.assert(match refused {
+        .err(.interior_nul(at)) => at == 1,
+        _ => false,
+    });
+};

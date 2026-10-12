@@ -1,0 +1,78 @@
+//! A string for C is bytes that end with one zero byte, and have none before it.
+
+..std.mem.alloc.{ Allocator };
+..std.text.string.{ String };
+
+/// A string for C, borrowed: what `c"text"` is, or the bytes `of` checks.
+CStr := struct {
+    /// The bytes, the zero byte last.
+    _bytes: &[u8],
+
+    /// The string `bytes` holds, which must end with the only zero byte in it.
+    of := (bytes: &[u8]) -> ?CStr {
+        if bytes.len() == 0 or bytes[bytes.len() - 1] != 0 { return .none; }
+        for i in 0..bytes.len() - 1 {
+            if bytes[i] == 0 { return .none; }
+        }
+        .some(.{ ._bytes = bytes })
+    };
+
+    /// The string a C pointer holds, up to its zero byte, which must be there and stay while the
+    /// string is used.
+    at := unsafe (start: *u8) -> CStr {
+        mut len: usize = 0;
+        for unsafe { start.offset(len.to(isize)).read() } != 0 { len += 1; }
+        .{ ._bytes = unsafe lang.mem.items_at(u8, start, (len + 1).sat(usize)) }
+    };
+
+    /// The address of its first byte, for C, which reads up to the zero byte: valid as long as the
+    /// bytes it borrows.
+    ptr := (self: &CStr) -> *u8 { self._bytes.ptr() };
+
+    /// The text, without the zero byte.
+    text := (self: &CStr) -> &[u8] { self._bytes[0..self._bytes.len() - 1] };
+};
+
+/// Why a text could not be made a string for C.
+Failure := ($E: type) -> type { enum {
+    /// The byte at this position is zero, which would end the string there for C.
+    interior_nul(usize),
+    /// The allocator gave no room.
+    allocation(E),
+} };
+
+/// A string for C a program owns, made from text by copying it and a zero byte.
+CString := struct {
+    _text: String,
+
+    /// A copy of `text` and a zero byte.
+    of := ($A: Allocator, a: &mut A, text: &[u8]) -> Result(CString, Failure(A.Error)) {
+        for i in 0..text.len() {
+            if text[i] == 0 { return .err(.interior_nul(i)); }
+        }
+        mut s := match String.from(A, a, text) {
+            .ok(s) => s,
+            .err(e) => return .err(.allocation(e)),
+        };
+        match s.push(A, a, 0) {
+            .ok(_) => .ok(.{ ._text = s }),
+            .err(e) => {
+                s.deinit(A, a);
+                .err(.allocation(e))
+            },
+        }
+    };
+
+    /// It as a borrowed string for C.
+    as_c := (self: &CString) -> CStr {
+        CStr.of(self._text.as_text()).expect("it ends with the only zero byte")
+    };
+
+    /// The address of its first byte: see `CStr.ptr`.
+    ptr := (self: &CString) -> *u8 { self._text.as_text().ptr() };
+
+    deinit := (self: CString, $A: Allocator, a: &mut A) {
+        .{ ._text = text } := self;
+        text.deinit(A, a);
+    };
+};

@@ -235,6 +235,10 @@ Literals:
 - Strings `"text\n"` have type `&static [N]u8`. Escapes are `\n \t \r \0 \\ \" \'`, `\xHH` and
   `\u{H..HHHHHH}`. `\xHH` is one byte of a string; in a character literal it is the scalar value
   `HH`.
+- A `c` before the quote of an escaped string, `c"text"`, makes a string for C: its bytes and one
+  zero byte after them, so `c"ab"` has type `&static [3]u8`. A zero byte before the end, written
+  `\0`, `\x00` or `\u{0}`, is `syntax.interior_nul`. `std.ffi.cstr.CStr` borrows such bytes and
+  gives their address to C, and `CString` copies text into one.
 - A backslash before a string takes it literally: `\"C:\dir\new"` has no escapes and ends at the
   next `"`. A multi-line string is a run of lines each starting with `\\`, also taken literally, so
   it may contain quotes. So there are two string forms: escaped (`"..."`) and literal (`\"..."`,

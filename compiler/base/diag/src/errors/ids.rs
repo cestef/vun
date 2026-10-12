@@ -189,6 +189,7 @@ pub enum Lang {
     SyntaxUnterminatedString,
     SyntaxUnterminatedChar,
     SyntaxInvalidEscape,
+    SyntaxInteriorNul,
     SyntaxMalformedNumber,
     SyntaxStrayEscape,
     SyntaxExpectedToken,

@@ -53,6 +53,10 @@ pub const TO_LINE_END: &[TokenKind] =
 /// Takes the next word or string literally.
 pub const ESCAPE: char = '\\';
 
+/// Before the quote of an escaped string, ends the string it denotes with a zero byte: `c"text"`,
+/// a string for C, which has no zero byte inside.
+pub const C_STRING: char = 'c';
+
 impl Tokens {
     /// Whether the token text `next`, written right after the source `before` in `file`, lexes
     /// as one token starting where `before` ends: after `2` and `.`, `5` would make `2.5`, and
@@ -137,6 +141,7 @@ impl Lexer<'_, '_, '_> {
             }
             ESCAPE => self.escaped(),
             '"' => self.string(),
+            C_STRING if self.peek_second() == Some('"') => self.c_string(),
             '\'' => self.quote(),
             c if c.is_ascii_digit() => self.number(),
             c if is_ident_start(c) => self.word(),

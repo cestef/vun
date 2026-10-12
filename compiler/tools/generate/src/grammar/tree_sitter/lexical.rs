@@ -3,7 +3,9 @@
 //! rule `_kind`, and each extra, a comment, a rule of its own; doc comments outrank comments where
 //! both match.
 
-use vun_syntax::lexer::{COMMENT, DOC_COMMENT, ESCAPE, MODULE_DOC_COMMENT, RADIX_PREFIXES, RAW_STRING_LINE};
+use vun_syntax::lexer::{
+    C_STRING, COMMENT, DOC_COMMENT, ESCAPE, MODULE_DOC_COMMENT, RADIX_PREFIXES, RAW_STRING_LINE,
+};
 
 use crate::grammar::lexical::{
     APOSTROPHE, DECIMAL, DOT, EXPONENT, IDENT, LINE_END, QUOTE, RADIX_LEAD, SIGNS, char_of, digits, escape,
@@ -90,7 +92,8 @@ fn character() -> Rule {
 fn string() -> Rule {
     let plain = Pattern::except([QUOTE, ESCAPE, LINE_END]);
     let any_escape = char_of(ESCAPE).then(Pattern::except([LINE_END]));
-    pattern(&char_of(QUOTE).then(Pattern::any([plain, any_escape]).many()).then(char_of(QUOTE)))
+    let body = char_of(QUOTE).then(Pattern::any([plain, any_escape]).many()).then(char_of(QUOTE));
+    pattern(&char_of(C_STRING).optional().then(body))
 }
 
 fn raw_string() -> Rule {

@@ -53,7 +53,7 @@
         "push": "raw_string"
       },
       {
-        "match": "\"",
+        "match": "(?:c)?\"",
         "scope": "punctuation.definition.string.begin.vun",
         "push": "string"
       },

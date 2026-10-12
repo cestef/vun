@@ -4,6 +4,7 @@ unknown_character := diag.Diag{};
 unterminated_string := diag.Diag{};
 unterminated_char := diag.Diag{};
 invalid_escape := diag.Diag{};
+interior_nul := diag.Diag{};
 malformed_number := diag.Diag{};
 stray_escape := diag.Diag{};
 expected_token := diag.Diag{};

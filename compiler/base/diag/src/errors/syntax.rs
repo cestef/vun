@@ -9,6 +9,7 @@ pub const SYNTAX_UNTERMINATED_STRING: DiagId = DiagId::Lang(
 );
 pub const SYNTAX_UNTERMINATED_CHAR: DiagId = DiagId::Lang(Lang::SyntaxUnterminatedChar);
 pub const SYNTAX_INVALID_ESCAPE: DiagId = DiagId::Lang(Lang::SyntaxInvalidEscape);
+pub const SYNTAX_INTERIOR_NUL: DiagId = DiagId::Lang(Lang::SyntaxInteriorNul);
 pub const SYNTAX_MALFORMED_NUMBER: DiagId = DiagId::Lang(Lang::SyntaxMalformedNumber);
 pub const SYNTAX_STRAY_ESCAPE: DiagId = DiagId::Lang(Lang::SyntaxStrayEscape);
 pub const SYNTAX_EXPECTED_TOKEN: DiagId = DiagId::Lang(Lang::SyntaxExpectedToken);

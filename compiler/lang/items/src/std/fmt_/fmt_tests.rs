@@ -19,6 +19,14 @@ pub const a_place_without_a_specifier_writes_the_argument_as_it_is_formatted: It
         "a_place_without_a_specifier_writes_the_argument_as_it_is_formatted",
     ],
 );
+pub const a_system_error_is_written_as_words_and_its_number_when_it_has_none: Item = Item::new(
+    &[
+        "std",
+        "fmt",
+        "tests",
+        "a_system_error_is_written_as_words_and_its_number_when_it_has_none",
+    ],
+);
 pub const debug_writes_scalars_as_their_source: Item = Item::new(
     &["std", "fmt", "tests", "debug_writes_scalars_as_their_source"],
 );

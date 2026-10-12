@@ -46,6 +46,15 @@ fn quotes() {
 }
 
 #[test]
+fn a_string_for_c_is_a_string_ending_with_a_zero_byte() {
+    assert_eq!(kinds(r#"c"hi" c x"#), [String, Ident, Ident, Eof]);
+    assert_eq!(bytes(String, r#"c"hi\n""#).as_deref(), Some(&b"hi\n\0"[..]));
+    assert_eq!(bytes(String, r#"c"""#).as_deref(), Some(&[0][..]));
+    let (_, ids) = lex_text(r#"c"a\0b" c"a\x00" c"ok""#);
+    assert_eq!(ids, [errors::SYNTAX_INTERIOR_NUL, errors::SYNTAX_INTERIOR_NUL]);
+}
+
+#[test]
 fn literal_values() {
     assert_eq!(literal(String, r#""a\n\x41\u{e9}\"""#).as_deref(), Some("a\nA\u{e9}\""));
     assert_eq!(literal(RawString, r#"\"C:\dir""#).as_deref(), Some(r"C:\dir"));

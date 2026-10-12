@@ -19,6 +19,7 @@ pub const unterminated_char: Item = Item::new(
 pub const invalid_escape: Item = Item::new(
     &["lang", "errors", "syntax", "invalid_escape"],
 );
+pub const interior_nul: Item = Item::new(&["lang", "errors", "syntax", "interior_nul"]);
 pub const malformed_number: Item = Item::new(
     &["lang", "errors", "syntax", "malformed_number"],
 );
