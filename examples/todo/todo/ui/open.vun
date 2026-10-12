@@ -3,10 +3,10 @@
 ..std.text.string.{ String };
 ..todo.ui.state.{ State };
 
-Heap: type = todo.libc.Heap;
+Heap: type = std.os.heap.Heap;
 
 /// The environment variable naming the user's directory.
-home: &static [u8] = c"HOME";
+home: &static [u8] = "HOME";
 /// Where the list is kept, inside it.
 file: &static [u8] = "/.local/share/todo.json";
 /// Where the list is kept when there is no such directory.
@@ -16,7 +16,7 @@ impl State {
     /// The state of a session that starts from the list in the user's file, an empty one when there is none.
     open := (sys: &mut std.os.System) -> Result(State, todo.store.file.Problem(std.mem.alloc.Error)) {
         mut heap := Heap{};
-        mut path := match State.locate(&mut heap) {
+        mut path := match State.locate(&mut heap, sys.env(home)) {
             .ok(p) => p,
             .err(e) => return .err(.allocation(e)),
         };
@@ -39,9 +39,9 @@ impl State {
     };
 
     /// The file the list is kept in.
-    locate := (heap: &mut Heap) -> Result(String, std.mem.alloc.Error) {
-        parts: [2]&[u8] = match todo.libc.variable(home) {
-            .some(dir) => [dir, file],
+    locate := (heap: &mut Heap, dir: ?&[u8]) -> Result(String, std.mem.alloc.Error) {
+        parts: [2]&[u8] = match dir {
+            .some(root) => [root, file],
             .none => [fallback, ""],
         };
         mut path := String.empty();

@@ -7,7 +7,7 @@
 ..todo.ui.mark.{ Mark };
 ..todo.ui.state.{ State };
 
-Heap: type = todo.libc.Heap;
+Heap: type = std.os.heap.Heap;
 Object: type = todo.gtk.sys.GObject;
 
 /// The state a handler was connected with.

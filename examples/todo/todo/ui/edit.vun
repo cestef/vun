@@ -3,7 +3,7 @@
 ..std.ffi.cstr.{ CString };
 ..todo.ui.state.{ State };
 
-Heap: type = todo.libc.Heap;
+Heap: type = std.os.heap.Heap;
 
 /// What the add button says while the entry holds the text of an item being changed.
 save_label: &static [u8] = c"Save";

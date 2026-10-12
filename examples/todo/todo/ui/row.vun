@@ -7,7 +7,7 @@
 ..todo.gtk.widget.{ Widget };
 ..todo.ui.mark.{ Mark };
 
-Heap: type = todo.libc.Heap;
+Heap: type = std.os.heap.Heap;
 
 /// Spacing between the widgets of a row, in pixels.
 gap: i32 = 8;

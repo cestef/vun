@@ -22,4 +22,3 @@ asking for the functions the program calls and the types they use.
 | `todo/store/` | the JSON document, read and written; tests |
 | `todo/gtk/` | typed handles over the bound C functions of `todo/gtk/sys.vun` |
 | `todo/ui/` | state, window, rows, signal handlers |
-| `todo/libc.vun` | the C heap as an `Allocator`, `getenv` |

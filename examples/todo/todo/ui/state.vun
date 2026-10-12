@@ -17,7 +17,7 @@ Widgets := struct {
 
 State := struct {
     sys: &mut std.os.System,
-    heap: todo.libc.Heap,
+    heap: std.os.heap.Heap,
     /// The file the list is kept in.
     path: String,
     list: todo.model.list.List,

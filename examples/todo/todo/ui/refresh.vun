@@ -4,7 +4,7 @@
 ..todo.ui.row.{ Row };
 ..todo.ui.state.{ State, Widgets };
 
-Heap: type = todo.libc.Heap;
+Heap: type = std.os.heap.Heap;
 
 impl State {
     /// Shows the list again.
