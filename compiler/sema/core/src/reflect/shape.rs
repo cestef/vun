@@ -32,9 +32,11 @@ impl Env<'_, '_> {
             return Err(Unevaluated::Unsupported);
         }
         if !matches!(&*ty, TyKind::Nominal(n) if n.kind == vun_sema_ty::NominalKind::Struct) {
+            let codes = members.codes()?;
             let variants = members.variants.iter().enumerate().map(|(index, v)| {
                 let parts = v.payload.iter().enumerate().map(|(i, ty)| Part::at(i, ty.clone()));
-                Variant { name: v.name, index, parts: parts.collect(), attrs: v.attrs.clone() }
+                let code = codes.as_ref().map_or_else(|| Integer::from(index), |codes| codes[index].clone());
+                Variant { name: v.name, index, code, parts: parts.collect(), attrs: v.attrs.clone() }
             });
             return Ok(variants.collect());
         }

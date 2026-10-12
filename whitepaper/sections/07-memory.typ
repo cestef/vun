@@ -154,6 +154,9 @@ The language defines layout; the implementation does not choose it.
   pointers, arrays of these and other `layout.c` structures.
 - `#[layout.tag(uN)]` fixes the tag representation of an enumeration; `#[layout.align(n)]` and
   `#[layout.offset(n)]` raise alignment and place a field.
+- A variant may name its tag, `back = -2`, as C's enumerations do; the enumeration is then that
+  integer to C, which `std.meta.from_code` turns back into a variant, or into nothing when no
+  variant has the tag.
 - An enumeration otherwise uses the smallest integer that holds its tags, except where
   the niche rule below applies.
 

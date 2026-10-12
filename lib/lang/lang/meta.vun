@@ -84,6 +84,9 @@ Variant := struct {
     name: &[u8],
     /// Its position among the variants of its type.
     index: usize,
+    /// The integer its tag is when the variants name their tags (`name = code`), else its
+    /// position.
+    code: i128,
     parts: &[Field],
     /// The values of the attributes written on it; none for the variant a struct is.
     attrs: &[Any],

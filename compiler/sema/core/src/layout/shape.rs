@@ -63,16 +63,30 @@ pub enum Offset {
 }
 
 /// How an enum's value tells which variant it is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum Tag {
     /// One variant, or none: nothing is stored.
     Alone,
-    /// The variant's index, an unsigned integer of `bytes` bytes at offset 0.
-    Index { bytes: u64 },
+    /// An integer of `bytes` bytes at offset 0: the variant's index, or when the variants name
+    /// their tags (`= code`) the bit pattern in `codes` at the variant's index.
+    Index { bytes: u64, codes: Option<Vec<u128>> },
     /// The payload-free variant `empty` is the pattern `value` of the unsigned integer of `bytes`
     /// bytes at `offset`, in the other variant's payload; any other pattern is that variant
     /// (the niche rule).
     Niche { empty: usize, offset: u64, bytes: u64, value: u128 },
+}
+
+impl Tag {
+    /// The bit pattern the tag of the variant at `index` is, when it is stored at offset 0 as an
+    /// integer.
+    #[must_use]
+    pub fn pattern(&self, index: usize) -> Option<u128> {
+        match self {
+            Self::Index { codes: Some(codes), .. } => codes.get(index).copied(),
+            Self::Index { codes: None, .. } => Some(index as u128),
+            Self::Alone | Self::Niche { .. } => None,
+        }
+    }
 }
 
 impl Layout {

@@ -7,10 +7,17 @@
 )]
 #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
+/// The environment of a hosted program (spec 08, section 2): the value of a variable by its
+/// name, which a runtime that has an environment gives and one without does not.
+pub const env: Item = Item::new(&["std", "os", "env"]);
 /// How a failed request to the system is written: `{}` in a format string.
 pub const error: Item = Item::new(&["std", "os", "error"]);
 /// Files a hosted program opens through its `std.os.System` (spec 08, section 2).
 pub const file: Item = Item::new(&["std", "os", "file"]);
+/// The heap of a hosted program (spec 08, section 2): memory a runtime that has one gives and
+/// takes back by size and alignment. `Heap` is the allocator over it; a runtime without one
+/// gives none, `.exhausted`.
+pub const heap: Item = Item::new(&["std", "os", "heap"]);
 /// A runtime on top of the C library: exports C `main`, the trap handler, the critical section
 /// and the executors' sleep, and reaches the system through the C library's functions (spec 08,
 /// section 2).
@@ -33,6 +40,8 @@ pub const memory: Item = Item::new(&["std", "os", "memory"]);
 /// system gave the process: through a library it loaded, its own code and data, or memory it
 /// mapped.
 pub const pages: Item = Item::new(&["std", "os", "pages"]);
+/// Tests of what a hosted program takes from its system.
+pub const tests: Item = Item::new(&["std", "os", "tests"]);
 /// Threads the system runs beside the one starting them (spec 08, section 2). A thread runs a
 /// closure borrowed for as long as it runs: `Thread` is linear and holds the borrow, so the
 /// closure, and what it borrows, stay until the thread is joined, and joining gives what the

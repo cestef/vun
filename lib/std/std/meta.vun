@@ -31,6 +31,25 @@ variant_name := ($T: type, v: &T) -> &[u8] {
     ""
 };
 
+/// The integer the tag of the variant of its type `T` that `v` is: the code its variant names
+/// (`name = code`), else its position.
+variant_code := ($T: type, v: &T) -> i128 {
+    at := lang.meta.variant(T, v);
+    $for each in lang.meta.variants(T) {
+        if at == each.index { return each.code; }
+    }
+    0
+};
+
+/// The variant of the enum `T`, which holds nothing in any variant, whose tag is `code`; none
+/// when no variant has it: what C hands over in an integer, taken as the enum it stands for.
+from_code := ($T: type, code: i128) -> ?T {
+    $for each in lang.meta.variants(T) {
+        if code == each.code { return .some(lang.meta.make(T, each.index, ())); }
+    }
+    .none
+};
+
 /// The values of the attributes written on `d`, a field or a variant as reflection gives it
 /// (`lang.meta.Field`, `lang.meta.Variant`): plain data, each with its type, known at compile
 /// time only.

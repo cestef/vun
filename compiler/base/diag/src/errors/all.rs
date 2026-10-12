@@ -67,6 +67,7 @@ pub const ALL: &[DiagId] = &[
     LAYOUT_BITS_WIDTH,
     LAYOUT_NOT_C,
     LAYOUT_TAG,
+    LAYOUT_CODE,
     LAYOUT_ALIGN,
     LAYOUT_OFFSET,
     LINK_UNAVAILABLE,

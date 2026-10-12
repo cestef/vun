@@ -34,6 +34,8 @@ struct Part {
 struct Variant {
     name: Symbol,
     index: usize,
+    /// The integer its tag is when its enum names tags, else its position.
+    code: Integer,
     parts: Vec<Part>,
     attrs: Vec<Value>,
 }
@@ -48,7 +50,7 @@ impl Part {
 impl Variant {
     /// The one variant of a type that has no others, holding `parts`.
     fn alone(parts: Vec<Part>) -> Self {
-        Self { name: Symbol::intern(""), index: 0, parts, attrs: Vec::new() }
+        Self { name: Symbol::intern(""), index: 0, code: Integer::zero(), parts, attrs: Vec::new() }
     }
 }
 
@@ -81,6 +83,7 @@ const PART: &[(Item, Fact<Part>)] = &[
 const VARIANT: &[(Item, Fact<Variant>)] = &[
     (lang::meta_Variant::name, |_, v| Ok(Value::string(v.name.as_str()))),
     (lang::meta_Variant::index, |_, v| Ok(Value::Int(Integer::from(v.index)))),
+    (lang::meta_Variant::code, |_, v| Ok(Value::Int(v.code.clone()))),
     (lang::meta_Variant::parts, |env, v| env.describe(lang::meta::Field, &v.parts, PART)),
     (lang::meta_Variant::attrs, |_, v| Ok(Env::held(&v.attrs))),
 ];

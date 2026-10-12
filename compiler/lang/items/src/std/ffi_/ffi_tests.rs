@@ -26,3 +26,12 @@ pub const text_is_copied_into_a_string_for_c_unless_it_holds_a_zero_byte: Item =
         "text_is_copied_into_a_string_for_c_unless_it_holds_a_zero_byte",
     ],
 );
+pub const Offset: Item = Item::new(&["std", "ffi", "tests", "Offset"]);
+pub const a_variant_and_the_integer_it_is_in_c_convert_to_each_other: Item = Item::new(
+    &[
+        "std",
+        "ffi",
+        "tests",
+        "a_variant_and_the_integer_it_is_in_c_convert_to_each_other",
+    ],
+);

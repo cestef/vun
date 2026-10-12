@@ -40,6 +40,8 @@ pub const join: Item = Item::new(&["std", "os", "windows", "services", "join"]);
 /// the target links.
 pub const support: Item = Item::new(&["std", "os", "windows", "services", "support"]);
 pub const library: Item = Item::new(&["std", "os", "windows", "services", "library"]);
+pub const heap: Item = Item::new(&["std", "os", "windows", "services", "heap"]);
+pub const env: Item = Item::new(&["std", "os", "windows", "services", "env"]);
 pub const float_used: Item = Item::new(
     &["std", "os", "windows", "services", "float_used"],
 );

@@ -85,14 +85,25 @@ impl Lower<'_, '_> {
             let (inner, doc, attrs) = this.annotations(n);
             let origin = this.origin(inner);
             match this.kind(inner) {
-                NodeKind::Name => {
-                    Some(Variant { name: this.name(inner), payload: Vec::new(), attrs, doc, origin })
+                NodeKind::Name => Some(Variant {
+                    name: this.name(inner),
+                    payload: Vec::new(),
+                    code: None,
+                    attrs,
+                    doc,
+                    origin,
+                }),
+                NodeKind::FieldInit => {
+                    let f = this.fields(inner);
+                    let name = f.one(NodeField::Target).map_or(Name::Hole, |t| this.name(t));
+                    let code = f.one(NodeField::Value).map(|v| this.expr(v));
+                    Some(Variant { name, payload: Vec::new(), code, attrs, doc, origin })
                 }
                 NodeKind::Call => {
                     let f = this.fields(inner);
                     let name = f.one(NodeField::Callee).map_or(Name::Hole, |c| this.name(c));
                     let payload = f.get(NodeField::Args).iter().map(|&a| this.expr(a)).collect();
-                    Some(Variant { name, payload, attrs, doc, origin })
+                    Some(Variant { name, payload, code: None, attrs, doc, origin })
                 }
                 _ => None,
             }

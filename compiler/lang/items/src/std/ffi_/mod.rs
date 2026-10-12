@@ -4,3 +4,4 @@ pub mod ffi_cstr_CStr;
 pub mod ffi_cstr_CString;
 pub mod ffi_cstr_Failure;
 pub mod ffi_tests;
+pub mod ffi_tests_Offset;

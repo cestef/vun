@@ -161,7 +161,9 @@ impl<'a, 'db> Types<'a, 'db> {
         if let Parts::Enum { tag, payloads } = &shape.parts {
             match *tag {
                 // Variants alone: the tag.
-                Tag::Index { bytes } if payloads.iter().all(Vec::is_empty) && shape.layout.size == bytes => {
+                Tag::Index { bytes, .. }
+                    if payloads.iter().all(Vec::is_empty) && shape.layout.size == bytes =>
+                {
                     let bits = u32::try_from(bytes * u64::from(u8::BITS)).ok();
                     if let Some(int) = bits.and_then(Scalar::int) {
                         return Ok(Repr::Scalar(int));

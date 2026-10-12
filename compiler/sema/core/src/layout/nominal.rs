@@ -9,7 +9,7 @@ use vun_sema_ty::{Nominal, NominalKind, Ty, Value};
 
 use super::{Layout, Niche, Parts, Shape, Shapes, Tag};
 use crate::attributes::Attributed;
-use crate::member::Members;
+use crate::member::{MemberTable, Members};
 
 impl Shapes {
     pub(super) fn nominal(cx: &Cx<'_>, ty: Ty, nominal: &Nominal) -> Option<Shape> {
@@ -45,6 +45,10 @@ impl Shapes {
                 let (layout, offsets) = Layout::placed(parts.collect::<Option<Vec<_>>>()?)?;
                 Shape { layout, parts: Parts::Sequence(offsets) }
             }
+            NominalKind::Enum if let Ok(Some(codes)) = members.codes() => {
+                Self::coded(cx, &members, &codes, attr(Attr::tag).as_deref())?
+            }
+            NominalKind::Enum if members.codes().is_err() => return None,
             NominalKind::Enum => {
                 let payloads = members.variants.iter().map(|v| {
                     Some(Layout::sequence(
@@ -71,6 +75,42 @@ impl Shapes {
             }
             _ => Some(whole),
         }
+    }
+
+    /// An enum whose variants name their tags (`name = code`), which `codes` lists: no variant
+    /// holds anything, and each tag is an integer of `#[layout.tag(T)]`, or of the least type
+    /// holding every code.
+    fn coded(cx: &Cx<'_>, members: &MemberTable, codes: &[Integer], tag: Option<&[Value]>) -> Option<Shape> {
+        if members.variants.iter().any(|v| !v.payload.is_empty()) {
+            return None;
+        }
+        let (low, high) = codes.iter().fold((codes.first()?, codes.first()?), |(low, high), c| {
+            (if c < low { c } else { low }, if c > high { c } else { high })
+        });
+        let range = Interval::closed(low.clone(), high.clone())?;
+        let tag = match tag {
+            Some([tag]) => {
+                let tag = tag.as_type()?;
+                if !tag.interval()?.contains(&range) {
+                    return None;
+                }
+                Self::layout(cx, &tag)?
+            }
+            _ => Shapes::integer(&range)?,
+        };
+        let patterns = codes.iter().map(|c| Self::pattern(c, tag.size)).collect::<Option<Vec<_>>>()?;
+        let payloads = vec![Vec::new(); codes.len()];
+        Some(Shape {
+            layout: Layout { size: tag.size, align: tag.align, niche: None },
+            parts: Parts::Enum { tag: Tag::Index { bytes: tag.size, codes: Some(patterns) }, payloads },
+        })
+    }
+
+    /// The bit pattern `code` is in an integer of `bytes` bytes, two's complement when negative.
+    fn pattern(code: &Integer, bytes: u64) -> Option<u128> {
+        let value = code.to_i128().map(|n| n as u128).or_else(|| code.to_u128())?;
+        let bits = bytes.checked_mul(8)?;
+        Some(if bits >= 128 { value } else { value & ((1u128 << bits) - 1) })
     }
 
     /// An enum of variants with the payloads `payloads`, each placed from offset 0 (`empty`
@@ -106,7 +146,7 @@ impl Shapes {
             (Tag::Alone, None)
         } else {
             let last = &Integer::from(count) - &Integer::from(1);
-            (Tag::Index { bytes: tag.size }, Niche::past(tag.size, &last, &Integer::from(count)))
+            (Tag::Index { bytes: tag.size, codes: None }, Niche::past(tag.size, &last, &Integer::from(count)))
         };
         Some(Shape { layout: Layout { size, align, niche }, parts: Parts::Enum { tag, payloads: placed } })
     }

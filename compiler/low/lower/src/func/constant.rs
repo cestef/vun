@@ -141,10 +141,13 @@ impl Lowering<'_, '_> {
                 let members = cx.get::<Members>(&ty).ok_or_else(unsupported)?;
                 let index = members.variants.iter().position(|v| v.name == *name).ok_or_else(unsupported)?;
                 let Parts::Enum { tag, payloads } = &shape.parts else { return Err(unsupported()) };
-                match *tag {
-                    Tag::Index { bytes } => self.int(&Integer::from(index), bytes, &mut out.bytes, base),
-                    Tag::Niche { empty, offset, bytes, value } if empty == index => {
-                        self.int(&Integer::from(value), bytes, &mut out.bytes, base + offset);
+                match tag {
+                    Tag::Index { bytes, .. } => {
+                        let pattern = tag.pattern(index).ok_or_else(unsupported)?;
+                        self.int(&Integer::from(pattern), *bytes, &mut out.bytes, base);
+                    }
+                    Tag::Niche { empty, offset, bytes, value } if *empty == index => {
+                        self.int(&Integer::from(*value), *bytes, &mut out.bytes, base + offset);
                     }
                     Tag::Alone | Tag::Niche { .. } => {}
                 }

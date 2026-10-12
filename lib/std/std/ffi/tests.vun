@@ -41,3 +41,15 @@ text_is_copied_into_a_string_for_c_unless_it_holds_a_zero_byte := () {
         _ => false,
     });
 };
+
+#[layout.tag(i32)]
+Offset := enum { back = -2, here, ahead = 3 };
+
+#[test]
+a_variant_and_the_integer_it_is_in_c_convert_to_each_other := () {
+    std.testing.assert(std.meta.variant_code(Offset, &Offset.ahead) == 3);
+    std.testing.assert(std.meta.variant_code(Offset, &Offset.here) == -1);
+    std.testing.assert(std.meta.from_code(Offset, -2) == Option(Offset).some(.back));
+    std.testing.assert(std.meta.from_code(Offset, 3) == Option(Offset).some(.ahead));
+    std.testing.assert(std.meta.from_code(Offset, 4) == Option(Offset).none);
+};

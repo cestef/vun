@@ -12,6 +12,12 @@ use crate::Item;
 pub const Quoted: Item = Item::new(&["std", "meta", "Quoted"]);
 /// The name of the variant of its type `T` that `v` is, as declared.
 pub const variant_name: Item = Item::new(&["std", "meta", "variant_name"]);
+/// The integer the tag of the variant of its type `T` that `v` is: the code its variant names
+/// (`name = code`), else its position.
+pub const variant_code: Item = Item::new(&["std", "meta", "variant_code"]);
+/// The variant of the enum `T`, which holds nothing in any variant, whose tag is `code`; none
+/// when no variant has it: what C hands over in an integer, taken as the enum it stands for.
+pub const from_code: Item = Item::new(&["std", "meta", "from_code"]);
 /// The values of the attributes written on `d`, a field or a variant as reflection gives it
 /// (`lang.meta.Field`, `lang.meta.Variant`): plain data, each with its type, known at compile
 /// time only.

@@ -1,0 +1,8 @@
+//! The tags variants name hold no values, differ, and are in their integer (spec 05, section 6).
+
+Fine := enum { a = 0, b, c = 7 };
+Valued := enum { a = 0, b(u8) }; //~ layout.code
+Twice := enum { a = 1, b = 1 }; //~ layout.code
+Next := enum { a = 1, b = 0, c }; //~ layout.code
+#[layout.tag(u8)]
+Wide := enum { a = 300 }; //~ layout.code

@@ -8,7 +8,7 @@ use vun_intern::Symbol;
 use vun_origin::OriginId;
 use vun_primitives::Primitive;
 use vun_primitives::layout::Layout;
-use vun_sema_int::Integer;
+use vun_sema_int::{Integer, Interval};
 use vun_sema_ty::item::DeclRef;
 use vun_sema_ty::{Ty, Value};
 
@@ -54,8 +54,11 @@ impl Checker<'_, '_, '_> {
         if let Some([backing]) = self.args(&laid, Layout::bits).as_deref() {
             self.bits(&laid, backing.as_type());
         }
-        if let Some([tag]) = self.args(&laid, Layout::tag).as_deref() {
-            self.tag(&laid, tag.as_type());
+        let tag = self.args(&laid, Layout::tag).and_then(|args| args.first().and_then(Value::as_type));
+        if matches!(members.codes(), Ok(Some(_))) {
+            self.codes(&laid, tag);
+        } else if let Some(tag) = tag {
+            self.tag(&laid, Some(tag));
         }
         if let Some([Value::Int(n)]) = self.args(&laid, Layout::align).as_deref() {
             self.align(&laid, n);
@@ -117,6 +120,55 @@ impl Checker<'_, '_, '_> {
         );
         let note = "a tag is an unsigned integer with a pattern for each variant";
         self.diag.error(Diagnostic::error(errors::LAYOUT_TAG, msg).at(laid.at, None).note(note).help(help));
+    }
+
+    /// `name = code`: the variants hold no values, have tags of their own, and the tags are in the
+    /// integer that stores them, which `#[layout.tag(T)]` names or is the least one holding all.
+    fn codes(&mut self, laid: &Laid<'_>, tag: Option<Ty>) {
+        let variants = &laid.members.variants;
+        let Ok(Some(codes)) = laid.members.codes() else { return };
+        let report = |this: &mut Self, msg: Msg, help: Msg| {
+            let note = "variants that name their tags hold no values, and no two share one";
+            this.diag
+                .error(Diagnostic::error(errors::LAYOUT_CODE, msg).at(laid.at, None).note(note).help(help));
+        };
+        if let Some(held) = variants.iter().find(|v| !v.payload.is_empty()) {
+            let msg = Msg::new()
+                .text("the variant ")
+                .code(held.name.to_string())
+                .text(" holds a value, and the enum names tags");
+            report(self, msg, Msg::new().text("give the variant no value, or no tag"));
+            return;
+        }
+        for (i, code) in codes.iter().enumerate() {
+            if let Some(first) = codes[..i].iter().position(|c| c == code) {
+                let msg = Msg::new()
+                    .text("the variants ")
+                    .code(variants[first].name.to_string())
+                    .text(" and ")
+                    .code(variants[i].name.to_string())
+                    .text(" have the same tag ")
+                    .num(code.to_i128().unwrap_or(i128::MAX));
+                report(self, msg, Msg::new().text("give each variant a tag of its own"));
+                return;
+            }
+        }
+        let Some(tag) = tag else { return };
+        let Some(holds) = tag.interval() else { return };
+        for (variant, code) in variants.iter().zip(&codes) {
+            let Some(range) = Interval::closed(code.clone(), code.clone()) else { continue };
+            if !holds.contains(&range) {
+                let msg = Msg::new()
+                    .text("the tag ")
+                    .num(code.to_i128().unwrap_or(i128::MAX))
+                    .text(" of ")
+                    .code(variant.name.to_string())
+                    .text(" is not in ")
+                    .ty(tag.to_string());
+                report(self, msg, Msg::new().text("use an integer type holding every tag"));
+                return;
+            }
+        }
     }
 
     /// `#[layout.offset(N)]`: a field lies at or past the end of the one before it, as the

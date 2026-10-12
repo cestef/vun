@@ -65,6 +65,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (LAYOUT_BITS_WIDTH, "lang/lang/errors/layout/bits_width.md"),
     (LAYOUT_NOT_C, "lang/lang/errors/layout/not_c.md"),
     (LAYOUT_TAG, "lang/lang/errors/layout/tag.md"),
+    (LAYOUT_CODE, "lang/lang/errors/layout/code.md"),
     (LAYOUT_ALIGN, "lang/lang/errors/layout/align.md"),
     (LAYOUT_OFFSET, "lang/lang/errors/layout/offset.md"),
     (LINK_UNAVAILABLE, "lang/lang/errors/link/unavailable.md"),

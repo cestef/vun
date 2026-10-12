@@ -232,6 +232,7 @@ pub fn walk_expr<V: Visitor + ?Sized>(v: &mut V, hir: &Hir, expr: ExprId) {
                 }
                 each(v, hir, &variant.attrs);
                 each(v, hir, &variant.payload);
+                each(v, hir, &variant.code);
             });
             v.namespace(hir, *ns);
         }

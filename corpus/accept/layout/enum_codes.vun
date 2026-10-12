@@ -1,0 +1,19 @@
+//! A variant may name its tag, as C's enums do (spec 05, section 6): the tag of a variant that
+//! does not is one more than the one before, and the integer that stores them is
+//! `#[layout.tag(T)]`, or the least one holding every tag.
+
+#[layout.tag(i32)]
+Offset := enum { back = -2, here, ahead = 3 };
+
+Level := enum { low = 10, high = 300 };
+
+#[layout.tag(u8)]
+Flag := enum { off = 0, on = 1 };
+
+next := (o: Offset) -> Offset {
+    match o {
+        .back => .here,
+        .here => .ahead,
+        .ahead => .back,
+    }
+};

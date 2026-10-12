@@ -7,6 +7,11 @@
 )]
 #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
+/// `std.os.env` for the runtime over a C library: `getenv`, whose argument ends with a zero byte.
+pub const env: Item = Item::new(&["std", "os", "libc", "env"]);
+/// `std.os.heap` for the runtime over a C library: `malloc` and `free`, which align what they
+/// give as much as the largest scalar needs.
+pub const heap: Item = Item::new(&["std", "os", "libc", "heap"]);
 /// Loading libraries through the C library (`dlopen`, `dlsym`, `dlclose`): the exports a
 /// runtime on top of it holds, `library := std.os.libc.library.exports`. The loader reports a
 /// failure as text rather than an error number, so each is `unresolved`.

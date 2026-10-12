@@ -90,17 +90,24 @@ impl fmt::Display for Text<'_> {
             }
             Parts::Array { stride, len } => write!(f, "\n  {len} items {stride} bytes apart")?,
             Parts::Enum { tag, payloads } => {
-                match *tag {
+                match tag {
                     Tag::Alone => {}
-                    Tag::Index { bytes } => {
-                        write!(f, "\n  tag in the {}-bit integer at 0", Self::bits(bytes))?;
+                    Tag::Index { bytes, codes: None } => {
+                        write!(f, "\n  tag in the {}-bit integer at 0", Self::bits(*bytes))?;
+                    }
+                    Tag::Index { bytes, codes: Some(codes) } => {
+                        write!(f, "\n  tag in the {}-bit integer at 0, as", Self::bits(*bytes))?;
+                        for (i, code) in codes.iter().enumerate() {
+                            let name = self.variant(i).map_or_else(|| i.to_string(), |n| n.to_string());
+                            write!(f, " .{name} = {code}")?;
+                        }
                     }
                     Tag::Niche { empty, offset, bytes, value } => {
-                        let name = self.variant(empty).map_or_else(|| empty.to_string(), |n| n.to_string());
+                        let name = self.variant(*empty).map_or_else(|| empty.to_string(), |n| n.to_string());
                         write!(
                             f,
                             "\n  .{name} is {value} in the {}-bit integer at {offset}",
-                            Self::bits(bytes)
+                            Self::bits(*bytes)
                         )?;
                     }
                 }

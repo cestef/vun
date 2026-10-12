@@ -11,6 +11,7 @@ pub use table::Members;
 
 use vun_codec::{Decode, Encode};
 use vun_intern::Symbol;
+use vun_sema_int::Integer;
 use vun_sema_ty::call::Staging;
 use vun_sema_ty::item::{DeclRef, ExprRef, Site};
 use vun_sema_ty::trap::Unevaluated;
@@ -35,6 +36,30 @@ pub struct MemberTable {
 }
 
 impl MemberTable {
+    /// The tag of each variant when any names its own (`name = code`): the code written, or one
+    /// more than the variant before, 0 for the first. `None` when none does, so that tags are
+    /// the variants' positions.
+    ///
+    /// # Errors
+    /// Returns why a code written is not known.
+    pub fn codes(&self) -> Result<Option<Vec<Integer>>, Unevaluated> {
+        if self.variants.iter().all(|v| v.code.is_none()) {
+            return Ok(None);
+        }
+        let mut next = Integer::zero();
+        let mut codes = Vec::with_capacity(self.variants.len());
+        for variant in &self.variants {
+            let code = match &variant.code {
+                Some(Ok(written)) => written.clone(),
+                Some(Err(why)) => return Err(why.clone()),
+                None => next,
+            };
+            next = &code + &Integer::from(1);
+            codes.push(code);
+        }
+        Ok(Some(codes))
+    }
+
     /// The field `.*` reads through and the type it points to, for a struct owning its target.
     #[must_use]
     pub fn deref(&self) -> Option<(Symbol, Ty)> {
@@ -70,6 +95,8 @@ pub struct MemberDecl {
 pub struct VariantDef {
     pub name: Symbol,
     pub payload: Vec<Result<Ty, Unevaluated>>,
+    /// The tag it names, `name = code`, evaluated where the enum was built.
+    pub code: Option<Result<Integer, Unevaluated>>,
     /// The values of the attributes written on it, evaluated where the enum was built.
     pub attrs: Vec<Value>,
 }

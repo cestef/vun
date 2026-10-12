@@ -183,6 +183,15 @@ Defined, never left to the implementation:
   these and other `#[layout.c]` structs (`layout.not_c`).
 - `#[layout.tag(uN)] enum`: explicit tag representation; `uN` has a pattern for each variant
   (`layout.tag`).
+- **Named tags.** A variant may name its tag, `enum { back = -2, here, ahead = 3 }`, as C's enums do:
+  the tag of one that does not is one more than the variant before, 0 for the first. An enum that
+  names tags holds nothing in its variants, no two share a tag, and each tag is the integer of
+  `#[layout.tag(T)]`, any integer type holding every tag (signed when a tag is negative), or else
+  the least integer that does, a negative tag stored in two's complement (`layout.code`). Such an
+  enum is that integer to C, passed and stored as it is, and has no niche. `lang.meta.Variant.code`
+  is a variant's tag, or its position when none is named, and `std.meta.variant_code` and
+  `std.meta.from_code` convert a value and the integer C holds, `from_code` giving none for a
+  tag no variant has.
 - `#[layout.align(N)]`, `#[layout.offset(N)]`: raise alignment, `N` a power of two
   (`layout.align`); place a field at an offset, at or past the end of the field before it and a
   multiple of its type's alignment (`layout.offset`).

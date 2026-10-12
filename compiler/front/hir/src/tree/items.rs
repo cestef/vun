@@ -74,6 +74,8 @@ pub struct FieldDef {
 pub struct Variant {
     pub name: Name,
     pub payload: Vec<ExprId>,
+    /// The integer its tag is, when written `name = code`.
+    pub code: Option<ExprId>,
     pub attrs: Vec<ExprId>,
     pub doc: Vec<String>,
     pub origin: OriginId,

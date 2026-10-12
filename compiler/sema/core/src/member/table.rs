@@ -11,7 +11,8 @@ use vun_primitives::kind::Kind;
 use vun_primitives::layout::Layout;
 use vun_query::{Cx, Cycle, Query};
 use vun_sema_ty::item::{DeclRef, Declared, ExprRef};
-use vun_sema_ty::{Nominal, Ty, TyKind};
+use vun_sema_ty::trap::Unevaluated;
+use vun_sema_ty::{Nominal, Ty, TyKind, Value};
 
 use crate::env::Env;
 use crate::visible::Home;
@@ -136,9 +137,14 @@ impl MemberTable {
     fn variants(&mut self, env: &Env<'_, '_>, variants: &List<Variant>) {
         for entry in variants {
             match entry {
-                Entry::One(Variant { name: Name::Plain(name), payload, attrs, .. }) => {
+                Entry::One(Variant { name: Name::Plain(name), payload, code, attrs, .. }) => {
                     let payload = payload.iter().map(|&t| env.ty(t)).collect();
-                    self.variants.push(VariantDef { name: *name, payload, attrs: env.values(attrs) });
+                    let code = code.map(|e| match env.eval(e) {
+                        Ok(Value::Int(n)) => Ok(n),
+                        Ok(_) => Err(Unevaluated::Unsupported),
+                        Err(why) => Err(why),
+                    });
+                    self.variants.push(VariantDef { name: *name, payload, code, attrs: env.values(attrs) });
                 }
                 _ => self.complete = false,
             }

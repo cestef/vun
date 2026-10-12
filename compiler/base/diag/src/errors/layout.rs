@@ -6,5 +6,6 @@ pub const LAYOUT: DiagId = DiagId::Lang(Lang::Layout);
 pub const LAYOUT_BITS_WIDTH: DiagId = DiagId::Lang(Lang::LayoutBitsWidth);
 pub const LAYOUT_NOT_C: DiagId = DiagId::Lang(Lang::LayoutNotC);
 pub const LAYOUT_TAG: DiagId = DiagId::Lang(Lang::LayoutTag);
+pub const LAYOUT_CODE: DiagId = DiagId::Lang(Lang::LayoutCode);
 pub const LAYOUT_ALIGN: DiagId = DiagId::Lang(Lang::LayoutAlign);
 pub const LAYOUT_OFFSET: DiagId = DiagId::Lang(Lang::LayoutOffset);

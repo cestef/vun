@@ -3,5 +3,6 @@
 bits_width := diag.Diag{};
 not_c := diag.Diag{};
 tag := diag.Diag{};
+code := diag.Diag{};
 align := diag.Diag{};
 offset := diag.Diag{};

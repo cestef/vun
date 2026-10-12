@@ -34,6 +34,8 @@ pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "start", "m
 pub const library: Item = Item::new(
     &["std", "os", "linux", "kernel", "start", "library"],
 );
+pub const heap: Item = Item::new(&["std", "os", "linux", "kernel", "start", "heap"]);
+pub const env: Item = Item::new(&["std", "os", "linux", "kernel", "start", "env"]);
 pub const division: Item = Item::new(
     &["std", "os", "linux", "kernel", "start", "division"],
 );

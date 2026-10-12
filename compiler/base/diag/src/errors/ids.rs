@@ -103,6 +103,7 @@ pub enum Lang {
     LayoutBitsWidth,
     LayoutNotC,
     LayoutTag,
+    LayoutCode,
     LayoutAlign,
     LayoutOffset,
     /// Linking (spec 13).

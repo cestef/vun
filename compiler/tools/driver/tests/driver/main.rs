@@ -11,6 +11,7 @@ mod bench;
 mod bind;
 mod borrows;
 mod checks;
+mod codes;
 mod components;
 mod comptime;
 mod conventions;

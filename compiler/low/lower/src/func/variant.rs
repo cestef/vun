@@ -42,11 +42,14 @@ impl FnLower<'_, '_, '_> {
         let Parts::Enum { tag, .. } = &shape.parts else {
             return Err(Unlowered::unsupported(self.at, Form::Projection));
         };
-        let (offset, bytes, pattern, cond) = match *tag {
+        let (offset, bytes, pattern, cond) = match tag {
             Tag::Alone => return Ok(self.b.constant(Scalar::I8, 1, self.at)),
-            Tag::Index { bytes } => (0, bytes, index as u128, Cond::Eq),
+            Tag::Index { bytes, .. } => {
+                let pattern = tag.pattern(index).ok_or(Unlowered::unsupported(self.at, Form::Projection))?;
+                (0, *bytes, pattern, Cond::Eq)
+            }
             Tag::Niche { empty, offset, bytes, value } => {
-                (offset, bytes, value, if empty == index { Cond::Eq } else { Cond::Ne })
+                (*offset, *bytes, *value, if *empty == index { Cond::Eq } else { Cond::Ne })
             }
         };
         let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default())
@@ -64,14 +67,27 @@ impl FnLower<'_, '_, '_> {
         let word = self.l.types.word;
         // A struct is its one variant.
         let Parts::Enum { tag, .. } = &shape.parts else { return Ok(self.b.constant(word, 0, self.at)) };
-        let (offset, bytes, niche) = match *tag {
+        let (offset, bytes, niche) = match tag {
             Tag::Alone => return Ok(self.b.constant(word, 0, self.at)),
-            Tag::Index { bytes } => (0, bytes, None),
-            Tag::Niche { empty, offset, bytes, value } => (offset, bytes, Some((empty, value))),
+            Tag::Index { bytes, .. } => (0, *bytes, None),
+            Tag::Niche { empty, offset, bytes, value } => (*offset, *bytes, Some((*empty, *value))),
         };
         let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default()).ok_or_else(unsupported)?;
         let at = self.at_offset(addr, offset);
         let found = self.b.load(int, at, Access::Plain, self.at);
+        // Tags that name themselves are told apart one by one, the last variant being what no
+        // other pattern is.
+        if let Tag::Index { codes: Some(codes), .. } = tag {
+            let last = codes.len().saturating_sub(1);
+            let mut index = self.b.constant(word, last as u128, self.at);
+            for (i, &pattern) in codes.iter().enumerate().take(last).rev() {
+                let pattern = self.b.constant(int, pattern, self.at);
+                let is = self.b.compare(Cond::Eq, found, pattern, self.at);
+                let at = self.b.constant(word, i as u128, self.at);
+                index = self.b.select(is, at, index, self.at);
+            }
+            return Ok(index);
+        }
         let Some((empty, pattern)) = niche else { return Ok(self.resize(found, int, false, word)) };
         // Of the two variants a niche tells apart, the empty one holds the pattern.
         let pattern = self.b.constant(int, pattern, self.at);
@@ -113,9 +129,12 @@ impl FnLower<'_, '_, '_> {
         let Parts::Enum { tag, .. } = &shape.parts else {
             return Err(Unlowered::unsupported(self.at, Form::Projection));
         };
-        let (offset, bytes, pattern) = match *tag {
-            Tag::Index { bytes } => (0, bytes, index as u128),
-            Tag::Niche { empty, offset, bytes, value } if empty == index => (offset, bytes, value),
+        let (offset, bytes, pattern) = match tag {
+            Tag::Index { bytes, .. } => {
+                let pattern = tag.pattern(index).ok_or(Unlowered::unsupported(self.at, Form::Projection))?;
+                (0, *bytes, pattern)
+            }
+            Tag::Niche { empty, offset, bytes, value } if *empty == index => (*offset, *bytes, *value),
             Tag::Alone | Tag::Niche { .. } => return Ok(()),
         };
         let int = Scalar::int(u32::try_from(bytes * 8).unwrap_or_default())

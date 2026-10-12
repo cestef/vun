@@ -10,6 +10,9 @@ use crate::Item;
 pub const name: Item = Item::new(&["lang", "meta", "Variant", "name"]);
 /// Its position among the variants of its type.
 pub const index: Item = Item::new(&["lang", "meta", "Variant", "index"]);
+/// The integer its tag is when the variants name their tags (`name = code`), else its
+/// position.
+pub const code: Item = Item::new(&["lang", "meta", "Variant", "code"]);
 pub const parts: Item = Item::new(&["lang", "meta", "Variant", "parts"]);
 /// The values of the attributes written on it; none for the variant a struct is.
 pub const attrs: Item = Item::new(&["lang", "meta", "Variant", "attrs"]);

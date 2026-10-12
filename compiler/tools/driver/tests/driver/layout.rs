@@ -96,7 +96,10 @@ Bits := #[layout.bits(u8)] struct { enable: bool, mode: unsigned(3), _: unsigned
         Shape { layout: layout(8, 4, byte(4, 2, 254)), parts: Parts::Sequence(vec![0, 4]) },
         Shape {
             layout: layout(8, 4, byte(0, 3, 253)),
-            parts: Parts::Enum { tag: Tag::Index { bytes: 1 }, payloads: vec![vec![], vec![4], vec![4, 5]] },
+            parts: Parts::Enum {
+                tag: Tag::Index { bytes: 1, codes: None },
+                payloads: vec![vec![], vec![4], vec![4, 5]],
+            },
         },
         Shape {
             layout: layout(8, 8, None),
@@ -137,4 +140,42 @@ main := () -> u8 {
     // The frame keeps its state and `a`, a byte each, and the holder a byte more.
     let ids: Vec<_> = fixture.reported(&file).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, [errors::INT_DOES_NOT_FIT]);
+}
+
+#[test]
+fn variants_that_name_their_tags_are_stored_as_those_integers() {
+    let fixture = Fixture::new("layout-codes");
+    let path = fixture.root.write(
+        "codes.vun",
+        "\
+#[layout.tag(i32)]
+Offset := enum { back = -2, here, ahead = 3 };
+Level := enum { low = 10, high = 300 };
+",
+    );
+    let mut session = fixture.session();
+    let file = session.load(&path).unwrap();
+    let shapes: Vec<Shape> = session
+        .types(file)
+        .iter()
+        .map(|(_, ty)| Shape::clone(&session.db.get::<Shapes>(ty).unwrap()))
+        .collect();
+    let scalar = |bytes| Layout { size: bytes, align: bytes, niche: None };
+    let enumeration = |bytes, codes: [u128; 3]| Shape {
+        layout: scalar(bytes),
+        parts: Parts::Enum {
+            tag: Tag::Index { bytes, codes: Some(codes.to_vec()) },
+            payloads: vec![vec![]; codes.len()],
+        },
+    };
+    // Tags are the bit patterns of the codes, a negative one in two's complement; with no tag type
+    // written, the least integer holding every code stores them.
+    let level = Shape {
+        layout: scalar(2),
+        parts: Parts::Enum {
+            tag: Tag::Index { bytes: 2, codes: Some(vec![10, 300]) },
+            payloads: vec![vec![]; 2],
+        },
+    };
+    assert_eq!(shapes, [enumeration(4, [0xffff_fffe, 0xffff_ffff, 3]), level]);
 }
