@@ -36,6 +36,9 @@ impl Manifest {
         }
         fields.extend(self.requires.map(|v| at(field::REQUIRES, text(v.to_string()))));
         fields.extend(self.target.clone().map(|t| at(field::TARGET, text(t))));
+        if !self.system.is_empty() {
+            fields.push(at(field::SYSTEM, Literal::strings(self.system.iter().map(String::as_str))));
+        }
         fields.push(at(field::INCLUDE, Literal::strings(self.include.iter().map(String::as_str))));
         if !self.deps.is_empty() {
             let deps = self.deps.iter().map(|d| at(&d.name, d.literal())).collect();

@@ -20,6 +20,7 @@ mod new;
 mod rewrite;
 mod select;
 mod source;
+mod system;
 mod update;
 mod workspace;
 
@@ -79,6 +80,8 @@ pub struct Package {
     pub features: Features,
     /// The target it is written for (`.target`), the names inside the package `targets`.
     pub target: Vec<Symbol>,
+    /// The libraries of the system a program using it is linked against (`.system`).
+    pub system: Vec<Symbol>,
     /// The identities it replaces; only the project's apply.
     pub replace: Vec<Replace>,
 }
@@ -200,6 +203,7 @@ impl Session {
                 components: manifest.components.clone(),
                 features: manifest.features,
                 target: manifest.target.iter().flat_map(|t| TargetPath::parse(t).0).collect(),
+                system: manifest.system.iter().map(|library| Symbol::intern(library)).collect(),
                 replace,
             };
             let package = package.with_defaults(&self.library);
@@ -254,6 +258,7 @@ impl Session {
                 components: Vec::new(),
                 features: Features::default(),
                 target: Vec::new(),
+                system: Vec::new(),
                 replace: Vec::new(),
             };
             let package = package.with_defaults(&self.library);

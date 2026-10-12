@@ -16,7 +16,6 @@ Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `dec
 
 ## Linking
 
-- A package cannot list system libraries that no import names (`deps.system`).
 - `std.os.library.load` on the default `linux.x86_64.kernel` target is the `unsupported` stub and
   fails at run time, not when building.
 

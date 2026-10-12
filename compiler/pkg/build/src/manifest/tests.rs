@@ -59,6 +59,7 @@ fn every_manifest_reads() {
 fn reads_every_field() {
     let text = r#"package := .{
         .name = "blinky", .id = 0x6a80, .version = "0.3.1", .edition = 2026, .toolchain = "0.4.2", .components = .{ "backend-cranelift" }, .requires = "0.1.0",
+        .system = .{ "gtk-4", "m" },
         .features = .{ .deferred },
         .include = .{ "build.vun", "blinky" }, .prelude = .{ "std.prelude", "support" },
         .deps = .{
@@ -75,6 +76,7 @@ fn reads_every_field() {
     assert_eq!(m.toolchain, Version::parse("0.4.2"));
     assert_eq!(m.components, ["backend-cranelift"]);
     assert_eq!(m.requires, Version::parse("0.1.0"));
+    assert_eq!(m.system, ["gtk-4", "m"]);
     assert_eq!(m.features, Features::of([Feature::Deferred]));
     assert_eq!(m.include, ["build.vun", "blinky"]);
     assert_eq!(m.prelude, ["std.prelude", "support"]);
@@ -93,6 +95,7 @@ fn reads_every_field() {
     let written = m.source().unwrap();
     let again = manifest(&written).0.unwrap();
     assert_eq!(again.features, m.features, "{written}");
+    assert_eq!(again.system, m.system, "{written}");
     assert_eq!(again.deps[3].source, m.deps[3].source, "{written}");
     assert_eq!(
         (again.replace[0].identity, &again.replace[0].source),

@@ -67,6 +67,7 @@ package := .{
     .components = .{ "backend-cranelift" },       // installed with it when missing (section 6)
     .requires = "0.4.0",                  // the oldest `vun` that reads this manifest; read first
     .target = "bare.thumbv7em.eabihf",    // what the package is written for; the machine's when absent
+    .system = .{ "m" },                   // system libraries its programs link that no import names (spec 07)
     .include = .{ "build.vun", "blinky.vun", "blinky", "LICENSE" },   // what the hash covers
     .prelude = .{ "std.prelude" },        // the default; `.{}` for none (spec 01, section 8)
     .deps = .{

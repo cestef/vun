@@ -98,6 +98,40 @@ fn a_program_reads_the_environment_and_takes_memory_from_the_heap_of_the_c_libra
     assert_eq!(without.code(), Some(1));
 }
 
+/// A package naming the library `m` for its programs, whose import names none.
+const PACKAGE: &str = "package := .{
+    .name = \"mathy\", .id = 77, .version = \"0.1.0\", .edition = 2026,
+    .system = .{ \"m\" },
+    .include = .{ \"build.vun\", \"main.vun\" },
+};
+";
+
+const BARE_IMPORT: &str = "\
+#[link.symbol(\"cbrt\"), abi.c]
+cube_root: unsafe (x: f64) -> f64 = _;
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    root := unsafe { cube_root(27.0) };
+    if root > 2.999 and root < 3.001 { .code(3) } else { .code(1) }
+};
+";
+
+#[test]
+fn a_package_names_the_system_libraries_its_programs_link() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    let fixture = Fixture::new("link-system");
+    fixture.root.write("build.vun", PACKAGE);
+    let path = fixture.root.write("main.vun", BARE_IMPORT);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::gnu);
+    let file = session.load(&path).unwrap();
+    let built = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    assert_eq!(std::process::Command::new(built).status().unwrap().code(), Some(3));
+}
+
 #[test]
 fn a_linker_is_refused_for_a_format_it_does_not_link() {
     let fixture = Fixture::new("link-refused");

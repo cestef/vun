@@ -208,6 +208,13 @@ impl Session {
         let stem = root.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
         let output = output
             .map_or_else(|| kind.file(&compiled.builds, &stem, target.object_format), Path::to_path_buf);
+        // What the imports name, then what the packages ask for.
+        let mut libraries = compiled.coded.unit.libraries();
+        for library in self.system_libraries(file) {
+            if !libraries.contains(&library) {
+                libraries.push(library);
+            }
+        }
         let plan = LinkPlan {
             inputs: compiled.objects.clone(),
             output: output.clone(),
@@ -215,7 +222,7 @@ impl Session {
             // A library's exports are its interface: nothing starts it.
             entry: target.entry_symbol.filter(|_| !kind.library()),
             exports: if kind.library() { compiled.coded.unit.exports().collect() } else { Vec::new() },
-            libraries: compiled.coded.unit.libraries(),
+            libraries,
             regions: self.memory.clone(),
             sections: self.sections.clone(),
         };

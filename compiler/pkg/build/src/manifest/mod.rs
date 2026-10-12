@@ -48,6 +48,9 @@ pub struct Manifest {
     /// The path in the package `targets` the package is written for, as `--target` takes it;
     /// checking or building one of its files chooses it instead of the machine's.
     pub target: Option<String>,
+    /// The libraries of the system a program of the package is linked against, by the name its
+    /// linker is given (`gtk-4` for `-lgtk-4`): those no import names (`#[link.library]`, spec 07).
+    pub system: Vec<String>,
     /// What the content hash covers.
     pub include: Vec<String>,
     pub deps: Vec<Dep>,
@@ -121,6 +124,7 @@ mod field {
     pub(super) const COMPONENTS: &str = "components";
     pub(super) const REQUIRES: &str = "requires";
     pub(super) const TARGET: &str = "target";
+    pub(super) const SYSTEM: &str = "system";
     pub(super) const INCLUDE: &str = "include";
     pub(super) const DEPS: &str = "deps";
     pub(super) const MEMBERS: &str = "members";
@@ -136,8 +140,8 @@ mod field {
     pub(super) const INDEX: &str = "index";
 
     pub(super) const PACKAGE: &[&str] = &[
-        NAME, ID, VERSION, EDITION, TOOLCHAIN, COMPONENTS, REQUIRES, TARGET, INCLUDE, DEPS, REPLACE, INDEX,
-        MEMBERS, PRELUDE, FEATURES,
+        NAME, ID, VERSION, EDITION, TOOLCHAIN, COMPONENTS, REQUIRES, TARGET, SYSTEM, INCLUDE, DEPS, REPLACE,
+        INDEX, MEMBERS, PRELUDE, FEATURES,
     ];
     pub(super) const DEP: &[&str] = &[VERSION, HASH, URLS, PATH, LIBRARY, KIND];
     pub(super) const REPLACEMENT: &[&str] = &[ID, MAJOR, VERSION, HASH, URLS, PATH, LIBRARY];
@@ -217,6 +221,7 @@ impl Manifest {
             d.choices(&table, cx).map(Features::of)
         });
         let target = fields.get(field::TARGET).map_or(Some(None), |d| d.string(cx).map(Some));
+        let system = fields.get(field::SYSTEM).map_or(Some(Vec::new()), |d| d.strings(cx));
         let include = fields.require(field::INCLUDE).and_then(|d| Self::include(d, cx));
         let deps = fields.get(field::DEPS).map_or(Some(Vec::new()), |d| Dep::list(d, cx));
         let replace = fields.get(field::REPLACE).map_or(Some(Vec::new()), |d| Replacement::list(d, cx));
@@ -236,6 +241,7 @@ impl Manifest {
             features: features?,
             requires: requires?,
             target: target?,
+            system: system?,
             include: include?,
             deps: deps?,
             replace: replace?,

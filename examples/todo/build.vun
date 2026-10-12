@@ -4,6 +4,7 @@ package := .{
     .name = "todo",
     .id = 18419803120120024502,
     .version = "0.1.0",
+    .target = "linux.x86_64.gnu",
     .edition = 2026,
     .include = .{ "build.vun", "main.vun", "todo.vun", "todo" },
     .deps = .{},

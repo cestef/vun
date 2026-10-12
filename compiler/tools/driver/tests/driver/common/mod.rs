@@ -49,6 +49,7 @@ impl Fixture {
             features: Features::default(),
             requires: None,
             target: None,
+            system: Vec::new(),
             include: vec![MANIFEST.into(), Path::new(name).with_extension(EXTENSION).display().to_string()],
             deps: Vec::new(),
             replace: Vec::new(),
