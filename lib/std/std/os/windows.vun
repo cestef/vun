@@ -34,11 +34,13 @@ read_write: u32 = 0x04;
 release: u32 = 0x8000;
 
 /// Private memory of `bytes`, backed only where touched.
+#[panic.never]
 reserve := (bytes: usize) -> usize {
     unsafe std.os.windows.kernel32.virtual_alloc(0, bytes, reserve_and_commit, read_write)
 };
 
 /// Gives back the memory reserved at `address`.
+#[panic.never]
 unmap := (address: usize, bytes: usize) {
     unsafe { std.os.windows.kernel32.virtual_free(address, 0, release); }
 };
@@ -218,7 +220,7 @@ services := struct {
     /// the target links.
     support := if lang.target.current.arch == .x86 { struct {} } else { std.os.windows.support };
     library := std.os.windows.library.exports;
-    heap := std.os.heap.unsupported;
+    heap := std.os.heap.pool.exports(reserve, unmap);
     env := std.os.env.unsupported;
 
     #[link.export("_fltused")]

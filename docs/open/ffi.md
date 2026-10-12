@@ -12,6 +12,8 @@ Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `dec
 
 ## Language and std
 
-- `std.os.heap` and `System.env` exist on the C library's runtime only (decision 676): the
-  kernel, WASI and Windows runtimes refuse every allocation and set no variable. A heap of their
-  own is an allocator to write for each (`mmap` pages, `memory.grow`, `HeapAlloc`).
+- `System.env` exists on the C library's runtime only (decision 676): the kernel, WASI and
+  Windows runtimes set no variable. Their environments are the process's initial stack
+  (`envp`), the WASI `environ_get` calls and `GetEnvironmentVariableW`.
+- The pool heap of those runtimes (decision 683) gives pages back only for requests past 2048
+  bytes; the blocks it cuts from its chunks are reused, never returned.

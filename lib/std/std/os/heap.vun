@@ -1,6 +1,6 @@
 //! The heap of a hosted program (spec 08, section 2): memory a runtime that has one gives and
-//! takes back by size and alignment. `Heap` is the allocator over it; a runtime without one
-//! gives none, `.exhausted`.
+//! takes back by size and alignment. `Heap` is the allocator over it. A runtime over the C library
+//! calls `malloc`; one without a C library keeps a pool over its pages (`std.os.heap.pool`).
 
 ..std.mem.alloc.{ Allocator };
 
@@ -26,12 +26,3 @@ impl Allocator for Heap {
     alloc := (self, size, align) { take(size, align) };
     free := (self, p, size, align) { give(p, size, align) };
 }
-
-/// The exports of a runtime with no heap: a program built with it gets none.
-unsupported := struct {
-    #[link.export(symbols.take)]
-    refuse := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) { .err(.exhausted) };
-
-    #[link.export(symbols.give)]
-    ignore := (p: *u8, size: usize, align: usize) {};
-};

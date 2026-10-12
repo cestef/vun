@@ -279,7 +279,7 @@ start := ($main: std.os.Main) -> type { struct {
         lang.panic.fail(.message("a module runs one thread, so none is joined"))
     };
 
-    heap := std.os.heap.unsupported;
+    heap := std.os.heap.pool.exports(std.os.wasi.memory.map, std.os.wasi.memory.unmap);
     env := std.os.env.unsupported;
     pages := std.os.pages.unsupported;
     random := std.os.wasi.random.exports;

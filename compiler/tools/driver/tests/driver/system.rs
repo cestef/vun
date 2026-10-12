@@ -129,3 +129,42 @@ fn a_program_loading_a_library_does_not_build_where_the_system_loads_none() {
         assert_eq!(session.diag.first_error().map(|d| d.id), Some(reported), "{:#?}", session.diag);
     }
 }
+
+/// A program that takes small and large memory from the heap of the runtime, gives it back, and
+/// finds a block it gave back where the next of its size is: it exits with 3 when every byte it
+/// wrote reads back.
+const POOLED: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut heap := std.os.heap.Heap{};
+    mut numbers := std.collections.Vec(u64).empty();
+    mut stored := true;
+    for i in 0..5000 {
+        stored = stored and numbers.push(std.os.heap.Heap, &mut heap, (i * 3).to(u64)).is_ok();
+    }
+    mut sum: u64 = 0;
+    for n in numbers.items() { sum += n; }
+    numbers.deinit(std.os.heap.Heap, &mut heap);
+    reused := match std.os.heap.take(24, 8) {
+        .ok(first) => {
+            std.os.heap.give(first, 24, 8);
+            match std.os.heap.take(24, 8) {
+                .ok(second) => first.address() == second.address(),
+                .err(_) => false,
+            }
+        },
+        .err(_) => false,
+    };
+    .code(if stored and reused and sum == 37_492_500 { 3 } else { 1 })
+};
+";
+
+#[test]
+fn a_runtime_without_a_c_library_has_a_heap_over_its_pages() {
+    let cross = [targets::wasi_wasm32::p1, targets::windows_x86_64::msvc];
+    // WASI grows its memory by an instruction the C backend has no inline assembly for.
+    let status = crate::backend::status_where("heap-pooled", POOLED, &cross, |backend| {
+        backend.info().id != vun_backend_c::INFO.id
+    });
+    assert_eq!(status, Some(3));
+}

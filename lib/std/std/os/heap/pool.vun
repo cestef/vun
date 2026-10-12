@@ -1,0 +1,127 @@
+//! A heap over the pages a system gives, for a runtime that has no heap of its own (spec 08,
+//! section 2): what is asked for up to `largest` bytes is a block of a power of two, cut from a
+//! chunk of pages and kept on a list of its size when given back; more is pages of its own.
+//! `exports` is the runtime's heap, one `Pool` held in the critical section, so nothing here traps.
+
+/// The least block, the largest and the chunk of pages blocks are cut from.
+smallest: usize = 16;
+largest: usize = 2048;
+chunk: usize = 65536;
+/// The bytes a request for more than `largest` is rounded to, and the most alignment a pool keeps.
+page: usize = 4096;
+/// The sizes of block there are: 16, 32, and so on up to `largest`.
+classes: usize = 8;
+Class: type = Int(0..8);
+
+/// Whether `address`, as a page source returns it, is none: 0, or a system's error number.
+#[panic.never]
+failed := (address: usize) -> bool { address == 0 or address >= (-4096).wrap(usize) };
+
+/// `size` rounded up to whole pages.
+#[panic.never]
+pages := (size: usize) -> usize {
+    rest := size & (page - 1).sat(usize);
+    if rest == 0 { size } else { (size + page - rest).sat(usize) }
+};
+
+Pool := struct {
+    _free: [classes]usize,
+    _bump: usize,
+    _end: usize,
+
+    /// A pool that has taken nothing yet.
+    #[panic.never]
+    empty := () -> Pool { .{ ._free = [0; classes], ._bump = 0, ._end = 0 } };
+
+    /// The class of the block that serves a request: the least that holds `size` and `align`.
+    #[panic.never]
+    class := (size: usize, align: usize) -> Class {
+        need := if size > align { size } else { align };
+        mut index: Class = 0;
+        mut block: usize = smallest;
+        for block < need and index < 7 {
+            block = (block * 2).sat(usize);
+            index = (index + 1).sat(Class);
+        }
+        index
+    };
+
+    /// The bytes of a block of the class `index`.
+    #[panic.never]
+    bytes := (index: Class) -> usize { (smallest << index).sat(usize) };
+
+    /// `size` bytes aligned to `align`, a power of two, from pages `reserve` gives.
+    #[panic.never]
+    take := (self: &mut Pool, $reserve: #[panic.never] (bytes: usize) -> usize, size: usize, align: usize)
+        -> Result(*u8, std.mem.alloc.Error)
+        {
+            if align > page { return .err(.exhausted); }
+            if size > largest or align > largest {
+                address := reserve(pages(size));
+                return if failed(address) { .err(.exhausted) } else { .ok(unsafe lang.mem.pointer_at(u8, address)) };
+            }
+            index := Pool.class(size, align);
+            head := self._free[index];
+            if head != 0 {
+                self._free[index] = unsafe lang.mem.pointer_at(usize, head).read();
+                return .ok(unsafe lang.mem.pointer_at(u8, head));
+            }
+            block := Pool.bytes(index);
+            rest := self._bump & (block - 1).sat(usize);
+            mut at := if rest == 0 { self._bump } else { (self._bump + block - rest).sat(usize) };
+            if (at + block).sat(usize) > self._end {
+                fresh := reserve(chunk);
+                if failed(fresh) { return .err(.exhausted); }
+                self._end = (fresh + chunk).sat(usize);
+                at = fresh;
+            }
+            self._bump = (at + block).sat(usize);
+            .ok(unsafe lang.mem.pointer_at(u8, at))
+        };
+
+    /// Gives back what `take` gave for `size` and `align`: a block waits for the next of its size,
+    /// pages go back to `unmap`.
+    #[panic.never]
+    give := (self: &mut Pool, $unmap: #[panic.never] (address: usize, bytes: usize), p: *u8, size: usize, align: usize) {
+        if size > largest or align > largest {
+            unmap(p.address(), pages(size));
+        } else {
+            index := Pool.class(size, align);
+            unsafe lang.mem.pointer_at(usize, p.address()).write(self._free[index]);
+            self._free[index] = p.address();
+        }
+    };
+};
+
+/// The pool of the program, which only the critical section reaches.
+held: std.sync.Shared(Pool) = .init(Pool.empty());
+
+/// The exports of a runtime whose heap is a pool over its pages: `heap := std.os.heap.pool.exports(
+/// reserve, unmap)`, `reserve` giving `bytes` of pages (0, or a system's error number, where it
+/// cannot) and `unmap` giving them back.
+exports := ($reserve: #[panic.never] (bytes: usize) -> usize, $unmap: #[panic.never] (address: usize, bytes: usize)) -> type { struct {
+    #[link.export(std.os.heap.symbols.take), panic.never]
+    take := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
+        std.sync.critical(
+            #[panic.never]
+            [size, align] (cs: &temp std.sync.Critical) -> Result(*u8, std.mem.alloc.Error) {
+                mut pool := held.get(cs);
+                taken := pool.take(reserve, size, align);
+                held.set(cs, pool);
+                taken
+            }
+        )
+    };
+
+    #[link.export(std.os.heap.symbols.give), panic.never]
+    give := (p: *u8, size: usize, align: usize) {
+        std.sync.critical(
+            #[panic.never]
+            [p, size, align] (cs: &temp std.sync.Critical) {
+                mut pool := held.get(cs);
+                pool.give(unmap, p, size, align);
+                held.set(cs, pool);
+            }
+        );
+    };
+} };

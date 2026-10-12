@@ -158,8 +158,11 @@ cannot load, or a name it does not hold, is `Error.unresolved`.
 
 **Heap and environment.** `std.os.heap.Heap` is an `Allocator` over the heap a runtime exports
 (`std.os.heap.symbols.{take, give}`, by size and alignment): the C library's runtime calls `malloc`
-and `free` (an alignment past what `malloc` keeps is `.exhausted`), and the kernel, WASI and
-Windows runtimes, which have none yet, refuse every allocation with `.exhausted`. `System.env(name)`
+and `free` (an alignment past what `malloc` keeps is `.exhausted`); the kernel, WASI and Windows
+runtimes keep a pool over their own pages (`std.os.heap.pool.exports(reserve, unmap)`: blocks of
+powers of two up to 2048 bytes cut from 64 KiB chunks and kept on a list per size when given back,
+more as pages of their own, an alignment past 4096 `.exhausted`; one `Pool` held in the critical
+section). `System.env(name)`
 is the value of an environment variable, none when it is not set, through
 `std.os.env.symbols.get`: `getenv` for the C library's runtime, nothing set for the others.
 

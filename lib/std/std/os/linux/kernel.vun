@@ -83,12 +83,15 @@ reserve: usize = 0x4022;
 no_file: usize = (-1).wrap(usize);
 
 /// Maps private memory of `bytes` reserved, backed only where touched: what the kernel returns.
+#[panic.never]
 mapping := (bytes: usize) -> isize { request(numbers.mmap, [0, bytes, read_write, reserve, no_file, 0]) };
 
 /// Private memory of `bytes` reserved, backed only where touched.
+#[panic.never]
 map := (bytes: usize) -> usize { mapping(bytes).wrap(usize) };
 
 /// Gives back the `bytes` mapped at `address`.
+#[panic.never]
 unmap := (address: usize, bytes: usize) { request(numbers.munmap, [address, bytes, 0, 0, 0, 0]); };
 
 /// The state of the checks of unsafe code, mapped the first time a check needs it.
@@ -283,7 +286,7 @@ start := ($main: std.os.Main) -> type { struct {
     sleep := () { request(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.memory.exports;
-    heap := std.os.heap.unsupported;
+    heap := std.os.heap.pool.exports(map, unmap);
     env := std.os.env.unsupported;
     division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else {
         struct {}
