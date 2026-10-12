@@ -280,6 +280,8 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     library := std.os.library.unsupported;
+    heap := std.os.heap.unsupported;
+    env := std.os.env.unsupported;
     pages := std.os.pages.unsupported;
     random := std.os.wasi.random.exports;
 } };

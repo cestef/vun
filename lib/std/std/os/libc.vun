@@ -286,6 +286,8 @@ start := ($main: std.os.Main) -> type { struct {
     };
 
     library := std.os.libc.library.exports;
+    heap := std.os.libc.heap.exports;
+    env := std.os.libc.env.exports;
     pages := std.os.libc.pages.exports;
     random := std.os.libc.random.exports;
 } };

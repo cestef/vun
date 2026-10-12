@@ -155,6 +155,13 @@ the Windows runtime `LoadLibraryW`, `GetProcAddress` and `FreeLibrary`; the kern
 WASI's, which load nothing, report `Error.unsupported`. A library the loader does not find or
 cannot load, or a name it does not hold, is `Error.unresolved`.
 
+**Heap and environment.** `std.os.heap.Heap` is an `Allocator` over the heap a runtime exports
+(`std.os.heap.symbols.{take, give}`, by size and alignment): the C library's runtime calls `malloc`
+and `free` (an alignment past what `malloc` keeps is `.exhausted`), and the kernel, WASI and
+Windows runtimes, which have none yet, refuse every allocation with `.exhausted`. `System.env(name)`
+is the value of an environment variable, none when it is not set, through
+`std.os.env.symbols.get`: `getenv` for the C library's runtime, nothing set for the others.
+
 **Files and errors.** `System.open(path, mode)` gives a `std.os.file.File` (`Mode`: `read`,
 `write` creating or emptying, `append` creating, `update`), whose `stream()` is read
 (`Stream.read`, 0 at the end) and written as any `Stream`, and `close` ends it; `System.stdin()`

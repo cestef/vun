@@ -59,6 +59,45 @@ fn the_library_an_import_names_is_linked() {
     assert_eq!(status("link-library", MATH, targets::linux_x86_64::gnu), Some(3));
 }
 
+/// A program that exits with 3 when the variable `VUN_ENV_PROBE` is `probe`, taking its memory from
+/// the heap of the runtime.
+const ENVIRONMENT: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut heap := std.os.heap.Heap{};
+    mut copy := std.text.string.String.empty();
+    status := match sys.env(\"VUN_ENV_PROBE\") {
+        .some(value) => if copy.push_str(std.os.heap.Heap, &mut heap, value).is_err() {
+            2
+        } else if copy.as_text() == \"probe\" {
+            3
+        } else {
+            1
+        },
+        .none => 1,
+    };
+    copy.deinit(std.os.heap.Heap, &mut heap);
+    .code(status)
+};
+";
+
+#[test]
+fn a_program_reads_the_environment_and_takes_memory_from_the_heap_of_the_c_library() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    let fixture = Fixture::new("link-environment");
+    let path = fixture.root.write("main.vun", ENVIRONMENT);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::gnu);
+    let file = session.load(&path).unwrap();
+    let built = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let with = std::process::Command::new(&built).env("VUN_ENV_PROBE", "probe").status().unwrap();
+    assert_eq!(with.code(), Some(3));
+    let without = std::process::Command::new(&built).env_remove("VUN_ENV_PROBE").status().unwrap();
+    assert_eq!(without.code(), Some(1));
+}
+
 #[test]
 fn a_linker_is_refused_for_a_format_it_does_not_link() {
     let fixture = Fixture::new("link-refused");

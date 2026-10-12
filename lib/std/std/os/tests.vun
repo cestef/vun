@@ -1,0 +1,21 @@
+//! Tests of what a hosted program takes from its system.
+
+Heap: type = std.os.heap.Heap;
+
+#[test]
+the_heap_gives_memory_where_the_runtime_has_one := () {
+    mut heap := Heap{};
+    mut items := std.collections.Vec(u32).empty();
+    // A runtime without a heap refuses, and the vector is still empty.
+    if items.push(Heap, &mut heap, 7).is_ok() {
+        std.testing.assert(items.items()[0] == 7);
+    } else {
+        std.testing.assert(items.is_empty());
+    }
+    items.deinit(Heap, &mut heap);
+};
+
+#[test]
+a_variable_that_is_not_set_has_no_value := () {
+    std.testing.assert(std.os.env.get("VUN_A_VARIABLE_NO_ONE_SETS").is_none());
+};

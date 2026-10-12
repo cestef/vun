@@ -1,0 +1,37 @@
+//! The heap of a hosted program (spec 08, section 2): memory a runtime that has one gives and
+//! takes back by size and alignment. `Heap` is the allocator over it; a runtime without one
+//! gives none, `.exhausted`.
+
+..std.mem.alloc.{ Allocator };
+
+/// The link symbols of this namespace's declarations, which a runtime exports.
+symbols := struct {
+    take := "vun_os_heap_take";
+    give := "vun_os_heap_give";
+};
+
+/// `size` bytes aligned to `align`, a power of two.
+#[link.symbol(symbols.take)]
+take: (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) = _;
+
+/// Gives back what `take` gave for `size` and `align`.
+#[link.symbol(symbols.give)]
+give: (p: *u8, size: usize, align: usize) = _;
+
+/// The runtime's heap as an allocator.
+Heap := struct {};
+
+impl Allocator for Heap {
+    Error: type = std.mem.alloc.Error;
+    alloc := (self, size, align) { take(size, align) };
+    free := (self, p, size, align) { give(p, size, align) };
+}
+
+/// The exports of a runtime with no heap: a program built with it gets none.
+unsupported := struct {
+    #[link.export(symbols.take)]
+    refuse := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) { .err(.exhausted) };
+
+    #[link.export(symbols.give)]
+    ignore := (p: *u8, size: usize, align: usize) {};
+};

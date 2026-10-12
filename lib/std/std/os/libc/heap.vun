@@ -1,0 +1,25 @@
+//! `std.os.heap` for the runtime over a C library: `malloc` and `free`, which align what they
+//! give as much as the largest scalar needs.
+
+#[link.symbol("malloc"), abi.c]
+malloc: unsafe (size: usize) -> *u8 = _;
+
+#[link.symbol("free"), abi.c]
+release: unsafe (p: *u8) = _;
+
+/// The most `malloc` aligns what it gives.
+align_max: usize = 16;
+
+/// The exports, which the runtime holds: `heap := std.os.libc.heap.exports`.
+exports := struct {
+    /// What `malloc` gives, unless more alignment than it keeps is asked.
+    #[link.export(std.os.heap.symbols.take)]
+    take := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
+        if align > align_max { return .err(.exhausted); }
+        p := unsafe { malloc(size) };
+        if p.address() == 0 { .err(.exhausted) } else { .ok(p) }
+    };
+
+    #[link.export(std.os.heap.symbols.give)]
+    give := (p: *u8, size: usize, align: usize) { unsafe { release(p); } };
+};

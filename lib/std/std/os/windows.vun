@@ -218,6 +218,8 @@ services := struct {
     /// the target links.
     support := if lang.target.current.arch == .x86 { struct {} } else { std.os.windows.support };
     library := std.os.windows.library.exports;
+    heap := std.os.heap.unsupported;
+    env := std.os.env.unsupported;
 
     #[link.export("_fltused")]
     float_used: i32 = 1;
