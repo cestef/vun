@@ -11,7 +11,7 @@ use super::Argument;
 use crate::Typer;
 use vun_hir::tree::ExprId;
 use vun_origin::OriginTable;
-use vun_sema::callable::Callable;
+use vun_sema::callable::Written;
 use vun_sema::env::Env;
 
 impl Typer<'_, '_, '_> {
@@ -26,7 +26,10 @@ impl Typer<'_, '_, '_> {
         inferred: &[usize],
     ) {
         let f = &instantiation.f;
-        let Some(written) = Callable::Fn(f.clone()).written(self.env()) else { return };
+        // The parameters the literal writes itself, in its own file: a member leaving some types
+        // out has them written by its requirement (`Parameters::written`), in another file.
+        let Some(own) = Env::inside(self.env().cx, f, []) else { return };
+        let written = Written { env: own, expr: f.literal.expr.id };
         let Some(params) = written.params() else { return };
         let Some(env) = Env::inside(self.env().cx, f, instantiation.args.iter().cloned()) else { return };
         let hir = &env.parsed.hir;

@@ -174,3 +174,22 @@ measure := (s: Square) -> u64 { s.area() };
         .count();
     assert_eq!(made, 1, "only the impl declaring `area` is made");
 }
+
+#[test]
+fn a_member_leaving_its_types_out_has_its_bounds_checked_where_it_is_written() {
+    let fixture = Fixture::new("impls-elided");
+    let file = fixture.root.write(
+        "tag.vun",
+        "\
+Tag := struct { n: u8 };
+impl std.fmt.Format for Tag {
+    format := ($W: std.fmt.Writer, value, w) { w.write_all(\"tag\") };
+}
+show := (tag: Tag) -> bool {
+    mut slab := std.text.Slab(8).empty();
+    std.fmt.print(&mut slab, \"{}\", tag).is_ok()
+};
+",
+    );
+    assert_eq!(fixture.reported(&file), []);
+}
