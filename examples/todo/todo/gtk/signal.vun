@@ -1,0 +1,21 @@
+//! The signals this program connects to.
+
+Signal := enum {
+    /// An application is ready to make its windows, or an entry was confirmed.
+    activate,
+    /// A button was pressed and released.
+    clicked,
+    /// A check box or toggle button changed.
+    toggled,
+};
+
+impl Signal {
+    /// The name GObject knows it by, as a string for C.
+    name := (self: Signal) -> &static [u8] {
+        match self {
+            .activate => c"activate",
+            .clicked => c"clicked",
+            .toggled => c"toggled",
+        }
+    };
+}

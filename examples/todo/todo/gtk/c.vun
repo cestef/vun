@@ -1,0 +1,6 @@
+//! Values as C spells them.
+
+impl bool {
+    /// `gboolean`: 1 for true, 0 for false.
+    c := (self: bool) -> i32 { if self { 1 } else { 0 } };
+}

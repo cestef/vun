@@ -1,0 +1,111 @@
+//! The items, in the order they were added.
+
+..std.mem.alloc.{ Allocator };
+..std.collections.{ Vec };
+
+List := struct {
+    _items: Vec(todo.model.item.Item),
+
+    empty := () -> List { .{ ._items = Vec(todo.model.item.Item).empty() } };
+
+    len := (self: &List) -> usize { self._items.len() };
+
+    get := (self: &List, at: usize) -> ?&todo.model.item.Item { self._items.get(at) };
+
+    /// Adds an item holding `text` without the space around it; `.none` for a text of only space.
+    add := (self: &mut List, $A: Allocator, a: &mut A, text: &[u8]) -> Result(bool, A.Error) {
+        kept := std.text.trim(text);
+        if kept.len() == 0 { return .ok(false); }
+        self.push_item(A, a, todo.model.item.Item.new(A, a, kept)?)?;
+        .ok(true)
+    };
+
+    /// Adds `item` after the last; the item is given back to `a` when there is no room for it.
+    push_item := (self: &mut List, $A: Allocator, a: &mut A, item: todo.model.item.Item) -> Result(
+        (),
+        A.Error
+    ) {
+        match self._items.reserve(A, a, 1) {
+            .ok(_) => {
+                self._items.push_within_capacity(item);
+                .ok(())
+            },
+            .err(e) => {
+                item.deinit(A, a);
+                .err(e)
+            },
+        }
+    };
+
+    /// Flips whether the item at `at` is done; nothing past the last.
+    toggle := (self: &mut List, at: usize) {
+        if at < self._items.len() {
+            item := &mut self._items.items_mut()[at];
+            item.done = !item.done;
+        }
+    };
+
+    /// Replaces the text of the item at `at`; a text of only space removes the item instead.
+    edit := (self: &mut List, $A: Allocator, a: &mut A, at: usize, text: &[u8]) -> Result((), A.Error) {
+        if at >= self._items.len() { return .ok(()); }
+        kept := std.text.trim(text);
+        if kept.len() == 0 {
+            self.remove(A, a, at);
+            return .ok(());
+        }
+        item := &mut self._items.items_mut()[at];
+        item.text.clear();
+        item.text.push_str(A, a, kept)
+    };
+
+    remove := (self: &mut List, $A: Allocator, a: &mut A, at: usize) {
+        if at < self._items.len() { self._items.remove(at).deinit(A, a); }
+    };
+
+    /// Removes the items that are done, returning how many.
+    clear_done := (self: &mut List, $A: Allocator, a: &mut A) -> usize {
+        mut removed: usize = 0;
+        mut at: usize = 0;
+        for at < self._items.len() {
+            if self._items.items()[at].done {
+                self._items.remove(at).deinit(A, a);
+                removed += 1;
+            } else {
+                at += 1;
+            }
+        }
+        removed
+    };
+
+    /// How many items are not done.
+    remaining := (self: &List) -> usize {
+        mut n: usize = 0;
+        for item in self._items.items() { if !item.done { n += 1; } }
+        n
+    };
+
+    /// How many items `filter` shows.
+    shown := (self: &List, filter: todo.model.filter.Filter) -> usize {
+        mut n: usize = 0;
+        for item in self._items.items() { if filter.shows(item) { n += 1; } }
+        n
+    };
+
+    /// The position in the list of the `nth` item `filter` shows.
+    position := (self: &List, filter: todo.model.filter.Filter, nth: usize) -> ?usize {
+        mut seen: usize = 0;
+        for at in 0..self._items.len() {
+            if filter.shows(&self._items.items()[at]) {
+                if seen == nth { return .some(at); }
+                seen += 1;
+            }
+        }
+        .none
+    };
+
+    deinit := (self: List, $A: Allocator, a: &mut A) {
+        .{ ._items = items } := self;
+        for item in items.drain(0..items.len()) { item.deinit(A, a); }
+        items.deinit(A, a);
+    };
+};

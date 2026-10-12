@@ -1,0 +1,34 @@
+//! Everything the signal handlers share, which they reach through the pointer given at connect.
+
+..std.text.string.{ String };
+..todo.gtk.button.{ Button };
+..todo.gtk.entry.{ Entry };
+..todo.gtk.label.{ Label };
+..todo.gtk.rows.{ Rows };
+
+/// The widgets the list changes.
+Widgets := struct {
+    entry: Entry,
+    add: Button,
+    rows: Rows,
+    summary: Label,
+    clear: Button,
+};
+
+State := struct {
+    sys: &mut std.os.System,
+    heap: todo.libc.Heap,
+    /// The file the list is kept in.
+    path: String,
+    list: todo.model.list.List,
+    filter: todo.model.filter.Filter,
+    /// The position of the item whose text the entry is changing.
+    editing: ?usize,
+    /// Set once the application makes its window.
+    widgets: ?Widgets,
+};
+
+impl State {
+    /// The pointer to give C with a handler: the state must not move until the handlers are gone.
+    pointer := (self: &mut State) -> *u8 { unsafe std.ptr.to(State, self).cast(u8) };
+}

@@ -1,0 +1,14 @@
+//! The to-do list: a hosted program on the GNU C library, which GTK needs.
+
+package := .{
+    .name = "todo",
+    .id = 18419803120120024502,
+    .version = "0.1.0",
+    .edition = 2026,
+    .include = .{ "build.vun", "main.vun", "todo.vun", "todo" },
+    .deps = .{},
+};
+
+build := (b: &mut std.build.Build) {
+    b.program(.{ .root = "main.vun", .target = targets.linux.x86_64.gnu });
+};

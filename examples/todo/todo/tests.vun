@@ -1,0 +1,4 @@
+//! Tests of the package, run by `vun test`.
+
+#[test]
+adds := () { std.testing.assert(1 + 1 == 2); };

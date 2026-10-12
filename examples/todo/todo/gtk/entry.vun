@@ -1,0 +1,43 @@
+//! A line of text a person types.
+
+..todo.gtk.sys.{ GtkEditable, GtkEntry };
+..todo.gtk.widget.{ Widget };
+
+/// The position GTK reads as after the last character.
+caret_end: i32 = -1;
+
+Entry := struct {
+    _widget: Widget,
+
+    /// An entry showing `hint`, a string for C, while it is empty.
+    new := (hint: *u8) -> Entry {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_entry_new().expect("an entry"));
+        unsafe { todo.gtk.sys.gtk_entry_set_placeholder_text(made.class(GtkEntry), .some(hint)); }
+        .{ ._widget = made }
+    };
+
+    /// The entry a signal's `sender` is, which must be one.
+    sent := unsafe (sender: *todo.gtk.sys.GObject) -> Entry { .{ ._widget = unsafe Widget.sent(sender) } };
+
+    widget := (self: &Entry) -> Widget { self._widget };
+
+    /// What it holds, valid until it changes.
+    text := (self: &Entry) -> &[u8] {
+        shown := unsafe { todo.gtk.sys.gtk_editable_get_text(self._widget.class(GtkEditable)) };
+        match shown {
+            .some(p) => unsafe { std.ffi.cstr.CStr.at(p).text() },
+            .none => "",
+        }
+    };
+
+    /// Gives it the keyboard with the caret after its text, so that typing adds to the text.
+    focus_end := (self: &Entry) {
+        self._widget.focus();
+        unsafe { todo.gtk.sys.gtk_editable_set_position(self._widget.class(GtkEditable), caret_end); }
+    };
+
+    /// Makes it hold `value`, a string for C.
+    set := (self: &Entry, value: *u8) {
+        unsafe { todo.gtk.sys.gtk_editable_set_text(self._widget.class(GtkEditable), .some(value)); }
+    };
+};

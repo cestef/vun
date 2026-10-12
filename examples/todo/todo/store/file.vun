@@ -1,0 +1,61 @@
+//! The document in a file.
+
+..std.mem.alloc.{ Allocator };
+..std.text.string.{ String };
+..todo.store.failure.{ Failure };
+
+List: type = todo.model.list.List;
+
+/// Why a file could not be read or written.
+Problem := ($E: type) -> type { enum {
+    /// The system refused the file.
+    file(std.os.Error),
+    /// The file is not a list.
+    document(Failure(E)),
+    /// The allocator gave no room for the file's text.
+    allocation(E),
+} };
+
+/// The most of a file read at once.
+chunk: usize = 4096;
+
+/// The list in the file at `path`; an empty one when the file does not exist.
+load := ($A: Allocator, a: &mut A, sys: &mut std.os.System, path: &[u8]) -> Result(List, Problem(A.Error)) {
+    mut file := match sys.open(path, .read) {
+        .ok(f) => f,
+        .err(.missing) => return .ok(List.empty()),
+        .err(e) => return .err(.file(e)),
+    };
+    mut text := String.empty();
+    mut buffer: [chunk]u8 = [0; chunk];
+    for {
+        got := match file.stream().read(&mut buffer) {
+            .ok(n) => n,
+            .err(e) => {
+                text.deinit(A, a);
+                _ = file.close();
+                return .err(.file(e));
+            },
+        };
+        if got == 0 { break; }
+        match text.push_str(A, a, &buffer[0..got]) {
+            .ok(_) => {},
+            .err(e) => {
+                text.deinit(A, a);
+                _ = file.close();
+                return .err(.allocation(e));
+            },
+        }
+    }
+    _ = file.close();
+    list := todo.store.read.read(A, a, text.as_text());
+    text.deinit(A, a);
+    list.map_err(Problem(A.Error).document)
+};
+
+/// Writes `list` to the file at `path`, replacing what it held.
+save := (sys: &mut std.os.System, path: &[u8], list: &List) -> Result((), std.os.Error) {
+    mut file := sys.open(path, .write)?;
+    todo.store.write.write(std.os.Stream, file.stream(), list)?;
+    file.close()
+};

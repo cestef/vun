@@ -1,0 +1,1 @@
+//! A to-do list in GTK 4: the package namespace, whose children are the files of `todo/`.

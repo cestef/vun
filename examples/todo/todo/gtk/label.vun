@@ -1,0 +1,28 @@
+//! A line of text.
+
+..todo.gtk.sys.{ GtkLabel };
+..todo.gtk.widget.{ Widget };
+
+/// Pango's `PANGO_ELLIPSIZE_END`.
+ellipsize_end: u32 = 3;
+
+Label := struct {
+    _widget: Widget,
+
+    /// A label showing `text`, a string for C, left aligned and cut short with an ellipsis.
+    new := (text: *u8) -> Label {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_label_new(.some(text)).expect("a label"));
+        unsafe {
+            todo.gtk.sys.gtk_label_set_xalign(made.class(GtkLabel), 0.0);
+            todo.gtk.sys.gtk_label_set_ellipsize(made.class(GtkLabel), ellipsize_end);
+        }
+        .{ ._widget = made }
+    };
+
+    widget := (self: &Label) -> Widget { self._widget };
+
+    /// Shows `text`, a string for C.
+    set := (self: &Label, text: *u8) {
+        unsafe { todo.gtk.sys.gtk_label_set_text(self._widget.class(GtkLabel), .some(text)); }
+    };
+};

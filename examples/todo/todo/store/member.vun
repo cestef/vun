@@ -1,0 +1,23 @@
+//! The members of an item's object, and how the document spells them.
+
+Member := enum { text, done };
+
+impl Member {
+    /// The name the document gives the member.
+    name := (self: Member) -> &[u8] {
+        match self {
+            .text => "text",
+            .done => "done",
+        }
+    };
+
+    /// The member a document's name stands for.
+    named := (wire: &[u8]) -> ?Member {
+        for member in every {
+            if member.name() == wire { return .some(member); }
+        }
+        .none
+    };
+}
+
+every: [2]Member = [.text, .done];

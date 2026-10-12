@@ -1,0 +1,89 @@
+//! Tests of the list.
+
+Fixed: type = std.mem.alloc.Fixed;
+List: type = todo.model.list.List;
+Filter: type = todo.model.filter.Filter;
+
+#[test]
+adding_keeps_the_order_and_trims := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    std.testing.assert(list.add(Fixed, &mut a, "  milk ").expect("room"));
+    std.testing.assert(list.add(Fixed, &mut a, "eggs").expect("room"));
+    std.testing.assert(list.len() == 2);
+    std.testing.assert(list.get(0).expect("first").text.as_text() == "milk");
+    std.testing.assert(list.get(1).expect("second").text.as_text() == "eggs");
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+blank_text_adds_nothing := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    std.testing.assert(!list.add(Fixed, &mut a, " \t ").expect("room"));
+    std.testing.assert(list.len() == 0);
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+toggling_counts_what_remains := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    _ = list.add(Fixed, &mut a, "a").expect("room");
+    _ = list.add(Fixed, &mut a, "b").expect("room");
+    list.toggle(0);
+    std.testing.assert(list.remaining() == 1);
+    std.testing.assert(list.shown(.done) == 1);
+    std.testing.assert(list.shown(.active) == 1);
+    std.testing.assert(list.shown(.all) == 2);
+    list.toggle(9);
+    list.toggle(0);
+    std.testing.assert(list.remaining() == 2);
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+a_filter_maps_its_rows_to_positions := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    for text in ["a", "b", "c", "d"] { _ = list.add(Fixed, &mut a, text).expect("room"); }
+    list.toggle(0);
+    list.toggle(2);
+    std.testing.assert(list.position(.done, 1) == Option(usize).some(2));
+    std.testing.assert(list.position(.active, 0) == Option(usize).some(1));
+    std.testing.assert(list.position(.active, 2) == Option(usize).none);
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+clearing_removes_the_done_items := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    for text in ["a", "b", "c"] { _ = list.add(Fixed, &mut a, text).expect("room"); }
+    list.toggle(0);
+    list.toggle(1);
+    std.testing.assert(list.clear_done(Fixed, &mut a) == 2);
+    std.testing.assert(list.len() == 1);
+    std.testing.assert(list.get(0).expect("left").text.as_text() == "c");
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+editing_replaces_the_text_and_blank_removes := () {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    _ = list.add(Fixed, &mut a, "old").expect("room");
+    _ = list.add(Fixed, &mut a, "other").expect("room");
+    list.edit(Fixed, &mut a, 0, " new ").expect("room");
+    std.testing.assert(list.get(0).expect("edited").text.as_text() == "new");
+    list.edit(Fixed, &mut a, 0, "  ").expect("room");
+    std.testing.assert(list.len() == 1);
+    std.testing.assert(list.get(0).expect("left").text.as_text() == "other");
+    list.deinit(Fixed, &mut a);
+};

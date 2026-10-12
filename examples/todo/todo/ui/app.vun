@@ -1,0 +1,23 @@
+//! The application: it makes the window once the desktop is ready, and runs until it closes.
+
+..todo.gtk.window.{ Application };
+..todo.gtk.sys.{ GObject, GtkApplication };
+..todo.ui.state.{ State };
+
+/// The name the desktop knows the application by.
+id: &static [u8] = c"dev.cstef.todo";
+
+#[abi.c]
+activate := (sender: *GObject, data: *u8) {
+    state := unsafe todo.ui.action.state(data);
+    state.build(unsafe sender.cast(GtkApplication));
+};
+
+/// Runs the window over `state` until it closes, returning the exit status.
+run := (state: &mut State) -> i32 {
+    app := Application.new(id.ptr());
+    app.on_activate(activate, state.pointer());
+    status := app.run();
+    app.release();
+    status
+};

@@ -1,0 +1,106 @@
+//! What every widget does.
+
+..todo.gtk.sys.{ GObject, GtkWidget };
+
+/// What a signal calls: the object that emitted it and the pointer given when it was connected.
+Handler := #[abi.c] (sender: *GObject, data: *u8);
+
+/// The type GLib takes a handler as, whatever its parameters are.
+Callback := #[abi.c] () -> ();
+
+/// GTK's `GtkAlign`.
+Align := enum {
+    fill,
+    start,
+    end,
+    center;
+
+    code := (self: Align) -> u32 {
+        match self {
+            .fill => 0,
+            .start => 1,
+            .end => 2,
+            .center => 3,
+        }
+    };
+};
+
+Widget := struct {
+    _raw: *GtkWidget,
+
+    /// The widget at `raw`.
+    of := unsafe (raw: *GtkWidget) -> Widget { .{ ._raw = raw } };
+
+    /// The widget a signal's `sender` is, which must be one.
+    sent := unsafe (sender: *GObject) -> Widget { .{ ._raw = unsafe sender.cast(GtkWidget) } };
+
+    /// It as the class `T` a function of GTK takes, which it must be.
+    class := (self: &Widget, $T: type) -> ?*T { .some(unsafe self._raw.cast(T)) };
+
+    /// Calls `handler` with `data` each time the widget emits `signal`; `data` must outlive it.
+    connect := (self: &Widget, signal: todo.gtk.signal.Signal, handler: Handler, data: *u8) {
+        _ = unsafe {
+            todo.gtk.sys.g_signal_connect_data(
+                .some(self._raw.cast(())),
+                .some(signal.name().ptr()),
+                .some(lang.mem.function_cast(Handler, Callback, handler)),
+                .some(data.cast(())),
+                .none,
+                0,
+            )
+        };
+    };
+
+    margins := (self: &Widget, size: i32) {
+        unsafe {
+            todo.gtk.sys.gtk_widget_set_margin_start(self.class(GtkWidget), size);
+            todo.gtk.sys.gtk_widget_set_margin_end(self.class(GtkWidget), size);
+            todo.gtk.sys.gtk_widget_set_margin_top(self.class(GtkWidget), size);
+            todo.gtk.sys.gtk_widget_set_margin_bottom(self.class(GtkWidget), size);
+        }
+    };
+
+    expand := (self: &Widget, horizontal: bool, vertical: bool) {
+        unsafe {
+            todo.gtk.sys.gtk_widget_set_hexpand(self.class(GtkWidget), horizontal.c());
+            todo.gtk.sys.gtk_widget_set_vexpand(self.class(GtkWidget), vertical.c());
+        }
+    };
+
+    align := (self: &Widget, how: Align) {
+        unsafe { todo.gtk.sys.gtk_widget_set_halign(self.class(GtkWidget), how.code()); }
+    };
+
+    enable := (self: &Widget, enabled: bool) {
+        unsafe { todo.gtk.sys.gtk_widget_set_sensitive(self.class(GtkWidget), enabled.c()); }
+    };
+
+    /// Styles it by the rules the style sheet gives `class`, a C string.
+    style := (self: &Widget, name: *u8) {
+        unsafe { todo.gtk.sys.gtk_widget_add_css_class(self.class(GtkWidget), .some(name)); }
+    };
+
+    focus := (self: &Widget) {
+        _ = unsafe { todo.gtk.sys.gtk_widget_grab_focus(self.class(GtkWidget)) };
+    };
+
+    /// The number stored on the widget under `key`, a C string; 0 when none was.
+    mark := (self: &Widget, key: *u8) -> usize {
+        stored := unsafe { todo.gtk.sys.g_object_get_data(self.class(GObject), .some(key)) };
+        match stored {
+            .some(p) => unsafe { lang.mem.address((), p) },
+            .none => 0,
+        }
+    };
+
+    /// Stores `number` on the widget under `key`, a C string.
+    set_mark := (self: &Widget, key: *u8, number: usize) {
+        unsafe {
+            todo.gtk.sys.g_object_set_data(
+                self.class(GObject),
+                .some(key),
+                .some(lang.mem.pointer_at((), number)),
+            );
+        }
+    };
+};

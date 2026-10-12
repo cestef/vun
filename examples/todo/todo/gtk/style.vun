@@ -1,0 +1,19 @@
+//! The style sheet.
+
+..todo.gtk.sys.{ GtkStyleProvider };
+
+/// `GTK_STYLE_PROVIDER_PRIORITY_APPLICATION`.
+priority_application: u32 = 600;
+
+/// Applies the rules of `css`, a string for C, to every window.
+apply := (css: *u8) {
+    unsafe {
+        provider := todo.gtk.sys.gtk_css_provider_new().expect("a style sheet");
+        todo.gtk.sys.gtk_css_provider_load_from_string(.some(provider), .some(css));
+        todo.gtk.sys.gtk_style_context_add_provider_for_display(
+            todo.gtk.sys.gdk_display_get_default(),
+            .some(provider.cast(GtkStyleProvider)),
+            priority_application,
+        );
+    }
+};

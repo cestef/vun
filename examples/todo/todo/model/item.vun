@@ -1,0 +1,19 @@
+//! One thing to do.
+
+..std.mem.alloc.{ Allocator };
+..std.text.string.{ String };
+
+Item := struct {
+    text: String,
+    done: bool,
+
+    /// An item holding a copy of `text`, not done.
+    new := ($A: Allocator, a: &mut A, text: &[u8]) -> Result(Item, A.Error) {
+        .ok(.{ .text = String.from(A, a, text)?, .done = false })
+    };
+
+    deinit := (self: Item, $A: Allocator, a: &mut A) {
+        .{ .text = text, .done = _ } := self;
+        text.deinit(A, a);
+    };
+};

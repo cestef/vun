@@ -1,0 +1,27 @@
+//! A column of rows, one widget each.
+
+..todo.gtk.sys.{ GtkListBox, GtkWidget };
+..todo.gtk.widget.{ Widget };
+
+/// GTK's `GTK_SELECTION_NONE`: rows are not picked, only worked.
+selection_none: u32 = 0;
+
+Rows := struct {
+    _widget: Widget,
+
+    new := () -> Rows {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_list_box_new().expect("a list"));
+        unsafe { todo.gtk.sys.gtk_list_box_set_selection_mode(made.class(GtkListBox), selection_none); }
+        .{ ._widget = made }
+    };
+
+    widget := (self: &Rows) -> Widget { self._widget };
+
+    append := (self: &Rows, row: Widget) {
+        unsafe { todo.gtk.sys.gtk_list_box_append(self._widget.class(GtkListBox), row.class(GtkWidget)); }
+    };
+
+    clear := (self: &Rows) {
+        unsafe { todo.gtk.sys.gtk_list_box_remove_all(self._widget.class(GtkListBox)); }
+    };
+};

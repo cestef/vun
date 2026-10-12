@@ -1,0 +1,51 @@
+//! Widgets that hold others.
+
+..todo.gtk.sys.{ GtkBox, GtkScrolledWindow };
+..todo.gtk.widget.{ Widget };
+
+/// GTK's `GtkOrientation`.
+Orientation := enum {
+    horizontal,
+    vertical;
+
+    code := (self: Orientation) -> u32 {
+        match self {
+            .horizontal => 0,
+            .vertical => 1,
+        }
+    };
+};
+
+/// A row or a column of widgets.
+Box := struct {
+    _widget: Widget,
+
+    new := (orientation: Orientation, spacing: i32) -> Box {
+        .{ ._widget = unsafe Widget.of(unsafe todo.gtk.sys.gtk_box_new(orientation.code(), spacing).expect("a box")) }
+    };
+
+    widget := (self: &Box) -> Widget { self._widget };
+
+    /// Adds `child` after the others.
+    append := (self: &Box, child: Widget) {
+        unsafe { todo.gtk.sys.gtk_box_append(self._widget.class(GtkBox), child.class(todo.gtk.sys.GtkWidget)); }
+    };
+};
+
+/// A view of a widget bigger than the room, scrolled.
+Scroll := struct {
+    _widget: Widget,
+
+    around := (child: Widget) -> Scroll {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_scrolled_window_new().expect("a scrolled window"));
+        unsafe {
+            todo.gtk.sys.gtk_scrolled_window_set_child(
+                made.class(GtkScrolledWindow),
+                child.class(todo.gtk.sys.GtkWidget),
+            );
+        }
+        .{ ._widget = made }
+    };
+
+    widget := (self: &Scroll) -> Widget { self._widget };
+};

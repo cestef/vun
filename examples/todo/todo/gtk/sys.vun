@@ -1,0 +1,415 @@
+//! Bindings to the C header `tmp.Z21jAFTiN9.h`, written by `vun util ffi bind`: regenerate them
+//! rather than edit them.
+
+Gsize: type = lang.int.unsigned(64);
+
+Gchar: type = lang.int.unsigned(8);
+
+Gint: type = lang.int.signed(32);
+
+Gboolean: type = Gint;
+
+Gulong: type = lang.int.unsigned(64);
+
+Guint: type = lang.int.unsigned(32);
+
+Gpointer: type = ?*();
+
+/// Declared without fields in C: reached through pointers only.
+_GData := struct {};
+
+GData: type = _GData;
+
+GType: type = Gsize;
+
+/// Bound as its size and alignment only: its fields are private to C.
+#[lang.layout.c, lang.layout.align(8)]
+_GValue := struct {
+    _bytes: [24]lang.int.unsigned(8),
+};
+
+GValue: type = _GValue;
+
+#[lang.layout.c]
+_GTypeClass := struct {
+    g_type: GType,
+};
+
+GTypeClass: type = _GTypeClass;
+
+#[lang.layout.c]
+_GTypeInstance := struct {
+    g_class: ?*GTypeClass,
+};
+
+GTypeInstance: type = _GTypeInstance;
+
+/// Bound as its size and alignment only: its fields are private to C.
+#[lang.layout.c, lang.layout.align(8)]
+_GClosure := struct {
+    _bytes: [32]lang.int.unsigned(8),
+};
+
+GClosure: type = _GClosure;
+
+#[lang.layout.c]
+_GClosureNotifyData := struct {
+    data: Gpointer,
+    notify: GClosureNotify,
+};
+
+GClosureNotifyData: type = _GClosureNotifyData;
+
+GCallback: type = ?#[lang.abi.c] () -> ();
+
+GClosureNotify: type = ?#[lang.abi.c] (p0: ?*(), p1: ?*_GClosure);
+
+GConnectFlags: type = lang.int.unsigned(32);
+
+g_connect_default: GConnectFlags = 0;
+
+g_connect_after: GConnectFlags = 1;
+
+g_connect_swapped: GConnectFlags = 2;
+
+#[lang.link.symbol("g_signal_connect_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_signal_connect_data: unsafe (instance: Gpointer, detailed_signal: ?*Gchar, c_handler: GCallback, data: Gpointer, destroy_data: GClosureNotify, connect_flags: GConnectFlags) -> Gulong = _;
+
+#[lang.layout.c]
+_GObject := struct {
+    g_type_instance: GTypeInstance,
+    ref_count: Guint,
+    qdata: ?*GData,
+};
+
+GObject: type = _GObject;
+
+GInitiallyUnowned: type = _GObject;
+
+#[lang.link.symbol("g_object_unref"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_unref: unsafe (object: Gpointer) = _;
+
+#[lang.link.symbol("g_object_get_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_get_data: unsafe (object: ?*GObject, key: ?*Gchar) -> Gpointer = _;
+
+#[lang.link.symbol("g_object_set_data"), lang.abi.c, lang.link.library("gobject-2.0")]
+g_object_set_data: unsafe (object: ?*GObject, key: ?*Gchar, data: Gpointer) = _;
+
+GApplicationFlags: type = lang.int.unsigned(32);
+
+g_application_flags_none: GApplicationFlags = 0;
+
+g_application_default_flags: GApplicationFlags = 0;
+
+g_application_is_service: GApplicationFlags = 1;
+
+g_application_is_launcher: GApplicationFlags = 2;
+
+g_application_handles_open: GApplicationFlags = 4;
+
+g_application_handles_command_line: GApplicationFlags = 8;
+
+g_application_send_environment: GApplicationFlags = 16;
+
+g_application_non_unique: GApplicationFlags = 32;
+
+g_application_can_override_app_id: GApplicationFlags = 64;
+
+g_application_allow_replacement: GApplicationFlags = 128;
+
+g_application_replace: GApplicationFlags = 256;
+
+#[lang.layout.c]
+_GApplication := struct {
+    parent_instance: GObject,
+    priv: ?*GApplicationPrivate,
+};
+
+GApplication: type = _GApplication;
+
+/// Declared without fields in C: reached through pointers only.
+_GApplicationPrivate := struct {};
+
+GApplicationPrivate: type = _GApplicationPrivate;
+
+#[lang.link.symbol("g_application_run"), lang.abi.c, lang.link.library("gio-2.0")]
+g_application_run: unsafe (application: ?*GApplication, argc: lang.int.signed(32), argv: ?*?*lang.int.unsigned(8)) -> lang.int.signed(32) = _;
+
+PangoEllipsizeMode: type = lang.int.unsigned(32);
+
+pango_ellipsize_none: PangoEllipsizeMode = 0;
+
+pango_ellipsize_start: PangoEllipsizeMode = 1;
+
+pango_ellipsize_middle: PangoEllipsizeMode = 2;
+
+pango_ellipsize_end: PangoEllipsizeMode = 3;
+
+/// Declared without fields in C: reached through pointers only.
+_GdkDisplay := struct {};
+
+GdkDisplay: type = _GdkDisplay;
+
+#[lang.link.symbol("gdk_display_get_default"), lang.abi.c, lang.link.library("gtk-4")]
+gdk_display_get_default: unsafe () -> ?*GdkDisplay = _;
+
+GtkAlign: type = lang.int.unsigned(32);
+
+gtk_align_fill: GtkAlign = 0;
+
+gtk_align_start: GtkAlign = 1;
+
+gtk_align_end: GtkAlign = 2;
+
+gtk_align_center: GtkAlign = 3;
+
+gtk_align_baseline_fill: GtkAlign = 4;
+
+gtk_align_baseline: GtkAlign = 4;
+
+gtk_align_baseline_center: GtkAlign = 5;
+
+GtkOrientation: type = lang.int.unsigned(32);
+
+gtk_orientation_horizontal: GtkOrientation = 0;
+
+gtk_orientation_vertical: GtkOrientation = 1;
+
+GtkSelectionMode: type = lang.int.unsigned(32);
+
+gtk_selection_none: GtkSelectionMode = 0;
+
+gtk_selection_single: GtkSelectionMode = 1;
+
+gtk_selection_browse: GtkSelectionMode = 2;
+
+gtk_selection_multiple: GtkSelectionMode = 3;
+
+#[lang.layout.c]
+_GtkWidget := struct {
+    parent_instance: GInitiallyUnowned,
+    priv: ?*GtkWidgetPrivate,
+};
+
+GtkWidget: type = _GtkWidget;
+
+#[lang.layout.c]
+_GtkWindow := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkWindow: type = _GtkWindow;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkWidgetPrivate := struct {};
+
+GtkWidgetPrivate: type = _GtkWidgetPrivate;
+
+#[lang.link.symbol("gtk_widget_grab_focus"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_grab_focus: unsafe (widget: ?*GtkWidget) -> Gboolean = _;
+
+#[lang.link.symbol("gtk_widget_set_sensitive"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_sensitive: unsafe (widget: ?*GtkWidget, sensitive: Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_hexpand"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_hexpand: unsafe (widget: ?*GtkWidget, expand: Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_vexpand"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_vexpand: unsafe (widget: ?*GtkWidget, expand: Gboolean) = _;
+
+#[lang.link.symbol("gtk_widget_set_halign"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_halign: unsafe (widget: ?*GtkWidget, align: GtkAlign) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_start"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_start: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_end"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_end: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_top"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_top: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_set_margin_bottom"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_set_margin_bottom: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_widget_add_css_class"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_widget_add_css_class: unsafe (widget: ?*GtkWidget, css_class: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkApplication := struct {
+    parent_instance: GApplication,
+};
+
+GtkApplication: type = _GtkApplication;
+
+#[lang.link.symbol("gtk_application_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_application_new: unsafe (application_id: ?*lang.int.unsigned(8), flags: GApplicationFlags) -> ?*GtkApplication = _;
+
+#[lang.link.symbol("gtk_window_set_title"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_title: unsafe (window: ?*GtkWindow, title: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_window_present"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_present: unsafe (window: ?*GtkWindow) = _;
+
+#[lang.link.symbol("gtk_window_set_default_size"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_default_size: unsafe (window: ?*GtkWindow, width: lang.int.signed(32), height: lang.int.signed(32)) = _;
+
+#[lang.link.symbol("gtk_window_set_child"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_window_set_child: unsafe (window: ?*GtkWindow, child: ?*GtkWidget) = _;
+
+#[lang.link.symbol("gtk_application_window_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_application_window_new: unsafe (application: ?*GtkApplication) -> ?*GtkWidget = _;
+
+#[lang.layout.c]
+_GtkBox := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkBox: type = _GtkBox;
+
+#[lang.link.symbol("gtk_box_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_box_new: unsafe (orientation: GtkOrientation, spacing: lang.int.signed(32)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_box_append"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_box_append: unsafe (box: ?*GtkBox, child: ?*GtkWidget) = _;
+
+#[lang.layout.c]
+_GtkButton := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkButton: type = _GtkButton;
+
+#[lang.link.symbol("gtk_button_new_with_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_button_new_with_label: unsafe (label: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_button_set_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_button_set_label: unsafe (button: ?*GtkButton, label: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkToggleButton := struct {
+    button: GtkButton,
+};
+
+GtkToggleButton: type = _GtkToggleButton;
+
+#[lang.link.symbol("gtk_toggle_button_new_with_label"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_new_with_label: unsafe (label: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_toggle_button_set_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_set_active: unsafe (toggle_button: ?*GtkToggleButton, is_active: Gboolean) = _;
+
+#[lang.link.symbol("gtk_toggle_button_get_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_get_active: unsafe (toggle_button: ?*GtkToggleButton) -> Gboolean = _;
+
+#[lang.link.symbol("gtk_toggle_button_set_group"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_toggle_button_set_group: unsafe (toggle_button: ?*GtkToggleButton, group: ?*GtkToggleButton) = _;
+
+#[lang.layout.c]
+_GtkCheckButton := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkCheckButton: type = _GtkCheckButton;
+
+#[lang.link.symbol("gtk_check_button_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_check_button_get_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_get_active: unsafe (self: ?*GtkCheckButton) -> Gboolean = _;
+
+#[lang.link.symbol("gtk_check_button_set_active"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_check_button_set_active: unsafe (self: ?*GtkCheckButton, setting: Gboolean) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkEditable := struct {};
+
+GtkEditable: type = _GtkEditable;
+
+#[lang.link.symbol("gtk_editable_get_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_get_text: unsafe (editable: ?*GtkEditable) -> ?*lang.int.unsigned(8) = _;
+
+#[lang.link.symbol("gtk_editable_set_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_set_text: unsafe (editable: ?*GtkEditable, text: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_editable_set_position"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_editable_set_position: unsafe (editable: ?*GtkEditable, position: lang.int.signed(32)) = _;
+
+#[lang.layout.c]
+_GtkEntry := struct {
+    parent_instance: GtkWidget,
+};
+
+GtkEntry: type = _GtkEntry;
+
+#[lang.link.symbol("gtk_entry_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_entry_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_entry_set_placeholder_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_entry_set_placeholder_text: unsafe (entry: ?*GtkEntry, text: ?*lang.int.unsigned(8)) = _;
+
+#[lang.layout.c]
+_GtkCssProvider := struct {
+    parent_instance: GObject,
+};
+
+GtkCssProvider: type = _GtkCssProvider;
+
+#[lang.link.symbol("gtk_css_provider_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_css_provider_new: unsafe () -> ?*GtkCssProvider = _;
+
+#[lang.link.symbol("gtk_css_provider_load_from_string"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_css_provider_load_from_string: unsafe (css_provider: ?*GtkCssProvider, string: ?*lang.int.unsigned(8)) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkLabel := struct {};
+
+GtkLabel: type = _GtkLabel;
+
+#[lang.link.symbol("gtk_label_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_new: unsafe (str: ?*lang.int.unsigned(8)) -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_label_set_text"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_text: unsafe (self: ?*GtkLabel, str: ?*lang.int.unsigned(8)) = _;
+
+#[lang.link.symbol("gtk_label_set_ellipsize"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_ellipsize: unsafe (self: ?*GtkLabel, mode: PangoEllipsizeMode) = _;
+
+#[lang.link.symbol("gtk_label_set_xalign"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_label_set_xalign: unsafe (self: ?*GtkLabel, xalign: lang.f32) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkListBox := struct {};
+
+GtkListBox: type = _GtkListBox;
+
+#[lang.link.symbol("gtk_list_box_append"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_append: unsafe (box: ?*GtkListBox, child: ?*GtkWidget) = _;
+
+#[lang.link.symbol("gtk_list_box_remove_all"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_remove_all: unsafe (box: ?*GtkListBox) = _;
+
+#[lang.link.symbol("gtk_list_box_set_selection_mode"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_set_selection_mode: unsafe (box: ?*GtkListBox, mode: GtkSelectionMode) = _;
+
+#[lang.link.symbol("gtk_list_box_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_list_box_new: unsafe () -> ?*GtkWidget = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkScrolledWindow := struct {};
+
+GtkScrolledWindow: type = _GtkScrolledWindow;
+
+#[lang.link.symbol("gtk_scrolled_window_new"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_scrolled_window_new: unsafe () -> ?*GtkWidget = _;
+
+#[lang.link.symbol("gtk_scrolled_window_set_child"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_scrolled_window_set_child: unsafe (scrolled_window: ?*GtkScrolledWindow, child: ?*GtkWidget) = _;
+
+/// Declared without fields in C: reached through pointers only.
+_GtkStyleProvider := struct {};
+
+GtkStyleProvider: type = _GtkStyleProvider;
+
+#[lang.link.symbol("gtk_style_context_add_provider_for_display"), lang.abi.c, lang.link.library("gtk-4")]
+gtk_style_context_add_provider_for_display: unsafe (display: ?*GdkDisplay, provider: ?*GtkStyleProvider, priority: Guint) = _;

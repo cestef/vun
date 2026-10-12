@@ -1,0 +1,16 @@
+//! Which items a view of the list shows.
+
+Filter := enum { all, active, done };
+
+impl Filter {
+    shows := (self: Filter, item: &todo.model.item.Item) -> bool {
+        match self {
+            .all => true,
+            .active => !item.done,
+            .done => item.done,
+        }
+    };
+}
+
+/// Every filter, in the order a view lists them.
+every: [3]Filter = [.all, .active, .done];

@@ -1,0 +1,63 @@
+//! Tests of the document.
+
+Fixed: type = std.mem.alloc.Fixed;
+List: type = todo.model.list.List;
+Shape: type = todo.store.failure.Shape;
+
+#[test]
+a_list_reads_back_as_written := () {
+    mut storage: [8192]u8 = [0; 8192];
+    mut a := Fixed.init(&mut storage);
+    mut list := List.empty();
+    _ = list.add(Fixed, &mut a, "plain").expect("room");
+    _ = list.add(Fixed, &mut a, "quote \" and \\ and \n newline").expect("room");
+    _ = list.add(Fixed, &mut a, "naïve ☕").expect("room");
+    list.toggle(1);
+    mut doc := std.text.string.String.empty();
+    mut w := doc.writer(Fixed, &mut a);
+    todo.store.write.write(std.text.string.Writing(Fixed), &mut w, &list).expect("room");
+    back := todo.store.read.read(Fixed, &mut a, doc.as_text()).expect("a document it wrote");
+    std.testing.assert(back.len() == 3);
+    std.testing.assert(
+        back.get(1).expect("second").text.as_text() == list.get(1).expect("second").text.as_text()
+    );
+    std.testing.assert(back.get(1).expect("second").done);
+    std.testing.assert(!back.get(0).expect("first").done);
+    std.testing.assert(back.get(2).expect("third").text.as_text() == "naïve ☕");
+    back.deinit(Fixed, &mut a);
+    doc.deinit(Fixed, &mut a);
+    list.deinit(Fixed, &mut a);
+};
+
+#[test]
+an_empty_document_is_an_empty_list := () {
+    mut storage: [1024]u8 = [0; 1024];
+    mut a := Fixed.init(&mut storage);
+    list := todo.store.read.read(Fixed, &mut a, "[]").expect("an empty array");
+    std.testing.assert(list.len() == 0);
+    list.deinit(Fixed, &mut a);
+};
+
+/// Why `text` is refused, none when it is read.
+refusal := (text: &[u8]) -> ?Shape {
+    mut storage: [4096]u8 = [0; 4096];
+    mut a := Fixed.init(&mut storage);
+    match todo.store.read.read(Fixed, &mut a, text) {
+        .ok(list) => {
+            list.deinit(Fixed, &mut a);
+            .none
+        },
+        .err(.shape(s)) => .some(s),
+        .err(_) => .none,
+    }
+};
+
+#[test]
+a_document_of_another_shape_is_refused := () {
+    std.testing.assert(refusal("{}") == Option(Shape).some(.not_a_list));
+    std.testing.assert(refusal("[1]") == Option(Shape).some(.not_an_item));
+    std.testing.assert(refusal("[{\"done\":true}]") == Option(Shape).some(.no_text));
+    std.testing.assert(refusal("[{\"text\":\"x\",\"size\":1}]") == Option(Shape).some(.unknown_member));
+    std.testing.assert(refusal("[{\"text\":1}]") == Option(Shape).some(.not_an_item));
+    std.testing.assert(refusal("[{\"text\":\"x\"}]") == Option(Shape).none);
+};

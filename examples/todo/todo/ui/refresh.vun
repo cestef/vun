@@ -1,0 +1,35 @@
+//! Showing the list: the rows its filter lets through, and the count beneath them.
+
+..todo.gtk.label.{ Label };
+..todo.ui.row.{ Row };
+..todo.ui.state.{ State, Widgets };
+
+Heap: type = todo.libc.Heap;
+
+impl State {
+    /// Shows the list again.
+    refresh := (self: &mut State) {
+        widgets := self.widgets.expect("the window exists");
+        widgets.rows.clear();
+        data := self.pointer();
+        for nth in 0..self.list.shown(self.filter) {
+            place := self.list.position(self.filter, nth).expect("within what is shown");
+            item := self.list.get(place).expect("within the length");
+            widgets.rows.append(Row.build(&mut self.heap, data, place, item).widget());
+        }
+        self.show_count(&widgets);
+    };
+
+    /// Tells how many items are left, and whether any can be cleared.
+    show_count := (self: &mut State, widgets: &Widgets) {
+        mut words := std.text.string.String.empty();
+        left := self.list.remaining();
+        mut w := words.writer(Heap, &mut self.heap);
+        _ = std.fmt.print(&mut w, "{} left", left);
+        text := std.ffi.cstr.CString.of(Heap, &mut self.heap, words.as_text()).expect("room for a label");
+        widgets.summary.set(text.ptr());
+        text.deinit(Heap, &mut self.heap);
+        words.deinit(Heap, &mut self.heap);
+        widgets.clear.widget().enable(self.list.len() > left);
+    };
+}

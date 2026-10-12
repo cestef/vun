@@ -1,0 +1,13 @@
+//! A to-do list in GTK 4, kept in `~/.local/share/todo.json`.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    mut state := match todo.ui.state.State.open(sys) {
+        .ok(s) => s,
+        .err(_) => return .code(1),
+    };
+    status := todo.ui.app.run(&mut state);
+    state.close();
+    if status == 0 { .ok } else { .code(1) }
+};

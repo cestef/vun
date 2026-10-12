@@ -1,0 +1,2 @@
+//! The list kept as a JSON document: an array of objects, one per item, with its `text` and
+//! whether it is `done`.

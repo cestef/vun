@@ -1,0 +1,2 @@
+//! GTK 4 as typed handles over the C library, declared by hand: the binder cannot yet follow
+//! the headers GTK includes from GLib.

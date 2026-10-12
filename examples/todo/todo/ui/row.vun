@@ -1,0 +1,51 @@
+//! One row of the list.
+
+..todo.gtk.button.{ Button, Check };
+..std.ffi.cstr.{ CString };
+..todo.gtk.label.{ Label };
+..todo.gtk.layout.{ Box };
+..todo.gtk.widget.{ Widget };
+..todo.ui.mark.{ Mark };
+
+Heap: type = todo.libc.Heap;
+
+/// Spacing between the widgets of a row, in pixels.
+gap: i32 = 8;
+/// Room around a row.
+margin: i32 = 6;
+
+Row := struct {
+    _widget: Widget,
+
+    /// The row for `item`, the one at `place` in the list, whose widgets call the handlers with `data`.
+    build := (heap: &mut Heap, data: *u8, place: usize, item: &todo.model.item.Item) -> Row {
+        line := Box.new(.horizontal, gap);
+        line.widget().margins(margin);
+        mark := Mark.of(place);
+
+        check := Check.new(item.done);
+        mark.put(&check.widget());
+        check.widget().connect(.toggled, todo.ui.action.toggled, data);
+        line.append(check.widget());
+
+        text := CString.of(Heap, heap, item.text.as_text()).expect("room for a label");
+        label := Label.new(text.ptr());
+        text.deinit(Heap, heap);
+        label.widget().expand(true, false);
+        if item.done { label.widget().style(c"done".ptr()); }
+        line.append(label.widget());
+
+        edit := Button.new(c"Edit".ptr());
+        mark.put(&edit.widget());
+        edit.widget().connect(.clicked, todo.ui.action.edit, data);
+        line.append(edit.widget());
+
+        delete := Button.new(c"Delete".ptr());
+        mark.put(&delete.widget());
+        delete.widget().connect(.clicked, todo.ui.action.delete, data);
+        line.append(delete.widget());
+        .{ ._widget = line.widget() }
+    };
+
+    widget := (self: &Row) -> Widget { self._widget };
+};

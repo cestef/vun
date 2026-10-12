@@ -1,0 +1,21 @@
+//! A number stored on a widget says what it stands for: a row's position, or a filter's.
+
+..todo.gtk.widget.{ Widget };
+
+/// The key the number is stored under, a C string.
+key: &static [u8] = c"todo";
+
+Mark := struct {
+    /// The position plus one: 0 is what a widget that stores none reads.
+    _number: usize,
+
+    /// The mark of the thing at `place`.
+    of := (at: usize) -> Mark { .{ ._number = (at + 1).sat(usize) } };
+
+    /// The mark `widget` carries, which must have been put there.
+    on := (widget: &Widget) -> Mark { .{ ._number = widget.mark(key.ptr()) } };
+
+    put := (self: &Mark, widget: &Widget) { widget.set_mark(key.ptr(), self._number); };
+
+    place := (self: &Mark) -> usize { (self._number - 1).sat(usize) };
+};

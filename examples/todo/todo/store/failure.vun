@@ -1,0 +1,22 @@
+//! Why a document could not be read.
+
+/// What is wrong with a document that is JSON.
+Shape := enum {
+    /// The document is not an array of objects.
+    not_a_list,
+    /// An item is not an object, or has a member of another kind than its name says.
+    not_an_item,
+    /// An item names a member that items do not have.
+    unknown_member,
+    /// An item has no text.
+    no_text,
+    /// A string holds an escape that stands for no character.
+    bad_escape,
+};
+
+Failure := ($E: type) -> type { enum {
+    syntax(std.json.Error),
+    shape(Shape),
+    /// The allocator that grows the list gave no room.
+    allocation(E),
+} };

@@ -1,0 +1,57 @@
+//! Changing the list: what the entry holds becomes an item, or the new text of one.
+
+..std.ffi.cstr.{ CString };
+..todo.ui.state.{ State };
+
+Heap: type = todo.libc.Heap;
+
+/// What the add button says while the entry holds the text of an item being changed.
+save_label: &static [u8] = c"Save";
+/// What it says otherwise.
+add_label: &static [u8] = c"Add";
+
+impl State {
+    /// Keeps the list and shows it again.
+    changed := (self: &mut State) {
+        match todo.store.file.save(self.sys, self.path.as_text(), &self.list) {
+            .ok(_) => {},
+            .err(e) => {
+                mut err := self.sys.stderr();
+                _ = std.fmt.print(&mut err, "todo: cannot save {}: {?}\n", self.path.as_text(), e);
+            },
+        }
+        self.refresh();
+    };
+
+    /// Takes the entry's text for a new item, or for the one being changed.
+    submit := (self: &mut State) {
+        widgets := self.widgets.expect("the window exists");
+        text := widgets.entry.text();
+        match self.editing {
+            .some(place) => self.list.edit(Heap, &mut self.heap, place, text).expect("room for a text"),
+            .none => { _ = self.list.add(Heap, &mut self.heap, text).expect("room for an item"); },
+        }
+        self.finish_edit();
+        self.changed();
+    };
+
+    /// Puts the text of the item at `place` in the entry, to be changed.
+    begin_edit := (self: &mut State, place: usize) {
+        widgets := self.widgets.expect("the window exists");
+        text := CString.of(Heap, &mut self.heap, self.list.get(place).expect("within the length").text.as_text())
+            .expect("room for a text");
+        widgets.entry.set(text.ptr());
+        text.deinit(Heap, &mut self.heap);
+        widgets.add.set_label(save_label.ptr());
+        widgets.entry.focus_end();
+        self.editing = .some(place);
+    };
+
+    /// Empties the entry and goes back to adding.
+    finish_edit := (self: &mut State) {
+        widgets := self.widgets.expect("the window exists");
+        widgets.entry.set(c"".ptr());
+        widgets.add.set_label(add_label.ptr());
+        self.editing = .none;
+    };
+}

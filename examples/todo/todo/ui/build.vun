@@ -1,0 +1,85 @@
+//! The window and the widgets in it.
+
+..todo.gtk.button.{ Button, Toggle };
+..todo.gtk.entry.{ Entry };
+..todo.gtk.label.{ Label };
+..todo.gtk.layout.{ Box, Scroll };
+..todo.gtk.rows.{ Rows };
+..todo.gtk.window.{ Window };
+..todo.ui.state.{ State, Widgets };
+
+/// The window's size, in pixels.
+width: i32 = 420;
+height: i32 = 560;
+/// Room between the window's widgets, and around them.
+gap: i32 = 8;
+margin: i32 = 12;
+
+/// The rules the widgets are styled by.
+sheet: &static [u8] = c".done { opacity: 0.5; text-decoration: line-through; }";
+
+/// What each filter's button says, in the order of `todo.model.filter.every`.
+filter_labels: [3]&static [u8] = [c"All", c"Active", c"Done"];
+
+impl State {
+    /// Makes the window of `app` and shows it.
+    build := (self: &mut State, app: *todo.gtk.sys.GtkApplication) {
+        todo.gtk.style.apply(sheet.ptr());
+        data := self.pointer();
+        window := Window.new(app, c"Todo".ptr(), width, height);
+        page := Box.new(.vertical, gap);
+        page.widget().margins(margin);
+
+        entry := Entry.new(c"What needs doing?".ptr());
+        entry.widget().expand(true, false);
+        entry.widget().connect(.activate, todo.ui.action.submit, data);
+        add := Button.new(todo.ui.edit.add_label.ptr());
+        add.widget().connect(.clicked, todo.ui.action.submit, data);
+        top := Box.new(.horizontal, gap);
+        top.append(entry.widget());
+        top.append(add.widget());
+        page.append(top.widget());
+
+        page.append(self.filters().widget());
+
+        rows := Rows.new();
+        rows.widget().style(c"boxed-list".ptr());
+        view := Scroll.around(rows.widget());
+        view.widget().expand(true, true);
+        page.append(view.widget());
+
+        summary := Label.new(c"".ptr());
+        summary.widget().expand(true, false);
+        clear := Button.new(c"Clear done".ptr());
+        clear.widget().connect(.clicked, todo.ui.action.clear, data);
+        bottom := Box.new(.horizontal, gap);
+        bottom.append(summary.widget());
+        bottom.append(clear.widget());
+        page.append(bottom.widget());
+
+        self.widgets = .some(
+            Widgets{ .entry = entry, .add = add, .rows = rows, .summary = summary, .clear = clear }
+        );
+        window.set_child(page.widget());
+        self.refresh();
+        window.present();
+        entry.widget().focus();
+    };
+
+    /// A row of toggles, one per filter, the current one down.
+    filters := (self: &mut State) -> Box {
+        data := self.pointer();
+        row := Box.new(.horizontal, gap);
+        mut leader: ?Toggle = .none;
+        for place in 0..todo.model.filter.every.len() {
+            toggle := Toggle.new(filter_labels[place].ptr(), leader);
+            todo.ui.mark.Mark.of(place).put(&toggle.widget());
+            toggle.widget().expand(true, false);
+            toggle.set_down(todo.model.filter.every[place] == self.filter);
+            toggle.widget().connect(.toggled, todo.ui.action.filter, data);
+            row.append(toggle.widget());
+            if leader.is_none() { leader = .some(toggle); }
+        }
+        row
+    };
+}

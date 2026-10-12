@@ -1,0 +1,126 @@
+//! A document as a list.
+
+..std.mem.alloc.{ Allocator };
+..std.text.string.{ String };
+..todo.store.failure.{ Failure };
+
+List: type = todo.model.list.List;
+Item: type = todo.model.item.Item;
+Member: type = todo.store.member.Member;
+
+/// The list `text` holds.
+read := ($A: Allocator, a: &mut A, text: &[u8]) -> Result(List, Failure(A.Error)) {
+    mut reader := std.json.Reader.of(text);
+    mut list := List.empty();
+    match fill(A, a, &mut reader, &mut list) {
+        .ok(_) => .ok(list),
+        .err(e) => {
+            list.deinit(A, a);
+            .err(e)
+        },
+    }
+};
+
+/// The next token, which must exist: a document ends only after its array.
+token := ($E: type, reader: &mut std.json.Reader) -> Result(std.json.Token, Failure(E)) {
+    match reader.next().map_err(Failure(E).syntax)? {
+        .some(t) => .ok(t),
+        .none => .err(.syntax(.{ .problem = .unexpected_end, .at = reader.offset() })),
+    }
+};
+
+fill := ($A: Allocator, a: &mut A, reader: &mut std.json.Reader, list: &mut List) -> Result(
+    (), Failure(A.Error)
+) {
+    match token(A.Error, reader)? {
+        .array_begin => {},
+        _ => return .err(.shape(.not_a_list)),
+    }
+    for {
+        match token(A.Error, reader)? {
+            .array_end => return .ok(()),
+            .object_begin => {
+                item := entry(A, a, reader)?;
+                match list.push_item(A, a, item) {
+                    .ok(_) => {},
+                    .err(e) => return .err(.allocation(e)),
+                }
+            },
+            _ => return .err(.shape(.not_an_item)),
+        }
+    }
+    .ok(())
+};
+
+/// What of an item has been read.
+Draft := struct {
+    text: ?String,
+    done: bool,
+
+    deinit := (self: Draft, $A: Allocator, a: &mut A) {
+        .{ .text = text, .done = _ } := self;
+        match text {
+            .some(s) => s.deinit(A, a),
+            .none => {},
+        }
+    };
+};
+
+/// The item whose object the reader is inside, up to its end.
+entry := ($A: Allocator, a: &mut A, reader: &mut std.json.Reader) -> Result(Item, Failure(A.Error)) {
+    mut draft := Draft{ .text = .none, .done = false };
+    match members(A, a, reader, &mut draft) {
+        .ok(_) => {},
+        .err(e) => {
+            draft.deinit(A, a);
+            return .err(e);
+        },
+    }
+    .{ .text = text, .done = done } := draft;
+    match text {
+        .some(s) => .ok(.{ .text = s, .done = done }),
+        .none => .err(.shape(.no_text)),
+    }
+};
+
+members := ($A: Allocator, a: &mut A, reader: &mut std.json.Reader, draft: &mut Draft) -> Result(
+    (), Failure(A.Error)
+) {
+    for {
+        match token(A.Error, reader)? {
+            .object_end => return .ok(()),
+            .name(name) => {
+                member := match Member.named(name) {
+                    .some(m) => m,
+                    .none => return .err(.shape(.unknown_member)),
+                };
+                match (member, token(A.Error, reader)?) {
+                    (.text, .string(raw)) => {
+                        mut s := String.empty();
+                        mut w := s.writer(A, a);
+                        match std.json.text.unescape(std.text.string.Writing(A), &mut w, raw) {
+                            .ok(_) => {},
+                            .err(.bad_escape) => {
+                                s.deinit(A, a);
+                                return .err(.shape(.bad_escape));
+                            },
+                            .err(.write(.allocation(e))) => {
+                                s.deinit(A, a);
+                                return .err(.allocation(e));
+                            },
+                            .err(.write(.closed)) => {
+                                s.deinit(A, a);
+                                return .err(.shape(.bad_escape));
+                            },
+                        }
+                        draft.text = .some(s);
+                    },
+                    (.done, .boolean(b)) => { draft.done = b; },
+                    _ => return .err(.shape(.not_an_item)),
+                }
+            },
+            _ => return .err(.shape(.not_an_item)),
+        }
+    }
+    .ok(())
+};

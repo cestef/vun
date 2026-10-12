@@ -1,0 +1,62 @@
+//! What the signals do. Each handler is called by C with the widget that emitted the signal and
+//! the pointer to the `State` given when it was connected.
+
+..todo.gtk.button.{ Check, Toggle };
+..todo.gtk.entry.{ Entry };
+..todo.gtk.widget.{ Widget };
+..todo.ui.mark.{ Mark };
+..todo.ui.state.{ State };
+
+Heap: type = todo.libc.Heap;
+Object: type = todo.gtk.sys.GObject;
+
+/// The state a handler was connected with.
+state := unsafe (data: *u8) -> &mut State { unsafe &mut data.cast(State).* };
+
+#[abi.c]
+toggled := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    place := Mark.on(&unsafe Widget.sent(sender)).place();
+    s.list.toggle(place);
+    s.changed();
+};
+
+#[abi.c]
+delete := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    place := Mark.on(&unsafe Widget.sent(sender)).place();
+    s.list.remove(Heap, &mut s.heap, place);
+    s.editing = .none;
+    s.changed();
+};
+
+#[abi.c]
+edit := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    place := Mark.on(&unsafe Widget.sent(sender)).place();
+    s.begin_edit(place);
+};
+
+#[abi.c]
+submit := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    s.submit();
+};
+
+#[abi.c]
+clear := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    _ = s.list.clear_done(Heap, &mut s.heap);
+    s.editing = .none;
+    s.changed();
+};
+
+#[abi.c]
+filter := (sender: *Object, data: *u8) {
+    s := unsafe state(data);
+    toggle := unsafe Toggle.sent(sender);
+    if toggle.is_down() {
+        s.filter = todo.model.filter.every[Mark.on(&toggle.widget()).place()];
+        s.refresh();
+    }
+};

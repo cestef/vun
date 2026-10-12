@@ -1,0 +1,18 @@
+//! A list as a document.
+
+List: type = todo.model.list.List;
+
+write := ($W: std.fmt.Writer, w: &mut W, list: &List) -> Result((), W.Error) {
+    w.write_all("[")?;
+    for at in 0..list.len() {
+        item := list.get(at).expect("within the length");
+        if at > 0 { w.write_all(",")?; }
+        w.write_all("{")?;
+        std.fmt.json.member(W, w, true, todo.store.member.Member.text.name())?;
+        std.fmt.json.string(W, w, item.text.as_text())?;
+        std.fmt.json.member(W, w, false, todo.store.member.Member.done.name())?;
+        std.fmt.json.write(W, bool, w, &item.done)?;
+        w.write_all("}")?;
+    }
+    w.write_all("]\n")
+};

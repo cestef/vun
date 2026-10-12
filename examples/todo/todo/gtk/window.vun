@@ -1,0 +1,67 @@
+//! The application, and its windows.
+
+..todo.gtk.sys.{ GApplication, GObject, GtkApplication, GtkWindow };
+..todo.gtk.widget.{ Callback, Handler, Widget };
+
+/// `G_APPLICATION_DEFAULT_FLAGS`.
+default_flags: u32 = 0;
+
+/// A program with an event loop, known to the desktop by `id`.
+Application := struct {
+    _raw: *GtkApplication,
+
+    /// The application known as `id`, a string for C.
+    new := (id: *u8) -> Application {
+        .{ ._raw = unsafe todo.gtk.sys.gtk_application_new(.some(id), default_flags).expect("an application") }
+    };
+
+    /// Calls `handler` with `data` once the application is ready to make its windows.
+    on_activate := (self: &Application, handler: Handler, data: *u8) {
+        _ = unsafe {
+            todo.gtk.sys.g_signal_connect_data(
+                .some(self._raw.cast(())),
+                .some(todo.gtk.signal.Signal.activate.name().ptr()),
+                .some(lang.mem.function_cast(Handler, Callback, handler)),
+                .some(data.cast(())),
+                .none,
+                0,
+            )
+        };
+    };
+
+    /// Runs the event loop until the last window closes, returning the exit status.
+    run := (self: &Application) -> i32 {
+        unsafe { todo.gtk.sys.g_application_run(.some(self._raw.cast(GApplication)), 0, .none) }
+    };
+
+    /// Gives the application up.
+    release := (self: Application) {
+        unsafe { todo.gtk.sys.g_object_unref(.some(self._raw.cast(()))); }
+    };
+};
+
+Window := struct {
+    _widget: Widget,
+
+    /// A window of the application `app`, titled with `title`, a string for C.
+    new := (app: *GtkApplication, title: *u8, width: i32, height: i32) -> Window {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_application_window_new(.some(app)).expect("a window"));
+        unsafe {
+            todo.gtk.sys.gtk_window_set_title(made.class(GtkWindow), .some(title));
+            todo.gtk.sys.gtk_window_set_default_size(made.class(GtkWindow), width, height);
+        }
+        .{ ._widget = made }
+    };
+
+    widget := (self: &Window) -> Widget { self._widget };
+
+    set_child := (self: &Window, child: Widget) {
+        unsafe {
+            todo.gtk.sys.gtk_window_set_child(self._widget.class(GtkWindow), child.class(todo.gtk.sys.GtkWidget));
+        }
+    };
+
+    present := (self: &Window) {
+        unsafe { todo.gtk.sys.gtk_window_present(self._widget.class(GtkWindow)); }
+    };
+};

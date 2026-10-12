@@ -1,0 +1,69 @@
+//! Buttons: one to press, one that stays down, and the check box.
+
+..todo.gtk.sys.{ GtkButton, GtkCheckButton, GtkToggleButton };
+..todo.gtk.widget.{ Widget };
+
+Button := struct {
+    _widget: Widget,
+
+    /// A button labelled with `label`, a string for C.
+    new := (label: *u8) -> Button {
+        .{ ._widget = unsafe Widget.of(unsafe todo.gtk.sys.gtk_button_new_with_label(.some(label)).expect("a button")) }
+    };
+
+    widget := (self: &Button) -> Widget { self._widget };
+
+    /// Labels it with `label`, a string for C.
+    set_label := (self: &Button, label: *u8) {
+        unsafe { todo.gtk.sys.gtk_button_set_label(self._widget.class(GtkButton), .some(label)); }
+    };
+};
+
+/// A button that is down or up; those of one group are never down together.
+Toggle := struct {
+    _widget: Widget,
+
+    /// A toggle labelled with `label`, a string for C, in the group of `leader` when there is one.
+    new := (label: *u8, leader: ?Toggle) -> Toggle {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_toggle_button_new_with_label(.some(label)).expect("a toggle"));
+        match leader {
+            .some(l) => unsafe {
+                todo.gtk.sys.gtk_toggle_button_set_group(
+                    made.class(GtkToggleButton),
+                    l._widget.class(GtkToggleButton),
+                );
+            },
+            .none => {},
+        }
+        .{ ._widget = made }
+    };
+
+    /// The toggle a signal's `sender` is, which must be one.
+    sent := unsafe (sender: *todo.gtk.sys.GObject) -> Toggle { .{ ._widget = unsafe Widget.sent(sender) } };
+
+    widget := (self: &Toggle) -> Widget { self._widget };
+
+    is_down := (self: &Toggle) -> bool {
+        unsafe { todo.gtk.sys.gtk_toggle_button_get_active(self._widget.class(GtkToggleButton)) != 0 }
+    };
+
+    set_down := (self: &Toggle, down: bool) {
+        unsafe { todo.gtk.sys.gtk_toggle_button_set_active(self._widget.class(GtkToggleButton), down.c()); }
+    };
+};
+
+Check := struct {
+    _widget: Widget,
+
+    new := (checked: bool) -> Check {
+        made := unsafe Widget.of(unsafe todo.gtk.sys.gtk_check_button_new().expect("a check box"));
+        unsafe { todo.gtk.sys.gtk_check_button_set_active(made.class(GtkCheckButton), checked.c()); }
+        .{ ._widget = made }
+    };
+
+    widget := (self: &Check) -> Widget { self._widget };
+
+    is_checked := (self: &Check) -> bool {
+        unsafe { todo.gtk.sys.gtk_check_button_get_active(self._widget.class(GtkCheckButton)) != 0 }
+    };
+};
