@@ -283,7 +283,6 @@ start := ($main: std.os.Main) -> type { struct {
     sleep := () { request(numbers.sched_yield, [0, 0, 0, 0, 0, 0]); };
 
     memory := std.os.memory.exports;
-    library := std.os.library.unsupported;
     heap := std.os.heap.unsupported;
     env := std.os.env.unsupported;
     division := if lang.target.current.arch == .arm { std.os.linux.kernel.division.exports } else {

@@ -2,6 +2,7 @@
 //! spec 08, section 2): the library an import names, the libraries a package names, the heap and
 //! the environment of the C library's runtime.
 
+use vun_diag::errors;
 use vun_items::targets;
 use vun_sema::target::Choice;
 
@@ -99,4 +100,32 @@ fn a_package_names_the_system_libraries_its_programs_link() {
     let file = session.load(&path).unwrap();
     let built = session.build(file, None).unwrap_or_else(|_| panic!("{:#?}", session.diag));
     assert_eq!(std::process::Command::new(built).status().unwrap().code(), Some(3));
+}
+
+/// A program that loads a library, which a runtime of a system loading none cannot build.
+const LOADS: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    match sys.load(\"libm.so.6\") {
+        .ok(_) => .code(2),
+        .err(_) => .code(1),
+    }
+};
+";
+
+#[test]
+fn a_program_loading_a_library_does_not_build_where_the_system_loads_none() {
+    let fixture = Fixture::new("link-no-loader");
+    let path = fixture.root.write("main.vun", LOADS);
+    let cases = [
+        (Choice::of(targets::wasi_wasm32::p1), errors::LINK_UNDEFINED),
+        (Choice::of(targets::linux_x86_64::kernel), errors::BACKEND_TOOL),
+    ];
+    for (target, reported) in cases {
+        let mut session = fixture.session();
+        session.choice = target;
+        let file = session.load(&path).unwrap();
+        assert!(session.build(file, None).is_err());
+        assert_eq!(session.diag.first_error().map(|d| d.id), Some(reported), "{:#?}", session.diag);
+    }
 }

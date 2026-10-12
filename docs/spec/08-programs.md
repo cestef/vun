@@ -152,7 +152,8 @@ first thing it does, the block placed in the thread's mapping.
 loader through `std.os.library.symbols.{load, symbol, unload}`: the C library's calls `dlopen`
 (`RTLD_NOW` and `RTLD_LOCAL`, as `std.os.libc.System.load` numbers them), `dlsym` and `dlclose`, and
 the Windows runtime `LoadLibraryW`, `GetProcAddress` and `FreeLibrary`; the kernel runtime and
-WASI's, which load nothing, report `Error.unsupported`. A library the loader does not find or
+WASI's, which load nothing, export none, so that a program loading a library does not link
+(`link.undefined` on WASI, the linker's undefined reference on the kernel). A library the loader does not find or
 cannot load, or a name it does not hold, is `Error.unresolved`.
 
 **Heap and environment.** `std.os.heap.Heap` is an `Allocator` over the heap a runtime exports

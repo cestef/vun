@@ -279,7 +279,6 @@ start := ($main: std.os.Main) -> type { struct {
         lang.panic.fail(.message("a module runs one thread, so none is joined"))
     };
 
-    library := std.os.library.unsupported;
     heap := std.os.heap.unsupported;
     env := std.os.env.unsupported;
     pages := std.os.pages.unsupported;

@@ -10,11 +10,6 @@ Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `dec
 - `gtk.h` binds only through a header that includes it (`#include <gtk/gtk.h>`): given as the
   header itself, GTK's include guard (`__GTK_H_INSIDE__`) refuses it.
 
-## Linking
-
-- `std.os.library.load` on the default `linux.x86_64.kernel` target is the `unsupported` stub and
-  fails at run time, not when building.
-
 ## Language and std
 
 - `std.os.heap` and `System.env` exist on the C library's runtime only (decision 676): the

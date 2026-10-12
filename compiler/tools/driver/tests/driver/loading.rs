@@ -50,19 +50,6 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 };
 ";
 
-/// A program loading a library, which a runtime of a system loading none refuses.
-const REFUSED: &str = "\
-start := std.os.start(main);
-
-main := (sys: &mut std.os.System) -> std.os.Exit {
-    match sys.load(\"calc\") {
-        .ok(_) => .code(1),
-        .err(.unsupported) => .code(7),
-        .err(_) => .code(2),
-    }
-};
-";
-
 /// The exit status of `LOADER` built for `target` through each backend, loading the library built
 /// beside it from `services`, with `path` the text a program of the target gives the system for the
 /// library's file; none where the machine does not run the target's programs.
@@ -101,12 +88,6 @@ fn a_program_loads_a_library_and_calls_its_function() {
         });
         assert!(windows.is_none_or(|status| status == 42), "{name}: {windows:?}");
     }
-}
-
-#[test]
-fn a_system_loading_no_library_refuses() {
-    let refusing = [targets::linux_arm64::kernel, targets::wasi_wasm32::p1];
-    assert_eq!(backend::status_on("load-refused", REFUSED, &refusing), Some(7));
 }
 
 /// A function made of an address that is the address of something else.

@@ -41,15 +41,3 @@ Library := struct {
     /// Unloads it.
     close := (self: Library) -> Result((), std.os.Error) { unload(self._handle) };
 };
-
-/// The exports of a runtime whose system loads no library: a program built with it loads none.
-unsupported := struct {
-    #[link.export(symbols.load)]
-    load_library := (path: &[u8]) -> Result(usize, std.os.Error) { .err(.unsupported) };
-
-    #[link.export(symbols.symbol)]
-    find := (library: usize, name: &[u8]) -> Result(usize, std.os.Error) { .err(.unsupported) };
-
-    #[link.export(symbols.unload)]
-    unload_library := (library: usize) -> Result((), std.os.Error) { .err(.unsupported) };
-};
