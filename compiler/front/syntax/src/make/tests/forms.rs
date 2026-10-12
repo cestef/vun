@@ -96,6 +96,10 @@ fn types_and_functions() {
         ),
         Expr::Enum(vec![Variant::new("a", vec![])], vec![Member::Item(Bind::new("n", int(1)).item())]),
         Expr::Enum(vec![], vec![Member::Item(Bind::new("n", int(1)).item())]),
+        Expr::Enum(
+            vec![Variant::coded("a", int(0)), Variant::coded("b", int(-2)), Variant::new("c", vec![])],
+            vec![],
+        ),
     ] {
         assert_reads_back(&expr);
     }

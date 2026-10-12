@@ -14,7 +14,8 @@ The package builds for `linux.x86_64.gnu` (`build.vun`), the target on a C libra
 GTK because each import in `todo/gtk/sys.vun` names its library (`#[link.library]`).
 
 `todo/gtk/sys.vun` is bound from GTK's headers by `vun util ffi bind`: `./bind.sh` writes it again,
-asking for the functions the program calls and the types they use.
+asking for the functions the program calls and the types they use, the enums C holds no other
+value in as Vun enums.
 
 | Path | Holds |
 |------|-------|

@@ -7,6 +7,7 @@
 //! declarations, with what they need. What Vun cannot say is left out and reported, never
 //! approximated.
 
+mod closed;
 mod emit;
 mod items;
 mod macros;
@@ -18,7 +19,7 @@ mod types;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use vun_binder::{Bindings, Failure, Library, Missing, Request, Skipped, Unavailable};
+use vun_binder::{Bindings, Failure, Glob, Library, Missing, Request, Skipped, Unavailable};
 use vun_clang::{Clang, Cursor, Severity};
 
 pub use vun_binder::{Bytes, Reason, Unsupported};
@@ -58,6 +59,8 @@ pub(crate) struct Binder<'u> {
     macros: HashMap<String, Vec<String>>,
     /// The value of each enum constant in scope, which a macro may name.
     constants: HashMap<String, i128>,
+    /// The enums bound as Vun enums, by the names they are bound under.
+    closed: Vec<Glob>,
     /// The libraries the functions and variables are linked from, by the directory of their headers.
     libraries: Vec<Library>,
     skipped: Vec<Skipped>,
@@ -73,7 +76,7 @@ impl vun_binder::Binder for CBinder {
 
     /// Fails when libclang is missing, or the header does not parse.
     fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
-        let Request { header, args, reserved, scope, only, libraries } = request;
+        let Request { header, args, reserved, scope, only, closed, libraries } = request;
         let clang = Clang::load().map_err(|missing| Failure::Missing(Self::missing(missing)))?;
         let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
         let errors: Vec<String> = unit
@@ -109,6 +112,7 @@ impl vun_binder::Binder for CBinder {
             params_reserved: HashSet::new(),
             macros: HashMap::new(),
             constants: HashMap::new(),
+            closed: closed.clone(),
             libraries: libraries
                 .iter()
                 .map(|l| Library { headers: l.headers.as_deref().map(paths::real), ..l.clone() })

@@ -35,6 +35,9 @@ pub struct Request {
     /// What is bound: the declarations one of these names, and those they need. Every declaration
     /// in scope when there is none.
     pub only: Vec<Glob>,
+    /// The enums, by the names they are bound under, that are Vun enums rather than integers: those
+    /// every value of which C names and never goes beyond.
+    pub closed: Vec<Glob>,
     /// The libraries the bound functions and variables are linked from (`#[link.library(name)]`).
     pub libraries: Vec<Library>,
 }
@@ -43,7 +46,15 @@ impl Request {
     /// A request to bind all of `header` with the compile flags `args`, avoiding `reserved`.
     #[must_use]
     pub fn new(header: PathBuf, args: Vec<String>, reserved: Vec<String>) -> Self {
-        Self { header, args, reserved, scope: Vec::new(), only: Vec::new(), libraries: Vec::new() }
+        Self {
+            header,
+            args,
+            reserved,
+            scope: Vec::new(),
+            only: Vec::new(),
+            closed: Vec::new(),
+            libraries: Vec::new(),
+        }
     }
 }
 

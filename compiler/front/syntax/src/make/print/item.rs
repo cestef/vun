@@ -110,6 +110,10 @@ impl Writer {
         for (i, variant) in variants.iter().enumerate() {
             self.newline(inner);
             self.binder(&variant.name).expect("made names are identifiers");
+            if let Some(code) = &variant.code {
+                self.text(" ").token(TokenKind::Eq).text(" ");
+                self.expr(code, inner);
+            }
             if !variant.payload.is_empty() {
                 self.token(TokenKind::LParen).list(&variant.payload, inner);
                 self.token(TokenKind::RParen);

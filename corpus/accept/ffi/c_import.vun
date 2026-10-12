@@ -14,3 +14,14 @@ say := (msg: &[u8]) -> bool {
 };
 
 c_len := (s: &static [u8]) -> usize { unsafe { strlen(s.ptr()) } };
+
+/// An enum that names its tags is the integer they are stored in, which C reads (spec 05,
+/// section 6): a field of a `#[layout.c]` struct, and a parameter of an import.
+#[layout.tag(u32)]
+Mode := enum { read = 1, write = 2 };
+
+#[layout.c]
+Open := struct { path: *u8, mode: Mode };
+
+#[link.symbol("open_with"), abi.c]
+open_with: unsafe (request: *Open) -> i32 = _;

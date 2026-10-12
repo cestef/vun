@@ -60,6 +60,11 @@ pub(crate) fn symbol(name: &str) -> Expr {
     Expr::call(Expr::decl(lang::link::symbol), vec![Expr::String(name.to_owned())])
 }
 
+/// `lang.layout.tag(ty)`
+pub(crate) fn layout_tag(ty: Expr) -> Expr {
+    Expr::call(Expr::decl(lang::layout::tag), vec![ty])
+}
+
 /// `lang.link.library("name")`
 pub(crate) fn library(name: &str) -> Expr {
     Expr::call(Expr::decl(lang::link::library), vec![Expr::String(name.to_owned())])

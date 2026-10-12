@@ -15,6 +15,7 @@ use vun_sema_ty::{NominalKind, Ty, TyKind, Value};
 
 use super::Checker;
 use vun_sema::attributes::Attributed;
+use vun_sema::layout::Shapes;
 use vun_sema::member::Members;
 
 /// Integer widths C has fixed-width types for, in bits.
@@ -93,6 +94,11 @@ impl Checker<'_, '_, '_> {
             // `?*T`: one pointer, null for `.none` (the niche rule).
             TyKind::Nominal(nominal) if nominal.kind == NominalKind::Enum => {
                 let members = self.env.cx.get::<Members>(&ty)?;
+                // An enum that names its tags is the integer they are stored in.
+                if members.codes().ok()?.is_some() {
+                    let layout = Shapes::layout(self.env.cx, &ty)?;
+                    return Some(C_WIDTHS.contains(&(layout.size * u64::from(u8::BITS))));
+                }
                 let payloads: Vec<_> = members.variants.iter().map(|v| v.payload.as_slice()).collect();
                 let pointer = |p: &Ty| {
                     matches!(&**p, TyKind::Primitive(Primitive::Mem(Mem::Ptr), _))

@@ -223,7 +223,10 @@ impl Visit for Field {
 
 impl Visit for Variant {
     fn visit(&self, out: &mut Vec<NodeKind>) {
-        if self.payload.is_empty() {
+        if let Some(code) = &self.code {
+            out.extend([NodeKind::FieldInit, NodeKind::Name]);
+            code.visit(out);
+        } else if self.payload.is_empty() {
             out.push(NodeKind::Name);
         } else {
             out.extend([NodeKind::Call, NodeKind::Name]);

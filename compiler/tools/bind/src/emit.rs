@@ -20,7 +20,7 @@ const PACK_TYPE: &str = "P";
 const PACK: &str = "args";
 
 /// An item without doc, attributes or type.
-fn item(name: &str, value: Expr) -> Item {
+pub(crate) fn item(name: &str, value: Expr) -> Item {
     Bind::new(name, value).item()
 }
 
@@ -104,9 +104,13 @@ impl Binder<'_> {
     }
 
     /// A C enum: an alias of its integer type, and a constant of that type for each value, since
-    /// C code may hold any integer in it.
+    /// C code may hold any integer in it; an enum the request says C holds no other value in is a
+    /// Vun enum (`closed`).
     fn enumeration(&self, decl: &Cursor<'_>) -> Vec<Item> {
         let Ok(Some(int)) = self.ty(decl.enum_type(), Position::Field) else { return Vec::new() };
+        if let Some(made) = self.closed(decl, &int) {
+            return made;
+        }
         let mut made = Vec::new();
         let ty = match self.bound(decl) {
             Some(name) => {

@@ -8,23 +8,6 @@ Handler := #[abi.c] (sender: *GObject, data: *u8);
 /// The type GLib takes a handler as, whatever its parameters are.
 Callback := #[abi.c] () -> ();
 
-/// GTK's `GtkAlign`.
-Align := enum {
-    fill,
-    start,
-    end,
-    center;
-
-    code := (self: Align) -> u32 {
-        match self {
-            .fill => 0,
-            .start => 1,
-            .end => 2,
-            .center => 3,
-        }
-    };
-};
-
 Widget := struct {
     _raw: *GtkWidget,
 
@@ -65,10 +48,6 @@ Widget := struct {
             todo.gtk.sys.gtk_widget_set_hexpand(self.class(GtkWidget), horizontal.c());
             todo.gtk.sys.gtk_widget_set_vexpand(self.class(GtkWidget), vertical.c());
         }
-    };
-
-    align := (self: &Widget, how: Align) {
-        unsafe { todo.gtk.sys.gtk_widget_set_halign(self.class(GtkWidget), how.code()); }
     };
 
     enable := (self: &Widget, enabled: bool) {

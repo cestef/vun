@@ -40,11 +40,13 @@ pub enum Member {
     Item(Item),
 }
 
-/// `name` or `name(payload)`, a variant of an enum.
+/// `name`, `name(payload)` or `name = code`, a variant of an enum.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variant {
     pub name: String,
     pub payload: Vec<Expr>,
+    /// The tag it names.
+    pub code: Option<Expr>,
 }
 
 /// `pattern if guard => value`
@@ -122,7 +124,13 @@ impl Variant {
     /// `name(payload)`
     #[must_use]
     pub fn new(name: &str, payload: Vec<Expr>) -> Self {
-        Self { name: name.to_owned(), payload }
+        Self { name: name.to_owned(), payload, code: None }
+    }
+
+    /// `name = code`
+    #[must_use]
+    pub fn coded(name: &str, code: Expr) -> Self {
+        Self { name: name.to_owned(), payload: Vec::new(), code: Some(code) }
     }
 }
 

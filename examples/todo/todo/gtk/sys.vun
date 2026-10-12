@@ -1,4 +1,4 @@
-//! Bindings to the C header `tmp.Z21jAFTiN9.h`, written by `vun util ffi bind`: regenerate them
+//! Bindings to the C header `tmp.nEW5YFNDrf.h`, written by `vun util ffi bind`: regenerate them
 //! rather than edit them.
 
 Gsize: type = lang.int.unsigned(64);
@@ -135,15 +135,14 @@ GApplicationPrivate: type = _GApplicationPrivate;
 #[lang.link.symbol("g_application_run"), lang.abi.c, lang.link.library("gio-2.0")]
 g_application_run: unsafe (application: ?*GApplication, argc: lang.int.signed(32), argv: ?*?*lang.int.unsigned(8)) -> lang.int.signed(32) = _;
 
-PangoEllipsizeMode: type = lang.int.unsigned(32);
-
-pango_ellipsize_none: PangoEllipsizeMode = 0;
-
-pango_ellipsize_start: PangoEllipsizeMode = 1;
-
-pango_ellipsize_middle: PangoEllipsizeMode = 2;
-
-pango_ellipsize_end: PangoEllipsizeMode = 3;
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+PangoEllipsizeMode := enum {
+    none = 0,
+    start = 1,
+    middle = 2,
+    end = 3,
+};
 
 /// Declared without fields in C: reached through pointers only.
 _GdkDisplay := struct {};
@@ -153,37 +152,21 @@ GdkDisplay: type = _GdkDisplay;
 #[lang.link.symbol("gdk_display_get_default"), lang.abi.c, lang.link.library("gtk-4")]
 gdk_display_get_default: unsafe () -> ?*GdkDisplay = _;
 
-GtkAlign: type = lang.int.unsigned(32);
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+GtkOrientation := enum {
+    horizontal = 0,
+    vertical = 1,
+};
 
-gtk_align_fill: GtkAlign = 0;
-
-gtk_align_start: GtkAlign = 1;
-
-gtk_align_end: GtkAlign = 2;
-
-gtk_align_center: GtkAlign = 3;
-
-gtk_align_baseline_fill: GtkAlign = 4;
-
-gtk_align_baseline: GtkAlign = 4;
-
-gtk_align_baseline_center: GtkAlign = 5;
-
-GtkOrientation: type = lang.int.unsigned(32);
-
-gtk_orientation_horizontal: GtkOrientation = 0;
-
-gtk_orientation_vertical: GtkOrientation = 1;
-
-GtkSelectionMode: type = lang.int.unsigned(32);
-
-gtk_selection_none: GtkSelectionMode = 0;
-
-gtk_selection_single: GtkSelectionMode = 1;
-
-gtk_selection_browse: GtkSelectionMode = 2;
-
-gtk_selection_multiple: GtkSelectionMode = 3;
+/// Its variants name the tags C gives them.
+#[lang.layout.tag(lang.int.unsigned(32))]
+GtkSelectionMode := enum {
+    none = 0,
+    single = 1,
+    browse = 2,
+    multiple = 3,
+};
 
 #[lang.layout.c]
 _GtkWidget := struct {
@@ -216,9 +199,6 @@ gtk_widget_set_hexpand: unsafe (widget: ?*GtkWidget, expand: Gboolean) = _;
 
 #[lang.link.symbol("gtk_widget_set_vexpand"), lang.abi.c, lang.link.library("gtk-4")]
 gtk_widget_set_vexpand: unsafe (widget: ?*GtkWidget, expand: Gboolean) = _;
-
-#[lang.link.symbol("gtk_widget_set_halign"), lang.abi.c, lang.link.library("gtk-4")]
-gtk_widget_set_halign: unsafe (widget: ?*GtkWidget, align: GtkAlign) = _;
 
 #[lang.link.symbol("gtk_widget_set_margin_start"), lang.abi.c, lang.link.library("gtk-4")]
 gtk_widget_set_margin_start: unsafe (widget: ?*GtkWidget, margin: lang.int.signed(32)) = _;

@@ -208,6 +208,10 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   'gtk_window_*'` binds just the declarations a pattern names and the types they are written with,
   so a library of thousands of declarations binds as the few a program calls; `--library
   gtk-4=<headers dir>` gives each import the `#[link.library]` of the directory its header is in.
+  A C enum binds as an integer type and a constant for each value, since C may hold any integer
+  in one; `--closed GtkAlign` binds the enums so named as Vun enums that name their tags
+  (spec 05, section 6), the prefix their constants share dropped and a constant that repeats a
+  value a constant of the enum, for the enums C holds no other value in.
   A variadic function binds as an import with a pack, `($P: type, .., ..args: P)`; plain `char` is
   `u8`, as the bytes of text; an object-like macro of integers, floats or strings (`#define A (1 <<
   4)`, naming others) is a constant, a string one a `c"..."`; a function type taking and giving

@@ -1,27 +1,14 @@
 //! Widgets that hold others.
 
-..todo.gtk.sys.{ GtkBox, GtkScrolledWindow };
+..todo.gtk.sys.{ GtkBox, GtkOrientation, GtkScrolledWindow };
 ..todo.gtk.widget.{ Widget };
-
-/// GTK's `GtkOrientation`.
-Orientation := enum {
-    horizontal,
-    vertical;
-
-    code := (self: Orientation) -> u32 {
-        match self {
-            .horizontal => 0,
-            .vertical => 1,
-        }
-    };
-};
 
 /// A row or a column of widgets.
 Box := struct {
     _widget: Widget,
 
-    new := (orientation: Orientation, spacing: i32) -> Box {
-        .{ ._widget = unsafe Widget.of(unsafe todo.gtk.sys.gtk_box_new(orientation.code(), spacing).expect("a box")) }
+    new := (orientation: GtkOrientation, spacing: i32) -> Box {
+        .{ ._widget = unsafe Widget.of(unsafe todo.gtk.sys.gtk_box_new(orientation, spacing).expect("a box")) }
     };
 
     widget := (self: &Box) -> Widget { self._widget };

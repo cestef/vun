@@ -93,7 +93,9 @@ const DEPENDENCY: &str = "\
 typedef struct _Window Window;
 typedef enum { FILL, START, END } Align;
 typedef struct { int32_t x, y; } Size;
+typedef enum { MODE_READ = 1, MODE_WRITE = 2, MODE_RW = 3, MODE_DEFAULT = 1 } Mode;
 Window *window_new(Size *size, Align align);
+int window_mode(Window *w, Mode mode);
 ";
 
 const FRONT: &str = "\
@@ -118,6 +120,7 @@ fn a_request_binds_the_directories_it_names_and_only_what_it_asks_for() {
     let request = Request {
         scope: vec![fixture.root.join("dep")],
         only: vec![Glob::new("window_*"), Glob::new("LIB_*"), Glob::new("log_*")],
+        closed: vec![Glob::new("Mode")],
         libraries: vec![
             Library::named("front"),
             Library::named(&format!("deep={}", fixture.root.join("dep").display())),
@@ -136,6 +139,15 @@ fn a_request_binds_the_directories_it_names_and_only_what_it_asks_for() {
         assert!(text.contains(wanted), "{wanted}\n{text}");
     }
     assert!(!text.contains("other_thing"), "{text}");
+    // An enum asked for is a Vun enum, its variants named without what the constants share, and
+    // one that repeats a value is a constant of the enum; one not asked for stays an integer.
+    assert!(text.contains("#[lang.layout.tag(lang.int.unsigned(32))]"), "{text}");
+    assert!(text.contains("Mode := enum {"), "{text}");
+    for variant in ["read = 1", "write = 2", "rw = 3"] {
+        assert!(text.contains(variant), "{variant}\n{text}");
+    }
+    assert!(text.contains("mode_default: Mode = .read"), "{text}");
+    assert!(text.contains("Align: type = lang.int.unsigned(32)"), "{text}");
     // Each import names the library its header is linked from: of those naming it, the one under
     // the deepest directory.
     assert!(

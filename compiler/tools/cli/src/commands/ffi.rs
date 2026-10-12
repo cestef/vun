@@ -28,6 +28,9 @@ const SCOPE: Param = Param::option("scope")
 const ONLY: Param = Param::option("only")
     .arity(Arity::Many)
     .about("bind only the declarations with this name (`*` for any run of characters), and what they need");
+const CLOSED: Param = Param::option("closed").arity(Arity::Many).about(
+    "bind the enums named so (`*` for any run of characters) as Vun enums, for those C never holds another value in",
+);
 const LIBRARY: Param = Param::option("library")
     .arity(Arity::Many)
     .about("a library the functions and variables are linked from, such as gtk-4, or gobject-2.0=<dir> for those of the headers under <dir>");
@@ -38,7 +41,7 @@ pub(super) const GROUP: &str = "ffi";
 const C: &str = "c";
 
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
-    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, LIBRARY])
+    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, CLOSED, LIBRARY])
     .examples(&[
         Example { line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun", about: "bind a header" },
         Example {
@@ -65,6 +68,7 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     let request = Request {
         scope: args.values(&SCOPE).map(PathBuf::from).collect(),
         only: args.values(&ONLY).map(Glob::new).collect(),
+        closed: args.values(&CLOSED).map(Glob::new).collect(),
         libraries: args.values(&LIBRARY).map(Library::named).collect(),
         ..Request::new(header.clone(), flags, reserved)
     };
