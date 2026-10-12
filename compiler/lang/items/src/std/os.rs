@@ -7,6 +7,8 @@
 )]
 #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
+/// How a failed request to the system is written: `{}` in a format string.
+pub const error: Item = Item::new(&["std", "os", "error"]);
 /// Files a hosted program opens through its `std.os.System` (spec 08, section 2).
 pub const file: Item = Item::new(&["std", "os", "file"]);
 /// A runtime on top of the C library: exports C `main`, the trap handler, the critical section

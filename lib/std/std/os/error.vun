@@ -1,0 +1,21 @@
+//! How a failed request to the system is written: `{}` in a format string.
+
+impl std.fmt.Format for std.os.Error {
+    format := ($W: std.fmt.Writer, value, w) {
+        match value.* {
+            .missing => w.write_all("no such file or directory"),
+            .denied => w.write_all("permission denied"),
+            .exists => w.write_all("already exists"),
+            .directory => w.write_all("is a directory"),
+            .not_directory => w.write_all("is not a directory"),
+            .path => w.write_all("invalid or too long a path"),
+            .interrupted => w.write_all("interrupted"),
+            .closed => w.write_all("closed"),
+            .ended => w.write_all("ended before all the bytes were read"),
+            .unsupported => w.write_all("not supported on this system"),
+            .unresolved => w.write_all("library or symbol not found"),
+            .unmapped => w.write_all("address is not mapped"),
+            .number(n) => std.fmt.print(w, "system error {}", n),
+        }
+    };
+}
