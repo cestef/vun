@@ -3,7 +3,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_binder::{Bytes, Failure, Reason, Request, Skipped, Unavailable, Unsupported};
+use vun_binder::{Bytes, Failure, Glob, Library, Reason, Request, Skipped, Unavailable, Unsupported};
 use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
@@ -21,6 +21,16 @@ const OUT: Param = Param::option("out")
 const CFLAGS: Param = Param::option("cflag")
     .arity(Arity::Many)
     .about("a flag the build compiles the header with, such as -Iinclude; repeat it for each");
+const SCOPE: Param = Param::option("scope")
+    .arity(Arity::Many)
+    .about("a directory whose declarations are bound with the header's own, such as the one it includes from")
+    .values(Values::Path(PathKind::Dir));
+const ONLY: Param = Param::option("only")
+    .arity(Arity::Many)
+    .about("bind only the declarations with this name (`*` for any run of characters), and what they need");
+const LIBRARY: Param = Param::option("library")
+    .arity(Arity::Many)
+    .about("a library the functions and variables are linked from, such as gtk-4, or gobject-2.0=<dir> for those of the headers under <dir>");
 
 pub(super) const GROUP: &str = "ffi";
 
@@ -28,11 +38,14 @@ pub(super) const GROUP: &str = "ffi";
 const C: &str = "c";
 
 pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
-    .params(&[HEADER, OUT, CFLAGS])
-    .examples(&[Example {
-        line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun",
-        about: "bind a header",
-    }]);
+    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, LIBRARY])
+    .examples(&[
+        Example { line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun", about: "bind a header" },
+        Example {
+            line: "all.h --scope /usr/include/lib --only 'lib_window_*' --library lib -o lib.vun",
+            about: "bind what a program calls from a library whose headers are in several directories",
+        },
+    ]);
 
 /// `vun util ffi bind <header>`: the header's declarations as Vun, through libclang loaded now.
 fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
@@ -49,7 +62,12 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
         session.diag.error(Diagnostic::error(errors::CLI_UNAVAILABLE, msg));
         return Ok(Outcome::Failure);
     };
-    let request = Request { header: header.clone(), args: flags, reserved };
+    let request = Request {
+        scope: args.values(&SCOPE).map(PathBuf::from).collect(),
+        only: args.values(&ONLY).map(Glob::new).collect(),
+        libraries: args.values(&LIBRARY).map(Library::named).collect(),
+        ..Request::new(header.clone(), flags, reserved)
+    };
     let bindings = match binder.item.bind(&request) {
         Ok(bindings) => bindings,
         Err(failure) => {
@@ -114,9 +132,6 @@ fn failed(header: &Path, failure: Failure) -> Diagnostic {
 
 fn skip(skipped: &Skipped) -> Diagnostic {
     let why = match &skipped.reason {
-        Reason::Variadic => {
-            Msg::new().text(" is left out: it takes arguments past its parameters (").code("...").text(")")
-        }
         Reason::Bytes(why) => {
             let only = Msg::new().text(" is bound as its size and alignment only: ");
             match why {

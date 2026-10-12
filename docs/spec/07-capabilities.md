@@ -201,9 +201,17 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   an `f16` (`abi.variadic`). The pack may be a `$` parameter, `printf: unsafe ($P: type, format:
   *u8, ..args: P) -> i32 = _;`, inferred at each call from the types of its arguments and checked
   there.
-- `vun util ffi bind foo.h --cflags "..."` generates Vun declarations from C headers through
+- `vun util ffi bind foo.h --cflag "..."` generates Vun declarations from C headers through
   libclang, loaded when the command runs (decision 131), with the build's real compile flags
-  (decision 134). Each binding is named in the case of what it binds (spec 10, section 5): C's
+  (decision 134). It binds what the header's directory declares, and the directories named with
+  `--scope` (a header that includes others from elsewhere, as GTK includes GLib's); `--only
+  'gtk_window_*'` binds just the declarations a pattern names and the types they are written with,
+  so a library of thousands of declarations binds as the few a program calls; `--library
+  gtk-4=<headers dir>` gives each import the `#[link.library]` of the directory its header is in.
+  A variadic function binds as an import with a pack, `($P: type, .., ..args: P)`; plain `char` is
+  `u8`, as the bytes of text; an object-like macro of integers, floats or strings (`#define A (1 <<
+  4)`, naming others) is a constant, a string one a `c"..."`; a function type taking and giving
+  nothing is spelled `() -> ()`. Each binding is named in the case of what it binds (spec 10, section 5): C's
   `color_t` is `ColorT`, `MODE_READ` is `mode_read`, and a function or variable keeps its C name
   for the linker through `link.symbol`. `vun util ffi header` emits a C header for a Vun library. Both are tools, not
   language features (spec 12).

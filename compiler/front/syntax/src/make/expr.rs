@@ -13,6 +13,8 @@ pub enum Expr {
     Float(u64),
     Char(char),
     String(String),
+    /// `c"text"`, a string for C.
+    CString(String),
     /// `_`: provided from outside (spec 01, section 3), or a pattern discarding.
     Hole,
     /// `()`

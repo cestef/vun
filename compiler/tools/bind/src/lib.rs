@@ -1,20 +1,24 @@
 //! `vun util ffi bind` (spec 07, section 5): Vun declarations from a C header, read through libclang
 //! with the build's compile flags, so that sizes, macros and conditionals are the target's.
 //!
-//! Only what the header's own directory declares is bound; what it includes from elsewhere,
-//! such as the system's headers, is reached through what it stands for (`size_t` is `u64` on a
-//! 64-bit target). What Vun cannot say is left out and reported, never approximated.
+//! Only what the header's own directory declares is bound, and what the request's scope adds;
+//! what it includes from elsewhere, such as the system's headers, is reached through what it
+//! stands for (`size_t` is `u64` on a 64-bit target). A request may ask for only some
+//! declarations, with what they need. What Vun cannot say is left out and reported, never
+//! approximated.
 
 mod emit;
 mod items;
 mod macros;
 mod names;
+mod paths;
+mod reach;
 mod types;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use vun_binder::{Bindings, Failure, Missing, Request, Skipped, Unavailable};
+use vun_binder::{Bindings, Failure, Library, Missing, Request, Skipped, Unavailable};
 use vun_clang::{Clang, Cursor, Severity};
 
 pub use vun_binder::{Bytes, Reason, Unsupported};
@@ -50,6 +54,12 @@ pub(crate) struct Binder<'u> {
     reserved: HashSet<String>,
     /// The bindings' own top-level names, which parameters may not take.
     params_reserved: HashSet<String>,
+    /// The replacement lists of the object-like macros in scope, which a macro may name.
+    macros: HashMap<String, Vec<String>>,
+    /// The value of each enum constant in scope, which a macro may name.
+    constants: HashMap<String, i128>,
+    /// The libraries the functions and variables are linked from, by the directory of their headers.
+    libraries: Vec<Library>,
     skipped: Vec<Skipped>,
 }
 
@@ -63,7 +73,7 @@ impl vun_binder::Binder for CBinder {
 
     /// Fails when libclang is missing, or the header does not parse.
     fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
-        let Request { header, args, reserved } = request;
+        let Request { header, args, reserved, scope, only, libraries } = request;
         let clang = Clang::load().map_err(|missing| Failure::Missing(Self::missing(missing)))?;
         let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
         let errors: Vec<String> = unit
@@ -75,15 +85,21 @@ impl vun_binder::Binder for CBinder {
         if !errors.is_empty() {
             return Err(Failure::Errors(errors));
         }
-        // The header's own declarations, and those of headers beside it: by absolute paths, as
-        // `board.h` is beside `./other.h` but not `/usr/include/stdint.h`.
-        let absolute = |p: &Path| std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf());
-        let dir = absolute(header).parent().map(Path::to_path_buf).unwrap_or_default();
+        // The header's own declarations, those of headers beside it, and those of the directories
+        // asked for: by absolute paths, as `board.h` is beside `./other.h` but not
+        // `/usr/include/stdint.h`.
+        let own = paths::real(header).parent().map(Path::to_path_buf).unwrap_or_default();
+        let dirs: Vec<PathBuf> = std::iter::once(own).chain(scope.iter().map(|d| paths::real(d))).collect();
         let mine: Vec<Cursor<'_>> = unit
             .root()
             .children()
             .into_iter()
-            .filter(|c| c.location().file.is_some_and(|f| absolute(&f).starts_with(&dir)))
+            .filter(|c| {
+                c.location().file.is_some_and(|f| {
+                    let f = paths::real(&f);
+                    dirs.iter().any(|dir| f.starts_with(dir))
+                })
+            })
             .collect();
         let mut binder = Binder {
             decls: Vec::new(),
@@ -91,9 +107,18 @@ impl vun_binder::Binder for CBinder {
             opaque: HashMap::new(),
             reserved: reserved.iter().cloned().collect(),
             params_reserved: HashSet::new(),
+            macros: HashMap::new(),
+            constants: HashMap::new(),
+            libraries: libraries
+                .iter()
+                .map(|l| Library { headers: l.headers.as_deref().map(paths::real), ..l.clone() })
+                .collect(),
             skipped: Vec::new(),
         };
         binder.collect(&mine);
+        if !only.is_empty() {
+            binder.restrict(only);
+        }
         let name = header.file_name().map_or_else(String::new, |n| n.to_string_lossy().into_owned());
         let source = binder.file(&name).source();
         Ok(Bindings { source, skipped: binder.skipped })

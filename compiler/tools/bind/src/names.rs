@@ -59,6 +59,11 @@ impl<'u> Binder<'u> {
             .collect();
         let mut seen: HashSet<Key> = HashSet::new();
         for decl in mine {
+            if decl.kind() == Kind::Enum {
+                for constant in decl.children().iter().filter(|c| c.kind() == Kind::EnumConstant) {
+                    self.constants.insert(constant.name(), i128::from(constant.enum_value()));
+                }
+            }
             match decl.kind() {
                 Kind::Struct | Kind::Union | Kind::Enum => self.tagged(decl, &ordinary, &mut seen),
                 Kind::Typedef => self.typedef(decl),
@@ -67,7 +72,10 @@ impl<'u> Binder<'u> {
                         self.decls.push(*decl);
                     }
                 }
-                Kind::Macro if !decl.is_function_like() => self.decls.push(*decl),
+                Kind::Macro if !decl.is_function_like() => {
+                    self.macros.insert(decl.name(), decl.tokens().split_off(1));
+                    self.decls.push(*decl);
+                }
                 _ => {}
             }
         }

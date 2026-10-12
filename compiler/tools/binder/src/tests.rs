@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use vun_component::Component;
 
 use crate::{
-    Binder, Binders, Bindings, Failure, Missing, Reason, Remote, Request, Skipped, Unavailable, Unsupported,
+    Binder, Binders, Bindings, Failure, Glob, Library, Missing, Reason, Remote, Request, Skipped,
+    Unavailable, Unsupported,
 };
 
 /// Binds every header as one declaration, except the one that is missing.
@@ -34,9 +35,14 @@ fn remote() -> Remote {
 
 fn request(header: &str) -> Request {
     Request {
-        header: PathBuf::from(header),
-        args: vec!["-Iinclude".to_owned(), "-DREV=2".to_owned()],
-        reserved: vec!["type".to_owned(), "test".to_owned()],
+        scope: vec![PathBuf::from("/usr/include/glib-2.0")],
+        only: vec![Glob::new("gtk_*")],
+        libraries: vec![Library { name: "gtk-4".to_owned(), headers: None }],
+        ..Request::new(
+            PathBuf::from(header),
+            vec!["-Iinclude".to_owned(), "-DREV=2".to_owned()],
+            vec!["type".to_owned(), "test".to_owned()],
+        )
     }
 }
 
@@ -54,4 +60,20 @@ fn a_failure_of_the_binder_arrives_as_it_was() {
         remote().bind(&request("missing.h")),
         Err(Failure::Missing(Missing { oldest: 9, why: Unavailable::Old }))
     );
+}
+
+#[test]
+fn a_glob_matches_the_whole_name_with_stars_for_runs() {
+    let matches = |pattern: &str, name: &str| Glob::new(pattern).matches(name);
+    assert!(matches("gtk_window_new", "gtk_window_new"));
+    assert!(!matches("gtk_window_new", "gtk_window_new2"));
+    assert!(matches("gtk_*", "gtk_window_new"));
+    assert!(matches("*_new", "gtk_window_new"));
+    assert!(!matches("*_new", "gtk_window_new_with"));
+    assert!(matches("gtk_*_new*", "gtk_window_new_with"));
+    assert!(matches("*", ""));
+    assert!(!matches("a*b*c", "acb"));
+    assert!(matches("a*b*c", "aXbYc"));
+    assert!(matches("a*a", "aa"));
+    assert!(!matches("a*a", "a"));
 }

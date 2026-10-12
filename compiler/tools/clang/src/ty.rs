@@ -22,8 +22,10 @@ use crate::{Cursor, text};
 pub enum TypeKind {
     Void,
     Bool,
-    /// An integer, `signed` or not, of the size [`Type::size`] gives: `char` of either
-    /// signedness, `short`, `int`, `long`, `long long`, `__int128`.
+    /// Plain `char`, the byte of text, which a target makes signed or unsigned as it likes.
+    Char,
+    /// An integer, `signed` or not, of the size [`Type::size`] gives: `signed char`,
+    /// `unsigned char`, `short`, `int`, `long`, `long long`, `__int128`.
     Integer {
         signed: bool,
     },
@@ -66,10 +68,13 @@ impl<'u> Type<'u> {
         match self.raw.kind {
             CXType_Void => TypeKind::Void,
             CXType_Bool => TypeKind::Bool,
-            CXType_Char_S | CXType_SChar | CXType_Short | CXType_Int | CXType_Long | CXType_LongLong
-            | CXType_Int128 => TypeKind::Integer { signed: true },
-            CXType_Char_U | CXType_UChar | CXType_UShort | CXType_UInt | CXType_ULong | CXType_ULongLong
-            | CXType_UInt128 => TypeKind::Integer { signed: false },
+            CXType_Char_S | CXType_Char_U => TypeKind::Char,
+            CXType_SChar | CXType_Short | CXType_Int | CXType_Long | CXType_LongLong | CXType_Int128 => {
+                TypeKind::Integer { signed: true }
+            }
+            CXType_UChar | CXType_UShort | CXType_UInt | CXType_ULong | CXType_ULongLong | CXType_UInt128 => {
+                TypeKind::Integer { signed: false }
+            }
             CXType_Float | CXType_Double | CXType_LongDouble | CXType_Half | CXType_Float16 => {
                 TypeKind::Float
             }

@@ -6,7 +6,7 @@ use std::fmt::Write as _;
 use vun_grammar::{Level, TokenKind};
 
 use super::Place;
-use crate::lexer::{ESCAPE, SIMPLE_ESCAPES};
+use crate::lexer::{C_STRING, ESCAPE, SIMPLE_ESCAPES};
 use crate::literal::Writer;
 use crate::make::{Expr, Function, Init, Param};
 
@@ -21,6 +21,10 @@ impl Writer {
             Expr::Float(bits) => self.float(f64::from_bits(*bits)),
             Expr::Char(c) => self.character(*c),
             Expr::String(s) => self.string(s),
+            Expr::CString(s) => {
+                self.text(&C_STRING.to_string());
+                self.string(s);
+            }
             Expr::Hole => {
                 self.token(TokenKind::Underscore);
             }

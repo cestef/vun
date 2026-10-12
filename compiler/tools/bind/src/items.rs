@@ -6,7 +6,7 @@
 use vun_desugar::{FORMS, Form, MARKERS, TYPE_PREFIXES};
 use vun_grammar::TokenKind;
 use vun_items::{Item, lang};
-use vun_syntax::make::Expr;
+use vun_syntax::make::{Expr, Param};
 
 /// `lang.int.unsigned(bits)` or `lang.int.signed(bits)`.
 pub(crate) fn integer(signed: bool, bits: u64) -> Expr {
@@ -43,6 +43,13 @@ pub(crate) fn unchecked(inner: Expr) -> Expr {
     Expr::prefix(token(MARKERS.iter().map(|row| (row.token, row.item)), lang::safety::r#unsafe), inner)
 }
 
+/// `(params) -> result`; a function type taking and giving nothing is `() -> ()`, as `()` alone is
+/// the unit type.
+pub(crate) fn signature(params: Vec<Param>, result: Option<Expr>) -> Expr {
+    let result = result.or_else(|| params.is_empty().then_some(Expr::Unit));
+    Expr::FnType(params, result.map(Box::new))
+}
+
 /// `#[lang.abi.c] inner`
 pub(crate) fn c_abi(inner: Expr) -> Expr {
     Expr::Attributed(vec![Expr::decl(lang::abi::c)], Box::new(inner))
@@ -51,6 +58,11 @@ pub(crate) fn c_abi(inner: Expr) -> Expr {
 /// `lang.link.symbol("name")`
 pub(crate) fn symbol(name: &str) -> Expr {
     Expr::call(Expr::decl(lang::link::symbol), vec![Expr::String(name.to_owned())])
+}
+
+/// `lang.link.library("name")`
+pub(crate) fn library(name: &str) -> Expr {
+    Expr::call(Expr::decl(lang::link::library), vec![Expr::String(name.to_owned())])
 }
 
 pub(crate) fn abi_c() -> Expr {

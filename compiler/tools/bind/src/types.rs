@@ -16,6 +16,8 @@ pub(crate) enum Position {
     Param,
     /// A field or an array item.
     Field,
+    /// What a typedef stands for, which may be a struct bound without fields.
+    Alias,
 }
 
 impl Binder<'_> {
@@ -29,6 +31,8 @@ impl Binder<'_> {
                 let bytes = ty.size().filter(|s| matches!(s, 1 | 2 | 4 | 8)).ok_or_else(unsupported)?;
                 items::integer(signed, bytes * u64::from(u8::BITS))
             }
+            // The text C holds is bytes, whether the target's `char` is signed or not.
+            TypeKind::Char => items::integer(false, u64::from(u8::BITS)),
             TypeKind::Float => {
                 ty.size().and_then(|s| items::float(s * u64::from(u8::BITS))).ok_or_else(unsupported)?
             }
@@ -43,7 +47,9 @@ impl Binder<'_> {
                 let decl = ty.declaration();
                 let name = self.bound(&decl).ok_or_else(unsupported)?;
                 match (self.opaque.get(&name), at) {
-                    (None | Some(Opacity::Sized), Position::Field) => Expr::local(&name),
+                    (None | Some(Opacity::Sized), Position::Field) | (_, Position::Alias) => {
+                        Expr::local(&name)
+                    }
                     (None, _) if self.passable(&decl) => Expr::local(&name),
                     _ => return Err(Unsupported::Opaque(name)),
                 }
@@ -115,8 +121,8 @@ impl Binder<'_> {
                 Ok(Param::named(&Self::positional(i), ty))
             })
             .collect::<Result<Vec<_>, Unsupported>>()?;
-        let result = self.ty(ty.result(), Position::Result)?.map(Box::new);
-        Ok(items::c_abi(Expr::FnType(params, result)))
+        let result = self.ty(ty.result(), Position::Result)?;
+        Ok(items::c_abi(items::signature(params, result)))
     }
 
     /// The name of the parameter at `i` that C leaves unnamed.

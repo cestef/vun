@@ -11,6 +11,27 @@ pub struct Bindings {
     pub skipped: Vec<Skipped>,
 }
 
+/// A library a header's functions and variables are linked from.
+#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
+pub struct Library {
+    /// Its name, as the linker is given it: `gtk-4` for `-lgtk-4`.
+    pub name: String,
+    /// The directory of the headers it declares; every header when there is none. Of two libraries
+    /// declaring a header, the one with the deeper directory is where it is linked from.
+    pub headers: Option<PathBuf>,
+}
+
+impl Library {
+    /// The library written `name`, or `name=dir` for the headers under `dir`.
+    #[must_use]
+    pub fn named(written: &str) -> Self {
+        match written.split_once('=') {
+            Some((name, dir)) => Self { name: name.to_owned(), headers: Some(PathBuf::from(dir)) },
+            None => Self { name: written.to_owned(), headers: None },
+        }
+    }
+}
+
 /// A declaration left out, or bound without what it could not say, and why.
 #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct Skipped {
@@ -24,8 +45,6 @@ pub struct Skipped {
 pub enum Reason {
     /// A type it uses has no Vun spelling.
     Unsupported(Unsupported),
-    /// A function taking arguments past its parameters, `...`.
-    Variadic,
     /// A struct bound as its size and alignment only, and why.
     Bytes(Bytes),
 }

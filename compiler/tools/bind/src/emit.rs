@@ -5,11 +5,19 @@ use vun_clang::{Cursor, Kind, TypeKind};
 use vun_syntax::case::Case;
 use vun_syntax::make::{Bind, Expr, Field, File, Item, Member, Param};
 
+use vun_binder::Library;
+
+use crate::macros::{Names, Value};
+use crate::paths;
 use crate::types::Position;
-use crate::{Binder, Opacity, Reason, items, macros};
+use crate::{Binder, Opacity, Reason, items};
 
 /// The field a struct bound as bytes holds them in, private to it.
 const BYTES: &str = "_bytes";
+/// The type parameter and the pack of a variadic function: the pack's type is inferred from the
+/// arguments of each call (spec 07, section 5).
+const PACK_TYPE: &str = "P";
+const PACK: &str = "args";
 
 /// An item without doc, attributes or type.
 fn item(name: &str, value: Expr) -> Item {
@@ -119,7 +127,7 @@ impl Binder<'_> {
         let ty = if under.canonical().kind() == TypeKind::Function {
             self.function(under.canonical())
         } else {
-            self.ty(under, Position::Field).map(|t| t.unwrap_or(Expr::Unit))
+            self.ty(under, Position::Alias).map(|t| t.unwrap_or(Expr::Unit))
         };
         match ty {
             Ok(ty) => Some(alias_of(&self.bound(decl)?, ty)),
@@ -132,19 +140,26 @@ impl Binder<'_> {
 
     /// `#[lang.link.symbol("f"), lang.abi.c] f: unsafe (...) -> R = _;`: calling C is unchecked.
     fn function_decl(&mut self, decl: &Cursor<'_>) -> Option<Item> {
-        if decl.is_variadic() {
-            self.skip(decl, Reason::Variadic);
-            return None;
-        }
+        let variadic = decl.is_variadic();
         let declared = decl.params();
         let params = declared.iter().enumerate().map(|(i, param)| {
             let name = param.name();
             let name = if name.is_empty() { Self::positional(i) } else { self.vun_name(&name, Case::Snake) };
-            let name = if self.params_reserved.contains(&name) { self.renamed(&name) } else { name };
+            let taken = self.params_reserved.contains(&name)
+                || (variadic && [PACK, PACK_TYPE].contains(&name.as_str()));
+            let name = if taken { self.renamed(&name) } else { name };
             Ok(Param::named(&name, self.ty(param.ty(), Position::Param)?.unwrap_or(Expr::Unit)))
         });
         let signature = params.collect::<Result<Vec<_>, _>>().and_then(|params| {
-            Ok(Expr::FnType(params, self.ty(decl.result(), Position::Result)?.map(Box::new)))
+            // A variadic function takes the arguments past its parameters as a pack.
+            let params = if variadic {
+                let kind = Param::comptime(PACK_TYPE, Expr::local("type"));
+                let rest = Param::pack(PACK, Expr::local(PACK_TYPE));
+                [vec![kind], params, vec![rest]].concat()
+            } else {
+                params
+            };
+            Ok(items::signature(params, self.ty(decl.result(), Position::Result)?))
         });
         match signature {
             Ok(signature) => Some(self.linked(decl, false, items::unchecked(signature))),
@@ -169,15 +184,30 @@ impl Binder<'_> {
     /// `decl`, provided by the linker under its C name.
     fn linked(&self, decl: &Cursor<'_>, mutable: bool, ty: Expr) -> Item {
         let symbol = decl.name();
+        let library = self.library_of(decl).map(items::library);
         Item {
-            attrs: vec![items::symbol(&symbol), items::abi_c()],
+            attrs: [items::symbol(&symbol), items::abi_c()].into_iter().chain(library).collect(),
             ..item(&self.vun_name(&symbol, Case::Snake), Expr::Hole).typed(ty).mutable(mutable)
         }
     }
 
+    /// The library `decl` is linked from: of those declaring its header, the one with the deepest
+    /// directory.
+    fn library_of(&self, decl: &Cursor<'_>) -> Option<&str> {
+        let file = decl.location().file.map(|f| paths::real(&f))?;
+        let declares = |l: &&Library| l.headers.as_ref().is_none_or(|dir| file.starts_with(dir));
+        let depth = |l: &&Library| l.headers.as_ref().map_or(0, |dir| dir.components().count() + 1);
+        self.libraries.iter().filter(declares).max_by_key(depth).map(|l| l.name.as_str())
+    }
+
     fn constant(&self, decl: &Cursor<'_>) -> Option<Item> {
         let tokens = decl.tokens();
-        let value = macros::integer(tokens.get(1..)?)?;
-        Some(item(&self.vun_name(&decl.name(), Case::Snake), Expr::int(value)))
+        let names = Names { macros: &self.macros, constants: &self.constants };
+        let value = match names.value(tokens.get(1..)?)? {
+            Value::Int(n) => Expr::int(n),
+            Value::Float(x) => Expr::float(x),
+            Value::Text(text) => Expr::CString(text),
+        };
+        Some(item(&self.vun_name(&decl.name(), Case::Snake), value))
     }
 }

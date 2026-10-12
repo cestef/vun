@@ -1,6 +1,6 @@
 //! What an expression holds besides expressions: blocks, fields, parameters, arms.
 
-use vun_grammar::BorrowWord;
+use vun_grammar::{BorrowWord, TokenKind};
 
 use super::{Expr, Item};
 
@@ -97,6 +97,18 @@ impl Param {
     #[must_use]
     pub fn named(name: &str, ty: Expr) -> Self {
         Self { pattern: Some(Expr::local(name)), ty }
+    }
+
+    /// `$name: ty`, a parameter known when compiling.
+    #[must_use]
+    pub fn comptime(name: &str, ty: Expr) -> Self {
+        Self { pattern: Some(Expr::Staged(Box::new(Expr::local(name)))), ty }
+    }
+
+    /// `..name: ty`, the parameter gathering the arguments after the others.
+    #[must_use]
+    pub fn pack(name: &str, ty: Expr) -> Self {
+        Self { pattern: Some(Expr::prefix(TokenKind::DotDot, Expr::local(name))), ty }
     }
 
     /// `ty`, in a function type.

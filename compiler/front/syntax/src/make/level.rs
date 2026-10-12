@@ -14,7 +14,7 @@ impl Expr {
             Self::Float(bits) if f64::from_bits(*bits).is_sign_negative() => NodeKind::Prefix,
             Self::Float(_) => NodeKind::Float,
             Self::Char(_) => NodeKind::Char,
-            Self::String(_) => NodeKind::String,
+            Self::String(_) | Self::CString(_) => NodeKind::String,
             Self::Hole => NodeKind::Hole,
             Self::Path(path) if path.len() > 1 => NodeKind::Member,
             Self::Path(_) => NodeKind::Name,
