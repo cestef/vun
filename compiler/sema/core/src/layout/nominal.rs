@@ -108,7 +108,7 @@ impl Shapes {
 
     /// The bit pattern `code` is in an integer of `bytes` bytes, two's complement when negative.
     fn pattern(code: &Integer, bytes: u64) -> Option<u128> {
-        let value = code.to_i128().map(|n| n as u128).or_else(|| code.to_u128())?;
+        let value = code.to_i128().map(i128::cast_unsigned).or_else(|| code.to_u128())?;
         let bits = bytes.checked_mul(8)?;
         Some(if bits >= 128 { value } else { value & ((1u128 << bits) - 1) })
     }
