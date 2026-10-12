@@ -10,6 +10,7 @@ use vun_tool::Executable;
 
 use crate::backend;
 use crate::common::Fixture;
+use crate::variadic::status;
 
 /// The program each linker links: it exits with 3.
 const EXITS: &str = "\
@@ -36,6 +37,26 @@ fn a_program_runs_as_each_linker_links_it() {
         let status = std::process::Command::new(built).status().unwrap();
         assert_eq!(status.code(), Some(3), "linked by {linker}");
     }
+}
+
+/// A program whose import comes from the library `m`, which is not linked unless the import names it.
+const MATH: &str = "\
+#[link.symbol(\"cbrt\"), link.library(\"m\"), abi.c]
+cube_root: unsafe (x: f64) -> f64 = _;
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    root := unsafe { cube_root(27.0) };
+    if root > 2.999 and root < 3.001 { .code(3) } else { .code(1) }
+};
+";
+
+#[test]
+fn the_library_an_import_names_is_linked() {
+    if !cfg!(all(target_arch = "x86_64", target_os = "linux")) {
+        return;
+    }
+    assert_eq!(status("link-library", MATH, targets::linux_x86_64::gnu), Some(3));
 }
 
 #[test]

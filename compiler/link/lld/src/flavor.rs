@@ -100,6 +100,7 @@ fn coff(plan: &LinkPlan, target: &TargetSpec) -> Vec<Arg> {
         compiler
             .libraries
             .iter()
+            .chain(&plan.libraries)
             .map(|library| Arg::Text(Symbol::intern(&format!("{library}{}", lld_link::LIBRARY)))),
     );
     args
@@ -145,6 +146,7 @@ fn macho(plan: &LinkPlan, target: &TargetSpec) -> Vec<Arg> {
         compiler
             .libraries
             .iter()
+            .chain(&plan.libraries)
             .map(|library| Arg::Text(Symbol::intern(&format!("{}{library}", ld64::LIBRARY)))),
     );
     args

@@ -101,6 +101,18 @@ impl Unit {
         defined.chain(imported).chain(called)
     }
 
+    /// The libraries its imports come from, each once, in the order they are first used.
+    #[must_use]
+    pub fn libraries(&self) -> Vec<Symbol> {
+        let mut libraries: Vec<Symbol> = Vec::new();
+        for library in self.imports.iter().filter_map(|(_, import)| import.library) {
+            if !libraries.contains(&library) {
+                libraries.push(library);
+            }
+        }
+        libraries
+    }
+
     /// The link symbols the unit exports: its functions' and its data's, in that order.
     pub fn exports(&self) -> impl Iterator<Item = Symbol> + '_ {
         let functions = self.functions.iter().map(|(_, f)| f.linkage);

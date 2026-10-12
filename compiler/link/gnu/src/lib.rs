@@ -90,7 +90,13 @@ impl Ld<'_> {
             inputs.push(path);
         }
         args.extend(plan.inputs.iter().cloned().map(Arg::Path));
-        args.extend(compiler.libraries.iter().flat_map(|&library| [gcc::LIBRARY.into(), Arg::Text(library)]));
+        args.extend(
+            compiler
+                .libraries
+                .iter()
+                .chain(&plan.libraries)
+                .flat_map(|&library| [gcc::LIBRARY.into(), Arg::Text(library)]),
+        );
         let inv = Invocation { args, inputs, outputs: vec![plan.output.clone()], ..Invocation::default() };
         let driver = compiler.command.as_str();
         Executable::new(driver, driver)

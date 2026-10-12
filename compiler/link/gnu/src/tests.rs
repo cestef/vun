@@ -21,6 +21,7 @@ fn regions_and_sections_become_a_script() {
     };
     let plan = LinkPlan {
         exports: Vec::new(),
+        libraries: Vec::new(),
         inputs: vec![PathBuf::from("a.o")],
         output: PathBuf::from("a"),
         kind: Output::Executable,
@@ -62,6 +63,7 @@ fn names_a_script_cannot_say_are_refused() {
     let region = |n| MemoryRegion { name: name(n), origin: 0, len: 0x100, declared };
     let plan = |regions, sections| LinkPlan {
         exports: Vec::new(),
+        libraries: Vec::new(),
         inputs: Vec::new(),
         output: PathBuf::from("a"),
         kind: Output::Executable,

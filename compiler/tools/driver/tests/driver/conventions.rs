@@ -159,6 +159,7 @@ fn a_windows_library_is_called_by_c_under_each_convention_of_its_architecture() 
             kind: Output::Executable,
             entry: spec.entry_symbol,
             exports: Vec::new(),
+            libraries: Vec::new(),
             regions: Vec::new(),
             sections: Vec::new(),
         };

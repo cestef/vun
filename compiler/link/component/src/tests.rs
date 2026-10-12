@@ -55,6 +55,7 @@ fn plan() -> LinkPlan {
         kind: Output::Executable,
         entry: None,
         exports: Vec::new(),
+        libraries: Vec::new(),
         regions: Vec::new(),
         sections: Vec::new(),
     }

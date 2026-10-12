@@ -215,6 +215,7 @@ impl Session {
             // A library's exports are its interface: nothing starts it.
             entry: target.entry_symbol.filter(|_| !kind.library()),
             exports: if kind.library() { compiled.coded.unit.exports().collect() } else { Vec::new() },
+            libraries: compiled.coded.unit.libraries(),
             regions: self.memory.clone(),
             sections: self.sections.clone(),
         };

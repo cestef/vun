@@ -50,6 +50,9 @@ pub struct LinkPlan {
     /// The link symbols a library makes available to what loads it: its interface. A program has
     /// none, the symbols its runtime exports being its own.
     pub exports: Vec<Symbol>,
+    /// The libraries the program's imports come from (`#[link.library(name)]`), each once, in
+    /// the order they are first used: linked after the objects, by the name its system gives them.
+    pub libraries: Vec<Symbol>,
     pub regions: Vec<MemoryRegion>,
     pub sections: Vec<SectionPlacement>,
 }

@@ -189,6 +189,9 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
 
 - A C import is a declaration provided by the linker:
   `#[link.symbol("puts"), abi.c] puts: unsafe (s: *u8) -> i32 = _;`
+- `#[link.library("m")]` names the library an import comes from; a hosted program is linked
+  against each library its imports name (spec 13, section 7), so a package states what it needs
+  and no machine file does. An import with none comes from another object or the C library.
 - `#[link.export("name")]` exports a binding under a C symbol.
 - A variadic C function is a C import with a pack (spec 01, section 4), declared with the pack of
   the arguments its callers pass: `open: unsafe (path: *u8, flags: u32, ..mode: .{ u32 }) -> i32 =

@@ -657,7 +657,11 @@ pub trait DiagSink {
 - **The link plan is abstract.** Memory regions and sections from the build go into `LinkPlan`; the
   GNU ld adapter turns them into a linker script defining the symbols at their bounds
   (`vun_link::Bound`: `__data_start`, `__data_end`, `__data_load`, `__ram_end`), and a linker that
-  places nothing refuses a plan that does (`link.unsupported`). Bare-metal targets link through
+  places nothing refuses a plan that does (`link.unsupported`). The plan also lists the libraries
+  the program's imports name (`LinkPlan::libraries`, each once, in the order first used), which a
+  hosted linker links after the objects as its system names them: `-lm` for the GNU driver and
+  Mach-O, `m.lib` for COFF; a wasm link ignores them, the library being an import's module.
+  Bare-metal targets link through
   their C compiler's linker for that.
 - **Capabilities are checked, never faked.** A program needing guaranteed tail calls, frame sizes or
   vectors on a backend that lacks them is rejected with a diagnostic naming the backends that can.

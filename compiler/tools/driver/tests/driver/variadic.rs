@@ -86,7 +86,7 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 
 /// Builds and runs `source` for `target` through each backend, where the machine runs its
 /// programs: the exit status, the same through each.
-fn status(name: &str, source: &str, target: Item) -> Option<i32> {
+pub(crate) fn status(name: &str, source: &str, target: Item) -> Option<i32> {
     let fixture = Fixture::new(name);
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
