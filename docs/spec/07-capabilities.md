@@ -212,6 +212,7 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   in one; `--closed GtkAlign` binds the enums so named as Vun enums that name their tags
   (spec 05, section 6), the prefix their constants share dropped and a constant that repeats a
   value a constant of the enum, for the enums C holds no other value in.
+  A pointer binds as `?*T`, C passing null as it likes, and as `*T` where the header says `_Nonnull`.
   A variadic function binds as an import with a pack, `($P: type, .., ..args: P)`; plain `char` is
   `u8`, as the bytes of text; an object-like macro of integers, floats or strings (`#define A (1 <<
   4)`, naming others) is a constant, a string one a `c"..."`; a function type taking and giving

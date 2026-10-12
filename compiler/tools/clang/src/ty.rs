@@ -4,15 +4,16 @@
 use std::marker::PhantomData;
 
 use clang_sys::{
-    CXTranslationUnit, CXType, CXType_Bool, CXType_Char_S, CXType_Char_U, CXType_ConstantArray,
-    CXType_Double, CXType_Elaborated, CXType_Enum, CXType_Float, CXType_Float16, CXType_FunctionNoProto,
-    CXType_FunctionProto, CXType_Half, CXType_IncompleteArray, CXType_Int, CXType_Int128, CXType_Long,
-    CXType_LongDouble, CXType_LongLong, CXType_Pointer, CXType_Record, CXType_SChar, CXType_Short,
-    CXType_Typedef, CXType_UChar, CXType_UInt, CXType_UInt128, CXType_ULong, CXType_ULongLong, CXType_UShort,
-    CXType_Void, clang_Type_getAlignOf, clang_Type_getNamedType, clang_Type_getSizeOf, clang_getArgType,
-    clang_getArrayElementType, clang_getArraySize, clang_getCanonicalType, clang_getNumArgTypes,
-    clang_getPointeeType, clang_getResultType, clang_getTypeDeclaration, clang_getTypeSpelling,
-    clang_isConstQualifiedType, clang_isFunctionTypeVariadic,
+    CXTranslationUnit, CXType, CXType_Attributed, CXType_Bool, CXType_Char_S, CXType_Char_U,
+    CXType_ConstantArray, CXType_Double, CXType_Elaborated, CXType_Enum, CXType_Float, CXType_Float16,
+    CXType_FunctionNoProto, CXType_FunctionProto, CXType_Half, CXType_IncompleteArray, CXType_Int,
+    CXType_Int128, CXType_Long, CXType_LongDouble, CXType_LongLong, CXType_Pointer, CXType_Record,
+    CXType_SChar, CXType_Short, CXType_Typedef, CXType_UChar, CXType_UInt, CXType_UInt128, CXType_ULong,
+    CXType_ULongLong, CXType_UShort, CXType_Void, CXTypeNullability_NonNull, clang_Type_getAlignOf,
+    clang_Type_getModifiedType, clang_Type_getNamedType, clang_Type_getNullability, clang_Type_getSizeOf,
+    clang_getArgType, clang_getArrayElementType, clang_getArraySize, clang_getCanonicalType,
+    clang_getNumArgTypes, clang_getPointeeType, clang_getResultType, clang_getTypeDeclaration,
+    clang_getTypeSpelling, clang_isConstQualifiedType, clang_isFunctionTypeVariadic,
 };
 
 use crate::{Cursor, text};
@@ -44,19 +45,30 @@ pub enum TypeKind {
 #[derive(Clone, Copy)]
 pub struct Type<'u> {
     raw: CXType,
+    /// Whether the header says a pointer of this type is never null, as `_Nonnull` does.
+    nonnull: bool,
     unit: CXTranslationUnit,
     _unit: PhantomData<&'u ()>,
 }
 
 impl<'u> Type<'u> {
     /// The type `raw` is, as the type it names when it is written with its tag, as `struct point`
-    /// is: clang before 22 reports those apart, as elaborated types, and later ones do not.
+    /// is: clang before 22 reports those apart, as elaborated types, and later ones do not. The
+    /// attributes written on it (`_Nonnull`) are read, and it is the type they modify.
     pub(crate) fn new(raw: CXType, unit: CXTranslationUnit) -> Self {
         let mut raw = raw;
-        while raw.kind == CXType_Elaborated {
-            raw = unsafe { clang_Type_getNamedType(raw) };
+        let mut nonnull = false;
+        loop {
+            match raw.kind {
+                CXType_Elaborated => raw = unsafe { clang_Type_getNamedType(raw) },
+                CXType_Attributed => {
+                    nonnull |= unsafe { clang_Type_getNullability(raw) } == CXTypeNullability_NonNull;
+                    raw = unsafe { clang_Type_getModifiedType(raw) };
+                }
+                _ => break,
+            }
         }
-        Self { raw, unit, _unit: PhantomData }
+        Self { raw, nonnull, unit, _unit: PhantomData }
     }
 
     fn wrap(&self, raw: CXType) -> Self {
@@ -154,6 +166,12 @@ impl<'u> Type<'u> {
     #[must_use]
     pub fn is_const(&self) -> bool {
         unsafe { clang_isConstQualifiedType(self.raw) != 0 }
+    }
+
+    /// Whether the header says it is never null, as `_Nonnull` does of a pointer.
+    #[must_use]
+    pub fn is_nonnull(&self) -> bool {
+        self.nonnull
     }
 
     #[must_use]

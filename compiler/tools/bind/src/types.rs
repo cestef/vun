@@ -36,8 +36,8 @@ impl Binder<'_> {
             TypeKind::Float => {
                 ty.size().and_then(|s| items::float(s * u64::from(u8::BITS))).ok_or_else(unsupported)?
             }
-            TypeKind::Pointer => self.pointer(ty.pointee())?,
-            TypeKind::IncompleteArray if at == Position::Param => self.pointer(ty.element())?,
+            TypeKind::Pointer => self.pointer(ty.pointee(), ty.is_nonnull())?,
+            TypeKind::IncompleteArray if at == Position::Param => self.pointer(ty.element(), false)?,
             TypeKind::Array => {
                 let item = self.ty(ty.element(), Position::Field)?.ok_or_else(unsupported)?;
                 let len = ty.array_len().ok_or_else(unsupported)?;
@@ -73,21 +73,25 @@ impl Binder<'_> {
     /// `?*T`, `?*()` for a pointer to `void` or to what is not bound here, or
     /// `?#[lang.abi.c] (...) -> R` for a pointer to a function. Behind a pointer, a struct's
     /// fields never matter.
-    fn pointer(&self, pointee: Type<'_>) -> Result<Expr, Unsupported> {
+    fn pointer(&self, pointee: Type<'_>, nonnull: bool) -> Result<Expr, Unsupported> {
+        // A pointer is nullable unless the header says it never is.
+        let nullable = |pointer: Expr| if nonnull { pointer } else { items::option(pointer) };
         if pointee.canonical().kind() == TypeKind::Function {
-            return Ok(items::option(self.function(pointee.canonical())?));
+            return Ok(nullable(self.function(pointee.canonical())?));
         }
         let target = match pointee.kind() {
             TypeKind::Void => Expr::Unit,
             TypeKind::Record | TypeKind::Enum | TypeKind::Typedef => match self.bound(&pointee.declaration())
             {
                 Some(name) => Expr::local(&name),
-                None if pointee.kind() == TypeKind::Typedef => return self.pointer(pointee.canonical()),
+                None if pointee.kind() == TypeKind::Typedef => {
+                    return self.pointer(pointee.canonical(), nonnull);
+                }
                 None => Expr::Unit,
             },
             _ => self.ty(pointee, Position::Field)?.unwrap_or(Expr::Unit),
         };
-        Ok(items::option(items::pointer(target)))
+        Ok(nullable(items::pointer(target)))
     }
 
     /// Whether a record can be passed by value: the calling convention classifies its fields,

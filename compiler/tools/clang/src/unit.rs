@@ -7,10 +7,10 @@ use std::path::Path;
 use clang_sys::{
     CXDiagnostic_DisplayColumn, CXDiagnostic_DisplaySourceLocation, CXDiagnostic_DisplaySourceRanges,
     CXDiagnostic_Error, CXDiagnostic_Fatal, CXDiagnostic_Warning, CXIndex, CXTranslationUnit,
-    CXTranslationUnit_DetailedPreprocessingRecord, CXTranslationUnit_SkipFunctionBodies, clang_createIndex,
-    clang_disposeDiagnostic, clang_disposeIndex, clang_disposeTranslationUnit, clang_formatDiagnostic,
-    clang_getDiagnostic, clang_getDiagnosticSeverity, clang_getNumDiagnostics,
-    clang_getTranslationUnitCursor, clang_parseTranslationUnit2,
+    CXTranslationUnit_DetailedPreprocessingRecord, CXTranslationUnit_IncludeAttributedTypes,
+    CXTranslationUnit_SkipFunctionBodies, clang_createIndex, clang_disposeDiagnostic, clang_disposeIndex,
+    clang_disposeTranslationUnit, clang_formatDiagnostic, clang_getDiagnostic, clang_getDiagnosticSeverity,
+    clang_getNumDiagnostics, clang_getTranslationUnitCursor, clang_parseTranslationUnit2,
 };
 
 use crate::{Clang, Cursor, text};
@@ -63,7 +63,10 @@ impl Clang {
             .collect::<Result<_, _>>()
             .ok()?;
         let pointers: Vec<*const std::ffi::c_char> = args.iter().map(|a| a.as_ptr()).collect();
-        let flags = CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_SkipFunctionBodies;
+        // Attributed types are kept, since `_Nonnull` is read from them.
+        let flags = CXTranslationUnit_DetailedPreprocessingRecord
+            | CXTranslationUnit_SkipFunctionBodies
+            | CXTranslationUnit_IncludeAttributedTypes;
         // SAFETY: the strings outlive the call; the index is released by `Unit`'s drop, or here
         // when parsing fails.
         unsafe {

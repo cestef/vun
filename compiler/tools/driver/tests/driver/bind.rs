@@ -24,6 +24,7 @@ union value { int i; float f; };
 struct frame { union value v; double samples[3]; callback on_done; };
 size_t frame_size(struct frame f);
 int match(int type, int test);
+int named(const char *_Nonnull name, const char *_Nullable alias, const char *plain);
 ";
 
 #[test]
@@ -64,6 +65,9 @@ frame_size_is: Int(std.meta.size(Frame)..=std.meta.size(Frame)) = 40;
         "{}",
         bindings.source
     );
+    // A pointer the header says is never null is `*T`; any other may be null.
+    let named = "named: unsafe (name: *lang.int.unsigned(8), alias: ?*lang.int.unsigned(8), plain: ?*";
+    assert!(bindings.source.contains(named), "{}", bindings.source);
     // A function type taking and giving nothing is not the unit type.
     assert!(bindings.source.contains("Thunk: type = ?#[lang.abi.c] () -> ()"), "{}", bindings.source);
     assert!(bindings.source.contains("run_thunk: unsafe () -> () = _"), "{}", bindings.source);

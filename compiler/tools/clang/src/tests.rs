@@ -52,3 +52,22 @@ fn major_versions_are_read_from_library_names() {
     assert_eq!(major("libclang.so"), None);
     assert_eq!(major("libclang.dylib"), None);
 }
+
+#[test]
+fn a_pointer_the_header_says_is_never_null_is_nonnull() {
+    let Ok(clang) = Clang::load() else {
+        eprintln!("libclang not found; skipped");
+        return;
+    };
+    let path = header(
+        "nullability",
+        "int named(const char *_Nonnull name, const char *_Nullable alias, const char *plain);\n",
+    );
+    let unit = clang.parse(&path, &["--target=x86_64-linux-gnu".to_owned()]).unwrap();
+    let function = unit.root().children().into_iter().find(|c| c.kind() == Kind::Function).unwrap();
+    let nonnull: Vec<bool> = function.params().iter().map(|p| p.ty().is_nonnull()).collect();
+    assert_eq!(nonnull, [true, false, false]);
+    // The parameter types of the function's own type say it too.
+    let by_type: Vec<bool> = function.ty().params().iter().map(crate::Type::is_nonnull).collect();
+    assert_eq!(by_type, [true, false, false]);
+}
