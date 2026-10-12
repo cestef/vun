@@ -90,6 +90,7 @@ pub const EXPLANATIONS: &[(DiagId, &str)] = &[
     (NAMES_DUPLICATE, "lang/lang/errors/names/duplicate.md"),
     (NEW_EXISTS, "lang/lang/errors/new/exists.md"),
     (NEW_NO_TEMPLATE, "lang/lang/errors/new/no_template.md"),
+    (NEW_BAD_NAME, "lang/lang/errors/new/bad_name.md"),
     (PACKAGE_MISSING_DEP, "lang/lang/errors/package/missing_dep.md"),
     (PACKAGE_MISSING_NAMESPACE, "lang/lang/errors/package/missing_namespace.md"),
     (PACKAGE_HASH_MISMATCH, "lang/lang/errors/package/hash_mismatch.md"),

@@ -9,3 +9,4 @@
 use crate::Item;
 pub const exists: Item = Item::new(&["lang", "errors", "new", "exists"]);
 pub const no_template: Item = Item::new(&["lang", "errors", "new", "no_template"]);
+pub const bad_name: Item = Item::new(&["lang", "errors", "new", "bad_name"]);

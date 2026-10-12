@@ -2,3 +2,4 @@
 
 exists := diag.Diag{};
 no_template := diag.Diag{};
+bad_name := diag.Diag{};

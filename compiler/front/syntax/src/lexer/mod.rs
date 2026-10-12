@@ -114,7 +114,7 @@ pub(crate) fn is_ident_continue(c: char) -> bool {
 }
 
 /// Whether `word` lexes as one name.
-pub(crate) fn is_ident(word: &str) -> bool {
+pub fn is_ident(word: &str) -> bool {
     let mut chars = word.chars();
     chars.next().is_some_and(is_ident_start) && chars.all(is_ident_continue)
 }

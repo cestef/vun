@@ -140,6 +140,7 @@ pub enum Lang {
     New,
     NewExists,
     NewNoTemplate,
+    NewBadName,
     /// Packages and their namespaces on disk (spec 01, section 8, and spec 12, section 3).
     Package,
     PackageMissingDep,

@@ -80,3 +80,15 @@ fn every_template_is_a_project_that_checks() {
         }
     }
 }
+
+#[test]
+fn a_directory_no_code_can_name_is_refused_for_a_package() {
+    let fixture = Fixture::new("new-bad-name");
+    let mut session = fixture.session();
+    assert!(session.new_project(&fixture.root.join("gtk-todo"), Library::DEFAULT_TEMPLATE).is_err());
+    let found = session.diag.sorted(session.origins);
+    assert_eq!(found.iter().map(|d| d.id).collect::<Vec<_>>(), [errors::NEW_BAD_NAME]);
+    assert!(!fixture.root.join("gtk-todo").exists(), "nothing is written for a name refused");
+    let mut again = fixture.session();
+    assert!(again.new_project(&fixture.root.join("gtk_todo"), Library::DEFAULT_TEMPLATE).is_ok());
+}

@@ -5,3 +5,4 @@ use super::Lang;
 pub const NEW: DiagId = DiagId::Lang(Lang::New);
 pub const NEW_EXISTS: DiagId = DiagId::Lang(Lang::NewExists);
 pub const NEW_NO_TEMPLATE: DiagId = DiagId::Lang(Lang::NewNoTemplate);
+pub const NEW_BAD_NAME: DiagId = DiagId::Lang(Lang::NewBadName);

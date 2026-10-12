@@ -26,9 +26,3 @@ Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `dec
 - `std.os.heap` and `System.env` exist on the C library's runtime only (decision 676): the
   kernel, WASI and Windows runtimes refuse every allocation and set no variable. A heap of their
   own is an allocator to write for each (`mmap` pages, `memory.grow`, `HeapAlloc`).
-- A generic body is reported at the std line when a linear type is used wrongly
-  (`Vec.push` of a linear item), with no note of the call site.
-- `did you mean X?` can suggest the name already written when the real error is elsewhere.
-- `vun new` accepts `gtk-todo` as a package name, which cannot be written as a namespace; its
-  template doc comment still says `hello/`.
-- A fresh checkout fails `vun-syntax`'s repository scans: `corpus/planned` is not tracked.

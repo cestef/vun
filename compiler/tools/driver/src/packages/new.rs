@@ -10,6 +10,7 @@ use vun_diag::{Diagnostic, ErrorGuaranteed, Msg, errors};
 use vun_fs::{Edit, Tree};
 use vun_hash::Hash;
 use vun_suggest::closest;
+use vun_syntax::lexer::is_ident;
 
 use super::Library;
 use crate::Session;
@@ -38,6 +39,16 @@ impl Session {
         }
         let name = std::path::absolute(dir).ok().and_then(|d| Some(d.file_name()?.to_str()?.to_owned()));
         let name = name.unwrap_or_else(|| template.to_owned());
+        if !is_ident(&name) {
+            let msg = Msg::new().code(&name).text(" cannot name a package");
+            let fitting = name.replace(|c: char| !c.is_ascii_alphanumeric() && c != '_', "_");
+            let help = if is_ident(&fitting) {
+                Msg::new().text("name the directory ").code(fitting)
+            } else {
+                Msg::new().text("name it with letters, digits and ").code("_")
+            };
+            return Err(self.diag.error(Diagnostic::error(errors::NEW_BAD_NAME, msg).help(help)));
+        }
         let rename = Rename { from: template, to: &name };
         let files = from.files().map_err(|e| self.diag.error(Diagnostic::unreadable(&from, &e)))?;
         let mut made = Vec::new();
