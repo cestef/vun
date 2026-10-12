@@ -35,6 +35,7 @@ The owner's queue:
 | [`open/backends.md`](open/backends.md) | wasm, targets, runtimes, boards (rp2350) |
 | [`open/language.md`](open/language.md) | typing gaps, evaluator, `vun-sema` refactor |
 | [`open/std.md`](open/std.md) | the library and the corpus |
+| [`open/ffi.md`](open/ffi.md) | C interop: what the binder, the linker and the runtimes lack |
 | [`open/testing.md`](open/testing.md) | properties, fuzzing, simulation, benchmarks |
 | [`open/performance.md`](open/performance.md) | compile speed |
 | [`open/packaging.md`](open/packaging.md) | releases, the store, components |

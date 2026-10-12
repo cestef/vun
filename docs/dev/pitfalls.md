@@ -36,9 +36,17 @@ Traps that cost a session before. Add one when it costs you time.
 
 - `unset CARGO_TARGET_DIR` if the shell inherits one: builds must go to the repository's
   `target/` (a second `jj` workspace needs its own). `cargo clean` after moving the repository.
-- `cargo gen` never depends on what it generates: change the source, run it, fix consumers.
+- `cargo gen` never depends on what it generates: change the source, run it, fix consumers. The
+  generator links `vun-syntax`, so a new error id that the lexer or parser reports cannot be named
+  there first: point the code at an existing id, run `cargo gen`, copy the generated directories
+  back (the run may be on a remote), then name the new id.
   Generated Vun is built with `vun_syntax::make`, never formatted as text.
 - `cargo fmt` rewraps code: edit scripts must assert their replacements applied.
+- A binary built on another host (`petal.wg` is x86-64 like the laptop) runs here after `rsync`, but
+  carries that host's checkout as its library path: run it with `VUN_LIBRARY=<workspace>/lib`.
+  That is how `vun util ffi bind` and the GTK example are tried against this machine's headers.
+- A fresh `jj workspace add` has no `corpus/planned` unless it is tracked (it is, with a README):
+  the repository scans of the tests fail on a missing directory.
 - `fuzz` is a workspace member (workspace lints, one lockfile); `cargo +nightly fuzz` still runs
   from `fuzz/` and builds into the root `target/`.
 - The machine's tools file (`tools.vun`) is read by every session that chooses a target, tests included (see
