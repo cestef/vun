@@ -30,7 +30,7 @@ CStr := struct {
     ptr := (self: &CStr) -> *u8 { self._bytes.ptr() };
 
     /// The text, without the zero byte.
-    text := (self: &CStr) -> &[u8] { self._bytes[0..self._bytes.len() - 1] };
+    text := (self: CStr) -> &[u8] { self._bytes[0..self._bytes.len() - 1] };
 };
 
 /// Why a text could not be made a string for C.
