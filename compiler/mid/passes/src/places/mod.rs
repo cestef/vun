@@ -6,6 +6,7 @@
 //! moves it, leaving its place `uninit`, and a function returns only with every linear place
 //! `uninit` (spec 05, section 1: kinds).
 
+mod context;
 mod leak;
 mod moved;
 mod parts;
@@ -20,7 +21,7 @@ use moved::Moved;
 use parts::Linear;
 use states::{State, States};
 use vun_codec::{Decode, Encode};
-use vun_diag::{DiagCtxt, DiagId, Diagnostic, Msg, errors};
+use vun_diag::{ChildKind, DiagCtxt, DiagId, Diagnostic, Msg, errors};
 use vun_index::IndexVec;
 use vun_intern::Symbol;
 use vun_mir::{BlockId, Body, Local, Mir, Operand, Role, Rvalue, TerminatorKind};
@@ -55,7 +56,7 @@ impl Query for Placed {
         let linear = linear.filter(|(_, d)| d.role == Role::Held).map(|(local, _)| local);
         let linear = Linear::find(cx, &body, linear.filter(|&l| l != body.ret));
         let moved = Moved::find(cx, &body, |l| linear.contains(l));
-        Some(Arc::new(Analysis::new(&body, linear, moved).run()))
+        Some(Arc::new(Analysis::new(&body, linear, moved, Self::context(i)).run()))
     }
 }
 
@@ -89,10 +90,17 @@ struct Analysis<'b> {
     reported: HashSet<(DiagId, OriginId)>,
     /// Whether transfers report what they find: only once the states are fixed.
     reporting: bool,
+    /// The instance the body is of, when it is generic: said in each report.
+    context: Option<Msg>,
 }
 
 impl<'b> Analysis<'b> {
-    fn new(body: &'b Body, linear: Linear, moved: Vec<(Option<Local>, OriginId)>) -> Self {
+    fn new(
+        body: &'b Body,
+        linear: Linear,
+        moved: Vec<(Option<Local>, OriginId)>,
+        context: Option<Msg>,
+    ) -> Self {
         let targets = body
             .params
             .iter()
@@ -111,6 +119,7 @@ impl<'b> Analysis<'b> {
             defers: BTreeMap::new(),
             reported: HashSet::new(),
             reporting: false,
+            context,
         }
     }
 
@@ -262,7 +271,11 @@ impl<'b> Analysis<'b> {
     /// Reports, with `help` on what to do.
     fn advise(&mut self, id: DiagId, origin: OriginId, msg: Msg, help: Msg) {
         if self.reporting && self.reported.insert((id, origin)) {
-            self.diag.error(Diagnostic::error(id, msg).at(origin, None).help(help));
+            let mut report = Diagnostic::error(id, msg).at(origin, None).help(help);
+            if let Some(context) = &self.context {
+                report = report.child(ChildKind::Note, context.clone());
+            }
+            self.diag.error(report);
         }
     }
 }

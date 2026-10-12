@@ -2,7 +2,7 @@
 //! tracked, linear values move, and `defer` runs where its operand is still held.
 
 use crate::common::Fixture;
-use vun_diag::{DiagId, errors};
+use vun_diag::{ChildKind, DiagId, Msg, errors};
 
 #[test]
 fn place_states_follow_writes_and_borrows() {
@@ -87,4 +87,25 @@ closed := () { { f := open(); close(f); } };
     let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::parse("std.lints.style.unused"));
     assert_eq!(lines, [leak, unused, leak, unused, leak], "{found:?}");
     assert!(found[0].1.contains("before its scope ends"), "{found:?}");
+}
+
+#[test]
+fn a_leak_in_a_generic_body_names_the_instance_it_is_in() {
+    let fixture = Fixture::new("places-instance");
+    let file = fixture.root.write(
+        "instance.vun",
+        "\
+File := #[kind.linear] struct { fd: u32 };
+keep := ($T: type, x: T) -> u32 { 1 };
+used := (f: File) -> u32 { keep(File, f) };
+",
+    );
+    let mut session = fixture.session();
+    let loaded = session.load(&file).unwrap();
+    session.check(loaded);
+    let found = session.diag.sorted(session.origins);
+    let leak = found.iter().find(|d| d.id == errors::PLACE_LINEAR_LEAK).expect("the parameter is leaked");
+    let notes: Vec<&Msg> =
+        leak.children.iter().filter(|c| c.kind == ChildKind::Note).map(|c| &c.msg).collect();
+    assert_eq!(notes, [&Msg::new().text("in ").code("keep").text(" for ").code_list(["File"])]);
 }
