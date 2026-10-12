@@ -65,6 +65,7 @@ mod settings;
 mod sim;
 mod staged;
 mod stdlib;
+mod system;
 mod templates;
 mod testing;
 mod typing;
