@@ -1,0 +1,8 @@
+//! A linear memory grows by pages (WebAssembly's `memory.grow`); the pages it had come back.
+
+start := std.os.start(main);
+
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    before := lang.mem.grow_memory(0);
+    if before == 0xffff_ffff { .code(1) } else { .ok }
+};

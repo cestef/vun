@@ -58,7 +58,9 @@ Pool := struct {
             if align > page { return .err(.exhausted); }
             if size > largest or align > largest {
                 address := reserve(pages(size));
-                return if failed(address) { .err(.exhausted) } else { .ok(unsafe lang.mem.pointer_at(u8, address)) };
+                return if failed(address) { .err(.exhausted) } else {
+                    .ok(unsafe lang.mem.pointer_at(u8, address))
+                };
             }
             index := Pool.class(size, align);
             head := self._free[index];
@@ -82,7 +84,13 @@ Pool := struct {
     /// Gives back what `take` gave for `size` and `align`: a block waits for the next of its size,
     /// pages go back to `unmap`.
     #[panic.never]
-    give := (self: &mut Pool, $unmap: #[panic.never] (address: usize, bytes: usize), p: *u8, size: usize, align: usize) {
+    give := (
+        self: &mut Pool,
+        $unmap: #[panic.never] (address: usize, bytes: usize),
+        p: *u8,
+        size: usize,
+        align: usize
+    ) {
         if size > largest or align > largest {
             unmap(p.address(), pages(size));
         } else {
@@ -99,7 +107,10 @@ held: std.sync.Shared(Pool) = .init(Pool.empty());
 /// The exports of a runtime whose heap is a pool over its pages: `heap := std.os.heap.pool.exports(
 /// reserve, unmap)`, `reserve` giving `bytes` of pages (0, or a system's error number, where it
 /// cannot) and `unmap` giving them back.
-exports := ($reserve: #[panic.never] (bytes: usize) -> usize, $unmap: #[panic.never] (address: usize, bytes: usize)) -> type { struct {
+exports := (
+    $reserve: #[panic.never] (bytes: usize) -> usize,
+    $unmap: #[panic.never] (address: usize, bytes: usize)
+) -> type { struct {
     #[link.export(std.os.heap.symbols.take), panic.never]
     take := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
         std.sync.critical(
