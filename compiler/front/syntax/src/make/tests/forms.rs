@@ -204,6 +204,7 @@ fn a_file_of_statements() {
     );
     let file = File {
         doc: vec![],
+        spreads: vec![],
         items: vec![
             Bind::new("main", Expr::Function(Function { params: vec![], result: None, body })).item(),
         ],

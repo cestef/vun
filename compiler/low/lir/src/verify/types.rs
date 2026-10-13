@@ -18,20 +18,23 @@ impl Checker<'_> {
         Scalar::int(self.unit.pointer_bits).unwrap_or(Scalar::I64)
     }
 
+    /// Whether an instruction giving `result` gives `ty`.
+    fn gives(at: Entity, result: Option<Scalar>, ty: Option<Scalar>) -> Result<(), Malformed> {
+        if result == ty {
+            Ok(())
+        } else {
+            Self::fail(
+                at,
+                Reason::Type { expected: ty.unwrap_or(Scalar::I8), found: result.unwrap_or(Scalar::I8) },
+            )
+        }
+    }
+
     pub(super) fn inst(&self, inst: Inst) -> Result<(), Malformed> {
         let at = Entity::Inst(self.id, inst);
         let data = &self.func.insts[inst];
         let result = data.result.map(|v| self.func.ty(v));
-        let gives = |ty: Option<Scalar>| {
-            if result == ty {
-                Ok(())
-            } else {
-                Self::fail(
-                    at,
-                    Reason::Type { expected: ty.unwrap_or(Scalar::I8), found: result.unwrap_or(Scalar::I8) },
-                )
-            }
-        };
+        let gives = |ty: Option<Scalar>| Self::gives(at, result, ty);
         match &data.kind {
             InstKind::Const { ty, bits } => {
                 let width = ty.bits(self.unit.pointer_bits);
@@ -86,8 +89,7 @@ impl Checker<'_> {
                 gives(Some(self.func.ty(*expected)))
             }
             InstKind::GrowMemory { pages } => {
-                self.expect(at, *pages, Scalar::I32)?;
-                gives(Some(Scalar::I32))
+                self.expect(at, *pages, Scalar::I32).and_then(|()| gives(Some(Scalar::I32)))
             }
             InstKind::Offset { base, offset } => {
                 self.expect(at, *base, Scalar::Ptr)?;

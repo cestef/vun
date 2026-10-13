@@ -22,6 +22,7 @@ fn made_items_print_as_the_parser_reads_them() {
     );
     let file = File {
         doc: vec!["Made.".to_owned()],
+        spreads: vec![],
         items: vec![
             Item {
                 doc: vec!["A point.".to_owned()],
