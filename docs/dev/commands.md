@@ -57,14 +57,16 @@ jj tag set 0.1.0 -r @-
 jj git push --tag 0.1.0
 ```
 
-`.github/workflows/release.yml` runs the checks, builds `vun` in the `dist` profile on each
+`.github/workflows/release.yml` runs the checks and, beside them, builds `vun` in the `dist` profile on each
 machine (`--no-default-features --features dist`: it links only what is not a component; Linux with
 `cargo zigbuild` against glibc 2.28, dynamically linked so that `vun util ffi bind` can load libclang),
 builds the component libraries (`cargo xtask components [--tool zigbuild] [--target <t>]`, from
 every crate with a `[package.metadata.vun-component] profile`), packs it with
 the library and each component beside it (`cargo xtask package <vun> <dir>`: `vun-<arch>-<os>.tar.gz`,
 `vun-<kind>-<id>-<arch>-<os>.tar.gz` for each component, and the build's record beside it), writes `release.json` (`cargo xtask release <dir> --tag
-<tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand.
+<tag>`, which fails when the tag is not the version) and makes a draft release to publish by hand, once both the checks and the builds have passed. The notes of the draft are
+`cliff.toml`'s (`git cliff --latest`): an install line, then the `feat`, `fix` and `perf` commits since the
+previous tag, so those types are the ones a user should read; the rest are left out.
 The same steps run on any machine; `VUN_RELEASES=file:///some/dir vun toolchain update` installs
 from a directory laid out as a forge's (`releases/download/<version>/`,
 `releases/latest/download/`), which is how installing is tried without a forge. `install.sh` at

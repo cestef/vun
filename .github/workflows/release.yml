@@ -1,7 +1,9 @@
 # A release of the toolchain (spec 12, section 6), made when a version is tagged (`0.4.2`, the
 # workspace's version as it is): the checks run, each machine's toolchain is built and packed by
 # `cargo xtask package` (with the libraries of its components, each an archive), `cargo xtask release` writes the manifest `vun toolchain install` reads,
-# and everything goes to a draft release, published by hand.
+# and everything goes to a draft release, published by hand. The checks and the builds run side by
+# side; the draft is made only when both pass. Its notes are `cliff.toml`'s, from the commits since
+# the previous tag.
 name: release
 
 on:
@@ -11,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
@@ -18,19 +24,19 @@ env:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: sudo apt-get update && sudo apt-get install -y clang lld gcc-arm-none-eabi libnewlib-arm-none-eabi
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang lld gcc-arm-none-eabi libnewlib-arm-none-eabi
       - run: cargo xtask check
       - run: cargo clippy --all-targets
       - run: cargo nextest run
 
   package:
-    needs: check
     strategy:
       matrix:
         include:
@@ -49,6 +55,7 @@ jobs:
             build: build
             glibc: ""
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
@@ -76,15 +83,23 @@ jobs:
           name: ${{ matrix.target }}
           path: dist/vun-*
           if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
 
   release:
-    needs: package
+    needs: [check, package]
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -105,6 +120,7 @@ jobs:
           for file in release.json SHA256SUMS; do
             openssl pkeyutl -sign -rawin -inkey "$key" -in "dist/$file" -out "dist/$file.sig"
           done
-      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" dist/*.tar.gz dist/release.json dist/release.json.sig dist/SHA256SUMS dist/SHA256SUMS.sig
+      - run: git cliff --latest --output notes.md
+      - run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md dist/*.tar.gz dist/release.json dist/release.json.sig dist/SHA256SUMS dist/SHA256SUMS.sig
         env:
           GH_TOKEN: ${{ github.token }}
