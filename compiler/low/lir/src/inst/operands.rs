@@ -18,6 +18,7 @@ macro_rules! inst_operands {
                 ([Some(a), Some(b), None], None, None)
             }
             InstKind::Cast { value, .. } => ([Some(value), None, None], None, None),
+            InstKind::GrowMemory { pages } => ([Some(pages), None, None], None, None),
             InstKind::Select { cond, then, otherwise } => {
                 ([Some(cond), Some(then), Some(otherwise)], None, None)
             }

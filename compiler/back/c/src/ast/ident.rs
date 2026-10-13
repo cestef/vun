@@ -31,6 +31,8 @@ pub enum Builtin {
     FetchOr,
     FetchXor,
     CompareExchange,
+    /// WebAssembly's `memory.grow`, whose first argument is the memory.
+    MemoryGrow,
     Order(Order),
 }
 
@@ -47,6 +49,7 @@ impl Builtin {
             Self::FetchOr => "__atomic_fetch_or",
             Self::FetchXor => "__atomic_fetch_xor",
             Self::CompareExchange => "__atomic_compare_exchange_n",
+            Self::MemoryGrow => "__builtin_wasm_memory_grow",
             Self::Order(Order::Relaxed) => "__ATOMIC_RELAXED",
             Self::Order(Order::Acquire) => "__ATOMIC_ACQUIRE",
             Self::Order(Order::Release) => "__ATOMIC_RELEASE",

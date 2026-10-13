@@ -187,6 +187,10 @@ impl Check<'_> {
                 self.pop_all(&[ValType::I32, mem.ty])?;
             }
             Op::MemoryCopy => self.pop_all(&[ValType::I32; 3])?,
+            Op::MemoryGrow => {
+                self.pop_all(&[ValType::I32])?;
+                self.push(ValType::I32);
+            }
             Op::I32Const(_) => self.push(ValType::I32),
             Op::I64Const(_) => self.push(ValType::I64),
             Op::F32Const(_) => self.push(ValType::F32),

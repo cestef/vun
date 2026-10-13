@@ -10,13 +10,7 @@ page_bits := 16;
 #[panic.never]
 map := (bytes: usize) -> usize {
     pages: u32 = ((bytes + page - 1).wrap(usize) >> page_bits).wrap(u32);
-    mut old: u32 = 0;
-    unsafe lang.arch.asm({
-        ..lang.arch.wasm32.names;
-        local_get(in(pages));
-        memory_grow();
-        local_set(out(old));
-    });
+    old := lang.mem.grow_memory(pages);
     if old == 0xffff_ffff { 0 } else { (old * 65536).wrap(usize) }
 };
 

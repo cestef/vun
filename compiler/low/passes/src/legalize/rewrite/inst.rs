@@ -194,6 +194,7 @@ impl Rewrite<'_> {
                     failure: *failure,
                 }
             }
+            InstKind::GrowMemory { pages } => InstKind::GrowMemory { pages: one(pages) },
             InstKind::Offset { base, offset } => InstKind::Offset { base: one(base), offset: one(offset) },
             InstKind::SlotAddr(slot) => InstKind::SlotAddr(*slot),
             InstKind::Addr(address) => InstKind::Addr(*address),

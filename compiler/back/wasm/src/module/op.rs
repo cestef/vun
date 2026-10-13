@@ -231,6 +231,8 @@ pub enum Op {
     Store(Mem),
     /// `memory.copy`: the destination, source and length popped.
     MemoryCopy,
+    /// `memory.grow`: the pages to add popped, the pages it had pushed.
+    MemoryGrow,
     I32Const(i32),
     I64Const(i64),
     F32Const(u32),

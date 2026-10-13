@@ -139,6 +139,7 @@ impl fmt::Display for InstKind {
             Self::CompareExchange { addr, expected, new, success, failure } => {
                 write!(f, "cmpxchg {success} {failure} {addr}, {expected}, {new}")
             }
+            Self::GrowMemory { pages } => write!(f, "grow_memory {pages}"),
             Self::Offset { base, offset } => write!(f, "offset {base}, {offset}"),
             Self::SlotAddr(slot) => write!(f, "addr {slot}"),
             Self::Addr(address) => write!(f, "addr {address}"),

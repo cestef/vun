@@ -112,6 +112,12 @@ impl FnLower<'_, '_, '_> {
                 let kind = InstKind::Rmw { op, addr, value, order };
                 self.b.push(kind, Some(scalar), self.at).expect("an exchange gives what was held")
             }
+            Mem::grow_memory => {
+                let pages = self.int_operand(arg(0)?, Scalar::I32)?;
+                self.b
+                    .push(InstKind::GrowMemory { pages }, Some(Scalar::I32), self.at)
+                    .expect("growing gives the pages before")
+            }
             Mem::atomic_compare_swap => {
                 let (expected, new) =
                     (self.scalar_operand_as(arg(1)?, ty)?, self.scalar_operand_as(arg(2)?, ty)?);

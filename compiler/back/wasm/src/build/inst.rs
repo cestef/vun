@@ -58,6 +58,10 @@ impl Lower<'_> {
                 self.exchange(addr, expected, new, r).map_err(|m| m.at(at))?;
                 return Ok(());
             }
+            InstKind::GrowMemory { pages } => {
+                self.get(pages);
+                self.op(Op::MemoryGrow);
+            }
             InstKind::Offset { base, offset } => {
                 self.get(base);
                 self.get(offset);

@@ -29,6 +29,7 @@ impl Lower<'_, '_> {
                 self.store(self.get(*value), self.get(*addr), *access);
                 None
             }
+            InstKind::GrowMemory { .. } => return Err(Missing::LinearMemory.at(at)),
             InstKind::Rmw { op, addr, value, .. } => {
                 let ty = self.ty(f.ty(*value), at)?;
                 let op = Self::rmw(*op);

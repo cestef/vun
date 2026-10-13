@@ -102,6 +102,7 @@ impl Body<'_> {
                 out.uleb(u64::from(mem.bytes.trailing_zeros()));
                 out.uleb(0);
             }
+            Op::MemoryGrow => out.bytes(&[0x40, 0]),
             Op::MemoryCopy => {
                 out.u8(0xfc);
                 out.uleb(10);

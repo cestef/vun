@@ -32,6 +32,9 @@ pub enum InstKind {
     Rmw { op: RmwOp, addr: Value, value: Value, order: Order },
     /// Writes `new` at `addr` when it holds `expected`, atomically; gives what it held before.
     CompareExchange { addr: Value, expected: Value, new: Value, success: Order, failure: Order },
+    /// Grows the linear memory by `pages` pages of 65536 bytes, an `i32`: gives the pages it had
+    /// before, or `0xffff_ffff` where it cannot grow. Only a target with a linear memory has it.
+    GrowMemory { pages: Value },
     /// The address `offset` bytes, an integer of the address's width, past `base`.
     Offset { base: Value, offset: Value },
     /// The address of a stack slot.
@@ -275,6 +278,7 @@ impl InstKind {
             | Self::Rmw { .. }
             | Self::CompareExchange { .. }
             | Self::Copy { .. }
+            | Self::GrowMemory { .. }
             | Self::Call { .. }
             | Self::Asm(..) => true,
             Self::Load { access, .. } => *access != Access::Plain,

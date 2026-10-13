@@ -8,7 +8,7 @@ use super::Emitter;
 use crate::ast::{Attribute, Decl, Duration, Ident, Item, Storage, Ty};
 
 /// The object format whose imports name the module they come from.
-const WASM: Name = Name("wasm");
+pub(super) const WASM: Name = Name("wasm");
 
 impl Emitter<'_> {
     pub(super) fn import(&mut self, import: &Import) -> Result<Item, Lack> {

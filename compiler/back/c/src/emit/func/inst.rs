@@ -56,6 +56,17 @@ impl FnEmit<'_, '_> {
                 self.body.push(stmt);
                 return Ok(());
             }
+            &InstKind::GrowMemory { pages } => {
+                if !super::super::import::WASM.is(self.e.target.object_format) {
+                    return Err(Missing::LinearMemory.at(at));
+                }
+                self.e.builtins.insert(Builtin::MemoryGrow);
+                let memory = Expr::Small(0);
+                Expr::Call(
+                    Box::new(Expr::Name(Ident::Builtin(Builtin::MemoryGrow))),
+                    vec![memory, self.operand(pages)],
+                )
+            }
             &InstKind::Rmw { op, addr, value, order } => {
                 let ty = self.e.scalar(func.ty(value), at)?;
                 let builtin = match op {

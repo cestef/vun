@@ -166,6 +166,7 @@ impl<'a> Look<'_, 'a> {
                 let chosen = if self.0.imm(offset).is_some() { ADD } else { ADDRESS_SUM };
                 snippet(chosen, &[base, offset], Size::B64, None)
             }
+            InstKind::GrowMemory { .. } => return Err(self.0.lack(Missing::LinearMemory)),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
             InstKind::Asm(asm, check) => {
                 asm.check::<X86>()?;

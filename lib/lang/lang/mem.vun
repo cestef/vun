@@ -94,6 +94,12 @@ volatile_store: unsafe ($T: type, p: *T, value: T) = _;
 /// How an atomic access orders the accesses around it, as C11 defines the orders.
 Order := enum { relaxed, acquire, release, acq_rel, seq_cst };
 
+/// Grows the linear memory of a program by `pages` pages of 65536 bytes, on a target that has one
+/// (WebAssembly): the number of pages it had before, or `0xffff_ffff` where it cannot grow. A backend
+/// of another target cannot express it.
+#[panic.never]
+grow_memory: (pages: u32) -> u32 = _;
+
 /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
 /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
 /// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs

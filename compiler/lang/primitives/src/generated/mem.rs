@@ -68,6 +68,10 @@ pub enum Mem {
     fill,
     volatile_load,
     volatile_store,
+    /// Grows the linear memory of a program by `pages` pages of 65536 bytes, on a target that has one
+    /// (WebAssembly): the number of pages it had before, or `0xffff_ffff` where it cannot grow. A backend
+    /// of another target cannot express it.
+    grow_memory,
     /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
     /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
     /// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs
@@ -115,6 +119,7 @@ impl Mem {
         Self::fill,
         Self::volatile_load,
         Self::volatile_store,
+        Self::grow_memory,
         Self::atomic_load,
         Self::atomic_store,
         Self::atomic_swap,
@@ -158,6 +163,7 @@ impl Mem {
             Self::fill => "fill",
             Self::volatile_load => "volatile_load",
             Self::volatile_store => "volatile_store",
+            Self::grow_memory => "grow_memory",
             Self::atomic_load => "atomic_load",
             Self::atomic_store => "atomic_store",
             Self::atomic_swap => "atomic_swap",
@@ -202,6 +208,7 @@ impl Mem {
             Self::fill => vun_items::lang::mem::fill,
             Self::volatile_load => vun_items::lang::mem::volatile_load,
             Self::volatile_store => vun_items::lang::mem::volatile_store,
+            Self::grow_memory => vun_items::lang::mem::grow_memory,
             Self::atomic_load => vun_items::lang::mem::atomic_load,
             Self::atomic_store => vun_items::lang::mem::atomic_store,
             Self::atomic_swap => vun_items::lang::mem::atomic_swap,

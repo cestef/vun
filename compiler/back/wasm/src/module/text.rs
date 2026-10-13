@@ -67,6 +67,7 @@ impl fmt::Display for Text<'_> {
                 f.write_str(if matches!(self.op, Op::Load(_)) { load.mnemonic } else { store.mnemonic })
             }
             Op::MemoryCopy => f.write_str("memory.copy"),
+            Op::MemoryGrow => f.write_str("memory.grow"),
             Op::I32Const(v) => write!(f, "i32.const {v}"),
             Op::I64Const(v) => write!(f, "i64.const {v}"),
             Op::F32Const(bits) => write!(f, "f32.const {}", f32::from_bits(*bits)),

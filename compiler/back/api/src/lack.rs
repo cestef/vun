@@ -20,6 +20,8 @@ pub enum Missing {
     /// Floating-point values.
     Float,
     Atomic,
+    /// A linear memory the program grows, which only WebAssembly has.
+    LinearMemory,
     /// A C record passed or returned by value.
     Record,
     /// A signature the backend would place differently from the target's convention.
@@ -117,6 +119,7 @@ impl Missing {
             Missing::Half => Msg::new().code("f16"),
             Missing::Float => Msg::new().text("floating-point values"),
             Missing::Atomic => Msg::new().text("atomic memory access"),
+            Missing::LinearMemory => Msg::new().text("growing a linear memory"),
             Missing::Record => Msg::new().text("C records passed by value"),
             Missing::Placement => {
                 Msg::new().text("this signature placed as the target's convention places it")

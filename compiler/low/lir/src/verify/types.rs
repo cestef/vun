@@ -85,6 +85,10 @@ impl Checker<'_> {
                 self.expect(at, *new, self.func.ty(*expected))?;
                 gives(Some(self.func.ty(*expected)))
             }
+            InstKind::GrowMemory { pages } => {
+                self.expect(at, *pages, Scalar::I32)?;
+                gives(Some(Scalar::I32))
+            }
             InstKind::Offset { base, offset } => {
                 self.expect(at, *base, Scalar::Ptr)?;
                 self.expect(at, *offset, self.word())?;

@@ -190,6 +190,7 @@ impl<'a> Look<'_, 'a> {
                 Selection::CompareExchange { addr, expected, new, size: Size::B32 }
             }
             &InstKind::Offset { base, offset } => snippet(ADD, &[base, offset], Size::B32, None),
+            InstKind::GrowMemory { .. } => return Err(self.0.lack(Missing::LinearMemory)),
             &InstKind::Copy { to, from, bytes } => Selection::Copy { to, from, bytes },
             InstKind::Asm(asm, check) => {
                 asm.check::<Thumb2>()?;

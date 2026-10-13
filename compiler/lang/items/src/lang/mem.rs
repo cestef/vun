@@ -80,6 +80,10 @@ pub const volatile_load: Item = Item::new(&["lang", "mem", "volatile_load"]);
 pub const volatile_store: Item = Item::new(&["lang", "mem", "volatile_store"]);
 /// How an atomic access orders the accesses around it, as C11 defines the orders.
 pub const Order: Item = Item::new(&["lang", "mem", "Order"]);
+/// Grows the linear memory of a program by `pages` pages of 65536 bytes, on a target that has one
+/// (WebAssembly): the number of pages it had before, or `0xffff_ffff` where it cannot grow. A backend
+/// of another target cannot express it.
+pub const grow_memory: Item = Item::new(&["lang", "mem", "grow_memory"]);
 /// Atomic accesses to what `p` points to, which must be aligned for `T` and accessed atomically
 /// only while shared (spec 05, section 5). The read-modify-write ones return the value held
 /// before; `atomic_add` and `atomic_sub` wrap within `T`. An integer wider than an address runs

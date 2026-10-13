@@ -162,9 +162,24 @@ main := (sys: &mut std.os.System) -> std.os.Exit {
 #[test]
 fn a_runtime_without_a_c_library_has_a_heap_over_its_pages() {
     let cross = [targets::wasi_wasm32::p1, targets::windows_x86_64::msvc];
-    // WASI grows its memory by an instruction the C backend has no inline assembly for.
-    let status = crate::backend::status_where("heap-pooled", POOLED, &cross, |backend| {
-        backend.info().id != vun_backend_c::INFO.id
-    });
-    assert_eq!(status, Some(3));
+    assert_eq!(crate::backend::status_on("heap-pooled", POOLED, &cross), Some(3));
+}
+
+/// A program growing the linear memory, which only WebAssembly has.
+const GROWS: &str = "\
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    .code(if lang.mem.grow_memory(1) == 0xffff_ffff { 1 } else { 2 })
+};
+";
+
+#[test]
+fn growing_a_linear_memory_is_refused_where_there_is_none() {
+    let fixture = Fixture::new("grow-memory");
+    let path = fixture.root.write("main.vun", GROWS);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::kernel);
+    let file = session.load(&path).unwrap();
+    assert!(session.build(file, None).is_err());
+    assert_eq!(session.diag.first_error().map(|d| d.id), Some(errors::BACKEND_LACKS));
 }
