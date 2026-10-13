@@ -18,5 +18,3 @@ pub const symbol: Item = Item::new(&["std", "os", "library", "symbol"]);
 pub const unload: Item = Item::new(&["std", "os", "library", "unload"]);
 /// A library loaded for as long as the value lives, until `close`.
 pub const Library: Item = Item::new(&["std", "os", "library", "Library"]);
-/// The exports of a runtime whose system loads no library: a program built with it loads none.
-pub const unsupported: Item = Item::new(&["std", "os", "library", "unsupported"]);

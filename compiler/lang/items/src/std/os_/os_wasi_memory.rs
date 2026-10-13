@@ -9,6 +9,8 @@
 use crate::Item;
 /// The bytes of a page of linear memory, which grows by whole pages.
 pub const page: Item = Item::new(&["std", "os", "wasi", "memory", "page"]);
+/// The bits of a byte's offset in a page.
+pub const page_bits: Item = Item::new(&["std", "os", "wasi", "memory", "page_bits"]);
 /// `bytes` of linear memory more, in whole pages, the engine backing them where they are touched;
 /// 0 where the memory cannot grow.
 pub const map: Item = Item::new(&["std", "os", "wasi", "memory", "map"]);

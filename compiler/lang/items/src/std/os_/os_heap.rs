@@ -7,6 +7,11 @@
 )]
 #![allow(clippy::doc_markdown, reason = "the docs are the Vun sources', not Rust's")]
 use crate::Item;
+/// A heap over the pages a system gives, for a runtime that has no heap of its own (spec 08,
+/// section 2): what is asked for up to `largest` bytes is a block of a power of two, cut from a
+/// chunk of pages and kept on a list of its size when given back; more is pages of its own.
+/// `exports` is the runtime's heap, one `Pool` held in the critical section, so nothing here traps.
+pub const pool: Item = Item::new(&["std", "os", "heap", "pool"]);
 /// The link symbols of this namespace's declarations, which a runtime exports.
 pub const symbols: Item = Item::new(&["std", "os", "heap", "symbols"]);
 /// `size` bytes aligned to `align`, a power of two.
@@ -15,5 +20,3 @@ pub const take: Item = Item::new(&["std", "os", "heap", "take"]);
 pub const give: Item = Item::new(&["std", "os", "heap", "give"]);
 /// The runtime's heap as an allocator.
 pub const Heap: Item = Item::new(&["std", "os", "heap", "Heap"]);
-/// The exports of a runtime with no heap: a program built with it gets none.
-pub const unsupported: Item = Item::new(&["std", "os", "heap", "unsupported"]);

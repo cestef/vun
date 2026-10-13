@@ -32,7 +32,6 @@ pub const sleep: Item = Item::new(&["std", "os", "wasi", "start", "sleep"]);
 pub const spawn: Item = Item::new(&["std", "os", "wasi", "start", "spawn"]);
 /// No thread was started to join.
 pub const join: Item = Item::new(&["std", "os", "wasi", "start", "join"]);
-pub const library: Item = Item::new(&["std", "os", "wasi", "start", "library"]);
 pub const heap: Item = Item::new(&["std", "os", "wasi", "start", "heap"]);
 pub const env: Item = Item::new(&["std", "os", "wasi", "start", "env"]);
 pub const pages: Item = Item::new(&["std", "os", "wasi", "start", "pages"]);

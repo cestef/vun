@@ -31,9 +31,6 @@ pub const leave: Item = Item::new(&["std", "os", "linux", "kernel", "start", "le
 /// signal handler, and nothing is missed between an executor's check and its sleep.
 pub const sleep: Item = Item::new(&["std", "os", "linux", "kernel", "start", "sleep"]);
 pub const memory: Item = Item::new(&["std", "os", "linux", "kernel", "start", "memory"]);
-pub const library: Item = Item::new(
-    &["std", "os", "linux", "kernel", "start", "library"],
-);
 pub const heap: Item = Item::new(&["std", "os", "linux", "kernel", "start", "heap"]);
 pub const env: Item = Item::new(&["std", "os", "linux", "kernel", "start", "env"]);
 pub const division: Item = Item::new(

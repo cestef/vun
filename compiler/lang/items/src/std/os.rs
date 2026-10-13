@@ -15,8 +15,8 @@ pub const error: Item = Item::new(&["std", "os", "error"]);
 /// Files a hosted program opens through its `std.os.System` (spec 08, section 2).
 pub const file: Item = Item::new(&["std", "os", "file"]);
 /// The heap of a hosted program (spec 08, section 2): memory a runtime that has one gives and
-/// takes back by size and alignment. `Heap` is the allocator over it; a runtime without one
-/// gives none, `.exhausted`.
+/// takes back by size and alignment. `Heap` is the allocator over it. A runtime over the C library
+/// calls `malloc`; one without a C library keeps a pool over its pages (`std.os.heap.pool`).
 pub const heap: Item = Item::new(&["std", "os", "heap"]);
 /// A runtime on top of the C library: exports C `main`, the trap handler, the critical section
 /// and the executors' sleep, and reaches the system through the C library's functions (spec 08,
