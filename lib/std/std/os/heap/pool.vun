@@ -103,7 +103,6 @@ exports := ($reserve: #[panic.never] (bytes: usize) -> usize, $unmap: #[panic.ne
     #[link.export(std.os.heap.symbols.take), panic.never]
     take := (size: usize, align: usize) -> Result(*u8, std.mem.alloc.Error) {
         std.sync.critical(
-            #[panic.never]
             [size, align] (cs: &temp std.sync.Critical) -> Result(*u8, std.mem.alloc.Error) {
                 mut pool := held.get(cs);
                 taken := pool.take(reserve, size, align);
@@ -116,7 +115,6 @@ exports := ($reserve: #[panic.never] (bytes: usize) -> usize, $unmap: #[panic.ne
     #[link.export(std.os.heap.symbols.give), panic.never]
     give := (p: *u8, size: usize, align: usize) {
         std.sync.critical(
-            #[panic.never]
             [p, size, align] (cs: &temp std.sync.Critical) {
                 mut pool := held.get(cs);
                 pool.give(unmap, p, size, align);
