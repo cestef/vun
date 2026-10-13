@@ -81,3 +81,15 @@ LIMIT := -16;
     );
     read(&text);
 }
+
+#[test]
+fn a_file_spreads_namespaces_before_its_items() {
+    let file = File {
+        doc: vec!["Spread.".to_owned()],
+        spreads: vec![vec!["app".to_owned(), "sys".to_owned(), "glib".to_owned()]],
+        items: vec![item("one", Expr::int(1))],
+    };
+    let text = file.source();
+    assert_eq!(text, "//! Spread.\n\n..app.sys.glib;\n\none := 1;\n");
+    read(&text);
+}
