@@ -56,17 +56,7 @@ impl FnEmit<'_, '_> {
                 self.body.push(stmt);
                 return Ok(());
             }
-            &InstKind::GrowMemory { pages } => {
-                if !super::super::import::WASM.is(self.e.target.object_format) {
-                    return Err(Missing::LinearMemory.at(at));
-                }
-                self.e.builtins.insert(Builtin::MemoryGrow);
-                let memory = Expr::Small(0);
-                Expr::Call(
-                    Box::new(Expr::Name(Ident::Builtin(Builtin::MemoryGrow))),
-                    vec![memory, self.operand(pages)],
-                )
-            }
+            &InstKind::GrowMemory { pages } => self.grow_memory(pages, at)?,
             &InstKind::Rmw { op, addr, value, order } => {
                 let ty = self.e.scalar(func.ty(value), at)?;
                 let builtin = match op {
@@ -125,6 +115,16 @@ impl FnEmit<'_, '_> {
             self.define(result, value);
         }
         Ok(())
+    }
+
+    /// WebAssembly's `memory.grow` of the one memory, on a target that has it.
+    fn grow_memory(&mut self, pages: Value, at: vun_origin::OriginId) -> Result<Expr, Lack> {
+        if !super::super::import::WASM.is(self.e.target.object_format) {
+            return Err(Missing::LinearMemory.at(at));
+        }
+        self.e.builtins.insert(Builtin::MemoryGrow);
+        let grow = Expr::Name(Ident::Builtin(Builtin::MemoryGrow));
+        Ok(Expr::Call(Box::new(grow), vec![Expr::Small(0), self.operand(pages)]))
     }
 
     /// A call of the atomic `builtin` with `args` then `orders`, when the target's C compiler
