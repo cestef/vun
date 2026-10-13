@@ -1230,7 +1230,7 @@ checksum = "b8c0a043c9540bae7c578c88f91dda8bd82e59ae27c21baca69c8b191aaf5a6e"
 
 [[package]]
 name = "vun-abi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-fs",
  "vun-lir",
@@ -1239,7 +1239,7 @@ dependencies = [
 
 [[package]]
 name = "vun-asm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-inline",
@@ -1249,7 +1249,7 @@ dependencies = [
 
 [[package]]
 name = "vun-asm-arm64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "vun-asm-thumb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1277,7 +1277,7 @@ dependencies = [
 
 [[package]]
 name = "vun-asm-x86_64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1290,7 +1290,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1309,7 +1309,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-c"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1334,7 +1334,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-codec",
@@ -1352,7 +1352,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-cranelift"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
@@ -1379,7 +1379,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-external"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-lir",
@@ -1389,7 +1389,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-llvm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-lir",
@@ -1399,7 +1399,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-native"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-asm",
  "vun-asm-arm64",
@@ -1423,7 +1423,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-qbe"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-lir",
@@ -1433,7 +1433,7 @@ dependencies = [
 
 [[package]]
 name = "vun-backend-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-bytes",
@@ -1456,7 +1456,7 @@ dependencies = [
 
 [[package]]
 name = "vun-bind"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-binder",
  "vun-clang",
@@ -1468,7 +1468,7 @@ dependencies = [
 
 [[package]]
 name = "vun-binder"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -1477,7 +1477,7 @@ dependencies = [
 
 [[package]]
 name = "vun-build"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64",
  "etcetera",
@@ -1503,11 +1503,11 @@ dependencies = [
 
 [[package]]
 name = "vun-bytes"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-campaign"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-driver",
  "vun-fs",
@@ -1516,14 +1516,14 @@ dependencies = [
 
 [[package]]
 name = "vun-clang"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clang-sys",
 ]
 
 [[package]]
 name = "vun-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "mimalloc",
  "vun-backend",
@@ -1565,7 +1565,7 @@ dependencies = [
 
 [[package]]
 name = "vun-codec"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-codec-derive",
@@ -1574,14 +1574,14 @@ dependencies = [
 
 [[package]]
 name = "vun-codec-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-derive-core",
 ]
 
 [[package]]
 name = "vun-codegen"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -1599,7 +1599,7 @@ dependencies = [
 
 [[package]]
 name = "vun-command"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-data",
@@ -1614,7 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libloading",
  "vun-codec",
@@ -1625,7 +1625,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-backend-c"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-backend-c",
@@ -1635,7 +1635,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-backend-cranelift"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-backend-component",
@@ -1645,7 +1645,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-backend-native"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-backend-component",
@@ -1655,7 +1655,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-backend-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-backend",
  "vun-backend-component",
@@ -1665,7 +1665,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-binder-c"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bind",
  "vun-binder",
@@ -1674,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-documenter-html"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-doc",
@@ -1683,7 +1683,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-formatter-vun"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-fmt",
@@ -1692,7 +1692,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-ar"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-gnu"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1712,7 +1712,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-lld"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1722,7 +1722,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-mold"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1732,7 +1732,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1742,7 +1742,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-link-wild"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-link",
@@ -1752,7 +1752,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-renderer-ariadne"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-diag",
@@ -1762,7 +1762,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-renderer-sarif"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-diag",
@@ -1772,7 +1772,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-renderer-terminal"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-diag",
@@ -1782,7 +1782,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-scheme-https"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-component",
  "vun-fetch",
@@ -1792,7 +1792,7 @@ dependencies = [
 
 [[package]]
 name = "vun-component-server-lsp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-command",
  "vun-component",
@@ -1805,25 +1805,25 @@ dependencies = [
 
 [[package]]
 name = "vun-data"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-data-derive",
 ]
 
 [[package]]
 name = "vun-data-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-derive-core",
 ]
 
 [[package]]
 name = "vun-derive-core"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-desugar"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-codec",
@@ -1833,7 +1833,7 @@ dependencies = [
 
 [[package]]
 name = "vun-diag"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-intern",
@@ -1845,7 +1845,7 @@ dependencies = [
 
 [[package]]
 name = "vun-disasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-elf",
  "vun-pe",
@@ -1856,7 +1856,7 @@ dependencies = [
 
 [[package]]
 name = "vun-doc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pulldown-cmark",
  "vun-component",
@@ -1872,7 +1872,7 @@ dependencies = [
 
 [[package]]
 name = "vun-documenter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -1881,7 +1881,7 @@ dependencies = [
 
 [[package]]
 name = "vun-driver"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "vun-asm",
@@ -1986,7 +1986,7 @@ dependencies = [
 
 [[package]]
 name = "vun-dwarf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-bytes",
@@ -1996,14 +1996,14 @@ dependencies = [
 
 [[package]]
 name = "vun-elf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
 ]
 
 [[package]]
 name = "vun-fetch"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "flate2",
  "lzma-rs",
@@ -2016,7 +2016,7 @@ dependencies = [
 
 [[package]]
 name = "vun-fmt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-formatter",
@@ -2031,7 +2031,7 @@ dependencies = [
 
 [[package]]
 name = "vun-formatter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -2040,14 +2040,14 @@ dependencies = [
 
 [[package]]
 name = "vun-fs"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "memmap2",
 ]
 
 [[package]]
 name = "vun-fuzz"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "libfuzzer-sys",
  "vun-diag",
@@ -2076,7 +2076,7 @@ dependencies = [
 
 [[package]]
 name = "vun-generate"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -2097,7 +2097,7 @@ dependencies = [
 
 [[package]]
 name = "vun-grammar"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-codec",
@@ -2105,18 +2105,18 @@ dependencies = [
 
 [[package]]
 name = "vun-graph"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-harness"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-fs",
 ]
 
 [[package]]
 name = "vun-hash"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "blake3",
  "foldhash",
@@ -2128,7 +2128,7 @@ dependencies = [
 
 [[package]]
 name = "vun-hir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "num-bigint",
@@ -2154,11 +2154,11 @@ dependencies = [
 
 [[package]]
 name = "vun-html"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-http"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ureq",
  "vun-fetch",
@@ -2168,14 +2168,14 @@ dependencies = [
 
 [[package]]
 name = "vun-index"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
 ]
 
 [[package]]
 name = "vun-inline"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-diag",
@@ -2187,7 +2187,7 @@ dependencies = [
 
 [[package]]
 name = "vun-intern"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-hash",
@@ -2196,7 +2196,7 @@ dependencies = [
 
 [[package]]
 name = "vun-interp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-desugar",
  "vun-diag",
@@ -2210,7 +2210,7 @@ dependencies = [
 
 [[package]]
 name = "vun-isa"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-inline",
@@ -2221,7 +2221,7 @@ dependencies = [
 
 [[package]]
 name = "vun-isa-arm64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
@@ -2231,7 +2231,7 @@ dependencies = [
 
 [[package]]
 name = "vun-isa-thumb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
@@ -2241,7 +2241,7 @@ dependencies = [
 
 [[package]]
 name = "vun-isa-wasm32"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
@@ -2251,7 +2251,7 @@ dependencies = [
 
 [[package]]
 name = "vun-isa-x86_64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-inline",
  "vun-isa",
@@ -2261,7 +2261,7 @@ dependencies = [
 
 [[package]]
 name = "vun-items"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-grammar",
@@ -2270,7 +2270,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-diag",
@@ -2281,7 +2281,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-ar"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-link",
@@ -2292,7 +2292,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -2304,7 +2304,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-external"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-link",
  "vun-target",
@@ -2312,7 +2312,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-gnu"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-fs",
@@ -2326,7 +2326,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-lld"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-intern",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-mold"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-link",
@@ -2349,7 +2349,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-msvc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-link",
  "vun-target",
@@ -2357,7 +2357,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
  "vun-diag",
@@ -2372,7 +2372,7 @@ dependencies = [
 
 [[package]]
 name = "vun-link-wild"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-fs",
@@ -2384,7 +2384,7 @@ dependencies = [
 
 [[package]]
 name = "vun-lir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-diag",
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "vun-lir-passes"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-codec",
@@ -2424,14 +2424,14 @@ dependencies = [
 
 [[package]]
 name = "vun-literal-derive"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-derive-core",
 ]
 
 [[package]]
 name = "vun-lower"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-desugar",
@@ -2461,7 +2461,7 @@ dependencies = [
 
 [[package]]
 name = "vun-lsp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-build",
  "vun-command",
@@ -2483,7 +2483,7 @@ dependencies = [
 
 [[package]]
 name = "vun-lsp-protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-data",
  "vun-uri",
@@ -2492,7 +2492,7 @@ dependencies = [
 
 [[package]]
 name = "vun-mir"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-desugar",
@@ -2517,7 +2517,7 @@ dependencies = [
 
 [[package]]
 name = "vun-mir-passes"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-desugar",
@@ -2536,7 +2536,7 @@ dependencies = [
 
 [[package]]
 name = "vun-native"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -2558,7 +2558,7 @@ dependencies = [
 
 [[package]]
 name = "vun-native-arm64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -2577,7 +2577,7 @@ dependencies = [
 
 [[package]]
 name = "vun-native-thumb"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -2594,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "vun-native-x86_64"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-abi",
  "vun-asm",
@@ -2611,7 +2611,7 @@ dependencies = [
 
 [[package]]
 name = "vun-object"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
  "vun-codec",
@@ -2622,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "vun-origin"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "boxcar",
  "papaya",
@@ -2635,11 +2635,11 @@ dependencies = [
 
 [[package]]
 name = "vun-outline"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-par"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "papaya",
@@ -2650,7 +2650,7 @@ dependencies = [
 
 [[package]]
 name = "vun-pass"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-graph",
@@ -2659,14 +2659,14 @@ dependencies = [
 
 [[package]]
 name = "vun-pe"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
 ]
 
 [[package]]
 name = "vun-primitives"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-codec",
@@ -2676,7 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "vun-profile"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-build",
  "vun-data",
@@ -2691,7 +2691,7 @@ dependencies = [
 
 [[package]]
 name = "vun-query"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arc-swap",
  "boxcar",
@@ -2709,7 +2709,7 @@ dependencies = [
 
 [[package]]
 name = "vun-reduce"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-fmt",
@@ -2723,7 +2723,7 @@ dependencies = [
 
 [[package]]
 name = "vun-regalloc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-index",
  "vun-intern",
@@ -2734,7 +2734,7 @@ dependencies = [
 
 [[package]]
 name = "vun-render-annotate"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "annotate-snippets",
  "vun-diag",
@@ -2745,7 +2745,7 @@ dependencies = [
 
 [[package]]
 name = "vun-render-ariadne"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ariadne",
  "vun-diag",
@@ -2756,7 +2756,7 @@ dependencies = [
 
 [[package]]
 name = "vun-render-json"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-data",
  "vun-diag",
@@ -2766,7 +2766,7 @@ dependencies = [
 
 [[package]]
 name = "vun-render-sarif"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-data",
  "vun-diag",
@@ -2777,7 +2777,7 @@ dependencies = [
 
 [[package]]
 name = "vun-render-short"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-origin",
@@ -2787,7 +2787,7 @@ dependencies = [
 
 [[package]]
 name = "vun-renderer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -2801,7 +2801,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sanitize"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-hir",
  "vun-intern",
@@ -2814,7 +2814,7 @@ dependencies = [
 
 [[package]]
 name = "vun-scheme-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-component",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "num-bigint",
@@ -2853,7 +2853,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-asm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-diag",
@@ -2877,7 +2877,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-check"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-grammar",
@@ -2899,7 +2899,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-float"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-sema-int",
@@ -2907,7 +2907,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-int"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "num-bigint",
  "vun-codec",
@@ -2917,7 +2917,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-lint"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-desugar",
  "vun-diag",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-plan"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-hir",
@@ -2952,7 +2952,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-ty"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "foldhash",
  "vun-codec",
@@ -2974,7 +2974,7 @@ dependencies = [
 
 [[package]]
 name = "vun-sema-typeck"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-desugar",
@@ -2997,7 +2997,7 @@ dependencies = [
 
 [[package]]
 name = "vun-server"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-command",
@@ -3008,7 +3008,7 @@ dependencies = [
 
 [[package]]
 name = "vun-smith"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "num-bigint",
  "vun-diag",
@@ -3023,7 +3023,7 @@ dependencies = [
 
 [[package]]
 name = "vun-span"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "boxcar",
  "vun-codec",
@@ -3035,11 +3035,11 @@ dependencies = [
 
 [[package]]
 name = "vun-suggest"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "vun-syntax"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "num-bigint",
@@ -3059,7 +3059,7 @@ dependencies = [
 
 [[package]]
 name = "vun-target"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-data",
@@ -3069,7 +3069,7 @@ dependencies = [
 
 [[package]]
 name = "vun-term"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anstyle",
  "vun-data",
@@ -3077,7 +3077,7 @@ dependencies = [
 
 [[package]]
 name = "vun-tool"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-diag",
  "vun-intern",
@@ -3085,7 +3085,7 @@ dependencies = [
 
 [[package]]
 name = "vun-trace"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "boxcar",
  "foldhash",
@@ -3098,21 +3098,21 @@ dependencies = [
 
 [[package]]
 name = "vun-tree-sitter"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-data",
 ]
 
 [[package]]
 name = "vun-uf2"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
 ]
 
 [[package]]
 name = "vun-uri"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-codec",
  "vun-data",
@@ -3120,21 +3120,21 @@ dependencies = [
 
 [[package]]
 name = "vun-variants"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-derive-core",
 ]
 
 [[package]]
 name = "vun-wasm"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-bytes",
 ]
 
 [[package]]
 name = "vun-xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "vun-build",
  "vun-command",
