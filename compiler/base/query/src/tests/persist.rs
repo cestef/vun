@@ -3,6 +3,7 @@
 use vun_codec::{Blob, Decode};
 
 use super::Runs;
+use crate::db::Sharing;
 use crate::persist::Saved;
 use crate::{Census, Cx, Db, Query, Reuse, Unloaded};
 
@@ -63,6 +64,20 @@ fn saved_memos_are_reused_until_their_trace_changes() {
     assert_eq!(third.get::<Words>(&"a".into()), ["three"]);
     assert_eq!(Runs::<Words>::of(&third), 1);
     assert!(third.changed());
+}
+
+#[test]
+fn a_memo_computed_from_an_unset_input_is_recomputed_once_it_is_set_by_anyone() {
+    for sharing in [Sharing::Chosen, Sharing::Shared, Sharing::Own] {
+        let first = Db::reusing(Reuse::Trust);
+        first.trace::<Source>();
+        first.persist::<Words>();
+        assert!(first.get::<Words>(&"a".into()).is_empty());
+        let second = persisting("");
+        second.set_as::<Source>(&"a".into(), "one two".into(), sharing);
+        second.load(first.save()).unwrap();
+        assert_eq!(second.get::<Words>(&"a".into()), ["one", "two"], "{sharing:?}");
+    }
 }
 
 #[test]

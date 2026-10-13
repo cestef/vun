@@ -12,7 +12,6 @@ use vun_intern::{Internable, Interned, Pool};
 
 use super::Query;
 use super::db::Db;
-use super::db::Sharing;
 use super::fingerprint::Fingerprint;
 use super::memo::Source;
 
@@ -81,7 +80,8 @@ impl Db {
     }
 
     /// Accounts for an input of `group` set, now `after`, having been `before`: what an input
-    /// adds to its group is its key and fingerprint, if it is set as shared.
+    /// adds to its group is its key and fingerprint, if it is set, whoever shares it: a memo read
+    /// it unset, or as a value another database does not hold, holds only while it stays so.
     pub(crate) fn regroup<Q: Query>(
         &self,
         key: &Q::Key,
@@ -89,8 +89,7 @@ impl Db {
         after: (Source, Fingerprint),
     ) {
         let part = |(source, fingerprint): (Source, Fingerprint)| {
-            matches!(source, Source::Set(sharing) if sharing != Sharing::Own)
-                .then(|| Fingerprint::of(&(Stable::of(key), fingerprint)))
+            matches!(source, Source::Set(_)).then(|| Fingerprint::of(&(Stable::of(key), fingerprint)))
         };
         let (out, into) = (before.and_then(part), part(after));
         if out != into {
