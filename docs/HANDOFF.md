@@ -14,7 +14,7 @@ were clean on am3. `0.2.0` is tagged but its release CI failed ([`open/packaging
 The causes are fixed in the working copy, not retagged.
 
 ## Next, in order
-1. Commit the working copy, retag `0.2.0` (stale `editors/*`, macOS `pgo` job: lld was missing).
+1. Retag `0.2.0` (editors regenerated, lld installed for the macOS `pgo` job) and watch the CI run.
 2. Check the cost of the stale-memo fix: `Groups::regroup` now counts own inputs
    ([`open/performance.md`](open/performance.md)); then drop `Session::untargeted` if it holds.
 3. Rerun the HIR `lower` fuzz target and the others on am3 (a stray attribute crash is fixed).
