@@ -77,8 +77,15 @@ impl Lowering<'_, '_> {
             self.int(n, int.bytes(0), &mut out.bytes, base);
             return Ok(());
         }
-        // A float is its bits, in the target's byte order.
+        // A float is its bits, in the target's byte order, in a float of its format.
         if let Constant::Float(x) = value {
+            let held = matches!(
+                self.types.repr(ty, at)?,
+                Repr::Scalar(s) if s.is_float() && s.bits(self.types.pointer_bits()) == x.format.bits()
+            );
+            if !held {
+                return Err(unsupported());
+            }
             self.int(
                 &Integer::from(u128::from(x.bits)),
                 u64::from(x.format.bits() / 8),
