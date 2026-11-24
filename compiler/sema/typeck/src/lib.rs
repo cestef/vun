@@ -17,6 +17,7 @@ mod exhaust;
 mod expect;
 mod expected;
 mod exprs;
+mod fit;
 mod gave_up;
 mod held;
 mod hint;

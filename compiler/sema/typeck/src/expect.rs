@@ -4,7 +4,6 @@
 use std::sync::Arc;
 
 use vun_desugar::{Borrow, MODE_SEPARATOR};
-use vun_desugar::{COMPOUND, Narrowing};
 use vun_diag::{ChildKind, Diagnostic, Fix, Msg, Safety, errors};
 use vun_grammar::TokenKind;
 use vun_hir::resolve::Res;
@@ -43,44 +42,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
         let written = because.map_or_else(|| expected.to_string(), |e| self.env().source(e));
         // Integers that do not fit are their own diagnostic (spec 04, rule 2).
         let d = if expected.interval().is_some() && found.ty.interval().is_some() {
-            let msg = Msg::new().text("value does not fit the type ").code(&written);
-            let note = Msg::new().text("the value is ").ty(found.ty.to_string());
-            // A type written as an alias is shown with what it stands for; otherwise it is said.
-            let note = if written == expected.to_string() {
-                note.text(", which is not within ").ty(written.clone())
-            } else {
-                note.text(", and ").code(&written).text(" is ").ty(expected.to_string())
-            };
-            // A run-time value can be narrowed; a constant is changed, or the type widened.
-            let help = if found.stage == Stage::Run {
-                // The compound assignments that narrow without trapping, from the table `compound`.
-                let operators = [Narrowing::Wrap, Narrowing::Sat].map(|n| {
-                    COMPOUND
-                        .iter()
-                        .find(|row| row.narrowing == n)
-                        .and_then(|row| row.token.text())
-                        .unwrap_or_default()
-                });
-                Msg::new()
-                    .text("widen ")
-                    .code(&written)
-                    .text(" to hold the whole range, or narrow the value with ")
-                    .code_list([".to", ".wrap", ".sat"])
-                    .text("; counters can narrow as they update, with ")
-                    .code_list(operators)
-            } else {
-                Msg::new()
-                    .text("use a value within ")
-                    .code(&written)
-                    .text(", or widen it if it is meant to hold this one")
-            };
-            let d = Diagnostic::error(errors::INT_DOES_NOT_FIT, msg)
-                .child(ChildKind::Note, note)
-                .child(ChildKind::Help, help);
-            match self.compared_place(at) {
-                Some(place) => d.child(ChildKind::Help, Self::unnarrowed(&place)),
-                None => d,
-            }
+            self.does_not_fit(at, (found, expected), &written)
         } else {
             let msg = Msg::new().text("expected ").code(&written).text(", found ").ty(found.ty.to_string());
             let d = Diagnostic::error(errors::TYPES_MISMATCH, msg);
@@ -90,7 +52,7 @@ impl<'a, 'db> Typer<'_, 'a, 'db> {
                 None => d,
             }
         };
-        let mut d = d.at(at, Some(Msg::new().text("this is ").ty(found.ty.to_string())));
+        let mut d = d.at(at, Some(Self::shown(found.ty, expected, &written)));
         if let Some(because) = because {
             let here = Msg::new().text("expected because of this type");
             d = d.label(self.hir().exprs[because].origin, Some(here));
