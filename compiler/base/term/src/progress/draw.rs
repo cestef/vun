@@ -13,6 +13,8 @@ use crate::{Bytes, Elapsed, Out, Style, Text};
 const BAR: usize = 20;
 /// How many columns of the subject are shown at least.
 const SUBJECT: usize = 12;
+/// How many columns the subject takes at most, so the bar stays where it is.
+const SUBJECT_COLUMN: usize = 32;
 /// The time a marker of a task of unknown size takes to cross one column.
 const SWEEP: Duration = Duration::from_millis(80);
 
@@ -73,26 +75,53 @@ impl Task {
         self.verb.line(Self::cut(stages, room).plain(" ").styled(Style::Dim, elapsed))
     }
 
+    /// `Checking net/tcp.vun [=====>    ] 2/4 files, 1.20s left, 3.20s elapsed`: the subject first
+    /// and the details after it, as a finished step reads.
     fn progress_line(&self, width: usize) -> Text {
         let (done, total) = (self.done.load(Ordering::Relaxed), self.total.load(Ordering::Relaxed));
         let elapsed = self.started.elapsed();
-        let counts = match self.unit {
-            Unit::Items(noun) if total > 0 => format!("{done}/{total} {}", noun.many),
-            Unit::Items(noun) => format!("{done} {}", noun.many),
-            Unit::Bytes if total > 0 => format!("{}/{}", Bytes(done), Bytes(total)),
-            Unit::Bytes => Bytes(done).to_string(),
-        };
         let eta = (total > done && done > 0).then(|| {
             let nanos = elapsed.as_nanos() * u128::from(total - done) / u128::from(done);
-            format!(" ~{}", Elapsed(Duration::from_nanos(u64::try_from(nanos).unwrap_or(u64::MAX))))
+            Duration::from_nanos(u64::try_from(nanos).unwrap_or(u64::MAX))
         });
-        let tail = format!(" {counts}{} {}", eta.unwrap_or_default(), Elapsed(elapsed));
-        let fixed = crate::Verb::WIDTH + 1 + BAR + 2 + tail.chars().count() + 1;
+        let details = Text::join(
+            [
+                Some(self.counts(done, total)),
+                eta.map(|eta| Self::timed(eta, "left")),
+                Some(Self::timed(elapsed, "elapsed")),
+            ]
+            .into_iter()
+            .flatten(),
+            ", ",
+        );
         let subject = self.subject.lock().unwrap_or_else(PoisonError::into_inner).clone();
-        let room = width.saturating_sub(fixed).max(SUBJECT);
-        let bar = Self::bar(done, total, elapsed);
-        let text = bar.plain(tail).plain(" ").append(Self::cut(&subject, room));
-        self.verb.line(text)
+        let text = if subject.width() == 0 {
+            Text::new()
+        } else {
+            let fixed = crate::Verb::WIDTH + 1 + BAR + 2 + details.width() + 2;
+            let room = width.saturating_sub(fixed).clamp(SUBJECT, SUBJECT_COLUMN);
+            let cut = Self::cut(&subject, room);
+            let pad = room.saturating_sub(cut.width());
+            cut.pad(pad + 1)
+        };
+        self.verb.line(text.append(Self::bar(done, total, elapsed)).plain(" ").append(details))
+    }
+
+    /// `2/4 files` or `2.0 KiB/4.0 KiB`, the unit dim.
+    fn counts(&self, done: u64, total: u64) -> Text {
+        match self.unit {
+            Unit::Items(noun) if total > 0 => {
+                Text::from(format!("{done}/{total}")).styled(Style::Dim, format!(" {}", noun.many))
+            }
+            Unit::Items(noun) => Text::from(done.to_string()).styled(Style::Dim, format!(" {}", noun.many)),
+            Unit::Bytes if total > 0 => Text::from(format!("{}/{}", Bytes(done), Bytes(total))),
+            Unit::Bytes => Text::from(Bytes(done).to_string()),
+        }
+    }
+
+    /// `1.20s left`, the label dim.
+    fn timed(time: Duration, label: &'static str) -> Text {
+        Text::from(Elapsed(time).to_string()).styled(Style::Dim, format!(" {label}"))
     }
 
     /// `[=====>    ]` for a known total, a marker sweeping to and fro for an unknown one.

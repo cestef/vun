@@ -40,9 +40,10 @@ fn a_bar_shows_its_count_and_subject_and_goes_away_when_dropped() {
     bar.advance(2);
     progress.redraw();
     let shown = sink.text();
-    assert!(shown.contains("Checking [=========>"), "{shown}");
+    assert!(shown.contains("Checking net/tcp.vun"), "{shown}");
+    assert!(shown.contains("[=========>"), "{shown}");
     assert!(shown.contains("2/4 files"), "{shown}");
-    assert!(shown.contains("net/tcp.vun"), "{shown}");
+    assert!(shown.contains("elapsed"), "{shown}");
     drop(bar);
     assert!(sink.text().ends_with("\r\x1b[2K"), "{:?}", sink.text());
 }
