@@ -7,6 +7,7 @@ use vun_harness::{ACCEPT, repo_root};
 use vun_intern::Symbol;
 use vun_items::{Item, targets};
 use vun_lir::ImportKind;
+use vun_lower::{Form, Why};
 use vun_sema::target::Choice;
 
 use crate::backend;
@@ -126,4 +127,44 @@ fn open_takes_its_permissions_as_a_variadic_argument() {
     let open = unit.imports.iter().find(|(_, i)| i.symbol == Symbol::intern("open")).map(|(_, i)| &i.kind);
     let Some(ImportKind::Func(signature)) = open else { panic!("no import of `open`") };
     assert_eq!(signature.variadic, Some(2));
+}
+
+/// A generic function with no pack: what a call passes cannot be said by its import.
+const UNPACKED: &str = "\
+#[link.symbol(\"abs\"), abi.c]
+magnitude: unsafe ($T: type, value: T) -> i32 = _;
+
+start := std.os.start(main);
+main := (sys: &mut std.os.System) -> std.os.Exit {
+    n := unsafe magnitude(-3);
+    std.os.Exit.of(n.to(Int(0..=125)))
+};
+";
+
+#[test]
+fn a_generic_c_import_is_a_function_of_its_fixed_parameters_then_variadic() {
+    let fixture = Fixture::new("variadic-import-kind");
+    let path = fixture.root.write("main.vun", INFERRED);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::gnu);
+    let file = session.load(&path).unwrap();
+    let lowered = session.lir(file);
+    let unit = lowered.as_ref().as_ref().unwrap_or_else(|_| panic!("{:#?}", session.diag));
+    let kind =
+        unit.imports.iter().find(|(_, i)| i.symbol == Symbol::intern("snprintf")).map(|(_, i)| &i.kind);
+    let Some(ImportKind::Func(signature)) = kind else { panic!("no function import of `snprintf`") };
+    assert_eq!(signature.params.len(), 3);
+    assert_eq!(signature.variadic, Some(3));
+}
+
+#[test]
+fn a_generic_c_import_with_no_pack_is_refused_as_an_import() {
+    let fixture = Fixture::new("variadic-import-unpacked");
+    let path = fixture.root.write("main.vun", UNPACKED);
+    let mut session = fixture.session();
+    session.choice = Choice::of(targets::linux_x86_64::gnu);
+    let file = session.load(&path).unwrap();
+    let lowered = session.lir(file);
+    let refused = lowered.as_ref().as_ref().expect_err("a refusal");
+    assert_eq!(refused.why, Why::Unsupported(Form::Import));
 }

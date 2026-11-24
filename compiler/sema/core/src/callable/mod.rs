@@ -19,6 +19,7 @@ use vun_sema_ty::{Signature, Ty, TyKind, Value};
 
 pub use func::{Generic, Parameters};
 pub use pack::{Promoted, Variadic};
+pub use written::Fixed;
 
 use crate::env::Env;
 use crate::eval::Signed;
@@ -105,6 +106,12 @@ impl Callable {
             Self::Fn(f) => f.written(env.cx),
             Self::Primitive(_) | Self::Linked(_) => env.declared_written(&self.declaration(env)?),
         }
+    }
+
+    /// What it declares apart from its calls: see [`Written::fixed`].
+    #[must_use]
+    pub fn fixed(&self, env: &Env<'_, '_>) -> Option<Fixed> {
+        self.written(env)?.fixed()
     }
 
     /// The parameter gathering the arguments after the others: see [`Written::pack`].

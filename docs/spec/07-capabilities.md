@@ -200,7 +200,8 @@ backend that cannot report frame sizes cannot build a program that uses `stack.m
   with a pack has no body; and each item is what C's default promotions leave, never an `f32` or
   an `f16` (`abi.variadic`). The pack may be a `$` parameter, `printf: unsafe ($P: type, format:
   *u8, ..args: P) -> i32 = _;`, inferred at each call from the types of its arguments and checked
-  there.
+  there. Its symbol is one import, a C function of its fixed parameters followed by `...`; each call
+  passes its own items through the symbol's address (decision 686).
 - `vun util ffi bind foo.h --cflag "..."` generates Vun declarations from C headers through
   libclang, loaded when the command runs (decision 131), with the build's real compile flags
   (decision 134). It binds what the header's directory declares, and the directories named with

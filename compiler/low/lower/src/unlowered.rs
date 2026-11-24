@@ -69,6 +69,9 @@ pub enum Form {
     /// A binding of an assembly block to a place without storage, or to a symbol naming no
     /// function, link symbol or static.
     Asm,
+    /// A link symbol with `$` parameters that is no C function ending in a pack, so that its
+    /// signature depends on the arguments of each call.
+    Import,
     /// A tail call whose callee does not share the caller's convention and result, or takes
     /// variadic arguments.
     Tail,
@@ -201,6 +204,7 @@ impl Form {
             Self::Frame => "frame",
             Self::Quote => "quote",
             Self::Asm => "asm",
+            Self::Import => "import",
             Self::Tail => "tail",
             Self::TailMemory => "tail memory",
         }
@@ -218,6 +222,7 @@ impl Form {
             Self::Frame => "a coroutine frame",
             Self::Quote => "a code value at run time",
             Self::Asm => "this binding of an assembly block",
+            Self::Import => "a link symbol with `$` parameters that is no C function ending in a pack",
             Self::Tail => "a tail call of a function with another convention or result, or variadic",
             Self::TailMemory => "a tail call passing a value in memory that fits none the caller received",
         }

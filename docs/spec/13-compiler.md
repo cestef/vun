@@ -1156,7 +1156,8 @@ rules (proposed, decision 256).
   or everything the call passes and returns as the base standard does, floats in general
   registers, AAPCS's VFP variant, section 6.5). A LIR signature marks where its variadic
   arguments start (`Signature::variadic`), which only an import under the C convention has, or a
-  call through its address (a C import with a `$` pack, whose signature is each call's own);
+  call through its address (a C import with a `$` pack, whose signature is each call's own, its import
+  having the fixed parameters and `...`, decision 686);
   `Rules::calling` gives the rules a call of it follows, legalization asking them too. The C
   backend declares such an import with `...`; the wasm backend, whose C convention passes them
   in a buffer the caller fills, refuses it (`Missing::Variadic`). `SYSV`, `AAPCS64`,

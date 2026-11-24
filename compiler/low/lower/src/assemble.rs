@@ -8,14 +8,10 @@
 use vun_hash::Map;
 use vun_index::Idx;
 use vun_intern::Symbol;
-use vun_lir::{
-    Address, Data, DataId, FuncId, Import, ImportId, ImportKind, Linkage, Site, Storage, Trace, TraceLayout,
-    Unit,
-};
+use vun_lir::{Address, Data, DataId, FuncId, ImportId, Linkage, Site, Storage, Trace, TraceLayout, Unit};
 use vun_mir::{Concrete, Program};
 use vun_origin::OriginId;
 use vun_sema::link::Linkable;
-use vun_sema::link::Linked;
 use vun_sema_int::Integer;
 use vun_sema_ty::call::Instantiation;
 use vun_sema_ty::item::DeclRef;
@@ -26,6 +22,8 @@ use crate::piece::{Bytes, Datum, DatumKind, FuncRef, Lir, Piece, Refs};
 use crate::placing::{Places, SiteIds};
 use crate::unchecked::Unchecked;
 use crate::unlowered::{Form, Unlowered, Why};
+
+mod import;
 
 /// The program's unit being assembled, and where each thing named in it went.
 pub(crate) struct Assembly<'l, 'a, 'db> {
@@ -259,30 +257,5 @@ impl Assembly<'_, '_, '_> {
         let detail = self.l.types.cx.get::<vun_sema::trace::TraceOf>(&());
         self.unit.trace = Some(Trace { table, layout, detail });
         Ok(table)
-    }
-
-    fn import(&mut self, decl: &DeclRef, linked: Linked, at: OriginId) -> Result<ImportId, Unlowered> {
-        let Linked { symbol, abi, library } = linked;
-        if let Some(&id) = self.imports.get(&symbol) {
-            return Ok(id);
-        }
-        let ty = self
-            .l
-            .types
-            .cx
-            .get::<vun_sema::decl::DeclType>(decl)
-            .map_err(|_| Unlowered::unsupported(at, Form::Callee))?
-            .ty;
-        let kind = match ty.signature() {
-            Some(signature) => ImportKind::Func(self.l.signature_of(&signature, abi, at)?),
-            None => ImportKind::Data,
-        };
-        // The largest bound the program's declarations of the symbol state, the handler of
-        // traps included, which a program declares itself (decision 164).
-        let stack_max = self.l.env.linked_stack(symbol);
-        let id =
-            self.unit.imports.push(Import { symbol, library, kind, origin: decl.decl.origin, stack_max });
-        self.imports.insert(symbol, id);
-        Ok(id)
     }
 }

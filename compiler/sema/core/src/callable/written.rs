@@ -5,9 +5,16 @@ use vun_grammar::TokenKind;
 use vun_hir::tree::{BinderId, Entry, ExprId, ExprKind, Param, PatKind};
 use vun_primitives::Primitive;
 use vun_primitives::meta::Meta;
-use vun_sema_ty::{Ty, Value};
+use vun_sema_ty::{Ty, TyKind, Value};
 
 use super::Written;
+
+/// What a function ending in a pack declares whatever its calls bind: the parameters before the
+/// pack that are no `$` ones, and the result. A call's `$` arguments only add the pack's items.
+pub struct Fixed {
+    pub params: Vec<Ty>,
+    pub result: Ty,
+}
 
 impl Written<'_, '_> {
     /// Each parameter's binder and annotation.
@@ -74,6 +81,25 @@ impl Written<'_, '_> {
     pub fn types(&self) -> Option<Vec<Option<Ty>>> {
         let ty = |(_, ty): &(Option<BinderId>, Option<ExprId>)| self.env.eval((*ty)?).ok()?.as_type();
         Some(self.params()?.iter().map(ty).collect())
+    }
+
+    /// What it declares apart from its calls: the types of the run-time parameters before the pack,
+    /// and the result. `None` when it ends in no pack, or a type it names depends on a `$` parameter.
+    #[must_use]
+    pub fn fixed(&self) -> Option<Fixed> {
+        let (pack, comptime, types) = (self.pack()?, self.comptime()?, self.types()?);
+        let params = types
+            .into_iter()
+            .zip(comptime)
+            .take(pack)
+            .filter(|&(_, comptime)| !comptime)
+            .map(|(ty, _)| ty)
+            .collect::<Option<_>>()?;
+        let result = match self.returns() {
+            Some(expr) => self.env.eval(expr).ok()?.as_type()?,
+            None => TyKind::unit(),
+        };
+        Some(Fixed { params, result })
     }
 
     /// Whether each parameter receives its argument as code: those of type `lang.meta.Code(T)`,
