@@ -70,3 +70,16 @@ fn a_tuple_position_past_u32_is_reported() {
     assert_eq!(ids("x := t.4294967295;\n"), []);
     assert_eq!(ids("x := t.4294967296;\n"), [vun_diag::errors::SYNTAX_TUPLE_INDEX_TOO_LARGE]);
 }
+
+#[test]
+fn an_attribute_with_nothing_to_wrap_leaves_no_expression_unreached() {
+    for text in ["#[[U)", "#[a]\n", "x := #[a] ;\n"] {
+        let file = SourceFiles::new().add("pkg.vun", text);
+        let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
+        let mut cx = DiagCx { diag: &mut diag, origins: &origins };
+        let tokens = Tokens::lex(file, text, &mut cx);
+        let cst = Cst::parse(&tokens, text, &mut cx);
+        let hir = Hir::lower(Source { cst: &cst, tokens: &tokens, text }, &mut cx);
+        assert_eq!(hir.verify(cx.origins), Ok(()), "{text:?}");
+    }
+}

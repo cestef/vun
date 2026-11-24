@@ -170,8 +170,9 @@ impl<'a> Lower<'a, '_> {
         self.source.cst.fields(n).unwrap_or_default()
     }
 
-    /// Doc lines and attribute values wrapping `n`, and the node they wrap.
-    fn annotations(&mut self, mut n: NodeId) -> (NodeId, Vec<String>, Vec<crate::tree::ExprId>) {
+    /// Doc lines and attribute values wrapping `n`, and the node they wrap. The values are nodes:
+    /// lowering them is [`Self::attributes`], done only where the wrapped node is kept.
+    fn annotations(&mut self, mut n: NodeId) -> (NodeId, Vec<String>, Vec<NodeId>) {
         let (mut doc, mut attrs) = (Vec::new(), Vec::new());
         loop {
             match self.kind(n) {
@@ -182,14 +183,17 @@ impl<'a> Lower<'a, '_> {
             if self.kind(n) == NodeKind::Doc {
                 doc.push(self.doc_line(n));
             }
-            for &value in f.get(NodeField::Values) {
-                attrs.push(self.expr(value));
-            }
+            attrs.extend_from_slice(f.get(NodeField::Values));
             match f.one(NodeField::Target) {
                 Some(target) => n = target,
                 None => return (n, doc, attrs),
             }
         }
+    }
+
+    /// The attribute values of [`Self::annotations`], lowered.
+    fn attributes(&mut self, values: &[NodeId]) -> Vec<crate::tree::ExprId> {
+        values.iter().map(|&value| self.expr(value)).collect()
     }
 
     /// The entries of a list, where `$for` and `$if` produce entries of the same list.

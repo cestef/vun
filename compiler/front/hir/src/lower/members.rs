@@ -18,13 +18,20 @@ impl Lower<'_, '_> {
     }
 
     fn member(&mut self, n: NodeId) -> Option<Member> {
-        let (inner, doc, attrs) = self.annotations(n);
+        let (inner, doc, values) = self.annotations(n);
         match self.kind(inner) {
-            NodeKind::Binding | NodeKind::TypedBinding => Some(Member::Decl(self.decl(inner, doc, attrs))),
+            NodeKind::Binding | NodeKind::TypedBinding => {
+                let attrs = self.attributes(&values);
+                Some(Member::Decl(self.decl(inner, doc, attrs)))
+            }
             NodeKind::Implementation | NodeKind::Extension | NodeKind::Delegation => {
+                let attrs = self.attributes(&values);
                 Some(Member::Decl(self.implementation(inner, doc, attrs)))
             }
-            NodeKind::Field => Some(Member::Field(self.field(inner, doc, attrs))),
+            NodeKind::Field => {
+                let attrs = self.attributes(&values);
+                Some(Member::Field(self.field(inner, doc, attrs)))
+            }
             NodeKind::Spread => Some(Member::Spread(self.spread(inner))),
             _ => None,
         }
@@ -82,8 +89,10 @@ impl Lower<'_, '_> {
 
     fn variants(&mut self, nodes: Vec<NodeId>) -> List<Variant> {
         self.entries(nodes, &mut |this, n| {
-            let (inner, doc, attrs) = this.annotations(n);
+            let (inner, doc, values) = this.annotations(n);
             let origin = this.origin(inner);
+            let kept = matches!(this.kind(inner), NodeKind::Name | NodeKind::FieldInit | NodeKind::Call);
+            let attrs = if kept { this.attributes(&values) } else { Vec::new() };
             match this.kind(inner) {
                 NodeKind::Name => Some(Variant {
                     name: this.name(inner),
@@ -146,9 +155,12 @@ impl Lower<'_, '_> {
     }
 
     fn stmt(&mut self, n: NodeId) -> Stmt {
-        let (inner, doc, attrs) = self.annotations(n);
+        let (inner, doc, values) = self.annotations(n);
         match self.kind(inner) {
-            NodeKind::Binding | NodeKind::TypedBinding => Stmt::Decl(self.decl(inner, doc, attrs)),
+            NodeKind::Binding | NodeKind::TypedBinding => {
+                let attrs = self.attributes(&values);
+                Stmt::Decl(self.decl(inner, doc, attrs))
+            }
             NodeKind::Assign => self.assignment(inner),
             NodeKind::Spread => {
                 let members = vec![Entry::One(Member::Spread(self.spread(inner)))];

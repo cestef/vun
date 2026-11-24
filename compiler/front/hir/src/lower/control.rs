@@ -104,7 +104,8 @@ impl Lower<'_, '_> {
     fn params(&mut self, nodes: &[NodeId], literal: bool) -> List<Param> {
         let nodes: Vec<_> = nodes.iter().copied().filter(|&n| !self.filler(n)).collect();
         self.entries(nodes, &mut |this, n| {
-            let (inner, _, attrs) = this.annotations(n);
+            let (inner, _, values) = this.annotations(n);
+            let attrs = this.attributes(&values);
             let origin = this.origin(inner);
             Some(if this.kind(inner) == NodeKind::Param {
                 let f = this.fields(inner);

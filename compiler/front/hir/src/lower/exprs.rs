@@ -135,7 +135,8 @@ impl Lower<'_, '_> {
                 ExprKind::Enum { variants, ns }
             }
             NodeKind::Doc | NodeKind::Attr => {
-                let (inner, _, attrs) = self.annotations(n);
+                let (inner, _, values) = self.annotations(n);
+                let attrs = self.attributes(&values);
                 ExprKind::Attributed { attrs, inner: self.expr(inner) }
             }
             NodeKind::Closure => {
