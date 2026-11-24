@@ -74,8 +74,12 @@ jobs:
         with:
           tool: cargo-zigbuild
       # The workloads of `cargo xtask pgo` build a program for this machine, which `vun` links with `ld64.lld`.
+      # The macOS target links against an SDK, which its tools file names (spec 12, section 6).
       - if: runner.os == 'macOS'
-        run: brew install lld
+        run: |
+          brew install lld
+          echo "tools := .{ .targets = .{ .{ .target = macos.arm64.darwin, .sysroot = \"$(xcrun --show-sdk-path)\" } } };" > "$RUNNER_TEMP/tools.vun"
+          echo "VUN_TOOLS=$RUNNER_TEMP/tools.vun" >> "$GITHUB_ENV"
       - run: rustup target add ${{ matrix.target }} && rustup component add llvm-tools
       # The profile `vun` is optimized by (decision 670): a `vun` recording what runs, run over the
       # workloads of `vun debug profile` on this machine, whose architecture the release is for.
