@@ -32,6 +32,11 @@ jobs:
         with:
           tool: cargo-nextest
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends clang lld gcc-arm-none-eabi libnewlib-arm-none-eabi
+      # The C backend's guaranteed tail calls (`musttail`) need GCC 15 or Clang 13, and the runner's
+      # `gcc` is older: the tests build with the machine's `clang` (spec 12, section 6, tools file).
+      - run: |
+          echo 'tools := .{ .targets = .{ .{ .target = linux.x86_64.kernel, .compiler = "clang" } } };' > "$RUNNER_TEMP/tools.vun"
+          echo "VUN_TOOLS=$RUNNER_TEMP/tools.vun" >> "$GITHUB_ENV"
       - run: cargo xtask check
       - run: cargo clippy --all-targets
       - run: cargo nextest run
