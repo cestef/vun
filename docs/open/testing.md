@@ -28,3 +28,21 @@ Spec 11 is the reference.
   the check. The `program` fuzz target found no input in
   7 minutes; run it with `ASAN_OPTIONS=detect_leaks=0` and `-rss_limit_mb` raised, one session
   grows past the default limit.
+
+## Conventions adopted from the sibling projects
+
+Left of the adoption (the rules are in `CLAUDE.md`):
+
+- `Hash::parse` and `Snapshot::parse` to `FromStr`; then `vun_data::textual!` takes `FromStr` and
+  `Version` drops its hand-written `ToData`/`FromData` (`compiler/base/span/src/data.rs`).
+- A parsed `Duration` value for `vun debug profile --limit` (now an integer of seconds).
+- A ratchet check in xtask for comments inside function bodies (about 1250 lines, mostly `sema`,
+  `tools`, `low`, `mid`, `back`); the count may only fall. Move rationale to the enclosing item's
+  doc rather than deleting it.
+- `Fault` encodable, so binder's `Failure::Errors(Vec<String>)` keeps its source.
+- Manual `Hash` impls that skip fields (`base/{uri,diag,origin,span,intern,query}`, `sema/ty`,
+  `front/hir`): each needs a line on the type saying why, or a destructuring.
+- Decision 684 keeps six noun leaves in the verb table (`completion`, `lsp`, `coverage`, `queries`,
+  `profile`, `smith`) so nothing was renamed; marking them legacy would make a later rename easy.
+- The diagnostic group `types` keeps its name (`KEPT` in `xtask/src/names.rs`): its ids are public.
+- `Number::parse` and `json::parse` borrow their input, so `FromStr` cannot express them.

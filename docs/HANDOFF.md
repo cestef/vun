@@ -9,16 +9,16 @@ History is in `jj log` and [`decisions/`](spec/decisions/README.md), conventions
 Reviewed 2026-11-24 (docs against code): all but one proposed decision are `accepted` (658, the
 progress bars, waits for its uncommitted change in `compiler/base/term/src/progress/`). The
 decisions are a file each in [`spec/decisions/`](spec/decisions/README.md), checked by
-`cargo xtask decisions`. Clippy, the suite (1094 tests), `cargo gen --check`, `lines` and `layers`
-were clean on am3. `0.2.0` is tagged but its release CI failed ([`open/packaging.md`](open/packaging.md)).
-The causes are fixed in the working copy, not retagged.
+`cargo xtask decisions`. Clippy, the suite (1109 tests) and every xtask check were clean on am3.
+`0.2.0` is tagged, its release CI failed ([`open/packaging.md`](open/packaging.md)), the causes are fixed.
 
 ## Next, in order
 1. Retag `0.2.0` (editors regenerated, lld installed for the macOS `pgo` job) and watch the CI run.
 2. Check the cost of the stale-memo fix: `Groups::regroup` now counts own inputs
    ([`open/performance.md`](open/performance.md)); then drop `Session::untargeted` if it holds.
 3. Rerun the HIR `lower` fuzz target and the others on am3 (a stray attribute crash is fixed).
-4. Priming (664 to 668): `cargo xtask package`, a second layer, other targets. Fuzzing: rerun
+4. The conventions adopted from the sibling projects, what is left: [`open/testing.md`](open/testing.md).
+5. Priming (664 to 668): `cargo xtask package`, a second layer, other targets. Fuzzing: rerun
    `vun debug smith` on am3 (`--jobs 3 --chunk 5 --warm`), triage.
 
 The owner's queue: the server in a real editor ([`open/editors.md`](open/editors.md)); the rp2350
