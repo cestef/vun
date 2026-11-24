@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use vun_fs::{Captured, Ended};
 
 use crate::callgrind::Profile;
-use crate::error::MeasureError;
+use crate::error::{MeasureError, Written};
 use crate::sample::Sample;
 use crate::workload::{Phase, Setup, Verb, Workload};
 
@@ -90,7 +90,7 @@ impl Runner<'_> {
         let program = if command.get_program() == VALGRIND { VALGRIND } else { what };
         match Captured::within(command, self.limit) {
             Ok(Ended::Exited(output)) if output.status.success() => Ok(output),
-            Ok(Ended::Exited(output)) => Err(MeasureError::Failed(what, output.status)),
+            Ok(Ended::Exited(output)) => Err(MeasureError::Failed(what, output.status, Written::of(&output))),
             Ok(Ended::TimedOut(_)) => Err(MeasureError::TimedOut(what, self.limit)),
             Err(error) => Err(MeasureError::Spawn(program, error)),
         }
