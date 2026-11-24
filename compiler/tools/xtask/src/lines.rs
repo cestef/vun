@@ -10,8 +10,30 @@ use vun_span::EXTENSION;
 pub(crate) const MAX_LINES: u32 = 300;
 
 /// Directories checked, relative to the repository root, with the extension of their sources.
-const CHECKED: &[(&str, &str)] =
-    &[("compiler", "rs"), ("fuzz/fuzz_targets", "rs"), ("lib", EXTENSION), ("corpus", EXTENSION)];
+pub(crate) const CHECKED: &[Checked] = &[
+    Checked::new("compiler", "rs", true),
+    Checked::new("fuzz/fuzz_targets", "rs", true),
+    Checked::new("lib", EXTENSION, true),
+    Checked::new("corpus", EXTENSION, false),
+];
+
+pub(crate) struct Checked {
+    pub(crate) dir: &'static str,
+    pub(crate) ext: &'static str,
+    /// Whether its files and directories are named like modules (`cargo xtask names`), as opposed
+    /// to test programs grouped by topic.
+    pub(crate) modules: bool,
+}
+
+impl Checked {
+    const fn new(dir: &'static str, ext: &'static str, modules: bool) -> Self {
+        Self { dir, ext, modules }
+    }
+
+    pub(crate) fn files(&self, root: &Path) -> std::io::Result<Vec<PathBuf>> {
+        root.join(self.dir).files_with(self.ext)
+    }
+}
 
 pub(crate) struct Oversized {
     pub(crate) path: PathBuf,
@@ -25,8 +47,8 @@ impl Oversized {
     /// Returns an error if a checked directory or file cannot be read.
     pub(crate) fn all(root: &Path) -> std::io::Result<Vec<Self>> {
         let mut found = Vec::new();
-        for &(dir, ext) in CHECKED {
-            for path in root.join(dir).files_with(ext)? {
+        for checked in CHECKED {
+            for path in checked.files(root)? {
                 let count = std::fs::read_to_string(&path)?.lines().count();
                 let lines = u32::try_from(count).unwrap_or(u32::MAX);
                 if lines > MAX_LINES {

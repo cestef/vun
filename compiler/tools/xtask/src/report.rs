@@ -90,6 +90,7 @@ impl Record for Judged<'_> {
 pub(crate) enum Passed {
     Layers { groups: usize },
     Lines { max: u32 },
+    Names { banned: usize },
 }
 
 impl Record for Passed {
@@ -97,6 +98,7 @@ impl Record for Passed {
         match self {
             Self::Layers { .. } => "layers",
             Self::Lines { .. } => "lines",
+            Self::Names { .. } => "names",
         }
     }
 
@@ -106,6 +108,9 @@ impl Record for Passed {
                 Text::from(format!("every crate depends only on its own group or earlier ones, of {groups}"))
             }
             Self::Lines { max } => Text::from(format!("every source file has at most {max} lines")),
+            Self::Names { banned } => Text::from(format!(
+                "no file or directory of the sources is named by one of {banned} empty words"
+            )),
         }
     }
 
@@ -113,6 +118,7 @@ impl Record for Passed {
         match self {
             Self::Layers { groups } => Object::new().with("groups", *groups),
             Self::Lines { max } => Object::new().with("max", *max),
+            Self::Names { banned } => Object::new().with("banned", *banned),
         }
     }
 }

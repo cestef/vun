@@ -8,6 +8,7 @@ mod hooks;
 mod install;
 mod layers;
 mod lines;
+mod names;
 mod pgo;
 mod release;
 mod report;
@@ -31,12 +32,14 @@ use corpus::Corpus;
 use decisions::Decisions;
 use layers::{Breach, Ranks, Refreshed};
 use lines::Oversized;
+use names::{Banned, Unnamed};
 use report::{Judged, Passed, Tally};
 
 const UPWARD: DiagId = DiagId::new("xtask.layers.upward");
 const UNRANKED: DiagId = DiagId::new("xtask.layers.unranked");
 const NO_METADATA: DiagId = DiagId::new("xtask.layers.no_metadata");
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
+const EMPTY_NAME: DiagId = DiagId::new("xtask.names.empty");
 const UNREAD: DiagId = DiagId::new("xtask.decisions.unread");
 
 const PROGRAM: Program<DiagCtxt> = Program {
@@ -82,6 +85,23 @@ fn check_lines(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resu
         shell.status(&Passed::Lines { max: lines::MAX_LINES });
     }
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
+}
+
+fn check_names(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    let unnamed = Unnamed::all(&repo_root())?;
+    for u in &unnamed {
+        let msg = Msg::new()
+            .code(u.path.display().to_string())
+            .text(" is named ")
+            .code(u.banned.name())
+            .text(", which says nothing about its concern");
+        let help = Msg::new().text("name it for what it holds; the path already gives the context");
+        diag.error(Diagnostic::error(EMPTY_NAME, msg).child(ChildKind::Help, help));
+    }
+    if unnamed.is_empty() {
+        shell.status(&Passed::Names { banned: Banned::ALL.len() });
+    }
+    Ok(if unnamed.is_empty() { Outcome::Success } else { Outcome::Failure })
 }
 
 fn check_decisions(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {

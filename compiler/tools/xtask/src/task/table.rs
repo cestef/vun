@@ -15,6 +15,11 @@ pub(crate) const LAYERS: Task = Task::new(
     "fail on a crate depending on a later group of crates",
     Work::Run(crate::check_layers),
 );
+pub(crate) const NAMES: Task = Task::new(
+    "names",
+    "fail on a source file or directory named utils, helpers, common, misc, types, manager, service, handler or info",
+    Work::Run(crate::check_names),
+);
 pub(crate) const DECISIONS: Task = Task::new(
     "decisions",
     "fail on a decision file that does not read, and write the index of the decisions",
@@ -22,10 +27,10 @@ pub(crate) const DECISIONS: Task = Task::new(
 );
 pub(crate) const CHECK: Task = Task::new(
     "check",
-    "run the quick checks: formatting, generated sources, lines, layers, decisions",
+    "run the quick checks: formatting, generated sources, lines, layers, names, decisions",
     Work::Needs,
 )
-.needs(&[&FORMATTED, &GENERATED, &LINES, &LAYERS, &DECISIONS]);
+.needs(&[&FORMATTED, &GENERATED, &LINES, &LAYERS, &NAMES, &DECISIONS]);
 pub(crate) const PUSH: Task = Task::new(
     "push",
     "run the quick checks, then `jj git push` with the words given",
@@ -99,7 +104,7 @@ pub(crate) const TREE_SITTER_PUBLISH: Task = Task::new(
 /// The tasks `cargo xtask` offers as commands; the others are reached through them.
 macro_rules! commands {
     ($($task:path),* $(,)?) => {
-        &[$(vun_command::Command::run($task.name, $task.about, |d, a, s| $task.run(d, a, s)).params($task.params)),*]
+        &[$(vun_command::Command::item($task.name, $task.about, |d, a, s| $task.run(d, a, s)).params($task.params)),*]
     };
 }
 
@@ -111,6 +116,7 @@ pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = command
     INSTALL,
     LAYERS,
     LINES,
+    NAMES,
     COMPONENTS,
     PACKAGE,
     PGO,
