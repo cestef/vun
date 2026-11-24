@@ -53,7 +53,7 @@ impl Error for MeasureError {
     }
 }
 
-/// The last lines a failed run wrote to its error stream.
+/// The last lines a failed run wrote to its output and error streams.
 #[derive(Debug)]
 pub struct Written(String);
 
@@ -62,9 +62,12 @@ impl Written {
 
     #[must_use]
     pub fn of(output: &Output) -> Self {
-        let text = String::from_utf8_lossy(&output.stderr);
-        let lines: Vec<&str> = text.lines().collect();
-        Self(lines[lines.len().saturating_sub(Self::LINES)..].join("\n"))
+        let tail = |bytes: &[u8]| {
+            let text = String::from_utf8_lossy(bytes).into_owned();
+            let lines: Vec<&str> = text.lines().collect();
+            lines[lines.len().saturating_sub(Self::LINES)..].join("\n")
+        };
+        Self(format!("{}\n{}", tail(&output.stdout), tail(&output.stderr)))
     }
 }
 
