@@ -43,7 +43,7 @@ pub(in crate::commands) fn version(
     param: &Param,
 ) -> Result<Option<Version>, ()> {
     let Some(text) = args.value(param) else { return Ok(None) };
-    let version = Version::parse(text);
+    let version = text.parse::<Version>().ok();
     if version.is_none() {
         let msg = Msg::new().code(text).text(" is not a version, `major.minor.patch`");
         session.diag.error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg));

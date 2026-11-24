@@ -23,7 +23,7 @@ const TOOLCHAIN: Param =
 fn asked(session: &mut Session, args: &Args) -> Option<(Toolchains, Version)> {
     let toolchains = toolchains(session)?;
     let asked = version(session, args, &TOOLCHAIN).ok()?;
-    Some((toolchains, asked.or_else(|| Version::parse(VERSION))?))
+    Some((toolchains, asked.or_else(|| VERSION.parse::<Version>().ok())?))
 }
 
 /// Like [`asked`], reporting a toolchain that is not installed, whose components cannot change.

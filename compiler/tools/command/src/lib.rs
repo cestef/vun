@@ -13,6 +13,8 @@ mod param;
 mod parse;
 mod run;
 mod settings;
+mod verb;
+mod verify;
 
 use std::io;
 use std::process::ExitCode;
@@ -28,6 +30,8 @@ pub use param::{
 pub use parse::{Detail, Request, Section, Selected};
 pub use run::{Context, Diagnostics};
 pub use settings::{Setting, Settings};
+pub use verb::{CommandVerb, Kind};
+pub use verify::Violation;
 
 pub struct Program<Cx: 'static> {
     pub version: &'static str,
@@ -68,6 +72,8 @@ pub fn unconfigured<Cx>(_: &mut Cx, _: &Args) -> Result<(), Box<Diagnostic>> {
 /// .params(&[FILE]).aliases(&["b"])`.
 pub struct Command<Cx: 'static> {
     pub name: &'static str,
+    /// The [`CommandVerb`] it is named by, if its name is one.
+    pub verb: Option<CommandVerb>,
     pub about: &'static str,
     /// Other names it answers to, shown in help.
     pub aliases: &'static [&'static str],
@@ -96,18 +102,37 @@ pub struct Example {
 pub type Run<Cx> = fn(&mut Cx, &Args, &mut Shell<'_>) -> io::Result<Outcome>;
 
 impl<Cx> Command<Cx> {
-    const fn new(name: &'static str, about: &'static str, action: Action<Cx>) -> Self {
-        Self { name, about, aliases: &[], params: &[], sets: &[], examples: &[], action }
+    const fn new(
+        name: &'static str,
+        verb: Option<CommandVerb>,
+        about: &'static str,
+        action: Action<Cx>,
+    ) -> Self {
+        Self { name, verb, about, aliases: &[], params: &[], sets: &[], examples: &[], action }
     }
 
+    /// A command named by a verb, which is its meaning too.
     #[must_use]
-    pub const fn run(name: &'static str, about: &'static str, run: Run<Cx>) -> Self {
-        Self::new(name, about, Action::Run(run))
+    pub const fn run(verb: CommandVerb, about: &'static str, run: Run<Cx>) -> Self {
+        Self::new(verb.name(), Some(verb), about, Action::Run(run))
     }
 
+    /// A command named by what it acts on or by a program's own task, outside the verb table.
+    #[must_use]
+    pub const fn item(name: &'static str, about: &'static str, run: Run<Cx>) -> Self {
+        Self::new(name, None, about, Action::Run(run))
+    }
+
+    /// A group named by a noun.
     #[must_use]
     pub const fn group(name: &'static str, about: &'static str, children: &'static [Self]) -> Self {
-        Self::new(name, about, Action::Group(children))
+        Self::new(name, None, about, Action::Group(children))
+    }
+
+    /// A group named by a verb, whose children are what the verb applies to.
+    #[must_use]
+    pub const fn verb_group(verb: CommandVerb, about: &'static str, children: &'static [Self]) -> Self {
+        Self::new(verb.name(), Some(verb), about, Action::Group(children))
     }
 
     #[must_use]

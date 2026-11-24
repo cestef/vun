@@ -5,7 +5,7 @@
 use std::io;
 
 use vun_build::release::{Profile, Releases, Wanted};
-use vun_command::{Args, Arity, Command, Outcome, Param, Values};
+use vun_command::{Args, Arity, Command, CommandVerb, Outcome, Param, Values};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_span::Version;
@@ -28,11 +28,14 @@ const DEFAULT_PROFILE: Profile = Profile::Default;
 const DEFAULT: Param = Param::flag("default").about("make it the default, the one the user's `vun` links to");
 
 pub(super) const INSTALL: Command<Session> =
-    Command::run("install", "install a release's toolchain beside the others", install)
+    Command::run(CommandVerb::Install, "install a release's toolchain beside the others", install)
         .params(&[VERSION, DEFAULT, PROFILE]);
-pub(super) const UPDATE: Command<Session> =
-    Command::run("update", "install the latest release's toolchain and make it the default", update)
-        .params(&[PROFILE]);
+pub(super) const UPDATE: Command<Session> = Command::run(
+    CommandVerb::Update,
+    "install the latest release's toolchain and make it the default",
+    update,
+)
+.params(&[PROFILE]);
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn install(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {

@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Outcome, Param};
+use vun_command::{Args, Command, CommandVerb, Outcome, Param};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_span::Version;
 use vun_term::Shell;
@@ -15,7 +15,7 @@ use super::{toolchains, version};
 const VERSION: Param = Param::positional("version").about("the toolchain to remove, `major.minor.patch`");
 
 pub(super) const REMOVE: Command<Session> =
-    Command::run("remove", "remove an installed toolchain", remove).params(&[VERSION]);
+    Command::run(CommandVerb::Remove, "remove an installed toolchain", remove).params(&[VERSION]);
 
 fn remove(session: &mut Session, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(toolchains) = toolchains(session) else { return Ok(session.outcome()) };
@@ -26,7 +26,7 @@ fn remove(session: &mut Session, args: &Args, _: &mut Shell<'_>) -> io::Result<O
     } else if toolchains.default() == Some(version) {
         let help = Msg::new().text("make another the default first with ").code("vun toolchain default");
         session.diag.error(Diagnostic::error(errors::TOOLCHAIN_IN_USE, named(" is the default")).help(help));
-    } else if Version::parse(vun_driver::VERSION) == Some(version) {
+    } else if vun_driver::VERSION.parse::<Version>().ok() == Some(version) {
         session.diag.error(Diagnostic::error(errors::TOOLCHAIN_IN_USE, named(" is running this command")));
     } else {
         toolchains.remove(version)?;

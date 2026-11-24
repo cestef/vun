@@ -7,7 +7,7 @@
 use std::io;
 use std::path::Path;
 
-use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_formatter::{Formatter, Unlaid, WIDTH as DEFAULT_WIDTH};
@@ -30,7 +30,7 @@ const WIDTH: Param = Param::option("width")
 const CHECK: Param = Param::flag("check").about("change nothing, and fail when a file would change");
 
 pub(super) const FMT: Command<Session> =
-    Command::run("fmt", "lay out source files as the formatter does", fmt)
+    Command::run(CommandVerb::Fmt, "lay out source files as the formatter does", fmt)
         .params(&[PATHS, CHECK, WIDTH])
         .examples(&[
             Example { line: "", about: "lay out the package around this directory" },

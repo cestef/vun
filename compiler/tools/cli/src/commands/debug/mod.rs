@@ -12,7 +12,7 @@ mod reduce;
 mod smith;
 mod workers;
 
-use vun_command::Command;
+use vun_command::{Command, CommandVerb};
 
 use super::FILE;
 use dump::{DUMP, view};
@@ -38,42 +38,42 @@ const DUMPS: &[Command<Session>] = &[
 ];
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command::group(DUMP, "each representation of a file as text, with origins", DUMPS),
+    Command::verb_group(CommandVerb::Dump, "each representation of a file as text, with origins", DUMPS),
     Command::run(
-        "coverage",
+        CommandVerb::Coverage,
         "how far MIR and LIR take the functions of a file, and where each stops",
         |s, args, shell| shell.document(DUMP, "coverage".to_owned(), |out| coverage::coverage(s, args, out)),
     )
     .params(&[FILE]),
-    Command::run("disasm", "the code of an ELF file read back as instructions", disasm::disasm)
+    Command::run(CommandVerb::Disasm, "the code of an ELF file read back as instructions", disasm::disasm)
         .params(&[disasm::OBJECT, disasm::SYMBOL])
         .examples(disasm::EXAMPLES),
     Command::run(
-        "queries",
+        CommandVerb::Queries,
         "what the queries saved beside a root file hold, largest first",
         queries::queries,
     )
     .params(&[FILE]),
     Command::run(
-        "compare",
+        CommandVerb::Compare,
         "build and run a program through every backend that generates code, and compare",
         compare::compare,
     )
     .params(compare::PARAMS),
     Command::run(
-        "reduce",
+        CommandVerb::Reduce,
         "the least text that fails as a file does: the same crash, or the same error",
         reduce::reduce,
     )
     .params(&[FILE, reduce::KEEP, vun_driver::codegen::BACKEND]),
     Command::run(
-        "profile",
+        CommandVerb::Profile,
         "a compile measured by instructions or time, ranked by function, crate, stage and query, against a snapshot",
         profile::profile,
     )
     .params(profile::PARAMS),
     Command::run(
-        "smith",
+        CommandVerb::Smith,
         "programs made by chance, each tried through every stage and backend",
         smith::smith,
     )

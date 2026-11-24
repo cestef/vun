@@ -4,7 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use vun_binder::{Bytes, Failure, Glob, Library, Reason, Request, Skipped, Unavailable, Unsupported};
-use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
 use vun_term::{Document, Shell};
@@ -44,15 +44,19 @@ pub(super) const GROUP: &str = "ffi";
 /// The binder of C headers.
 const C: &str = "c";
 
-pub(super) const BIND: Command<Session> = Command::run("bind", "generate declarations from a C header", bind)
-    .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, CLOSED, LIBRARY, SPLIT])
-    .examples(&[
-        Example { line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun", about: "bind a header" },
-        Example {
-            line: "all.h --scope /usr/include/lib --only 'lib_window_*' --library lib -o lib.vun",
-            about: "bind what a program calls from a library whose headers are in several directories",
-        },
-    ]);
+pub(super) const BIND: Command<Session> =
+    Command::run(CommandVerb::Bind, "generate declarations from a C header", bind)
+        .params(&[HEADER, OUT, CFLAGS, SCOPE, ONLY, CLOSED, LIBRARY, SPLIT])
+        .examples(&[
+            Example {
+                line: "board.h --cflag -Iinclude --cflag -DREV=2 -o board.vun",
+                about: "bind a header",
+            },
+            Example {
+                line: "all.h --scope /usr/include/lib --only 'lib_window_*' --library lib -o lib.vun",
+                about: "bind what a program calls from a library whose headers are in several directories",
+            },
+        ]);
 
 /// `vun util ffi bind <header>`: the header's declarations as Vun, through libclang loaded now.
 fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {

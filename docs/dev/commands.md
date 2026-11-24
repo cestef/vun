@@ -222,6 +222,10 @@ time to generate and link, median run time) and, for each backend that parts fro
 of stdout or stderr (or the exit code) where it does; `--format json` gives a `backend` line per row, a
 `parting` line per difference and a `verdict`. The exit status fails when any backend differs.
 
+## Command verbs
+
+A leaf command of `vun` is named by a `CommandVerb` (`compiler/tools/command/src/verb.rs`: name, `Kind::Read` or `Kind::Write`, one-line meaning), so `Command::run(CommandVerb::List, ...)`. A name outside the table is `Command::item`, allowed only below a `Command::verb_group` (`dump`). Add a verb to the table, never a second spelling of one. `Command::verify` reports strays and duplicate names; the `vun` tree is checked by `every_leaf_command_is_a_verb` (decision 684).
+
 ## Logging
 
 Progress bars (`vun_term::Progress`): open one with `shell.bar(..)` in a command or

@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Outcome, Param};
+use vun_command::{Args, Command, CommandVerb, Outcome, Param};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_term::Shell;
 
@@ -15,7 +15,7 @@ const VERSION: Param =
     Param::positional("version").about("the toolchain to make the default, `major.minor.patch`");
 
 pub(super) const DEFAULT: Command<Session> =
-    Command::run("default", "make an installed toolchain the default", default).params(&[VERSION]);
+    Command::run(CommandVerb::Default, "make an installed toolchain the default", default).params(&[VERSION]);
 
 fn default(session: &mut Session, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(toolchains) = toolchains(session) else { return Ok(session.outcome()) };

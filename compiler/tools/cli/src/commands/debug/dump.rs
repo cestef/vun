@@ -11,7 +11,7 @@ use vun_term::Shell;
 use super::super::FILE;
 
 /// What debug commands report, and the group of the views.
-pub(super) const DUMP: &str = "dump";
+pub(super) const DUMP: &str = vun_command::CommandVerb::Dump.name();
 
 /// The place the views of a unit are narrowed to.
 pub(super) const AT: Param = Param::option("at")
@@ -21,7 +21,7 @@ pub(super) const AT: Param = Param::option("at")
 /// The command showing the view `$view` of a file, taking `$param`s besides the file.
 macro_rules! view {
     ($view:ident $(, $param:expr)*) => {
-        vun_command::Command::run(
+        vun_command::Command::item(
             vun_driver::view::View::$view.name(),
             vun_driver::view::View::$view.about(),
             |s, args, shell| dump::show(vun_driver::view::View::$view, s, args, shell),

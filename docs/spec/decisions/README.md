@@ -9,6 +9,7 @@ Numbers 184 to 189, 217 to 220, 369 to 379, 452 to 469, 521 to 539, 544 to 559, 
 | # | Decision | Where |
 |---|----------|-------|
 | [658](658.md) | Commands show progress | 12 |
+| [684](684.md) | The command line has a closed vocabulary of verbs | 12 |
 
 ## All
 
@@ -489,7 +490,7 @@ Numbers 184 to 189, 217 to 220, 369 to 379, 452 to 469, 521 to 539, 544 to 559, 
 | [512](512.md) | The `asm` checks apply to blocks of `lang.arch.wasm32` | accepted | 07, 13 |
 | [513](513.md) | `--diagnostics=sarif` is the renderer component `sarif` | accepted | 10 |
 | [514](514.md) | A link symbol is a callable like a function and a primitive | accepted | 07, 13 |
-| [515](515.md) | `DiagId` is typed | accepted | 10 Ids are equal, hashed and ordered by path text, so `DiagId::new` and `DiagId::parse` of one path are one id. |
+| [515](515.md) | `DiagId` is typed | accepted | 10 Ids are equal, hashed and ordered by path text, so `DiagId::new` and `DiagId::from` of one path are one id. |
 | [516](516.md) | A loan nested in an aggregate argument of a compile-time call | accepted | 03 |
 | [517](517.md) | A compile-time call costs memory by nesting level | accepted | 03, 13 |
 | [518](518.md) | `std.Dyn(I)` | accepted | 02, 03 |
@@ -548,3 +549,4 @@ Numbers 184 to 189, 217 to 220, 369 to 379, 452 to 469, 521 to 539, 544 to 559, 
 | [681](681.md) | The binder reads the attributes written on a type, units being parsed with | accepted | 07 |
 | [682](682.md) | `vun util ffi bind --split --out <file>`, the file inside a package, binds the | accepted | 07, 12 |
 | [683](683.md) | A runtime without a C library has a heap | accepted | 08, 05 |
+| [684](684.md) | The command line has a closed vocabulary of verbs | proposed | 12 |

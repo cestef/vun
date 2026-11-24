@@ -3,7 +3,7 @@
 use std::io;
 
 use vun_build::store::Listed;
-use vun_command::{Args, Command, Outcome};
+use vun_command::{Args, Command, CommandVerb, Outcome};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_term::{Bytes, Column, Record, Row, Shell, Style, Text};
@@ -15,11 +15,11 @@ pub(super) const GROUP: &str = "cache";
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
     Command::run(
-        "list",
+        CommandVerb::List,
         "list stored packages, their sizes, and whether a project's lockfile keeps them",
         list,
     ),
-    Command::run("gc", "remove stored packages no registered lockfile records", gc),
+    Command::run(CommandVerb::Gc, "remove stored packages no registered lockfile records", gc),
 ];
 
 trait StoreFailure {

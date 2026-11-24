@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Example, Outcome};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome};
 use vun_data::Object;
 use vun_driver::Session;
 use vun_driver::install::{Component, Has};
@@ -13,7 +13,7 @@ use vun_term::{Column, Record, Row, Shell, Style, Text};
 use super::{TOOLCHAIN, asked};
 
 pub(super) const LIST: Command<Session> = Command::run(
-    "list",
+    CommandVerb::List,
     "list the components of a toolchain: the backends, linkers and other parts, and which it has",
     list,
 )

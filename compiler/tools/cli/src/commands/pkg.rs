@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{Source, Version};
-use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, errors};
 use vun_fetch::{FORMATS, Format};
 use vun_fs::Edit;
@@ -19,14 +19,14 @@ use vun_driver::packages::{Addition, Unstated};
 pub(super) const GROUP: &str = "pkg";
 
 pub(super) const COMMANDS: &[Command<Session>] = &[
-    Command::run("add", "declare a dependency, fetching an archive to learn its hash", add)
+    Command::run(CommandVerb::Add, "declare a dependency, fetching an archive to learn its hash", add)
         .params(&[SOURCE, NAME, VERSION])
         .examples(&[
             Example { line: "../geometry", about: "a package directory" },
             Example { line: "https://example.org/geometry-1.2.0.tar.zst", about: "a released archive" },
         ]),
-    Command::run("update", "raise dependencies to the newest release their indexes list", update),
-    Command::run("pack", "write the package's archive", pack).params(&[OUT]),
+    Command::run(CommandVerb::Update, "raise dependencies to the newest release their indexes list", update),
+    Command::run(CommandVerb::Pack, "write the package's archive", pack).params(&[OUT]),
 ];
 
 const SOURCE: Param = Param::positional("source").about("a package directory, or the URL of an archive");
@@ -40,7 +40,7 @@ const OUT: Param = Param::option("out")
 /// `vun pkg add <source>`: declares a dependency, fetching an archive once to learn its hash.
 fn add(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some((dir, _)) = session.project()? else { return Ok(Outcome::Failure) };
-    let version = match args.value(&VERSION).map(|v| (v, Version::parse(v))) {
+    let version = match args.value(&VERSION).map(|v| (v, v.parse::<Version>().ok())) {
         Some((text, None)) => {
             let msg = Msg::new().code(text).text(" is not a version ").code("major.minor.patch");
             session.diag.error(Diagnostic::error(errors::CLI_INVALID_VALUE, msg));

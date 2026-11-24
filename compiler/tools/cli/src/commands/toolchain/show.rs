@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Outcome};
+use vun_command::{Args, Command, CommandVerb, Outcome};
 use vun_data::Object;
 use vun_term::{Column, Record, Row, Shell, Style, Text};
 
@@ -14,7 +14,7 @@ use vun_driver::{Session, VERSION};
 use vun_span::Version;
 
 pub(super) const SHOW: Command<Session> = Command::run(
-    "show",
+    CommandVerb::Show,
     "show the running toolchain: its version, binary and library, and its components",
     show,
 );
@@ -41,7 +41,7 @@ const SEE_COMPONENTS: &str = "vun component list";
 
 /// How many components the running toolchain has, by how it has them.
 fn components(session: &Session) -> String {
-    let Some(version) = Version::parse(VERSION) else { return String::new() };
+    let Some(version) = VERSION.parse::<Version>().ok() else { return String::new() };
     let listed = session.components_of(Toolchains::user().as_ref(), version);
     let count = |is: fn(&Has) -> bool| listed.iter().filter(|c| is(&c.has)).count();
     let counts = [

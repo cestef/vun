@@ -5,7 +5,7 @@
 use std::io;
 use std::path::Path;
 
-use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
 use vun_driver::cover::{Lcov, Shared};
@@ -26,7 +26,7 @@ const LCOV: Param = Param::option("lcov")
 const FUNCTIONS: Param = Param::flag("functions").about("list each function and whether the tests called it");
 
 pub(super) const COVER: Command<Session> =
-    Command::run("cover", "run the tests of a namespace and report the lines they reach", cover)
+    Command::run(CommandVerb::Cover, "run the tests of a namespace and report the lines they reach", cover)
         .params(&[
             PATH,
             NAMES,

@@ -20,3 +20,4 @@ vun-span.workspace = true
 vun-renderer.workspace = true
 vun-render-json.workspace = true
 vun-data.workspace = true
+vun-variants.workspace = true

@@ -9,7 +9,7 @@ use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-use vun_command::{Args, Arity, Command, Example, Outcome, Param};
+use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param};
 use vun_driver::Session;
 use vun_driver::subject::Subject;
 use vun_driver::testing::{Mode, Selection};
@@ -28,31 +28,32 @@ pub(super) const NAMES: Param = names("the tests to run, by name; every one if n
 const BENCHMARKS: Param = names("the benchmarks to measure, by name; every one if none");
 const PROPERTIES: Param = names("the properties to fuzz, by name; every one if none");
 
-pub(super) const TEST: Command<Session> = Command::run("test", "run the tests of a namespace", test)
-    .aliases(&["t"])
-    .params(&[
-        PATH,
-        NAMES,
-        vun_driver::testing::FILTER,
-        vun_driver::testing::SEED,
-        vun_driver::testing::CASES,
-        vun_driver::testing::JOBS,
-        vun_driver::codegen::BACKEND,
-        vun_driver::codegen::LINKER,
-        vun_driver::program::OUTPUT,
-    ])
-    .sets(&COMPILE)
-    .examples(&[
-        Example { line: "", about: "run the tests of the package around this directory" },
-        Example { line: "--jobs 1", about: "run them in one process, in the order they are declared" },
-        Example { line: "net/", about: "run the tests of a directory and the namespaces in it" },
-        Example { line: "main.vun crc_vector", about: "run one test of a file" },
-        Example { line: "--filter crc", about: "run the tests whose name contains `crc`" },
-        Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
-    ]);
+pub(super) const TEST: Command<Session> =
+    Command::run(CommandVerb::Test, "run the tests of a namespace", test)
+        .aliases(&["t"])
+        .params(&[
+            PATH,
+            NAMES,
+            vun_driver::testing::FILTER,
+            vun_driver::testing::SEED,
+            vun_driver::testing::CASES,
+            vun_driver::testing::JOBS,
+            vun_driver::codegen::BACKEND,
+            vun_driver::codegen::LINKER,
+            vun_driver::program::OUTPUT,
+        ])
+        .sets(&COMPILE)
+        .examples(&[
+            Example { line: "", about: "run the tests of the package around this directory" },
+            Example { line: "--jobs 1", about: "run them in one process, in the order they are declared" },
+            Example { line: "net/", about: "run the tests of a directory and the namespaces in it" },
+            Example { line: "main.vun crc_vector", about: "run one test of a file" },
+            Example { line: "--filter crc", about: "run the tests whose name contains `crc`" },
+            Example { line: "main.vun roundtrip --seed 42", about: "replay a property's cases from a seed" },
+        ]);
 
 pub(super) const BENCH: Command<Session> =
-    Command::run("bench", "run the benchmarks of a namespace, measured", bench)
+    Command::run(CommandVerb::Bench, "run the benchmarks of a namespace, measured", bench)
         .params(&[
             PATH,
             BENCHMARKS,
@@ -81,23 +82,26 @@ pub(super) const BENCH: Command<Session> =
             },
         ]);
 
-pub(super) const FUZZ: Command<Session> =
-    Command::run("fuzz", "fuzz the properties of a namespace, guided by what their cases cover", fuzz)
-        .params(&[
-            PATH,
-            PROPERTIES,
-            vun_driver::testing::FILTER,
-            vun_driver::testing::SEED,
-            vun_driver::testing::FUZZED,
-            vun_driver::codegen::BACKEND,
-            vun_driver::codegen::LINKER,
-            vun_driver::program::OUTPUT,
-        ])
-        .sets(&COMPILE)
-        .examples(&[
-            Example { line: "", about: "fuzz the properties of the package around this directory" },
-            Example { line: "main.vun decode_raw --cases 1000000", about: "fuzz one property longer" },
-        ]);
+pub(super) const FUZZ: Command<Session> = Command::run(
+    CommandVerb::Fuzz,
+    "fuzz the properties of a namespace, guided by what their cases cover",
+    fuzz,
+)
+.params(&[
+    PATH,
+    PROPERTIES,
+    vun_driver::testing::FILTER,
+    vun_driver::testing::SEED,
+    vun_driver::testing::FUZZED,
+    vun_driver::codegen::BACKEND,
+    vun_driver::codegen::LINKER,
+    vun_driver::program::OUTPUT,
+])
+.sets(&COMPILE)
+.examples(&[
+    Example { line: "", about: "fuzz the properties of the package around this directory" },
+    Example { line: "main.vun decode_raw --cases 1000000", about: "fuzz one property longer" },
+]);
 
 fn test(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     tests(session, args, shell, Mode::Test)

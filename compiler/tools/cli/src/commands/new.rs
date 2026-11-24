@@ -3,7 +3,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_command::{Args, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_driver::Session;
 use vun_driver::packages::Library;
@@ -24,10 +24,12 @@ const TEMPLATE: Param = Param::option("template")
     }));
 
 pub(super) const NEW: Command<Session> =
-    Command::run("new", "start a project from a template", new).params(&[PATH, TEMPLATE]).examples(&[
-        Example { line: "hello", about: "a hosted program in the directory `hello`" },
-        Example { line: "blink --template rp2350", about: "firmware for a Raspberry Pi Pico 2" },
-    ]);
+    Command::run(CommandVerb::New, "start a project from a template", new)
+        .params(&[PATH, TEMPLATE])
+        .examples(&[
+            Example { line: "hello", about: "a hosted program in the directory `hello`" },
+            Example { line: "blink --template rp2350", about: "firmware for a Raspberry Pi Pico 2" },
+        ]);
 
 #[expect(clippy::unnecessary_wraps, reason = "every command has the `Run` signature")]
 fn new(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {

@@ -2,7 +2,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Dialect, Example, Outcome, Param, Values};
+use vun_command::{Args, Command, CommandVerb, Dialect, Example, Outcome, Param, Values};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_term::{Document, Shell};
 
@@ -16,7 +16,7 @@ const SHELL: Param = Param::positional("shell")
     .values(Values::Choice(|| Dialect::ALL.iter().map(|d| d.name()).collect()));
 
 pub(super) const COMPLETION: Command<Session> =
-    Command::run("completion", "print the completion script of a shell", completion)
+    Command::run(CommandVerb::Completion, "print the completion script of a shell", completion)
         .params(&[SHELL])
         .examples(&[
             Example { line: "bash >> ~/.bashrc", about: "complete in bash" },
@@ -27,7 +27,7 @@ pub(super) const COMPLETION: Command<Session> =
         ]);
 
 pub(super) const LSP: Command<Session> =
-    Command::run("lsp", "serve the language server over standard input and output", lsp);
+    Command::run(CommandVerb::Lsp, "serve the language server over standard input and output", lsp);
 
 /// The name the language server is registered by.
 const LSP_NAME: &str = "lsp";

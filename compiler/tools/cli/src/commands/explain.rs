@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Example, Outcome, Param};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome, Param};
 use vun_diag::{DiagId, Diagnostic, Msg, errors};
 use vun_suggest::closest;
 use vun_term::{Document, Format, Shell, Text};
@@ -13,15 +13,16 @@ use vun_driver::{Page, Session};
 const ID: Param =
     Param::positional("id").about("a diagnostic, such as names.duplicate or lang.errors.names.duplicate");
 
-pub(super) const EXPLAIN: Command<Session> = Command::run("explain", "explain a diagnostic", explain)
-    .params(&[ID])
-    .examples(&[Example { line: "int.does_not_fit", about: "the page of a diagnostic, by its id" }]);
+pub(super) const EXPLAIN: Command<Session> =
+    Command::run(CommandVerb::Explain, "explain a diagnostic", explain)
+        .params(&[ID])
+        .examples(&[Example { line: "int.does_not_fit", about: "the page of a diagnostic, by its id" }]);
 
 fn explain(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let id = args.value(&ID).expect("positional parameters are present when a command runs");
     let pages = session.pages();
     // A compiler error by its id as displayed, `int.does_not_fit`, or any by its binding path.
-    let wanted = [DiagId::compiler(id), DiagId::parse(id)];
+    let wanted = [DiagId::compiler(id), DiagId::from(id)];
     let Some((_, page)) = pages.iter().find(|(d, _)| wanted.contains(d)) else {
         let msg = Msg::new().text("no diagnostic is named ").code(id);
         let names: Vec<String> = pages.iter().map(|(d, _)| d.to_string()).collect();

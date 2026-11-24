@@ -3,7 +3,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Example, Outcome};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
 use vun_driver::subject::Subject;
@@ -14,7 +14,7 @@ use super::status::{Started, Step};
 use super::{COMPILE, PATH};
 
 pub(super) const FLASH: Command<Session> = Command::run(
-    "flash",
+    CommandVerb::Flash,
     "build the programs a package's plan records, and write those it flashes to their devices",
     flash,
 )

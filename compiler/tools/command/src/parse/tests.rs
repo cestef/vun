@@ -38,10 +38,10 @@ const PROGRAM: Program<()> = Program {
             Command::group(
                 "dump",
                 "print things",
-                &[Command::run("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
+                &[Command::item("cst", "the tree", ok).params(&[FILE, FORMAT, FAST])],
             ),
-            Command::run("go", "run it too", ok).params(&[MAYBE, REST]).sets(&[TUNING]),
-            Command::run("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, TIMES, REST]).aliases(&["x"]),
+            Command::item("go", "run it too", ok).params(&[MAYBE, REST]).sets(&[TUNING]),
+            Command::item("exec", "run it", ok).params(&[FILE, RELEASE, KEEP, TIMES, REST]).aliases(&["x"]),
         ],
     )
     .params(&[DEEP]),

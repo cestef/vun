@@ -4,7 +4,7 @@
 use std::io;
 
 use vun_build::toolchains::MEMOS;
-use vun_command::{Args, Command, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Command, CommandVerb, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
@@ -17,7 +17,7 @@ const INTO: Param = Param::option("into")
     .values(Values::Path(PathKind::Dir));
 
 pub(super) const PRIME: Command<Session> = Command::run(
-    "prime",
+    CommandVerb::Prime,
     "check the libraries whole and ship their memos with this toolchain, so that a first check finds them",
     prime,
 )

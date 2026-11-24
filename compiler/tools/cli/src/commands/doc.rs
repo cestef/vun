@@ -6,7 +6,7 @@ use std::io;
 use std::path::PathBuf;
 
 use vun_build::layout::MANIFEST;
-use vun_command::{Args, Arity, Command, Example, Outcome, Param, PathKind, Values};
+use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_fs::Edit;
@@ -31,16 +31,17 @@ const DOCUMENTER: &str = "html";
 /// The file that marks a directory as one `vun doc` writes in.
 const STAMP: &str = ".vun-doc";
 
-pub(super) const DOC: Command<Session> = Command::run("doc", "write the API documentation of packages", doc)
-    .params(&[PACKAGES, DEPS, LIBRARY, OUTPUT])
-    .examples(&[
-        Example { line: "", about: "document the project around this directory" },
-        Example { line: "--deps", about: "document the project and the packages it depends on" },
-        Example {
-            line: "--library -o site/public/api",
-            about: "document the project and the toolchain's library, for the site to serve",
-        },
-    ]);
+pub(super) const DOC: Command<Session> =
+    Command::run(CommandVerb::Doc, "write the API documentation of packages", doc)
+        .params(&[PACKAGES, DEPS, LIBRARY, OUTPUT])
+        .examples(&[
+            Example { line: "", about: "document the project around this directory" },
+            Example { line: "--deps", about: "document the project and the packages it depends on" },
+            Example {
+                line: "--library -o site/public/api",
+                about: "document the project and the toolchain's library, for the site to serve",
+            },
+        ]);
 
 /// The directory the documentation is written to.
 struct Output(PathBuf);

@@ -2,7 +2,7 @@
 
 use std::io;
 
-use vun_command::{Args, Command, Outcome};
+use vun_command::{Args, Command, CommandVerb, Outcome};
 use vun_data::Object;
 use vun_span::Version;
 use vun_term::{Column, Record, Row, Shell, Status, Style, Text, Verb};
@@ -11,12 +11,15 @@ use vun_driver::{Session, VERSION};
 
 use super::toolchains;
 
-pub(super) const LIST: Command<Session> =
-    Command::run("list", "list the toolchains installed, the running one and the default marked", list);
+pub(super) const LIST: Command<Session> = Command::run(
+    CommandVerb::List,
+    "list the toolchains installed, the running one and the default marked",
+    list,
+);
 
 fn list(session: &mut Session, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
     let Some(toolchains) = toolchains(session) else { return Ok(session.outcome()) };
-    let running = Version::parse(VERSION);
+    let running = VERSION.parse::<Version>().ok();
     let default = toolchains.default();
     let rows: Vec<Listed> = toolchains
         .installed()?

@@ -6,7 +6,7 @@ use std::io;
 
 use vun_build::release::{Build, Release, Releases};
 use vun_build::toolchains::Toolchains;
-use vun_command::{Args, Arity, Command, Example, Outcome, Param};
+use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param};
 use vun_data::Object;
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
@@ -21,17 +21,21 @@ const NAMES: Param = Param::positional("names")
     .arity(Arity::Many)
     .about("the components, by name: `backend-cranelift`, or `cranelift` when only one has it");
 
-pub(super) const ADD: Command<Session> =
-    Command::run("add", "install components from the toolchain's release, and what they need", add)
-        .params(&[NAMES, TOOLCHAIN])
-        .examples(&[Example {
-            line: "backend-cranelift",
-            about: "add the Cranelift backend to the running toolchain",
-        }]);
+pub(super) const ADD: Command<Session> = Command::run(
+    CommandVerb::Add,
+    "install components from the toolchain's release, and what they need",
+    add,
+)
+.params(&[NAMES, TOOLCHAIN])
+.examples(&[Example {
+    line: "backend-cranelift",
+    about: "add the Cranelift backend to the running toolchain",
+}]);
 
-pub(super) const REMOVE: Command<Session> = Command::run("remove", "remove installed components", remove)
-    .params(&[NAMES, TOOLCHAIN])
-    .examples(&[Example { line: "cranelift", about: "remove the Cranelift backend" }]);
+pub(super) const REMOVE: Command<Session> =
+    Command::run(CommandVerb::Remove, "remove installed components", remove)
+        .params(&[NAMES, TOOLCHAIN])
+        .examples(&[Example { line: "cranelift", about: "remove the Cranelift backend" }]);
 
 /// A toolchain whose release builds components, and the words naming some of them.
 struct Chosen<'a> {

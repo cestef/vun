@@ -6,7 +6,7 @@ use std::io;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vun_command::{Args, Command, Example, Outcome, Param};
+use vun_command::{Args, Command, CommandVerb, Example, Outcome, Param};
 use vun_data::Object;
 use vun_driver::Session;
 use vun_driver::fix::{Applied, Fixed};
@@ -21,7 +21,7 @@ const UNSAFE: Param =
     Param::flag("unsafe").about("also apply the fixes that may change what the program does");
 
 pub(super) const FIX: Command<Session> =
-    Command::run("fix", "apply the fixes diagnostics propose, then report what is left", fix)
+    Command::run(CommandVerb::Fix, "apply the fixes diagnostics propose, then report what is left", fix)
         .params(&[PATH, UNSAFE])
         .sets(&COMPILE)
         .examples(&[

@@ -17,6 +17,11 @@ fn names_are_unique_at_every_level() {
 }
 
 #[test]
+fn every_leaf_command_is_a_verb() {
+    assert_eq!(PROGRAM.root.verify(), []);
+}
+
+#[test]
 fn dump_cst_prints_the_tree() {
     let dir = Scratch::new("dump");
     let path = dir.write("dump.vun", "x := 1;\n");
