@@ -15,9 +15,17 @@ pub(crate) const LAYERS: Task = Task::new(
     "fail on a crate depending on a later group of crates",
     Work::Run(crate::check_layers),
 );
-pub(crate) const CHECK: Task =
-    Task::new("check", "run the quick checks: formatting, generated sources, lines, layers", Work::Needs)
-        .needs(&[&FORMATTED, &GENERATED, &LINES, &LAYERS]);
+pub(crate) const DECISIONS: Task = Task::new(
+    "decisions",
+    "fail on a decision file that does not read, and write the index of the decisions",
+    Work::Run(crate::check_decisions),
+);
+pub(crate) const CHECK: Task = Task::new(
+    "check",
+    "run the quick checks: formatting, generated sources, lines, layers, decisions",
+    Work::Needs,
+)
+.needs(&[&FORMATTED, &GENERATED, &LINES, &LAYERS, &DECISIONS]);
 pub(crate) const PUSH: Task = Task::new(
     "push",
     "run the quick checks, then `jj git push` with the words given",
@@ -98,6 +106,7 @@ macro_rules! commands {
 pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = commands![
     CHECK,
     CORPUS,
+    DECISIONS,
     HOOKS,
     INSTALL,
     LAYERS,

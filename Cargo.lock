@@ -3155,6 +3155,7 @@ dependencies = [
  "vun-term",
  "vun-tool",
  "vun-tree-sitter",
+ "vun-variants",
 ]
 
 [[package]]

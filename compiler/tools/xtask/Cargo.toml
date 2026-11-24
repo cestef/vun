@@ -31,6 +31,7 @@ vun-data.workspace = true
 vun-intern.workspace = true
 vun-tool.workspace = true
 vun-tree-sitter.workspace = true
+vun-variants.workspace = true
 vun-syntax.workspace = true
 vun-grammar.workspace = true
 vun-origin.workspace = true

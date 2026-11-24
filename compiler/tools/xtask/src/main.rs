@@ -2,6 +2,7 @@
 
 mod cargo;
 mod corpus;
+mod decisions;
 mod explanations;
 mod hooks;
 mod install;
@@ -27,6 +28,7 @@ use vun_harness::repo_root;
 use vun_term::Document;
 
 use corpus::Corpus;
+use decisions::Decisions;
 use layers::{Breach, Ranks, Refreshed};
 use lines::Oversized;
 use report::{Judged, Passed, Tally};
@@ -35,6 +37,7 @@ const UPWARD: DiagId = DiagId::new("xtask.layers.upward");
 const UNRANKED: DiagId = DiagId::new("xtask.layers.unranked");
 const NO_METADATA: DiagId = DiagId::new("xtask.layers.no_metadata");
 const OVERSIZED: DiagId = DiagId::new("xtask.lines.oversized");
+const UNREAD: DiagId = DiagId::new("xtask.decisions.unread");
 
 const PROGRAM: Program<DiagCtxt> = Program {
     defaults: vun_command::undefaulted,
@@ -79,6 +82,22 @@ fn check_lines(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Resu
         shell.status(&Passed::Lines { max: lines::MAX_LINES });
     }
     Ok(if oversized.is_empty() { Outcome::Success } else { Outcome::Failure })
+}
+
+fn check_decisions(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
+    let root = repo_root();
+    let decisions = match Decisions::read(&root) {
+        Ok(decisions) => decisions,
+        Err(why) => {
+            let msg = Msg::new().text("the decisions are not read");
+            diag.error(Diagnostic::error(UNREAD, msg).caused_by(&why));
+            return Ok(Outcome::Failure);
+        }
+    };
+    if decisions.refresh(&root)? {
+        shell.status(&decisions::Written);
+    }
+    Ok(Outcome::Success)
 }
 
 fn check_layers(diag: &mut DiagCtxt, _: &Args, shell: &mut Shell<'_>) -> io::Result<Outcome> {
