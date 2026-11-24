@@ -88,6 +88,7 @@ impl Record for Judged<'_> {
 
 /// A check of the repository that passed, and what it measured.
 pub(crate) enum Passed {
+    Comments { groups: usize, lines: u32 },
     Layers { groups: usize },
     Lines { max: u32 },
     Names { banned: usize },
@@ -96,6 +97,7 @@ pub(crate) enum Passed {
 impl Record for Passed {
     fn kind(&self) -> &'static str {
         match self {
+            Self::Comments { .. } => "comments",
             Self::Layers { .. } => "layers",
             Self::Lines { .. } => "lines",
             Self::Names { .. } => "names",
@@ -104,6 +106,9 @@ impl Record for Passed {
 
     fn text(&self) -> Text {
         match self {
+            Self::Comments { groups, lines } => Text::from(format!(
+                "{lines} comment lines inside function bodies in {groups} groups, none above the baseline"
+            )),
             Self::Layers { groups } => {
                 Text::from(format!("every crate depends only on its own group or earlier ones, of {groups}"))
             }
@@ -116,6 +121,7 @@ impl Record for Passed {
 
     fn fields(&self) -> Object<'static> {
         match self {
+            Self::Comments { groups, lines } => Object::new().with("groups", *groups).with("lines", *lines),
             Self::Layers { groups } => Object::new().with("groups", *groups),
             Self::Lines { max } => Object::new().with("max", *max),
             Self::Names { banned } => Object::new().with("banned", *banned),

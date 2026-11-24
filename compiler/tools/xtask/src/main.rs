@@ -1,6 +1,7 @@
 //! Repository automation, run through the `cargo xtask` alias.
 
 mod cargo;
+mod comments;
 mod corpus;
 mod decisions;
 mod explanations;

@@ -1,0 +1,18 @@
+counts := .{
+    .asm = 23,
+    .back = 130,
+    .base = 152,
+    .components = 1,
+    .front = 67,
+    .isa = 25,
+    .lang = 11,
+    .link = 3,
+    .low = 212,
+    .mid = 133,
+    .native = 79,
+    .object = 55,
+    .pkg = 11,
+    .render = 12,
+    .sema = 334,
+    .tools = 382,
+};

@@ -10,6 +10,12 @@ pub(crate) const GENERATE: Task =
     Task::new("generate", "write the generated files", Work::Call(Call::Generate));
 pub(crate) const LINES: Task =
     Task::new("lines", "fail on source files too long to stay one concern", Work::Run(crate::check_lines));
+pub(crate) const COMMENTS: Task = Task::new(
+    "comments",
+    "fail on more comment lines inside function bodies than the baseline of a group of crates holds",
+    Work::Run(crate::comments::check),
+)
+.params(&[crate::comments::BLESS]);
 pub(crate) const LAYERS: Task = Task::new(
     "layers",
     "fail on a crate depending on a later group of crates",
@@ -27,10 +33,10 @@ pub(crate) const DECISIONS: Task = Task::new(
 );
 pub(crate) const CHECK: Task = Task::new(
     "check",
-    "run the quick checks: formatting, generated sources, lines, layers, names, decisions",
+    "run the quick checks: formatting, generated sources, lines, comments, layers, names, decisions",
     Work::Needs,
 )
-.needs(&[&FORMATTED, &GENERATED, &LINES, &LAYERS, &NAMES, &DECISIONS]);
+.needs(&[&FORMATTED, &GENERATED, &LINES, &COMMENTS, &LAYERS, &NAMES, &DECISIONS]);
 pub(crate) const PUSH: Task = Task::new(
     "push",
     "run the quick checks, then `jj git push` with the words given",
@@ -110,6 +116,7 @@ macro_rules! commands {
 
 pub(crate) const COMMANDS: &[vun_command::Command<vun_diag::DiagCtxt>] = commands![
     CHECK,
+    COMMENTS,
     CORPUS,
     DECISIONS,
     HOOKS,
