@@ -122,7 +122,7 @@ impl Record for Decl<'_> {
 
     fn content_hash(&self, cx: &mut DiagCx<'_>) -> Option<Hash> {
         match &self.value {
-            Literal::String(text) => Hash::parse(text),
+            Literal::String(text) => text.parse().ok(),
             _ => None,
         }
         .or_else(|| {

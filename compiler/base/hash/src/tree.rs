@@ -8,11 +8,12 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 use std::path::{Component, Path};
+use std::str::FromStr;
 
 use vun_fs::{Mode, Modes, Refusal, Tree};
 use vun_par::Parallel;
 
-use super::{Algorithm, Hash};
+use super::{Algorithm, Fault, Hash, NotSnapshot};
 
 /// Separates directory nodes from file contents, so that no file hashes like a directory.
 const DIRECTORY_CONTEXT: &str = "vun 2026 directory node";
@@ -153,28 +154,6 @@ impl Snapshot {
         changes.into_iter().map(|(p, c)| (Self::path(p), c)).collect()
     }
 
-    /// Reads the text form: one `hash mode path` line per file, the mode `-` or `x` (executable).
-    /// Every component must be a plain name, so that a snapshot from an untrusted archive cannot
-    /// name a file outside its tree.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut files = BTreeMap::new();
-        for line in text.lines() {
-            let (hash, rest) = line.split_once(' ')?;
-            let (mark, path) = rest.split_once(' ')?;
-            let mut marks = mark.chars();
-            let mark = marks.next().filter(|_| marks.next().is_none())?;
-            let mode = MODES.iter().find(|&&(m, _)| m == mark)?.1;
-            files.insert(Self::components(path)?, Entry { hash: Hash::parse(hash)?, mode });
-        }
-        // A file is no directory: `a` beside `a/b` names no tree.
-        let paths: Vec<_> = files.keys().collect();
-        if paths.windows(2).any(|w| w[1].starts_with(w[0])) {
-            return None;
-        }
-        Some(Self { files })
-    }
-
     /// The components of `path`, written with [`Self::PATH_SEPARATOR`], if each is a plain name:
     /// not empty, `.` or `..`, and holding no [`Self::FORBIDDEN`] character. Paths from untrusted
     /// archives go through it, so that none names a file outside its tree.
@@ -189,6 +168,32 @@ impl Snapshot {
 
     fn path(components: &[String]) -> String {
         components.join(&Self::PATH_SEPARATOR.to_string())
+    }
+}
+
+/// Reads the text form: one `hash mode path` line per file, the mode `-` or `x` (executable).
+/// Every component must be a plain name, so that a snapshot from an untrusted archive cannot
+/// name a file outside its tree.
+impl FromStr for Snapshot {
+    type Err = NotSnapshot;
+
+    fn from_str(text: &str) -> Result<Self, NotSnapshot> {
+        let mut files = BTreeMap::new();
+        for (number, line) in text.lines().enumerate() {
+            let at = |fault| NotSnapshot::Line { line: number + 1, fault };
+            let (hash, rest) = line.split_once(' ').ok_or(at(Fault::Fields))?;
+            let (mark, path) = rest.split_once(' ').ok_or(at(Fault::Fields))?;
+            let mut marks = mark.chars();
+            let mark = marks.next().filter(|_| marks.next().is_none()).ok_or(at(Fault::Mode))?;
+            let mode = MODES.iter().find(|&&(m, _)| m == mark).ok_or(at(Fault::Mode))?.1;
+            let hash = hash.parse().map_err(|reason| at(Fault::Hash(reason)))?;
+            files.insert(Self::components(path).ok_or(at(Fault::Path))?, Entry { hash, mode });
+        }
+        let paths: Vec<_> = files.keys().collect();
+        if paths.windows(2).any(|w| w[1].starts_with(w[0])) {
+            return Err(NotSnapshot::Nested);
+        }
+        Ok(Self { files })
     }
 }
 

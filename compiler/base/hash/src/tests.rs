@@ -2,18 +2,18 @@ use std::path::Path;
 
 use vun_fs::{Mode, Modes, Refusal, Scratch};
 
-use super::{Algorithm, Change, Hash, Snapshot, base32};
+use super::{Algorithm, Change, Fault, Hash, NotHash, NotSnapshot, Snapshot, base32};
 
 #[test]
 fn text_form_names_the_algorithm_and_round_trips() {
     let h = Hash::of(b"vun");
     let text = h.to_string();
     assert!(text.starts_with("blake3:") && text.len() == "blake3:".len() + 52, "{text}");
-    assert_eq!(Hash::parse(&text), Some(h));
+    assert_eq!(text.parse::<Hash>(), Ok(h));
     assert_eq!(h.algorithm(), Algorithm::Blake3);
-    assert_eq!(Hash::parse(&text.replace(':', "-")), None);
-    assert_eq!(Hash::parse(&text.replace("blake3", "md5")), None);
-    assert_eq!(Hash::parse("blake3:zz"), None);
+    assert_eq!(text.replace(':', "-").parse::<Hash>(), Err(NotHash::Separator));
+    assert_eq!(text.replace("blake3", "md5").parse::<Hash>(), Err(NotHash::Algorithm));
+    assert_eq!("blake3:zz".parse::<Hash>(), Err(NotHash::Digest));
 }
 
 #[test]
@@ -40,23 +40,41 @@ fn trees_depend_on_contents_and_names_only() {
 fn snapshots_round_trip_and_name_changed_files() {
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let all = Snapshot::of(&src, &["lib.rs".into(), "tree.rs".into()]).unwrap();
-    assert_eq!(Snapshot::parse(&all.to_string()), Some(all.clone()));
+    assert_eq!(all.to_string().parse::<Snapshot>(), Ok(all.clone()));
     assert_eq!(all.root(), Hash::tree(&src, &["tree.rs".into(), "lib.rs".into()]).unwrap());
     let fewer = Snapshot::of(&src, &["lib.rs".into(), "tests.rs".into()]).unwrap();
     let changes = all.changes(&fewer);
     assert_eq!(changes, [("tests.rs".to_owned(), Change::Added), ("tree.rs".to_owned(), Change::Removed)]);
-    assert_eq!(Snapshot::parse("blake3:zz lib.rs"), None);
+    assert_eq!(
+        "blake3:zz - lib.rs".parse::<Snapshot>(),
+        Err(NotSnapshot::Line { line: 1, fault: Fault::Hash(NotHash::Digest) })
+    );
+    assert_eq!(
+        "blake3:zz lib.rs".parse::<Snapshot>(),
+        Err(NotSnapshot::Line { line: 1, fault: Fault::Fields })
+    );
 }
 
 #[test]
 fn snapshots_refuse_paths_leaving_their_tree() {
     let h = Hash::of(b"x");
     for path in ["../x", "a/../../x", "/etc/x", "a//b", ".", "a\\b"] {
-        assert_eq!(Snapshot::parse(&format!("{h} - {path}")), None, "{path}");
+        assert_eq!(
+            format!("{h} - {path}").parse::<Snapshot>(),
+            Err(NotSnapshot::Line { line: 1, fault: Fault::Path }),
+            "{path}"
+        );
     }
-    assert!(Snapshot::parse(&format!("{h} - a/b.vun")).is_some());
-    assert_eq!(Snapshot::parse(&format!("{h} a/b.vun")), None, "the mode is required");
-    assert_eq!(Snapshot::parse(&format!("{h} rw a/b.vun")), None);
+    assert!(format!("{h} - a/b.vun").parse::<Snapshot>().is_ok());
+    assert_eq!(
+        format!("{h} a/b.vun").parse::<Snapshot>(),
+        Err(NotSnapshot::Line { line: 1, fault: Fault::Fields }),
+        "the mode is required"
+    );
+    assert_eq!(
+        format!("{h} rw a/b.vun").parse::<Snapshot>(),
+        Err(NotSnapshot::Line { line: 1, fault: Fault::Mode })
+    );
 }
 
 #[test]
@@ -70,7 +88,7 @@ fn the_executable_bit_is_part_of_the_tree() {
     if script.mode() == Mode::Executable {
         assert_ne!(regular.root(), executable.root());
         assert!(executable.to_string().contains(" x configure"), "{executable}");
-        assert_eq!(Snapshot::parse(&executable.to_string()), Some(executable.clone()));
+        assert_eq!(executable.to_string().parse::<Snapshot>(), Ok(executable.clone()));
         assert_eq!(regular.changes(&executable), [("configure".to_owned(), Change::Mode)]);
     }
 }
@@ -121,8 +139,8 @@ fn taken_snapshots_keep_what_they_hashed() {
 #[test]
 fn a_file_is_no_directory_in_a_snapshot() {
     let h = Hash::of(b"x");
-    assert_eq!(Snapshot::parse(&format!("{h} - a\n{h} - a/b")), None);
-    assert!(Snapshot::parse(&format!("{h} - a\n{h} - ab/c")).is_some());
+    assert_eq!(format!("{h} - a\n{h} - a/b").parse::<Snapshot>(), Err(NotSnapshot::Nested));
+    assert!(format!("{h} - a\n{h} - ab/c").parse::<Snapshot>().is_ok());
 }
 
 #[test]

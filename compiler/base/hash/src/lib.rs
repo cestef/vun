@@ -4,11 +4,14 @@
 pub mod base32;
 mod data;
 mod encode;
+mod error;
 mod stable;
 mod tree;
 
 use std::fmt;
+use std::str::FromStr;
 
+pub use error::{Fault, NotHash, NotSnapshot};
 pub use stable::Stable;
 pub use tree::{Change, Entry, Snapshot, Taken};
 
@@ -37,6 +40,16 @@ pub struct Hash {
     digest: [u8; 32],
 }
 
+impl FromStr for Hash {
+    type Err = NotHash;
+
+    fn from_str(text: &str) -> Result<Self, NotHash> {
+        let (name, digest) = text.split_once(Self::SEPARATOR).ok_or(NotHash::Separator)?;
+        let &algorithm = Algorithm::ALL.iter().find(|a| a.name() == name).ok_or(NotHash::Algorithm)?;
+        Self::from_digest(algorithm, digest).ok_or(NotHash::Digest)
+    }
+}
+
 impl Hash {
     /// Separates the algorithm from the digest in the text form.
     pub const SEPARATOR: char = ':';
@@ -55,14 +68,6 @@ impl Hash {
         let mut blake3 = blake3::Hasher::new();
         blake3.update_reader(reader)?;
         Ok(Self { algorithm: Algorithm::Blake3, digest: *blake3.finalize().as_bytes() })
-    }
-
-    /// Reads the text form; `None` for an unknown algorithm or a malformed digest.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let (name, digest) = text.split_once(Self::SEPARATOR)?;
-        let &algorithm = Algorithm::ALL.iter().find(|a| a.name() == name)?;
-        Self::from_digest(algorithm, digest)
     }
 
     /// The hash of `algorithm` whose digest has the text encoding `digest`.

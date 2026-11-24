@@ -83,7 +83,7 @@ impl FromStr for Listing {
             let at = |reason| Misread { line: number + 1, reason };
             let (version, hash) = line.split_once(' ').ok_or(at(Reason::Fields))?;
             let version = version.parse::<Version>().map_err(|_| at(Reason::Version))?;
-            releases.push((version, Hash::parse(hash.trim()).ok_or(at(Reason::Hash))?));
+            releases.push((version, hash.trim().parse::<Hash>().map_err(|_| at(Reason::Hash))?));
         }
         releases.sort();
         Ok(Self { releases })

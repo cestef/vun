@@ -43,7 +43,7 @@ impl Stamp {
 
     /// Whether the output is what this link wrote last, so linking again would write it again.
     pub(super) fn holds(&self) -> bool {
-        let recorded = std::fs::read_to_string(&self.at).ok().and_then(|text| Hash::parse(&text));
+        let recorded = std::fs::read_to_string(&self.at).ok().and_then(|text| text.parse::<Hash>().ok());
         let written = std::fs::read(&self.output).ok().map(|bytes| Hash::of(&bytes));
         recorded.is_some() && recorded == written
     }

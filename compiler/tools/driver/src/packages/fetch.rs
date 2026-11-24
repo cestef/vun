@@ -118,7 +118,8 @@ impl Session {
         if kind == DepKind::Vun {
             return self.package_at(&store.package(hash)) == Some(PackageKey::Content(hash));
         }
-        let Some(recorded) = fs::read_to_string(store.snapshot(hash)).ok().and_then(|t| Snapshot::parse(&t))
+        let Some(recorded) =
+            fs::read_to_string(store.snapshot(hash)).ok().and_then(|t| t.parse::<Snapshot>().ok())
         else {
             return false;
         };
