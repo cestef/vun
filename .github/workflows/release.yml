@@ -39,7 +39,7 @@ jobs:
           echo "VUN_TOOLS=$RUNNER_TEMP/tools.vun" >> "$GITHUB_ENV"
       - run: cargo xtask check
       - run: cargo clippy --all-targets
-      - run: cargo nextest run
+      - run: cargo nextest run --no-fail-fast
 
   package:
     strategy:
