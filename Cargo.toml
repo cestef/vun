@@ -216,6 +216,11 @@ debug = 1
 # third of the time for a few seconds more per rebuild.
 opt-level = 1
 
+# Dependencies are optimized and built without debug assertions; the workspace's own crates keep both.
+[profile.dev.package."*"]
+opt-level = 2
+debug-assertions = false
+
 [profile.release]
 lto = "thin"
 

@@ -8,3 +8,17 @@ command = ["cargo", "xtask", "components", "--profile", "dev"]
 [[profile.default.scripts]]
 filter = "package(vun-driver)"
 setup = "components"
+
+# A test running past one second is reported as slow; one still running after a minute is killed.
+[profile.default]
+slow-timeout = { period = "1s", terminate-after = 60 }
+
+# The driver tests build and run programs: they get ten seconds per period, a minute in all.
+[[profile.default.overrides]]
+filter = "package(vun-driver)"
+slow-timeout = { period = "10s", terminate-after = 6 }
+
+# `#[ignore = "stress"]` tests are the only ignored ones: run them, with budgets for long runs.
+[profile.stress]
+slow-timeout = { period = "60s", terminate-after = 30 }
+run-extra-args = ["--run-ignored", "ignored-only"]
