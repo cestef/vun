@@ -81,12 +81,11 @@ Primitives with no desugaring (they are the language): bindings, function litera
 8. Reaching `lang.panic.unreachable`.
 9. Calling a function with target features the executing CPU lacks.
 
-The reference interpreter detects every item except 4 and 5. Safe code cannot trigger any of them;
-that is the definition of safe.
+The reference interpreter detects every item except 4 and 5. Safe code cannot trigger any of them.
 
 ## D. Grammar sketch
 
-Informal; the normative grammar is `lang/syntax/grammar.vun` plus the parse rules of spec 01,
+Informal. The normative grammar is `lang/syntax/grammar.vun` plus the parse rules of spec 01,
 section 6. Patterns are parsed as expressions (`pattern = expr` below).
 
 ```

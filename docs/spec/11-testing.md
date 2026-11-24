@@ -24,7 +24,7 @@ package around the current directory when there is none, which a first word nami
 disk is (`vun test crc_vector` runs that test); a file outside any package is in no namespace
 (`test.no_namespace`).
 
-**The parameters select what kind of test it is:**
+The parameters select the kind of test:
 
 ```vun
 #[test]

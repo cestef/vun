@@ -362,7 +362,7 @@ countdown := (n: u32) -> u32 {
   and float types do. A block may also load, build (`v128_const` takes the low and then the high
   64 bits), compute and store one. Only wasm32 holds vectors in a binding; the other
   architectures report the value as held in no register. There is no `return`: a block inlined into another function would return from
-  that one. after `br` the rest of its block is unreached, as after `unreachable`. A local read where
+  that one. After `br` the rest of its block is unreached, as after `unreachable`. A local read where
   another instruction wrote it is bound `inout` at each: a read position takes `in` or `inout`, a
   write one `out` or `inout`, and a place named again is one local. A block checked for another
   target holds its bindings in a class of unknown type, which fits any position.

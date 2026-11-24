@@ -21,8 +21,10 @@ Spec 11 is the reference.
 - Loose files stay in no namespace (`test.no_namespace`); recommended to keep, the owner may
   overrule.
 - `vun debug smith` (see spec 11): not generated yet are generic iterators, coroutines that
-  return or are cancelled, tasks, `unsafe`, and layout attributes. Untriaged: a text-fuzz crash
-  at `compiler/low/lower/src/func/constant.rs:38` (`f16` constants; `int` slices past the type's
-  size, so a `Constant::Float` met a smaller type). The `program` fuzz target found no input in
+  return or are cancelled, tasks, `unsafe`, and layout attributes. A text-fuzz crash in `compiler/low/lower/src/func/constant.rs` (an `f16` constant, or an `int` slice past
+  the type's size, so a `Constant::Float` met a smaller type) is fixed at its source: a float
+  constant is encoded only into a float of its format, anything else is `Unlowered::unsupported`.
+  The crash input was not kept, so no regression test exists; a rerun of the `lower` target is
+  the check. The `program` fuzz target found no input in
   7 minutes; run it with `ASAN_OPTIONS=detect_leaks=0` and `-rss_limit_mb` raised, one session
   grows past the default limit.

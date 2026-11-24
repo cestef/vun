@@ -1,7 +1,9 @@
 # Open: packaging, releases, components
 
-- The first tagged release (`0.1.0`) has not run in CI yet; `install.sh` trusts its first toolchain
-  as far as TLS.
+- Release `0.2.0` failed in CI (run 38382176498): `cargo gen --check` reports `editors/{tree-sitter,zed,vscode}`
+  stale against `lib/lang/lang/syntax`, and the macOS arm64 package job failed in `cargo xtask pgo`
+  (`tool.profile_failed`: cannot measure `build-hello`). `0.1.0` passed on a retag.
+- `install.sh` trusts its first toolchain as far as TLS.
 - Packaging: signed caches, planned builds, `vun pkg why`.
 
 ## Pre-evaluated output (settled direction)
@@ -10,7 +12,7 @@ No standalone "pre-compile, then compile from that" command.
 
 - *Cache:* saved query memos already keep what compiling computed, keyed by content. Missing is a
   code cache below them; finishing it gives this for free.
-- *Residual source, now:* a view `vun debug dump expanded`, a row of `vun_driver::view::View`
+- *Residual source, wanted:* a view `vun debug dump expanded` (not a `View` variant yet), a row of `vun_driver::view::View`
   (editors offer it too): the program with each `$` form evaluated, `$for` and `$if` expanded,
   generated types spelled out. A view only, never a build input: emitted text loses origins.
 - *Distributable artifact, later:* prebuilt package entries in the shared store (Nix direction),

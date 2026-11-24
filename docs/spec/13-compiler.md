@@ -2,7 +2,7 @@
 
 Written in Rust as a set of libraries with narrow interfaces. Every stage after the frontend can be
 replaced: backends, linkers, targets, passes, evaluators, diagnostic renderers. Nothing above LIR
-knows about any backend; nothing above the linker adapter knows about any linker.
+knows about any backend. Nothing above the linker adapter knows about any linker.
 
 ## 1. Pipeline
 
@@ -51,7 +51,7 @@ years (rustc's parallel front end). So both are designed in from phase 1.
   output built from symbols do not depend on the process or the schedule. The stable hash
   (`vun_hash::Stable`, a fixed-seed foldhash) is what symbols, interned values and origins hash
   by: the same in every process of one toolchain build, and far cheaper than BLAKE3 on the few
-  bytes each holds; what is saved by it is named by the toolchain that wrote it.
+  bytes each holds. What is saved by it is named by the toolchain that wrote it.
 
 **Queries.**
 - The unit of incremental work is a declaration or a function body, never an expression.
@@ -247,7 +247,7 @@ per second per stage and fails on regressions.
   Backends may lower it as pointer arithmetic (the C backend's `+`) and passes may rely on it; the
   verifier rejects an offset whose object and displacement it knows, a chain of constant offsets
   from the address of a slot or a data object, when it leaves that object (decision 245).
-  An inline assembly block (spec 07, decision 258) is one MIR statement (`Rvalue::Asm`) and one
+  An inline assembly block (spec 07, decisions 258 and 343) is one MIR statement (`Rvalue::Asm`) and one
   LIR instruction (`InstKind::Asm`), both carrying the block's typed instructions
   (`vun_inline::Block`) over its bindings: in MIR the operands it reads and the places it
   writes, in LIR the values it reads and the addresses and scalar types of the places it
@@ -368,7 +368,7 @@ The grammar (tokens, node kinds, their productions) is defined once, in `lang/sy
 and `lang/syntax/nodes.vun`, as Vun data. From it are generated: the Rust kind enums and typed
 accessors used by the parser and every compiler crate; `lang.syntax`, which compile-time code uses
 to read code values (spec 03); the formatter's node table; and the tree-sitter grammar for editors.
-Tokens and nodes are therefore defined in exactly one place and cannot drift.
+Tokens and nodes are defined in one place, so they cannot drift.
 
 `cargo gen` reads the grammar with the compiler's own parser as literal data (the
 reader of `build.vun` manifests, spec 12) and translates each declaration by the shape of its
@@ -645,7 +645,7 @@ pub trait DiagSink {
 - **One binary, three kinds of component** (decision 131). `vun` is one executable, and what it
   holds is decided per component:
   - *compiled in*: the front end, checks, MIR, the interpreter, `fmt`, the language server,
-    packages, diagnostic renderers and the pure-Rust backends (C text, Cranelift); enough to check,
+    packages, diagnostic renderers and the pure-Rust backends (C text, Cranelift). Enough to check,
     build and run a program with nothing else installed. Cargo features choose the set.
   - *a native library loaded on first use*: libclang for `vun util ffi bind`, libLLVM for the LLVM
     backend, through a thin adapter crate each, the only crates allowed `unsafe`. Never linked in;
@@ -660,10 +660,10 @@ pub trait DiagSink {
   places nothing refuses a plan that does (`link.unsupported`). The plan also lists the libraries
   the program's imports name (`LinkPlan::libraries`, each once, in the order first used), which a
   hosted linker links after the objects as its system names them: `-lm` for the GNU driver and
-  Mach-O, `m.lib` for COFF; a wasm link ignores them, the library being an import's module.
+  Mach-O, `m.lib` for COFF. A wasm link ignores them, the library being an import's module.
   Bare-metal targets link through
   their C compiler's linker for that.
-- **Capabilities are checked, never faked.** A program needing guaranteed tail calls, frame sizes or
+- **Capabilities are checked.** A program needing guaranteed tail calls, frame sizes or
   vectors on a backend that lacks them is rejected with a diagnostic naming the backends that can.
 
 ## 8. Backends and linkers
@@ -683,7 +683,7 @@ preferred first (`lang.target.Backends`: `debug`, what `vun build` uses, and `re
 `vun build --release` uses): `linux.x86_64.kernel` debug builds prefer `native`, then `cranelift`, then
 `c`, and release builds `llvm`, then `c`. A build takes the first that the toolchain has (its
 Cargo feature built in), that generates code (`BackendInfo.readiness`) and that generates it for
-the target's architecture (`BackendInfo.arches`); that is `Registry::choose`, its reasons typed
+the target's architecture (`BackendInfo.arches`). That is `Registry::choose`, its reasons typed
 (`Unfit::{Absent, Planned, Arch}`). `--backend` (or `VUN_BACKEND`) names one instead, which must
 fit; otherwise the build is refused with `backend.unavailable` or `backend.unsupported`, naming the
 backends that could, and a target none of whose preferences fit reports `backend.unchosen` with
@@ -763,7 +763,7 @@ c` shows it, and `vun build` and `vun run` compile and link it.
   place (`v3`), and one a link symbol already spells gets underscores appended until it is free.
 - **Origins** become `#line` directives, so the C compiler's diagnostics and debug information
   point at Vun source.
-- **What C99 lacks is refused, never approximated**: 128-bit integers, `f16`, and, where the compiler offers nothing for them, atomics (without its builtins,
+- **What C99 lacks is refused**: 128-bit integers, `f16`, and, where the compiler offers nothing for them, atomics (without its builtins,
   `lang.target.Atomics`), data aligned past every C type or placed in a link section, naked
   functions, and symbols named in inline assembly (without GNU attributes,
   `lang.target.Attributes`: `__attribute__((aligned(n), section("name")))` on the object,
@@ -1335,7 +1335,7 @@ in registers a call may overwrite, none saved.
   C, or a library built unchecked. Shadow memory keeps every layout. Code built without checks
   still links, and its allocations are registered, because its allocators run their checked
   versions.
-- **Known gaps, stated rather than hidden.** Data objects are addressable as wholes: an overflow
+- **Known gaps.** Data objects are addressable as wholes: an overflow
   from one datum into the next is not caught, since that would need the linker to lay out
   redzones. Accesses through borrows are not checked, because the borrow check proved them.
   An `asm` block reading memory it does not own is not caught, only writes are. A slot is
@@ -1551,7 +1551,7 @@ reads each message itself once the last is handled, and checks after each.
   one holding the byte), and show that unit alone, written beside the document as
   `<view>.<unit>`. `vun debug dump types|values|mir --at line:column` shows the same.
 - *Commands.* `workspace/executeCommand` carries out the commands the server announces, one row
-  each. `vun.view` writes a view of a document in its project's `.vun/views/<path>.<view>`, at the document's path in the project,, and asks
+  each. `vun.view` writes a view of a document in its project's `.vun/views/<path>.<view>`, at the document's path in the project, and asks
   the client to show it (`window/showDocument`); what computing it reports is left to the
   document's diagnostics. `vun.run` builds the program the document exports and runs it, its
   standard input the file `.vun/views/<path>.input` when there is one, and none otherwise, its
@@ -1580,7 +1580,7 @@ reads each message itself once the last is handled, and checks after each.
   asking package, else the public), or the fields, declarations and variants of the struct or
   enum it is or has the type of, through a pointer. Elsewhere, the names in scope: the parameters
   and locals of the function holding the position declared before it, the file's declarations,
-  and the names the package's files see from outside them. Each is classed as semantic tokens
+  and the names the package's files see from outside them. Each is classed the way semantic tokens
   class it.
 - *Positions* are counted in the encoding the client and the server agree on at initialization:
   UTF-8 when the client offers it, else UTF-32, else UTF-16, converted through each version's
@@ -1595,3 +1595,4 @@ reads each message itself once the last is handled, and checks after each.
   did not fit, never with a crash; logs go to standard error through `vun-trace`. The lifecycle is
   the protocol's: `initialize`, `initialized`, the session, `shutdown`, then `exit`, whose status
   is 1 without a `shutdown` before it.
+- *URLs are values.* Every URL and file URI is a `vun_uri::Uri` or `Reference` (RFC 3986, components kept as written: registered names, IPv4, IPv6 and `IPvFuture` hosts), resolved and normalized by its methods, never formatted or split as text.

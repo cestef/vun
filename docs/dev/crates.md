@@ -1,7 +1,7 @@
 # The compiler, by area
 
 Where the code for each part lives. The workspace layout and its layering rules are in
-[spec 13 section 9](../spec/13-compiler.md); the design of each stage is in the rest of spec 13.
+[spec 13 section 9](../spec/13-compiler.md). The design of each stage is in the rest of spec 13.
 
 - **Infrastructure** (`compiler/base`): `vun-index`, `vun-intern` (process-wide `Symbol`),
   `vun-origin` (origins equal by anchored identity), `vun-diag` (`Msg`, `Diagnostic`),
@@ -96,7 +96,7 @@ Where the code for each part lives. The workspace layout and its layering rules 
   labelled by its symbols, `vun debug disasm`), `vun-lsp` (the server: a table of methods, each a protocol type the server
   `Answers` or `Hears`), `vun-lsp-protocol` (the protocol's values and methods as types),
   `vun-generate` (`cargo gen`), `xtask` (`check`, `hooks`,
-  `corpus`, `lines`, `layers`, `typeset`).
+  `corpus`, `lines`, `layers`, `decisions`, `typeset`).
 - **Libraries**: `lang` (primitives, operator impls over primitives, float soft routines,
   `lang.mem.soft`) and `std` (`option`, `result`, `cmp`, `mem`, `seq`, `iter`, `sync`, `os`,
   `fmt`, `diag`, `task`, `time`, `trace`, `build`, `lints`, `panic`, `testing`).

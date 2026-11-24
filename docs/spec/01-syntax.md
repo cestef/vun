@@ -53,13 +53,13 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 |--------|---------------------|
 | `x := e` | bind `x` to `e` |
 | `x: T` | "x has type T": bindings, parameters, fields |
-| `x = e` | store `e` into the place `x`; in `if`/`for` heads, match pattern `x` against `e` |
+| `x = e` | store `e` into the place `x`. In `if`/`for` heads, match pattern `x` against `e` |
 | `(a, b)` | tuple: value `(1, 2)`, type `(u8, bool)`, pattern `(x, y)`; `()` is the empty tuple |
 | `(a: A) -> R { }` | function: a typed tuple pattern, a result type, a body |
 | `(A) -> R` | function type |
 | `[ ]` | sequences: type `[N]T`, value `[a, b]`, index `a[i]`, captures `[&mut n] (x: u8) { }` |
 | `.{ }` | anonymous struct value `.{ .x = 1 }` |
-| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.millis(500)`, `.{ }`; for a type provided from outside (`T: type = _`), in the namespace declaring it |
+| `.name` | `name` looked up in the expected type: `.some(x)`, `.output`, `.millis(500)`, `.{ }`. For a type provided from outside (`T: type = _`), in the namespace declaring it |
 | `.*` | dereference (postfix) |
 | `&` | borrow: `&x` is a value and `&T` its type; likewise `&mut`, `&out`, `&take`, `&temp` |
 | `?` | optional: `?T` is the type; postfix `e?` propagates an absent or failed value |
@@ -68,7 +68,7 @@ Type syntax mirrors value syntax. Patterns mirror constructors. Each symbol mean
 | `#[ ]` | attributes: compile-time values attached to the next declaration or type |
 | `#{ }` | quote: a piece of code as a compile-time value |
 | `'name` | label on a loop or block |
-| `_` | discard in patterns; "provided from outside" as a declaration's whole value |
+| `_` | discard in patterns, and "provided from outside" as a declaration's whole value |
 | `->` | "results in": function types and literals |
 | `=>` | "then": match arms |
 | `\` | take what follows literally: `\unsafe` is a name, `\"C:\dir"` a string without escapes, `\\` a raw line |
@@ -94,7 +94,7 @@ mut buf: [4096]u8;             // uninitialized: must be written before it is re
   and mutual recursion need no forward declarations.
 - Declarations inside a block are sequential. A compile-time binding (`$R := struct { ... }`) is
   also visible in its own value, so that a type built in a function can name itself, and in nested
-  functions, like every compile-time binder; so are the binders of `$for`.
+  functions, like every compile-time binder, and so are the binders of `$for`.
 - **No shadowing within a file.** A local binding (in a block, a parameter, a pattern) may not
   reuse a name visible where it is declared in its file: an enclosing local or parameter, or a
   member of an enclosing namespace (the file, a `struct`). Members of a namespace only need names
@@ -122,7 +122,7 @@ Pair := ($T: type) -> type { struct { a: T, b: T } }; // $: known at compile tim
 ```
 
 - A function type is written without names: `(u32, u32) -> u64`. Because parameters are a tuple
-  pattern, the type of `add` really is "tuple of `(u32, u32)` to `u64`".
+  pattern, the type of `add` is "tuple of `(u32, u32)` to `u64`".
 - The body is a block. Its value is its last expression without a trailing `;`.
 - `return e` leaves the function early. It is the only way to leave a function other than reaching
   the end of its body, trapping, or `yield`.
@@ -241,7 +241,7 @@ Literals:
   gives their address to C, and `CString` copies text into one.
 - A backslash before a string takes it literally: `\"C:\dir\new"` has no escapes and ends at the
   next `"`. A multi-line string is a run of lines each starting with `\\`, also taken literally, so
-  it may contain quotes. So there are two string forms: escaped (`"..."`) and literal (`\"..."`,
+  it may contain quotes. There are two string forms: escaped (`"..."`) and literal (`\"..."`,
   `\\` lines).
 - There are no block comments. `//` comments, `///` documents the next declaration, `//!`
   documents the enclosing namespace.
@@ -273,7 +273,7 @@ config := load(path)?;                             // propagate .err / .none to 
 ```
 
 - `if`, `match`, `for` and blocks are expressions. An `if` with `else` has the type both branches
-  can take: the hull of two integer ranges, or their common type; without `else`, it is `()`. `break v` gives a `for` its value; a `for` over
+  can take: the hull of two integer ranges, or their common type. Without `else`, it is `()`. `break v` gives a `for` its value; a `for` over
   a coroutine that runs to completion has the coroutine's result as its value (spec 06).
 - `for p in e` binds `p` to each item of `e`, through the impl of `lang.ops.Iterate` for the
   type of `e` (the table `iteration`, appendix B). Bounds give their integers, an array value its
@@ -284,7 +284,7 @@ config := load(path)?;                             // propagate .err / .none to 
   `lang.ops.Try` in `lang` (the table `early_return`): `branch` gives `.go(value)` or
   `.stop(r)`, `r` a `Result(never, E)` or an `Option(never)`, which the function's result type
   must accept.
-- `and`, `or` short-circuit; `!` negates.
+- `and`, `or` short-circuit, and `!` negates.
 - `if p = e` and `for p = e` with an irrefutable `p` are errors: use a binding.
 - `match` is exhaustive: its arms cover every value of the scrutinee's type (enums by variant,
   integers by range), or the match is an error naming what is missing. `_ =>` covers the rest
@@ -310,7 +310,7 @@ means the one thing below.
 | any other expression | a value equal to it: a constant, `Color.red`, `$f(x)` |
 
 A plain name always binds, whatever it names around the pattern, so adding a name to a prelude or
-a library never changes what a pattern matches; to compare with a constant, write it as anything
+a library never changes what a pattern matches. To compare with a constant, write it as anything
 but a plain name: a variant (`.true`), a path (`limits.max`) or a literal. In a pattern testing a
 value, a binder hiding a constant from outside the file is reported by the lint
 `std.lints.suspicious.shadowing` (`.ok(true)` binds `true` and matches every `.ok`).
@@ -353,7 +353,7 @@ settle every place where a token could continue two constructs:
 
 ## 7. Visibility
 
-One rule: **a name starting with `_` is restricted; it is visible only inside its scope**, and in
+One rule: **a name starting with `_` is restricted. It is visible only inside its scope**, and in
 the namespaces nested within it. Everything else is public: visible wherever its parent is. The
 scope is the namespace that declares the name, unless the `lang` attribute `visible` widens it:
 
@@ -388,7 +388,7 @@ drivers/
   _dma/            drivers._dma: visible inside drivers/ only
 ```
 
-- Restriction is visible at every use site (`regs._raw`) without looking up the declaration; how
+- Restriction is visible at every use site (`regs._raw`) without looking up the declaration. How
   far it reaches is in the declaration.
 - `Scope` and its values are declared in `lang.scope`; `.package` is looked up there because
   `Scope` is the expected type (section 2), so the compiler reads the attribute as data.

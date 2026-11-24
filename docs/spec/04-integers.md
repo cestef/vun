@@ -23,7 +23,7 @@ no separate compile-time integer type.
 A range `a..b`, `a..=b` or `a..` has type `lang.Bounds(T)`, where `T` is the integer type of
 every item such bounds can cover: for `i: u8` and `n: u8`, `i..n` is `Bounds(Int(0..=254))`, so
 `for k in i..n` binds `k: Int(0..=254)`. `lang.Range`, the argument of `Int`, is the set a range
-denotes at compile time; bounds are accepted where a `Range` is expected.
+denotes at compile time. Bounds are accepted where a `Range` is expected.
 
 ### Rules
 
@@ -35,7 +35,7 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
 3. **Narrowing is explicit**, through four `std` methods over `lang` primitives:
    - `x.to(T)`: traps if `x` is out of range;
    - `x.wrap(T)`: reduction modulo the size of `T` into its range, for any finite `T`
-     (`(-13).wrap(Int(0..=9))` is `7`); a power-of-two size is a mask, any other a remainder;
+     (`(-13).wrap(Int(0..=9))` is `7`). A power-of-two size is a mask, any other a remainder;
    - `x.sat(T)`: clamps to the bounds;
    - `x.try_to(T)`: returns `?T`.
 
@@ -62,7 +62,7 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
    on the optimizer. The comparisons that narrow, and what each tells, are the table `comparisons`
    of `lang.syntax.desugar`. Where a comparison of a binding cannot hold, the binding keeps its
    range. A `for` loop nothing leaves has the empty type.
-5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error; narrow an
+5. **Width cap.** An intermediate range that needs more than 128 bits is a compile error. Narrow an
    intermediate. Compile-time-only values have no cap: literals, immutable namespace members,
    `$` parameters and bindings, operands of `$e`, calls of functions whose parameters are all
    `$` ones, and operations on those alone. An integer such a call gives has the type of its
@@ -78,7 +78,7 @@ denotes at compile time; bounds are accepted where a `Range` is expected.
 8. **Bit operations** (`&`, `|`, `^`, `~`, `<<`, `>>`) exist on `uN` types and preserve the type.
    A shift amount whose range exceeds `N-1` is a trap site. The run-time check of a shift amount
    is made in the amount's own storage, before any resize. A constant, whose type is its exact
-   value, shifts exactly; shifted by an amount known only at run time, the result's range
+   value, shifts exactly. Shifted by an amount known only at run time, the result's range
    depends on that amount, so it has no width (rule 5): the constant is brought into a `uN` type
    first (`(1).to(u32) << n`), or the amount narrowed (`n: Int(0..32)`). An index or bound wider than the word traps when past every word.
 9. **Compound assignment is sugar**: `x += y` is `x = (x + y).to(TypeOf(x))`; `x +%= y` uses `.wrap`
@@ -106,8 +106,8 @@ would ship. See spec 10 for the diagnostic.
 
 ### Cost model
 
-Exact arithmetic moves cost rather than removing it. Two places need attention, and both are
-reported rather than hidden:
+Exact arithmetic moves cost, it does not remove it. Two places need attention, and both are
+reported:
 
 - **Wide intermediates.** `u64 * u64` is a 128-bit multiply, expensive on 32-bit cores.
   `vun check --widen` lists every intermediate wider than the target's native word.
@@ -166,7 +166,7 @@ in general registers (AAPCS's base standard), never in a float register it could
 
 ## 3. Vectors
 
-SIMD is a type, not a mode:
+SIMD is a type:
 
 ```vun
 V := lang.simd.Vector(8, f32);
@@ -191,7 +191,7 @@ saxpy := (a: f32, x: &[N]f32, y: &mut [N]f32) {
   as a balanced tree of pairs, the runs' sums then in lane order.
 - Comparisons return `lang.simd.Mask(N)`, an opaque type, never integers.
 - Shuffles take compile-time index arrays: `v.shuffle([3, 2, 1, 0])`.
-- Backends without vector support lower vectors to scalar loops; the result is identical.
+- Backends without vector support lower vectors to scalar loops. The result is identical.
 - Instruction-specific intrinsics live in `lang.arch.<arch>`.
 - **Target features.** A function marked `#[target.require(.{ .avx2 })]` may use those features. A
   call from a function without them is `unsafe`, or goes through `std.simd.dispatch`, a library
@@ -217,6 +217,6 @@ saxpy := (a: f32, x: &[N]f32, y: &mut [N]f32) {
 
   An integer reduction does not depend on the width; a float one does, as the order of
   its lanes' sum follows the lane count (`reduce_add(.pairwise(1))` sums them in order). Every
-  target runs it as lanes, as `Vector`; a target with scalable hardware (SVE, RVV) makes
+  target runs it as lanes, as `Vector`. A target with scalable hardware (SVE, RVV) makes
   `Scalable` a type of `lang.simd` of no fixed size, whose `cover` is the machine's grant, when a
   backend emits those instructions.

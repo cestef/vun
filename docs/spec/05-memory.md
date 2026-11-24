@@ -21,8 +21,8 @@ It is used by the aliasing rules (section 7).
 - Coroutine frames, intrusive list nodes and buffers under DMA are fixed. A fixed value is
   constructed in place and may be borrowed or consumed in place (`&take`), never moved.
 
-There are no `Drop`, `Clone`, `Send`, `Sync`, `Unpin` or `Sized` traits. Their jobs are done by the
-three properties and by capabilities (spec 07).
+There are no `Drop`, `Clone`, `Send`, `Sync`, `Unpin` or `Sized` traits. The three properties and
+capabilities (spec 07) do their jobs.
 
 ## 2. Place states and borrow modes
 
@@ -36,12 +36,12 @@ on the place they borrow:
 | `&out x` | uninit | init | exclusive write; the callee must initialize |
 | `&take x` | init | uninit | exclusive; the callee must consume the value in place |
 
-Passing by value moves. A linear value leaves its place `uninit`; a copy value leaves it `init`.
+Passing by value moves. A linear value leaves its place `uninit`. A copy value leaves it `init`.
 
-A borrow serves where another is expected when it performs the same transition and leaves others
+A borrow is accepted where another is expected when it performs the same transition and leaves others
 no more access: `&mut T` is accepted where `&T` is, read as a shared borrow for as long as that one
 lives, and branches of both meet as `&T`. `&out` and `&take` perform other transitions, so neither
-serves as `&T` (`types.mismatch`). The rule reads the table `borrows`: a mode's `before`, `after`
+is accepted as `&T` (`types.mismatch`). The rule reads the table `borrows`: a mode's `before`, `after`
 and `access` columns.
 
 A parameter type may add `temp` to a borrow (`&temp T`, `&temp mut T`): the borrow is lent for the
@@ -108,7 +108,7 @@ only: the result is not tied to it, and the function may not return it or put it
 returns. So `find := (hay: &[u8], needle: &temp [u8]) -> &[u8]` returns a borrow tied to `hay`
 alone, and a caller may pass a short-lived `needle`. The table `borrows` records this as each
 mode's extent (`tied` or `temp`). A `&temp` borrow and the ordinary borrow of the same transition
-and access serve for each other, so the rule is carried by the parameter and checked in the
+and access are interchangeable, so the rule is carried by the parameter and checked in the
 callee's body, where a `&temp` parameter is a loan that must not reach the result. A borrow
 written through an exclusive borrow parameter outlives the call, so it may not be of the
 function's own storage (`borrow.escape`).
@@ -121,7 +121,7 @@ structures use ownership, indices into pools and arenas, or raw pointers in `uns
 **Trees in arenas.** Because scoped values may live in fields of other scoped types, a tree can be
 built from borrows of an arena: `std.mem.Arena` hands out `&mut T` tied to the arena's borrow, and
 `Expr := enum { lit(i64), add(&Expr, &Expr) }` is an ordinary scoped type. The tree lives as long
-as the arena borrow; a tree that must outlive its scope uses `Own` nodes and an allocator. For
+as the arena borrow. A tree that must outlive its scope uses `Own` nodes and an allocator. For
 graphs with cycles, `std.collections.Handle(T)` gives typed indices into a pool, over nominal
 structs (spec 02), with checked indexing whose checks range analysis removes when it can.
 
@@ -147,7 +147,7 @@ tied to arguments, so no interprocedural analysis is needed.
   pointer field is marked `#[kind.owns]`: `.*` on a struct reads through the field so marked,
   as it does on a borrow or pointer, and `.` looks through it as through a borrow when the owner
   lacks the member, so `cfg.name` reaches a field of what an `Own(Config)` owns.
-- `*T`: raw pointer; copy, free, non-null. Creating one (`lang.mem.pointer_to`) and reading its
+- `*T`: raw pointer, copy, free, non-null. Creating one (`lang.mem.pointer_to`) and reading its
   address are safe. Dereferencing, offsetting and casting (`lang.mem.read`, `write`, `offset`,
   `cast`, `copy`, `fill`) are `unsafe`; `std.ptr` gives them as methods of `*T`. Making one of
   an address that code outside the language hands over (`lang.mem.pointer_at`: a mapping, a
@@ -174,7 +174,7 @@ tied to arguments, so no interprocedural analysis is needed.
 
 Defined, never left to the implementation:
 
-- `struct`: declaration order, natural alignment, C-style padding. The compiler never reorders; the
+- `struct`: declaration order, natural alignment, C-style padding. The compiler never reorders. The
   `perf.padding` lint reports padding and offers a reordering fix.
 - `#[layout.bits(uN)] struct`: bit-exact, least significant bit first; fields must sum to N bits.
 - `#[layout.c] struct`: the target C ABI's layout, which is the default one on every target
@@ -221,12 +221,12 @@ These rules exist because the naive "results are always built in place" model fa
    temporary only when the right-hand side provably does not read the destination.
 3. **Passing by value is a semantic copy or move.** The ABI may pass a hidden pointer for large
    values only when the source is a temporary, a moved linear value, or a local with no live
-   borrow; this is never observable. Small `&T` of cell-free `T` may be passed in registers.
+   borrow. This is never observable. Small `&T` of cell-free `T` may be passed in registers.
 4. **Function addresses are not unique.** Identical lowered functions may be merged (spec 13).
 
 ## 8. Aliasing facts
 
-Part of the language definition, not optimizer folklore:
+Part of the language definition:
 
 - `&mut`, `&out` and `&take` borrows are exclusive: no other access to the place while they live.
   Backends may mark them `noalias` / `restrict`.

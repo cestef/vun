@@ -53,7 +53,7 @@ The layout above is what `vun new` creates and what the `layout` lints expect.
 ## 2. The manifest is `build.vun`
 
 `build.vun` is a Vun file conforming to the interface `std.build.Package`, which requires two
-declarations: `package` and `build`. They are required by that interface, not by the compiler.
+declarations: `package` and `build`. The interface requires them and the compiler knows neither.
 
 ```vun
 //! Blinky: an LED and a serial echo on an STM32F4.
@@ -479,7 +479,7 @@ package's directory, and with none the package around the current directory, its
 | `vun fix [path] [--unsafe]` | apply the fixes diagnostics propose, to a fixed point, then report what is left |
 | `vun explain <id>` | the explanation page of a diagnostic, offline, paged |
 | `vun fmt [--check] <files>...` | lay out source files as the formatter does (spec 13, section 5); `--check` changes nothing and fails when a file would change |
-| `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 7); it writes only into a directory that is empty, absent or marked `.vun-doc` by an earlier run (`doc.foreign_output`), so a site's own `index.html` is never overwritten |
+| `vun doc [<packages>...] [--deps] [--library] [-o <dir>]` | the API documentation of packages, with `--deps` of the ones they declare as dependencies, the package around the current directory or each of its workspace when none: a page per namespace and the JSON beside them, under `.vun/doc` of the first package (section 5); it writes only into a directory that is empty, absent or marked `.vun-doc` by an earlier run (`doc.foreign_output`), so a site's own `index.html` is never overwritten |
 | `vun pkg add <source>`, `update`, `pack` | declare a dependency, raise versions, write the archive |
 | `vun util ffi bind <header>` | C declarations as Vun, of the header's directory and each `--scope`, only those `--only` names and what they need, linked from each `--library`, the `--closed` enums as Vun enums, a file for each directory with `--split` (spec 07, section 5) |
 | `vun target list [file]`, `show [file]` | every target, what builds for it and what the machine lacks; every part of a build for the chosen one and where it comes from (section 6) |
@@ -493,8 +493,8 @@ package's directory, and with none the package around the current directory, its
 | `vun debug disasm <file> [symbol]` | the code of an ELF or PE file (x86, x86-64 or arm64) as instructions with addresses and bytes, labelled by its symbols (a PE file's exports, entry and imports), a direct branch or an operand relative to the instruction pointer with the symbol it refers to; only the code a symbol labels with one |
 | `vun debug coverage\|queries\|compare\|reduce <file>` | how far the stages reach; what the saved queries hold; every backend run and compared; a failing file reduced (spec 13, section 10) |
 
-Still to come, each as a verb or a group verb: `test`, `bench`, `fuzz`, `fix`,
-`pkg vendor|why|tag|api`, `util ffi header|svd`, `target flash|attach|debug`.
+Still to come, each as a verb or a group verb: `pkg vendor|why|tag|api`, `util ffi header|svd`,
+`target attach|debug`.
 
 Options:
 
@@ -560,6 +560,17 @@ read that declaration.
   values are types (the query `vun_sema::decl::Declaration`), so `Word := u32` is documented as a
   type. The documentation model (`vun-doc`) does not depend on sema.
 
+### What `std` ships beside the language
+
+- Collections: `Vec` (`split_off`, `drain(range)` taking the items a range holds), `ArrayVec`,
+  `BinaryHeap` and `BTreeMap`, a B-tree in one `Vec` with `get_or_insert`, `range`, `entries_rev`,
+  `drain` and `pop_first`. All are linear and hold no allocator: the one given to a call that grows
+  one is the one its `deinit` takes.
+- `std.rand` (`SplitMix64`, `Xoshiro256`, `Pcg32` over `Rng`), `std.seq.sort` (insertion sort,
+  then heap sort), `std.codec` (varints, base encodings) and `std.hash` (`crc32`, `adler32`, over
+  `Hasher`).
+- `cargo xtask runtimes` runs `vun test --target T lib/std` for each target the machine runs.
+
 ## 8. C and vendor SDK interop
 
 Wrap the vendor's tree; never repackage it.
@@ -586,10 +597,11 @@ inputs. The cache keys are designed to work with a remote cache later.
 
 ## 9. Embedded tooling
 
-- **Flash and debug.** probe-rs and espflash are linked into the driver as Rust libraries, so
-  `vun target flash`, `attach` (log stream) and `debug` (GDB server) support CMSIS-DAP, ST-Link,
-  J-Link and ESP USB-JTAG without external runners. `b.flash(fw, .probe(...) | .serial(...) | .uf2
-  | .command(...))` declares how a program is flashed.
+- **Flash.** `vun flash` builds the programs a package's plan records and writes those it flashes
+  to their devices. `b.flash(fw, ways)` lists how, each tried until one reaches a device: a `uf2`
+  drive (the file is copied to the mounted drive holding a marker file) or an external command
+  (`std.build.Delivery`). Linking probe-rs and espflash as libraries, and `attach` (a log stream)
+  and `debug` (a GDB server), are not built.
 - **Deferred logging is library code.** `std.log.info("t={} v={}", .{ t, v })` parses its format
   string at compile time, emits the string into a `#[link.section(".vun.log.info")]` constant in
   a non-loaded section, and at run time writes only the string's index and the packed arguments to

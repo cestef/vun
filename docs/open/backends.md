@@ -32,7 +32,7 @@
   `#[target.require]`, the primitive `lang.simd.Scalable` (480 has `std.simd.Scalable` over
   `Spec.vector_bits` for now).
 - Backend internals: regalloc loads spilled operands where the form takes memory; LIR has no
-  undefined value (padding copied as zeros); fuzz target `lir.rs` is written, never run.
+  undefined value (padding copied as zeros).
 - Checks (268): a board, use after return; `fixed` kinds. WASI has the shadow (512).
 
 ## rp2350 (`lib/boards/rp2350`)

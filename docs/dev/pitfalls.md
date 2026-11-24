@@ -42,7 +42,7 @@ Traps that cost a session before. Add one when it costs you time.
   back (the run may be on a remote), then name the new id.
   Generated Vun is built with `vun_syntax::make`, never formatted as text.
 - `cargo fmt` rewraps code: edit scripts must assert their replacements applied.
-- A binary built on another host (`petal.wg` is x86-64 like the laptop) runs here after `rsync`, but
+- A binary built on another host (`petal` is x86-64 like the laptop) runs here after `rsync`, but
   carries that host's checkout as its library path: run it with `VUN_LIBRARY=<workspace>/lib`.
   That is how `vun util ffi bind` and the GTK example are tried against this machine's headers.
 - A fresh `jj workspace add` has no `corpus/planned` unless it is tracked (it is, with a README):
@@ -123,23 +123,23 @@ Traps that cost a session before. Add one when it costs you time.
 
 ## Writing Vun
 
-- `or` is a keyword; child namespaces are not in scope by bare name
-  inside their parent; private fields are visible only inside their struct literal; kind
-  attributes go on the type's literal; inside a `lang` namespace file its own names shadow
-  `lang`'s; integer arithmetic is exact (`x * 2` for `u32` does not fit `u32`); no operator may
-  be written inside `lang`'s operator impls; attributes are bare only from the prelude's
+- `or` is a keyword. Child namespaces are not in scope by bare name
+  inside their parent. Private fields are visible only inside their struct literal. Kind
+  attributes go on the type's literal. Inside a `lang` namespace file its own names shadow
+  `lang`'s. Integer arithmetic is exact (`x * 2` for `u32` does not fit `u32`). No operator may
+  be written inside `lang`'s operator impls. Attributes are bare only from the prelude's
   namespaces.
 - A borrow of an array sliced, `y[i..j]` for `y: &mut [N]T`, is already a borrow of the run
   (`&mut [T]`): `v.store(y[i..j])`, not `&mut y[i..j]`. An integer literal is never a float:
   `V.splat(0.0)`.
 - Things the std batches kept tripping on: a binding is `mut x := e` or `mut x: T = e`, never
-  `mut x = e`; `mut n := 0` has the range `0..=0`, so `n += 1` traps (write `mut n: u32 = 0`);
-  a variable shift `1 << n` has no width (`one: u64 = 1; one << n`); a bit operation needs both
-  operands `uN` (`(a - 1).wrap(u64)` first); an array type is `[n]T`, not `[T; n]`; a slice that
+  `mut x = e`. `mut n := 0` has the range `0..=0`, so `n += 1` traps (write `mut n: u32 = 0`).
+  A variable shift `1 << n` has no width (`one: u64 = 1; one << n`). A bit operation needs both
+  operands `uN` (`(a - 1).wrap(u64)` first). An array type is `[n]T`, not `[T; n]`. A slice that
   is returned from a `&mut self` method keeps the borrow (return offsets, slice a copy of
-  `self._text`); a closure that captures by `[&x]` sees `x` as it is, not as `&x`; `for x in
-  array` gives the items, `for x in slice` borrows them; `or`, `if let` and `|>` do not exist
-  (`if .some(x) = e` does); a string literal is an array of its length, so comparing two of
+  `self._text`). A closure that captures by `[&x]` sees `x` as it is, not as `&x`. `for x in
+  array` gives the items, `for x in slice` borrows them. `if let` and `|>` do not exist
+  (`if .some(x) = e` does). A string literal is an array of its length, so comparing two of
   different lengths needs `&[u8]` parameters.
 - A table in `desugar.vun` naming `lang` items is a tuple `.{ }`: its items have types of their
   own, and an array would not type. Borrow modes are lists of `BorrowWord` (`grammar.vun`).

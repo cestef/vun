@@ -3,7 +3,7 @@
 Goal: the whole language at compile time, and code generation that is typed, hygienic, traceable
 and pleasant to read. No code is ever built by formatting strings or by pasting token streams.
 
-The design has four layers. Each is ordinary Vun; together they add no keyword.
+The design has four layers. Each is ordinary Vun, and together they add no keyword.
 
 | Layer | Mechanism | Covers |
 |-------|-----------|--------|
@@ -118,9 +118,9 @@ escaping inside a quote, and splicing code.
 | run time | insert the code | evaluate at compile time, embed the constant |
 | inside a quote | insert the code | evaluate at generation time, embed the constant |
 
-Quotes nest; `$` escapes one level, `$$` two. Multi-stage generation needs no other syntax. Each
+Quotes nest. `$` escapes one level, `$$` two. Multi-stage generation needs no other syntax. Each
 `$` escapes one level, out of the innermost quote around it or, outside every quote, from run time
-to compile time, so inside `n` quotes a chain of at most `n + 1` is meaningful; a longer one is
+to compile time, so inside `n` quotes a chain of at most `n + 1` is meaningful. A longer one is
 `meta.escape`. Because a code value keeps what it was written under and evaluation is pure, a
 spliced value does not depend on when its level is generated.
 
@@ -155,8 +155,9 @@ that writes it enables it too.
 A code value is written where its code is: its names resolve there, with the bindings of the call
 and of the `$for` steps it was written in, and splicing it at compile time evaluates it there. An
 argument for `Code(T)` is typed as a `T`, and `Code(T)` accepts code of any value `T` accepts. A
-code value is passed on by borrow (`&Code(T)`), since a `Code(T)` parameter would quote the name
-instead: `std.meta.Quoted`, an impl for `lang.meta.Code`, gives `c.source()`, the text as written,
+code value is passed on by borrow (`&Code(T)`), or by `$c`, which passes `c` as written so that
+reports point inside it; a slice type naming `$` parameters matches an array. A `Code(T)` parameter
+would quote the name instead: `std.meta.Quoted`, an impl for `lang.meta.Code`, gives `c.source()`, the text as written,
 and `c.span()`.
 
 ### Reading and building code
@@ -176,7 +177,7 @@ is_ident := re.compile("[a-z_][a-z0-9_]*");   // parsed to a DFA at compile time
 
 ## 5. Names and hygiene
 
-Hygiene comes from construction, not from renaming passes.
+Hygiene comes from construction. There is no renaming pass.
 
 - A name written inside a quote resolves where the quote is written (lexical scope), whatever
   scope the code is spliced into.
@@ -246,7 +247,7 @@ type `F`, none for another type, and `lang.meta.Tuple(items)` makes a tuple type
 what `std.Dyn` reflects with (spec 02, section 3, decision 519).
 
 Reflection is read-only for types. Types are created by writing type literals (with L0 and L1),
-never by assembling descriptor structs; values are made from parts by `make`.
+never by assembling descriptor structs. Values are made from parts by `make`.
 
 **Attributes.** A field's or a variant's descriptor holds the values of the attributes written on
 it (`attrs: &[lang.meta.Any]`, each with its type), evaluated where its type was built.
@@ -357,7 +358,7 @@ Bevy. So the evaluator is designed for speed from the start (spec 13):
 2. Memory uses the target byte model with provenance; values are interned only when they escape
    into a type or constant, never on each mutation.
 3. Calls are memoized on (function, interned arguments), persisted across builds.
-4. A JIT behind the `Evaluator` interface is a later option; it must reproduce the target model
+4. A JIT behind the `Evaluator` interface is a later option. It must reproduce the target model
    and is differential-tested against the interpreter.
 5. `vun check --meta-stats` reports evaluation time and generated code size per generator, so
    the cost of a derive is visible.

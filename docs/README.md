@@ -2,8 +2,8 @@
 
 > Working name. Source extension `.vun`, CLI `vun`.
 
-Draft 2 of the design. Each file in `spec/` covers one area and can be read on its own;
-`spec/00-principles.md` is the entry point and everything else refers back to it.
+Draft 2 of the design. Each file in `spec/` covers one area and can be read on its own.
+`spec/00-principles.md` is the entry point, and the rest refers back to it.
 
 | File | Contents |
 |------|----------|
@@ -23,7 +23,7 @@ Draft 2 of the design. Each file in `spec/` covers one area and can be read on i
 | [spec/13-compiler.md](spec/13-compiler.md) | implementation architecture |
 | [spec/14-roadmap.md](spec/14-roadmap.md) | phases and exit criteria |
 | [spec/appendices.md](spec/appendices.md) | `lang` module map, desugaring table, UB list, grammar sketch |
-| [spec/decisions.md](spec/decisions.md) | decision log and open questions |
+| [spec/decisions/](spec/decisions/README.md) | one file per decision, its index, the settled questions |
 | [research/2026-09-survey.md](research/2026-09-survey.md) | the survey behind draft 2, with sources |
 | [archive/draft-1.md](archive/draft-1.md) | previous draft, kept for reference |
 | [dev/workflow.md](dev/workflow.md) | how the project is worked on, where each kind of note goes |
@@ -35,5 +35,5 @@ Draft 2 of the design. Each file in `spec/` covers one area and can be read on i
 | [HANDOFF.md](HANDOFF.md) | what is in flight and what comes next |
 | [open/](open/) | what is open, one file per area |
 
-Conventions in these docs: "must" is a rule the compiler enforces; "lean" marks a tentative
-choice listed in `decisions.md`; every code sample is meant to compile under this draft.
+Conventions in these docs: "must" is a rule the compiler enforces. "lean" marks a tentative
+choice listed in `decisions/`. Every code sample is meant to compile under this draft.

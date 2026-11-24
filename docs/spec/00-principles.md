@@ -5,7 +5,7 @@
 A general-purpose systems language: kernels, firmware, servers, tools, games, anything that wants
 control over memory and cost. Nothing in the language assumes an OS, a heap, a word size or an
 architecture. The same language scales from a 2 KiB microcontroller to a many-core server and
-talks to C, and therefore to every RTOS, IoT SDK and vendor HAL, without friction.
+talks to C, and therefore to every RTOS, IoT SDK and vendor HAL.
 
 The rule everything else serves:
 
@@ -51,9 +51,9 @@ syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
 |---|---------|---------------|------|
 | 1 | **Everything is a binding** | Every declaration is `name := value`. Files, directories and packages are structs whose members are their declarations. | 01 |
 | 2 | **Types are compile-time values** | A type is a value of type `type`. `$` marks what is known at compile time. Generics, interfaces, reflection, attributes and code generation are ordinary compile-time computation. | 02, 03 |
-| 3 | **Integers are ranges** | Every integer type is `Int(lo..hi)`. Arithmetic is exact; only narrowing can fail, and narrowing is explicit. | 04 |
+| 3 | **Integers are ranges** | Every integer type is `Int(lo..hi)`. Arithmetic is exact. Only narrowing can fail, and narrowing is explicit. | 04 |
 | 4 | **Places have states** | Every storage location is `uninit` or `init`. Moves, initialization, out-parameters, linear resources and `defer` are transitions of one state machine. | 05 |
-| 5 | **Borrows are scoped** | A borrow cannot outlive what created it; a returned borrow is tied to all borrowed arguments. There are no lifetime annotations. | 05 |
+| 5 | **Borrows are scoped** | A borrow cannot outlive what created it. A returned borrow is tied to all borrowed arguments. There are no lifetime annotations. | 05 |
 | 6 | **Capabilities are values** | Allocation, hardware, the OS and interior mutability require holding a value. There is no ambient authority. | 07, 08 |
 | 7 | **Functions can suspend** | A function containing `yield` returns a sized frame. Iterators, generators and async tasks are one thing. | 06 |
 
@@ -71,13 +71,13 @@ syntax  --desugars into-->  lang  <--built on--  std  <--built on--  your code
 
 ## Taste
 
-These are not rules the compiler checks, but they decide close calls:
+The compiler does not check these. They decide close calls:
 
-- **One way.** When two spellings would mean the same thing, keep one.
-- **Organized and deep.** Namespaces nest; names are short because their path gives context
+- One way. When two spellings would mean the same thing, keep one.
+- Organized and deep. Namespaces nest, and names are short because their path gives context
   (`std.mem.alloc.Arena`, not `ArenaAllocator`). Conventions are enforced by lints that ship
   enabled, are configurable per project, and are extensible by libraries (spec 10).
-- **Readable diffs.** Generated code is visible through tooling; configuration is code; nothing
+- Readable diffs. Generated code is visible through tooling, configuration is code, and nothing
   important hides in a file-name convention.
-- **Symmetric syntax.** Type syntax mirrors value syntax; patterns mirror constructors; each symbol
+- Symmetric syntax. Type syntax mirrors value syntax; patterns mirror constructors, and each symbol
   means one thing (spec 01).

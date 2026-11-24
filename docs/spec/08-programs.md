@@ -78,8 +78,8 @@ or unwinder, which a program without unwinding never calls. Linking against a C 
 `std.os.libc.System`, which each system's module declares (`std.os.linux.c`); the runtime takes
 the row whose `os` is `lang.target.current.os`.
 
-**Choosing a runtime.** `std.os.start` is not a runtime of its own: it is the `start` of the
-runtime of the target being built for. Each system's namespace declares its row,
+**Choosing a runtime.** `std.os.start` is the `start` of the runtime of the target being built
+for. Each system's namespace declares its row,
 `std.os.Runtime { os, abi, start }` (`std.os.linux.runtime` is the kernel runtime for
 `linux`/`kernel`, `std.os.linux.gnu` the C library's for `linux`/`gnu`, `std.os.wasi.runtime` WASI
 preview 1's for `wasi`/`p1`, `std.os.windows.runtime` the one calling `kernel32` for

@@ -8,17 +8,17 @@ and `$` has one meaning everywhere: **evaluate this one stage earlier**. In ordi
 
 | Form | Meaning |
 |------|---------|
-| `($T: type, x: T)` | `T` must be known at compile time; each distinct `T` is a distinct instantiation |
-| `$e` | evaluate `e` at compile time; an error if it cannot be |
+| `($T: type, x: T)` | `T` must be known at compile time, and each distinct `T` is a distinct instantiation |
+| `$e` | evaluate `e` at compile time, an error if it cannot be |
 | `$for x in xs { ... }` | unroll over a compile-time sequence |
-| `$if c { ... } else { ... }` | choose a branch at compile time; the other branch is parsed and name-resolved, not type-checked |
+| `$if c { ... } else { ... }` | choose a branch at compile time. The other branch is parsed and name-resolved, not type-checked |
 | `${ ... }` | a block run entirely at compile time |
 
 A value known at compile time may be used at run time without ceremony: it becomes a constant.
 
 A `$` parameter named in the type of a later parameter may be left out of a call: either every
 such parameter or none. Its value is inferred by matching the types of the arguments against the
-declared types, and a type found twice is the join of both, as for the branches of an `if`;
+declared types, and a type found twice is the join of both, as for the branches of an `if`.
 `max(3, x)` for `x: u8` has `T = u8`. A parameter no argument determines is an error
 (`types.cannot_infer`), and one no later type names, such as the `T` of `a.create(T)`, is always
 written. A variant with a payload is a function value: `E.fs` for `fs(u8)` has type
@@ -42,11 +42,11 @@ compilation is therefore an ordinary `$if`, never a file-name convention or a pr
 
 | Form | Meaning |
 |------|---------|
-| `struct { a: A, b: B, d := e; }` | product; fields in declaration order; declarations are its namespace |
+| `struct { a: A, b: B, d := e; }` | product, fields in declaration order, declarations are its namespace |
 | `enum { a, b }` | tags only |
 | `enum { none, some(T) }` | sum type with payloads |
 | `enum { a, b; d := e; }` | variants, then after `;` declarations: its namespace, as a struct's |
-| `.{ .a = x, .b = y }` where no type is expected | a record: structural, its fields sorted by name, so records with the same fields are one type; `.{ x, y }` is a tuple |
+| `.{ .a = x, .b = y }` where no type is expected | a record: structural, its fields sorted by name, so records with the same fields are one type. `.{ x, y }` is a tuple |
 | `.name` where no type is expected | a `lang.meta.Name` value |
 | `(A, B)` | tuple |
 | `[N]T` | array, a value |
@@ -161,6 +161,8 @@ uart_writer := struct {
   registers the result, the **witness**, for the pair `(I, T)`. A witness made for a use, by a type
   constructor or for the values of `_` (below), is checked where it is used: a method found through
   it reports each requirement it does not meet at the use, the impl labeled.
+- Witnesses are found lazily: a lookup asks each candidate impl or derive whether it can have the
+  name or the interface (`resolved`), and makes a witness only for one that can.
 - An impl lives in the package of `T` or of `I` (orphan rule). At most one impl per pair.
 - Members of the witness join `T`'s method lookup (spec 01, section 4). A name declared by two
   impls a file sees, or by an impl and `T` itself, is an error where it is looked up
@@ -171,7 +173,7 @@ uart_writer := struct {
   The impl then covers every type the constructor makes, and its value is a function of the
   constructor's arguments that gives the witness of each. `#[impl(Narrow(Int))]` on
   `int_narrow := ($r: Range) -> type { struct { ... } }` makes `int_narrow(r)` the witness for
-  `Int(r)`; an impl for `Pair` covers `Pair(u8)`, and a second impl for `Pair(u8)` is a duplicate.
+  `Int(r)`. An impl for `Pair` covers `Pair(u8)`, and a second impl for `Pair(u8)` is a duplicate.
 - `T` may also be an interface constructor, a function returning an interface such as
   `lang.Coroutine`: the impl covers every type implementing an interface it makes, and its value
   takes that type first, then the interface's arguments. `#[impl(Iterate(Coroutine))]` on
@@ -290,7 +292,7 @@ by lookup; the result of `a == b` is the result type of `Eq.eq` for the type of 
 and `ge`: a partial order, in which two values may be unordered, every comparison of them false.
 `Ord` is a total order and requires only `cmp`; a totally ordered type's `PartialOrd` is
 `lang.ops.by_cmp(T)`, so its operators and `cmp` never disagree. Floats implement only
-`PartialOrd`, with IEEE comparisons (a NaN is unordered); IEEE `totalOrder` is the function
+`PartialOrd`, with IEEE comparisons (a NaN is unordered). IEEE `totalOrder` is the function
 `lang.float.total_order`. `Eq` provides `ne`. The
 arithmetic, bit and concatenation interfaces take the right operand's type per call
 (`add: ($R: type, a: Self, b: R) -> Output(R)`), since an integer result's range depends on both
@@ -327,7 +329,7 @@ puts: unsafe (s: *u8) -> i32 = _;       // provided by the linker
 ```
 
 - Attributes from `lang` (`layout`, `link`, `abi`, `impl`, `opt`, `panic`, `stack`, `lint`,
-  `target`) are acted on by the compiler; each is a documented `lang` declaration.
+  `target`) are acted on by the compiler, and each is a documented `lang` declaration.
 - An attribute's type says where it applies: `lang.Attribute(on)`, for `on` a list of
   `lang.Place` (`decls`, `functions`, `types`, `fields`, `params`), is the type of an attribute
   written only there, as `c: Attribute(&[Place.types]) = _;` of `lang.layout`. A declaration is
@@ -340,4 +342,4 @@ puts: unsafe (s: *u8) -> i32 = _;       // provided by the linker
 - The compiler reads an item's attributes one way (`Attributes` of a function, type or
   declaration: where they are written and the environment evaluating them), and markers
   (spec 07, section 4) only as markers.
-- One mechanism serves layout, linking, ABIs, lints, derives, tests and serialization options.
+- One mechanism covers layout, linking, ABIs, lints, derives, tests and serialization options.

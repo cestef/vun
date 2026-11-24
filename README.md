@@ -14,7 +14,7 @@
   </picture>
 </p>
 
-Vun is for thingies that runs under constraints: firmware, kernels, runtimes, servers, or whatever you want!
+Vun is for thingies that run under constraints: firmware, kernels, runtimes, servers, or whatever you want!
 
 > [!WARNING]
 > **Experimental** - I am begging you please do not use it for anything that matters.
@@ -41,7 +41,7 @@ The same three programs written in each language, built by that language's compi
 ## Learn more
 
 - [Whitepaper](whitepaper/main.typ): the design in one read.
-- [Specification](docs/spec/00-principles.md) and [decisions](docs/spec/decisions.md).
+- [Specification](docs/spec/00-principles.md) and [decisions](docs/spec/decisions/README.md).
 - [Contributing](CONTRIBUTING.md).
 
 ## License
@@ -52,4 +52,4 @@ Licensed under the [DBAD](/LICENSES/DBAD.md) (Don't Be A Dick) or [QUACK](/LICEN
 
 For all my "duck AI" folks: this was **HEAVILY** built by relying on LLMs. All of the language's design, ergonomics, decisions blah blah blah were **mine**.
 
-Even though I have reviewed **most** of the code, I do **NOT** guarantee anything about it's quality or whatever.
+Even though I have reviewed **most** of the code, I do **NOT** guarantee anything about its quality or whatever.

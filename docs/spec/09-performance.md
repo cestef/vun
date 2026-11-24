@@ -27,7 +27,7 @@ about half of Rust's checking overhead). Vun's approach:
 - The remaining checks are removed by MIR range analysis when provable. The rest stay, identically
   in every build profile (guarantee 3).
 - All trap sites branch to one shared cold stub per function with a site id; messages live in a
-  non-loaded table (spec 07). Checks cost a compare and a branch, not a formatted message.
+  non-loaded table (spec 07). A check costs a compare and a branch.
 
 ## 3. Controls
 
@@ -83,8 +83,7 @@ both Zig and Rust converged on.
   use is the largest frame among the functions it reaches by tail calls alone, with the deepest
   plain call each makes.
 
-This is what threaded interpreters, state machines and parsers need, and it keeps their stack
-bounded by construction.
+Threaded interpreters, state machines and parsers need this, and it bounds their stack.
 
 ## 4. Generic code size
 

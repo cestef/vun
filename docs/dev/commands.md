@@ -9,6 +9,7 @@ cargo xtask push -- <words>   # check, then `jj git push <words>`
 cargo xtask hooks             # once per clone: the jj aliases `jj check` and `jj push <words>`
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask runtimes          # the std tests on every target this machine runs (its tools file: kernel, C library, WASI, wine)
+cargo xtask decisions         # reads docs/spec/decisions/*.md (one file per decision), fails on a malformed one, writes README.md, the index
 cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
 cargo xtask install           # build `vun` (the dist profile) and install it as the default toolchain
 cargo xtask install --profile dev   # the same, built quickly for development
@@ -39,18 +40,19 @@ PUBLISHED` names (`grammar.js`, `conflicts.json`, `tree-sitter.json`, `src/`, `q
 clone, commits it there with the message and pushes `main` when anything changed, records the
 commit in `editors/tree-sitter/release.json` and runs `cargo gen`: the Helix, Neovim and Zed
 packages build that revision. The parser's `src/` is the tree-sitter CLI's own output, so publish
-with the version the last publication used (`tree-sitter --version`: 0.27.0 on `am3.wg`, which
+with the version the last publication used (`tree-sitter --version`: 0.27.0 on `am3`, which
 has `jj`; the clone is a path, `--repo`, `tree-sitter-vun` beside this repository by default).
 The repository (`cestef/tree-sitter-vun`, private until the language is public, so the packages
 fetch it only where git can authenticate) is a `jj` clone at `../tree-sitter-vun`; `jj` refuses
 the generated `parser.c` (16 MiB) until `jj config set --repo snapshot.max-new-file-size 33554432`.
-A warm `cargo xtask tree-sitter` takes about 10 s on `am3.wg`, nearly all of it one
+A warm `cargo xtask tree-sitter` takes about 10 s on `am3`, nearly all of it one
 single-threaded `tree-sitter generate`; each round settling the conflicts is one more.
 
 ## Releasing
 
 A release is made by tagging the workspace's version, as it is (spec 12, section 6; decision
-367): raise `version` in the root `Cargo.toml`, commit, then
+367): raise `version` in the root `Cargo.toml`, run `cargo gen` (the editor manifests carry it; the release's
+check job fails on `generate.stale` otherwise), commit, then
 
 ```sh
 jj tag set 0.1.0 -r @-
@@ -122,8 +124,8 @@ in pages as `data-icon`) and keys are one table (`src/keys.ts`, `data-action` on
 lists them). Build the compiler first, on a remote, and copy it back:
 
 ```sh
-scripts/remote --host am3.wg cargo build -p vun-cli --target wasm32-wasip1 --profile dist
-rsync am3.wg:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
+scripts/remote --host am3 cargo build -p vun-cli --target wasm32-wasip1 --profile dist
+rsync am3:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
 cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
 vun doc --library -o site/public/api   # the API pages, served at /api/ (git-ignored; never `-o site`, which overwrites the landing page)
 ```
@@ -142,15 +144,15 @@ letter in `share.ts`.
 ## Remote machines
 
 ```sh
-scripts/remote --host am3.wg cargo nextest run   # or VUN_REMOTE=am3.wg
+scripts/remote --host am3 cargo nextest run   # or VUN_REMOTE=am3
 ```
 
 `scripts/remote` (a bash script, quoting each word as given) mirrors the working copy (rsync, without `/target` and `/.jj`) to
 `vun-build/<workspace directory>` in the host's home and runs the words there over ssh, output
 shown as it comes; each `jj` workspace has its own mirror and `target/`. A host needs rustup (the
 toolchain file picks the version), `cargo-nextest`, `wasmtime`, `wild`, `clang`, `lld`, `mold` and,
-to run cross targets, its own `~/.config/vun/tools.vun` (`am3.wg` has none: its cross tests skip, WASI programs among them, so the wasm linker's runs are tried on `petal.wg`). Both hosts have `wasm-tools` (`wasm-tools print`, `wasm-tools objdump`) for reading modules. The owner's: `am3.wg` (aarch64, 11 cores, the fastest;
-x86-64-only driver tests skip there) and `petal.wg` (x86-64, 8 cores, with `qemu-user`, the arm64
+to run cross targets, its own `~/.config/vun/tools.vun` (`am3` has none: its cross tests skip, WASI programs among them, so the wasm linker's runs are tried on `petal`). Both hosts have `wasm-tools` (`wasm-tools print`, `wasm-tools objdump`) for reading modules. The owner's: `am3` (aarch64, 11 cores, the fastest;
+x86-64-only driver tests skip there) and `petal` (x86-64, 8 cores, with `qemu-user`, the arm64
 cross compiler and the `fc44` sysroot, `arm-none-eabi-gcc` and `qemu-system-arm`; its tools file
 has rows for `linux.arm64.kernel`, `linux.arm.kernel`, `bare.thumbv7em.eabihf` and `macos.arm64.darwin`). Known host differences: Fedora 44's libclang fails
 `vun-clang`'s `a_header_reads_as_declarations_with_target_sizes` (`Elaborated` for `Record`), and
@@ -159,7 +161,7 @@ own target there is `linux.arm64.kernel`.
 The script builds nothing from the repository, so it works while the tree does not build; after a
 `cargo gen` on a host, copy the generated directories back.
 `--reserve` runs the words on the host's fastest cores, those of the highest `cpu_capacity`
-(`am3.wg`'s 0 and 7 to 10), with the host's services (`system.slice`) confined to the others and
+(`am3`'s 0 and 7 to 10), with the host's services (`system.slice`) confined to the others and
 given them back after, by `systemctl set-property --runtime` (a reboot undoes it too); it needs
 passwordless `sudo` on the host and refuses a host whose cores are all alike. Use it for
 benchmarks and timings.
@@ -192,7 +194,7 @@ cargo run -q -p vun-cli -- target show --target linux.arm64.kernel   # each part
 ```
 
 `vun toolchain prime` checks the libraries whole and keeps their shared memos in the running
-toolchain's `memos/` (`--into <dir>` elsewhere): about 5 s and 75 MB on `am3.wg`, 10 to 13 MB in a
+toolchain's `memos/` (`--into <dir>` elsewhere): about 5 s and 75 MB on `am3`, 10 to 13 MB in a
 release archive. `cargo xtask package` and `install` run it on the staged executable; a build in
 `target/` has no `memos/` and primes its own shared files on first use. The compiler is named by
 the hash of its executable, remembered in `<store>/builds`, so the first run of a new build reads
@@ -211,7 +213,7 @@ on this machine, one line each. The runtimes are code of their own (`std.os.linu
 own kernel and C library targets, and, through `vun/tools.vun` (`.runner`), WASI under `wasmtime`
 (`.runner = .{ "wasmtime", "run" }`), Windows under `wine64` with a `.sysroot` holding `kernel32.lib`
 (zig's cache has one), Arm under `qemu-aarch64`. Run it on each host with
-`scripts/remote --host am3.wg cargo xtask runtimes`; am3 (arm64) covers `linux.arm64.kernel`,
+`scripts/remote --host am3 cargo xtask runtimes`; am3 (arm64) covers `linux.arm64.kernel`,
 `linux.arm64.gnu` and WASI, petal (x86-64) `linux.x86_64.kernel`, `linux.x86_64.gnu` and WASI, the
 laptop adds Windows under wine. macOS has no machine here.
 
@@ -267,7 +269,7 @@ On the owner's machine:
 | `bare.thumbv7em.eabihf` | the target's `arm-none-eabi-gcc` (`arm-none-eabi-gcc-cs`) | `qemu-system-arm -M netduinoplus2 -nographic -semihosting-config enable=on,target=native -kernel` |
 | `macos.arm64.darwin` | the target's `clang`, sysroot `~/sdk/MacOSX.sdk` (links with `ld64.lld`) | none: programs are linked, not run |
 
-The macOS SDK on `petal.wg` is assembled from Zig's own (`dnf install zig`, MIT licensed), not
+The macOS SDK on `petal` is assembled from Zig's own (`dnf install zig`, MIT licensed), not
 Apple's, which is licensed for Apple hardware only: `SDKSettings.json` (with `Version` and
 `SupportedTargets`, or clang ignores it) and `usr/lib/libSystem.tbd` from
 `/usr/lib/zig/libc/darwin`, and `usr/include` from `/usr/lib/zig/libc/include/any-darwin-any`.
@@ -287,7 +289,7 @@ lsp` unavailable. `cargo check -p vun-cli --no-default-features` is the smallest
 `--features backend-c,link-gnu` adds to it. `vun-driver` has the same features with no default
 for its dependents, so a dependent chooses (`xtask` and `fuzz` take them all).
 
-Language features are another thing: a package's `.features` (spec 12, section 2).
+Language features are separate: a package's `.features` (spec 12, section 2).
 
 ## Measuring speed
 
@@ -300,7 +302,7 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
 - Benchmarks (criterion, `benches/` of `vun-syntax` and `vun-driver`): `syntax/{lex,parse}` over
   every source; `cold/{check,code}/<program>` from nothing, `saved/check/<program>` from the memos
   an earlier run saved, `edit/check/<program>` after appending a declaration in one process, for
-  `hello`, `tour` and `threads`. Run them on a remote (`scripts/remote --host am3.wg cargo
+  `hello`, `tour` and `threads`. Run them on a remote (`scripts/remote --host am3 cargo
   bench ...`); `--save-baseline <name>` before a change, `--baseline <name>` after. A filter
   after `--` runs some (`-- cold/check`). `cargo bench` builds with the release profile.
 - `--timings` (or `VUN_TIMINGS=1`) reports each stage and query's own and total time and its
@@ -331,7 +333,7 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   phase or on time. Names need debug information: build the measured compiler with
   `RUSTFLAGS="-C force-frame-pointers=yes" CARGO_PROFILE_RELEASE_DEBUG=1
   CARGO_TARGET_DIR=target/profiling cargo build --release -p vun-cli` and pass it as `--exe`.
-  Run it on a remote with `valgrind` (`am3.wg`). Callgrind stops on an instruction it does not
+  Run it on a remote with `valgrind` (`am3`). Callgrind stops on an instruction it does not
   know (a cranelift-built `sieve` raises SIGILL under it and not outside); use `--measure time`.
 - Profile-guided optimization (decision 670): `cargo xtask pgo` writes `target/pgo/vun.profdata`
   from a recording `vun` run over the profile workloads (needs `rustup component add llvm-tools`);
@@ -340,7 +342,7 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
   `vun debug profile <workloads> --measure time --exe <vun>` for each (11 to 15% on am3).
 - Kept machine code (decision 669): `.vun/code/<hash>` beside the root file, one per toolchain,
   target and profile; `VUN_LOG=vun_driver=debug` reports how many functions were read and compiled.
-- Against other languages: `scripts/remote --host am3.wg scripts/bench-compare` builds the programs of
+- Against other languages: `scripts/remote --host am3 scripts/bench-compare` builds the programs of
   `corpus/bench` and their ports (`corpus/bench/ref/<language>/`: C, Rust, Zig, Go, Hare) and writes
   `assets/bench/results.json`; `cargo xtask typeset` draws it as the charts of `assets/cards/bench`
   (the README) and of the whitepaper's implementation section. The ports use the same algorithm and
@@ -375,6 +377,6 @@ vun check --timings --timeline /tmp/t.json file.vun                # open t.json
 - `VUN_STORE` points the store elsewhere, isolating a measurement from the shared memos.
   Sessions of another toolchain remove this one's shared files.
 - The CPU clock varies (a laptop on battery): compare A/B runs made together, never across time.
-  `am3.wg` runs other services on mixed cores: runs spread over threads show outliers of tens of
+  `am3` runs other services on mixed cores: runs spread over threads show outliers of tens of
   milliseconds there when a worker is preempted; measure with `scripts/remote --reserve`,
   compare medians, or `VUN_THREADS=1`.

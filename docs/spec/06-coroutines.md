@@ -86,6 +86,9 @@ echo := (s: &mut Serial) -> Async(never) {
 };
 ```
 
+A function that returns an interface but never yields is `coroutine.not_suspending`, since an
+interface is not a type an ordinary function can return.
+
 Slices, ranges, maps and generator functions all implement `Iter`. Adapters are coroutine
 functions too: `std.iter` gives every frame `enumerate`, `map`, `filter`, `take`, `count`, `sum` (into a total type the
 caller names), `sum_floats` and `peekable`, by an impl without an interface over `lang.Coroutine`, and slices and
@@ -104,7 +107,7 @@ and loses no wakeup by resuming one early. A `Wait` is `.on(event)` or `.either(
 two waits living in the waiting frames, so waiting on either of two tasks allocates nothing, and
 `ready` holds when an event it names fired.
 
-- `std.task.run(tasks)`: single-threaded, over a tuple of borrowed tasks that never finish; it
+- `std.task.run(tasks)`: single-threaded, over a tuple of borrowed tasks that never finish. It
   resumes each task whose wait is ready and sleeps through the runtime's `std.task.sleep` (a
   typed link symbol) between rounds (embedded, bare metal);
 - `std.task.block_on(t)`: hosted, one task;
@@ -147,7 +150,7 @@ The frame-size algorithm is part of the specification, so sizes are the same on 
 
 A coroutine function lowers to two functions from its one body (spec 13, section 3): `resume`
 goes, by the state, to the start or past the `yield` the frame is suspended at, runs to the next
-`yield` or the return, sets the state and gives the step; resuming a finished frame traps. `end`
+`yield` or the return, sets the state and gives the step. Resuming a finished frame traps. `end`
 goes to the path ending the frame at its `yield`, which runs what is pending there. Calling the
 coroutine function writes the state and the parameters into the place receiving the frame.
 

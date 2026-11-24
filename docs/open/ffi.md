@@ -1,6 +1,6 @@
 # C interop: open
 
-Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `decisions.md`
+Found while writing `examples/todo` (a GTK 4 program). What was fixed is in `decisions/`
 (673 to 675); what is left:
 
 ## Binder (`vun util ffi bind`)

@@ -1,31 +1,29 @@
 # Handoff
 
-What is in flight and what to do next; the rest that is open is by area in [`open/`](open/).
-History is in `jj log` and [`decisions.md`](spec/decisions.md), conventions in
+What is in flight and what to do next. The rest that is open is by area in [`open/`](open/).
+History is in `jj log` and [`decisions/`](spec/decisions/README.md), conventions in
 [`dev/`](dev/workflow.md), rules in [`spec/`](spec/00-principles.md). Under 40 lines.
 
 ## State
 
-Tests, clippy, `lines` and `layers` are clean. Decisions awaiting the owner are the rows marked
-`proposed` in `decisions.md`.
+Reviewed 2026-11-24 (docs against code): all but one proposed decision are `accepted` (658, the
+progress bars, waits for its uncommitted change in `compiler/base/term/src/progress/`). The
+decisions are a file each in [`spec/decisions/`](spec/decisions/README.md), checked by
+`cargo xtask decisions`. Clippy, the suite (1094 tests), `cargo gen --check`, `lines` and `layers`
+were clean on am3. `0.2.0` is tagged but its release CI failed ([`open/packaging.md`](open/packaging.md)).
+The causes are fixed in the working copy, not retagged.
 
-## Next
+## Next, in order
+1. Commit the working copy, retag `0.2.0` (stale `editors/*`, macOS `pgo` job: lld was missing).
+2. Check the cost of the stale-memo fix: `Groups::regroup` now counts own inputs
+   ([`open/performance.md`](open/performance.md)); then drop `Session::untargeted` if it holds.
+3. Rerun the HIR `lower` fuzz target and the others on am3 (a stray attribute crash is fixed).
+4. Priming (664 to 668): `cargo xtask package`, a second layer, other targets. Fuzzing: rerun
+   `vun debug smith` on am3 (`--jobs 3 --chunk 5 --warm`), triage.
 
-Profiling and priming (`vun debug profile`, decisions 664 to 668, [`open/performance.md`](open/performance.md)):
-a primed toolchain makes a first check 70 ms. Next: run `cargo xtask package` once on a machine and
-check a program from the unpacked archive; a second layer from sample programs; the other targets.
-
-Fuzzing (`vun debug smith`, spec 11, [`open/testing.md`](open/testing.md)): a 2000-program campaign
-(seeds 30000.., run reach) found two bugs, both fixed (an unreached block read a value `fold`
-dropped; arm64 `f16` truncation to `i32` past the format's range). Next: rerun it on am3 (`scripts/remote
---host am3.wg`, `--jobs 3 --chunk 5`, `--warm` once after a rebuild), triage what it finds.
-
-CLI rework (decisions 659 to 661, proposed): try `vun component list|add|remove` against a signed
-release on am3 (`VUN_RELEASES=file://<dir>`).
-
-The owner's queue:
-1. Try the server in a real editor, which polish waits for ([`open/editors.md`](open/editors.md)).
-2. Backends: the rp2350 on hardware ([`open/backends.md`](open/backends.md)).
+The owner's queue: the server in a real editor ([`open/editors.md`](open/editors.md)); the rp2350
+on hardware, the UART byte arriving as `0xFC` ([`open/backends.md`](open/backends.md)); the
+`vun component` commands against a signed release (659 to 661).
 
 ## Areas
 

@@ -1,7 +1,7 @@
 # 10. Diagnostics, provenance, lints and conventions
 
-Diagnostics are a product surface, specified like the language: precise, pedantic, and every fix
-applicable by a machine when it is safe to do so.
+Diagnostics are specified like the language: precise, pedantic, and every fix a machine can apply
+when it is safe to.
 
 ## 1. Provenance
 
@@ -223,6 +223,8 @@ format := ($spec: Code(&[u8])) {
   literal's). A value carries no place: two equal strings are one value. A report placed in the
   reporting function's own code moves to the call that led to it; one placed in the caller's code,
   as inside a literal it passed, stays there.
+- A place takes a layout after a `:`, `[[fill]align][width]` with `<`, `>` or `^` (`{:>8}`); `{?}`
+  writes the expression form of a value (`.some(3)`, `Point{ .x = 1 }`).
 - `std.fmt.parse(format)` reads a format string once: its pieces, or its first problem
   (`fmt.Error`, a `fmt.Problem` and the bytes it covers). `print` takes its format string as code
   and reports inside it: a problem at the bytes it covers, a count of places (`{}`, `{?}`, `{x}`

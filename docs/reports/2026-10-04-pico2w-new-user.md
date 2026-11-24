@@ -13,7 +13,7 @@ halted board that only a button press recovers.
 ## Setup that was not the user's flow
 
 - `~/.local/bin/vun` was the toolchain installed at 12:28, before the Cortex-M33 target existed.
-  Instead of `cargo xtask install` on the laptop, `vun-cli` was built `--release` on `petal.wg`,
+  Instead of `cargo xtask install` on the laptop, `vun-cli` was built `--release` on `petal`,
   copied back, and run with `VUN_LIBRARY=<checkout>/lib`. `vun --version` then printed `vun 0.1.0`
   with no commit, because the mirror has no `.jj`.
 - `sudo dnf install arm-none-eabi-gcc-cs arm-none-eabi-binutils-cs` was run on this machine (1.4 GiB).
@@ -63,57 +63,57 @@ it), the level of GP15 (no LED on the Pico 2 W's GPIOs), the UART (no adapter), 
 
 ## Rough edges, worst first
 
-1. **No way to see anything.** No console, the on-board LED is on the CYW43 radio (no driver), and
+1. No way to see anything. No console, the on-board LED is on the CYW43 radio (no driver), and
    the UART needs an adapter and has an open loopback bug (`c810d7b8`). A newcomer's "hello" is
    "the drive disappeared". The README promises firmware as a use; the first program should be
    able to show life. Candidates: a CYW43 LED driver, a USB CDC console on the RP2350's USB, or at
    least a documented board test that uses `bootsel_hiding` as above.
-2. **A panic with the board's own `halt` is a dead end.** `rp2350.halt` waits for interrupts
+2. A panic with the board's own `halt` is a dead end. `rp2350.halt` waits for interrupts
    forever: no USB, no BOOTSEL, so the board must be unplugged with the button held. A fault, by
    contrast, reboots into BOOTSEL with a record. The two should agree, and the default trap for a
    console-less board should be the one that gives the device back. The `Config.trap` field made
    writing one easy (a plain function), which was the good part.
-3. **The fault record cannot be read with stock tools.** It lives in the watchdog scratch
+3. The fault record cannot be read with stock tools. It lives in the watchdog scratch
    registers; `picotool save -r 0x400d800c 0x400d801c` fails with `Save range crosses unmapped
    memory`. Reading it needs another Vun program decoding bits through the USB interfaces
    (`docs/dev/pitfalls.md`). A reader that copies the record somewhere `picotool save` can read
    (flash, or an SRAM range that survives) would make the feature usable.
-4. **No `vun flash`, and `b.flash` does nothing on `vun build`.** The plan records the step and the
+4. No `vun flash`, and `b.flash` does nothing on `vun build`. The plan records the step and the
    UF2 is written beside the ELF, but no command acts on it. The flow was: `udisksctl mount -b
    /dev/sda1`, `cp app.uf2 /run/media/$USER/RP2350/`, or `picotool load -x -t elf .vun/build/app`
    (`-t elf` because the output has no extension). With the drive hidden by the previous program,
    only the `picotool` route works, so a user needs both.
-5. **`vun run` on a firmware package runs it under qemu and segfaults.** `vun run` printed
+5. `vun run` on a firmware package runs it under qemu and segfaults. `vun run` printed
    `Running .vun/build/app` and `qemu: uncaught target signal 11`. `vun target list` says the
    target runs `elsewhere`; `run` should refuse with a message that says to flash, or run the flash
    step.
-6. **There is no project starter and no example.** No `vun new`/`vun init` (`vun --help` has none),
+6. There is no project starter and no example. No `vun new`/`vun init` (`vun --help` has none),
    no `corpus` program for `rp2350` (only `bare_metal.vun` for another board), and no README in
    `lib/boards/rp2350`. The `build.vun` above was assembled from `corpus/accept/build/build.vun`,
    the stm32f4 shape and `runtime.vun`. A package `.id` is a hand-written 64-bit number with no
    word on how to pick it, and the board dependency is an absolute path.
-7. **Missing `arm-none-eabi-gcc` is reported as an OS error.** ``backend.tool: `arm-none-eabi-gcc`
+7. Missing `arm-none-eabi-gcc` is reported as an OS error. ``backend.tool: `arm-none-eabi-gcc`
    could not compile `program.c` / it could not be started / No such file or directory (os error
    2)``. `vun target list` does say `lacks arm-none-eabi-gcc`, but the build error neither names the
    package nor points there. `--backend native` helps nothing: it needs the same tool as its
    linker, and `--linker lld` fails with `link.unsupported: linker lld does not link objects of
    format elf`, so no bare-metal Arm link exists without the GNU toolchain.
-8. **A stale toolchain looks like a user error.** The 12:28 binary against the new library says
+8. A stale toolchain looks like a user error. The 12:28 binary against the new library says
    ``unknown field `.target` in `package` `` on the board's own `build.vun`. The cause is version
    skew between binary and library; `vun check` could compare the toolchain's version with the
    library's and say so.
-9. **The RP2350 board is thin.** There is no timer or delay module (the stm32f4 board has `time`
+9. The RP2350 board is thin. There is no timer or delay module (the stm32f4 board has `time`
    and `std.task` async on it), so SysTick was set with raw addresses (`0xe000_e010`). The
    `Interrupts` struct has only `systick`: none of the chip's 52 interrupts can be handled, and
    there is no NVIC. No ADC, SPI, I2C, PWM, PIO, USB or flash driver. `Pin` has `output` and `uart`
    only: no input, no pull, no drive strength.
-10. **`vun doc` does not document dependencies.** In the project it writes one namespace
+10. `vun doc` does not document dependencies. In the project it writes one namespace
     (`app`); `vun doc --library` writes 185 namespaces, none from `lib/boards`. The board's API
     (`rp2350.gpio.Pin.output`, `rp2350.rom.bootsel_hiding`) was found by reading source.
-11. **Small diagnostics.** `int.does_not_fit` on `pin(40)` says "widen `Int(0..=29)` to hold the
+11. Small diagnostics. `int.does_not_fit` on `pin(40)` says "widen `Int(0..=29)` to hold the
     value", which is wrong advice for a type that mirrors the chip's 30 pins. The same error prints
     an absolute path in `vun build` and a relative one in `vun check app.vun`.
-12. **Build output is untidy.** `.vun/build/` holds hash-named directories with `program.c`,
+12. Build output is untidy. `.vun/build/` holds hash-named directories with `program.c`,
     `program.su` and `program.o`, and `app`, `app.ld`, `app.uf2` beside them; the useful files are
     the last three.
 

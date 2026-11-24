@@ -1,6 +1,6 @@
 # Contributing
 
-Vun is early and its design moves fast; open an issue before a large change.
+Vun is early and its design moves fast. Open an issue before a large change.
 
 ## Before you start
 
@@ -9,7 +9,7 @@ Vun is early and its design moves fast; open an issue before a large change.
 - [`docs/dev/commands.md`](docs/dev/commands.md): building, running and inspecting.
 - [`docs/dev/crates.md`](docs/dev/crates.md): where the code for each stage lives.
 
-A change to the language updates the spec and [`decisions.md`](docs/spec/decisions.md).
+A change to the language updates the spec and [`decisions/`](docs/spec/decisions/README.md).
 
 ## Checks
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vun against C and Rust on the programs of corpus/bench, written to assets/bench/results.json.
 
-    scripts/remote --host am3.wg scripts/bench-compare [--samples N] [--core CPU] [--vun PATH] [--unprimed]
+    scripts/remote --host am3 scripts/bench-compare [--samples N] [--core CPU] [--vun PATH] [--unprimed]
 
 Method, so the numbers compare:
   - one algorithm, one source per language (corpus/bench/<p>.vun, corpus/bench/ref/<language>/<p>.*), wrapping

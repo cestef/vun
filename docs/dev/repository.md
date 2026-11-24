@@ -1,7 +1,7 @@
 # Repository
 
 ```
-lib/lang/lang/syntax/{grammar,desugar}.vun   tokens, nodes, parse tables; appendix B as tables
+lib/lang/lang/syntax/{grammar,nodes,desugar,editors}.vun   tokens, nodes, parse tables; appendix B as tables
 lib/lang/lang/errors/                         a group of diagnostic ids per file, and their explanation pages
 lib/lang, lib/std, lib/targets               `lang` primitives, `std`, one `lang.target.Spec` per target
 corpus/{accept,reject,planned,support}       programs; `//~ id` annotations; waiting for APIs; stand-ins

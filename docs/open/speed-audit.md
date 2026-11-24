@@ -1,6 +1,6 @@
 # Open: speed audit (2026-10-08)
 
-Measured on `am3.wg`, pinned, from the benchmark of `scripts/bench-compare` and `vun debug profile`.
+Measured on `am3`, pinned, from the benchmark of `scripts/bench-compare` and `vun debug profile`.
 Complements [`performance.md`](performance.md), which holds the per-stage findings.
 
 ## Where Vun is slow
@@ -33,8 +33,8 @@ Generated code:
 Measured on a binary built after decision 666 (lint only the checked package), so the figures
 above already include it.
 
-1. Prime lands (uncommitted in the default workspace: `driver/src/prime.rs`, `toolchain/prime.rs`;
-   owner not confirmed). Then re-profile: the cold path loses the 316 library files.
+1. Priming is built (`compiler/tools/driver/src/prime.rs`, `vun toolchain prime`, decision 667).
+   Left: re-profile a cold path on a primed toolchain, and prime the common instantiations.
 2. Reachability (found, fixed for methods): `hello` typed 2851 bodies on a cold run (single thread,
    `VUN_LOG=vun_query=trace`, which names each query's parent and depth), 74% of them under a
    `resolved` frame, a witness made for an impl. A method lookup (`Env::methods`) made the witness

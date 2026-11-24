@@ -1,6 +1,6 @@
 # Open: compile speed
 
-- A cold `vun test lib/std` takes ~4.5 s on `am3.wg`, spread over `mir`, `typed`, lint rules run as
+- A cold `vun test lib/std` takes ~4.5 s on `am3`, spread over `mir`, `typed`, lint rules run as
   Vun code (18 000 compile-time calls) and writing the memos (0.7 s for a 59 MB project file of
   `lib/std`). What the file holds is mostly the dependency edges: `typed` 1.2M reads, `metered_call`
   960k, `mir` 590k (`vun debug queries lib/std/std.vun`); the library-shared file is 0.4 MB, so
@@ -8,7 +8,7 @@
   toolchain for every type (2.4M reads, 367 ms own); it reads one memo per package now
   (`PackageImpls`, 55k reads, 57 ms).
   `VUN_LOG=vun_lir_passes::promote=trace` reports each slot promotion's cost.
-- Truly cold (empty store), threads wait ~1.1 s on the same `std` claims, once per toolchain.
+- Cold (empty store), threads wait ~1.1 s on the same `std` claims, once per toolchain.
 - A cold run saves the shared file through one writer (~37 ms for 4.3 MB): values encoded, copied
   into each enclosing blob, hashed whole.
 - A shared file stays as its first writer left it: later projects recompute the library instances
@@ -21,15 +21,17 @@
   holds is still ~1.7 KB in `fetch`, `get` and `compute` of `MeteredCall` (`--emit asm`, `sub sp`;
   `Cx::computed` went from 960 to 496 bytes).
 - A memo computed while no target was chosen (`vun build main.vun --target nope`) was reused by a
-  later session that had one: `decl_value(lang.target.current)` came back untargeted
-  (`VUN_QUERY_CHECK=1` panics in `reuse.rs`). A session whose target is not chosen now keeps no
-  queries (`Session::untargeted`), which hides it; the cause is a read of the unset `TargetOf`
-  input, saved with the memo but not held against the value set later.
-- Cold `vun test lib/std` on `am3.wg` (empty `VUN_STORE`): `Body::propagate` is 3.4% of the samples
+  later session that had one (`VUN_QUERY_CHECK=1` panicked in `reuse.rs`). The engine held the
+  cause: a group's fingerprint counted only inputs set shared, and an unset input counted as alike
+  in every database, so a saved memo that read an unset input held in a database that set it
+  `Own`. Every set input counts in its group now (`Groups::regroup`, `tests/persist.rs`); a group
+  mixing own and shared inputs invalidates its shared memos when an own one is set. Not measured:
+  what that costs a session; `Session::untargeted` still keeps no queries and could go once it is.
+- Cold `vun test lib/std` on `am3` (empty `VUN_STORE`): `Body::propagate` is 3.4% of the samples
   with its callees and 0.07% on its own, so the repeated scans cost nothing; the rest is the
   compile-time calls `fold` evaluates, which `concrete` (2.6 s total across threads) holds.
-- `vun debug profile` on `am3.wg` (2026-10-08, `hello`): a first check from nothing is 4.7 G
-  instructions, 600 ms; on a primed toolchain (`vun toolchain prime`, decision 667) 0.7 G, 70 ms;
+- `vun debug profile` on `am3` (2026-10-08, `hello`): a first check from nothing is 4.7 G
+  instructions, 500 ms; on a primed toolchain (`vun toolchain prime`, decision 667) 0.7 G, 70 ms;
   warm 0.13 G, 25 ms. Open, by size:
   1. The shipped layer is 75 MB (10 to 13 MB compressed): it is every non-generic body of `lang`,
      `std` and `targets`. Generic instantiations a program needs are computed and saved with the
@@ -51,7 +53,7 @@
   needs that priming did not make (`println` of a `u32`), 79 library files parsed anew (~50 ms of
   work, `parsed` is saved without its tree), and ~90 ms of threads waiting on claims.
   `VUN_LOG=vun_query=debug` logs each wait (`waited for another thread`, query, key, time).
-  Joining open parallel calls while waiting (tried: `Pool::help_until`) gave no speedup and 15%
+  Joining open parallel calls while waiting (tried, removed again) gave no speedup and 15%
   more CPU: the waits are on the critical path. What helped (am3, 40 runs, loose-file cold
   build): inlining a program's functions callees first, layer by layer (`Inlining::layers`; the
   waits on `inlined_lir` are gone), 122 to 119 ms and 9% less CPU, and saving the parse tree of
