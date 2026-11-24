@@ -2529,6 +2529,7 @@ dependencies = [
  "vun-mir",
  "vun-origin",
  "vun-pass",
+ "vun-primitives",
  "vun-query",
  "vun-sema",
  "vun-sema-int",

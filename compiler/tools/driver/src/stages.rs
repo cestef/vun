@@ -148,6 +148,14 @@ impl Session {
         tracing::info!(file = %self.sources.file(file).path, errors = self.diag.error_count(), "checked");
     }
 
+    /// Resolves the names of `file` against its package, reporting what needs no types.
+    pub fn check_names(&mut self, file: FileId) {
+        let key = self.file_ref(file);
+        if let Some(checked) = self.db.get::<FileNames>(&key) {
+            self.diag.absorb(&checked.diag);
+        }
+    }
+
     /// Checks the types of `file`, as far as sema does yet.
     pub fn check_types(&mut self, file: FileId) {
         let key = self.file_ref(file);
@@ -224,16 +232,19 @@ impl Session {
         &mut self,
         file: FileId,
     ) {
-        let plain = self.functions(file).into_iter().map(Instantiation::plain);
-        let root = self.file_ref(file);
-        let program = self.db.get::<Programs>(&(root, Roots::Functions));
-        let mut seen = vun_hash::Set::default();
-        let bodies: Vec<Instantiation> =
-            plain.chain(program.instantiations().cloned()).filter(|body| seen.insert(body.clone())).collect();
-        for body in bodies {
+        for body in self.reached_bodies(file) {
             if let Some(reports) = self.db.get::<Q>(&body) {
                 self.diag.absorb(&reports);
             }
         }
+    }
+
+    /// Every function body of `file` and every instantiation its program reaches, each once.
+    pub(crate) fn reached_bodies(&mut self, file: FileId) -> Vec<Instantiation> {
+        let plain = self.functions(file).into_iter().map(Instantiation::plain);
+        let root = self.file_ref(file);
+        let program = self.db.get::<Programs>(&(root, Roots::Functions));
+        let mut seen = vun_hash::Set::default();
+        plain.chain(program.instantiations().cloned()).filter(|body| seen.insert(body.clone())).collect()
     }
 }

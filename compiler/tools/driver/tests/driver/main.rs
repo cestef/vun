@@ -55,6 +55,7 @@ mod reduce;
 mod reflection;
 mod renderer;
 mod replace;
+mod reports;
 mod rp2350;
 mod runtime;
 mod scheme;

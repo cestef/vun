@@ -7,6 +7,7 @@ pub mod kinds;
 pub mod panics;
 pub mod places;
 pub mod ranges;
+pub mod widths;
 
 use vun_query::Db;
 
@@ -18,5 +19,6 @@ pub const PERSISTED: &[fn(&Db)] = &[
     Db::persist::<panics::PanicChecks>,
     Db::persist::<places::Placed>,
     Db::persist::<places::PlaceStates>,
+    Db::persist::<widths::WideChecks>,
     Db::trace::<panics::MayTrap>,
 ];

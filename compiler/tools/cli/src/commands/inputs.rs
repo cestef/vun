@@ -86,6 +86,7 @@ impl Inputs for Session {
             visit.begin(shell, Subject::relative(&path));
             if let Some(file) = self.load(&path) {
                 self.check(file);
+                self.measured(file);
             }
             visit.end();
         }

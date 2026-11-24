@@ -28,6 +28,7 @@ mod queries;
 mod reached;
 mod reduce;
 mod registry;
+pub mod reports;
 mod session;
 mod settings;
 pub mod setup;

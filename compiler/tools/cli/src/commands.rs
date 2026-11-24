@@ -13,6 +13,7 @@ use inputs::{Inputs, Named};
 use settings::defaults;
 use status::{Conclude, Started, Step};
 
+use vun_driver::reports::Report;
 use vun_driver::subject::Subject;
 use vun_driver::{BUILD, Session, VERSION, checks, codegen, cover, formats, trace};
 
@@ -102,7 +103,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
 
 const CHECK: Command<Session> = Command::run("check", "analyze without generating code", check)
     .aliases(&["c"])
-    .params(&[PATH])
+    .params(&[PATH, Report::Widths.param(), Report::Generics.param()])
     .sets(&COMPILE)
     .examples(&[
         Example {
@@ -196,7 +197,9 @@ fn check(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Resul
         return Ok(session.outcome());
     };
     if ready {
+        session.measure(args);
         session.checked(&subject, shell);
+        session.show_reports(shell)?;
     }
     session.conclude(shell, shown, started);
     Ok(session.outcome())

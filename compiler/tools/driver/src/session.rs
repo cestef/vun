@@ -8,7 +8,7 @@ use vun_build::store::Store;
 use vun_build::toolchains::Toolchains;
 use vun_command::Diagnostics;
 use vun_diag::{DiagCtxt, DiagCx, Diagnostic, ErrorGuaranteed};
-use vun_hir::db::{FileNames, FileRef, FileText, Parsed, ParsedFile};
+use vun_hir::db::{FileRef, FileText, Parsed, ParsedFile};
 use vun_hir::lower;
 use vun_hir::tree::{ExprKind, Hir};
 use vun_intern::Symbol;
@@ -69,6 +69,7 @@ pub struct Session {
     pub shares_new: bool,
     /// Whether what the queries did with their memos is reported at exit (`Tally`).
     pub tally: bool,
+    pub reports: crate::reports::Reports,
     /// The machine's tools file, the user's unless set (`Tools::path`).
     pub tools: Option<PathBuf>,
     /// The entry of the machine's tools file the target is equipped with, if one names it (its
@@ -121,6 +122,7 @@ impl Session {
             roots: Roots::default(),
             persistence: Persistence::Off,
             tally: std::env::var(vun_query::Tally::VAR).is_ok_and(|v| v == "1"),
+            reports: crate::reports::Reports::default(),
             shared: None,
             shipped: None,
             shares_new: true,
@@ -255,14 +257,6 @@ impl Session {
         key
     }
 
-    /// Resolves the names of `file` against its package, reporting what needs no types.
-    pub fn check_names(&mut self, file: FileId) {
-        let key = self.file_ref(file);
-        if let Some(checked) = self.db.get::<FileNames>(&key) {
-            self.diag.absorb(&checked.diag);
-        }
-    }
-
     /// Reads the manifest of the `build.vun` loaded as `file` (spec 12, section 2).
     pub fn manifest(&mut self, file: FileId) -> Option<Manifest> {
         self.declarations(file, |decls, cx| Manifest::read(decls, file, cx))
@@ -281,7 +275,6 @@ impl Session {
         read(&decls, &mut DiagCx { diag: &mut self.diag, origins: self.origins })
     }
 
-    /// Emits every diagnostic in deterministic order.
     /// Shows the diagnostics collected so far on the shell's standard error, in the session's
     /// format, and takes them out; the session stays failed if one was an error.
     pub fn emit(&mut self, shell: &mut Shell<'_>) {
