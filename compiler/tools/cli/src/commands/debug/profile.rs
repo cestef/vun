@@ -6,14 +6,13 @@
 
 use std::io;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
 
 use vun_command::{Args, Outcome, Param, PathKind, Values};
 use vun_diag::{Diagnostic, Msg, errors};
 use vun_driver::Session;
 use vun_driver::testing::Measure;
 use vun_profile::{Phase, Runner, Snapshot, Study, Workload};
-use vun_term::{Percent, Shell};
+use vun_term::{Interval, Percent, Shell, TimeUnit};
 
 /// Samples of a timed run unless `--samples` asks for another count.
 const SAMPLED: usize = 7;
@@ -26,7 +25,7 @@ const TOLERANCE: Percent = Percent(0.5);
 /// The snapshot `--snapshot` names unless it names another.
 const DEFAULT_SNAPSHOT: &str = "base";
 /// How long a run may last unless `--limit` says (callgrind runs a program some fifty times slower).
-const LIMIT: Duration = Duration::from_mins(15);
+const LIMIT: Interval = Interval::new(15, TimeUnit::Minutes);
 
 const WORKLOADS: Param = Param::positional("workloads")
     .arity(vun_command::Arity::Many)
@@ -66,24 +65,13 @@ const SAVE: Param = Param::flag("save").about("keep the results as the snapshot"
 const FAIL_OVER: Param = Param::option("fail-over")
     .about("fail when a quantity grew by more than this, and by more than the noise, over the snapshot")
     .values(Values::Percent);
-const LIMIT_SECONDS: Param =
-    Param::option("limit").about("the seconds one run of the compiler may last (900)").values(Values::Count);
+const LIMIT_TIME: Param = Param::option("limit")
+    .about("how long one run of the compiler may last, such as `90s` or `15m` (15m)")
+    .values(Values::Interval);
 
 pub(super) const PARAMS: &[Param] = &[
-    WORKLOADS,
-    MEASURE,
-    PHASE,
-    SAMPLES,
-    TOP_ROWS,
-    THREADS,
-    BACKEND,
-    CALLERS,
-    EXE,
-    ROOT,
-    SNAPSHOT,
-    SAVE,
-    FAIL_OVER,
-    LIMIT_SECONDS,
+    WORKLOADS, MEASURE, PHASE, SAMPLES, TOP_ROWS, THREADS, BACKEND, CALLERS, EXE, ROOT, SNAPSHOT, SAVE,
+    FAIL_OVER, LIMIT_TIME,
 ];
 
 fn count(args: &Args, param: &Param) -> Option<usize> {
@@ -118,7 +106,7 @@ pub(super) fn profile(session: &mut Session, args: &Args, shell: &mut Shell<'_>)
         }
     };
     let threads = count(args, &THREADS).or((measure == Measure::Instructions).then_some(1));
-    let limit = args.count(&LIMIT_SECONDS).map_or(LIMIT, Duration::from_secs);
+    let limit = args.interval(&LIMIT_TIME).unwrap_or(LIMIT).into();
     let study = Study {
         runner: Runner { exe: &exe, root: &root, threads, backend: args.value(&BACKEND), limit },
         measure,

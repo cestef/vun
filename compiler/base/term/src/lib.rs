@@ -6,6 +6,7 @@
 //! pieces ([`Format`], `--format`).
 
 mod color;
+mod interval;
 mod markdown;
 mod pager;
 mod progress;
@@ -20,6 +21,7 @@ mod text;
 mod units;
 
 pub use color::{Color, ColorChoice, Env, Stream};
+pub use interval::{Interval, NoInterval, TimeUnit};
 pub use progress::{Bar, DEFAULT_WIDTH, Held, Live, Progress, Unit};
 pub use record::{Document, Format, Record, Row, Status};
 pub use shell::{Out, Shell, Verb, Verbosity};

@@ -2,7 +2,7 @@
 //! default comes from. Help, parsing, validation and completions all read the same declaration.
 
 use vun_span::Place;
-use vun_term::Percent;
+use vun_term::{Interval, Percent};
 
 use crate::Detail;
 
@@ -56,6 +56,8 @@ pub enum Values {
     Place,
     /// A percentage, such as `3` or `2.5%`.
     Percent,
+    /// A length of time and its unit, such as `15m`, `900 s` or `250 ms`.
+    Interval,
 }
 
 /// A table of names described by what they are and where they are declared.
@@ -171,7 +173,12 @@ impl Param {
     pub fn choices(&self) -> Option<Vec<&'static str>> {
         match self.values {
             Values::Choice(names) | Values::Catalog(Catalog { names, .. }) => Some(names()),
-            Values::Text | Values::Path(_) | Values::Count | Values::Place | Values::Percent => None,
+            Values::Text
+            | Values::Path(_)
+            | Values::Count
+            | Values::Place
+            | Values::Percent
+            | Values::Interval => None,
         }
     }
 }
@@ -250,6 +257,12 @@ impl Args {
     /// The percentage a percent parameter is given; parsing checked that it is one.
     #[must_use]
     pub fn percent(&self, param: &Param) -> Option<Percent> {
+        self.value(param)?.parse().ok()
+    }
+
+    /// The interval an interval parameter is given; parsing checked that it is one.
+    #[must_use]
+    pub fn interval(&self, param: &Param) -> Option<Interval> {
         self.value(param)?.parse().ok()
     }
 

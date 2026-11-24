@@ -202,6 +202,7 @@ impl Param {
             }
             Values::Count => Msg::new().text("write a whole number, such as ").code("100"),
             Values::Percent => Msg::new().text("write a percentage, such as ").code("3%"),
+            Values::Interval => Msg::new().text("write a number and a unit, such as ").code("15m"),
             Values::Place => {
                 Msg::new().text("write a line and a column counted from 1, such as ").code("12:5")
             }

@@ -4,11 +4,12 @@
 
 ```sh
 cargo fmt && cargo clippy --all-targets && cargo nextest run && cargo gen --check && cargo xtask lines && cargo xtask layers
-cargo xtask check             # the quick ones: formatting, generated sources, lines, layers
+cargo xtask check             # the quick ones: formatting, generated sources, lines, comments, layers
 cargo xtask push -- <words>   # check, then `jj git push <words>`
 cargo xtask hooks             # once per clone: the jj aliases `jj check` and `jj push <words>`
 cargo xtask corpus            # verdicts, coverage, what stops MIR most
 cargo xtask runtimes          # the std tests on every target this machine runs (its tools file: kernel, C library, WASI, wine)
+cargo xtask comments         # comment lines inside fn bodies per group may only fall below comments.vun; --bless lowers it
 cargo xtask decisions         # reads docs/spec/decisions/*.md (one file per decision), fails on a malformed one, writes README.md, the index
 cargo xtask tree-sitter       # build the tree-sitter parser (conflicts found), compare its trees with ours
 cargo xtask install           # build `vun` (the dist profile) and install it as the default toolchain
@@ -224,7 +225,7 @@ of stdout or stderr (or the exit code) where it does; `--format json` gives a `b
 
 ## Command verbs
 
-A leaf command of `vun` is named by a `CommandVerb` (`compiler/tools/command/src/verb.rs`: name, `Kind::Read` or `Kind::Write`, one-line meaning), so `Command::run(CommandVerb::List, ...)`. A name outside the table is `Command::item`, allowed only below a `Command::verb_group` (`dump`). Add a verb to the table, never a second spelling of one. `Command::verify` reports strays and duplicate names; the `vun` tree is checked by `every_leaf_command_is_a_verb` (decision 684).
+A leaf command of `vun` is named by a `CommandVerb` (`compiler/tools/command/src/verb.rs`: name, `Kind::Read` or `Kind::Write`, one-line meaning), so `Command::run(CommandVerb::List, ...)`. A name outside the table is `Command::item`, allowed only below a `Command::verb_group` (`dump`). Add a verb to the table, never a second spelling of one. `Command::verify` reports strays and duplicate names; the `vun` tree is checked by `every_leaf_command_is_a_verb` (decision 684). Each entry also carries a `Standing`; `Legacy` marks the six nouns kept only so no command was renamed (`completion`, `lsp`, `coverage`, `queries`, `profile`, `smith`), and `CommandVerb::legacy()` lists them.
 
 ## Logging
 

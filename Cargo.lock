@@ -3075,6 +3075,7 @@ version = "0.2.0"
 dependencies = [
  "anstyle",
  "vun-data",
+ "vun-variants",
 ]
 
 [[package]]
@@ -3138,6 +3139,8 @@ dependencies = [
 name = "vun-xtask"
 version = "0.2.0"
 dependencies = [
+ "proc-macro2",
+ "syn 2.0.119",
  "vun-build",
  "vun-command",
  "vun-data",

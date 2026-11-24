@@ -30,7 +30,7 @@ pub use param::{
 pub use parse::{Detail, Request, Section, Selected};
 pub use run::{Context, Diagnostics};
 pub use settings::{Setting, Settings};
-pub use verb::{CommandVerb, Kind};
+pub use verb::{CommandVerb, Kind, Standing};
 pub use verify::Violation;
 
 pub struct Program<Cx: 'static> {

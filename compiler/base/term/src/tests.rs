@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::*;
 
 fn env() -> Env {
@@ -204,4 +206,27 @@ fn a_percentage_is_a_number_with_or_without_its_sign() {
     assert_eq!(Percent(3.04).to_string(), "3.0%");
     assert_eq!(Instructions(4_560.0).to_string(), "4.56 k instr");
     assert_eq!(Instructions(12.0).to_string(), "12.0 instr");
+}
+
+#[test]
+fn an_interval_is_a_number_and_a_unit() {
+    assert_eq!("15m".parse(), Ok(Interval::new(15, TimeUnit::Minutes)));
+    assert_eq!("900 s".parse(), Ok(Interval::new(900, TimeUnit::Seconds)));
+    assert_eq!(" 250 ms ".parse(), Ok(Interval::new(250, TimeUnit::Millis)));
+    for text in
+        ["", "15", "m", "-1s", "1.5s", "5 d", "5 m s", "99999999999999999999h", "18446744073709551615h"]
+    {
+        assert_eq!(text.parse::<Interval>(), Err(NoInterval), "{text}");
+    }
+    assert_eq!(Interval::new(15, TimeUnit::Minutes).to_string(), "15m");
+    assert_eq!(Duration::from(Interval::new(15, TimeUnit::Minutes)), Duration::from_mins(15));
+    assert_eq!(Duration::from(Interval::new(250, TimeUnit::Millis)), Duration::from_millis(250));
+}
+
+#[test]
+fn every_unit_round_trips_through_its_symbol() {
+    for unit in TimeUnit::ALL {
+        let interval = Interval::new(3, *unit);
+        assert_eq!(interval.to_string().parse(), Ok(interval));
+    }
 }

@@ -13,3 +13,4 @@ workspace = true
 [dependencies]
 anstyle.workspace = true
 vun-data.workspace = true
+vun-variants.workspace = true

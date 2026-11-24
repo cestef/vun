@@ -41,3 +41,19 @@ fn every_verb_has_its_own_name() {
     let names: std::collections::HashSet<_> = CommandVerb::ALL.iter().map(|v| v.name()).collect();
     assert_eq!(names.len(), CommandVerb::ALL.len());
 }
+
+#[test]
+fn the_legacy_leaves_are_the_six_nouns() {
+    let legacy: Vec<_> = CommandVerb::legacy().collect();
+    assert_eq!(
+        legacy,
+        [
+            CommandVerb::Coverage,
+            CommandVerb::Queries,
+            CommandVerb::Profile,
+            CommandVerb::Smith,
+            CommandVerb::Completion,
+            CommandVerb::Lsp,
+        ]
+    );
+}
