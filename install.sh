@@ -6,7 +6,8 @@
 #
 # Nothing downloaded runs before it is checked: the release's SHA256SUMS is verified against the
 # public key below (Ed25519, as the release workflow signs it with openssl), and the archive
-# against SHA256SUMS. Verifying needs OpenSSL 3 or LibreSSL 3.7 and sha256sum or shasum.
+# against SHA256SUMS, as is the `https` component `vun` fetches the manifest with. Verifying needs
+# OpenSSL 3 or LibreSSL 3.7 and sha256sum or shasum.
 #
 # VUN_RELEASES names another place releases are found, as `vun` reads it; VUN_INSTALL_KEY the
 # key that place signs with, as the base64 of its public key's DER (what a PEM file holds).
@@ -26,12 +27,13 @@ case "$(uname -s)" in
     *) echo "vun: no release is built for $(uname -s)" >&2; exit 1 ;;
 esac
 archive="vun-$arch-$os.tar.gz"
+scheme="vun-scheme-https-$arch-$os.tar.gz"
 
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 cd "$scratch"
 
-for file in "$archive" SHA256SUMS SHA256SUMS.sig; do
+for file in "$archive" "$scheme" SHA256SUMS SHA256SUMS.sig; do
     curl --proto '=https,file' -fsSLO "$releases/releases/latest/download/$file"
 done
 
@@ -40,10 +42,13 @@ openssl pkeyutl -verify -pubin -inkey key.pem -rawin -in SHA256SUMS -sigfile SHA
     { echo "vun: SHA256SUMS is not signed by the release key" >&2; exit 1; }
 
 if command -v sha256sum >/dev/null; then sum="sha256sum"; else sum="shasum -a 256"; fi
-grep -F " $archive" SHA256SUMS | $sum -c - >/dev/null ||
-    { echo "vun: $archive does not match SHA256SUMS" >&2; exit 1; }
+for file in "$archive" "$scheme"; do
+    grep -F " $file" SHA256SUMS | $sum -c - >/dev/null ||
+        { echo "vun: $file does not match SHA256SUMS" >&2; exit 1; }
+done
 
 tar -xzf "$archive"
+tar -xzf "$scheme"
 vun/bin/vun toolchain update
 
 case ":$PATH:" in

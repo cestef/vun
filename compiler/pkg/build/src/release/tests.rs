@@ -114,6 +114,22 @@ fn install_sh_holds_the_releases_key() {
     assert_eq!(Key::new(key.try_into().unwrap()), Key::releases());
 }
 
+/// The `vun` of a release has no `https`, so what `install.sh` unpacks must hold the component that has it.
+#[test]
+fn install_sh_downloads_the_toolchain_and_the_scheme_that_fetches_its_manifest() {
+    let machine = Machine { arch: Name("x86_64"), os: Name("linux") };
+    let script =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../install.sh")).unwrap();
+    let named = |variable: &str| {
+        let template = script.lines().find_map(|l| l.strip_prefix(variable)?.strip_prefix("=\"")?.strip_suffix('"'));
+        template.expect("install.sh names the archive").replace("$arch", "x86_64").replace("$os", "linux")
+    };
+    assert_eq!(named("archive"), Build::archive_name(machine));
+    assert_eq!(named("scheme"), Piece::archive_name("scheme-https", machine));
+    let unpacked: Vec<_> = script.lines().filter(|l| l.starts_with("tar -xzf")).collect();
+    assert_eq!(unpacked, [r#"tar -xzf "$archive""#, r#"tar -xzf "$scheme""#]);
+}
+
 #[test]
 fn what_a_component_needs_comes_with_it_and_before_it() {
     let release = release();
