@@ -44,14 +44,14 @@ fn references_may_be_relative_where_uris_may_not() {
     assert!(reference.is_relative());
     assert_eq!(reference.path().as_str(), "../a");
     assert_eq!("../a".parse::<Uri>(), Err(Invalid::new(Why::Relative, 0)));
-    assert_eq!(Reference::parse("").map(|r| r.path().is_empty()), Ok(true));
+    assert_eq!("".parse::<Reference>().map(|r| r.path().is_empty()), Ok(true));
     let uri: Uri = "urn:isbn:0451450523".parse().unwrap();
     assert_eq!((uri.path().as_str(), uri.authority()), ("isbn:0451450523", None));
 }
 
 #[test]
 fn malformed_text_is_reported_where_it_goes_wrong() {
-    let why = |text: &str| Reference::parse(text).unwrap_err();
+    let why = |text: &str| text.parse::<Reference>().unwrap_err();
     assert_eq!(why("1a:b"), Invalid::new(Why::Scheme, 0));
     assert_eq!(why("a b"), Invalid::new(Why::Char(Set::Path), 1));
     assert_eq!(why("/a%2"), Invalid::new(Why::Escape, 2));

@@ -6,6 +6,7 @@ use vun_uri::Uri;
 
 use ring::signature::{Ed25519KeyPair, KeyPair};
 
+use super::Unkeyed;
 use super::{Build, Key, Piece, Profile, Release, Releases, Wanted};
 
 fn release() -> Release {
@@ -32,7 +33,7 @@ fn release() -> Release {
         hash: Hash::of(b"tree"),
         components: vec![piece, native],
     };
-    Release { version: Version::parse("0.4.2").unwrap(), builds: vec![build] }
+    Release { version: "0.4.2".parse::<Version>().unwrap(), builds: vec![build] }
 }
 
 #[test]
@@ -54,7 +55,7 @@ fn a_manifest_reads_back_as_it_was_written() {
 
 #[test]
 fn releases_are_found_as_a_forge_lays_them_out() {
-    let releases = Releases::at(Uri::parse("https://forge.example/owner/vun").unwrap(), Key::releases());
+    let releases = Releases::at("https://forge.example/owner/vun".parse::<Uri>().unwrap(), Key::releases());
     let release = release();
     let path =
         |uri: Uri| uri.path().segments().map(|s| s.decode_utf8().unwrap().into_owned()).collect::<Vec<_>>();
@@ -83,13 +84,13 @@ fn a_manifest_verifies_only_under_its_key_and_as_signed() {
     assert!(key(&other).verify(manifest.as_bytes(), signature.as_ref()).is_err());
     let changed = manifest.replace("0.4.2", "0.4.3");
     assert!(key(&signer).verify(changed.as_bytes(), signature.as_ref()).is_err());
-    assert_eq!(Key::parse(&key(&signer).to_string()), Some(key(&signer)));
-    assert_eq!(Key::parse("ed448:aaaa"), None);
+    assert_eq!(key(&signer).to_string().parse(), Ok(key(&signer)));
+    assert_eq!("ed448:aaaa".parse::<Key>(), Err(Unkeyed::Algorithm));
 }
 
 #[test]
 fn the_releases_key_reads_and_is_set() {
-    assert_eq!(Key::parse(&Key::releases().to_string()), Some(Key::releases()));
+    assert_eq!(Key::releases().to_string().parse(), Ok(Key::releases()));
     assert_ne!(
         Key::releases(),
         Key::new([0; 32]),

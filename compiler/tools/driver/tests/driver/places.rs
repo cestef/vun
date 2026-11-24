@@ -1,7 +1,7 @@
 //! Place states (spec 05, sections 2 and 3): reads need `init`, `&out` initializes, parts are
 //! tracked, linear values move, and `defer` runs where its operand is still held.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::{ChildKind, DiagId, Msg, errors};
 
 #[test]
@@ -84,7 +84,7 @@ closed := () { { f := open(); close(f); } };
     let lines: Vec<_> = found.iter().map(|(id, _)| *id).collect();
     // Each at the end of the block holding `f`: the inner block, the loop body, the `continue`;
     // the first two never name their `f` either.
-    let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::parse("std.lints.style.unused"));
+    let (leak, unused) = (errors::PLACE_LINEAR_LEAK, DiagId::from("std.lints.style.unused"));
     assert_eq!(lines, [leak, unused, leak, unused, leak], "{found:?}");
     assert!(found[0].1.contains("before its scope ends"), "{found:?}");
 }

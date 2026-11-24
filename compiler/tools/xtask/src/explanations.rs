@@ -72,7 +72,7 @@ impl Corpus<'_> {
         let Ok(text) = std::fs::read_to_string(self.root.join(path)) else {
             return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Missing))]);
         };
-        let page = Page::parse(&text);
+        let page = Page::from(text.as_str());
         let (example, fix) = (page.section(EXAMPLE), page.section(FIX));
         if example.is_empty() || fix.is_empty() {
             return Ok(vec![(String::new(), Verdict::Unexplained(Unexplained::Sections))]);

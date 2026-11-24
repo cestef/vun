@@ -4,6 +4,7 @@
 
 use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
 
 use ring::signature::{ED25519, UnparsedPublicKey};
 
@@ -32,21 +33,13 @@ impl Key {
     /// Panics if the key the toolchain was built with does not read, which its tests rule out.
     #[must_use]
     pub fn releases() -> Self {
-        Self::parse(RELEASES.trim()).expect("the releases' key reads")
+        RELEASES.trim().parse().expect("the releases' key reads")
     }
 
     /// The raw key of `bytes`.
     #[must_use]
     pub fn new(bytes: [u8; Self::LEN]) -> Self {
         Self(bytes)
-    }
-
-    /// Reads the text form; `None` for another algorithm or a malformed key.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let (algorithm, key) = text.split_once(vun_hash::Hash::SEPARATOR)?;
-        (algorithm == Self::ALGORITHM).then_some(())?;
-        vun_hash::base32::decode(key).map(Self)
     }
 
     /// Checks that `signature` signs `message` under this key.
@@ -57,6 +50,41 @@ impl Key {
         UnparsedPublicKey::new(&ED25519, self.0).verify(message, signature).map_err(|_| Forged)
     }
 }
+
+/// Why text is not an Ed25519 key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unkeyed {
+    /// There is no algorithm before the key.
+    Unnamed,
+    /// The algorithm is not Ed25519.
+    Algorithm,
+    /// The key is not base32 of the length of a key.
+    Material,
+}
+
+impl FromStr for Key {
+    type Err = Unkeyed;
+
+    fn from_str(text: &str) -> Result<Self, Unkeyed> {
+        let (algorithm, key) = text.split_once(vun_hash::Hash::SEPARATOR).ok_or(Unkeyed::Unnamed)?;
+        if algorithm != Self::ALGORITHM {
+            return Err(Unkeyed::Algorithm);
+        }
+        vun_hash::base32::decode(key).map(Self).ok_or(Unkeyed::Material)
+    }
+}
+
+impl fmt::Display for Unkeyed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Unnamed => "the key does not name its algorithm",
+            Self::Algorithm => "the key is not of the Ed25519 algorithm",
+            Self::Material => "the key is not base32 of the length of an Ed25519 key",
+        })
+    }
+}
+
+impl Error for Unkeyed {}
 
 impl fmt::Display for Key {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

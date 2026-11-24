@@ -105,9 +105,9 @@ pub(crate) fn build_components(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'
 
 pub(crate) fn release(diag: &mut DiagCtxt, args: &Args, _: &mut Shell<'_>) -> io::Result<Outcome> {
     let out = Path::new(args.value(&OUT).expect("positional parameters are present"));
-    let version = Version::parse(env!("CARGO_PKG_VERSION")).expect("the workspace's version is one");
+    let version = env!("CARGO_PKG_VERSION").parse::<Version>().expect("the workspace's version is one");
     if let Some(tag) = args.value(&TAG)
-        && Version::parse(tag) != Some(version)
+        && tag.parse::<Version>().ok() != Some(version)
     {
         let msg = Msg::new()
             .text("the tag ")

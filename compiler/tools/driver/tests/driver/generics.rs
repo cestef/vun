@@ -1,6 +1,6 @@
 //! Generic code is checked per instantiation and reported at the definition (spec 02, section 3).
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

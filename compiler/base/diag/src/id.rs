@@ -62,17 +62,11 @@ impl DiagId {
         }
     }
 
-    /// The id of a binding path read as text, such as a name given on a command line.
-    #[must_use]
-    pub fn parse(path: &str) -> Self {
-        Self::package(path.split(Self::SEPARATOR).map(Symbol::intern))
-    }
-
     /// The compiler error written `relative` to [`Self::COMPILER`], as annotations and
     /// displays name it: `int.does_not_fit`.
     #[must_use]
     pub fn compiler(relative: &str) -> Self {
-        Self::parse(&[Self::COMPILER, relative].concat())
+        Self::from([Self::COMPILER, relative].concat().as_str())
     }
 
     /// The names of the binding path.
@@ -103,6 +97,13 @@ impl DiagId {
     pub fn within(&self, group: &Self) -> bool {
         let mut names = self.segments().into_iter();
         group.segments().into_iter().all(|name| names.next() == Some(name))
+    }
+}
+
+/// The id of a binding path read as text, such as a name given on a command line.
+impl From<&str> for DiagId {
+    fn from(path: &str) -> Self {
+        Self::package(path.split(Self::SEPARATOR).map(Symbol::intern))
     }
 }
 

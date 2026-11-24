@@ -22,7 +22,7 @@ use options::Literal;
 
 #[proc_macro_derive(FromLiteral, attributes(literal))]
 pub fn from_literal(input: TokenStream) -> TokenStream {
-    let item = match Item::parse(input) {
+    let item = match Item::try_from(input) {
         Ok(item) => item,
         Err(unsupported) => return unsupported.report(),
     };

@@ -1,7 +1,7 @@
 //! What a program reaches in other packages is checked as its own code is: each file it reaches
 //! parsed, each body typed where it is reached.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

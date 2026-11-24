@@ -4,7 +4,7 @@
 use vun_diag::DiagCtxt;
 use vun_driver::{Components, Provider, Registry};
 
-use crate::common::built_component;
+use crate::support::built_component;
 
 const CRATE: &str = "vun-component-server-lsp";
 

@@ -3,7 +3,7 @@
 use vun_build::layout::MANIFEST;
 use vun_command::Setting;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const PACKAGE: &str = "\
 package := .{

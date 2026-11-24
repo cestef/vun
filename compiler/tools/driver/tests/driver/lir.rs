@@ -6,7 +6,7 @@ use vun_harness::{ACCEPT, repo_root};
 use vun_lir::{Conv, Linkage};
 use vun_sema_ty::trap::Failure;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 #[test]
 fn a_hosted_program_lowers_to_lir_that_verifies() {

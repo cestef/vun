@@ -9,7 +9,7 @@ use vun_sema::target::Choice;
 use vun_span::FileId;
 use vun_target::{Name, Output};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The backends every program here is built through, which must agree.
 pub(crate) const BACKENDS: [Name; 3] =

@@ -19,19 +19,6 @@ const SEPARATOR: char = '/';
 const ID_DIGITS: usize = 16;
 
 impl Identity {
-    /// Reads `<id in hex>/<major>`.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let (id, major) = text.split_once(SEPARATOR)?;
-        let hex =
-            id.len() == ID_DIGITS && id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
-        let id = u64::from_str_radix(id, 16).ok().filter(|_| hex)?;
-        let major = major.parse().ok().filter(|m: &u32| m.to_string() == major)?;
-        Some(Self { id, major })
-    }
-}
-
-impl Identity {
     /// The parts of its text form: the id in hexadecimal, then the major version.
     #[must_use]
     pub fn parts(&self) -> [String; 2] {

@@ -1,7 +1,7 @@
 //! Library diagnostics (spec 10, section 3): compile-time code reports with the compiler's model,
 //! pointing inside the literal a caller wrote through `Code` arguments and `$if` tests.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

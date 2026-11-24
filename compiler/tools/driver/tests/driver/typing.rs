@@ -1,7 +1,7 @@
 //! Typing bodies against the toolchain's `lang` (spec 02 and 04): operators are calls of their
 //! interfaces' functions, so what an expression's type is depends on `lang`'s impls.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The reports of checking `app` as a file of its own, as `id: message`, in source order.
 fn reported(name: &str, app: &str) -> Vec<String> {

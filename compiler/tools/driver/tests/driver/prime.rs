@@ -9,7 +9,7 @@ use vun_fs::Tree;
 use vun_harness::repo_root;
 use vun_query::Event;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const APP: &str = "\
 start := std.os.start(main);

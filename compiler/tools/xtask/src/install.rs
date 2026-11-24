@@ -44,7 +44,7 @@ pub(crate) fn install(diag: &mut DiagCtxt, args: &Args, shell: &mut Shell<'_>) -
         diag.error(Diagnostic::error(HOMELESS, msg));
         return Ok(Outcome::Failure);
     };
-    let version = Version::parse(env!("CARGO_PKG_VERSION")).expect("the workspace's version is one");
+    let version = env!("CARGO_PKG_VERSION").parse::<Version>().expect("the workspace's version is one");
     let profile = profile(args);
     let root = repo_root();
     let flavor = match Optimized::for_profile(&root, profile, shell) {

@@ -1,7 +1,7 @@
 //! `vun util ffi bind` (spec 07, section 5): bindings from a C header check cleanly, and Vun lays
 //! their structs out as the C compiler does.
 
-use crate::common::{Fixture, built_component};
+use crate::support::{Fixture, built_component};
 use vun_binder::{Binder, Bytes, Failure, Glob, Library, Reason, Request, Unsupported};
 use vun_driver::{Components, Provider, Registry};
 

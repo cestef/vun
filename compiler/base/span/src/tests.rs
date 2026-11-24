@@ -81,11 +81,11 @@ fn a_fork_of_a_stored_release_is_named_apart_from_it() {
 
 #[test]
 fn versions_are_canonical_triples() {
-    assert_eq!(Version::parse("1.20.3"), Some(Version { major: 1, minor: 20, patch: 3 }));
+    assert_eq!("1.20.3".parse::<Version>().ok(), Some(Version { major: 1, minor: 20, patch: 3 }));
     for bad in ["1.2", "1.2.3.4", "01.2.3", "1.x.3", "", "1..3", "+1.2.3"] {
-        assert_eq!(Version::parse(bad), None, "{bad}");
+        assert_eq!(bad.parse::<Version>().ok(), None, "{bad}");
     }
-    assert_eq!(Version::parse("0.4.2").unwrap().to_string(), "0.4.2");
+    assert_eq!("0.4.2".parse::<Version>().unwrap().to_string(), "0.4.2");
 }
 
 #[test]

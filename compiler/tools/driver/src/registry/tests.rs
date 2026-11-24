@@ -1,3 +1,4 @@
+use super::entries::Unkinded;
 use super::*;
 
 #[test]
@@ -11,19 +12,19 @@ fn defaults_register_enabled_components() {
 #[test]
 fn a_piece_of_a_release_is_named_by_its_kind_and_id() {
     let cranelift = Id { kind: Kind::Backend, name: "cranelift".to_owned() };
-    assert_eq!(Id::parse("backend-cranelift"), Some(cranelift));
+    assert_eq!("backend-cranelift".parse(), Ok(cranelift));
     // A linker's crate is `link-<id>`, whatever the kind is called.
-    let lld = Id::parse("link-lld").unwrap();
+    let lld = "link-lld".parse::<Id>().unwrap();
     assert_eq!((lld.kind, lld.to_string()), (Kind::Linker, "link-lld".to_owned()));
-    assert_eq!(Id::parse("linker-lld"), None);
-    assert_eq!(Id::parse("cranelift"), None);
-    assert_eq!(Id::parse("gadget-x"), None);
+    assert_eq!("linker-lld".parse::<Id>(), Err(Unkinded));
+    assert_eq!("cranelift".parse::<Id>(), Err(Unkinded));
+    assert_eq!("gadget-x".parse::<Id>(), Err(Unkinded));
 }
 
 #[test]
 fn every_registered_component_has_an_id_that_parses() {
     for entry in Registry::with_defaults().entries() {
-        assert_eq!(Id::parse(&entry.id.to_string()), Some(entry.id.clone()));
+        assert_eq!(entry.id.to_string().parse(), Ok(entry.id.clone()));
     }
 }
 

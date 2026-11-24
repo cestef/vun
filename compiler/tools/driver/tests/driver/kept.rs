@@ -5,7 +5,7 @@ use vun_driver::Codegen;
 use vun_driver::Persistence;
 use vun_driver::codegen::Listed;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// Builds `program` with each of `edits` in turn, kept and not, and compares the objects: the
 /// code is kept, then read back, then read back but for the functions an edit changed.

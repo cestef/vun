@@ -12,7 +12,7 @@ use vun_items::targets;
 use vun_sema::target::Choice;
 use vun_tool::Executable;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 mod asm;
 mod clang;

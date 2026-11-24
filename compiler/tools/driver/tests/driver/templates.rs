@@ -7,7 +7,7 @@ use vun_diag::errors;
 use vun_driver::packages::Library;
 use vun_fs::Tree;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 #[test]
 fn a_template_is_copied_with_the_name_of_its_directory_and_an_id_of_its_own() {

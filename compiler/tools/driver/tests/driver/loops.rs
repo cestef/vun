@@ -1,6 +1,6 @@
 //! Loops: heads, items through `lang.ops.Iterate` (the table `iteration`), and `break` values.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

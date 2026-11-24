@@ -7,7 +7,7 @@ use vun_driver::testing::{Argument, Ignored, Line, Options, Outcome, Place, Ran,
 use vun_term::Shell;
 
 use crate::backend::BACKENDS;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The id of the first package of these tests, which no other test's package has.
 const SUITE: u64 = 1100;

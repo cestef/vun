@@ -10,7 +10,7 @@ use vun_span::{EXTENSION, SourceFiles};
 use vun_syntax::cst::Cst;
 use vun_syntax::tokens::Tokens;
 
-mod common;
+mod support;
 
 #[test]
 fn repository_sources_lower_and_verify() {
@@ -43,7 +43,7 @@ fn repository_sources_lower_and_verify() {
 
 /// The origins of every declaration and expression of `text`, lowered in a fresh table.
 fn origins(text: &str) -> vun_hash::Hash {
-    let hir = common::lowered(text);
+    let hir = support::lowered(text);
     let decls: Vec<_> = hir.decls.iter().map(|(_, d)| d.origin).collect();
     let exprs: Vec<_> = hir.exprs.iter().map(|(_, e)| e.origin).collect();
     vun_hash::Hash::of_value(&(decls, exprs))

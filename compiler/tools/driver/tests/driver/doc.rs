@@ -8,7 +8,7 @@ use vun_documenter::{Documenter, Site, Source, Types};
 
 use vun_driver::{Components, Provider, Registry};
 
-use crate::common::{Fixture, built_component};
+use crate::support::{Fixture, built_component};
 
 /// Records whether the declarations it is told of are types, as the compiler says.
 struct Probe(Mutex<Vec<(&'static str, bool)>>);

@@ -7,7 +7,7 @@ use vun_hir::db::Package;
 use vun_intern::Symbol;
 use vun_span::Span;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const PACKAGE: &str = "\
 package := .{

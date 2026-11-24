@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use vun_clang::{Cursor, Kind, TypeKind};
 use vun_syntax::case::Case;
 
-use crate::types::Position;
+use crate::ctype::Position;
 use crate::{Binder, Bytes, Key, Opacity, Reason};
 
 /// What a name that would shadow another is marked with.

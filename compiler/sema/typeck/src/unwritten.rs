@@ -41,11 +41,10 @@ impl Typer<'_, '_, '_> {
             let note = if has == takes {
                 // The place has a parameter here, but what it says names something not known yet.
                 format!(
-                    "{} gives it a type that is not known yet: it names a `$` parameter that the other arguments leave open",
-                    place.describe()
+                    "{place} gives it a type that is not known yet: it names a `$` parameter that the other arguments leave open"
                 )
             } else {
-                format!("{} has {}, and this function takes {}", place.describe(), count(has), count(takes))
+                format!("{place} has {}, and this function takes {}", count(has), count(takes))
             };
             d = d.note(note);
         }

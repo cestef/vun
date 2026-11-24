@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-use vun_build::index::{Index, Listing};
+use vun_build::index::{Index, Listing, Misread};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{self, DepKind, Identity, Source, Version};
 use vun_build::store::Label;
@@ -34,15 +34,16 @@ pub struct Updated {
 #[derive(Debug)]
 enum Unlisted {
     Read(Failure),
-    /// The listing is not `version hash` lines.
-    Malformed,
+    Text(std::string::FromUtf8Error),
+    Malformed(Misread),
 }
 
 impl std::fmt::Display for Unlisted {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Read(failure) => failure.fmt(f),
-            Self::Malformed => f.write_str("the listing is not `version hash` lines"),
+            Self::Text(_) => f.write_str("the listing is not UTF-8"),
+            Self::Malformed(_) => f.write_str("the listing is not `version hash` lines"),
         }
     }
 }
@@ -51,7 +52,8 @@ impl std::error::Error for Unlisted {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Read(failure) => failure.source(),
-            Self::Malformed => None,
+            Self::Text(e) => Some(e),
+            Self::Malformed(e) => Some(e),
         }
     }
 }
@@ -124,7 +126,8 @@ impl Session {
     /// The listing at `url`; one that cannot be read is reported.
     fn listing(&mut self, url: &Uri) -> Option<Listing> {
         let read = self.registry.schemes().get(url).map_err(Unlisted::Read).and_then(|bytes| {
-            String::from_utf8(bytes).ok().and_then(|text| Listing::parse(&text)).ok_or(Unlisted::Malformed)
+            let text = String::from_utf8(bytes).map_err(Unlisted::Text)?;
+            text.parse::<Listing>().map_err(Unlisted::Malformed)
         });
         match read {
             Ok(listing) => Some(listing),

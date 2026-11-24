@@ -8,7 +8,7 @@ use vun_origin::OriginTable;
 use vun_renderer::Renderer;
 use vun_span::{SourceFiles, Span};
 
-use crate::common::built_component;
+use crate::support::built_component;
 
 const CRATE: &str = "vun-component-renderer-terminal";
 

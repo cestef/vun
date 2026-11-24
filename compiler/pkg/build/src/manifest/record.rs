@@ -133,7 +133,7 @@ impl Record for Decl<'_> {
 
     fn version(&self, cx: &mut DiagCx<'_>) -> Option<Version> {
         match &self.value {
-            Literal::String(text) => Version::parse(text),
+            Literal::String(text) => text.parse::<Version>().ok(),
             _ => None,
         }
         .or_else(|| self.invalid(Msg::new().text("a version ").code("\"major.minor.patch\""), cx))
@@ -159,7 +159,7 @@ impl Record for Decl<'_> {
     }
 
     fn uris(&self, cx: &mut DiagCx<'_>) -> Option<Vec<Uri>> {
-        let parsed: Result<Vec<Uri>, _> = self.strings(cx)?.into_iter().map(Uri::parse).collect();
+        let parsed: Result<Vec<Uri>, _> = self.strings(cx)?.into_iter().map(Uri::try_from).collect();
         parsed.map_or_else(
             |invalid| {
                 let help = Msg::new().text("each is a URL: ").text(invalid.to_string());

@@ -1,5 +1,9 @@
 //! Reading a lockfile's declarations, reporting each one that does not read at its source.
 
+use std::error::Error;
+use std::fmt;
+use std::str::FromStr;
+
 use vun_diag::{DiagCtxt, DiagCx, Msg};
 use vun_origin::OriginTable;
 use vun_span::{FileId, SourceFiles, Span};
@@ -30,9 +34,7 @@ impl Lock {
         Some(Self::new(entries?).replacing(replaced?).pinning(toolchain?))
     }
 
-    /// Reads the text of a lockfile; `None` when it does not read, whatever the reason.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
+    fn from_text(text: &str) -> Option<Self> {
         let file = SourceFiles::new().add(FILE, text);
         let (mut diag, origins) = (DiagCtxt::new(), OriginTable::new());
         let mut cx = DiagCx { diag: &mut diag, origins: &origins };
@@ -40,6 +42,26 @@ impl Lock {
         let cst = Cst::parse(&tokens, text, &mut cx);
         let lock = Self::read(&cst.declarations(&tokens, text), file, &mut cx);
         lock.filter(|_| diag.error_count() == 0)
+    }
+}
+
+/// The text of a lockfile does not read; what does not is reported at its source by [`Lock::read`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unreadable;
+
+impl fmt::Display for Unreadable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the lockfile does not read")
+    }
+}
+
+impl Error for Unreadable {}
+
+impl FromStr for Lock {
+    type Err = Unreadable;
+
+    fn from_str(text: &str) -> Result<Self, Unreadable> {
+        Self::from_text(text).ok_or(Unreadable)
     }
 }
 

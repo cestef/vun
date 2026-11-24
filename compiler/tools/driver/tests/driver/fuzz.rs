@@ -7,7 +7,7 @@ use vun_driver::testing::{Argument, Mode, Options, Outcome};
 use vun_sema::cover::Coverage;
 use vun_term::Shell;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use crate::testing::BUILD;
 
 /// The id of this test's package, which no other test's package has.

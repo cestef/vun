@@ -1,6 +1,6 @@
 //! Reflection turns types into data (spec 03, section 6).
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_build::layout::MANIFEST;
 use vun_diag::errors;
 

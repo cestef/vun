@@ -8,7 +8,7 @@ use vun_harness::{ACCEPT, SOURCES, repo_root};
 use vun_par::Parallel;
 use vun_span::{EXTENSION, SourceMap};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 #[test]
 fn repository_bodies_lower_to_mir_that_verifies() {

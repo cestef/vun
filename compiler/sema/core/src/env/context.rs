@@ -7,6 +7,7 @@
 //! parameters' types out, the requirement is where they are written (`Func::written`), so calls
 //! infer its `$` parameters and pass its arguments as the requirement says.
 
+use std::fmt;
 use std::sync::Arc;
 
 use vun_hir::tree::{Entry, ExprId, ExprKind, Param, PatKind};
@@ -47,15 +48,13 @@ pub enum Place {
     Argument,
 }
 
-impl Place {
-    /// How a report names it.
-    #[must_use]
-    pub fn describe(self) -> &'static str {
-        match self {
+impl fmt::Display for Place {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
             Self::Annotation => "the function type it is annotated with",
             Self::Requirement => "the requirement it implements",
             Self::Argument => "the parameter it is passed for",
-        }
+        })
     }
 }
 

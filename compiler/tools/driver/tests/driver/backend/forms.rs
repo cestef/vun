@@ -5,7 +5,7 @@ use vun_driver::Codegen;
 use vun_items::targets;
 
 use super::{program, status_across, status_on, status_where};
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 #[test]
 fn primitives_the_tables_declare_lower_and_run() {

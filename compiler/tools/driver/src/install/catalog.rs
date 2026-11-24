@@ -60,7 +60,7 @@ impl Component {
     }
 
     fn piece(held: &Held<'_>) -> Self {
-        let id = Id::parse(&held.piece.name);
+        let id = held.piece.name.parse::<Id>().ok();
         Self {
             kind: id.as_ref().map(|id| id.kind),
             name: id.map_or_else(|| held.piece.name.clone(), |id| id.name),
@@ -78,7 +78,7 @@ impl Session {
     /// loaded, then those of its release that it does not have already.
     #[must_use]
     pub fn components_of(&self, toolchains: Option<&Toolchains>, version: Version) -> Vec<Component> {
-        let running = Version::parse(VERSION) == Some(version);
+        let running = VERSION.parse::<Version>().ok() == Some(version);
         let mut listed: Vec<Component> = if running {
             self.registry.entries().into_iter().map(Component::entry).collect()
         } else {
@@ -88,7 +88,7 @@ impl Session {
         let build = release.as_ref().and_then(|r| r.build_for(Machine::RUNNING));
         let held = toolchains.zip(build).map(|(t, build)| Held::of(t, version, build)).unwrap_or_default();
         for held in held {
-            let id = Id::parse(&held.piece.name);
+            let id = held.piece.name.parse::<Id>().ok();
             let same = |c: &&mut Component| {
                 id.as_ref().is_some_and(|id| c.kind == Some(id.kind) && c.name == id.name)
             };
@@ -106,7 +106,7 @@ impl Session {
         let mut named = Vec::new();
         let mut found = true;
         for word in words {
-            let by_name = |name: &str| Id::parse(name).is_some_and(|id| id.name == *word);
+            let by_name = |name: &str| name.parse::<Id>().is_ok_and(|id| id.name == *word);
             let exact = build.piece(word);
             let bare: Vec<&str> =
                 build.components.iter().map(|p| p.name.as_str()).filter(|n| by_name(n)).collect();

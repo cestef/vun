@@ -6,7 +6,7 @@ use vun_diag::errors;
 use vun_items::targets;
 use vun_sema::target::Choice;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use crate::variadic::status;
 
 /// A program whose import comes from the library `m`, which is not linked unless the import names it.

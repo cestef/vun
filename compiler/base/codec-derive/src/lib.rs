@@ -10,10 +10,10 @@ use vun_derive_core::{Item, Unsupported};
 
 #[proc_macro_derive(Encode)]
 pub fn encode(input: TokenStream) -> TokenStream {
-    Item::parse(input).map_or_else(Unsupported::report, |item| item.encode())
+    Item::try_from(input).map_or_else(Unsupported::report, |item| item.encode())
 }
 
 #[proc_macro_derive(Decode)]
 pub fn decode(input: TokenStream) -> TokenStream {
-    Item::parse(input).map_or_else(Unsupported::report, |item| item.decode())
+    Item::try_from(input).map_or_else(Unsupported::report, |item| item.decode())
 }

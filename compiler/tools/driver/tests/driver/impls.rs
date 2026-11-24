@@ -1,6 +1,6 @@
 //! Impls and witnesses (spec 02, section 3), over the toolchain's `lang` and `std`.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 use vun_sema::typed::Typed;
 use vun_sema::witness::{Resolved, Source};

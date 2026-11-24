@@ -5,11 +5,11 @@ pub mod build;
 mod checked;
 pub mod concrete;
 pub mod place;
+mod place_types;
 pub mod program;
 mod remap;
 pub mod rvalue;
 pub mod text;
-mod types;
 pub mod verify;
 
 pub use body::{Block, BlockId, Body, Local, LocalDecl, Role, Stmt, Terminator, TerminatorKind};

@@ -1,7 +1,7 @@
 //! `vun pkg add`: a path and an archive are declared in the manifest, the archive with the hash
 //! it had when first fetched, and the project then resolves through them.
 
-use crate::common::{Fixture, file_url};
+use crate::support::{Fixture, file_url};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::{DepKind, Source, Version};
 use vun_diag::errors;
@@ -50,7 +50,8 @@ fn foreign_archives_need_a_name_and_a_version() {
     assert_eq!(session.add(&dir, &unnamed).unwrap_err(), Unstated::Name);
     let unversioned = Addition { source: url.as_str(), name: Some("sdk"), version: None };
     assert_eq!(session.add(&dir, &unversioned).unwrap_err(), Unstated::Version);
-    let named = Addition { source: url.as_str(), name: Some("sdk"), version: Version::parse("2.0.0") };
+    let named =
+        Addition { source: url.as_str(), name: Some("sdk"), version: "2.0.0".parse::<Version>().ok() };
     assert_eq!(session.add(&dir, &named).unwrap().unwrap().kind, DepKind::Foreign);
     assert!(std::fs::read_to_string(dir.join(MANIFEST)).unwrap().contains(".kind = .foreign"));
 }

@@ -1,7 +1,7 @@
 //! Borrow rules (spec 05, sections 4 and 8): exclusive loans live until their last use, and a
 //! borrow of a function's own storage cannot be returned.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 use vun_span::SourceMap;
 

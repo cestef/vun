@@ -34,7 +34,7 @@ fn query() -> Source {
 
 #[test]
 fn functions_hold_their_own_and_inclusive_instructions() {
-    let profile = Profile::parse(PROFILE).unwrap();
+    let profile = PROFILE.parse::<Profile>().unwrap();
     let rows: Vec<_> =
         profile.functions.iter().map(|f| (f.name.as_str(), f.own, f.inclusive, f.calls)).collect();
     assert_eq!(rows, [("hot", 40, Some(40), 2), ("main", 12, Some(52), 1)]);
@@ -43,7 +43,7 @@ fn functions_hold_their_own_and_inclusive_instructions() {
 
 #[test]
 fn inlined_code_counts_where_it_is_written() {
-    let profile = Profile::parse(PROFILE).unwrap();
+    let profile = PROFILE.parse::<Profile>().unwrap();
     let blake3 = Source::Registry(Symbol::intern("blake3"));
     assert_eq!(profile.share_of(blake3), 15);
     assert_eq!(profile.share_of(query()), 12);
@@ -51,7 +51,7 @@ fn inlined_code_counts_where_it_is_written() {
 
 #[test]
 fn a_recursion_level_is_the_function_and_calls_to_itself_are_no_edge() {
-    let profile = Profile::parse(PROFILE).unwrap();
+    let profile = PROFILE.parse::<Profile>().unwrap();
     assert_eq!(profile.edges.len(), 1);
     let edge = profile.edges[0];
     assert_eq!((profile.functions[edge.caller].name.as_str(), edge.calls, edge.cost), ("main", 2, Some(40)));
@@ -60,7 +60,7 @@ fn a_recursion_level_is_the_function_and_calls_to_itself_are_no_edge() {
 
 #[test]
 fn a_profile_that_does_not_count_instructions_is_refused() {
-    let error = Profile::parse("events: Dr\n").unwrap_err();
+    let error = "events: Dr\n".parse::<Profile>().unwrap_err();
     assert_eq!((error.line, error.reason), (1, Reason::Event));
 }
 
@@ -104,7 +104,7 @@ fn=(4) leaf
 
 #[test]
 fn functions_that_reach_themselves_through_others_have_no_inclusive_cost() {
-    let profile = Profile::parse(CYCLE).unwrap();
+    let profile = CYCLE.parse::<Profile>().unwrap();
     let inclusive: Vec<_> = profile.functions.iter().map(|f| (f.name.as_str(), f.inclusive)).collect();
     assert_eq!(inclusive, [("b", None), ("a", None), ("leaf", Some(7)), ("main", Some(38))]);
     assert_eq!(profile.edges.iter().filter(|e| e.cost.is_none()).count(), 2);

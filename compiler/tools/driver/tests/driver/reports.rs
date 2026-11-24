@@ -1,7 +1,7 @@
 //! The measures of `vun check` (spec 04, section 1; spec 03, section 8): wide intermediates and the
 //! code of generics, reported only when asked for.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_driver::reports::{Report, Reports};
 
 const PROGRAM: &str = "\

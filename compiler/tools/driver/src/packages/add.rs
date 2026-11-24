@@ -141,7 +141,7 @@ impl Session {
     /// The archive at `url`, unpacked under staging; an archive without a manifest is foreign.
     /// A URL no scheme reads, such as `http://`, is refused before anything is staged.
     fn archive(&mut self, url: &str) -> Option<Found> {
-        let uri = Uri::parse(url).map_err(Rejected::Url);
+        let uri = url.parse::<Uri>().map_err(Rejected::Url);
         let fetched = uri
             .and_then(|uri| Ok((Mirror::of(&uri, &self.registry.schemes()).map_err(Rejected::Mirror)?, uri)));
         let fetched = fetched.and_then(|(mirror, uri)| {

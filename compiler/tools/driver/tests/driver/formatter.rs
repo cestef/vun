@@ -4,7 +4,7 @@
 use vun_driver::{Components, Provider, Registry};
 use vun_formatter::{Formatter, Unlaid, WIDTH};
 
-use crate::common::built_component;
+use crate::support::built_component;
 
 const CRATE: &str = "vun-component-formatter-vun";
 

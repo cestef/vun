@@ -36,7 +36,7 @@ impl Session {
         // A workspace's root pins the toolchain of its members.
         let (_, key) = self.project_of(&dir, key);
         let Some(pinned) = self.packages.list[&key].toolchain else { return Ok(()) };
-        if Version::parse(VERSION) == Some(pinned) {
+        if VERSION.parse::<Version>().ok() == Some(pinned) {
             return Ok(());
         }
         let Some(toolchains) = Toolchains::user() else {

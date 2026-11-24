@@ -1,6 +1,6 @@
 //! Namespaces on disk: a file and the directory of the same name are one namespace.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

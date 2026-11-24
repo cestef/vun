@@ -1,7 +1,7 @@
 //! Markers of function types (spec 07, sections 3 and 4): accepted by the relation the table
 //! `fn_markers` gives each, and `#[panic.never]` checked on the body.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

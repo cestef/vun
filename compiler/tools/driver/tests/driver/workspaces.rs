@@ -10,7 +10,7 @@ use vun_driver::setup::Runs;
 use vun_driver::subject::Subject;
 use vun_driver::{Built, Session};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 fn reported(session: &Session) -> Vec<DiagId> {
     session.diag.sorted(session.origins).into_iter().map(|d| d.id).collect()
@@ -75,7 +75,7 @@ fn a_workspace_is_its_root_and_members_which_share_its_lockfile() {
     session.prepare(&Fixture::file(&tool_dir, &tool));
     assert!(!session.failed(), "{:?}", reported(&session));
     assert!(!app_dir.join(lock::FILE).exists() && !tool_dir.join(lock::FILE).exists());
-    let recorded = Lock::parse(&std::fs::read_to_string(ws.join(lock::FILE)).unwrap()).unwrap();
+    let recorded = std::fs::read_to_string(ws.join(lock::FILE)).unwrap().parse::<Lock>().unwrap();
     let entries: Vec<_> = recorded.entries().iter().map(|e| (e.name.as_str(), e.via.as_deref())).collect();
     assert_eq!(entries, [("hal", Some("app"))], "the other member's dependency is recorded");
 }

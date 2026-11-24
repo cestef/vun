@@ -10,7 +10,7 @@ use vun_uri::{Reference, Uri};
 const BASE: &str = "http://a/b/c/d;p?q";
 
 fuzz_target!(|text: &str| {
-    let Ok(reference) = Reference::parse(text) else { return };
+    let Ok(reference) = text.parse::<Reference>() else { return };
     reference.verify().unwrap();
     assert_eq!(reference.as_str(), text);
     let normalized = reference.normalized();

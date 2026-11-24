@@ -1,7 +1,7 @@
 //! `vun pkg fetch` end to end: a package archive served by a `file://` mirror is stored,
 //! verified, used through the prelude, and a stored file changed afterwards is named.
 
-use crate::common::{Fixture, file_url};
+use crate::support::{Fixture, file_url};
 use vun_diag::errors;
 use vun_driver::packages::Fetched;
 use vun_fetch::Format;

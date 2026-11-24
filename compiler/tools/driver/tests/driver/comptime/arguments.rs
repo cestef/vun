@@ -4,7 +4,7 @@
 use vun_diag::errors;
 
 use crate::backend;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// A function looping over a local and passing it to a `$` parameter, run by `$if` while `main`
 /// is typed, and `$for` over a tuple's items of different types.

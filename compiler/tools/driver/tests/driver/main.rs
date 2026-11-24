@@ -1,7 +1,7 @@
 //! The driver's integration tests, in one binary so that a change links it once: each module
 //! runs whole sessions over fixture packages and the toolchain's `lang` and `std`.
 
-mod common;
+mod support;
 
 mod add;
 mod asm;

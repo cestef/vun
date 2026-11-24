@@ -10,7 +10,7 @@ use vun_lir::ImportKind;
 use vun_sema::target::Choice;
 
 use crate::backend;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// A pack written, inferred, empty, and through a function value: `6 + 36 + 0 + 6`.
 const PACKS: &str = "\

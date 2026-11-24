@@ -3,7 +3,7 @@
 //! fit the matched type, which in an instantiation is its `$` argument's alone.
 
 use crate::backend::status;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// Arms over a `$` parameter, an instantiation typing it as its value alone, and over a `u8`,
 /// with bounds outside the type.

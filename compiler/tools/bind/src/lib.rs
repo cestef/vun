@@ -8,6 +8,7 @@
 //! approximated.
 
 mod closed;
+mod ctype;
 mod emit;
 mod items;
 mod macros;
@@ -15,7 +16,6 @@ mod names;
 mod paths;
 mod reach;
 mod split;
-mod types;
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};

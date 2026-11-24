@@ -17,7 +17,7 @@ use vun_target::Machine;
 use vun_uri::{Invalid, Uri};
 use vun_variants::Variants;
 
-pub use key::{Forged, Key};
+pub use key::{Forged, Key, Unkeyed};
 
 /// The repository whose releases hold the toolchain's, as the workspace declares it.
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
@@ -132,7 +132,7 @@ pub enum Misnamed {
     /// The base named, or the repository, is not a URI.
     Base(Invalid),
     /// The key named is not an Ed25519 key.
-    Key,
+    Key(Unkeyed),
 }
 
 impl Releases {
@@ -151,9 +151,9 @@ impl Releases {
     /// Returns why the base or the key named do not read.
     pub fn user() -> Result<Self, Misnamed> {
         let named = std::env::var(Self::ENV).ok();
-        let base = Uri::parse(named.unwrap_or_else(|| REPOSITORY.to_owned())).map_err(Misnamed::Base)?;
+        let base = Uri::try_from(named.unwrap_or_else(|| REPOSITORY.to_owned())).map_err(Misnamed::Base)?;
         let key = match std::env::var(Key::ENV) {
-            Ok(text) => Key::parse(&text).ok_or(Misnamed::Key)?,
+            Ok(text) => text.parse().map_err(Misnamed::Key)?,
             Err(_) => Key::releases(),
         };
         Ok(Self { base, key })
@@ -213,7 +213,7 @@ impl fmt::Display for Misnamed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Base(_) => write!(f, "where releases are found is not a URI"),
-            Self::Key => write!(f, "`{}` is not an Ed25519 key, `ed25519:<base32>`", Key::ENV),
+            Self::Key(_) => write!(f, "`{}` is not an Ed25519 key, `ed25519:<base32>`", Key::ENV),
         }
     }
 }
@@ -222,7 +222,7 @@ impl Error for Misnamed {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Base(e) => Some(e),
-            Self::Key => None,
+            Self::Key(e) => Some(e),
         }
     }
 }

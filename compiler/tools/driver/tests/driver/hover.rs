@@ -3,7 +3,7 @@
 use vun_sema::typed::Stage;
 use vun_sema_ty::{TyKind, Value};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const SOURCE: &str = "limit: u64 = 3;\nf := (x: u8) -> u8 { x };\n";
 

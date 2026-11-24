@@ -1,12 +1,12 @@
 use vun_hash::Hash;
 
-use super::{Lock, Locked, Pinned, Replaced, Replacing};
+use super::{Lock, Locked, Pinned, Replaced, Replacing, Unreadable};
 use crate::manifest::{Identity, Version};
 
 fn entry(name: &str, version: &str, identity: Option<Identity>, via: Option<&str>) -> Locked {
     Locked {
         name: name.into(),
-        version: Version::parse(version).unwrap(),
+        version: version.parse::<Version>().unwrap(),
         identity,
         hash: Hash::of(name.as_bytes()),
         via: via.map(str::to_owned),
@@ -29,20 +29,28 @@ fn locks_round_trip_one_entry_per_line() {
     assert!(lines[3].contains(".id = .foreign"), "{text}");
     assert!(lines[4].contains(".id = .{ .id = 3237998081, .major = 2 }"), "{text}");
     assert!(lines[4].ends_with(r#".via = "stm32f4" },"#), "{text}");
-    assert_eq!(Lock::parse(&text), Some(lock.clone()));
-    assert_eq!(lock.selected(hal).map(|e| e.version), Version::parse("2.1.4"));
+    assert_eq!(text.parse::<Lock>(), Ok(lock.clone()));
+    assert_eq!(lock.selected(hal).map(|e| e.version), "2.1.4".parse::<Version>().ok());
     let older = Lock::new([lock.entries(), &[entry("hal", "2.0.0", Some(hal), None)]].concat());
-    assert_eq!(older.selected(hal).map(|e| e.version), Version::parse("2.1.4"), "the largest is selected");
+    assert_eq!(
+        older.selected(hal).map(|e| e.version),
+        "2.1.4".parse::<Version>().ok(),
+        "the largest is selected"
+    );
 }
 
 #[test]
 fn malformed_locks_do_not_read() {
     let lock = Lock::new(vec![entry("a", "1.0.0", None, None)]).to_string();
-    assert_eq!(Lock::parse(&lock.replace("version := 1", "version := 2")), None, "another layout");
-    assert_eq!(Lock::parse(&lock.replace("1.0.0", "1.0")), None);
-    assert_eq!(Lock::parse(&lock.replace(".name", ".nmae")), None);
-    assert_eq!(Lock::parse("deps := .{};"), None, "the layout is required");
-    assert_eq!(Lock::parse("version := 1;\ndeps := .{};"), Some(Lock::default()));
+    assert_eq!(
+        lock.replace("version := 1", "version := 2").parse::<Lock>(),
+        Err(Unreadable),
+        "another layout"
+    );
+    assert_eq!(lock.replace("1.0.0", "1.0").parse::<Lock>(), Err(Unreadable));
+    assert_eq!(lock.replace(".name", ".nmae").parse::<Lock>(), Err(Unreadable));
+    assert_eq!("deps := .{};".parse::<Lock>(), Err(Unreadable), "the layout is required");
+    assert_eq!("version := 1;\ndeps := .{};".parse::<Lock>(), Ok(Lock::default()));
 }
 
 #[test]
@@ -63,18 +71,18 @@ fn replacements_round_trip() {
         ),
         "{text}"
     );
-    assert_eq!(Lock::parse(&text), Some(lock.clone()));
+    assert_eq!(text.parse::<Lock>(), Ok(lock.clone()));
     assert_eq!(lock.replacement(hal).map(|r| &r.with), Some(&Replacing::Path("../hal fork".into())));
 }
 
 #[test]
 fn a_pinned_toolchain_round_trips_before_the_entries() {
-    let pinned = Pinned { version: Version::parse("0.4.2").unwrap(), hash: Hash::of(b"release.json") };
+    let pinned = Pinned { version: "0.4.2".parse::<Version>().unwrap(), hash: Hash::of(b"release.json") };
     let lock = Lock::new(vec![entry("a", "1.0.0", None, None)]).pinning(Some(pinned));
     let text = lock.to_string();
     let at = |decl: &str| text.lines().position(|l| l.starts_with(decl));
     assert!(at("toolchain :=").is_some_and(|t| at("deps :=").is_some_and(|d| t < d)), "{text}");
-    assert_eq!(Lock::parse(&text), Some(lock.clone()));
+    assert_eq!(text.parse::<Lock>(), Ok(lock.clone()));
     assert_eq!(lock.toolchain(), Some(pinned));
     assert!(!Lock::default().pinning(Some(pinned)).is_empty());
 }

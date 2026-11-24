@@ -99,7 +99,7 @@ impl Toolchains {
         let mut versions: Vec<Version> = entries
             .iter()
             .filter(|dir| dir.join(BIN).is_dir())
-            .filter_map(|dir| Version::parse(dir.file_name()?.to_str()?))
+            .filter_map(|dir| dir.file_name()?.to_str()?.parse::<Version>().ok())
             .collect();
         versions.sort_unstable();
         Ok(versions)
@@ -110,7 +110,7 @@ impl Toolchains {
     pub fn default(&self) -> Option<Version> {
         let target = std::fs::read_link(&self.link).ok()?;
         let dir = target.strip_prefix(&self.root).ok()?.components().next()?;
-        Version::parse(dir.as_os_str().to_str()?)
+        dir.as_os_str().to_str()?.parse::<Version>().ok()
     }
 
     /// Links the user's `vun` to the toolchain of `version`.

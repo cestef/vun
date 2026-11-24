@@ -13,7 +13,7 @@ use vun_span::Version;
 use vun_target::Machine;
 use vun_uri::Uri;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const LIBRARY: &str = "libvun_component_backend_x.so";
 
@@ -30,7 +30,7 @@ struct Laid {
 impl Laid {
     fn new(name: &str, bytes: &[u8], claimed: Option<Hash>) -> Self {
         let fixture = Fixture::new(name);
-        let version = Version::parse("0.4.2").unwrap();
+        let version = "0.4.2".parse::<Version>().unwrap();
         // The component's archive: a tree holding the library alone.
         let tree = fixture.root.path().join("tree");
         tree.join(COMPONENTS).join(LIBRARY).put(bytes).unwrap();

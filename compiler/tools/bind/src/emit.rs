@@ -7,9 +7,9 @@ use vun_syntax::make::{Bind, Expr, Field, File, Item, Member, Param};
 
 use vun_binder::Library;
 
+use crate::ctype::Position;
 use crate::macros::{Names, Value};
 use crate::paths;
-use crate::types::Position;
 use crate::{Binder, Opacity, Reason, items};
 
 /// The field a struct bound as bytes holds them in, private to it.

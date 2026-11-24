@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
+use std::str::FromStr;
 
 use vun_intern::Symbol;
 
@@ -173,12 +174,11 @@ impl Reader {
     }
 }
 
-impl Profile {
+impl FromStr for Profile {
+    type Err = ParseError;
+
     /// The profile `text` holds, in callgrind's format, counting instructions.
-    ///
-    /// # Errors
-    /// Fails when the file is not in the format, or does not count instructions.
-    pub fn parse(text: &str) -> Result<Self, ParseError> {
+    fn from_str(text: &str) -> Result<Self, ParseError> {
         let mut columns = Columns { positions: 1, event: 0 };
         let mut counted = false;
         let mut reader = Reader::default();

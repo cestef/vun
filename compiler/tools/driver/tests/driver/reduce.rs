@@ -2,7 +2,7 @@
 
 use vun_diag::{DiagId, errors};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 const FILE: &str = "\
 helper := (a: u8) -> u8 { a };

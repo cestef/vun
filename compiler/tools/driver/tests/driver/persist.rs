@@ -6,7 +6,7 @@ use std::path::Path;
 use vun_diag::{DiagId, errors};
 use vun_driver::{Persistence, Session};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The diagnostics of checking `file` in a fresh session that loads the queries saved beside it
 /// and saves its own there.

@@ -1,15 +1,15 @@
 use crate::{Secure, Unfetched};
 
 fn follow(from: &str, location: &str) -> Result<String, Unfetched> {
-    Secure::parse(from)?.follow(location.as_bytes()).map(|s| s.to_string())
+    from.parse::<Secure>()?.follow(location.as_bytes()).map(|s| s.to_string())
 }
 
 #[test]
 fn only_https_is_requested() {
-    assert!(Secure::parse("https://forge.example/a.tar.zst").is_ok());
-    assert!(matches!(Secure::parse("http://forge.example/a.tar.zst"), Err(Unfetched::Insecure(_))));
-    assert!(matches!(Secure::parse("/a.tar.zst"), Err(Unfetched::Unparsed(_))));
-    assert!(matches!(Secure::parse("https:///a.tar.zst"), Err(Unfetched::Insecure(_))));
+    assert!("https://forge.example/a.tar.zst".parse::<Secure>().is_ok());
+    assert!(matches!("http://forge.example/a.tar.zst".parse::<Secure>(), Err(Unfetched::Insecure(_))));
+    assert!(matches!("/a.tar.zst".parse::<Secure>(), Err(Unfetched::Unparsed(_))));
+    assert!(matches!("https:///a.tar.zst".parse::<Secure>(), Err(Unfetched::Insecure(_))));
 }
 
 #[test]

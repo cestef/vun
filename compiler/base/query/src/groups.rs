@@ -16,7 +16,7 @@ use super::fingerprint::Fingerprint;
 use super::memo::Source;
 
 /// The identities of some groups, sorted.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encode, Decode)]
 pub(crate) struct Groups(Vec<Fingerprint>);
 
 static GROUPS: Pool<Groups> = Pool::new();
@@ -38,11 +38,6 @@ impl Groups {
         Fingerprint::of(&Q::group(key))
     }
 
-    /// Reading nothing.
-    pub(crate) fn none() -> Reach {
-        GROUPS.intern(Self(Vec::new()))
-    }
-
     /// Reading `group` alone.
     pub(crate) fn only(group: Fingerprint) -> Reach {
         GROUPS.intern(Self(vec![group]))
@@ -51,7 +46,7 @@ impl Groups {
     /// Reading through all of `reaches`.
     pub(crate) fn all(reaches: &[Reach]) -> Reach {
         match reaches {
-            [] => Self::none(),
+            [] => Reach::default(),
             [only] => *only,
             [first, rest @ ..] if rest.iter().all(|reach| reach == first) => *first,
             _ => GROUPS.intern(Self(

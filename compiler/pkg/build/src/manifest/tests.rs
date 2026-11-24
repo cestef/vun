@@ -73,9 +73,9 @@ fn reads_every_field() {
     let (Some(m), ids) = manifest(text) else { panic!("unread") };
     assert!(ids.is_empty(), "{ids:?}");
     assert_eq!((m.name.as_str(), m.id, m.edition), ("blinky", 0x6a80, 2026));
-    assert_eq!(m.toolchain, Version::parse("0.4.2"));
+    assert_eq!(m.toolchain, "0.4.2".parse::<Version>().ok());
     assert_eq!(m.components, ["backend-cranelift"]);
-    assert_eq!(m.requires, Version::parse("0.1.0"));
+    assert_eq!(m.requires, "0.1.0".parse::<Version>().ok());
     assert_eq!(m.system, ["gtk-4", "m"]);
     assert_eq!(m.features, Features::of([Feature::Deferred]));
     assert_eq!(m.include, ["build.vun", "blinky"]);
@@ -170,7 +170,7 @@ fn reports_where_the_manifest_is_wrong() {
 fn declared_deps_read_back() {
     let hash = vun_hash::Hash::of(b"hal");
     let archive = Source::Archive {
-        version: Version::parse("1.2.0").unwrap(),
+        version: "1.2.0".parse::<Version>().unwrap(),
         hash,
         urls: vec!["https://example.org/hal-1.2.0.tar.zst".parse().unwrap()],
     };

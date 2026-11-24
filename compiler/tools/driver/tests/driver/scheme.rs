@@ -5,7 +5,7 @@ use vun_component::Cause;
 use vun_driver::{Components, Provider, Registry};
 use vun_fetch::Failure;
 
-use crate::common::built_component;
+use crate::support::built_component;
 
 const CRATE: &str = "vun-component-scheme-https";
 

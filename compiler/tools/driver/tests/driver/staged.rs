@@ -1,6 +1,6 @@
 //! `$for` and `$if` in type bodies and computed names (spec 03, section 2).
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

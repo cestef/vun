@@ -15,7 +15,7 @@ impl Code {
     /// # Errors
     /// Where it is for a machine whose instructions are not read, or its symbols are malformed.
     pub fn of_elf(file: &File) -> Result<Self, Error> {
-        let isa = Isa::of_elf(file.machine).ok_or_else(|| Error::Machine(format!("{:?}", file.machine)))?;
+        let isa = Isa::of_elf(file.machine).ok_or(Error::ElfMachine(file.machine))?;
         // Section `k` of the file is `sections[k - 1]`; a part is a section of code.
         let mut part_of = vec![None; file.sections.len() + 1];
         let mut parts = Vec::new();

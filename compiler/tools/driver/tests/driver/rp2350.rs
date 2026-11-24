@@ -4,7 +4,7 @@
 
 use vun_build::layout::MANIFEST;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The family of the RP2350's Arm images, which the template's flash step names.
 const FAMILY: u32 = 0xe48b_ff59;

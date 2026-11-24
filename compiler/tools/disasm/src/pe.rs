@@ -16,7 +16,7 @@ impl Code {
             Machine::X86 => Isa::X86,
             Machine::X86_64 => Isa::X86_64,
             Machine::Arm64 => Isa::Arm64,
-            other => return Err(Error::Machine(other.to_string())),
+            other => return Err(Error::PeMachine(other)),
         };
         let parts = image
             .sections

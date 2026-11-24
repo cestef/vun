@@ -30,7 +30,7 @@ fn collection_keeps_what_registered_lockfiles_record() {
     dir.write(store.label(kept), "hal 1.0.0\n");
     let locked = Locked {
         name: "hal".into(),
-        version: Version::parse("1.0.0").unwrap(),
+        version: "1.0.0".parse::<Version>().unwrap(),
         identity: None,
         hash: kept,
         via: None,

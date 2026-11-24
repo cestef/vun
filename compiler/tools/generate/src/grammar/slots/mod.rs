@@ -14,7 +14,7 @@ use std::borrow::Cow;
 use super::model::{Count, Model, Term};
 use super::{Enum, Grammar, Variant};
 
-mod types;
+mod node;
 use crate::generate::{Access, Module, Read};
 use crate::names::{Name, constant, ident, pascal};
 

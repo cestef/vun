@@ -7,7 +7,7 @@ use vun_items::{Item, targets};
 use vun_sema::target::Choice;
 use vun_target::Check;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 mod allocations;
 mod asm;

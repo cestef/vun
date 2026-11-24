@@ -75,7 +75,7 @@ impl Session {
     /// The lockfile of `root`, if it reads.
     pub(crate) fn recorded_lock(&self, root: PackageKey) -> Option<Lock> {
         let path = self.packages.list[&root].dir.join(lock::FILE);
-        Lock::parse(&std::fs::read_to_string(path).ok()?)
+        std::fs::read_to_string(path).ok()?.parse().ok()
     }
 
     /// Reports a lockfile of `root` that does not read, at what does not, or that does not record

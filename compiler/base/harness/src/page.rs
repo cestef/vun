@@ -21,9 +21,8 @@ pub struct Page {
     pub sections: Vec<(String, Vec<Block>)>,
 }
 
-impl Page {
-    #[must_use]
-    pub fn parse(markdown: &str) -> Self {
+impl From<&str> for Page {
+    fn from(markdown: &str) -> Self {
         let mut page = Self::default();
         let mut open: Option<(String, Option<String>, Vec<&str>)> = None;
         for line in markdown.lines() {
@@ -56,7 +55,9 @@ impl Page {
         }
         page
     }
+}
 
+impl Page {
     /// The blocks of the section `heading`.
     #[must_use]
     pub fn section(&self, heading: &str) -> &[Block] {

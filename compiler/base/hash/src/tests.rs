@@ -130,3 +130,19 @@ fn a_reader_is_hashed_as_the_bytes_it_gives() {
     let bytes: Vec<u8> = (0..200_000u32).map(|n| n.to_le_bytes()[0]).collect();
     assert_eq!(Hash::of_reader(bytes.as_slice()).unwrap(), Hash::of(&bytes));
 }
+
+#[test]
+fn every_field_of_a_snapshot_entry_changes_the_tree_hash() {
+    let tree = |files: &[(&str, &[u8], Mode)]| {
+        let dir = Scratch::new("fields");
+        for &(name, bytes, mode) in files {
+            dir.write(name, bytes).set_mode(mode).unwrap();
+        }
+        let include: Vec<String> = files.iter().map(|&(name, ..)| name.to_owned()).collect();
+        Snapshot::of(dir.path(), &include).unwrap().root()
+    };
+    let base = tree(&[("a", b"x", Mode::Regular)]);
+    assert_ne!(base, tree(&[("a", b"y", Mode::Regular)]), "contents");
+    assert_ne!(base, tree(&[("b", b"x", Mode::Regular)]), "name");
+    assert_ne!(base, tree(&[("a", b"x", Mode::Executable)]), "mode");
+}

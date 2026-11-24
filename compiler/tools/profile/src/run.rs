@@ -73,7 +73,7 @@ impl Runner<'_> {
         counted.envs(compiler.get_envs().filter_map(|(k, v)| Some((k, v?))));
         self.finish(workload.subject(), &mut counted)?;
         let text = std::fs::read_to_string(out)?;
-        Profile::parse(&text).map_err(MeasureError::Callgrind)
+        text.parse::<Profile>().map_err(MeasureError::Callgrind)
     }
 
     /// The setup for `phase`: a warm one has had the command run once, and a built program has been built.

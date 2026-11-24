@@ -51,7 +51,7 @@ fn a_missing_snapshot_fails_and_a_stale_one_is_reported() {
 #[test]
 fn pages_hold_blocks_by_section() {
     let page = "# id\n\n## Example\n\n```vun build.vun\npackage := 1;\n```\n\n```vun\nx := 1; //~ a.b\n```\n\n## Fix\n\n```console\n$ vun check\n```\n";
-    let page = super::Page::parse(page);
+    let page = super::Page::from(page);
     let example = page.section("Example");
     assert_eq!(example.len(), 2);
     assert_eq!(

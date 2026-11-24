@@ -6,7 +6,7 @@ mod bounds;
 mod calls;
 mod reason;
 mod structure;
-mod types;
+mod typing;
 
 pub use reason::{Entity, Malformed, Reason};
 

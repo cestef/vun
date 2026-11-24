@@ -5,6 +5,10 @@
 //! Under a base URL, `<identity>/list` holds one `version hash` line per release, and
 //! `<identity>/<version>.tar.zst` the archive; `<identity>` is written `id/major`.
 
+use std::error::Error;
+use std::fmt;
+use std::str::FromStr;
+
 use vun_fetch::Format;
 use vun_hash::Hash;
 use vun_uri::Uri;
@@ -44,18 +48,6 @@ impl Index<'_> {
 }
 
 impl Listing {
-    /// Reads `version hash` lines; `None` for a line that is neither.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut releases = Vec::new();
-        for line in text.lines().filter(|l| !l.trim().is_empty()) {
-            let (version, hash) = line.split_once(' ')?;
-            releases.push((Version::parse(version)?, Hash::parse(hash.trim())?));
-        }
-        releases.sort();
-        Some(Self { releases })
-    }
-
     /// The largest release of the major of `current`, if newer than it.
     #[must_use]
     pub fn newer(&self, current: Version) -> Option<(Version, Hash)> {
@@ -63,6 +55,58 @@ impl Listing {
         major.copied().filter(|&(v, _)| v > current)
     }
 }
+
+/// Where a listing is not `version hash` lines, and why.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Misread {
+    /// The line, from 1.
+    pub line: usize,
+    pub reason: Reason,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reason {
+    /// The line is not a version and a hash.
+    Fields,
+    /// The version does not read.
+    Version,
+    /// The hash does not read.
+    Hash,
+}
+
+impl FromStr for Listing {
+    type Err = Misread;
+
+    fn from_str(text: &str) -> Result<Self, Misread> {
+        let mut releases = Vec::new();
+        for (number, line) in text.lines().enumerate().filter(|(_, l)| !l.trim().is_empty()) {
+            let at = |reason| Misread { line: number + 1, reason };
+            let (version, hash) = line.split_once(' ').ok_or(at(Reason::Fields))?;
+            let version = version.parse::<Version>().map_err(|_| at(Reason::Version))?;
+            releases.push((version, Hash::parse(hash.trim()).ok_or(at(Reason::Hash))?));
+        }
+        releases.sort();
+        Ok(Self { releases })
+    }
+}
+
+impl fmt::Display for Reason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Fields => "not a version and a hash",
+            Self::Version => "the version does not read",
+            Self::Hash => "the hash does not read",
+        })
+    }
+}
+
+impl fmt::Display for Misread {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "line {}: {}", self.line, self.reason)
+    }
+}
+
+impl Error for Misread {}
 
 impl std::fmt::Display for Listing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

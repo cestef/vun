@@ -12,8 +12,8 @@ use vun_target::Output;
 use vun_tool::Executable;
 
 use crate::backend;
-use crate::common::Fixture;
 use crate::link::run_with_library;
+use crate::support::Fixture;
 
 /// Functions each under the other convention of x86-64 than the first the target's, taking more
 /// arguments than registers carry in either, so the stack has to agree too.

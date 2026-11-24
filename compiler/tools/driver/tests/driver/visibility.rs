@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::{DiagId, errors};
 use vun_span::EXTENSION;
 

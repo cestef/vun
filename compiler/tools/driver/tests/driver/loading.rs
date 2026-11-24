@@ -8,7 +8,7 @@ use vun_driver::compare::Ran;
 use vun_items::{Item, targets};
 
 use crate::backend;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// A library of one function, as a program of `os` holds the services its compiler assumes.
 fn library(services: &str) -> String {

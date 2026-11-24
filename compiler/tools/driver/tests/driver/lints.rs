@@ -5,7 +5,7 @@ use vun_build::layout::MANIFEST;
 use vun_diag::{DiagId, Severity, errors};
 use vun_sema_lint::{Level, LintLevels};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The id and severity of what checking `source`, the root file of a package `app`, reports.
 fn linted(name: &str, source: &str) -> Vec<(DiagId, Severity)> {
@@ -20,14 +20,14 @@ fn linted_at(name: &str, source: &str, levels: &[(&str, Level)]) -> Vec<(DiagId,
     let mut session = fx.session();
     let file = session.load(&Fixture::file(&dir, &app)).unwrap();
     let package = session.file_ref(file).package;
-    let pairs = levels.iter().map(|(id, level)| (DiagId::parse(id), *level));
+    let pairs = levels.iter().map(|(id, level)| (DiagId::from(*id), *level));
     session.add_lint_levels(LintLevels::of(pairs).scoped_to([package]));
     session.check(file);
     session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect()
 }
 
 fn case() -> DiagId {
-    DiagId::parse("std.lints.naming.case")
+    DiagId::from("std.lints.naming.case")
 }
 
 #[test]
@@ -51,7 +51,7 @@ twice := (x: u8) -> u8 { poke(poke(x)) };
 once := (x: u8) -> u8 { x };
 ",
     );
-    let raw = (DiagId::parse("app.raw"), Severity::Warning);
+    let raw = (DiagId::from("app.raw"), Severity::Warning);
     assert_eq!(reported, [raw, raw]);
 }
 
@@ -119,7 +119,7 @@ build := (b: &mut std.build.Build) {
     // group's.
     assert_eq!(
         reported,
-        [(case(), Severity::Warning), (DiagId::parse("std.lints.style.unused"), Severity::Error)]
+        [(case(), Severity::Warning), (DiagId::from("std.lints.style.unused"), Severity::Error)]
     );
 }
 
@@ -157,7 +157,7 @@ keep := () -> u8 {
 };
 ",
     );
-    let unused = (DiagId::parse("std.lints.style.unused"), Severity::Warning);
+    let unused = (DiagId::from("std.lints.style.unused"), Severity::Warning);
     assert_eq!(reported, [unused]);
 }
 
@@ -188,7 +188,7 @@ fn an_expected_lint_that_reports_does_not_also_warn() {
         "f := () -> u8 { x := 1; 0 };\n",
         &[("std.lints.style.unused", Level::Expect)],
     );
-    assert_eq!(reported, [(DiagId::parse("std.lints.style.unused"), Severity::Warning)]);
+    assert_eq!(reported, [(DiagId::from("std.lints.style.unused"), Severity::Warning)]);
 }
 
 #[test]
@@ -217,12 +217,12 @@ no_magic := lang.lint.Lint{
     session.check(file);
     let reported: Vec<_> =
         session.diag.sorted(session.origins).into_iter().map(|d| (d.id, d.severity)).collect();
-    assert_eq!(reported, [(DiagId::parse("lintlib.no_magic"), Severity::Warning)]);
+    assert_eq!(reported, [(DiagId::from("lintlib.no_magic"), Severity::Warning)]);
 }
 
 #[test]
 fn a_mutable_local_typed_as_one_integer_is_reported() {
-    let pinned = DiagId::parse("std.lints.suspicious.pinned");
+    let pinned = DiagId::from("std.lints.suspicious.pinned");
     let reported = linted("lints-pinned", "f := () -> u32 { mut n := 0; n };\n");
     assert_eq!(reported, [(pinned, Severity::Warning)]);
     let held = linted("lints-pinned-held", "f := () -> u32 { mut n: u32 = 0; n += 1; n };\n");

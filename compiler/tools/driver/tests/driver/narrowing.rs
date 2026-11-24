@@ -3,7 +3,7 @@
 
 use vun_diag::errors;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The ids reported checking `app` as a file of its own, in source order.
 fn reported(name: &str, app: &str) -> Vec<vun_diag::DiagId> {

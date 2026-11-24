@@ -10,7 +10,7 @@ use vun_harness::{ACCEPT, repo_root};
 use vun_target::Name;
 use vun_trace::{Activity, Timings};
 
-use crate::common::{Fixture, components_of};
+use crate::support::{Fixture, components_of};
 
 /// The crates of the components the tests load.
 const CRANELIFT: &str = "vun-component-backend-cranelift";

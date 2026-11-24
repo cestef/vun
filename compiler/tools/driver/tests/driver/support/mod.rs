@@ -42,7 +42,7 @@ impl Fixture {
         Manifest {
             name: name.into(),
             id,
-            version: Version::parse(version).unwrap(),
+            version: version.parse::<Version>().unwrap(),
             edition: EDITION,
             toolchain: None,
             components: Vec::new(),
@@ -62,7 +62,7 @@ impl Fixture {
 
     /// A dependency on the archive at `url` with tree hash `hash`.
     pub(crate) fn stored(name: &str, version: &str, url: &vun_uri::Uri, hash: Hash) -> Dep {
-        let version = Version::parse(version).unwrap();
+        let version = version.parse::<Version>().unwrap();
         let source = Source::Archive { version, hash, urls: vec![url.clone()] };
         Dep { name: name.into(), source, kind: DepKind::Vun, span: Self::unread() }
     }

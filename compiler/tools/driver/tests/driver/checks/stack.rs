@@ -8,7 +8,7 @@ use vun_sema::target::Choice;
 use vun_target::Check;
 
 use super::{Ran, TRAPPED, checked_run};
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// A program recursing past the stack, each call holding a kilobyte.
 const DEEP: &str = "\

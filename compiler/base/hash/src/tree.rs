@@ -223,8 +223,8 @@ impl Node {
                 let mut hasher = blake3::Hasher::new_derive_key(DIRECTORY_CONTEXT);
                 for (name, child) in entries {
                     let kind = match child {
-                        Self::File(Entry { mode: Mode::Regular, .. }) => Kind::File,
-                        Self::File(Entry { mode: Mode::Executable, .. }) => Kind::Executable,
+                        Self::File(Entry { hash: _, mode: Mode::Regular }) => Kind::File,
+                        Self::File(Entry { hash: _, mode: Mode::Executable }) => Kind::Executable,
                         Self::Directory(_) => Kind::Directory,
                     };
                     hasher.update(&[kind as u8]);

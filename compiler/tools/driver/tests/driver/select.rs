@@ -1,7 +1,7 @@
 //! Minimal version selection: the largest version any package requires is the one every dependent
 //! uses, the lockfile records it, and a lockfile that does not is reported.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_build::lock::{self, Lock, Locked};
 use vun_build::manifest::Identity;
 use vun_diag::errors;

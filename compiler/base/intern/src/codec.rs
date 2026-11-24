@@ -45,6 +45,12 @@ impl<T: Internable> Pooled for Interned<T> {
     }
 }
 
+impl<T: Internable + Default> Default for Interned<T> {
+    fn default() -> Self {
+        T::pool().intern(T::default())
+    }
+}
+
 impl<T: Internable> Encode for Interned<T> {
     fn encode(&self, w: &mut Writer<'_>) {
         w.pooled(*self);

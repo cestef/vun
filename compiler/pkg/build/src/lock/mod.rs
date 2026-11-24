@@ -10,6 +10,7 @@ mod read;
 mod tests;
 mod write;
 
+pub use read::Unreadable;
 use vun_hash::Hash;
 
 use crate::manifest::{Identity, Version};

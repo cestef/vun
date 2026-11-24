@@ -1,7 +1,7 @@
 //! `.replace`: the root manifest substitutes a package for an identity anywhere in the graph, and
 //! the lockfile records it.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_build::manifest::Identity;
 
 const HAL: Identity = Identity { id: 7, major: 1 };

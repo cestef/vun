@@ -108,7 +108,7 @@ fn a_name_that_labels_no_code_is_refused() {
 #[test]
 fn a_machine_whose_instructions_are_not_read_is_refused() {
     let file = object(Machine::Arm, &[0; 4], &[]);
-    assert_eq!(list(&file, None), Err(Error::Machine("Arm".to_owned())));
+    assert_eq!(list(&file, None), Err(Error::ElfMachine(Machine::Arm)));
 }
 
 /// A program: `call f` (5 bytes at 0x1000), `jmp` over a byte, `nop`, then `f` at 0x1008.

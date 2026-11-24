@@ -1,6 +1,6 @@
 //! Compile-time evaluation through the whole front end, over the toolchain's `lang` and `std`.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 mod arguments;

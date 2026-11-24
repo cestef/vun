@@ -66,17 +66,6 @@ impl<K: Kind> UriOf<K> {
         &self.parts
     }
 
-    /// # Errors
-    /// Why `text` is not a reference, or, for a `Uri`, that it is relative.
-    pub fn parse(text: impl Into<String>) -> Result<Self, Invalid> {
-        let text = text.into();
-        let parts = Parts::parse(&text)?;
-        if K::SCHEME && parts.scheme.is_none() {
-            return Err(Invalid::new(Why::Relative, 0));
-        }
-        Ok(Self::from_parts(text, parts))
-    }
-
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.text
@@ -244,7 +233,7 @@ impl<K: Kind> FromStr for UriOf<K> {
     type Err = Invalid;
 
     fn from_str(text: &str) -> Result<Self, Invalid> {
-        Self::parse(text)
+        Self::try_from(text.to_owned())
     }
 }
 
@@ -252,14 +241,20 @@ impl<K: Kind> TryFrom<&str> for UriOf<K> {
     type Error = Invalid;
 
     fn try_from(text: &str) -> Result<Self, Invalid> {
-        Self::parse(text)
+        text.parse()
     }
 }
 
 impl<K: Kind> TryFrom<String> for UriOf<K> {
     type Error = Invalid;
 
+    /// # Errors
+    /// Why `text` is not a reference, or, for a `Uri`, that it is relative.
     fn try_from(text: String) -> Result<Self, Invalid> {
-        Self::parse(text)
+        let parts = Parts::parse(&text)?;
+        if K::SCHEME && parts.scheme.is_none() {
+            return Err(Invalid::new(Why::Relative, 0));
+        }
+        Ok(Self::from_parts(text, parts))
     }
 }

@@ -1,6 +1,6 @@
 //! Coroutine functions, frames and `for p in e` (spec 06), at compile time.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

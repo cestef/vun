@@ -14,7 +14,7 @@ fn tree(dir: &Path) {
 }
 
 fn version(text: &str) -> Version {
-    Version::parse(text).unwrap()
+    text.parse::<Version>().unwrap()
 }
 
 #[test]

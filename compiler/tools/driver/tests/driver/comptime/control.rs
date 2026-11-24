@@ -1,6 +1,6 @@
 //! Control flow at compile time: branches, loops, early returns, traps and the steps calls spend.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 use vun_span::SourceMap;
 

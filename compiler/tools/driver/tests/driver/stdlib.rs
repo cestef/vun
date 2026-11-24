@@ -1,7 +1,7 @@
 //! Parts of `std` used from programs: formatting through `std.fmt.print`, whose format string is
 //! split at compile time, and the tuples, string literals and slices it is built on.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 use vun_intern::Symbol;
 use vun_items::{Item, targets};

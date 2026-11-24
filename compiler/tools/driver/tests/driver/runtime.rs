@@ -5,7 +5,7 @@ use vun_harness::{ACCEPT, repo_root};
 use vun_items::{Item, targets};
 
 use crate::backend::{self, BACKENDS, build, status_across, status_on};
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The types of an ELF program's segments: its program headers' `p_type`, read from the
 /// 64-bit little-endian layout (`e_phoff` at 32, `e_phentsize` at 54, `e_phnum` at 56).

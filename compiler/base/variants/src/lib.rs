@@ -6,7 +6,7 @@ use vun_derive_core::{Body, Fields, Item, Tokens, Unsupported};
 
 #[proc_macro_derive(Variants)]
 pub fn variants(input: TokenStream) -> TokenStream {
-    let item = match Item::parse(input) {
+    let item = match Item::try_from(input) {
         Ok(item) => item,
         Err(unsupported) => return unsupported.report(),
     };

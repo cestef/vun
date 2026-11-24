@@ -51,7 +51,7 @@ impl Uri {
     /// # Errors
     /// Why `text` is not a reference.
     pub fn join(&self, text: &str) -> Result<Uri, Invalid> {
-        Ok(self.resolve(&Reference::parse(text)?))
+        Ok(self.resolve(&text.parse::<Reference>()?))
     }
 }
 

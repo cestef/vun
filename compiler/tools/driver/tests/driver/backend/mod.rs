@@ -6,7 +6,7 @@ use vun_harness::{ACCEPT, repo_root};
 
 use vun_target::Name;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 mod component;
 mod forms;

@@ -85,7 +85,7 @@ impl Setting {
     fn read(given: &str) -> Result<Self, Invalid> {
         let (name, level) = given.split_once('=').ok_or_else(|| Invalid::NoLevel(given.to_owned()))?;
         let level = Level::of_name(level).ok_or_else(|| Invalid::NoName(level.to_owned()))?;
-        Ok(Self { id: DiagId::parse(name), level })
+        Ok(Self { id: DiagId::from(name), level })
     }
 }
 
@@ -138,7 +138,7 @@ impl Session {
         let unknown = levels.iter().filter(|(id, _)| !known.contains(id)).map(|(id, _)| *id);
         let unknown: Vec<Invalid> = unknown
             .map(|id| {
-                let near = closest(&id.to_string(), names.iter().map(String::as_str)).map(DiagId::parse);
+                let near = closest(&id.to_string(), names.iter().map(String::as_str)).map(DiagId::from);
                 Invalid::Unknown { id, near }
             })
             .collect();

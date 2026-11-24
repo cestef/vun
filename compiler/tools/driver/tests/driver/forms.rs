@@ -1,7 +1,7 @@
 //! Borrows, `unsafe` blocks, attributed type literals, struct patterns, and reports at the
 //! branch that does not fit.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

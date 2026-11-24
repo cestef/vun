@@ -2,6 +2,7 @@
 //! and what it handles.
 
 use std::fmt;
+use std::str::FromStr;
 
 use vun_target::{Names, Readiness};
 use vun_variants::Variants;
@@ -55,17 +56,34 @@ pub struct Id {
 }
 
 impl Id {
-    /// The component a piece of a release is named for, when it names a kind this toolchain has.
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        Kind::ALL.iter().find_map(|&kind| {
-            let name = text.strip_prefix(kind.prefix())?.strip_prefix(Self::SEPARATOR)?;
-            Some(Self { kind, name: name.to_owned() })
-        })
-    }
-
     const SEPARATOR: char = '-';
 }
+
+/// A name that is no kind's prefix and a name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unkinded;
+
+impl FromStr for Id {
+    type Err = Unkinded;
+
+    fn from_str(text: &str) -> Result<Self, Unkinded> {
+        Kind::ALL
+            .iter()
+            .find_map(|&kind| {
+                let name = text.strip_prefix(kind.prefix())?.strip_prefix(Self::SEPARATOR)?;
+                Some(Self { kind, name: name.to_owned() })
+            })
+            .ok_or(Unkinded)
+    }
+}
+
+impl fmt::Display for Unkinded {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the name is not the prefix of a component kind and a name")
+    }
+}
+
+impl std::error::Error for Unkinded {}
 
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

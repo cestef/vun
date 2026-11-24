@@ -1,6 +1,6 @@
 //! Code values: quotes, `Code(T)` parameters and splices (spec 03, section 4).
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

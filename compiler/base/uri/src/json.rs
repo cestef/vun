@@ -14,6 +14,6 @@ impl<K: Kind> FromData for UriOf<K> {
     fn from_data(value: &Value<'_>) -> Result<Self, Mismatch> {
         let text = value.as_str().ok_or(Mismatch::new(Expected::String))?;
         let expected = if K::SCHEME { "a URI" } else { "a URI reference" };
-        Self::parse(text).map_err(|_| Mismatch::new(Expected::Syntax(expected)))
+        text.parse::<Self>().map_err(|_| Mismatch::new(Expected::Syntax(expected)))
     }
 }

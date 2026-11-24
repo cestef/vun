@@ -1,7 +1,7 @@
 //! Mutation at compile time (spec 03, section 7): exclusive borrows change what they reach, in a
 //! body and across calls, which take what a loan reaches and give it back changed.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

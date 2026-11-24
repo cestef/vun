@@ -9,7 +9,7 @@ use vun_target::{Name, Output};
 use vun_tool::Executable;
 
 use crate::backend;
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The program each linker links: it exits with 3.
 const EXITS: &str = "\

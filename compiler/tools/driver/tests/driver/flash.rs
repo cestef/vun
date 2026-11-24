@@ -5,7 +5,7 @@ use vun_diag::{ChildKind, errors};
 use vun_intern::Symbol;
 use vun_sema_plan::{Argument, Delivery, Invocation};
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 fn text(text: &str) -> Argument {
     Argument::Text(Symbol::intern(text))

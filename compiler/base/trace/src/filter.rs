@@ -30,10 +30,9 @@ impl Default for Filter {
     }
 }
 
-impl Filter {
-    /// Reads directives, skipping those whose level does not read.
-    #[must_use]
-    pub fn parse(text: &str) -> Self {
+/// Reads directives, skipping those whose level does not read.
+impl From<&str> for Filter {
+    fn from(text: &str) -> Self {
         let directives = text.split(DIRECTIVES).map(str::trim).filter(|d| !d.is_empty()).filter_map(|d| {
             match d.split_once(TARGET) {
                 Some((target, level)) => {
@@ -46,7 +45,9 @@ impl Filter {
         filter.directives.extend(directives);
         filter
     }
+}
 
+impl Filter {
     /// Whether an event or span of `level` from `target` is shown.
     #[must_use]
     pub fn enabled(&self, target: &str, level: Level) -> bool {

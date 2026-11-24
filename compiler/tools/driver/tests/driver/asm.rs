@@ -123,7 +123,7 @@ fn thumb(line: &str) -> String {
 /// Why `source` does not lower for the target at `target`, if it does not, and its report as
 /// the text it points at and the texts its trace frames do.
 fn unlowered(name: &str, source: &str, target: Item) -> Option<(Why, Diagnostic, Vec<String>)> {
-    let fixture = crate::common::Fixture::new(&format!("asm-{name}-{}", target.path()[2]));
+    let fixture = crate::support::Fixture::new(&format!("asm-{name}-{}", target.path()[2]));
     let path = fixture.root.write("main.vun", source);
     let mut session = fixture.session();
     session.choice = Choice::of(target);

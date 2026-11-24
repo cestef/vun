@@ -1,7 +1,7 @@
 //! Files read at compile time (spec 03, section 7): `std.meta.embed` gives the bytes of a file of
 //! the package, from the directory of the file calling, and traps for any other.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 /// The directory of data the package includes.

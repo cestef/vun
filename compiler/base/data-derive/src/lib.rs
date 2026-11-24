@@ -36,7 +36,7 @@ pub fn from_data(input: TokenStream) -> TokenStream {
 }
 
 fn derive(input: TokenStream, expand: fn(&Data<'_>) -> TokenStream) -> TokenStream {
-    let item = match Item::parse(input) {
+    let item = match Item::try_from(input) {
         Ok(item) => item,
         Err(unsupported) => return unsupported.report(),
     };

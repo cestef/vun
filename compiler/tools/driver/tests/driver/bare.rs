@@ -10,7 +10,7 @@ use vun_origin::Resolve;
 use vun_sema::target::Choice;
 use vun_span::SourceMap;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 
 /// The board's package, beside the libraries.
 const BOARD: &str = "lib/boards/stm32f4";

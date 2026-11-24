@@ -3,7 +3,7 @@
 use vun_hir::tree::{ExprId, ExprKind, Hir, NsId};
 use vun_intern::Symbol;
 
-mod common;
+mod support;
 
 /// The value of the first declaration of the file.
 fn value(hir: &Hir) -> ExprId {
@@ -17,7 +17,7 @@ fn body(hir: &Hir) -> NsId {
 }
 
 fn lacks(text: &str, name: &str) -> bool {
-    let hir = common::lowered(text);
+    let hir = support::lowered(text);
     hir.lacks(body(&hir), Symbol::intern(name))
 }
 
@@ -38,7 +38,7 @@ fn a_spread_or_a_computed_name_may_bring_any_name() {
 fn a_function_literal_ending_in_a_struct_makes_it() {
     let text = "f := ($r: type) -> type { struct { json := 1; } };";
     assert!(lacks(text, "write") && !lacks(text, "json"));
-    let hir = common::lowered("f := ($r: type) -> type { 1 };");
+    let hir = support::lowered("f := ($r: type) -> type { 1 };");
     let value = value(&hir);
     assert!(matches!(hir.exprs[value].kind, ExprKind::Fn { .. }) && hir.made_struct(value).is_none());
 }

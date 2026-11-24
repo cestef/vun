@@ -5,7 +5,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use vun_command::{
-    Args, Arity, Command, Detail, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
+    Args, Arity, Command, CommandVerb, Detail, Example, OptionSet, Outcome, Param, PathKind, Program, Values,
 };
 use vun_term::Shell;
 
@@ -27,7 +27,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
         "The Vun toolchain.",
         &[
             Command::run(
-                "build",
+                CommandVerb::Build,
                 "build the program a root file exports, or the programs each package's plan records",
                 build,
             )
@@ -51,7 +51,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
                     about: "carry out the plan of the package around this directory, or of each package of its workspace",
                 },
             ]),
-            Command::run("run", "build the program a root file exports, or a package's, and run it", run)
+            Command::run(CommandVerb::Run, "build the program a root file exports, or a package's, and run it", run)
                 .aliases(&["r"])
                 .params(&[
                     PATH,
@@ -101,7 +101,7 @@ pub(crate) const PROGRAM: Program<Session> = Program {
     ),
 };
 
-const CHECK: Command<Session> = Command::run("check", "analyze without generating code", check)
+const CHECK: Command<Session> = Command::run(CommandVerb::Check, "analyze without generating code", check)
     .aliases(&["c"])
     .params(&[PATH, Report::Widths.param(), Report::Generics.param()])
     .sets(&COMPILE)

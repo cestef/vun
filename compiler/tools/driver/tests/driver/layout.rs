@@ -1,6 +1,6 @@
 //! Layout (spec 05, section 6): natural alignment and padding, niches, layout attributes.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 use vun_sema::layout::{Layout, Niche, Parts, Shape, Shapes, Tag};
 

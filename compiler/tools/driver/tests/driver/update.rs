@@ -1,7 +1,7 @@
 //! `vun pkg update`: a dependency is raised to the newest release its index lists in its major,
 //! verified against the listed hash, and its manifest entry rewritten.
 
-use crate::common::{Fixture, file_url};
+use crate::support::{Fixture, file_url};
 use vun_build::index::{Index, Listing};
 use vun_build::layout::MANIFEST;
 use vun_build::manifest::Identity;

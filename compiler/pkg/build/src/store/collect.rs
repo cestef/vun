@@ -109,8 +109,9 @@ impl Store {
                 }
                 Err(e) => return Err(e),
             };
-            let lock = Lock::parse(&text)
-                .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, Unparsed(path)))?;
+            let lock = text
+                .parse::<Lock>()
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, Unparsed(path)))?;
             live.extend(lock.entries().iter().map(|e| e.hash));
         }
         Ok(live)

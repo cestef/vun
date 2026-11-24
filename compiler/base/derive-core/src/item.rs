@@ -87,10 +87,10 @@ enum Keyword {
     Union,
 }
 
-impl Item {
-    /// # Errors
-    /// The item is a union, or not an item.
-    pub fn parse(input: TokenStream) -> Result<Self, Unsupported> {
+impl TryFrom<TokenStream> for Item {
+    type Error = Unsupported;
+
+    fn try_from(input: TokenStream) -> Result<Self, Unsupported> {
         let trees: Vec<TokenTree> = input.into_iter().collect();
         // Attributes and visibility come before the keyword.
         let found = trees.iter().enumerate().find_map(|(at, tree)| Some((at, Keyword::of(tree)?)));

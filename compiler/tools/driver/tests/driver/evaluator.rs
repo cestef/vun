@@ -1,7 +1,7 @@
 //! The evaluator's limits (spec 03, section 7): calls nest as deep as their budget lets them,
 //! on stack the evaluator adds, never overflowing the thread's.
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

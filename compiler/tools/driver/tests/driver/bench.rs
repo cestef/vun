@@ -6,7 +6,7 @@ use vun_driver::testing::{Baseline, Measure, Measured, Mode, Options, Outcome, P
 use vun_term::Percent;
 use vun_term::Shell;
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use crate::testing::BUILD;
 
 /// The id of this test's package, which no other test's package has.

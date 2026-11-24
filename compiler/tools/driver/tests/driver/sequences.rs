@@ -1,7 +1,7 @@
 //! Arrays, slices and ranges: `lang.mem.Array`, `lang.mem.Slice` and `lang.Bounds`, with their
 //! methods from `std` impls (decision 78).
 
-use crate::common::Fixture;
+use crate::support::Fixture;
 use vun_diag::errors;
 
 #[test]

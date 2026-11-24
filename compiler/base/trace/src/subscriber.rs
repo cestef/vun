@@ -71,7 +71,7 @@ impl Visit for Fields {
 
 impl Writer {
     pub(crate) fn new(config: &Config) -> Self {
-        let filter = config.filter.as_deref().map(Filter::parse).unwrap_or_default();
+        let filter = config.filter.as_deref().map(Filter::from).unwrap_or_default();
         Self {
             filter,
             format: config.format,

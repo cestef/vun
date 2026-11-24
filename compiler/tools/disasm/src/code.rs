@@ -55,8 +55,10 @@ pub struct Code {
 pub enum Error {
     /// The file is neither ELF nor PE.
     Format,
-    /// The file is for a machine whose instructions are not read here.
-    Machine(String),
+    /// The ELF file is for a machine whose instructions are not read here.
+    ElfMachine(vun_elf::Machine),
+    /// The PE file is for a machine whose instructions are not read here.
+    PeMachine(vun_pe::Machine),
     /// The ELF file is malformed.
     Elf(vun_elf::Malformed),
     /// The PE file is malformed.
@@ -71,7 +73,8 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Format => f.write_str("the file is neither an ELF nor a PE file"),
-            Self::Machine(machine) => write!(f, "no instruction set is read for the machine {machine}"),
+            Self::ElfMachine(machine) => write!(f, "no instruction set is read for the machine {machine:?}"),
+            Self::PeMachine(machine) => write!(f, "no instruction set is read for the machine {machine}"),
             Self::Elf(_) => f.write_str("the file is a malformed ELF file"),
             Self::Pe(_) => f.write_str("the file is a malformed PE file"),
             Self::Reach(name) => {
@@ -91,7 +94,9 @@ impl std::error::Error for Error {
         match self {
             Self::Elf(why) => Some(why),
             Self::Pe(why) => Some(why),
-            Self::Format | Self::Machine(_) | Self::Reach(_) | Self::Missing(_) => None,
+            Self::Format | Self::ElfMachine(_) | Self::PeMachine(_) | Self::Reach(_) | Self::Missing(_) => {
+                None
+            }
         }
     }
 }

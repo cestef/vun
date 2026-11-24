@@ -86,7 +86,7 @@ impl<W: Write> AriadneRenderer<W> {
                 ChildKind::Cause => report.add_note(format!("{}: {text}", ChildKind::Cause)),
             }
             for fix in &child.fixes {
-                report.add_help(describe(fix, sources_));
+                report.add_help(FixLine { fix, sources: sources_ }.to_string());
             }
         }
         for frame in &d.trace {
@@ -97,7 +97,7 @@ impl<W: Write> AriadneRenderer<W> {
             ));
         }
         for fix in &d.fixes {
-            report.add_help(describe(fix, sources_));
+            report.add_help(FixLine { fix, sources: sources_ }.to_string());
         }
         let mut texts: Vec<(Source, String)> = Vec::new();
         for span in files {
@@ -112,17 +112,28 @@ impl<W: Write> AriadneRenderer<W> {
 
 /// A fix as one line: its message, its safety, then where each edit applies and, for a
 /// replacement, what it replaces.
-fn describe(fix: &Fix, sources: &dyn SourceMap) -> String {
-    let edits: Vec<String> = fix
-        .edits
-        .iter()
-        .map(|e| {
-            let at = sources.locate(e.span);
-            let old = e.span.range.of(&sources.file(e.span.file).text);
-            if old.is_empty() { format!("at {at}") } else { format!("at {at}: `{old}` becomes `{}`", e.text) }
-        })
-        .collect();
-    format!("{} [{}], {}", fix.msg, fix.safety, edits.join("; "))
+struct FixLine<'a> {
+    fix: &'a Fix,
+    sources: &'a dyn SourceMap,
+}
+
+impl fmt::Display for FixLine<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} [{}], ", self.fix.msg, self.fix.safety)?;
+        for (i, e) in self.fix.edits.iter().enumerate() {
+            if i > 0 {
+                f.write_str("; ")?;
+            }
+            let at = self.sources.locate(e.span);
+            let old = e.span.range.of(&self.sources.file(e.span.file).text);
+            if old.is_empty() {
+                write!(f, "at {at}")?;
+            } else {
+                write!(f, "at {at}: `{old}` becomes `{}`", e.text)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 fn kind(severity: Severity) -> ReportKind<'static> {
