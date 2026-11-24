@@ -89,7 +89,7 @@ whether it may trap (`panic.never`), a stack bound (`stack.max(n)`), required ta
 its calling convention. Function pointers carry the same markers, so the analyses survive indirect
 calls. A table in `lang` gives each marker a relation, which decides where a function is accepted
 in place of an expected function type (@tab-markers). Acceptance is computed generically from the
-table, so adding a marker adds a row rather than a rule. A stack bound is checked when the program
+table, so adding a marker means adding a row, with no new rule. A stack bound is checked when the program
 is built, over the whole call graph and the frame sizes the backend reports; a function another
 program provides states its stack use with the same marker on its declaration, trusted as its
 signature is.
@@ -188,11 +188,11 @@ interrupt. A library is a root file with exports and no runtime.
 A C import is a declaration provided by the linker,
 `#[link.symbol("puts"), abi.c] puts: unsafe (s: *u8) -> i32 = _;`, and `#[link.export("name")]`
 exports a binding under a C symbol. Generating declarations from C headers, using the build's real
-compiler flags, and emitting C headers for a Vun library are tools rather than language features.
+compiler flags, and emitting C headers for a Vun library are left to tools.
 Inline assembly is ordinary code: `unsafe lang.arch.asm({ ... })` takes a block of calls as code, each calling an
 instruction that one architecture's table in `lang.arch` declares, the table the native
 assemblers are generated from, and is read against it at compile time. An instruction is a value
 callable with any operands, which are values too: registers as enum variants, integers, labels,
 memory (`mem(x1, 8)`) and Vun values bound to registers (`in(e)`, `out(p)`); each call takes the
 first form of its instruction that fits, as the assembler would choose, and the registers a block
-writes are derived from its forms rather than listed.
+writes are derived from its forms.

@@ -25,10 +25,10 @@ this paper. The comparison concerns the default, safe subset of each language.
   caption: [Comparison with related systems languages.],
 ) <tab-comparison>
 
-*Compile-time evaluation.* Zig demonstrated that a single language can serve for generic
+*Compile-time evaluation.* Zig demonstrated that a single language can be used for generic
 programming and code generation through compile-time evaluation @zig-0-16, and its experience
 informs the design of Vun's evaluator @zig-4055. Zig builds types by reifying descriptors, which
-cannot carry declarations, so names cannot be computed; Vun instead generates declarations with
+cannot carry declarations, so names cannot be computed. Vun generates declarations with
 computed names inside ordinary type literals. Jai extends compile-time execution to arbitrary input
 and output, at the cost of caching and reproducibility. C++26 adds static reflection with
 declarations as data @p2996 and has deferred token-based injection @p3294, whose authors chose
@@ -41,7 +41,7 @@ a typed template, so quotation is needed only for code passed as an argument. Hy
 *Memory.* Rust established that ownership and borrowing can provide memory safety without a
 collector. Vun keeps exclusivity and replaces lifetime annotations with a scoping rule, in the
 spirit of the parameter conventions of Hylo @hylo, whose `let`, `inout`, `sink` and `set`
-correspond to Vun's `&`, `&mut`, passing by value and `&out`; Vun's consuming borrow `&take` has no
+correspond to Vun's `&`, `&mut`, passing by value and `&out`. Vun's consuming borrow `&take` has no
 Hylo counterpart. Austral makes linear types the primary discipline for resources @austral, as Vun
 does for every linear value; Vun adds the static resolution of `defer` against place states.
 
@@ -50,7 +50,7 @@ assignment. Vun differs in making arithmetic exact by widening result types, so 
 explicit narrowing, and in narrowing ranges by comparisons of immutable bindings.
 
 *Effects and suspension.* Capability-passing compilation of effect handlers @effekt and lexically
-scoped handlers @lexa show how far effects can be made zero-cost; Vun adopts their capability view
+scoped handlers @lexa show how far effects can be made zero-cost. Vun adopts their capability view
 and declines general handlers, which require stack switching. Rust's asynchronous functions
 motivated the specified frame layout @rust-async-size.
 

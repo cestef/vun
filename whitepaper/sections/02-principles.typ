@@ -14,8 +14,8 @@ Vun distinguishes four layers, and the relation between them is the first rule o
     have the same access to it.],
 ) <fig-layering>
 
-Syntax desugars into `lang`; `std` and user code are built on `lang`, and user code on `std` by
-choice, not by necessity.
+Syntax desugars into `lang`. `std` and user code are built on `lang`. User code is built on `std` by
+choice.
 
 The package `lang` is written in Vun. It declares, with ordinary signatures and documentation
 comments, every primitive the compiler provides: integer and pointer operations, volatile and
@@ -40,12 +40,11 @@ wrap: ($r: Range, x: Int(r), $T: type) -> T = _;
 
 The compiler learns which primitives exist by reading `lang`: a generator produces, for every
 namespace of `lang`, an enumeration of its `= _` declarations, so a primitive the compiler does not
-implement is a build error of the compiler itself, not a latent gap.
+implement is a build error of the compiler itself.
 
 Syntax desugars only into `lang`. Each piece of notation, from `a + b` to `for x in xs` to the
-postfix `?`, is defined by a rewrite into named `lang` items. The rewrites are not written in the
-compiler: they are tables in the `lang` source file `syntax/desugar.vun`, which the compiler reads
-as data. A table names `lang` items by path, not by string, so renaming an item that a form desugars into is a compile error. An excerpt of the table of operators and the table of borrow forms:
+postfix `?`, is defined by a rewrite into named `lang` items. The rewrites are tables in the `lang` source file `syntax/desugar.vun`, which the compiler reads
+as data. A table names `lang` items by path, so renaming an item that a form desugars into is a compile error. An excerpt of the table of operators and the table of borrow forms:
 
 ```vun
 operators := .{
@@ -73,7 +72,7 @@ microcontroller, a user package can do in the same way. The dependencies `lang`,
 
 == Guarantees
 
-The design commits to five properties. Each constrains the decisions described in later sections.
+The design commits to five properties. Each constrains the decisions in later sections.
 
 + *Nothing runs that the program did not write or call.* There are no destructors, no implicit
   fallible conversions, no hidden allocation, no unwinding, no global constructors and no automatic
@@ -111,7 +110,7 @@ The design commits to five properties. Each constrains the decisions described i
 ) <tab-concepts>
 
 @tab-concepts is the complete conceptual inventory. Features familiar from other systems
-languages appear only as consequences of it. Generics are functions with compile-time parameters
+languages are consequences of it. Generics are functions with compile-time parameters
 (concept 2). Resource cleanup is the obligation to consume linear values (concept 4). Thread
 safety follows from the requirement that interior mutability be obtained through synchronized
 capabilities (concept 6). Iterators and asynchronous tasks are both suspension (concept 7).

@@ -71,8 +71,8 @@ compiler and the language's own description of itself cannot drift apart.
 
 == Current state
 
-@tab-state summarizes the implementation as of this draft. The workspace comprises 106 crates and
-about 152,000 lines of Rust excluding generated code, layered so that a crate depends only on
+@tab-state gives the implementation as of this draft. The workspace comprises 142 crates and
+about 210,000 lines of Rust excluding generated code, layered so that a crate depends only on
 earlier groups: `base` < `lang` < `isa`, `object` < `front` < `sema` < `mid` < `low` < `asm` <
 `back`, `link`, `render` < `native`, `pkg` < `tools`.
 @fig-code-size shows their distribution. The Vun libraries amount to about 6,900 lines in `lang`,
@@ -95,11 +95,11 @@ earlier groups: `base` < `lang` < `isa`, `object` < `front` < `sema` < `mid` < `
     [backends], [C99; a single-pass native backend for x86-64, arm64 and Thumb-2 writing ELF, PE and Mach-O objects with DWARF line tables and unwind information, over a shared linear-scan register allocator; WebAssembly objects for WASI],
     [linkers], [GNU ld, mold and wild through the target's C compiler; lld, including its COFF flavor; an in-process WebAssembly linker; static and shared libraries],
     [packages], [manifests, BLAKE3 tree hashes, store and collection, `.tar.zst` archives, lockfile, minimal version selection, replacement, indexes over HTTPS; toolchains installed from signed releases],
-    [diagnostics], [137 identifiers in 32 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne, one-line and JSON styles],
+    [diagnostics], [197 identifiers in 36 groups, each with a checked explanation page; renderers in the annotate-snippets, ariadne, one-line and JSON styles],
     [editors], [a language server over one driver session and its query engine; tree-sitter, Helix, Neovim, Zed and VS Code packages generated from the grammar; a browser playground running the compiler under WASI],
     [tests], [a runner for unit, property, fuzz, benchmark and simulation tests, run natively on threads of their own],
     midrule,
-    [corpus], [80 source files to accept and 104 to reject; the harness reports 340 passing programs and no failures, with 2 waiting for library surface; 813 tests in the compiler's own suite],
+    [corpus], [103 source files to accept and 121 to reject; the harness reports 400 passing programs and no failures, none waiting; 1098 tests in the compiler's own suite],
     [backend tests], [every test program is built through each backend and run on Linux for x86-64, arm64 and 32-bit Arm (through an emulator) and under WASI, with identical results required; Windows programs built through the C backend run under Wine],
     bottomrule,
   ),

@@ -29,9 +29,9 @@ system, the network or an archive, keeps its chain of causes, which are rendered
 children rather than flattened into text.
 
 Each fix has one of four safety levels, following the experience of rustc and Ruff @rustc-diag
-@ruff-fixes. _Safe_ fixes preserve meaning and are the only ones applied automatically; _unsafe_
-fixes may change behavior; _placeholder_ fixes contain holes to be filled, offered as editor
-snippets; _display-only_ fixes are never applied. Cascades are suppressed by poisoning: an
+@ruff-fixes. _Safe_ fixes preserve meaning and are the only ones applied automatically. _Unsafe_
+fixes may change behavior. _Placeholder_ fixes contain holes to be filled, offered as editor
+snippets. _Display-only_ fixes are never applied. Cascades are suppressed by poisoning: an
 erroneous type or value carries a token obtainable only by emitting an error, and diagnostics
 that mention poisoned entities are dropped.
 
@@ -160,7 +160,7 @@ the exact set of line and identifier pairs, so a cascade of diagnostics fails th
 == Packages
 
 The manifest is the build file, `build.vun`, written in Vun. Its package description must be a
-literal, so tools and indexes read it without evaluation; its build function is sandboxed
+literal, so tools and indexes read it without evaluation. Its build function is sandboxed
 compile-time code that records a plan of steps through a `&mut Build` capability. Everything
 configurable in a project, from dependencies and targets to memory maps, lints and flashing
 methods, is configured there, with no second configuration format.

@@ -23,8 +23,8 @@ Coroutine := ($Y: type, $R: type) -> Interface {
 };
 ```
 
-Frames have three properties that together replace the usual support machinery of asynchronous
-programming.
+Frames have three properties, and together they replace the usual support machinery of
+asynchronous programming.
 
 - *Sized.* The frame type and its size are known at compile time, so frames may live on a stack,
   in a static, in a pool or behind an owning pointer, and a program's total task memory is known at
@@ -59,8 +59,7 @@ Async := ($R: type) -> Interface { Coroutine(task.Wait, R) };
 
 A `Wait` is a request, yielded outward to the executor, to be resumed when some event fires. Leaf
 operations such as timers and peripheral transfers yield such requests; ordinary asynchronous code
-only delegates. Wake-ups are therefore owned by the executor rather than passed through every
-resumption.
+only delegates. The executor therefore owns wake-ups, and no resumption has to pass them along.
 
 ```vun
 blink := (led: &mut Led, timer: &Timer) -> Async(never) {
@@ -91,7 +90,7 @@ join of two waits living in the waiting frames, so waiting on either of two task
 nothing. `std.task` provides a single-threaded executor over a tuple of
 borrowed tasks that sleeps between rounds through a symbol the runtime provides (@sec-capabilities),
 a `block_on` for hosted programs, and `select`, which runs two tasks until one finishes and leaves
-both for the caller to end. A deterministic simulator (@sec-tooling) follows the same protocol; a thread-pool
+both for the caller to end. A deterministic simulator (@sec-tooling) follows the same protocol. A thread-pool
 executor is planned.
 
 == Frame layout

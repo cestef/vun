@@ -46,7 +46,7 @@ Every form below is a rewrite into `lang` items. The tables named in parentheses
 
 = Undefined behavior <app-ub>
 
-Safe code cannot trigger any of the following; that is the definition of safe code. Inside
+Safe code cannot trigger any of the following. That is the definition of safe code. Inside
 `unsafe`, the list is exhaustive. The compile-time evaluator detects every item except the fourth
 and the fifth.
 

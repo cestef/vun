@@ -44,10 +44,10 @@ not keywords.
 
 Identity follows one rule. Every `struct` and `enum` literal is a new _nominal_ type, identified by
 the literal's origin and by the compile-time arguments of the evaluation that produced it. Two
-identical literals in different declarations are distinct types, so that handle types such as
+identical literals in different declarations are distinct types, so handle types such as
 `NodeId := struct { raw: u32 }` and `TypeId := struct { raw: u32 }` never mix. Because
 compile-time calls are memoized, `Pair(u16)` is the same type wherever it is written. _Aliases_ are
-not literals and remain structural: `u8 := Int(0..=255)` is exactly `Int(0..=255)`. An anonymous
+not literals and stay structural: `u8 := Int(0..=255)` is exactly `Int(0..=255)`. An anonymous
 structure `.{ .a = x, .b = y }` written where no type is expected is a _record_, a structural type
 identified by its sorted field names and types.
 
@@ -109,7 +109,7 @@ without adding a mechanism.
   iterator (@sec-suspension).
 - *Methods without an interface.* `#[impl(T)]` without an interface adds the declarations of its
   structure to the method lookup of `T` and checks nothing else. No pair is registered, so the
-  orphan rule does not apply; a name declared by two implementations visible to a file, or by an
+  orphan rule does not apply. A name declared by two implementations visible to a file, or by an
   implementation and the type itself, is an error where it is looked up.
 
 A compile-time parameter annotated with an interface is constrained by it. Inside the generic
@@ -145,9 +145,8 @@ parameter, type expression or expression. Attributes from `lang` namespaces (`la
 `abi`, `kind`, `opt`, `panic`, `stack`, `target`, `comptime`, `lint`, `check`, `safety`) and the
 attributes `impl`, `derive` and `visible` are acted on by the compiler,
 and each is a documented `lang` declaration whose type, `lang.Attribute(on)`, lists the places it
-applies to (declarations, functions, types, fields, parameters); one written elsewhere is an error
-rather than ignored, and a library attribute may declare its places the same way. Every other
-attribute is plain data that compile-time code reads through reflection. One mechanism thus serves layout, linking, calling
+applies to (declarations, functions, types, fields, parameters); one written elsewhere is an error, and a library attribute may declare its places the same way. Every other
+attribute is plain data that compile-time code reads through reflection. One mechanism covers layout, linking, calling
 conventions, lints, derivation, tests and serialization options.
 
 ```vun

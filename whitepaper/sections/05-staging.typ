@@ -2,8 +2,8 @@
 
 = Staging and metaprogramming <sec-staging>
 
-The aim of this part of the design is that the whole language be available at compile time, and
-that code generation be typed, hygienic and traceable. Code is never built by formatting strings
+The whole language is available at compile time, and code generation is typed, hygienic and
+traceable. Code is never built by formatting strings
 or by pasting token streams.
 
 == One stage operator
@@ -26,7 +26,7 @@ dot := ($N: usize, a: &[N]f32, b: &[N]f32) -> f32 {
 Among statements, each step of a `$for` is the body with the binder bound to one item, typed and
 lowered on its own, so an expression such as `a.$(f.name)` may have a different type in each
 step. A `$if` may also test a pattern, its binders compile-time. The branch of a `$if` that is not selected is parsed and resolved but not type-checked,
-which is what allows target-specific code to name items that exist only on that target.
+which allows target-specific code to name items that exist only on that target.
 
 == Compile-time semantics
 
@@ -144,7 +144,7 @@ own code, and the check compiles to `if !(len <= N) { ... }` at the call site. A
 
 == Hygiene and reflection
 
-Hygiene is obtained by construction. A code value records where it was written, including the
+Hygiene holds by construction. A code value records where it was written, including the
 bindings of the enclosing call and of the `$for` steps around it, and a name written inside a
 quotation resolves there, whatever scope the code is spliced into. A binder introduced inside a
 quotation is fresh. A name that the splice site should see must be computed explicitly with

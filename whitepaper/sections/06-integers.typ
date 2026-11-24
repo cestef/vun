@@ -5,7 +5,7 @@
 
 Systems languages treat integer overflow in one of a few ways (@tab-overflow). All of them accept
 that `a + b` on two machine integers may fail to denote the mathematical sum; they differ in what
-happens when it does. Vun takes a different position: arithmetic is exact, and the only operation
+happens when it does. In Vun arithmetic is exact, and the only operation
 that can fail to represent a value is an explicit narrowing.
 
 #figure(
@@ -126,7 +126,7 @@ Mutable places are not narrowed, since any write would invalidate the fact.
 
 == Consequences
 
-The benefits accumulate in the code that systems programmers write most often. In a ring buffer of
+The benefits show in the code that systems programmers write most often. In a ring buffer of
 compile-time capacity $N$, advancing the head needs neither a check nor an annotation beyond the
 type:
 
@@ -144,7 +144,7 @@ because the sum may reach $2^32$. The overflow that C would compile without warn
 error, reported with the ranges involved and a suggestion to widen the result type or narrow
 the value (@fig-diagnostic in @sec-tooling).
 
-Exactness moves cost rather than removing it, and the toolchain reports where it moves. A product
+Exactness moves cost and does not remove it. The toolchain reports where it moves. A product
 of two 64-bit values is a 128-bit multiplication, which is expensive on 32-bit cores;
 a report of every intermediate wider than the target's word (`vun check --widen`) is specified and not yet implemented. A counter incremented
 with `+=` is a trap site on every iteration, whereas the form `for i in 0..n` yields indices of
@@ -163,7 +163,7 @@ result is a NaN gives one canonical NaN (sign clear, only the quiet bit set in t
 float result has a single encoding on every target and at compile time, where the compiler
 computes floats exactly and rounds once.
 
-A vector is a type, not a mode. `lang.simd.Vector(N, T)` implements the operator interfaces
+A vector is a type. `lang.simd.Vector(N, T)` implements the operator interfaces
 lane by lane under the same range rules as scalars, so the lanes of a sum of two `u8` vectors have
 type $"Int"[0, 510]$: a lane's result type is the one the lane type's own impl gives. Comparisons return an opaque mask type; shuffles take compile-time index
 arrays; backends without vector support lower vectors to scalar code with identical results.

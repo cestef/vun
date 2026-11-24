@@ -4,8 +4,8 @@
 = Surface syntax <sec-syntax>
 
 The syntax is designed under two constraints. A word is reserved only if it changes control flow,
-changes what may be mutated, opens a type literal or marks the safety boundary; anything a
-library, a symbol or an attribute can express is not a keyword. And a symbol means one thing
+changes what may be mutated, opens a type literal or marks the safety boundary. Anything a
+library, a symbol or an attribute can express is not a keyword. A symbol means one thing
 everywhere it appears.
 
 == Keywords
@@ -57,7 +57,7 @@ the count with other languages.
 == One meaning per symbol
 
 Type syntax mirrors value syntax, and patterns mirror constructors. `(1, true)` is a tuple value,
-`(u8, bool)` its type and `(x, y)` a tuple pattern; accordingly `(u32, u32) -> u64` is the type of
+`(u8, bool)` its type and `(x, y)` a tuple pattern, so `(u32, u32) -> u64` is the type of
 a function whose parameter tuple has type `(u32, u32)`. `&x` borrows and `&T` is the type of the
 borrow. `.name` always means the member `name` of the expected type, whether it constructs a
 variant (`.some(x)`), selects an enumeration value (`.output`), calls a constructor function
@@ -109,7 +109,7 @@ Every declaration, at every level, is a binding. Declarations at file and struct
 order-independent and resolved lazily, so self-reference and mutual recursion need no forward
 declarations; declarations inside a block are sequential. A top-level binding is a static, and a
 top-level `mut` binding is a mutable static whose every access is `unsafe`. A declaration may be
-left uninitialized (`mut buf: [4096]u8;`), which costs nothing; reading it before it is written is
+left uninitialized (`mut buf: [4096]u8;`), which costs nothing. Reading it before it is written is
 a compile-time error (@sec-memory).
 
 A local binding may not reuse a name visible where it is declared in its file: an enclosing local
@@ -166,8 +166,8 @@ borrows of those parts.
 
 == Namespaces and visibility
 
-A file is a structure whose members are its declarations; a directory is a structure whose members
-are its files and subdirectories; a file and a directory of the same name merge into one
+A file is a structure whose members are its declarations. A directory is a structure whose members
+are its files and subdirectories. A file and a directory of the same name merge into one
 namespace. Each dependency declared by the build is a binding in scope under its declared name.
 Importing a module is therefore binding it, and re-exporting is binding again:
 
@@ -183,8 +183,8 @@ the package or a dependency, so spreads resolve from the manifest and the files 
 and an umbrella namespace is a list of spreads. The names every file sees without qualification
 come from the prelude, which the manifest names as a literal list of namespaces.
 
-A single rule governs privacy for declarations, members, files and directories: a name beginning
-with `_` is restricted to a scope, and visible only within that scope and the namespaces nested in
+One rule governs privacy for declarations, members, files and directories. A name beginning
+with `_` is restricted to a scope and visible only within that scope and the namespaces nested in
 it. The scope is the declaring namespace unless the `lang` attribute `visible` widens it to an
 enclosing namespace, the package or the workspace:
 

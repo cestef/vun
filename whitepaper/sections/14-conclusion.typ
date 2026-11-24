@@ -2,8 +2,7 @@
 
 = Conclusion and open problems <sec-conclusion>
 
-Vun's premise is that a systems language can be small in concepts without being small in scope.
-Seven concepts, each with one rule, account for integer arithmetic without overflow, resource
+Vun's premise is that a systems language can have few concepts and a wide scope. Seven concepts, each with one rule, account for integer arithmetic without overflow, resource
 safety without destructors, borrowing without lifetime annotations, asynchronous code without
 pinning or allocation, code generation without a separate macro language, and program start-up
 without names known to the compiler. Because primitives are declarations and desugarings are data,
@@ -24,11 +23,11 @@ acceptance relations.
 
 == Proposed rules
 
-Most decisions made since the first draft are implemented and specified but marked _proposed_ in the
-decision log, pending confirmation: 115 of its 409 entries. Those that concern the language
-include `impl` declarations as sugar for the `impl` attribute; generic bodies checked per
+One decision of the log is still marked _proposed_, pending confirmation: 534 entries are numbered
+and 533 are accepted. Among the accepted ones that were made after the first draft are `impl`
+declarations as sugar for the `impl` attribute; generic bodies checked per
 instantiation; integer literals and ranges in patterns that need not fit the scrutinee's type; a
-name in a pattern that always binds; lint levels set from the command line; and the following: a field holding a
+name in a pattern that always binds; lint levels set from the command line; a field holding a
 function is called as a value, never as a method; compile-time work in a body splits into
 expansions run while typing and evaluations run after it; floats, like integers, are one
 constructor indexed by a compile-time width; exit statuses are a range every supported system
@@ -37,8 +36,7 @@ its storage; and a library's report reached at run time refuses the program that
 
 == Open problems
 
-The following questions remain open or depend on experience that only a larger body of code can
-provide.
+These questions remain open, or depend on experience that only a larger body of code can give.
 
 - *Laziness of code parameters.* A `Code(T)` parameter receives its argument unevaluated. This is
   visible in the signature and in editor hints but not at the call site; whether it causes

@@ -63,11 +63,11 @@ forms.
 The checker is a forward dataflow analysis over the control-flow graph of each function, which
 computes a state for every place at every program point. Parts named without running the program
 (a field, a tuple position, an element at a constant index) have their own state once written, so
-`buf[0] = 1;` makes `buf[0]` readable but not `buf[1]`; a part at an index known only at run time
+`buf[0] = 1;` makes `buf[0]` readable but not `buf[1]`. A part at an index known only at run time
 requires the whole place to be initialized. The rules are few.
 
 #rule[reads][Reading a place requires state $I$. An uninitialized declaration is legal and costs
-nothing; reading it before a write is a compile-time error. No `undefined` value exists.]
+nothing. Reading it before a write is a compile-time error. No `undefined` value exists.]
 
 #rule[exits][At every exit of a scope, every place of a linear type declared in that scope is in
 state $U$.]
@@ -143,10 +143,10 @@ access are operations, not type qualifiers.
 
 == Layout
 
-The language defines layout; the implementation does not choose it.
+The language defines layout, and the implementation does not choose it.
 
 - A `struct` is laid out in declaration order with natural alignment and C-style padding. The
-  compiler never reorders fields; a lint reports padding and offers a reordering fix.
+  compiler never reorders fields. A lint reports padding and offers a reordering fix.
 - A `#[layout.bits(uN)]` structure is bit-exact, least significant bit first, and its fields must
   occupy exactly $N$ bits.
 - A `#[layout.c]` structure has the target C ABI's layout, and every field must be of a type C

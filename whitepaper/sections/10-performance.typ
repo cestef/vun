@@ -4,7 +4,7 @@
 
 Performance is treated as part of the semantics: what the language guarantees determines what an
 implementation may assume. @tab-facts lists the guarantees relevant to code generation and their
-use. None of them is an optimizer heuristic; each follows from a rule stated in an earlier section.
+use. None of them is an optimizer heuristic. Each follows from a rule stated in an earlier section.
 
 #figure(
   table(
@@ -29,13 +29,13 @@ use. None of them is an optimizer heuristic; each follows from a rule stated in 
 
 Run-time checks are the main cost of safety in comparable languages. One study of Rust measured
 programs with all checks enabled at 1.96 times the run time of equivalent C, and attributed about
-53% of that overhead to bounds checking @rust-checks. In Vun, overflow checks do not exist;
-indexing with an index of the right range type is unchecked by construction, and `for i in 0..N`
-over a compile-time `N` produces such indices; range analysis on the mid-level representation
+53% of that overhead to bounds checking @rust-checks. In Vun, overflow checks do not exist.
+Indexing with an index of the right range type is unchecked by construction, and `for i in 0..N`
+over a compile-time `N` produces such indices. Range analysis on the mid-level representation
 removes further checks when it can prove them. The checks that remain stay identical in every
 build profile (guarantee 3). They branch to one cold stub per function carrying a site identifier,
 and the message text lives in a table that is not loaded on embedded targets, in the manner of
-deferred logging @defmt. A check costs a comparison and a branch, not a formatted message.
+deferred logging @defmt. A check costs a comparison and a branch.
 
 == Controls
 
@@ -63,7 +63,7 @@ are cold by rule.
   caption: [Performance controls. Each is a `lang` item; none is a keyword.],
 ) <tab-controls>
 
-A guaranteed tail call must be in return position; the callee's calling convention and result type
+A guaranteed tail call must be in return position. The callee's calling convention and result type
 must match, and no argument may borrow the caller's locals. Pending deferred statements of the
 caller run before the jump. A backend that cannot honor the guarantee rejects the program; the call
 is never silently compiled as an ordinary call. A cycle of guaranteed tail calls satisfies a stack
@@ -77,5 +77,5 @@ instantiations whose lowered, type-erased code is identical (`List(u32)` and `Li
 example), which is exact because the low-level representation carries no source types; by size
 optimization and inlining controls on generic helpers; by dynamic dispatch (the planned `std.Dyn(I)`) where it is
 the better trade; and, once `--meta-stats` exists, by reporting generated code size per generic and per generator. Packages are
-distributed as source, so every build sees the whole program at the low level; code generation
+distributed as source, so every build sees the whole program at the low level. Code generation
 remains parallel by sharding functions by hash.

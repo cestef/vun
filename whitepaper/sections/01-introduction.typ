@@ -3,19 +3,19 @@
 = Introduction <sec-introduction>
 
 Systems languages tend to accumulate special cases. Each is reasonable in isolation. An integer
-type wraps because the hardware does; a destructor runs because cleanup is easy to forget; a
-lifetime annotation exists because the borrow checker needs a name for a region; a macro language
-exists because the base language cannot inspect itself; a pinning wrapper exists because
-asynchronous frames must not move; an attribute marks the entry point because the linker needs
+type wraps because the hardware does. A destructor runs because cleanup is easy to forget. A
+lifetime annotation exists because the borrow checker needs a name for a region. A macro language
+exists because the base language cannot inspect itself. A pinning wrapper exists because
+asynchronous frames must not move. An attribute marks the entry point because the linker needs
 one. These mechanisms interact in ways that programmers learn case by case and that implementations
 must handle case by case too.
 
 Vun starts from the opposite constraint. The language is a small set of _concepts_, each governed
 by exactly one rule. Every other feature must be one of those concepts, a library built from them,
 or a documented rewrite into them. When a behavior cannot be explained by the list of concepts and
-the desugaring tables, the design is wrong; the explanation is not merely incomplete.
+the desugaring tables, the design is wrong.
 
-The constraint exists to make three properties hold at the same time. Existing systems languages
+The constraint makes three properties hold at the same time. Existing systems languages
 tend to trade them against each other:
 
 - *Predictable cost.* Every allocation, copy, check and trap site is either written in the source
@@ -29,8 +29,8 @@ tend to trade them against each other:
 The intended domain is broad: firmware for microcontrollers with a few kilobytes of memory,
 operating-system components, language runtimes, servers and command-line tools. Nothing in the
 language assumes an operating system, a heap, a word size or an architecture, and interoperation
-with C is direct, which gives access to existing real-time operating systems and vendor hardware
-abstraction layers.
+with C is direct, so existing real-time operating systems and vendor hardware
+abstraction layers are reachable.
 
 == Contributions
 
@@ -66,8 +66,8 @@ This paper describes the design of Vun and the architecture of its implementatio
 == Status and scope
 
 This is a design paper accompanied by a partial implementation. The specification is a set of
-documents with a decision log of 409 entries; a corpus of Vun programs was written before the
-compiler and serves as its acceptance test. The implemented part of the compiler covers parsing,
+documents with a decision log of 534 entries; a corpus of Vun programs was written before the
+compiler and is its acceptance test. The implemented part of the compiler covers parsing,
 name resolution, type checking, compile-time evaluation, the package system, the checks on the
 mid-level representation (place states, kinds, borrows, trap freedom), a low-level
 representation, three backends and the linkers they need, a test runner for unit, property, fuzz,
