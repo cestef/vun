@@ -31,18 +31,13 @@ Spec 11 is the reference.
 
 ## Conventions adopted from the sibling projects
 
-Left of the adoption (the rules are in `CLAUDE.md`):
+What is left of the adoption (the rules are in `CLAUDE.md`):
 
-- `Hash::parse` and `Snapshot::parse` to `FromStr`; then `vun_data::textual!` takes `FromStr` and
-  `Version` drops its hand-written `ToData`/`FromData` (`compiler/base/span/src/data.rs`).
-- A parsed `Duration` value for `vun debug profile --limit` (now an integer of seconds).
-- A ratchet check in xtask for comments inside function bodies (about 1250 lines, mostly `sema`,
-  `tools`, `low`, `mid`, `back`); the count may only fall. Move rationale to the enclosing item's
-  doc rather than deleting it.
-- `Fault` encodable, so binder's `Failure::Errors(Vec<String>)` keeps its source.
-- Manual `Hash` impls that skip fields (`base/{uri,diag,origin,span,intern,query}`, `sema/ty`,
-  `front/hir`): each needs a line on the type saying why, or a destructuring.
-- Decision 684 keeps six noun leaves in the verb table (`completion`, `lsp`, `coverage`, `queries`,
-  `profile`, `smith`) so nothing was renamed; marking them legacy would make a later rename easy.
-- The diagnostic group `types` keeps its name (`KEPT` in `xtask/src/names.rs`): its ids are public.
-- `Number::parse` and `json::parse` borrow their input, so `FromStr` cannot express them.
+- Binder's `Failure::Errors(Vec<String>)` is clang's own wording, a legitimate edge. The flattening is
+  one site, `compiler/tools/binder/src/remote.rs`, after a component `Fault` (host-side, not
+  encodable). Fix: `Binder::bind` returns `enum BindError { Failed(Failure), Component(Fault) }`
+  with `source()`, and the CLI attaches the `Fault` through `Diagnostic::caused_by`.
+- Kept on purpose: the diagnostic group `types` keeps its name (`KEPT` in `xtask/src/names.rs`, its
+  ids are public); `Number::parse` and `json::parse` borrow their input, so `FromStr` cannot
+  express them; the comment ratchet baseline (`xtask/comments.vun`) is lowered with
+  `cargo xtask comments --bless` as comments move onto the enclosing item's doc.
