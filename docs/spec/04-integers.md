@@ -110,7 +110,8 @@ Exact arithmetic moves cost, it does not remove it. Two places need attention, a
 reported:
 
 - **Wide intermediates.** `u64 * u64` is a 128-bit multiply, expensive on 32-bit cores.
-  `vun check --widen` lists every intermediate wider than the target's native word.
+  `vun check --widen` lists every `+`, `-`, `*` and negation whose result needs more bits than the
+  target's register holds (decision 685).
 - **Loop counters.** `i += 1` is a trap site. `for i in 0..n` yields `i: Int(0..n.max)` with no
   trap, and for compile-time `n` the index type is exact, so indexing an array of that length is
   unchecked. MIR range analysis removes the remaining counter checks when it can prove them.

@@ -76,6 +76,6 @@ Monomorphization is the only semantic model of generic code. Code size is contro
 instantiations whose lowered, type-erased code is identical (`List(u32)` and `List(i32)`, for
 example), which is exact because the low-level representation carries no source types; by size
 optimization and inlining controls on generic helpers; by dynamic dispatch (the planned `std.Dyn(I)`) where it is
-the better trade; and, once `--meta-stats` exists, by reporting generated code size per generic and per generator. Packages are
+the better trade; and by `vun check --meta-stats`, which reports the instantiations and generated code size of each generic. Packages are
 distributed as source, so every build sees the whole program at the low level. Code generation
 remains parallel by sharding functions by hash.

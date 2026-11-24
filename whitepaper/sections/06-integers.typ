@@ -146,7 +146,7 @@ the value (@fig-diagnostic in @sec-tooling).
 
 Exactness moves cost and does not remove it. The toolchain reports where it moves. A product
 of two 64-bit values is a 128-bit multiplication, which is expensive on 32-bit cores;
-a report of every intermediate wider than the target's word (`vun check --widen`) is specified and not yet implemented. A counter incremented
+`vun check --widen` lists every intermediate wider than the target's register. A counter incremented
 with `+=` is a trap site on every iteration, whereas the form `for i in 0..n` yields indices of
 type $"Int"[0, n - 1]$ that need no check, and range analysis on the mid-level representation
 removes most remaining counter checks.

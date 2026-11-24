@@ -14,3 +14,4 @@
   records by address (Windows) is covered by unit tests only, no Windows target runs here.
 - A compile-time integer past `i128` has no `Literal` (`sema/ty/src/literal.rs`), so tools show
   no value for it.
+- `vun check --meta-stats` (685) reports instantiations and MIR statements per generic. Still open: the compile-time steps of each generator (`MeteredCall::steps`), which needs the query engine to list the memos of a query; and grouping by the generator's call site, which needs `Via::Splice` built where code is spliced (nothing builds it yet).

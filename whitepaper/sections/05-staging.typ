@@ -190,5 +190,6 @@ matters by large factors: a loop of $10^8$ iterations takes 189 s in Zig's compi
 interpreter against 6 s in CPython @zig-4055, and Clang's constant evaluator became 2.5 to 6.6
 times faster when it moved from walking the syntax tree to bytecode @clang-bytecode. Vun's
 evaluator therefore lowers bodies once to a register bytecode, runs on its own stack, and persists
-memoized calls across builds. `--timings` reports the time of every stage and query; a report of
-generated code size per generator (`--meta-stats`) is specified and not yet implemented.
+memoized calls across builds. `--timings` reports the time of every stage and query; `vun check --meta-stats`
+reports the instantiations and generated code size of each generic. Evaluation steps per
+generator are specified and not yet reported.

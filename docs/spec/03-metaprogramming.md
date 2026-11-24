@@ -360,5 +360,5 @@ Bevy. So the evaluator is designed for speed from the start (spec 13):
 3. Calls are memoized on (function, interned arguments), persisted across builds.
 4. A JIT behind the `Evaluator` interface is a later option. It must reproduce the target model
    and is differential-tested against the interpreter.
-5. `vun check --meta-stats` reports evaluation time and generated code size per generator, so
-   the cost of a derive is visible.
+5. `vun check --meta-stats` reports the instantiations and generated code size of each generic, so
+   the cost of a derive is visible (decision 685). Evaluation steps per generator are not reported yet.

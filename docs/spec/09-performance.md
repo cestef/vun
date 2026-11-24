@@ -93,7 +93,8 @@ Monomorphization is the default and the only semantic model. Code size is contro
   exact because LIR is type-erased (spec 13);
 - `#[opt.level(.size)]` and `#[opt.inline(.never)]` on hot generic helpers;
 - `std.Dyn(I)` when dynamic dispatch is the better trade;
-- `vun check --meta-stats`, which reports generated code size per generic and per generator.
+- `vun check --meta-stats`, which reports the instantiations and the generated code size (MIR
+  statements) of each generic (decision 685).
 
 ## 5. Build profiles
 

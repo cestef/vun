@@ -10,6 +10,7 @@ Numbers 184 to 189, 217 to 220, 369 to 379, 452 to 469, 521 to 539, 544 to 559, 
 |---|----------|-------|
 | [658](658.md) | Commands show progress | 12 |
 | [684](684.md) | The command line has a closed vocabulary of verbs | 12 |
+| [685](685.md) | `vun check` reports wide intermediates and generic code size on request | 03, 04, 09, 13 |
 
 ## All
 
@@ -550,3 +551,4 @@ Numbers 184 to 189, 217 to 220, 369 to 379, 452 to 469, 521 to 539, 544 to 559, 
 | [682](682.md) | `vun util ffi bind --split --out <file>`, the file inside a package, binds the | accepted | 07, 12 |
 | [683](683.md) | A runtime without a C library has a heap | accepted | 08, 05 |
 | [684](684.md) | The command line has a closed vocabulary of verbs | proposed | 12 |
+| [685](685.md) | `vun check` reports wide intermediates and generic code size on request | proposed | 03, 04, 09, 13 |
