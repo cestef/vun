@@ -62,5 +62,5 @@ printf -v words ' %q' "$@"
 pin=
 $reserve && pin="taskset --cpu-list --pid $fastest \$\$ >/dev/null &&"
 status=0
-ssh "$host" "$pin . ~/.cargo/env && cd $(printf %q "$dir") &&$words" || status=$?
+ssh "$host" "$pin { [ ! -f ~/.cargo/env ] || . ~/.cargo/env; } && cd $(printf %q "$dir") &&$words" || status=$?
 exit "$status"
