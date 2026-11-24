@@ -4,6 +4,7 @@
 //! the same crate linked in or loaded, and asks nothing of the host.
 
 mod bindings;
+mod error;
 mod glob;
 mod protocol;
 mod remote;
@@ -18,6 +19,7 @@ use vun_codec::{Decode, Encode};
 pub use bindings::{
     Bindings, Bytes, Failure, Library, Missing, Part, Reason, Skipped, Unavailable, Unsupported,
 };
+pub use error::BindError;
 pub use glob::Glob;
 pub use protocol::{Call, Reply};
 pub use remote::Remote;
@@ -72,5 +74,5 @@ pub trait Binder: Send + Sync {
     ///
     /// # Errors
     /// Returns why nothing could be bound.
-    fn bind(&self, request: &Request) -> Result<Bindings, Failure>;
+    fn bind(&self, request: &Request) -> Result<Bindings, BindError>;
 }

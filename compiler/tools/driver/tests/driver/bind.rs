@@ -2,7 +2,7 @@
 //! their structs out as the C compiler does.
 
 use crate::support::{Fixture, built_component};
-use vun_binder::{Binder, Bytes, Failure, Glob, Library, Reason, Request, Unsupported};
+use vun_binder::{BindError, Binder, Bytes, Failure, Glob, Library, Reason, Request, Unsupported};
 use vun_driver::{Components, Provider, Registry};
 
 const HEADER: &str = "\
@@ -37,8 +37,8 @@ fn bindings_check_and_lay_structs_out_as_c_does() {
     let bindings = match vun_bind::CBinder.bind(&request) {
         Ok(bindings) => bindings,
         // Machines without libclang cannot run this; the command reports the same absence.
-        Err(Failure::Missing(_)) => return,
-        Err(failure) => panic!("{failure:?}"),
+        Err(BindError::Failed(Failure::Missing(_))) => return,
+        Err(error) => panic!("{error:?}"),
     };
     let reasons: Vec<_> = bindings.skipped.iter().map(|s| (s.name.as_str(), &s.reason)).collect();
     assert_eq!(
@@ -88,7 +88,7 @@ fn a_binder_loaded_from_a_library_binds_as_the_linked_one_does() {
     registry.load(&Components::at(built_component("vun-component-binder-c")));
     let loaded = registry.binders.get("c").expect("the library serves a binder");
     assert!(matches!(loaded.from, Provider::Loaded(_)));
-    assert_eq!(loaded.item.bind(&request), vun_bind::CBinder.bind(&request));
+    assert_eq!(loaded.item.bind(&request).unwrap(), vun_bind::CBinder.bind(&request).unwrap());
 }
 
 /// A library's header in one directory, which includes the one holding what it builds on.
@@ -133,8 +133,8 @@ fn a_request_binds_the_directories_it_names_and_only_what_it_asks_for() {
     };
     let bindings = match vun_bind::CBinder.bind(&request) {
         Ok(bindings) => bindings,
-        Err(Failure::Missing(_)) => return,
-        Err(failure) => panic!("{failure:?}"),
+        Err(BindError::Failed(Failure::Missing(_))) => return,
+        Err(error) => panic!("{error:?}"),
     };
     let text = &bindings.source;
     // What a name asks for brings what it is written with, from the other directory too, an
@@ -195,8 +195,8 @@ fn bindings_split_by_directory_name_each_other_by_their_path() {
     assert_eq!(request.module, Some(vec!["demo".to_owned(), "sys".to_owned()]));
     let bindings = match vun_bind::CBinder.bind(&request) {
         Ok(bindings) => bindings,
-        Err(Failure::Missing(_)) => return,
-        Err(failure) => panic!("{failure:?}"),
+        Err(BindError::Failed(Failure::Missing(_))) => return,
+        Err(error) => panic!("{error:?}"),
     };
     let names: Vec<_> = bindings.parts.iter().map(|p| p.name.as_str()).collect();
     assert_eq!(names, ["dep", "front"]);

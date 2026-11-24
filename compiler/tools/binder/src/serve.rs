@@ -2,7 +2,7 @@
 
 use vun_component::{Asked, Interface, Kind};
 
-use crate::{Binder, Call, Reply};
+use crate::{Binder, Call, Failure, Reply};
 
 /// The interface of binders.
 pub struct Binders;
@@ -18,7 +18,7 @@ impl Interface for Binders {
     fn serve(binder: &Self::Service, call: Call, _: Asked<'_, Self>) -> Reply {
         match call {
             Call::Name => Reply::Name(binder.name()),
-            Call::Bind(request) => Reply::Bound(binder.bind(&request)),
+            Call::Bind(request) => Reply::Bound(binder.bind(&request).map_err(Failure::from)),
         }
     }
 }

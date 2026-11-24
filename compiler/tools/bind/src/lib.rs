@@ -20,7 +20,7 @@ mod split;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
-use vun_binder::{Bindings, Failure, Glob, Library, Missing, Request, Skipped, Unavailable};
+use vun_binder::{BindError, Bindings, Failure, Glob, Library, Missing, Request, Skipped, Unavailable};
 use vun_clang::{Clang, Cursor, Severity};
 
 pub use vun_binder::{Bytes, Reason, Unsupported};
@@ -82,7 +82,7 @@ impl vun_binder::Binder for CBinder {
     }
 
     /// Fails when libclang is missing, or the header does not parse.
-    fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
+    fn bind(&self, request: &Request) -> Result<Bindings, BindError> {
         let Request { header, args, reserved, scope, only, closed, libraries, module } = request;
         let clang = Clang::load().map_err(|missing| Failure::Missing(Self::missing(missing)))?;
         let unit = clang.parse(header, args).ok_or(Failure::Unreadable)?;
@@ -93,7 +93,7 @@ impl vun_binder::Binder for CBinder {
             .map(|d| d.text)
             .collect();
         if !errors.is_empty() {
-            return Err(Failure::Errors(errors));
+            return Err(Failure::Errors(errors).into());
         }
         // The header's own declarations, those of headers beside it, and those of the directories
         // asked for: by absolute paths, as `board.h` is beside `./other.h` but not

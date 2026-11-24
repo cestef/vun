@@ -1,9 +1,11 @@
+use std::error::Error;
 use std::path::PathBuf;
 
-use vun_component::Component;
+use vun_codec::Malformed;
+use vun_component::{Component, Fault};
 
 use crate::{
-    Binder, Binders, Bindings, Failure, Glob, Library, Missing, Reason, Remote, Request, Skipped,
+    BindError, Binder, Binders, Bindings, Failure, Glob, Library, Missing, Reason, Remote, Request, Skipped,
     Unavailable, Unsupported,
 };
 
@@ -15,9 +17,10 @@ impl Binder for Stub {
         "stub"
     }
 
-    fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
+    fn bind(&self, request: &Request) -> Result<Bindings, BindError> {
+        assert!(!request.header.ends_with("panics.h"), "told to");
         if request.header.ends_with("missing.h") {
-            return Err(Failure::Missing(Missing { oldest: 9, why: Unavailable::Old }));
+            return Err(Failure::Missing(Missing { oldest: 9, why: Unavailable::Old }).into());
         }
         let skipped = Skipped {
             name: request.reserved.join(","),
@@ -51,15 +54,16 @@ fn bindings_cross_the_boundary_with_what_was_left_out() {
     let remote = remote();
     assert_eq!(remote.name(), "stub");
     let request = request("board.h");
-    assert_eq!(remote.bind(&request), Stub.bind(&request));
+    assert_eq!(remote.bind(&request).unwrap(), Stub.bind(&request).unwrap());
 }
 
 #[test]
 fn a_failure_of_the_binder_arrives_as_it_was() {
-    assert_eq!(
-        remote().bind(&request("missing.h")),
-        Err(Failure::Missing(Missing { oldest: 9, why: Unavailable::Old }))
-    );
+    let error = remote().bind(&request("missing.h")).unwrap_err();
+    assert!(matches!(
+        error,
+        BindError::Failed(Failure::Missing(Missing { oldest: 9, why: Unavailable::Old }))
+    ));
 }
 
 #[test]
@@ -76,4 +80,19 @@ fn a_glob_matches_the_whole_name_with_stars_for_runs() {
     assert!(matches("a*b*c", "aXbYc"));
     assert!(matches("a*a", "aa"));
     assert!(!matches("a*a", "a"));
+}
+
+#[test]
+fn a_panic_of_the_component_is_a_fault_not_a_failure() {
+    let error = remote().bind(&request("panics.h")).unwrap_err();
+    assert!(matches!(error, BindError::Component(Fault::Panicked(message)) if message.contains("told to")));
+}
+
+#[test]
+fn a_fault_keeps_its_source() {
+    let error = BindError::from(Fault::Malformed(Malformed::Invariant));
+    let source = error.source().expect("a fault is the source of the error");
+    let fault = source.downcast_ref::<Fault>().expect("the source is the fault itself");
+    assert!(matches!(fault, Fault::Malformed(Malformed::Invariant)));
+    assert!(fault.source().is_some_and(<dyn Error>::is::<Malformed>));
 }

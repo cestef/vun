@@ -3,7 +3,9 @@
 use std::io;
 use std::path::{Path, PathBuf};
 
-use vun_binder::{Bytes, Failure, Glob, Library, Reason, Request, Skipped, Unavailable, Unsupported};
+use vun_binder::{
+    BindError, Bytes, Failure, Glob, Library, Reason, Request, Skipped, Unavailable, Unsupported,
+};
 use vun_command::{Args, Arity, Command, CommandVerb, Example, Outcome, Param, PathKind, Values};
 use vun_diag::{ChildKind, Diagnostic, Msg, Severity, errors};
 use vun_fs::Edit;
@@ -98,8 +100,13 @@ fn bind(session: &mut Session, args: &Args, shell: &mut Shell<'_>) -> io::Result
     };
     let bindings = match binder.item.bind(&request) {
         Ok(bindings) => bindings,
-        Err(failure) => {
+        Err(BindError::Failed(failure)) => {
             session.diag.error(failed(&header, failure));
+            return Ok(Outcome::Failure);
+        }
+        Err(BindError::Component(fault)) => {
+            let msg = Msg::new().text("the binder ").code(C).text(" failed");
+            session.diag.error(Diagnostic::error(errors::COMPONENT_FAILED, msg).caused_by(&fault));
             return Ok(Outcome::Failure);
         }
     };

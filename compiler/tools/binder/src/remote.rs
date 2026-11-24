@@ -3,7 +3,7 @@
 use vun_component::{Component, Fault};
 use vun_trace::tracing::debug;
 
-use crate::{Binder, Binders, Bindings, Call, Failure, Request};
+use crate::{BindError, Binder, Binders, Bindings, Call, Request};
 
 /// A binder served by a component.
 #[derive(Clone)]
@@ -30,11 +30,8 @@ impl Binder for Remote {
     }
 
     /// A component that cannot be reached is as unreadable as the header would be.
-    fn bind(&self, request: &Request) -> Result<Bindings, Failure> {
-        let reply = self.component.call::<Binders>(&Call::Bind(request.clone()), &|()| ());
-        match reply.and_then(|reply| reply.bound().map_err(Fault::Malformed)) {
-            Ok(bound) => bound,
-            Err(fault) => Err(Failure::Errors(vec![fault.to_string()])),
-        }
+    fn bind(&self, request: &Request) -> Result<Bindings, BindError> {
+        let reply = self.component.call::<Binders>(&Call::Bind(request.clone()), &|()| ())?;
+        reply.bound().map_err(Fault::Malformed)?.map_err(BindError::Failed)
     }
 }
