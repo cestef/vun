@@ -86,6 +86,7 @@ impl<T> PartialEq for Interned<T> {
 
 impl<T> Eq for Interned<T> {}
 
+/// The stable hash of the value, computed once when it was interned: equal values are one entry.
 impl<T> Hash for Interned<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.hash);

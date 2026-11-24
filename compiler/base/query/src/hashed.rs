@@ -45,12 +45,15 @@ impl<K> Hashed<K> {
     }
 }
 
+/// Replays the hash computed once from the key, which is all a table needs: equality still
+/// compares the keys.
 impl<K> Hash for Hashed<K> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.hash);
     }
 }
 
+/// The same hash as the [`Hashed`] key it looks for.
 impl<K> Hash for Probe<'_, K> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.hash);

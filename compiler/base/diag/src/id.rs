@@ -120,6 +120,7 @@ impl PartialEq for DiagId {
 
 impl Eq for DiagId {}
 
+/// By binding path alone, as it compares.
 impl Hash for DiagId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.path().hash(state);

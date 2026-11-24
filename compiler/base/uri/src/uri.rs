@@ -193,6 +193,7 @@ impl<K: Kind> PartialEq for UriOf<K> {
 
 impl<K: Kind> Eq for UriOf<K> {}
 
+/// By the text alone, as it compares; `parts` is derived from the text and `kind` is a marker.
 impl<K: Kind> Hash for UriOf<K> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.text.hash(state);

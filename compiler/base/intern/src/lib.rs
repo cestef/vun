@@ -64,6 +64,8 @@ impl PartialEq for Symbol {
 
 impl Eq for Symbol {}
 
+/// The stable hash of the text, computed once at interning: equal symbols are equal texts, and
+/// the hash depends on the text alone, so it is the same in every process.
 impl Hash for Symbol {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write_u64(self.0.hash);
