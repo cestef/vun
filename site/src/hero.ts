@@ -43,7 +43,7 @@ export async function hero(slot: HTMLElement) {
     const skip = () => lockup.skip();
     addEventListener('pointerdown', skip, {signal: playing.signal});
     addEventListener('keydown', skip, {signal: playing.signal});
-    await lockup.play();
+    await lockup.play(() => page?.classList.add(ARRIVED));
     playing.abort();
   }
   page?.classList.add(ARRIVED);
@@ -125,7 +125,6 @@ export async function hero(slot: HTMLElement) {
   body.setAttribute('tabindex', '0');
   body.setAttribute('role', 'button');
   body.setAttribute('aria-label', 'poke the mascot');
-  lockup.hit.addEventListener('pointerenter', (event) => hovering(event) && void lockup.land(0.5));
   lockup.hit.addEventListener('pointerdown', () => void lockup.land(0.8));
 
   // The eyes follow the pointer, once a frame at most.

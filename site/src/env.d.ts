@@ -1,22 +1,11 @@
-/// <reference types="vite/client" />
+/// <reference types="astro/client" />
 
-declare module 'virtual:brand.css';
-
-declare module 'virtual:highlight' {
-  const highlight: {grammar: {name: string}; themes: {name: string}[]};
-  export default highlight;
-}
-
-declare module 'virtual:toolchain' {
-  const id: string;
-  export default id;
-}
-
-declare module 'virtual:lessons' {
-  import type {Lesson} from './play/lessons';
-  const lessons: Lesson[];
-  export default lessons;
-}
+// The build of the compiler by its hash, and the grammar and themes the playground colors with:
+// both read by the config at build time.
+declare const __TOOLCHAIN__: string;
+// The workspace's version, from its `Cargo.toml`.
+declare const __VERSION__: string;
+declare const __HIGHLIGHT__: {grammar: {name: string}; themes: {name: string}[]};
 
 declare module '*.vun?raw' {
   const text: string;

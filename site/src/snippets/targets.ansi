@@ -1,0 +1,8 @@
+[1m[32mtarget[0m                      [1m[32mbackend[0m  [1m[32mlinker[0m  [1m[32mruns[0m          [1m[32mstatus[0m
+[1m[36mbare.thumbv7em.eabihf[0m       [1m[36mc[0m        [1m[36mgnu[0m     [2melsewhere[0m     [1m[32mready[0m
+[1m[36mlinux.arm64.gnu[0m             [1m[36mnative[0m   [1m[36mgnu[0m     [1m[36mqemu-aarch64[0m  [1m[32mready[0m
+[1m[36mlinux.riscv64.gnu[0m           [1m[36mc[0m        [1m[36mgnu[0m     [2melsewhere[0m     [1m[93mlacks [0m[2ma cross [0m[1m[36mcc[0m
+[1m[36mlinux.x86_64.gnu[0m            [1m[36mnative[0m   [1m[36mgnu[0m     [1m[32mhere[0m          [1m[32mready[0m
+[1m[36mmacos.arm64.darwin[0m          [1m[36mnative[0m   [1m[36mlld[0m     [2melsewhere[0m     [1m[32mready[0m
+[1m[36mwasi.wasm32.p1[0m              [1m[36mwasm[0m     [1m[36mwasm[0m    [1m[36mwasmtime[0m      [1m[32mready[0m
+[1m[36mwindows.x86.msvc[0m            [1m[36mc[0m        [1m[36mlld[0m     [2melsewhere[0m     [1m[32mready[0m

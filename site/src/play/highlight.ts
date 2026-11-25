@@ -5,7 +5,7 @@ import {type HighlighterCore, createHighlighterCoreSync} from '@shikijs/core';
 import {createJavaScriptRegexEngine} from '@shikijs/engine-javascript';
 import {RangeSetBuilder} from '@codemirror/state';
 import {Decoration, type DecorationSet, type EditorView, ViewPlugin, type ViewUpdate} from '@codemirror/view';
-import highlight from 'virtual:highlight';
+const highlight = __HIGHLIGHT__;
 
 const THEMES = {light: 'light', dark: 'dark'};
 

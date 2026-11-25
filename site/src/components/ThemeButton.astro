@@ -1,0 +1,19 @@
+---
+// A ring, and inside it a fill sweeping in from the right as far as the theme is dark (none for
+// light, half for the system's, all for dark), its extent set by the stylesheet from the
+// button's `data-theme`, which `theme.ts` keeps.
+const id = `theme-inside-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<button class="theme" type="button" aria-label="theme">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <defs><clipPath id={id}><circle cx="12" cy="12" r="5.6"></circle></clipPath></defs>
+    <circle class="ring" cx="12" cy="12" r="8.4"></circle>
+    <g clip-path={`url(#${id})`}><rect class="fill" x="6" y="6" width="12" height="12"></rect></g>
+  </svg>
+</button>
+
+<script>
+  import {themed} from '../theme';
+  themed(document.querySelectorAll<HTMLButtonElement>('button.theme'));
+</script>

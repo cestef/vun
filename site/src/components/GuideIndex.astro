@@ -1,0 +1,23 @@
+---
+import {getEntry} from 'astro:content';
+
+import {GUIDE} from '../guide';
+import {href} from '../site';
+import Paths from './Paths.astro';
+
+// A group's pages: those it names, or the first page of its directory, which leads to the rest.
+const entries = await Promise.all(
+  GUIDE.map(async (group) => {
+    const ids = group.pages ?? [group.directory!];
+    const pages = await Promise.all(ids.map((id) => getEntry('docs', id)));
+    return {label: group.label, pages: pages.filter((page) => page !== undefined)};
+  }),
+);
+---
+
+{entries.map((group) => (
+  <section class="group">
+    <h2>{group.label}</h2>
+    <Paths entries={group.pages.map((page) => ({href: href(`${page.id}/`), name: page.data.title, text: page.data.description ?? ''}))} />
+  </section>
+))}

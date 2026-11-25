@@ -1,0 +1,11 @@
+---
+// A lesson's editor: the page leaves what it needs in the element, and the script puts the lesson there.
+const {lesson} = Astro.props;
+---
+
+<div class="lesson-mount" data-lesson={JSON.stringify(lesson)}></div>
+
+<script>
+  import {mountLesson} from '../learn/mount';
+  for (const root of document.querySelectorAll<HTMLElement>('[data-lesson]')) mountLesson(root);
+</script>

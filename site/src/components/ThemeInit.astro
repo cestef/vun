@@ -1,0 +1,13 @@
+---
+import {THEME_KEY} from '../site';
+---
+
+<script is:inline define:vars={{key: THEME_KEY}}>
+  // The reader's theme before the page paints: the stored one, else the system's.
+  (function () {
+    var stored = null;
+    try { stored = localStorage.getItem(key); } catch (e) {}
+    var dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : dark ? 'dark' : 'light';
+  })();
+</script>

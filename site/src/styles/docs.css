@@ -1,0 +1,130 @@
+/* The guide: Starlight dressed in the brand's tokens, so that it reads as the same site as the landing page and the playground. */
+
+:root, :root[data-theme] {
+  --sl-font: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --sl-font-mono: var(--sl-font);
+  --sl-color-bg: var(--background);
+  --sl-color-bg-nav: var(--background);
+  --sl-color-bg-sidebar: var(--background);
+  --sl-color-bg-inline-code: var(--echo);
+  --sl-color-text: var(--text);
+  --sl-color-text-accent: var(--accent);
+  --sl-color-white: var(--ink);
+  --sl-color-black: var(--background);
+  --sl-color-gray-1: var(--ink);
+  --sl-color-gray-2: var(--text);
+  --sl-color-gray-3: var(--quiet);
+  --sl-color-gray-4: var(--muted);
+  --sl-color-gray-5: var(--code-border);
+  --sl-color-gray-6: var(--echo);
+  --sl-color-gray-7: var(--echo);
+  --sl-color-hairline: var(--code-border);
+  --sl-color-hairline-light: var(--code-border);
+  --sl-color-hairline-shade: var(--code-border);
+  --sl-color-accent: var(--accent);
+  --sl-color-accent-high: var(--accent);
+  --sl-color-accent-low: color-mix(in srgb, var(--accent) 14%, var(--background));
+  --sl-text-body: 0.9375rem;
+  --sl-text-h1: 2rem;
+  --sl-text-h2: 1.3125rem;
+  --sl-text-h3: 1.0625rem;
+  --sl-text-h4: 0.9375rem;
+  --sl-line-height: 1.7;
+  --sl-content-width: 46rem;
+  --sl-nav-height: 3.75rem;
+  --sl-sidebar-width: 17rem;
+}
+
+/* The bar of the guide: the site's, with the search beside the mark. */
+.header { padding: 0; border-bottom: 1px solid var(--line); }
+.docs-bar { position: static; height: 100%; border: 0; }
+.docs-bar .search button[data-open-modal] {
+  gap: var(--space-2);
+  width: 260px;
+  height: 34px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--raised);
+  color: var(--quiet);
+  font-size: var(--text-s);
+  transition: border-color 0.15s, color 0.15s;
+}
+.docs-bar .search button[data-open-modal]:hover { border-color: var(--muted); color: var(--text); }
+.docs-bar .search button[data-open-modal] > kbd { display: flex; gap: 3px; margin-left: auto; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--background); color: var(--quiet); font-family: inherit; font-size: 11px; line-height: 1.3; }
+.docs-bar .search button[data-open-modal] > kbd kbd { padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+
+/* The sidebar: groups named in the ink, pages in a quieter voice, the page you are on raised. */
+.sidebar-pane { border-inline-end: 1px solid var(--line); }
+.sidebar-content { padding: var(--space-5) var(--space-4); font-size: var(--text-s); }
+.sidebar-content .top-level > li + li { margin-top: var(--space-4); }
+.sidebar-content summary { padding: var(--space-1) var(--space-2); }
+.sidebar-content .group-label .large { color: var(--ink); font-size: var(--text-s); font-weight: 650; }
+.sidebar-content .caret { width: 14px; height: 14px; color: var(--quiet); }
+.sidebar-content ul ul { margin-top: var(--space-1); margin-inline-start: var(--space-2); padding-inline-start: 0; border-inline-start: 1px solid var(--line); }
+.sidebar-content ul ul li { margin: 0; padding-inline-start: var(--space-2); border: 0; }
+.sidebar-content a { padding: 5px var(--space-2); border-radius: var(--r-s); color: var(--quiet); font-size: var(--text-s); transition: color 0.15s, background-color 0.15s; }
+.sidebar-content a:hover { color: var(--ink); background: color-mix(in srgb, var(--echo) 60%, transparent); }
+.sidebar-content a[aria-current='page'] { background: var(--echo); color: var(--ink); font-weight: 650; }
+.sidebar-content a[aria-current='page'] span { color: inherit; }
+.sidebar-content a.done::after { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 8px; border-radius: 50%; background: var(--code-string); vertical-align: middle; }
+.sl-markdown-content :not(a) > code:not(pre code) { border-radius: 5px; }
+.sl-markdown-content h1, .sl-markdown-content h2, .sl-markdown-content h3 { letter-spacing: -0.01em; text-wrap: balance; }
+.content-panel h1 { letter-spacing: -0.02em; }
+.sl-markdown-content a:not(.sl-anchor-link) { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.sl-markdown-content table { display: table; width: 100%; font-size: 0.8125rem; }
+.sl-markdown-content :is(td, th) { overflow-wrap: anywhere; }
+.sl-markdown-content td:first-child code { white-space: nowrap; }
+.pagination-links a { border-radius: var(--r-m); transition: border-color 0.15s, transform 0.15s; }
+.pagination-links a:hover { transform: translateY(-2px); }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+.sl-anchor-link { color: var(--quiet); }
+.sl-anchor-link:hover { color: var(--accent); }
+.sl-markdown-content h2 { margin-top: var(--space-7); }
+.sl-markdown-content h3 { margin-top: var(--space-6); }
+.sl-markdown-content > :first-child { margin-top: 0; }
+.right-sidebar-panel h2 { font-size: var(--text-s); }
+
+/* Code in the guide: the panels of the landing page. A command's line starts with the prompt, drawn so that copying leaves it out. */
+.expressive-code { margin-block: var(--space-5); }
+.expressive-code, .expressive-code * {
+  --ec-brdCol: var(--code-border);
+  --ec-codeBg: var(--code-background);
+  --ec-frm-edBg: var(--code-background);
+  --ec-frm-trmBg: var(--code-background);
+  --ec-frm-edTabBarBg: var(--code-bar);
+  --ec-frm-edTabBarBrdBtmCol: var(--code-border);
+  --ec-frm-edActTabBg: var(--code-background);
+  --ec-frm-edActTabFg: var(--muted);
+  --ec-frm-edActTabIndTopCol: var(--accent);
+  --ec-frm-edActTabIndBtmCol: transparent;
+  --ec-frm-trmTtbBg: var(--code-bar);
+  --ec-frm-trmTtbBrdBtmCol: var(--code-border);
+  --ec-frm-inlBtnBg: var(--code-bar);
+  --ec-frm-inlBtnFg: var(--muted);
+  --ec-frm-inlBtnBrd: var(--code-border);
+  --ec-frm-inlBtnBrdOpa: 1;
+  --ec-frm-tooltipSuccessBg: var(--accent);
+  --ec-frm-tooltipSuccessFg: var(--background);
+}
+.expressive-code pre[data-language='sh'] .ec-line .code::before { content: '$ '; color: var(--accent); }
+.expressive-code .copy button { border-radius: var(--r-s); transition: color 0.15s, border-color 0.15s; }
+.expressive-code .copy button:hover { color: var(--ink); }
+
+/* A command and what it printed read as one panel: the output hangs under the command, a hairline between them. */
+.sl-markdown-content .expressive-code:has(pre[data-language='sh']):has(+ .expressive-code pre[data-language='ansi']) { margin-bottom: 0; }
+.expressive-code:has(pre[data-language='sh']):has(+ .expressive-code pre[data-language='ansi']) :is(.frame, pre) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.sl-markdown-content .expressive-code:has(pre[data-language='sh']) + .expressive-code:has(pre[data-language='ansi']) { margin-top: -1px; }
+.expressive-code:has(pre[data-language='sh']) + .expressive-code:has(pre[data-language='ansi']) :is(.frame, pre) { border-top-left-radius: 0; border-top-right-radius: 0; }
+
+/* The guide's first page: its groups, each a short index. */
+.sl-markdown-content .group h2 { margin: var(--space-7) 0 var(--space-3); font-size: var(--text-l); }
+
+/* On a narrow screen the guide's menu holds the places, so the bar keeps the mark, the search and the theme, and leaves room for the menu's button. */
+@media (max-width: 50rem) {
+  .docs-bar { padding-inline-end: calc(var(--space-5) + 44px); }
+  .docs-bar nav a { display: none; }
+  .docs-bar .search button[data-open-modal] { width: auto; height: 34px; padding: 0 var(--space-3); }
+  .docs-bar .search button[data-open-modal] > kbd { display: none; }
+}

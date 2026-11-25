@@ -1,0 +1,21 @@
+---
+import {Code} from 'astro:components';
+
+import {highlighting} from '../../build/highlight';
+
+interface Props {
+  code: string;
+  // `vun` for a program, `ansi` for what a terminal printed with its escape codes.
+  lang: 'vun' | 'ansi';
+  // What the panel shows: a file's name, or the command that printed it.
+  title: string;
+}
+const {code, lang, title} = Astro.props;
+const {grammar, themes} = highlighting();
+const [light, dark] = ['light', 'dark'].map((name) => themes.find((theme) => theme.name === name)!);
+---
+
+<figure class="snippet">
+  <figcaption class:list={[lang]}>{lang === 'ansi' && <span class="prompt">$ </span>}{title}</figcaption>
+  <Code code={code.trimEnd()} lang={lang === 'vun' ? (grammar as never) : lang} themes={{light: light as never, dark: dark as never}} defaultColor="light" />
+</figure>

@@ -1,0 +1,21 @@
+---
+import '../styles/paths.css';
+import Icon from './Icon.astro';
+
+interface Props {
+  // Each place: where it is, its name, and what it holds, with code between backticks as Markdown writes it.
+  entries: {href: string; name: string; text: string}[];
+}
+const {entries} = Astro.props;
+---
+
+<ul class="paths not-content">
+  {entries.map((entry) => (
+    <li>
+      <a href={entry.href}>
+        <span class="name">{entry.name}<Icon name="arrow" /></span>
+        <span class="text">{entry.text.split('`').map((part, i) => (i % 2 === 1 ? <code>{part}</code> : part))}</span>
+      </a>
+    </li>
+  ))}
+</ul>

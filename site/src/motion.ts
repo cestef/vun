@@ -69,14 +69,14 @@ export class Value<T> {
       return Promise.resolve(true);
     }
     const from = this.current;
+    // The clock starts when the move is asked for, as the timers of `wait` do, so that frames and timers keep one time.
+    const start = performance.now();
     return new Promise((done) => {
-      let start = -1;
       let live = true;
       const tween: Tween = {
         step: (now) => {
           if (!live) return false;
-          if (start < 0) start = now;
-          const t = Math.min(1, (now - start) / (seconds * 1000));
+          const t = Math.min(1, Math.max(0, now - start) / (seconds * 1000));
           this.show(mix(from, target, easing(t)));
           if (t === 1) done(true);
           return t < 1;

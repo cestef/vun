@@ -20,10 +20,12 @@ const WEIGHT = Number(strokes.getAttribute('stroke-width'));
 const BASELINE = HEIGHT - WEIGHT;
 const MIDDLE = {x: WIDTH / 2, y: HEIGHT / 2};
 
-// The pen's dot; how far above its place the mascot drops from; the share of its size the word
-// and the mascot together take, to fit.
+// The pen's dot; how far above its place the mascot drops from, short enough to stay in the
+// lockup's frame; the share of its fall it takes to fade in; the share of its size the word and
+// the mascot together take, to fit.
 const PEN = 7;
-const DROP = 370;
+const DROP = 140;
+const APPEAR = 0.6;
 const ROOM = 0.86;
 
 // A stroke drawn up to `end` of its length, with a pen at its end. Browsers start a dash anew on
@@ -72,6 +74,8 @@ export class Lockup {
   private readonly tip: Node;
   private readonly v: Stroke;
   private readonly un: Stroke;
+  // How far the mascot has faded in.
+  private readonly shown: Value<number>;
 
   constructor() {
     this.v = new Stroke(V, 'v');
@@ -94,7 +98,8 @@ export class Lockup {
     // It stands where the word leaves it room, in the root's space, which the word's slide leaves.
     this.mascot.root.set({x: room.x, y: BASELINE - MIDDLE.y + WEIGHT / 2, scale: [room.size, room.size]});
     this.mascot.stand();
-    this.mascot.root.group.style.visibility = 'hidden';
+    this.shown = new Value(0, (opacity) => this.mascot.root.group.style.setProperty('opacity', String(opacity)));
+    this.shown.set(0);
   }
 
   // The mascot's size per unit of the view box, how far the word moves left to center the two,
@@ -121,17 +126,19 @@ export class Lockup {
     this.mascot.root.set({y: this.mascot.ground});
     this.lockup.set({x: -this.room().shift});
     this.root.set({scale: [ROOM, ROOM]});
-    this.mascot.root.group.style.visibility = '';
+    this.shown.set(1);
     this.mascot.hold('calm');
     this.mascot.stand();
   }
 
-  // The short sting: traced at its pace, landed, then the mascot welcomed. Ended early by `skip`.
-  async play(): Promise<void> {
+  // The short sting: traced at its pace, landed, then the mascot welcomed; `landed` is called as the
+  // word lands, for what arrives with the mascot. Ended early by `skip`.
+  async play(landed: () => void): Promise<void> {
     const live = (this.sting = this.stings.begin());
     this.v.end.set(0);
     this.un.end.set(0);
     if (!(await wait(SHORT.start)) || !live() || !(await this.draw(SHORT.pace))) return;
+    landed();
     await all(this.land(), after(SHORT.welcome, () => this.welcome(), live));
   }
 
@@ -161,21 +168,20 @@ export class Lockup {
   land(force = 1): Move {
     const live = this.landings.begin();
     const squash = (x: number, y: number): [number, number] => [1 + x * force, 1 + y * force];
-    const at = this.word.place.get();
     return all(
-      this.word.place.through(
-        [{...at, scale: squash(0.08, -0.12)}, 0.12, ease.outCubic],
-        [{...at, scale: squash(-0.04, 0.06)}, 0.16, ease.inOutCubic],
-        [{...at, scale: squash(0.02, -0.02)}, 0.14, ease.inOutCubic],
-        [{...at, scale: [1, 1]}, 0.16, ease.inOutCubic],
+      this.word.scale.through(
+        [squash(0.08, -0.12), 0.12, ease.outCubic],
+        [squash(-0.04, 0.06), 0.16, ease.inOutCubic],
+        [squash(0.02, -0.02), 0.14, ease.inOutCubic],
+        [[1, 1], 0.16, ease.inOutCubic],
       ),
       after(0.1, () =>
-        this.tip.place.through(
+        this.tip.rotation.through(
           // Mostly away from the u, which it would cross.
-          [{...this.tip.place.get(), rotation: -9 * force}, 0.14, ease.outCubic],
-          [{...this.tip.place.get(), rotation: 3 * force}, 0.18, ease.inOutSine],
-          [{...this.tip.place.get(), rotation: -2 * force}, 0.16, ease.inOutSine],
-          [{...this.tip.place.get(), rotation: 0}, 0.18, ease.inOutSine],
+          [-9 * force, 0.14, ease.outCubic],
+          [3 * force, 0.18, ease.inOutSine],
+          [-2 * force, 0.16, ease.inOutSine],
+          [0, 0.18, ease.inOutSine],
         ),
         live,
       ),
@@ -188,14 +194,14 @@ export class Lockup {
     const {mascot, sting: live} = this;
     const ground = mascot.ground;
     mascot.root.set({y: ground - DROP});
-    mascot.root.group.style.visibility = '';
     const fell = await all(
       this.lockup.to({x: -this.room().shift}, 0.6, ease.inOutCubic),
       this.root.to({scale: [ROOM, ROOM]}, 0.9, ease.inOutCubic),
       after(
         FALL.after,
         async () => {
-          if (!(await mascot.root.to({y: ground}, FALL.length, ease.inCubic))) return false;
+          const fallen = await all(this.shown.to(1, FALL.length * APPEAR, ease.outCubic), mascot.root.to({y: ground}, FALL.length, ease.inCubic));
+          if (!fallen) return false;
           return all(mascot.land(0.2), this.land(0.4), after(0.15, () => mascot.feel('glee', 0.35), live));
         },
         live,

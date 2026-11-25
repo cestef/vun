@@ -1,0 +1,40 @@
+---
+title: "Install"
+description: "Download the installer, read it, run it."
+---
+
+import Install from '../../../components/Install.astro';
+
+Vun ships as one toolchain per release: the `vun` binary, the standard library and the components a build needs. The installer fetches the latest one.
+
+## Install a release
+
+The installer is a file on this site, so you can read it before it runs. Nothing is piped into a shell.
+
+<Install />
+
+It downloads the archive for your machine, checks the release's `SHA256SUMS` against a public key written in the script, checks the archive against `SHA256SUMS`, and only then runs anything from it. The unpacked toolchain installs itself with `vun toolchain update`: it lands in `~/.local/share/vun/toolchains` and `~/.local/bin/vun` is linked to it.
+
+Releases exist for Linux and macOS, on x86-64 and arm64. Verifying needs OpenSSL 3 (or LibreSSL 3.7) and `sha256sum` or `shasum`. Make sure `~/.local/bin` is on your `PATH`, then check:
+
+```sh
+vun --version
+```
+
+## Update
+
+```sh
+vun toolchain update
+```
+
+This installs the latest release beside the old ones and makes it the default. [Toolchains and editors](../toolchains/) covers keeping several.
+
+## Build from source
+
+You need a recent Rust toolchain (1.90 or newer) and a C compiler. From a checkout of the repository:
+
+```sh
+cargo run -q -p vun-cli -- run corpus/accept/programs/tour.vun
+```
+
+> Vun is experimental. The language and the toolchain change between releases, so do not build anything that matters on it yet.

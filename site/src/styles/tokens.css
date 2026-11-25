@@ -1,0 +1,36 @@
+/* The vocabulary every page draws with: a spacing scale on a 4px step, a type scale, three radii, one
+   hairline, one raised and one sunk surface. The colors come from `build/brand.ts`. */
+
+:root {
+  --r-s: 8px;
+  --r-m: 12px;
+  --r-l: 16px;
+  --line: var(--code-border);
+  /* Secondary text: the palette's muted pulled towards the ink, enough to read small text at AA in both schemes. */
+  --quiet: color-mix(in srgb, var(--muted) 72%, var(--ink));
+  --raised: var(--code-bar);
+  --sunk: var(--code-background);
+  --page: 1080px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+  --space-9: 112px;
+  --text-s: 13px;
+  --text-m: 15px;
+  --text-l: 18px;
+  --title-s: 22px;
+  --title-m: 30px;
+  --title-l: 44px;
+}
+
+/* Code colored by the grammar: the light color inline, the dark one as `--shiki-dark`. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .shiki span, :root:not([data-theme='light']) .astro-code span, :root:not([data-theme='light']) .tok { color: var(--shiki-dark) !important; font-style: var(--shiki-dark-font-style) !important; }
+}
+:root[data-theme='dark'] .shiki span, :root[data-theme='dark'] .astro-code span, :root[data-theme='dark'] .tok { color: var(--shiki-dark) !important; font-style: var(--shiki-dark-font-style) !important; }
+pre.shiki, pre.astro-code { margin: 0; padding: 0; background: transparent !important; white-space: pre; overflow-x: auto; }

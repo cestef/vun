@@ -1,10 +1,8 @@
 // The page's icons, drawn on one 24 unit grid with the same round stroke so that they sit together:
-// a table of paths by name, and `icon` making one. A page declares an icon as `data-icon="name"` on
-// the element that holds it, which `icons` fills.
+// a table of paths by name, drawn by `ui/Icon` in an island and `components/Icon` on a page.
 
-import {make} from './svg';
-
-const PATHS = {
+export const PATHS = {
+  arrow: ['M4.5 12h15', 'M13.5 6l6 6-6 6'],
   alert: ['M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17', 'M12 8v5', 'M12 16.2h.01'],
   book: ['M5 5.5A1.5 1.5 0 0 1 6.5 4H18v13H6.5A1.5 1.5 0 0 0 5 18.5z', 'M5 18.5A1.5 1.5 0 0 0 6.5 20H18v-3'],
   bulb: ['M9.5 18h5', 'M10.5 21h3', 'M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z'],
@@ -31,15 +29,3 @@ const PATHS = {
 } satisfies Record<string, string[]>;
 
 export type IconName = keyof typeof PATHS;
-
-export function icon(name: IconName): SVGSVGElement {
-  return make('svg', {viewBox: '0 0 24 24', class: `icon icon-${name}`, 'aria-hidden': 'true'}, ...PATHS[name].map((d) => make('path', {d})));
-}
-
-// Puts the icon each `data-icon` names in its element, before whatever it holds.
-export function icons(root: ParentNode = document) {
-  for (const slot of root.querySelectorAll<HTMLElement>('[data-icon]')) {
-    slot.prepend(icon(slot.dataset.icon as IconName));
-    delete slot.dataset.icon;
-  }
-}

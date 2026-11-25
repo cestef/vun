@@ -2,3 +2,4 @@ node_modules
 dist
 # written by `vun doc --library -o site/public/api`
 /public/api
+.astro

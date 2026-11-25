@@ -1,0 +1,10 @@
+---
+import source from '../../../assets/logo/mark/adaptive.svg?raw';
+
+// The mark's stroke without its own style, which would reach every path of the page.
+const viewBox = /viewBox="([^"]*)"/.exec(source)?.[1];
+const path = /<path ([^>]*?)\/?>/.exec(source)?.[1] ?? '';
+const attributes = Object.fromEntries([...path.matchAll(/([\w-]+)="([^"]*)"/g)].map((match) => [match[1], match[2]]));
+---
+
+<svg class="mark" viewBox={viewBox} aria-hidden="true"><path class="v" {...attributes} /></svg>

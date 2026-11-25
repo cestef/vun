@@ -1,0 +1,16 @@
+---
+import {REPOSITORY, SECTIONS, href} from '../site';
+import Mark from './Mark.astro';
+import ThemeButton from './ThemeButton.astro';
+
+const path = Astro.url.pathname;
+const current = SECTIONS.filter((section) => path.startsWith(href(section.section))).sort((a, b) => b.section.length - a.section.length)[0];
+---
+
+<a class="home" href={href()} aria-label="vun, home"><Mark /></a>
+<slot />
+<nav>
+  {SECTIONS.map((section) => <a href={href(section.path)} aria-current={section === current ? 'page' : undefined}>{section.name}</a>)}
+  <a href={REPOSITORY}>github</a>
+  <ThemeButton />
+</nav>

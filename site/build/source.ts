@@ -1,7 +1,8 @@
 import {readFileSync, readdirSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
 
-export const REPOSITORY_DIR = fileURLToPath(new URL('../..', import.meta.url));
+// The repository's root, the site's parent: the site is built and tested from its own directory.
+export const REPOSITORY_DIR = `${resolve(process.cwd(), '..')}/`;
 
 // The text of the repository's file at `path`.
 export function source(path: string): string {
@@ -15,7 +16,9 @@ export function bytes(path: string): Buffer {
 
 // Every file below the repository's directory `dir`, by its path there.
 export function files(dir: string): string[] {
-  const entries = readdirSync(`${REPOSITORY_DIR}${dir}`, {recursive: true, withFileTypes: true});
   const root = `${REPOSITORY_DIR}${dir}`;
-  return entries.filter((e) => e.isFile()).map((e) => `${e.parentPath}/${e.name}`.slice(root.length).replace(/^\/+/, '')).sort();
+  return readdirSync(root, {recursive: true, withFileTypes: true})
+    .filter((entry) => entry.isFile())
+    .map((entry) => `${entry.parentPath}/${entry.name}`.slice(root.length).replace(/^\/+/, ''))
+    .sort();
 }

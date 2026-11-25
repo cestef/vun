@@ -1,0 +1,10 @@
+---
+import '../styles/install.css';
+---
+
+<div class="not-content" data-install></div>
+
+<script>
+  import {mountInstall} from '../ui/Install';
+  for (const root of document.querySelectorAll<HTMLElement>('[data-install]')) mountInstall(root);
+</script>

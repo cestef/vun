@@ -1,0 +1,22 @@
+/* The commands that install, in a box with a button that copies them. */
+
+.install {
+  position: relative;
+  max-width: 100%;
+  padding: var(--space-3) 52px var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--raised);
+  font-size: var(--text-s);
+  line-height: 1.7;
+}
+.install code { display: block; text-align: left; }
+.install .line { display: block; padding-left: 2ch; text-indent: -2ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.install .prompt { color: var(--accent); user-select: none; }
+
+.install button { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--code-border); border-radius: 9px; background: var(--code-background); color: var(--quiet); transition: color 0.15s, border-color 0.15s; }
+.install button:hover { color: var(--ink); border-color: var(--muted); }
+.install button .icon-check { display: none; }
+.install button.copied { color: var(--accent); border-color: var(--accent); }
+.install button.copied .icon-check { display: block; }
+.install button.copied .icon-copy { display: none; }

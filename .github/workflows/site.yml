@@ -1,4 +1,4 @@
-# The site (`site/`: the landing page and the playground), built and put on GitHub Pages when
+# The site (`site/`: the landing page, the guide with its course, and the playground), built and put on GitHub Pages when
 # `main` changes what it is made of. A pull request builds it too, to catch a break before it
 # lands, but deploys nothing.
 #
@@ -97,11 +97,11 @@ jobs:
         working-directory: site
         run: pnpm install --frozen-lockfile
 
-      # The lessons of the playground through the compiler just built, so that a language that
+      # The guide's programs and lessons through the compiler just built, so that a language that
       # moved under one fails here and not on the page.
-      - name: Check the lessons
+      - name: Check the guide and the lessons
         working-directory: site
-        run: pnpm check:lessons
+        run: pnpm test
 
       # Where the pages are served from: `/vun/` for a project's, nothing for a custom domain's.
       # A pull request, whose token may not read the settings, is built to be served from `/`.

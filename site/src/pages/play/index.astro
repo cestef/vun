@@ -1,0 +1,12 @@
+---
+import Page from '../../layouts/Page.astro';
+---
+
+<Page title="vun playground" description="Vun compiled and run in the browser." bodyClass="play">
+  <main class="mount" data-playground></main>
+</Page>
+
+<script>
+  import {mountPlayground} from '../../play/Playground';
+  mountPlayground(document.querySelector<HTMLElement>('[data-playground]')!);
+</script>

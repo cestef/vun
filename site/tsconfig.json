@@ -8,8 +8,26 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "lib": ["es2023", "dom", "dom.iterable"],
-    "types": ["vite/client", "node"]
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web"
   },
-  "include": ["src", "build", "scripts", "vite.config.ts"]
+  "include": [
+    "src",
+    "build",
+    "tests",
+    "astro.config.ts",
+    ".astro/types.d.ts"
+  ],
+  "extends": "astro/tsconfigs/strict",
+  "exclude": [
+    "dist"
+  ]
 }

@@ -1,0 +1,70 @@
+---
+import Footer from '../components/Footer.astro';
+import Paths from '../components/Paths.astro';
+import Install from '../components/Install.astro';
+import Snippet from '../components/Snippet.astro';
+import Page from '../layouts/Page.astro';
+import {href} from '../site';
+import duplicate from '../snippets/duplicate.ansi?raw';
+import hello from '../snippets/hello.vun?raw';
+import targets from '../snippets/targets.ansi?raw';
+import '../styles/landing.css';
+
+const paths = [
+  {path: 'docs/', name: 'Read the docs', text: 'Install it, write a first program, then the commands, packages and targets.'},
+  {path: 'docs/learn/', name: 'Take the course', text: 'Short lessons. Fix a program in the browser until its checks pass.'},
+  {path: 'play/', name: 'Open the playground', text: 'Compile and run anything you paste, then share it as a link.'},
+];
+---
+
+<Page title="vun" description="A smol systems programming language." bodyClass="landing">
+  <main>
+    <section class="hero">
+      <div class="logo" data-logo></div>
+      <p class="tagline">a smol systems programming language :3</p>
+      <p class="pitch">For code that runs under constraints: firmware, kernels, runtimes, servers.</p>
+      <Install />
+      <div class="actions">
+        <a class="button primary" href={href('docs/first-program/')}>Write a first program</a>
+        <a class="button" href={href('play/')}>Try it in the browser</a>
+      </div>
+    </section>
+
+    <section class="point">
+      <div class="words">
+        <h2>A program asks for what it uses</h2>
+        <p><code>main</code> is handed <code>sys</code>, its way out to the world. Printing means asking <code>sys</code> for standard output, so a function that is not given it cannot print, open a file or reach the network.</p>
+        <p>Nothing else is special either. The runtime is a function you call with your <code>main</code>, and the standard library has no powers your code lacks.</p>
+      </div>
+      <Snippet code={hello} lang="vun" title="main.vun" />
+    </section>
+
+    <section class="point flip">
+      <div class="words">
+        <h2>Errors have ids, places and fixes</h2>
+        <p>Every diagnostic carries a stable id and points into your source. <code>vun explain names.duplicate</code> prints its page, <code>vun fix</code> applies the fixes that exist, and <code>--format json</code> gives a program the same records as lines of JSON.</p>
+      </div>
+      <Snippet code={duplicate} lang="ansi" title="vun check" />
+    </section>
+
+    <section class="point">
+      <div class="words">
+        <h2>One binary, many targets</h2>
+        <p>A target is a path such as <code>bare.thumbv7em.eabihf</code>. <code>vun target list</code> shows what builds for each and what your machine lacks, a cross compiler or an emulator.</p>
+        <p>Linux, macOS, Windows, WASI and Arm and RISC-V microcontrollers are on the list today.</p>
+      </div>
+      <Snippet code={targets} lang="ansi" title="vun target list" />
+    </section>
+
+    <section class="paths-section">
+      <h2>Where to go next</h2>
+      <Paths entries={paths.map((entry) => ({...entry, href: href(entry.path)}))} />
+    </section>
+  </main>
+  <Footer />
+</Page>
+
+<script>
+  import {hero} from '../hero';
+  void hero(document.querySelector('[data-logo]') as HTMLElement);
+</script>

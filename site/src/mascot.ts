@@ -73,7 +73,7 @@ export class Mascot {
 
   // Where it stands now is its ground.
   stand() {
-    this.ground = this.root.place.get().y;
+    this.ground = this.root.position.get().y;
   }
 
   // Ends a hop or a squash in progress, returning to the ground and opening the eyes.
@@ -91,8 +91,8 @@ export class Mascot {
     return all(
       this.face.to(face, duration, ease.inOutCubic),
       blinking ? this.blink(duration) : Promise.resolve(true),
-      this.pose.place.to({...this.pose.place.get(), scale: [pose.stretch, 1 / pose.stretch]}, duration, ease.outBack),
-      this.pose.to({rotation: pose.lean}, duration, ease.inOutCubic),
+      this.pose.scale.to([pose.stretch, 1 / pose.stretch], duration, ease.outBack),
+      this.pose.rotation.to(pose.lean, duration, ease.inOutCubic),
     );
   }
 
@@ -111,10 +111,10 @@ export class Mascot {
 
   // Squashes as if landing, `depth` of its height.
   land(depth = 0.14): Move {
-    return this.squash.place.through(
-      [{...this.squash.place.get(), scale: [1 + depth, 1 - depth]}, 0.1, ease.outCubic],
-      [{...this.squash.place.get(), scale: [1 - depth / 3, 1 + depth / 3]}, 0.14, ease.inOutCubic],
-      [{...this.squash.place.get(), scale: [1, 1]}, 0.16, ease.inOutCubic],
+    return this.squash.scale.through(
+      [[1 + depth, 1 - depth], 0.1, ease.outCubic],
+      [[1 - depth / 3, 1 + depth / 3], 0.14, ease.inOutCubic],
+      [[1, 1], 0.16, ease.inOutCubic],
     );
   }
 
@@ -132,10 +132,7 @@ export class Mascot {
   private async leap(height: number, air: number, ground: number): Move {
     if (!(await this.squash.to({scale: [1.1, 0.9]}, 0.05, ease.outCubic))) return false;
     const up = await all(
-      this.squash.place.through(
-        [{...this.squash.place.get(), scale: [0.93, 1.08]}, air * 0.6, ease.outCubic],
-        [{...this.squash.place.get(), scale: [1, 1]}, air * 0.4],
-      ),
+      this.squash.scale.through([[0.93, 1.08], air * 0.6, ease.outCubic], [[1, 1], air * 0.4]),
       this.root.to({y: ground - height}, air, ease.outCubic),
     );
     if (!up) return false;
@@ -145,9 +142,9 @@ export class Mascot {
 
   // Swells and settles once, slowly, as in sleep.
   breathe(): Move {
-    return this.squash.place.through(
-      [{...this.squash.place.get(), scale: [1.04, 0.96]}, 0.8, ease.inOutSine],
-      [{...this.squash.place.get(), scale: [1, 1]}, 0.8, ease.inOutSine],
+    return this.squash.scale.through(
+      [[1.04, 0.96], 0.8, ease.inOutSine],
+      [[1, 1], 0.8, ease.inOutSine],
     );
   }
 }

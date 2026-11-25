@@ -1,36 +1,25 @@
 /* The workbench: the editor over a panel of problems and output, one screen high; the editor takes
-   the height the panel leaves. The tokens below are the whole vocabulary of the playground and the
-   course: three radii, one hairline, one raised surface. */
-
-.play {
-  --r-s: 8px;
-  --r-m: 12px;
-  --r-l: 16px;
-  --line: var(--code-border);
-  --raised: var(--code-bar);
-  --sunk: var(--code-background);
-}
+   the height the panel leaves. The tokens it draws with are `styles/tokens.css`. */
 
 body.play { height: 100svh; }
-/* The bar lines up with the workbench below it, not with the landing page's column. */
-body.play .bar { padding-inline: max(16px, calc((100vw - 1760px) / 2 + 16px)); }
 
-.workbench { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 1760px; margin: 0 auto; padding: 0 16px 8px; }
+.workbench { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-3); width: 100%; margin: 0 auto; padding: var(--space-3) var(--space-5) var(--space-2); }
 
 /* Keycaps: the keys of an action, on its button and in the cheat sheet */
 .caps { display: inline-flex; gap: 3px; }
-kbd { padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--sunk); color: var(--muted); font: inherit; font-size: 10.5px; line-height: 1.5; }
+kbd { padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--sunk); color: var(--quiet); font: inherit; font-size: 10.5px; line-height: 1.5; }
 
 /* Buttons: a quiet one, and the one that runs */
-.tool { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: var(--r-s); color: var(--muted); font-size: 12.5px; text-decoration: none; transition: color 0.15s, background-color 0.15s, transform 0.1s; }
+.tool { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: var(--r-s); color: var(--quiet); font-size: 12.5px; text-decoration: none; transition: color 0.15s, background-color 0.15s, transform 0.1s; }
 .tool:hover:not(:disabled) { color: var(--ink); background: var(--echo); }
 .tool:active:not(:disabled) { transform: scale(0.97); }
 .tool:disabled { opacity: 0.4; cursor: default; }
 .tool[aria-pressed='true'] { color: var(--ink); background: var(--echo); }
 .tool[aria-pressed='true'] .icon { color: var(--accent); }
 
-.tools { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
-.run { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; padding: 6px 10px 6px 12px; border-radius: var(--r-s); background: var(--accent); color: var(--background); font-size: 12.5px; font-weight: 650; transition: filter 0.15s, transform 0.1s; }
+.tools { display: flex; align-items: center; gap: 4px; }
+.tools .run { margin-left: auto; }
+.run { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 12px; border-radius: var(--r-s); background: var(--accent); color: var(--background); font-size: 12.5px; font-weight: 650; transition: filter 0.15s, transform 0.1s; }
 .run:hover:not(:disabled) { filter: brightness(1.07); }
 .run:active:not(:disabled) { transform: scale(0.97); }
 .run:disabled { opacity: 0.5; cursor: progress; }
@@ -46,33 +35,33 @@ kbd { padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; b
 .pane.source > .cm-editor { flex: 1; min-height: 0; }
 
 /* The panel */
-.dock { flex: none; display: flex; flex-direction: column; height: clamp(180px, 34svh, 460px); border: 1px solid var(--line); border-radius: var(--r-l); background: var(--sunk); overflow: hidden; transition: height 0.22s ease-out; }
+.dock { flex: none; display: flex; flex-direction: column; height: clamp(160px, 28svh, 380px); border: 1px solid var(--line); border-radius: var(--r-l); background: var(--sunk); overflow: hidden; transition: height 0.22s ease-out; }
 .dock.folded { height: 40px; }
 .dock .tabs { flex: none; display: flex; align-items: center; gap: 2px; padding: 5px 8px; background: var(--raised); border-bottom: 1px solid var(--line); font-size: 12.5px; }
 .dock.folded .tabs { border-bottom-color: transparent; }
 .dock .space, .status .space { flex: 1; }
-.dock .tab, .dock .fold { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: var(--r-s); color: var(--muted); transition: color 0.15s, background-color 0.15s; }
+.dock .tab, .dock .fold { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: var(--r-s); color: var(--quiet); transition: color 0.15s, background-color 0.15s; }
 .dock .tab:hover, .dock .fold:hover { color: var(--ink); background: var(--echo); }
 .dock .tab[aria-selected='true'] { color: var(--ink); background: var(--echo); }
 .dock .fold .icon { transition: transform 0.22s; }
 .dock.folded .fold .icon { transform: rotate(180deg); }
-.badge { min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--echo); color: var(--muted); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+.badge { min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--echo); color: var(--quiet); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .badge.error { background: var(--accent); color: var(--background); }
 .badge.warning { background: var(--code-keyword); color: var(--background); }
 .dock .views { flex: 1; min-height: 0; position: relative; }
 .dock .views > * { position: absolute; inset: 0; overflow: auto; padding: 12px 14px; }
 
 .report, .problems { display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; line-height: 1.5; color: var(--code-text); }
-.problems .none { margin: 0; color: var(--muted); }
+.problems .none { margin: 0; color: var(--quiet); }
 .program { flex: none; margin: 0; font: inherit; white-space: pre-wrap; color: var(--ink); animation: arrive 0.2s ease-out; }
 
 /* The status line: what the compiler is doing, and the way to the keys */
-.status { flex: none; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px; color: var(--muted); font-size: 12px; }
+.status { flex: none; display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 4px; color: var(--quiet); font-size: 12px; }
 .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: background-color 0.2s; }
 .status .dot[data-state='busy'] { background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
 .status .dot[data-state='ok'] { background: var(--code-string); }
 .status .dot[data-state='failed'] { background: var(--accent); }
-.status .hint { display: inline-flex; align-items: center; gap: 7px; padding: 2px 6px; border-radius: var(--r-s); color: var(--muted); transition: color 0.15s, background-color 0.15s; }
+.status .hint { display: inline-flex; align-items: center; gap: 7px; padding: 2px 6px; border-radius: var(--r-s); color: var(--quiet); transition: color 0.15s, background-color 0.15s; }
 .status .hint:hover { color: var(--ink); background: var(--echo); }
 @keyframes pulse { 50% { opacity: 0.35; } }
 
@@ -85,18 +74,18 @@ kbd { padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px; b
 .problem.error .head .icon { color: var(--accent); }
 .problem.warning .head .icon { color: var(--code-keyword); }
 .problem .head:hover .message { text-decoration: underline; text-underline-offset: 3px; }
-.problem .id { padding: 0 6px; border-radius: 5px; background: var(--sunk); color: var(--muted); font-size: 11px; transition: color 0.15s; }
+.problem .id { padding: 0 6px; border-radius: 5px; background: var(--sunk); color: var(--quiet); font-size: 11px; transition: color 0.15s; }
 .problem .id:not(:disabled):hover, .problem .id.open { color: var(--accent); }
 .problem .id:disabled { cursor: default; }
 
 code.part { padding: 0 0.3em; border-radius: 4px; background: var(--echo); font-weight: inherit; }
 code.part.type { color: var(--code-literal); }
 
-.place { margin: 4px 0 0; color: var(--muted); font-size: 11.5px; }
+.place { margin: 4px 0 0; color: var(--quiet); font-size: 11.5px; }
 button.place:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
 .excerpt { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; margin: 8px 0 4px; padding: 8px 10px; border-radius: var(--r-s); background: var(--sunk); overflow-x: auto; white-space: pre; }
-.excerpt .number { color: var(--muted); text-align: right; user-select: none; }
+.excerpt .number { color: var(--quiet); text-align: right; user-select: none; }
 .range { font: inherit; color: inherit; border-radius: 3px; text-decoration: underline 2px; text-underline-offset: 4px; cursor: pointer; transition: background-color 0.15s; }
 .range.primary.error { text-decoration-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .range.primary.warning { text-decoration-color: var(--code-keyword); background: color-mix(in srgb, var(--code-keyword) 14%, transparent); }
@@ -112,7 +101,7 @@ button.place:hover { color: var(--accent); text-decoration: underline; text-unde
 .excerpt .far:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .child { margin: 6px 0 0; }
-.child b { color: var(--muted); font-weight: 600; }
+.child b { color: var(--quiet); font-weight: 600; }
 .child.help b { color: var(--code-string); }
 
 .fixing { margin-top: 8px; }
@@ -122,16 +111,16 @@ button.place:hover { color: var(--accent); text-decoration: underline; text-unde
 .fix:disabled { opacity: 0.55; cursor: default; }
 .fix.applied { opacity: 1; border-color: var(--code-string); }
 .fix.stale { border-color: var(--accent); }
-.safety { padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font-size: 10.5px; }
+.safety { padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--quiet); font-size: 10.5px; }
 .preview { display: flex; flex-direction: column; margin-top: 4px; padding: 6px 10px; border-radius: var(--r-s); background: var(--sunk); overflow-x: auto; font-size: 12px; white-space: pre; }
 .preview .row.add { color: var(--code-string); background: color-mix(in srgb, var(--code-string) 12%, transparent); }
 .preview .row.remove { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.preview .row.same { color: var(--muted); }
+.preview .row.same { color: var(--quiet); }
 
-.page { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-s); background: var(--sunk); line-height: 1.6; }
-.page h1 { font-size: 14px; }
-.page h2 { font-size: 13px; }
-.page pre.shiki { padding: 8px 0; }
+.explanation { margin-top: 10px; padding: 4px 14px; border-radius: var(--r-s); background: var(--sunk); line-height: 1.6; }
+.explanation h1 { font-size: 14px; }
+.explanation h2 { font-size: 13px; }
+.explanation pre.shiki { padding: 8px 0; }
 
 /* The compiler's places in the editor */
 .cm-content .span { transition: background-color 0.15s; }
@@ -151,9 +140,9 @@ dialog.keys { width: min(480px, calc(100vw - 32px)); padding: 20px 22px; border:
 dialog.keys:focus-visible { outline: none; }
 dialog.keys::backdrop { background: color-mix(in srgb, var(--background) 60%, transparent); backdrop-filter: blur(3px); }
 dialog.keys h2 { margin: 0 0 12px; font-size: 16px; }
-dialog.keys h3 { margin: 14px 0 4px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+dialog.keys h3 { margin: 14px 0 4px; color: var(--quiet); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 dialog.keys .binding { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0; padding: 5px 0; font-size: 13px; }
-dialog.keys .note { margin: 14px 0 0; color: var(--muted); font-size: 12px; }
+dialog.keys .note { margin: 14px 0 0; color: var(--quiet); font-size: 12px; }
 
 @media (max-width: 760px) {
   body.play { height: auto; }

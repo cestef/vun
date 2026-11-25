@@ -1,0 +1,10 @@
+---
+import {type IconName, PATHS} from '../icons';
+
+interface Props {
+  name: IconName;
+}
+const {name} = Astro.props;
+---
+
+<svg viewBox="0 0 24 24" class:list={['icon', `icon-${name}`]} aria-hidden="true">{PATHS[name].map((d) => <path d={d} />)}</svg>

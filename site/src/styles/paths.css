@@ -1,0 +1,29 @@
+/* An index of places as tiles: a name with an arrow that leans towards it, then what it holds. A tile lifts under the pointer, its edge taking the accent. */
+
+ul.paths { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+ul.paths li { display: flex; margin: 0; }
+ul.paths a {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-l);
+  background: color-mix(in srgb, var(--raised) 45%, var(--background));
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s, background-color 0.2s, box-shadow 0.25s;
+}
+ul.paths a:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+  background: var(--raised);
+  box-shadow: 0 10px 24px -14px color-mix(in srgb, #000 55%, transparent);
+}
+ul.paths a:active { transform: translateY(0); }
+ul.paths .name { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); color: var(--ink); font-size: var(--text-m); font-weight: 650; }
+ul.paths .icon { color: var(--quiet); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s; }
+ul.paths a:hover .icon { color: var(--accent); transform: translateX(3px); }
+ul.paths .text { color: var(--quiet); font-size: var(--text-s); line-height: 1.6; }
+ul.paths .text code { padding: 0.05em 0.35em; border-radius: 5px; background: var(--echo); color: var(--text); font-size: 0.95em; }

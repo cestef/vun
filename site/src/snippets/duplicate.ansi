@@ -1,0 +1,12 @@
+    [1m[32mChecking[0m [1mhello[0m
+[1m[91merror[names.duplicate][0m[1m: `answer` is declared twice in this namespace[0m
+ [1m[94m ╭▸ [0mmain.vun:4:1
+  [1m[94m│[0m
+[1m[94m3[0m [1m[94m│[0m answer := 6 * 7;
+  [1m[94m│[0m [1m[94m──────[0m [1m[94mfirst bound here[0m
+[1m[94m4[0m [1m[94m│[0m answer := 1;
+  [1m[94m│[0m [1m[91m━━━━━━[0m
+  [1m[94m│[0m
+  [1m[94m╰ [0m[1mhelp[0m: choose another name
+
+      [1m[91mFailed[0m [1mhello[0m with [1m[91m1 error[0m

@@ -1,0 +1,22 @@
+---
+import '@astrojs/starlight/style/markdown.css';
+
+import type {Material} from '../learn/Lesson';
+import Lesson from './Lesson.astro';
+
+// The sources of a lesson: the program it starts from and the one that answers it, beside its page.
+const sources = import.meta.glob<string>('/src/content/docs/docs/learn/*.vun', {query: '?raw', import: 'default', eager: true});
+
+const {entry} = Astro.locals.starlightRoute;
+const source = (suffix: string) => sources[`/src/content/docs/${entry.id}${suffix}.vun`];
+const found = entry.data.lesson;
+const lesson: Material | undefined =
+  found === undefined
+    ? undefined
+    : {id: entry.id.split('/').pop()!, task: found.task ?? '', hint: found.hint ?? '', expect: found.expect, start: source(''), answer: source('.answer') ?? ''};
+---
+
+<div class="sl-markdown-content">
+  <slot />
+  {lesson && <Lesson lesson={lesson} />}
+</div>

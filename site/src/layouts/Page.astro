@@ -1,0 +1,38 @@
+---
+import '@fontsource-variable/jetbrains-mono';
+import '../styles/tokens.css';
+import '../styles/controls.css';
+import '../styles/base.css';
+import '../styles/shell.css';
+
+import icon from '../../../assets/logo/icon/light.svg?url';
+import {brandCss} from '../../build/brand';
+import Bar from '../components/Bar.astro';
+import ThemeInit from '../components/ThemeInit.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  // Classes of the body, which the playground's styles hang on.
+  bodyClass?: string;
+}
+const {title, description, bodyClass} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={icon} type="image/svg+xml" />
+    <style is:global set:html={brandCss()}></style>
+    <ThemeInit />
+  </head>
+  <body class={bodyClass}>
+    <header class="bar"><Bar /></header>
+    <slot />
+  </body>
+</html>
+

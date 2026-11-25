@@ -1,0 +1,26 @@
+---
+import {REPOSITORY, VERSION, href} from '../site';
+import Mark from './Mark.astro';
+
+const groups = [
+  {label: 'Guide', links: [{name: 'Install', href: href('docs/install/')}, {name: 'First program', href: href('docs/first-program/')}, {name: 'Commands', href: href('docs/commands/')}]},
+  {label: 'Learn', links: [{name: 'The course', href: href('docs/learn/')}, {name: 'Playground', href: href('play/')}]},
+  {label: 'Project', links: [{name: 'Source', href: REPOSITORY}, {name: 'Releases', href: `${REPOSITORY}/releases`}]},
+];
+---
+
+<footer class="foot">
+  <div class="inner">
+    <div class="brand">
+      <a class="home" href={href()} aria-label="vun, home"><Mark /></a>
+      <p>a smol systems programming language :3</p>
+    </div>
+    {groups.map((group) => (
+      <nav aria-label={group.label}>
+        <p class="label">{group.label}</p>
+        {group.links.map((link) => <a href={link.href}>{link.name}</a>)}
+      </nav>
+    ))}
+  </div>
+  <p class="base">version {VERSION}, experimental. DBAD or QUACK licensed.</p>
+</footer>

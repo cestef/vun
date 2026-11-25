@@ -1,0 +1,66 @@
+/* A lesson under its prose: the task and its checks, the workbench at a height of its own, the help. */
+
+/* A lesson's page is wider than the guide's for its editor; its prose keeps the guide's measure. */
+.main-pane:has(.lesson) { --sl-content-width: 58rem; }
+.sl-markdown-content:has(> .lesson) > :not(.lesson) { max-width: 46rem; }
+
+.lesson { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-6); font-size: 13.5px; line-height: 1.6; }
+.lesson > * { min-width: 0; }
+.lesson .workbench { flex: none; height: clamp(560px, 82svh, 820px); padding: 0; max-width: none; margin: 0; }
+.lesson .dock { height: clamp(140px, 24svh, 260px); }
+.lesson .dock.folded { height: 40px; }
+
+/* The task: what is asked, and how far the last run got */
+.task { padding: var(--space-4) var(--space-5); border: 1px solid var(--line); border-radius: var(--r-l); background: var(--raised); transition: border-color 0.3s; }
+.task.done { border-color: var(--code-string); }
+.task header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.task header .icon { color: var(--accent); }
+.task h2 { margin: 0; color: var(--ink); font-size: var(--text-m); font-weight: 650; letter-spacing: 0; }
+.task .tally { margin-left: auto; padding: 1px var(--space-2); border-radius: 999px; background: var(--echo); color: var(--quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+.task.done header .icon, .task.done .tally { color: var(--code-string); }
+.task .goal { margin: 0 0 var(--space-3); color: var(--text); }
+.task .goal code { padding: 0 0.3em; border-radius: 4px; background: var(--echo); }
+.checks { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
+.check { display: grid; grid-template-columns: 20px 1fr; column-gap: 8px; align-items: center; }
+.check .mark { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; }
+.check.pending .mark { color: var(--quiet); opacity: 0.55; }
+.check.pending .mark .icon { width: 18px; height: 18px; stroke-width: 1.5; }
+.check.met .mark { background: var(--code-string); color: var(--background); }
+.check.missed .mark { background: var(--accent); color: var(--background); }
+.check.met .mark .icon, .check.missed .mark .icon { width: 11px; height: 11px; stroke-width: 3; }
+.check.met .name { color: var(--quiet); }
+.check.pending .name { color: var(--text); }
+.check .strip { grid-column: 2; display: flex; gap: 2px; margin-top: 4px; }
+.check .strip i { flex: 1; max-width: 14px; height: 6px; border-radius: 2px; background: var(--echo); }
+.check .strip i.met { background: var(--code-string); }
+.check .strip i.missed { background: var(--accent); }
+.expected { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); font-size: 12.5px; }
+.expected summary { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--quiet); list-style: none; transition: color 0.15s; }
+.expected summary::-webkit-details-marker { display: none; }
+.expected summary:hover { color: var(--ink); }
+.expected summary .icon { transition: transform 0.2s; }
+.expected[open] summary .icon { transform: rotate(90deg); }
+.expected .wanted { margin: 8px 0 0; padding: 8px 10px; border-radius: var(--r-s); background: var(--sunk); color: var(--ink); font: inherit; white-space: pre-wrap; }
+.expected .preview { margin-top: 8px; }
+.check .found { grid-column: 2; color: var(--accent); font-size: 12px; }
+.check code { padding: 0 0.3em; border-radius: 4px; background: var(--echo); }
+
+/* Help, a rung at a time */
+.coaching { display: flex; flex-direction: column; gap: 8px; }
+.ask { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r-m); color: var(--ink); text-align: left; transition: border-color 0.15s, background-color 0.15s; }
+.ask:hover:not(:disabled) { border-color: var(--muted); background: var(--raised); }
+.ask:disabled { color: var(--quiet); cursor: default; }
+.ask .icon { color: var(--code-keyword); }
+.ask .caps { margin-left: auto; }
+.rungs { display: flex; gap: 4px; margin: 0; padding: 0 2px; list-style: none; }
+.rungs li { flex: 1; height: 3px; border-radius: 3px; background: var(--echo); transition: background-color 0.2s; }
+.rungs li.used { background: var(--code-keyword); }
+.coach:empty { display: none; }
+.coach .hint { margin: 0; color: var(--quiet); }
+.coach .change .preview { margin-top: 6px; }
+.compare summary { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--code-string); list-style: none; }
+.compare summary::-webkit-details-marker { display: none; }
+.compare .preview { margin-top: 8px; }
+
+
+.lesson .tools .tool, .lesson .tools .run { font-size: 12.5px; }
