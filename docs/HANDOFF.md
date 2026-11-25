@@ -6,11 +6,11 @@ History is in `jj log` and [`decisions/`](spec/decisions/README.md), conventions
 
 ## State
 
-Reviewed 2026-11-24 (docs against code): all but one proposed decision are `accepted` (658, the
-progress bars, waits for its uncommitted change in `compiler/base/term/src/progress/`). The
-decisions are a file each in [`spec/decisions/`](spec/decisions/README.md), checked by
-`cargo xtask decisions`. Clippy, the suite (1109 tests) and every xtask check were clean on am3.
+Reviewed 2026-11-24: all proposed decisions are `accepted` but 658 (the progress bars, waiting on
+its uncommitted change in `compiler/base/term/src/progress/`); `cargo xtask decisions` checks them.
+Clippy, the suite (1109 tests) and every xtask check were clean on am3.
 `0.2.0` is tagged, its release CI failed ([`open/packaging.md`](open/packaging.md)), the causes are fixed.
+The site is rebuilt on Astro, Starlight and Solid 2; watch its first CI `pnpm test` ([`open/site.md`](open/site.md)).
 
 ## Next, in order
 1. Retag `0.2.0` (editors regenerated, lld installed for the macOS `pgo` job) and watch the CI run.

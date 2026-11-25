@@ -115,30 +115,37 @@ key: `openssl pkeyutl -sign -rawin -inkey key.pem -in release.json -out release.
 
 ## The site and its playground
 
-`site/` is a Vite project (pnpm): the landing page (`/`), the playground (`/play/`) and the course
-(`/learn/`, lessons in `site/lessons/`, checked by `pnpm check:lessons`), which run the compiler
-built for WASI in the browser. A page is a directory with an `index.html`, so addresses carry no
-`.html`; the site's plugin redirects `/play` to `/play/` in the dev and preview servers as a static
-host does, and serves the repository's `install.sh` at `/install.sh` (the landing page shows it
-as download, read, run, never piped into a shell). Icons are one table (`src/icons.ts`, declared
-in pages as `data-icon`) and keys are one table (`src/keys.ts`, `data-action` on buttons; `F1`
-lists them). Build the compiler first, on a remote, and copy it back:
+`site/` is an Astro project (pnpm, TypeScript 7): the landing page (`/`), the guide (`/docs/`,
+Starlight, Markdown in `src/content/docs/docs/`) with its course (`/docs/learn/`, a lesson is a page
+with a `lesson` in its front matter and its programs beside it, `<id>.vun` and `<id>.answer.vun`),
+and the playground (`/play/`). The editor, the course's checks and the playground are Solid 2
+islands (`src/play/`, `src/learn/`, `src/ui/`). The guide's groups are one table (`src/guide.ts`)
+that the sidebar and `/docs/` both read; icons are one table (`src/icons.ts`, drawn by
+`ui/Icon` in an island and `components/Icon` on a page); keys are one table (`src/ui/keys.ts`,
+`F1` lists them); the version is the workspace's, read from `Cargo.toml`. Styles are hand
+written on one set of tokens (`src/styles/tokens.css`, colors from `build/brand.ts`); Starlight
+and Expressive Code are dressed in them in `styles/docs.css`. `/install.sh` serves the
+repository's installer as text (download, read, run, never piped into a shell). `pnpm test` runs
+every lesson and every ```` ```vun run ```` / ```` ```vun error ```` block of the guide through
+the compiler, so it needs the real `vun.wasm`. Build the compiler first, on a remote, and copy it
+back:
 
 ```sh
 scripts/remote --host am3 cargo build -p vun-cli --target wasm32-wasip1 --profile dist
 rsync am3:vun-build/<workspace>/target/wasm32-wasip1/dist/vun.wasm target/wasm32-wasip1/dist/
-cd site && pnpm install && pnpm dev    # or `pnpm build`, into `site/dist/`
+cd site && pnpm install && pnpm dev    # `pnpm build` into `site/dist/`, `pnpm test` the guide
 vun doc --library -o site/public/api   # the API pages, served at /api/ (git-ignored; never `-o site`, which overwrites the landing page)
 ```
 
-The site's plugin serves that file as `play/vun.wasm` and `lib/` as `play/library.json`. The
+Routes serve that file as `play/vun.wasm` and `lib/` as `play/library.json` (`src/pages/play/`). The
 same compiler runs under wasmtime from a toolchain's tree (`tc/bin/vun` the module, `tc/lib/` the
 library): `wasmtime run --dir .::/ --argv0 /tc/bin/vun tc/bin/vun build main.vun --target
 wasi.wasm32.p1`. Its first argument names the executable, which WASI does not, so it finds its
 library and keeps its memos (`.vun/`) as a native build does. It is 16 MB, 2.6 MB
 with brotli. The language server waits on shared memory, which needs the page isolated across
-origins: Vite's servers send the headers, and `site/public/_headers` asks a host that reads it
-(Cloudflare Pages, Netlify); without them the editor has no server. `share.vun` is the preset
+origins: the dev and preview servers send the headers, `site/public/_headers` asks a host that
+reads it (Cloudflare Pages, Netlify), and on GitHub Pages the service worker `public/coi.js` adds
+them; without them the editor has no server. `share.vun` is the preset
 dictionary of share links and is never edited: a new one is a new file under the next version
 letter in `share.ts`.
 

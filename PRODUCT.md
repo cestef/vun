@@ -8,11 +8,11 @@ web
 
 ## Stack
 
-Existing: Vite and TypeScript in `site/`, plain HTML pages per directory, CSS written by hand, no UI framework. Deployed to GitHub Pages by `.github/workflows/site.yml`. Pages are static; the playground and course run the compiler built for WASI in the browser.
+Astro 7 in `site/` with Starlight for the guide and Solid 2 islands for the editor, the course's checks and the playground; TypeScript 7; CSS written by hand on one set of tokens (`site/src/styles/tokens.css`). Deployed to GitHub Pages by `.github/workflows/site.yml`. Pages are static; the playground and the course run the compiler built for WASI in the browser.
 
 ## Users
 
-Programmers evaluating or starting with Vun: mostly systems, embedded and Rust-adjacent developers, plus curious newcomers (confirmed: broader than the experts). They arrive at the landing page, then read the docs, take the course (`/learn/`) or open the playground (`/play/`).
+Programmers evaluating or starting with Vun: mostly systems, embedded and Rust-adjacent developers, plus curious newcomers (confirmed: broader than the experts). They arrive at the landing page, then read the guide (`/docs/`), take the course inside it (`/docs/learn/`) or open the playground (`/play/`).
 
 ## Product Purpose
 
@@ -39,15 +39,15 @@ Name `vun`, the v/un mark and mascot, `assets/palette.toml` and the code colors 
 
 ## Evidence on Hand
 
-Real code card images in `assets/cards/`, benchmark cards (`assets/cards/bench`), the lessons in `site/lessons/`, the corpus programs, and the CLI help. No testimonials, customers or users to cite; none may be invented.
+Real code card images in `assets/cards/`, benchmark cards (`assets/cards/bench`), the lessons in `site/src/content/docs/docs/learn/`, the corpus programs, and the CLI help. No testimonials, customers or users to cite; none may be invented.
 
 ## Product Principles
 
 1. Show real things: real programs, real commands, real compiler output.
-2. One shell and one set of tokens across landing, docs, learn and play.
+2. One shell and one set of tokens across the landing page, the guide with its course, and the playground.
 3. Say what is true and verified; mark the experimental status plainly.
 4. The docs are checked against the compiler, as the lessons are.
 
 ## Accessibility & Inclusion
 
-Keyboard operable throughout, visible focus, contrast in both schemes, reduced motion respected (already honored in `style.css`).
+Keyboard operable throughout, visible focus, contrast in both schemes, reduced motion respected (`site/src/styles/landing.css` and the motion code check it).
